@@ -34,12 +34,10 @@ export enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 'side-effect-on-call',
 	/** The source and edge relate to each other bidirectionally */
-	Relates = 'relates',
-	/** The source has a control dependency on the target */
-	Control = 'control'
+	Relates = 'relates'
 }
 
-const validEdges: ReadonlySet<EdgeType> = new Set([EdgeType.Reads, EdgeType.Control, EdgeType.DefinedBy, EdgeType.Argument, EdgeType.Calls, EdgeType.Relates, EdgeType.DefinesOnCall])
+const validEdges: ReadonlySet<EdgeType> = new Set([EdgeType.Reads, EdgeType.DefinedBy, EdgeType.Argument, EdgeType.Calls, EdgeType.Relates, EdgeType.DefinesOnCall])
 
 export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): boolean {
 	for(const type of types) {

@@ -7,6 +7,7 @@ import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
 import { unpackArgument } from '../argument/unpack-argument'
+import { addControlEdges } from '../common'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -81,8 +82,8 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                ingoing,
-		out:               outgoing,
+		in:                addControlEdges(ingoing, name.info.id),
+		out:               addControlEdges(outgoing, name.info.id),
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

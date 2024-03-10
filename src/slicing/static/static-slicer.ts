@@ -159,6 +159,11 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 		}
+		if(currentVertex.controlDependency) {
+			for(const cd of currentVertex.controlDependency) {
+				queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
+			}
+		}
 	}
 
 	// slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)

@@ -13,6 +13,7 @@ import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
+import { addControlEdges } from '../common'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -76,11 +77,12 @@ export function processForLoop<OtherInfo>(
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [...variable.in, ...[...nameIdShares.values()].flat()],
-		out:               outgoing,
+		in:                addControlEdges([...variable.in, ...[...nameIdShares.values()].flat()], name.info.id),
+		out:               addControlEdges(outgoing, name.info.id),
 		graph:             nextGraph,
 		environment:       outEnvironment
 	}

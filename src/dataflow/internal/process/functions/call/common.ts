@@ -5,6 +5,7 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { EdgeType } from '../../../../graph'
+import type { IdentifierReference } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
 
@@ -66,4 +67,12 @@ export function processAllArguments<OtherInfo>(
 		}
 	}
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments }
+}
+
+
+export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId): IdentifierReference[] {
+	return ref.map(r => ({
+		...r,
+		controlDependency: r.controlDependency ? [controlDep, ...r.controlDependency] : [controlDep]
+	}))
 }

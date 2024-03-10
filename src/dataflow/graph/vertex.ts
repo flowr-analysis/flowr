@@ -32,7 +32,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * See {@link IdentifierReference}
 	 */
-	controlDependency: NodeId[] |undefined
+	controlDependency: NodeId[] | undefined
 }
 
 /**

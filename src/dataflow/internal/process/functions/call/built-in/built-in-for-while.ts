@@ -11,6 +11,7 @@ import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
 import { appendEnvironment } from '../../../../../environments'
+import { addControlEdges } from '../common'
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -46,8 +47,8 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                remainingInputs,
-		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironment), ...condition.out],
+		in:                addControlEdges(remainingInputs, name.info.id),
+		out:               addControlEdges([...makeAllMaybe(body.out, nextGraph, finalEnvironment), ...condition.out], name.info.id),
 		graph:             nextGraph,
 		/* the body might not happen if the condition is false */
 		environment:       finalEnvironment

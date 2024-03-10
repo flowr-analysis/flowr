@@ -1,7 +1,7 @@
 import type { NodeId } from '../../../../../src'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { defaultEnvironment } from '../../../_helper/environment-builder'
+import { defaultEnv } from '../../../_helper/environment-builder'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
@@ -41,7 +41,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.defineVariable(id2, 'x', { environment: defaultEnvironment().defineVariable('x', id1, definedAt) })
+				.defineVariable(id2, 'x', { environment: defaultEnv().defineVariable('x', id1, definedAt) })
 				.sameDef(id1, id2)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx <- 2',
@@ -68,8 +68,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 1\nx <- 3\n3\nx <- 9',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', { environment: defaultEnvironment().defineVariable('x', '0', '2') })
-				.defineVariable('7', 'x', { environment: defaultEnvironment().defineVariable('x', '3', '5') })
+				.defineVariable('3', 'x', { environment: defaultEnv().defineVariable('x', '0', '2') })
+				.defineVariable('7', 'x', { environment: defaultEnv().defineVariable('x', '3', '5') })
 				.sameDef('0', '3')
 				.sameDef('3', '7')
 		)
@@ -78,7 +78,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.use(id2, 'x', { environment: defaultEnvironment().defineVariable('x', id1, definedAt) })
+				.use(id2, 'x', { environment: defaultEnv().defineVariable('x', id1, definedAt) })
 				.reads(id2, id1)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx',
@@ -100,8 +100,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- 3; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x',  { environment: defaultEnvironment().defineVariable('x', '0', '2') })
-				.use('6', 'x', { environment: defaultEnvironment().defineVariable('x', '3', '5') })
+				.defineVariable('3', 'x',  { environment: defaultEnv().defineVariable('x', '0', '2') })
+				.use('6', 'x', { environment: defaultEnv().defineVariable('x', '3', '5') })
 				.reads('6', '3')
 				.sameDef('0', '3')
 		)
@@ -109,9 +109,9 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- x; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', { environment: defaultEnvironment().defineVariable('x', '0', '2') })
-				.use('4', 'x' , { environment: defaultEnvironment().defineVariable('x', '0', '2') })
-				.use('6', 'x',  { environment: defaultEnvironment().defineVariable('x', '3', '5') })
+				.defineVariable('3', 'x', { environment: defaultEnv().defineVariable('x', '0', '2') })
+				.use('4', 'x' , { environment: defaultEnv().defineVariable('x', '0', '2') })
+				.use('6', 'x',  { environment: defaultEnv().defineVariable('x', '3', '5') })
 				.reads('4', '0')
 				.definedBy('3', '4')
 				.sameDef('0', '3')
@@ -122,8 +122,8 @@ describe('Lists with variable references', withShell(shell => {
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('1', 'x')
-				.defineVariable('3', 'x', { environment: defaultEnvironment().defineVariable('x', '0', '2') })
-				.use('4', 'x', { environment: defaultEnvironment().defineVariable('x', '0', '2') })
+				.defineVariable('3', 'x', { environment: defaultEnv().defineVariable('x', '0', '2') })
+				.use('4', 'x', { environment: defaultEnv().defineVariable('x', '0', '2') })
 				.definedBy('0', '1')
 				.definedBy('3', '4')
 				.reads('4', '0')

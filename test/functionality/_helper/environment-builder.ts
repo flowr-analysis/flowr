@@ -42,7 +42,7 @@ export function unnamedArgument(id: NodeId) {
 /**
  * The constant global environment with all pre-defined functions.
  */
-export const defaultEnvironment = () => {
+export const defaultEnv = () => {
 	const global = initializeCleanEnvironments()
 	return new EnvironmentBuilder(global.current, 0)
 }
@@ -69,7 +69,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Defines a new argument in the top environment.
 	 * @param name - Argument name
 	 * @param nodeId - AST Node ID of usage
-	 * @param definedAt - AST Node Id of definition
+	 * @param definedAt - AST Node ID of definition
 	 * @param used - always (default) or optional
 	 */
 	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, used: DataflowGraphEdgeAttribute = 'always') {
@@ -80,7 +80,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Defines a new function in the top environment.
 	 * @param name - Function name
 	 * @param nodeId - AST Node ID of usage
-	 * @param definedAt - AST Node Id of definition
+	 * @param definedAt - AST Node ID of definition
 	 * @param used - always (default) or optional
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, used: DataflowGraphEdgeAttribute = 'always') {

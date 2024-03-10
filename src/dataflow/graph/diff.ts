@@ -177,7 +177,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
 		}
 
-		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environments. ` })
+		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 
 		if(lInfo.tag === 'function-call') {
 			if(rInfo.tag !== 'function-call') {

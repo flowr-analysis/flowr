@@ -7,7 +7,7 @@ import { processDataflowFor } from '../../../processor'
 import type { DataflowInformation } from '../../../info'
 
 
-export const UnnamedArgumentPrefix = 'unnamed-argument-'
+export const UnnamedArgumentPrefix = 'noname-'
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id))

@@ -1,7 +1,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnvironment, unnamedArgument } from '../../../_helper/environment-builder'
+import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -12,12 +12,12 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [{ nodeId: '0', used: 'always', name: 'x' }],
 					graph:             new Set(['0']),
-					environment:       defaultEnvironment().pushEnv()
+					environment:       defaultEnv().pushEnv()
 				})
-				.use('0', 'x', { environment: defaultEnvironment().pushEnv() }, false)
+				.use('0', 'x', { environment: defaultEnv().pushEnv() }, false)
 		)
 
-		const envWithXDefined = defaultEnvironment().pushEnv().defineParameter('x', '0', '1')
+		const envWithXDefined = defaultEnv().pushEnv().defineParameter('x', '0', '1')
 		assertDataflow('read of parameter', shell, 'function(x) { x }',
 			emptyGraph()
 				.defineFunction('4', '4', ['2'], {
@@ -27,7 +27,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0', '2']),
 					environment:       envWithXDefined
 				})
-				.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.use('2', 'x', { environment: envWithXDefined }, false)
 				.reads('2', '0')
 		)
@@ -40,7 +40,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['4', '5', '3', '0']),
 					environment:       envWithXDefined
 				})
-				.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.use('3', 'x', { environment: envWithXDefined }, false)
 				.call('5', 'return', [argumentInCall('4')], { environment: envWithXDefined }, false)
 				.use('4',unnamedArgument('4'), { environment: envWithXDefined }, false)
@@ -62,7 +62,7 @@ describe('Function Definition', withShell(shell => {
 						graph:             new Set(['5', '6', '4', '0']),
 						environment:       envWithXDefined
 					})
-					.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+					.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 					.use('4', 'x', { environment: envWithXDefined }, false)
 					.call('6', 'return', [argumentInCall('5', 'x')], { environment: envWithXDefined }, false)
 					.use('5', 'x', { environment: envWithXDefined }, false)
@@ -75,7 +75,7 @@ describe('Function Definition', withShell(shell => {
 			)
 		})
 
-		const envWithoutParams = defaultEnvironment().pushEnv()
+		const envWithoutParams = defaultEnv().pushEnv()
 		const envWithXParam = envWithoutParams.defineParameter('x', '0', '1')
 		const envWithXYParam = envWithXParam.defineParameter('y', '2', '3')
 		const envWithXYZParam = envWithXYParam.defineParameter('z', '4', '5')
@@ -105,11 +105,11 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [ { nodeId: '3', name: 'x', used: 'always' } ],
 					graph:             new Set(['3']),
-					environment:       defaultEnvironment().pushEnv()
+					environment:       defaultEnv().pushEnv()
 				})
-				.use('3', 'x', { environment: defaultEnvironment().pushEnv() }, false)
+				.use('3', 'x', { environment: defaultEnv().pushEnv() }, false)
 		)
-		const envWithXDefined = defaultEnvironment().pushEnv().defineVariable('x', '0', '2')
+		const envWithXDefined = defaultEnv().pushEnv().defineVariable('x', '0', '2')
 		assertDataflow('local define with <- in function, read after', shell, 'function() { x <- 3; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -120,7 +120,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0']),
 					environment:       envWithXDefined
 				})
-				.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.exit('2', '<-', envWithXDefined, {}, false)
 				.relates('2', '0')
 		)
@@ -134,12 +134,12 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0']),
 					environment:       envWithXDefined
 				})
-				.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.exit('2', '=', envWithXDefined, {}, false)
 				.relates('2', '0')
 		)
 
-		const envWithXDefinedR = defaultEnvironment().pushEnv().defineVariable('x', '1', '2')
+		const envWithXDefinedR = defaultEnv().pushEnv().defineVariable('x', '1', '2')
 		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -150,11 +150,11 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['1']),
 					environment:       envWithXDefinedR
 				})
-				.defineVariable('1', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.exit('2', '->', envWithXDefinedR, {}, false)
 				.relates('2', '1')
 		)
-		const envWithXDefinedGlobal = defaultEnvironment().pushEnv().defineVariable('x', '0', '2')
+		const envWithXDefinedGlobal = defaultEnv().pushEnv().defineVariable('x', '0', '2')
 		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -167,11 +167,11 @@ describe('Function Definition', withShell(shell => {
 				},
 				{ environment: envWithXDefinedGlobal.popEnv() }
 				)
-				.defineVariable('0', 'x', { environment: defaultEnvironment().pushEnv() })
+				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() })
 				.exit('2', '<<-', envWithXDefinedGlobal, {}, false)
 				.relates('2', '0')
 		)
-		const envWithXDefinedGlobalR = defaultEnvironment().pushEnv().defineVariable('x', '1', '2')
+		const envWithXDefinedGlobalR = defaultEnv().pushEnv().defineVariable('x', '1', '2')
 		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -184,16 +184,16 @@ describe('Function Definition', withShell(shell => {
 				},
 				{ environment: envWithXDefinedGlobalR.popEnv() }
 				)
-				.defineVariable('1', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.exit('2', '->>', envWithXDefinedGlobalR, {}, false)
 				.relates('2', '1')
 		)
-		const envDefXSingle = defaultEnvironment().pushEnv().defineVariable('x', '3', '5')
+		const envDefXSingle = defaultEnv().pushEnv().defineVariable('x', '3', '5')
 		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('9', 'x', {
-					environment: defaultEnvironment().defineVariable('x', '0', '2')
+					environment: defaultEnv().defineVariable('x', '0', '2')
 				})
 				.reads('9', '0')
 				.defineFunction('8', '8', ['6'], {
@@ -203,15 +203,15 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['6', '3']),
 					environment:       envDefXSingle
 				})
-				.use('6', 'x', { environment: defaultEnvironment().pushEnv().defineVariable('x', '3', '5') },  false)
-				.defineVariable('3', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.use('6', 'x', { environment: defaultEnv().pushEnv().defineVariable('x', '3', '5') },  false)
+				.defineVariable('3', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.reads('6', '3')
 		)
 		assertDataflow('shadow in body with closure', shell, 'x <- 2; function() { x <- x; x }; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('9', 'x', {
-					environment: defaultEnvironment().defineVariable('x', '0', '2')
+					environment: defaultEnv().defineVariable('x', '0', '2')
 				})
 				.reads('9', '0')
 				.defineFunction('8', '8', ['6'], {
@@ -221,17 +221,17 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['3', '4', '6']),
 					environment:       envDefXSingle
 				})
-				.defineVariable('3', 'x', { environment: defaultEnvironment().pushEnv() },  false)
-				.use('4', 'x', { environment: defaultEnvironment().pushEnv() }, false)
+				.defineVariable('3', 'x', { environment: defaultEnv().pushEnv() },  false)
+				.use('4', 'x', { environment: defaultEnv().pushEnv() }, false)
 				.use('6', 'x', {
-					environment: defaultEnvironment().pushEnv().defineVariable('x', '3', '5'),
+					environment: defaultEnv().pushEnv().defineVariable('x', '3', '5'),
 				}, false)
 				.reads('6', '3')
 				.definedBy('3', '4')
 		)
 	})
 	describe('Scoping of parameters', () => {
-		const envWithXDefined = defaultEnvironment().pushEnv().defineParameter('x', '3', '4')
+		const envWithXDefined = defaultEnv().pushEnv().defineParameter('x', '3', '4')
 		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',
 			emptyGraph()
 				.defineVariable('0', 'x')
@@ -242,13 +242,13 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['3', '5']),
 					environment:       envWithXDefined
 				})
-				.defineVariable('3', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('3', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.use('5', 'x', { environment: envWithXDefined }, false)
 				.reads('5', '3')
 		)
 	})
 	describe('Access dot-dot-dot', () => {
-		const envWithParam = defaultEnvironment().pushEnv().defineParameter('...', '0', '1')
+		const envWithParam = defaultEnv().pushEnv().defineParameter('...', '0', '1')
 		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',
 			emptyGraph()
 				.defineFunction('4', '4', ['2'], {
@@ -258,13 +258,13 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0', '2']),
 					environment:       envWithParam
 				})
-				.defineVariable('0', '...', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', '...', { environment: defaultEnv().pushEnv() },  false)
 				.use('2', '..11', { environment: envWithParam }, false)
 				.reads('2', '0')
 		)
 	})
 	describe('Using named arguments', () => {
-		const envWithA = defaultEnvironment().pushEnv().defineParameter('a', '0', '2')
+		const envWithA = defaultEnv().pushEnv().defineParameter('a', '0', '2')
 		const envWithAB = envWithA.defineParameter('b', '3', '5')
 
 		assertDataflow('Read first parameter', shell, 'function(a=3, b=a) { b }',
@@ -276,7 +276,7 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithAB,
 					graph:             new Set(['0', '3', '4', '6'])
 				})
-				.defineVariable('0', 'a', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'a', { environment: defaultEnv().pushEnv() },  false)
 				.defineVariable('3', 'b', { environment: envWithA },  false)
 				.use('4', 'a', { environment: envWithA }, false)
 				.use('6', 'b', { environment: envWithAB }, false)
@@ -285,7 +285,7 @@ describe('Function Definition', withShell(shell => {
 				.reads('6', '3')
 		)
 
-		const envWithFirstParam = defaultEnvironment().pushEnv().defineParameter('a', '0', '2')
+		const envWithFirstParam = defaultEnv().pushEnv().defineParameter('a', '0', '2')
 		const envWithBothParam = envWithFirstParam.defineParameter('m', '3', '5')
 		const envWithBothParamFirstB = envWithBothParam.defineVariable('b', '6', '8')
 		const envWithBothParamSecondB = envWithBothParam.defineVariable('b', '10', '12')
@@ -299,11 +299,11 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithBothParamSecondB,
 					graph:             new Set(['0', '3', '10', '6', '1', '9', '13'])
 				})
-				.defineVariable('0', 'a', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'a', { environment: defaultEnv().pushEnv() },  false)
 				.defineVariable('3', 'm', { environment: envWithFirstParam },  false)
 				.defineVariable('10', 'b', { environment: envWithBothParamFirstB },  false)
 				.defineVariable('6', 'b', { environment: envWithBothParam },  false)
-				.use('1', 'b', { environment: defaultEnvironment().pushEnv() }, false)
+				.use('1', 'b', { environment: defaultEnv().pushEnv() }, false)
 				.use('9', 'a', { environment: envWithBothParamFirstB }, false)
 				.use('13', 'a', { environment: envWithBothParamSecondB }, false)
 				.exit('15', '+', envWithBothParamSecondB, {}, false)
@@ -317,7 +317,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Using special argument', () => {
-		const envWithA = defaultEnvironment().pushEnv().defineParameter('a', '0', '1')
+		const envWithA = defaultEnv().pushEnv().defineParameter('a', '0', '1')
 		const envWithASpecial = envWithA.defineParameter('...', '2', '3')
 
 		assertDataflow('Return ...', shell, 'function(a, ...) { foo(...) }',
@@ -329,7 +329,7 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithASpecial,
 					graph:             new Set(['0', '2', '5', '7', '6'])
 				})
-				.defineVariable('0', 'a', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('0', 'a', { environment: defaultEnv().pushEnv() },  false)
 				.defineVariable('2', '...', { environment: envWithA },  false)
 				.use('5', '...', { environment: envWithASpecial }, false)
 				.call('7', 'foo', [argumentInCall('6')], { environment: envWithASpecial }, false)
@@ -340,7 +340,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
-		const envWithG = defaultEnvironment().pushEnv().defineFunction('g', '0', '4')
+		const envWithG = defaultEnv().pushEnv().defineFunction('g', '0', '4')
 		const envWithFirstY = envWithG.defineVariable('y', '5', '7')
 		const finalEnv = envWithG.defineVariable('y', '15', '17')
 		assertDataflow('Two possible exit points to bind y closure', shell, `function() {
@@ -359,7 +359,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       finalEnv,
 				graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
 			})
-			.defineVariable('0', 'g', { environment: defaultEnvironment().pushEnv() },  false)
+			.defineVariable('0', 'g', { environment: defaultEnv().pushEnv() },  false)
 			.defineVariable('5', 'y', { environment: envWithG },  false)
 			.defineVariable('15', 'y', { environment: envWithFirstY },  false)
 			.use('8', 'z', { environment: envWithFirstY }, false)
@@ -371,10 +371,10 @@ describe('Function Definition', withShell(shell => {
 				out:               [],
 				unknownReferences: [],
 				in:                [],
-				environment:       defaultEnvironment().pushEnv().pushEnv(),
+				environment:       defaultEnv().pushEnv().pushEnv(),
 				graph:             new Set(['1'])
 			},
-			{ environment: defaultEnvironment().pushEnv() }, false)
+			{ environment: defaultEnv().pushEnv() }, false)
 			.definedBy('0', '3')
 			.reads('1', '5', 'maybe')
 			.reads('1', '15', 'maybe')
@@ -386,7 +386,7 @@ describe('Function Definition', withShell(shell => {
 			.reads('12', BuiltIn, 'maybe')
 			.calls('12', BuiltIn, 'maybe')
 			.sameDef('5', '15')
-			.use('1', 'y', { environment: defaultEnvironment().pushEnv().pushEnv() }, false)
+			.use('1', 'y', { environment: defaultEnv().pushEnv().pushEnv() }, false)
 		)
 	})
 	describe('Late binding of environment variables', () => {
@@ -402,18 +402,18 @@ describe('Function Definition', withShell(shell => {
 						used:   'always'
 					}],
 					graph:       new Set(['0']),
-					environment: defaultEnvironment().pushEnv()
+					environment: defaultEnv().pushEnv()
 				})
-				.use('0', 'x', { environment: defaultEnvironment().pushEnv() }, false)
+				.use('0', 'x', { environment: defaultEnv().pushEnv() }, false)
 		)
 	})
 
 	describe('Nested Function Definitions', () => {
-		const withXParameterInOuter = defaultEnvironment().pushEnv().defineFunction('x', '1', '9')
-		const withinNestedFunctionWithoutParam = defaultEnvironment().pushEnv().pushEnv()
+		const withXParameterInOuter = defaultEnv().pushEnv().defineFunction('x', '1', '9')
+		const withinNestedFunctionWithoutParam = defaultEnv().pushEnv().pushEnv()
 		const withinNestedFunctionWithParam = withinNestedFunctionWithoutParam.defineParameter('x', '2', '3')
-		const withinNestedFunctionWithDef = defaultEnvironment().pushEnv().pushEnv().defineVariable('x', '4', '6')
-		const envWithA = defaultEnvironment().defineFunction('a', '0', '13')
+		const withinNestedFunctionWithDef = defaultEnv().pushEnv().pushEnv().defineVariable('x', '4', '6')
+		const envWithA = defaultEnv().defineFunction('a', '0', '13')
 		const envWithAB = envWithA.defineVariable('b', '14', '16')
 
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
@@ -432,7 +432,7 @@ describe('Function Definition', withShell(shell => {
 				.definedBy('0', '12')
 
 				.use('10', 'x', { environment: withXParameterInOuter }, false)
-				.defineVariable('1', 'x', { environment: defaultEnvironment().pushEnv() },  false)
+				.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					unknownReferences: [],
@@ -444,7 +444,7 @@ describe('Function Definition', withShell(shell => {
 					graph:       new Set(['5', '4', '2']),
 					environment: withinNestedFunctionWithDef
 				},
-				{ environment: defaultEnvironment().pushEnv() }, false)
+				{ environment: defaultEnv().pushEnv() }, false)
 				.reads('10', '1')
 				.definedBy('1', '8')
 

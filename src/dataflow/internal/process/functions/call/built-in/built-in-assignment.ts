@@ -56,7 +56,7 @@ export function processAssignment<OtherInfo>(
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
 
 	if(target.type === RType.Symbol) {
-		const res = processKnownFunctionCall(name, args, rootId, data)
+		const res = processKnownFunctionCall(name, args, rootId, data, !config.swapSourceAndTarget)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -108,7 +108,7 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 
 	// treat first argument to Symbol
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
-	const res = processKnownFunctionCall(name, mappedArgs, rootId, data)
+	const res = processKnownFunctionCall(name, mappedArgs, rootId, data,  !config.swapSourceAndTarget)
 	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 }
 

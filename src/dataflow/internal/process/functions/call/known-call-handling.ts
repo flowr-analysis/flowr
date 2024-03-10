@@ -1,4 +1,5 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
@@ -10,7 +11,9 @@ export function processKnownFunctionCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
+	reverseOrder?: boolean
 ): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] }{
 	const functionName = processDataflowFor(name, data)
 
@@ -18,12 +21,14 @@ export function processKnownFunctionCall<OtherInfo>(
 	const functionCallName = name.content
 	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
 
+	const processArgs = reverseOrder ? args.toReversed() : args
+
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments(functionName, args, data, finalGraph, rootId)
+	} = processAllArguments(functionName, processArgs, data, finalGraph, rootId)
 
 	finalGraph.addVertex({
 		tag:         'function-call',
@@ -31,7 +36,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		name:        functionCallName,
 		environment: data.environment,
 		when:        'always',
-		args:        callArgs // same reference
+		args:        reverseOrder ? callArgs.toReversed() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
@@ -45,6 +50,6 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv
 		},
-		processedArguments
+		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments
 	}
 }

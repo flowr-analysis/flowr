@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { defaultEnvironment } from '../../../_helper/environment-builder'
+import { defaultEnv } from '../../../_helper/environment-builder'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',
@@ -8,13 +8,13 @@ describe('for', withShell(shell => {
 		'for(i in 0) i ',
 		emptyGraph()
 			.defineVariable('0', 'i')
-			.use('2', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '0', '4') })
+			.use('2', 'i', { when: 'maybe', environment: defaultEnv().defineVariable('i', '0', '4') })
 			.reads('2', '0', 'maybe')
 	)
 
 	describe('Potential redefinition with break', () => {
-		const withXDefined = defaultEnvironment().defineVariable('x', '0', '2')
-		const otherXDefined = defaultEnvironment().defineVariable('x', '7', '9', 'maybe')
+		const withXDefined = defaultEnv().defineVariable('x', '0', '2')
+		const otherXDefined = defaultEnv().defineVariable('x', '7', '9', 'maybe')
 		assertDataflow('Potential redefinition inside the same loop',
 			shell,
 			`repeat {
@@ -34,7 +34,7 @@ x`,
 		)
 	})
 
-	const envWithX = () => defaultEnvironment().defineVariable('x', '0', '2')
+	const envWithX = () => defaultEnv().defineVariable('x', '0', '2')
 	assertDataflow('Read in for Loop',
 		shell,
 		'x <- 12\nfor(i in 1:10) x ',
@@ -44,7 +44,7 @@ x`,
 			.use('7', 'x', { when: 'maybe', environment: envWithX().defineVariable('i', '3', '9') })
 			.reads('7', '0', 'maybe')
 	)
-	const envWithI = () => defaultEnvironment().defineVariable('i', '0', '8')
+	const envWithI = () => defaultEnv().defineVariable('i', '0', '8')
 	assertDataflow('Read after for loop',
 		shell,
 		'for(i in 1:10) { x <- 12 }\n x',
@@ -56,10 +56,10 @@ x`,
 	)
 
 
-	const envWithFirstX = () => defaultEnvironment().defineVariable('x', '0', '2')
+	const envWithFirstX = () => defaultEnv().defineVariable('x', '0', '2')
 	const envInFor = () => envWithFirstX().defineVariable('i', '3', '11')
-	const envOutFor = () => defaultEnvironment().defineVariable('i', '3', '11').defineVariable('x', '0', '2')
-	const envWithSecondX = () => defaultEnvironment().defineVariable('x', '7', '9', 'maybe')
+	const envOutFor = () => defaultEnv().defineVariable('i', '3', '11').defineVariable('x', '0', '2')
+	const envWithSecondX = () => defaultEnv().defineVariable('x', '7', '9', 'maybe')
 
 	assertDataflow('Read after for loop with outer def',
 		shell,
@@ -117,9 +117,9 @@ x`,
 			.sameDef('7', '10') // both in same loop execution
 	)
 
-	const forLoopWithI = () => defaultEnvironment().defineVariable('i', '0', '9')
-	const forLoopWithIAfter = () => defaultEnvironment().defineVariable('i', '0', '9', 'maybe')
-	const forLoopAfterI = () => defaultEnvironment().defineVariable('i', '5', '7', 'maybe')
+	const forLoopWithI = () => defaultEnv().defineVariable('i', '0', '9')
+	const forLoopWithIAfter = () => defaultEnv().defineVariable('i', '0', '9', 'maybe')
+	const forLoopAfterI = () => defaultEnv().defineVariable('i', '5', '7', 'maybe')
 
 	assertDataflow('Redefinition within loop',
 		shell,

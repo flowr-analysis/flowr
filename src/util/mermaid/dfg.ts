@@ -38,7 +38,7 @@ export function formatRange(range: SourceRange | undefined): string {
 		return '??-??'
 	}
 
-	return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
+	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`
 }
 
 function createArtificialExitPoints(exitPoints: readonly NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {

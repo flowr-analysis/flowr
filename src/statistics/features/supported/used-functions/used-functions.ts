@@ -11,6 +11,7 @@ import {
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
+import { getRangeStart } from '../../../../util/range'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -99,7 +100,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
 				allCalls.push([
 					undefined,
-					[node.location.start.line, node.location.start.column],
+					getRangeStart(node.location),
 					node.arguments.length,
 					'',
 					hasCallsEdge ? 1 : 0
@@ -107,7 +108,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
-					[node.location.start.line, node.location.start.column],
+					getRangeStart(node.location),
 					node.arguments.length,
 					node.functionName.namespace ?? '',
 					hasCallsEdge ? 1 : 0

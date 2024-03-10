@@ -74,11 +74,11 @@ function initialIndentation(i: number, depth: number, deadDepths: Set<number>, n
 }
 
 function retrieveLocationString(locationRaw: XmlBasedJson) {
-	const extracted = extractLocation(locationRaw)
-	if(extracted.start.line === extracted.end.line && extracted.start.column === extracted.end.column) {
-		return ` (${extracted.start.line}:${extracted.start.column})`
+	const [sl, sc, el, ec] = extractLocation(locationRaw)
+	if(sl === el && sc === ec) {
+		return ` (${sl}:${sc})`
 	} else {
-		return ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
+		return ` (${sl}:${sc}─${el}:${ec})`
 	}
 }
 

@@ -4,6 +4,7 @@ import { setSourceProvider } from '../../../../../src/dataflow/internal/process/
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
 import { assertDataflow, withShell } from '../../../_helper/shell'
+import { rangeFrom } from '../../../../../src/util/range'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -85,7 +86,7 @@ describe('source', withShell(shell => {
 		.reads('3', BuiltIn)
 	)
 
-	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', { start: { line: 2, column: 1 }, end: { line: 2, column: 6 } }, id)()
+	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2',  rangeFrom(2,1, 2, 6), id)()
 	const envWithX = defaultEnv().defineVariable('x', '0', '2')
 
 	assertDataflow('recursive source', shell, sources.recursive1, emptyGraph()

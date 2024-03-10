@@ -53,8 +53,8 @@ export function sourcedDeterministicCountingIdGenerator(path: string, location: 
 	return () => `${path}-${loc2Id(location)}-${id++}`
 }
 
-function loc2Id(loc: SourceRange) {
-	return `${loc.start.line}:${loc.start.column}-${loc.end.line}:${loc.end.column}`
+function loc2Id([sl,sc,el,ec]: SourceRange): string {
+	return `${sl}:${sc}-${el}:${ec}`
 }
 
 /**

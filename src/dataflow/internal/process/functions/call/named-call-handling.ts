@@ -31,8 +31,10 @@ export function processNamedCall<OtherInfo>(
 	let defaultProcessor = resolved.length === 0
 
 	let information: DataflowInformation | undefined = undefined
+	let builtIn = false
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.kind === 'built-in-function') {
+			builtIn = true
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data))
 		} else {
 			defaultProcessor = true
@@ -40,6 +42,12 @@ export function processNamedCall<OtherInfo>(
 	}
 	if(defaultProcessor) {
 		information = mergeInformation(information, processKnownFunctionCall(name, args, rootId, data).information)
+	} else if(builtIn) {
+		// mark the function call as built in only
+		const v = (information as DataflowInformation).graph.get(name.info.id)
+		if(v !== undefined && v[0].tag === 'function-call') {
+			v[0].onlyBuiltin = true
+		}
 	}
 
 

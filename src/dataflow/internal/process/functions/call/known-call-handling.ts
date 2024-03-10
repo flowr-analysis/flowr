@@ -1,5 +1,4 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
@@ -35,6 +34,8 @@ export function processKnownFunctionCall<OtherInfo>(
 		id:          rootId,
 		name:        functionCallName,
 		environment: data.environment,
+		/* will be overwritten accordingly */
+		onlyBuiltin: false,
 		when:        'always',
 		args:        reverseOrder ? callArgs.toReversed() : callArgs
 	})

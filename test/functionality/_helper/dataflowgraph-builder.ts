@@ -57,11 +57,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		info?: {
 			returns?:     NodeId[],
 			reads?:       NodeId[],
+			onlyBuiltIn?: boolean,
 			environment?: REnvironmentInformation,
 			when?:        DataflowGraphEdgeAttribute
 		},
 		asRoot: boolean = true) {
-		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, when: info?.when }, asRoot)
+		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, when: info?.when, onlyBuiltin: info?.onlyBuiltIn ?? false }, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
 			for(const ret of info.returns) {

@@ -67,6 +67,8 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
 	readonly tag:          'function-call'
 	args:                  FunctionArgument[]
+	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
+	onlyBuiltin:           boolean
 	readonly environment?: REnvironmentInformation
 }
 

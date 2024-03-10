@@ -45,11 +45,11 @@ interface NodeToSlice {
 
 type Fingerprint = string
 
-function envFingerprint(env: REnvironmentInformation): string {
+function envFingerprint(env: REnvironmentInformation): Fingerprint {
 	return objectHash(env, { excludeKeys: key => key === 'id' })
 }
 
-function fingerprint(id: NodeId, envFingerprint: string, onlyForSideEffects: boolean): Fingerprint {
+function fingerprint(id: NodeId, envFingerprint: Fingerprint, onlyForSideEffects: boolean): Fingerprint {
 	return `${id}-${envFingerprint}-${onlyForSideEffects ? '0' : '1'}`
 }
 
@@ -158,7 +158,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 
 		const [currentVertex, currentEdges] = currentInfo
 
-		if(currentVertex.tag === 'function-call' && !current.onlyForSideEffects) {
+		if(currentVertex.tag === 'function-call' && !currentVertex.onlyBuiltin && !current.onlyForSideEffects) {
 			slicerLogger.trace(`${current.id} is a function call`)
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
@@ -226,7 +226,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 	return overwriteEnvironment(baseEnvironment, callerEnvironment)
 }
 
-//// returns the new threshold hit count
+/** returns the new threshold hit count */
 function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)

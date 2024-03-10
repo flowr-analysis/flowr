@@ -33,6 +33,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		id:          functionRootId,
 		name:        functionCallName,
 		environment: data.environment,
+		/* can never be a direct built-in-call */
+		onlyBuiltin: false,
 		when:        'always',
 		args:        callArgs // same reference
 	})

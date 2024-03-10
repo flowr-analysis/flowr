@@ -12,7 +12,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
 	}
 	if(a.controlDependency !== b.controlDependency) {
-		info.report.addComment(`${info.position}Different used: ${a.controlDependency} vs. ${b.controlDependency}`)
+		info.report.addComment(`${info.position}Different control dependency: ${JSON.stringify(a.controlDependency)} vs. ${JSON.stringify(b.controlDependency)}`)
 	}
 }
 

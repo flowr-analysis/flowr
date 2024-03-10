@@ -10,6 +10,8 @@ import {
 } from '../../../../../../r-bridge'
 import { rangeFrom } from '../../../../../../util/range'
 
+const voidRange = rangeFrom(-1, -1, -1, -1)
+
 export function toUnnamedArgument<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
 	idMap: DecoratedAstMap<OtherInfo>
@@ -21,7 +23,7 @@ export function toUnnamedArgument<OtherInfo>(
 		type:     RType.Argument,
 		lexeme:   node.lexeme ?? '',
 		// is this correct?
-		location: node.location ?? rangeFrom(-1, -1, -1, -1),
+		location: node.location ?? voidRange,
 		info:     {
 			...node.info,
 			id: node.info.id + '-arg'

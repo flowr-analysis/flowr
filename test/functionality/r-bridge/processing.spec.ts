@@ -1,14 +1,8 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
-import type {
-	RNodeWithParent,
-	NodeId } from '../../../src/r-bridge'
-import {
-	RType,
-	decorateAst,
-	collectAllIds, RoleInParent
-} from '../../../src/r-bridge'
+import type { RNodeWithParent, NodeId } from '../../../src'
+import { RType, decorateAst, collectAllIds, RoleInParent } from '../../../src'
 import { assert } from 'chai'
 
 describe('Assign unique Ids and Parents', withShell((shell) => {

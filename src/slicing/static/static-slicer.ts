@@ -2,11 +2,10 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	REnvironmentInformation
-} from '../../dataflow'
-import {
+	REnvironmentInformation } from '../../dataflow'
+import { shouldTraverseEdge
+	,
 	EdgeType,
-	graphToMermaidUrl,
 	initializeCleanEnvironments
 } from '../../dataflow'
 import { guard } from '../../util/assert'
@@ -147,31 +146,27 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		const current = queue.next()
 
 		const baseEnvironment = current.baseEnvironment
+		const baseId = current.id
 		const baseEnvFingerprint = envFingerprint(baseEnvironment)
 
-		const currentInfo = dataflowGraph.get(current.id, true)
-
+		const currentInfo = dataflowGraph.get(baseId, true)
 		if(currentInfo === undefined) {
-			slicerLogger.warn(`id: ${current.id} must be in graph but can not be found, keep in slice to be sure`)
+			slicerLogger.warn(`id: ${baseId} must be in graph but can not be found, keep in slice to be sure`)
 			continue
 		}
 
 		const [currentVertex, currentEdges] = currentInfo
 
 		if(currentVertex.tag === 'function-call' && !currentVertex.onlyBuiltin && !current.onlyForSideEffects) {
-			slicerLogger.trace(`${current.id} is a function call`)
+			slicerLogger.trace(`${baseId} is a function call`)
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
 
-		const currentNode = idMap.get(current.id)
-		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, idMap)}`)
-
 		for(const [target, edge] of currentEdges) {
-			if(edge.types.has(EdgeType.SideEffectOnCall)) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
-			}
-			if(edge.types.has(EdgeType.Reads) || edge.types.has(EdgeType.DefinedBy) || edge.types.has(EdgeType.Argument) || edge.types.has(EdgeType.Calls) || edge.types.has(EdgeType.Relates) || edge.types.has(EdgeType.DefinesOnCall)) {
+			if(shouldTraverseEdge(edge.types)) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+			} else if(edge.types.has(EdgeType.SideEffectOnCall)) {
+				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 		}
 		for(const controlFlowDependency of addControlDependencies(currentVertex.id, idMap)) {

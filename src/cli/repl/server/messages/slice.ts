@@ -29,7 +29,7 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 
 
 /**
- * Similar to {@link FileAnalysisResponseMessage} this only contains the results of
+ * Similar to {@link FileAnalysisResponseMessageJson} this only contains the results of
  * the slice steps.
  */
 export interface SliceResponseMessage extends IdMessageBase {

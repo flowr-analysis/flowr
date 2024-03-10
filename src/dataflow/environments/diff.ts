@@ -1,10 +1,10 @@
-import type { GenericDifferenceInformation } from '../../util/diff'
+import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff'
 import { setDifference } from '../../util/diff'
 import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
 
-export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation): void {
+export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation<Report>): void {
 	if(a.name !== b.name) {
 		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
 	}
@@ -16,7 +16,7 @@ export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierRe
 	}
 }
 
-function diffMemory(a: IEnvironment, b: IEnvironment, info: GenericDifferenceInformation) {
+function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b: IEnvironment, info: GenericDifferenceInformation<Report>) {
 	for(const [key, value] of a.memory) {
 		const value2 = b.memory.get(key)
 		if(value2 === undefined || value.length !== value2.length) {
@@ -50,7 +50,7 @@ function diffMemory(a: IEnvironment, b: IEnvironment, info: GenericDifferenceInf
 	}
 }
 
-export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation): void {
+export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
 			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
@@ -71,7 +71,7 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` })
 }
 
-export function diffEnvironmentInformation(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation): void {
+export function diffEnvironmentInformation<Report extends WriteableDifferenceReport>(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		info.report.addComment(`${info.position}Different environments: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
 		return

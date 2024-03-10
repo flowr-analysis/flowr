@@ -1,7 +1,8 @@
 import type { IdentifierReference } from '../environments'
 import { diffIdentifierReferences, diffEnvironmentInformation } from '../environments'
 import type { NodeId } from '../../r-bridge'
-import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import { DataflowGraph } from './graph'
+import type { FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import type {
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
@@ -10,7 +11,7 @@ import {
 	setDifference
 } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
-import type { DataflowGraphEdge } from './edge'
+import type { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import type { DataflowGraphVertexInfo } from './vertex'
 
 export type DiffState = 'added' | 'removed' | 'changed'
@@ -23,7 +24,7 @@ export type DiffVertex = DataflowGraphVertexInfo & { state: DiffState }
 
 class DataflowDifferenceReport implements WriteableDifferenceReport {
 	_comments:  string[] | undefined      = undefined
-	_diffGraph: DataflowGraph | undefined = undefined
+	_diffGraph: DataflowGraph<DiffVertex, DiffEdge> = new DataflowGraph()
 
 	addComment(comment: string): void {
 		if(this._comments === undefined) {
@@ -33,8 +34,20 @@ class DataflowDifferenceReport implements WriteableDifferenceReport {
 		}
 	}
 
+	addDiffVertex(state: DiffState, info: DataflowGraphVertexInfo): void {
+		this._diffGraph.addVertex({ ...info, state })
+	}
+
+	addDiffEdge(state: DiffState, from: NodeId, to: NodeId, type: EdgeType, attribute: DataflowGraphEdgeAttribute): void {
+		this._diffGraph.addEdge(from, to, { type, attribute, state })
+	}
+
 	comments(): readonly string[] | undefined {
 		return this._comments
+	}
+
+	graph(): DataflowGraph<DiffVertex, DiffEdge> {
+		return this._diffGraph
 	}
 
 	isEqual(): boolean {
@@ -47,7 +60,7 @@ export interface NamedGraph {
 	graph: DataflowGraph
 }
 
-interface DataflowDiffContext extends GenericDifferenceInformation {
+interface DataflowDiffContext extends GenericDifferenceInformation<DataflowDifferenceReport> {
 	left:  DataflowGraph
 	right: DataflowGraph
 }
@@ -98,7 +111,7 @@ export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): Diffe
 }
 
 
-function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation): void {
+function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation<DataflowDifferenceReport>): void {
 	if(a === '<value>' || b === '<value>') {
 		if(a !== b) {
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
@@ -124,7 +137,7 @@ export function equalExitPoints(a: readonly NodeId[] | undefined, b: readonly No
 }
 
 export function equalFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
-	const ctx: GenericDifferenceInformation = {
+	const ctx: GenericDifferenceInformation<DataflowDifferenceReport> = {
 		report:    new DataflowDifferenceReport(),
 		leftname:  'left',
 		rightname: 'right',
@@ -134,7 +147,7 @@ export function equalFunctionArguments(a: false | readonly FunctionArgument[], b
 	return ctx.report.isEqual()
 }
 
-export function diffFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation): void {
+export function diffFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<DataflowDifferenceReport>): void {
 	if(a === false || b === false) {
 		if(a !== b) {
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)

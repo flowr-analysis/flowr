@@ -1,15 +1,15 @@
-import type { NodeId } from '../../../src'
-import type { FunctionArgument, IdentifierDefinition, REnvironmentInformation, Environment } from '../../../src/dataflow'
+import type { NodeId } from '../../../../src'
+import type { FunctionArgument, IdentifierDefinition, REnvironmentInformation, Environment } from '../../../../src/dataflow'
 import {
 	initializeCleanEnvironments
-} from '../../../src/dataflow'
-import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/process-argument'
+} from '../../../../src/dataflow'
+import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/process-argument'
 import {
 	appendEnvironment,
 	define,
 	popLocalEnvironment,
 	pushLocalEnvironment
-} from '../../../src/dataflow/environments'
+} from '../../../../src/dataflow/environments'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, kind: 'variable', nodeId: '_0', definedAt }

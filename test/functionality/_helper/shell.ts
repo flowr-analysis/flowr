@@ -30,6 +30,7 @@ import { decorateLabelContext } from './label'
 import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
 import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
+import { printAsBuilder } from './dataflow/builder-printer'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -214,6 +215,8 @@ export function assertDataflow(
 				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
+			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
+
 			console.error('diff:\n', diff)
 			throw e
 		}

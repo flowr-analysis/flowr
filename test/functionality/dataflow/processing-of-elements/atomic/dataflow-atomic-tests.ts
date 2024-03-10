@@ -6,8 +6,8 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, unnamedArgument } from '../../../_helper/environment-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
 import { OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
@@ -350,15 +350,19 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers', 'built-in-sequencing']),
 						shell, 'x <- for (i in 1:4) 3',
 						emptyGraph()
-							.use('3-arg', unnamedArgument('3-arg'), { controlDependency: ['4'] })
-							.argument('4', '3-arg')
-							.call('4', 'for', [argumentInCall('1-arg', { controlDependency: ['4'] }), argumentInCall('3-arg', { controlDependency: ['4'] })], { returns: [], reads: [BuiltIn] })
-							.use('1', 'x', { controlDependency: ['4'] })
-							.constant('2', { controlDependency: ['4'] })
-							.call('5', '<-', [argumentInCall('0-arg'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
-							.reads('4-arg', ['1', '2', '4'])
-							.reads('3-arg', '2')
-							.defineVariable('0', 'x', { definedBy: ['4'] })
+							.use('1', 'i', { controlDependency: ['7'] })
+							.use('6-arg', unnamedArgument('6-arg'), { controlDependency: ['7'] })
+							.reads('6-arg', '5')
+							.call('4', ':', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['7'] })
+							.argument('7', '6-arg')
+							.call('7', 'for', [argumentInCall('1-arg', { controlDependency: ['7'] }), argumentInCall('4-arg'), argumentInCall('6-arg', { controlDependency: ['7'] })], { returns: [], reads: [BuiltIn] })
+							.call('8', '<-', [argumentInCall('0-arg'), argumentInCall('7-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.constant('2')
+							.constant('3')
+							.reads('4-arg', ['2', '3'])
+							.constant('5', { controlDependency: [] })
+							.reads('7-arg', ['1', '4'])
+							.defineVariable('0', 'x', { definedBy: ['7'] })
 					)
 				})
 			})

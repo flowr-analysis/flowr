@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 
 describe('while', withShell(shell => {
 	assertDataflow('simple constant while', shell,

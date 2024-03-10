@@ -1,8 +1,8 @@
 import { requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { rangeFrom } from '../../../../../src/util/range'
 

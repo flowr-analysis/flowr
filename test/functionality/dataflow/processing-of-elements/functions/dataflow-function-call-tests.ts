@@ -1,7 +1,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'

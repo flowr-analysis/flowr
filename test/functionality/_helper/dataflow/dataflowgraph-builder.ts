@@ -1,19 +1,19 @@
-import type { NodeId } from '../../../src'
-import { EmptyArgument } from '../../../src'
+import type { NodeId } from '../../../../src'
+import { EmptyArgument } from '../../../../src'
 import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraphVertexUse,
 	FunctionArgument,
 	REnvironmentInformation
-} from '../../../src/dataflow'
+} from '../../../../src/dataflow'
 import {
 	BuiltIn
 	,
 	CONSTANT_NAME,
 	DataflowGraph,
 	EdgeType
-} from '../../../src/dataflow'
-import { deepMergeObject } from '../../../src/util/objects'
+} from '../../../../src/dataflow'
+import { deepMergeObject } from '../../../../src/util/objects'
 
 export function emptyGraph() {
 	return new DataflowGraphBuilder()
@@ -96,11 +96,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				continue
 			}
 			if(Array.isArray(arg)) {
-				if(arg[1] !== '<value>' && arg[1].name !== undefined && !this.hasNode(arg[1].nodeId, true)) {
+				if(arg[1] !== '<value>' && arg[1].name !== undefined && !this.hasVertex(arg[1].nodeId, true)) {
 					this.use(arg[1].nodeId, arg[1].name, { controlDependency: arg[1].controlDependency })
 					this.argument(id, arg[1].nodeId)
 				}
-			} else if(arg !== '<value>'&& arg.name !== undefined && !this.hasNode(arg.nodeId, true)) {
+			} else if(arg !== '<value>'&& arg.name !== undefined && !this.hasVertex(arg.nodeId, true)) {
 				this.use(arg.nodeId, arg.name, { controlDependency: arg.controlDependency })
 				this.argument(id, arg.nodeId)
 				if(arg.nodeId.endsWith('-arg')) {
@@ -195,7 +195,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public definedBy(from: NodeId, to: NodeId) {
+	public definedBy(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.definedBy(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.DefinedBy })
 	}
 
@@ -205,7 +211,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameRead(from: NodeId, to: NodeId) {
+	public sameRead(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.sameRead(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.SameReadRead })
 	}
 
@@ -215,7 +227,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameDef(from: NodeId, to: NodeId) {
+	public sameDef(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.sameDef(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.SameDefDef })
 	}
 
@@ -224,7 +242,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public calls(from: NodeId, to: NodeId) {
+	public calls(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.calls(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.Calls })
 	}
 
@@ -233,7 +257,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public returns(from: NodeId, to: NodeId) {
+	public returns(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.returns(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.Returns })
 	}
 
@@ -242,7 +272,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public definesOnCall(from: NodeId, to: NodeId) {
+	public definesOnCall(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.definesOnCall(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.DefinesOnCall })
 	}
 
@@ -251,7 +287,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public argument(from: NodeId, to: NodeId) {
+	public argument(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.argument(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.Argument })
 	}
 
@@ -260,7 +302,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public relates(from: NodeId, to: NodeId) {
+	public relates(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.relates(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.Relates })
 	}
 }

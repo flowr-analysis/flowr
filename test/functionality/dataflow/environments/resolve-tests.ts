@@ -1,7 +1,7 @@
 import { resolveByName } from '../../../../src/dataflow/environments'
 import { expect } from 'chai'
 import { guard } from '../../../../src/util/assert'
-import { defaultEnv, variable } from '../../_helper/environment-builder'
+import { defaultEnv, variable } from '../../_helper/dataflow/environment-builder'
 import { label } from '../../_helper/label'
 
 describe('Resolve', () => {

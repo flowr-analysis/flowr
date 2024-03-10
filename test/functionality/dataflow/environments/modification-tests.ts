@@ -3,7 +3,7 @@ import type { IEnvironment } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
 import { appendEnvironment, overwriteEnvironment } from '../../../../src/dataflow/environments'
-import { defaultEnv } from '../../_helper/environment-builder'
+import { defaultEnv } from '../../_helper/dataflow/environment-builder'
 import { label } from '../../_helper/label'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */

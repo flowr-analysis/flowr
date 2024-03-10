@@ -1,7 +1,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { BuiltIn } from '../../../../../src/dataflow'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {

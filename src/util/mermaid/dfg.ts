@@ -48,7 +48,7 @@ export function formatRange(range: SourceRange | undefined): string {
 
 function createArtificialExitPoints(exitPoints: readonly NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {
 	for(const exitPoint of exitPoints) {
-		if(!mermaid.rootGraph.hasNode(exitPoint, true)) {
+		if(!mermaid.rootGraph.hasVertex(exitPoint, true)) {
 			const node = dataflowIdMap.get(exitPoint)
 			guard(node !== undefined, 'exit point not found')
 			mermaid.nodeLines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap.get(exitPoint)?.location)}"}}`)

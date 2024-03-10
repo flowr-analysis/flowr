@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 
 describe('Lists without variable references', withShell(shell => {
 	for(const b of ['1\n2\n3', '1;2;3', '{ 1 + 2 }\n{ 3 * 4 }']) {

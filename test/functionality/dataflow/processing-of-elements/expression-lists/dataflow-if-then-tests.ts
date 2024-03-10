@@ -3,7 +3,7 @@ import {
 } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
-import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {

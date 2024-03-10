@@ -131,7 +131,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	 * @param id                      - The id to check for
 	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
 	 */
-	public hasNode(id: NodeId, includeDefinedFunctions: boolean): boolean {
+	public hasVertex(id: NodeId, includeDefinedFunctions: boolean): boolean {
 		return includeDefinedFunctions ? this.vertexInformation.has(id) : this.rootVertices.has(id)
 	}
 

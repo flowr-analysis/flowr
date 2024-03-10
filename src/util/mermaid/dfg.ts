@@ -172,10 +172,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)
-			if(!mermaid.mark?.has(id + '->' + target)) {
-				mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? 'x-.-x' : 'x==>'}|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
-			} else {
-				mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
+			if(mermaid.mark?.has(id + '->' + target)) {
+				// who invented this syntax?!
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px; `)
 			}
 			if(target === BuiltIn) {
 				mermaid.hasBuiltIn = true

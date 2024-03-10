@@ -1,6 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { defaultEnv } from '../../../_helper/environment-builder'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',

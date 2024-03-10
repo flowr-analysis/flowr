@@ -6,6 +6,7 @@ import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
 import type { DataflowInformation } from '../info'
+import type { DataflowDifferenceReport } from './diff'
 import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
 import type {
 	DataflowGraphVertexArgument,
@@ -289,9 +290,9 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		}
 	}
 
-	public equals(other: DataflowGraph<Vertex, Edge>, diff: true, names?: { left: string, right: string }): DifferenceReport
+	public equals(other: DataflowGraph<Vertex, Edge>, diff: true, names?: { left: string, right: string }): DataflowDifferenceReport
 	public equals(other: DataflowGraph<Vertex, Edge>, diff?: false, names?: { left: string, right: string }): boolean
-	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DifferenceReport {
+	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DataflowDifferenceReport {
 		const report = diffOfDataflowGraphs({ name: names.left, graph: this }, { name: names.right, graph: other })
 		if(diff) {
 			return report
@@ -325,7 +326,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
 	} else if(current.tag === 'function-call') {
-		guard(equalFunctionArguments(current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
+		guard(equalFunctionArguments(current.id, current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
 	} else if(current.tag === 'function-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
 		guard(arrayEqual(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')

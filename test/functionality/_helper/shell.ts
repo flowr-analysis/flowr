@@ -18,7 +18,6 @@ import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
-import type { DifferenceReport } from '../../../src/util/diff'
 import { guard } from '../../../src/util/assert'
 import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
@@ -29,8 +28,8 @@ import { LAST_STEP } from '../../../src/core/steps/steps'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
 import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
-import type { DataflowGraph } from '../../../src/dataflow'
-import { graphToMermaidUrl , diffGraphsToMermaidUrl } from '../../../src/dataflow'
+import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
+import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -182,6 +181,10 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 const legacyDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW)
 
+function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<string> | undefined {
+	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? p.id : `${p.from}->${p.to}`))
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
@@ -200,14 +203,14 @@ export function assertDataflow(
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
-		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
+		const report: DataflowDifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
 		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
-				{ label: 'expected', graph: expected },
-				{ label: 'got', graph: info.dataflow.graph },
+				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
+				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)

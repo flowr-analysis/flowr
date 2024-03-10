@@ -130,13 +130,11 @@ class BuilderPrinter {
 			}
 			this.coveredVertices.add(arg[1].nodeId)
 			this.handleArgumentArgLinkage(fn, arg[1].nodeId)
-			this.coveredEdges.add(edgeId(fn, arg[1].nodeId, EdgeType.Argument))
 			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg[1].nodeId), ', ', '') ?? ''
 			return `argumentInCall('${arg[1].nodeId}', { name: '${arg[0]}'${suffix} } )`
 		} else if(arg !== '<value>') {
 			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg.nodeId), ', { ') ?? ''
 			this.coveredVertices.add(arg.nodeId)
-			this.coveredEdges.add(edgeId(fn, arg.nodeId, EdgeType.Argument))
 			this.handleArgumentArgLinkage(fn, arg.nodeId)
 			return `argumentInCall('${arg.nodeId}'${suffix})`
 		} else {
@@ -153,6 +151,9 @@ class BuilderPrinter {
 				this.recordFnCall(fn, 'argument', [wrap(fn), wrap(id)])
 				this.coveredEdges.add(edgeId(fn, id, EdgeType.Argument))
 			}
+		} else if(!this.coveredEdges.has(edgeId(fn, id, EdgeType.Argument))) {
+			this.recordFnCall(fn, 'argument', [wrap(fn), wrap(id)])
+			this.coveredEdges.add(edgeId(fn, id, EdgeType.Argument))
 		}
 	}
 
@@ -290,11 +291,11 @@ function wrap(id: string): string {
 		return 'EmptyArgument'
 	} else if(id === BuiltIn) {
 		return 'BuiltIn'
-	}
-	if(id.startsWith(UnnamedArgumentPrefix)) {
+	} else if(id.startsWith(UnnamedArgumentPrefix)) {
 		return `unnamedArgument('${id.slice(UnnamedArgumentPrefix.length)}')`
+	} else {
+		return `'${id}'`
 	}
-	return `'${id}'`
 }
 
 function edgeId(from: NodeId, to: NodeId, type: EdgeType): string {

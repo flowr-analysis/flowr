@@ -6,8 +6,7 @@ import { appendEnvironment, type IdentifierReference, makeAllMaybe, resolvesToBu
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
-import { unpackArgument } from '../argument/unpack-argument'
-import { addControlEdges } from '../common'
+import { addControlEdges, patchFunctionCall } from '../common'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -20,13 +19,12 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	const unpackedArgs = args.map(unpackArgument)
-	if(unpackedArgs.some(arg => arg === undefined)) {
-		dataflowLogger.warn(`If-then-else ${name.content} has undefined arguments in ${JSON.stringify(args)} (${JSON.stringify(unpackedArgs)}), skipping`)
+	if(args[0] === undefined) {
+		dataflowLogger.warn(`If-then-else ${name.content} has undefined condition in ${JSON.stringify(args)}, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	const [condArg, thenArg, otherwiseArg] = unpackedArgs as [RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation> | undefined]
+	const [condArg, thenArg, otherwiseArg] = args as [RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation> | undefined]
 
 	const cond = processDataflowFor(condArg, data)
 
@@ -36,8 +34,8 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false
 
 	// we should defer this to the abstract interpretation
-	const conditionIsFalse = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, false)
-	const conditionIsTrue = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, true)
+	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false)
+	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true)
 	if(conditionIsFalse !== 'always') {
 		then = processDataflowFor(thenArg, data)
 		if(conditionIsTrue !== 'always') {
@@ -80,9 +78,12 @@ export function processIfThenElse<OtherInfo>(
 
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
+	patchFunctionCall(nextGraph, rootId, name, data, [cond, then, otherwise])
+
+
 	return {
 		unknownReferences: [],
-		in:                addControlEdges(ingoing, name.info.id, nextGraph),
+		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges(ingoing, name.info.id, nextGraph)],
 		out:               addControlEdges(outgoing, name.info.id, nextGraph),
 		environment:       finalEnvironment,
 		graph:             nextGraph

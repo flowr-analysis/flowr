@@ -50,7 +50,7 @@ export function dataflowGraphToJson(df: DataflowInformation): string {
 }
 
 export function dataflowGraphToMermaid(df: DataflowInformation, idMap: DataflowMap): string {
-	return graphToMermaid(df.graph, idMap)
+	return graphToMermaid({ graph: df.graph, dataflowIdMap: idMap }).string
 }
 
 export function dataflowGraphToMermaidUrl(df: DataflowInformation, idMap: DataflowMap): string {

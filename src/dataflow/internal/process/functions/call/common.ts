@@ -1,5 +1,5 @@
 import type { DataflowInformation } from '../../../../info'
-import type { NodeId, ParentInformation, RFunctionArgument } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
 import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
@@ -81,4 +81,22 @@ export function addControlEdges(ref: readonly IdentifierReference[], controlDep:
 		out[i] = { ...r, controlDependency: r.controlDependency ? [controlDep, ...r.controlDependency] : [controlDep] }
 	}
 	return out
+}
+
+export function patchFunctionCall<OtherInfo>(nextGraph: DataflowGraph, rootId: NodeId, name: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, argumentProcessResult: (DataflowInformation | undefined)[]) {
+	nextGraph.addVertex({
+		tag:               'function-call',
+		id:                rootId,
+		name:              name.content,
+		environment:       data.environment,
+		/* will be overwritten accordingly */
+		onlyBuiltin:       false,
+		controlDependency: undefined,
+		args:              argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : arg.out[0])
+	})
+	for(const arg of argumentProcessResult) {
+		if(arg) {
+			nextGraph.addEdge(rootId, arg.out[0], { type: EdgeType.Argument })
+		}
+	}
 }

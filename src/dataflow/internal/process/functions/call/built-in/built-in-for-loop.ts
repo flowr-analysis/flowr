@@ -9,11 +9,12 @@ import {
 	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../../../linker'
+import type { DataflowGraph } from '../../../../../graph'
 import { EdgeType } from '../../../../../graph'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
-import { addControlEdges } from '../common'
+import { addControlEdges, patchFunctionCall } from '../common'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -75,21 +76,7 @@ export function processForLoop<OtherInfo>(
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
-	// add function call
-
-	nextGraph.addVertex({
-		tag:               'function-call',
-		id:                rootId,
-		name:              name.content,
-		environment:       data.environment,
-		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		controlDependency: undefined,
-		args:              [variable.out[0], vector.out[0], body.out[0]]
-	})
-	nextGraph.addEdge(name.info.id, variable.out[0], { type: EdgeType.Argument })
-	nextGraph.addEdge(name.info.id, vector.out[0], { type: EdgeType.Argument })
-	nextGraph.addEdge(name.info.id, body.out[0], { type: EdgeType.Argument })
+	patchFunctionCall(nextGraph, rootId, name, data, [variable, vector, body])
 
 	return {
 		unknownReferences: [],

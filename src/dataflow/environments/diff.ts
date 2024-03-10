@@ -4,7 +4,13 @@ import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
 
-export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation<Report>): void {
+export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
+	if(a === undefined || b === undefined) {
+		if(a !== b) {
+			info.report.addComment(`${info.position}Different identifier references: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
+		}
+		return
+	}
 	if(a.name !== b.name) {
 		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
 	}
@@ -38,7 +44,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(aVal.controlDependency !== bVal.controlDependency) {
-				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.controlDependency} vs. ${info.rightname}: ${bVal.controlDependency}`)
+				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependency)}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)

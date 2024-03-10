@@ -9,7 +9,7 @@ import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
-import { OperatorDatabase } from '../../../../../src'
+import { EmptyArgument, OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import type { FunctionArgument } from '../../../../../src/dataflow'
 import { startAndEndsWith } from '../../../../../src/util/strings'
@@ -354,9 +354,12 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.use('6-arg', unnamedArgument('6-arg'), { controlDependency: ['7'] })
 							.reads('6-arg', '5')
 							.call('4', ':', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['7'] })
+							.argument('4', ['2-arg', '3-arg'])
 							.argument('7', '6-arg')
 							.call('7', 'for', [argumentInCall('1-arg', { controlDependency: ['7'] }), argumentInCall('4-arg'), argumentInCall('6-arg', { controlDependency: ['7'] })], { returns: [], reads: [BuiltIn] })
+							.argument('7', ['1-arg', '4-arg'])
 							.call('8', '<-', [argumentInCall('0-arg'), argumentInCall('7-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.argument('8', ['7-arg', '0-arg'])
 							.constant('2')
 							.constant('3')
 							.reads('4-arg', ['2', '3'])
@@ -367,80 +370,84 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				})
 			})
 		})
-		describe('assignment with function call', () => {
-			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
+		describe('Assignment with Function Call', () => {
+			assertDataflow('define call with multiple args should only be defined by the call-return',
+				shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
-					.defineVariable('0', 'a')
-					.call('9', 'foo', [
-						argumentInCall('4', { name: 'x' }),
-						argumentInCall('6'),
-						argumentInCall('8')
-					])
 					.use('4', 'x')
+					.reads('4', '3')
 					.use('5', 'y')
 					.use('6', unnamedArgument('6'))
+					.reads('6', '5')
 					.use('7', 'z')
 					.use('8', unnamedArgument('8'))
-					.definedBy('0', '9')
+					.reads('8', '7')
 					.argument('9', '4')
 					.argument('9', '6')
 					.argument('9', '8')
-					.reads('6', '5')
-					.reads('8', '7')
+					.call('9', 'foo', [argumentInCall('4', { name: 'x' } ), argumentInCall('6'), argumentInCall('8')], { returns: [], reads: [] })
+					.call('10', '<-', [argumentInCall('0-arg'), argumentInCall('9-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('10', ['9-arg', '0-arg'])
+					.constant('3')
+					.defineVariable('0', 'a', { definedBy: ['9'] })
 			)
 		})
 	})
 
 	describe('Pipes', () => {
 		describe('Passing one argument', () => {
-			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind']), shell, 'x |> f()',
+			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind', 'name-normal', 'call-normal']),
+				shell, 'x |> f()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1' }
-					])
 					.use('1', unnamedArgument('1'))
-					.argument('3', '1')
-					.reads('1', '0'),
+					.reads('1', '0')
+					.argument('3', '0')
+					.call('3', 'f', [argumentInCall('0')], { returns: [], reads: [] })
+					.argument('4', '1')
+					.call('4', '|>', [argumentInCall('1'), argumentInCall('3-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('4', '3-arg'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']), shell, 'x |> f() |> g()',
+			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']),
+				shell, 'x |> f() |> g()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1' }
-					])
-					.call('7', 'g', [
-						{ name: unnamedArgument('5'), nodeId: '5' }
-					])
 					.use('1', unnamedArgument('1'))
+					.reads('1', '0')
 					.use('5', unnamedArgument('5'))
-					.argument('3', '1')
-					.argument('7', '5')
-					.reads('5', '3')
-					.reads('1', '0'),
+					.reads('5', ['3', '4'])
+					.argument('3', '0')
+					.call('3', 'f', [argumentInCall('0')], { returns: [], reads: [] })
+					.argument('4', '1')
+					.call('4', '|>', [argumentInCall('1'), argumentInCall('3-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('4', '3-arg')
+					.argument('7', '4')
+					.call('7', 'g', [argumentInCall('4')], { returns: [], reads: [] })
+					.argument('8', '5')
+					.call('8', '|>', [argumentInCall('5'), argumentInCall('7-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('8', '7-arg'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']), shell, 'x |> f(y,z)',
+			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
+				shell, 'x |> f(y,z)',
 				emptyGraph()
 					.use('0', 'x')
-					.call('7', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1' },
-						{ name: unnamedArgument('4'), nodeId: '4' },
-						{ name: unnamedArgument('6'), nodeId: '6' }
-					])
 					.use('1', unnamedArgument('1'))
-					.use('4', unnamedArgument('4'))
-					.use('6', unnamedArgument('6'))
-					.use('0', 'x')
+					.reads('1', '0')
 					.use('3', 'y')
+					.use('4', unnamedArgument('4'))
+					.reads('4', '3')
 					.use('5', 'z')
-					.argument('7', '1')
+					.use('6', unnamedArgument('6'))
+					.reads('6', '5')
+					.argument('7', '0')
 					.argument('7', '4')
 					.argument('7', '6')
-					.reads('1', '0')
-					.reads('4', '3')
-					.reads('6', '5'),
+					.call('7', 'f', [argumentInCall('0'), argumentInCall('4'), argumentInCall('6')], { returns: [], reads: [] })
+					.argument('8', '1')
+					.call('8', '|>', [argumentInCall('1'), argumentInCall('7-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('8', '7-arg'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 		})
@@ -449,112 +456,123 @@ describe('Atomic (dataflow information)', withShell(shell => {
 
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
-		for(const b of [
-			{ label: 'without braces', func: (x: string) => `${x}` },
-			{ label: 'with braces', func: (x: string) => `{ ${x} }` },
-		]) {
-			describe(`Variant ${b.label}`, () => {
-				describe('if-then, no else', () => {
-					assertDataflow('completely constant', shell,
-						`if (TRUE) ${b.func('1')}`,
-						emptyGraph()
-					)
-					assertDataflow('compare cond.', shell,
-						`if (x > 5) ${b.func('1')}`,
-						emptyGraph().use('0', 'x')
-					)
-					assertDataflow('compare cond. symbol in then', shell,
-						`if (x > 5) ${b.func('y')}`,
-						emptyGraph().use('0', 'x')
-							.use('3', 'y', { controlDependency: [] })
-					)
-					assertDataflow('all variables', shell,
-						`if (x > y) ${b.func('z')}`,
-						emptyGraph()
-							.use('0', 'x')
-							.use('1', 'y')
-							.use('3', 'z', { controlDependency: [] })
-					)
-					assertDataflow('all variables, some same', shell,
-						`if (x > y) ${b.func('x')}`,
-						emptyGraph()
-							.use('0', 'x')
-							.use('1', 'y')
-							.use('3', 'x', { controlDependency: [] })
-							.sameRead('0', '3')
-					)
-					assertDataflow('all same variables', shell,
-						`if (x > x) ${b.func('x')}`,
-						emptyGraph()
-							.use('0', 'x')
-							.use('1', 'x')
-							.use('3', 'x', { controlDependency: [] })
-							.sameRead('0', '1')
-							// theoretically, they just have to be connected, so 0 is just hardcoded
-							.sameRead('0', '3')
-					)
-					assertDataflow('definition in if', shell,
-						`if (x <- 3) ${b.func('x')}`,
-						emptyGraph()
-							.defineVariable('0', 'x')
-							.use('3', 'x', { controlDependency: [] })
-							.reads('3', '0')
-					)
-				})
+		describe('if-then, no else', () => {
+			assertDataflow(label('completely constant', ['if', 'logical', 'numbers']),
+				shell, 'if (TRUE) 1',
+				emptyGraph()
+					.use('2-arg', unnamedArgument('2-arg'))
+					.reads('2-arg', '1')
+					.argument('3', '2-arg')
+					.call('3', 'if', [argumentInCall('0-arg'), argumentInCall('2-arg'), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('3', '0-arg')
+					.constant('0')
+					.constant('1')
+			)
+			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', ...OperatorDatabase['>'].capabilities]),
+				shell, 'if (x > 5) 1',
+				emptyGraph()
+					.use('0', 'x')
+					.use('4-arg', unnamedArgument('4-arg'))
+					.reads('4-arg', '3')
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('2', ['0-arg', '1-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg'), argumentInCall('4-arg'), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('5', '2-arg')
+					.constant('1', { controlDependency: ['5'] })
+					.reads('2-arg', ['0', '1'])
+					.constant('3')
+			)
+			assertDataflow('compare cond. symbol in then',
+				shell, 'if (x > 5) y',
+				emptyGraph().use('0', 'x')
+					.use('3', 'y', { controlDependency: [] })
+			)
+			assertDataflow('all variables', shell,
+				'if (x > y) z',
+				emptyGraph()
+					.use('0', 'x')
+					.use('1', 'y')
+					.use('3', 'z', { controlDependency: [] })
+			)
+			assertDataflow('all variables, some same', shell,
+				'if (x > y) x',
+				emptyGraph()
+					.use('0', 'x')
+					.use('1', 'y')
+					.use('3', 'x', { controlDependency: [] })
+					.sameRead('0', '3')
+			)
+			assertDataflow('all same variables', shell,
+				'if (x > x) x',
+				emptyGraph()
+					.use('0', 'x')
+					.use('1', 'x')
+					.use('3', 'x', { controlDependency: [] })
+					.sameRead('0', '1')
+					// theoretically, they just have to be connected, so 0 is just hardcoded
+					.sameRead('0', '3')
+			)
+			assertDataflow('definition in if', shell,
+				'if (x <- 3) x',
+				emptyGraph()
+					.defineVariable('0', 'x')
+					.use('3', 'x', { controlDependency: [] })
+					.reads('3', '0')
+			)
+		})
 
-				describe('if-then, with else', () => {
-					assertDataflow('completely constant', shell,
-						'if (TRUE) { 1 } else { 2 }',
-						emptyGraph()
-					)
-					assertDataflow('compare cond.', shell,
-						'if (x > 5) { 1 } else { 42 }',
-						emptyGraph().use('0', 'x')
-					)
-					assertDataflow('compare cond. symbol in then', shell,
-						'if (x > 5) { y } else { 42 }',
-						emptyGraph().use('0', 'x').use('3', 'y', { controlDependency: [] })
-					)
-					assertDataflow('compare cond. symbol in then & else', shell,
-						'if (x > 5) { y } else { z }',
-						emptyGraph()
-							.use('0', 'x')
-							.use('3', 'y', { controlDependency: [] })
-							.use('5', 'z', { controlDependency: [] })
-					)
-					assertDataflow('all variables', shell,
-						'if (x > y) { z } else { a }',
-						emptyGraph()
-							.use('0', 'x')
-							.use('1', 'y')
-							.use('3', 'z', { controlDependency: [] })
-							.use('5', 'a', { controlDependency: [] })
-					)
-					assertDataflow('all variables, some same', shell,
-						'if (y > x) { x } else { y }',
-						emptyGraph()
-							.use('0', 'y')
-							.use('1', 'x')
-							.use('3', 'x', { controlDependency: [] })
-							.use('5', 'y', { controlDependency: [] })
-							.sameRead('1', '3')
-							.sameRead('0', '5')
-					)
-					assertDataflow('all same variables', shell,
-						'if (x > x) { x } else { x }',
-						emptyGraph()
-							.use('0', 'x')
-							.use('1', 'x')
-							.use('3', 'x', { controlDependency: [] })
-							.use('5', 'x', { controlDependency: [] })
-							// 0 is just hardcoded, they actually just have to be connected
-							.sameRead('0', '1')
-							.sameRead('0', '3')
-							.sameRead('0', '5')
-					)
-				})
-			})
-		}
+		describe('if-then, with else', () => {
+			assertDataflow('completely constant', shell,
+				'if (TRUE) { 1 } else { 2 }',
+				emptyGraph()
+			)
+			assertDataflow('compare cond.', shell,
+				'if (x > 5) { 1 } else { 42 }',
+				emptyGraph().use('0', 'x')
+			)
+			assertDataflow('compare cond. symbol in then', shell,
+				'if (x > 5) { y } else { 42 }',
+				emptyGraph().use('0', 'x').use('3', 'y', { controlDependency: [] })
+			)
+			assertDataflow('compare cond. symbol in then & else', shell,
+				'if (x > 5) { y } else { z }',
+				emptyGraph()
+					.use('0', 'x')
+					.use('3', 'y', { controlDependency: [] })
+					.use('5', 'z', { controlDependency: [] })
+			)
+			assertDataflow('all variables', shell,
+				'if (x > y) { z } else { a }',
+				emptyGraph()
+					.use('0', 'x')
+					.use('1', 'y')
+					.use('3', 'z', { controlDependency: [] })
+					.use('5', 'a', { controlDependency: [] })
+			)
+			assertDataflow('all variables, some same', shell,
+				'if (y > x) { x } else { y }',
+				emptyGraph()
+					.use('0', 'y')
+					.use('1', 'x')
+					.use('3', 'x', { controlDependency: [] })
+					.use('5', 'y', { controlDependency: [] })
+					.sameRead('1', '3')
+					.sameRead('0', '5')
+			)
+			assertDataflow('all same variables', shell,
+				'if (x > x) { x } else { x }',
+				emptyGraph()
+					.use('0', 'x')
+					.use('1', 'x')
+					.use('3', 'x', { controlDependency: [] })
+					.use('5', 'x', { controlDependency: [] })
+					// 0 is just hardcoded, they actually just have to be connected
+					.sameRead('0', '1')
+					.sameRead('0', '3')
+					.sameRead('0', '5')
+			)
+		})
 	})
 	describe('inline non-strict boolean operations', () => {
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',

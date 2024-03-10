@@ -355,7 +355,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			})
 		})
 		describe('assignment with function call', () => {
-			const environmentWithX = defaultEnv().defineArgument('x', '4', '4')
 			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
 					.defineVariable('0', 'a')
@@ -365,10 +364,10 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						argumentInCall('8')
 					])
 					.use('4', 'x')
-					.use('5', 'y', { environment: environmentWithX })
-					.use('6', unnamedArgument('6'), { environment: environmentWithX })
-					.use('7', 'z', { environment: environmentWithX })
-					.use('8', unnamedArgument('8'), { environment: environmentWithX })
+					.use('5', 'y')
+					.use('6', unnamedArgument('6'))
+					.use('7', 'z')
+					.use('8', unnamedArgument('8'))
 					.definedBy('0', '9')
 					.argument('9', '4')
 					.argument('9', '6')
@@ -485,7 +484,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x')
-							.use('3', 'x', { when: 'maybe', environment: defaultEnv().defineVariable('x', '0', '2') })
+							.use('3', 'x', { when: 'maybe' })
 							.reads('3', '0')
 					)
 				})
@@ -546,13 +545,12 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	})
 	describe('inline non-strict boolean operations', () => {
 		const environmentWithY = defaultEnv().defineVariable('y', '0', '2')
-		const environmentWithOtherY = defaultEnv().defineVariable('y', '4', '6')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
 				.defineVariable('4', 'y', { environment: environmentWithY })
-				.use('3', 'x', { environment: environmentWithY })
-				.use('8', 'y', { environment: environmentWithY.appendWritesOf(environmentWithOtherY) })
+				.use('3', 'x')
+				.use('8', 'y')
 				.reads('8', '0')
 				.reads('8', '4')
 				.sameDef('0', '4')
@@ -569,7 +567,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: defaultEnv().defineVariable('i', '0', '6') })
+					.use('4', 'i', { when: 'maybe' })
 					.reads('4', '0', 'maybe')
 			)
 		})

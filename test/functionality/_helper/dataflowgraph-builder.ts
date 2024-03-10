@@ -37,7 +37,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineFunction(id: NodeId, name: string,
-		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
+		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: Partial<DataflowGraphVertexFunctionDefinition>,
 		asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({ tag: 'function-definition', id, name, subflow, exitPoints }, info), asRoot)

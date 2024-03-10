@@ -97,7 +97,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
 
 	for(const read of remainingRead) {
-		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
+		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: undefined, when: 'maybe' })
 	}
 
 
@@ -148,7 +148,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 			for(const exitPoint of exitPoints) {
 				const node = subgraph.get(exitPoint, true)
 				const env = initializeCleanEnvironments()
-				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment.current.memory
+				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment?.current.memory ?? outEnvironment.current.memory
 				const resolved = resolveByName(ingoing.name, env)
 				if(resolved === undefined) {
 					remainingIn.push(ingoing)

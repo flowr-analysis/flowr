@@ -27,10 +27,9 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 */
 	name:         string
 	/**
-	 * The environment in which the node is defined.
-	 * If you do not provide an explicit environment, this will use the same clean one (with {@link initializeCleanEnvironments}).
+	 * The environment in which the vertex is set.
 	 */
-	environment?: REnvironmentInformation
+	environment?: REnvironmentInformation | undefined
 	/**
 	 * Is this node part of every local execution trace or only in some.
 	 * If you do not provide an explicit value, this will default to `always`.
@@ -42,36 +41,41 @@ interface DataflowGraphVertexBase extends MergeableRecord {
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
-	readonly tag: 'exit-point'
+	readonly tag:          'exit-point'
+	readonly environment?: REnvironmentInformation
 }
 
 export const CONSTANT_NAME = '__@@C@@__'
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
-	readonly tag:  'value'
-	readonly name: typeof CONSTANT_NAME
+	readonly tag:          'value'
+	readonly name:         typeof CONSTANT_NAME
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */
+	readonly environment?: undefined
 }
 
 /**
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
-	readonly tag: 'use'
+	readonly tag:          'use'
+	readonly environment?: undefined
 }
 
 /**
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
-	readonly tag: 'function-call'
-	args:         FunctionArgument[]
+	readonly tag:          'function-call'
+	args:                  FunctionArgument[]
+	readonly environment?: REnvironmentInformation
 }
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
-	readonly tag: 'variable-definition'
+	readonly tag:          'variable-definition'
+	readonly environment?: REnvironmentInformation
 }
 
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
@@ -86,6 +90,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * In other words: last expressions/return calls
 	 */
 	exitPoints:   readonly NodeId[]
+	environment?: REnvironmentInformation
 }
 
 export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue

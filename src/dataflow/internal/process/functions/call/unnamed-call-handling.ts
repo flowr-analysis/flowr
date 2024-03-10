@@ -40,7 +40,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName })
+	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependency: data.controlFlowDependencies })
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)

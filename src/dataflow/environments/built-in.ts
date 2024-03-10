@@ -71,11 +71,12 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 	for(const name of names) {
 		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 		BuiltInMemory.set(name, [{
-			kind:      'built-in-function',
-			definedAt: BuiltIn,
-			processor: (name, args, rootId, data) => processor(name, args, rootId, data, config),
+			kind:              'built-in-function',
+			definedAt:         BuiltIn,
+			controlDependency: undefined,
+			processor:         (name, args, rootId, data) => processor(name, args, rootId, data, config),
 			name,
-			nodeId:    BuiltIn
+			nodeId:            BuiltIn
 		}])
 	}
 }
@@ -91,11 +92,12 @@ export function registerReplacementFunctions(
 			const effectiveName = `${prefix}${assignment}`
 			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
 			BuiltInMemory.set(effectiveName, [{
-				kind:      'built-in-function',
-				definedAt: BuiltIn,
-				processor: (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
-				name:      effectiveName,
-				nodeId:    BuiltIn
+				kind:              'built-in-function',
+				definedAt:         BuiltIn,
+				processor:         (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
+				name:              effectiveName,
+				controlDependency: undefined,
+				nodeId:            BuiltIn
 			}])
 		}
 	}
@@ -109,11 +111,12 @@ function registerSimpleFunctions(...names: readonly Identifier[]): void {
 function registerBuiltInConstant<T>(name: Identifier, value: T): void {
 	guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 	BuiltInMemory.set(name, [{
-		kind:      'built-in-value',
-		definedAt: BuiltIn,
+		kind:              'built-in-value',
+		definedAt:         BuiltIn,
+		controlDependency: undefined,
 		value,
 		name,
-		nodeId:    BuiltIn
+		nodeId:            BuiltIn
 	}])
 }
 

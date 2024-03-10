@@ -1,7 +1,7 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { NormalizedAst, ParentInformation, RNode, RNodeWithParent, RParseRequest } from '../r-bridge'
+import type { NodeId, NormalizedAst, ParentInformation, RNode, RNodeWithParent, RParseRequest } from '../r-bridge'
 import type { REnvironmentInformation } from './environments'
 import type { DataflowInformation } from './info'
 
@@ -9,25 +9,29 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
    * Initial and frozen ast-information
    */
-	readonly completeAst:    NormalizedAst<OtherInfo>
+	readonly completeAst:             NormalizedAst<OtherInfo>
 	/**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
    */
-	readonly environment:    REnvironmentInformation
+	readonly environment:             REnvironmentInformation
 	/**
    * Other processors to be called by the given functions
    */
-	readonly processors:     DataflowProcessors<OtherInfo>
+	readonly processors:              DataflowProcessors<OtherInfo>
 	/**
 	 * The {@link RParseRequest} that is currently being parsed
 	 */
-	readonly currentRequest: RParseRequest
+	readonly currentRequest:          RParseRequest
 	/**
 	 * The chain of {@link RParseRequest} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
 	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
 	 */
-	readonly referenceChain: string[]
+	readonly referenceChain:          string[]
+	/**
+	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g. of known ifs).
+	 */
+	readonly controlFlowDependencies: NodeId[] | undefined
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

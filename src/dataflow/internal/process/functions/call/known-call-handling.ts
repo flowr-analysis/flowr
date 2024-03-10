@@ -36,12 +36,12 @@ export function processKnownFunctionCall<OtherInfo>(
 		environment:       data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
-		controlDependency: undefined,
+		controlDependency: data.controlFlowDependencies,
 		args:              reverseOrder ? callArgs.toReversed() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: rootId, name: functionCallName })
+	inIds.push({ nodeId: rootId, name: functionCallName, controlDependency: data.controlFlowDependencies })
 
 	return {
 		information: {

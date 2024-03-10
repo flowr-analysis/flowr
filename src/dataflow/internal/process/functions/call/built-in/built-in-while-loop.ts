@@ -8,7 +8,6 @@ import {
 import { dataflowLogger, makeAllMaybe } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
-import { addControlEdges } from '../common'
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -20,6 +19,8 @@ export function processWhileLoop<OtherInfo>(
 		dataflowLogger.warn(`While-Loop ${name.content} does not have 2 arguments, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
+
+	data = { ...data, controlFlowDependencies: [...data.controlFlowDependencies ?? [], name.info.id] }
 
 	const { information, processedArguments } = processKnownFunctionCall(name, args, rootId, data)
 	const [condition, body] = processedArguments
@@ -34,8 +35,8 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme }, ...addControlEdges(remainingInputs, name.info.id, information.environment, information.graph)],
-		out:               addControlEdges([...makeAllMaybe(body.out, information.graph, information.environment), ...condition.out], name.info.id, information.environment, information.graph),
+		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependency: data.controlFlowDependencies }, ...remainingInputs],
+		out:               [...makeAllMaybe(body.out, information.graph, information.environment), ...condition.out],
 		graph:             information.graph,
 		environment:       information.environment
 	}

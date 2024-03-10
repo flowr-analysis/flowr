@@ -12,7 +12,7 @@ import {
 } from '../../../../src/dataflow/environments'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', nodeId: '_0', definedAt }
+	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependency: undefined }
 }
 
 /**

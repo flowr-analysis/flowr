@@ -21,12 +21,12 @@ export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifi
  */
 export interface IdentifierReference {
 	/** Node which represents the reference in the AST */
-	readonly nodeId:    NodeId
+	readonly nodeId:   NodeId
 	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
-	readonly name:      Identifier | undefined,
+	readonly name:     Identifier | undefined,
 	/**
 	 * If the reference is only effective if, e.g. an if-then-else condition is true, this references the root of the `if`.
 	 * As a hackey intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	controlDependency?: NodeId[]
+	controlDependency: NodeId[] | undefined
 }

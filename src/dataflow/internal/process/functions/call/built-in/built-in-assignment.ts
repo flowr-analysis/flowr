@@ -136,7 +136,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	const readFromSourceWritten = sourceArg.out
-	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlFlowDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)

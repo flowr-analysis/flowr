@@ -10,7 +10,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('2', '2', ['0'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [{ nodeId: '0', name: 'x' }],
+					in:                [{ nodeId: '0', name: 'x', controlDependency: undefined }],
 					graph:             new Set(['0']),
 					environment:       defaultEnv().pushEnv()
 				})
@@ -103,7 +103,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('5', '5', ['3'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [ { nodeId: '3', name: 'x' } ],
+					in:                [ { nodeId: '3', name: 'x', controlDependency: undefined } ],
 					graph:             new Set(['3']),
 					environment:       defaultEnv().pushEnv()
 				})
@@ -213,7 +213,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [ { nodeId: '4', name: 'x' } ],
+					in:                [ { nodeId: '4', name: 'x', controlDependency: undefined } ],
 					graph:             new Set(['3', '4', '6']),
 					environment:       envDefXSingle
 				})
@@ -348,7 +348,7 @@ describe('Function Definition', withShell(shell => {
 			.defineFunction('20', '20', ['12', '18'], {
 				out:               [],
 				unknownReferences: [],
-				in:                [ { nodeId: '8', name: 'z' } ],
+				in:                [ { nodeId: '8', name: 'z', controlDependency: undefined } ],
 				environment:       finalEnv,
 				graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
 			})
@@ -390,8 +390,9 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [{
-						nodeId: '0',
-						name:   'x'
+						nodeId:            '0',
+						name:              'x',
+						controlDependency: undefined
 					}],
 					graph:       new Set(['0']),
 					environment: defaultEnv().pushEnv()
@@ -424,7 +425,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [{ nodeId: '5', name: 'x' }],
+					in:                [{ nodeId: '5', name: 'x', controlDependency: undefined }],
 					graph:             new Set(['5', '4', '2']),
 					environment:       withinNestedFunctionWithDef
 				},

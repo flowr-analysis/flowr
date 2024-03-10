@@ -6,9 +6,9 @@ import type { RNodeWithParent } from '../../../r-bridge'
 export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: value.info.id, name: undefined }],
+		in:                [{ nodeId: value.info.id, name: undefined, controlDependency: data.controlFlowDependencies }],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph().addVertex({ tag: 'value', id: value.info.id, name: CONSTANT_NAME, value: value.lexeme, controlDependency: undefined })
+		graph:             new DataflowGraph().addVertex({ tag: 'value', id: value.info.id, name: CONSTANT_NAME, value: value.lexeme, controlDependency: data.controlFlowDependencies })
 	}
 }

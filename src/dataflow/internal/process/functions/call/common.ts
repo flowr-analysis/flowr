@@ -69,30 +69,6 @@ export function processAllArguments<OtherInfo>(
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments }
 }
 
-
-function addControlDependencies(cDs: NodeId[] | undefined, controlDep: NodeId) {
-	return cDs && !cDs.includes(controlDep) ? [...cDs, controlDep] : [controlDep]
-}
-
-export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId, env: REnvironmentInformation, graph: DataflowGraph): IdentifierReference[] {
-	const out: IdentifierReference[] = new Array<IdentifierReference>(ref.length)
-	for(let i = 0; i < ref.length; i++) {
-		const r = ref[i]
-		if(r.name) {
-			const definitions = resolveByName(r.name, env)
-			for(const definition of definitions ?? []) {
-				definition.controlDependency = addControlDependencies(definition.controlDependency, controlDep)
-			}
-		}
-		const node = graph.get(r.nodeId, true)
-		if(node) {
-			node[0].controlDependency = addControlDependencies(node[0].controlDependency, controlDep)
-		}
-		out[i] = { ...r, controlDependency: addControlDependencies(r.controlDependency, controlDep) }
-	}
-	return out
-}
-
 export function patchFunctionCall<OtherInfo>(nextGraph: DataflowGraph, rootId: NodeId, name: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, argumentProcessResult: (DataflowInformation | undefined)[]) {
 	nextGraph.addVertex({
 		tag:               'function-call',

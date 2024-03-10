@@ -46,7 +46,7 @@ export function processFunctionArgument<OtherInfo>(
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs,
 		// , ...value.out, ...(name?.out ?? [])
-		out:               [ { name: argumentName, nodeId: argument.info.id } ],
+		out:               [ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlFlowDependencies } ],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment
 	}

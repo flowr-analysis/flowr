@@ -7,7 +7,7 @@ import { appendEnvironment, type IdentifierReference, makeAllMaybe, resolvesToBu
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
-import { addControlEdges, patchFunctionCall } from '../common'
+import { patchFunctionCall } from '../common'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -26,6 +26,8 @@ export function processIfThenElse<OtherInfo>(
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
+
+	data = { ...data, controlFlowDependencies: [...data.controlFlowDependencies ?? [], name.info.id] }
 
 	const cond = processDataflowFor(condArg, data)
 
@@ -84,8 +86,8 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges(ingoing, name.info.id, finalEnvironment, nextGraph)],
-		out:               addControlEdges(outgoing, name.info.id, finalEnvironment, nextGraph),
+		in:                [{ nodeId: rootId, name: name.content, controlDependency: data.controlFlowDependencies }, ...ingoing],
+		out:               outgoing,
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

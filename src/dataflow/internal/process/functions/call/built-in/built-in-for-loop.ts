@@ -13,7 +13,7 @@ import { EdgeType } from '../../../../../graph'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
-import { addControlEdges, patchFunctionCall } from '../common'
+import { patchFunctionCall } from '../common'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -29,6 +29,8 @@ export function processForLoop<OtherInfo>(
 	const [variableArg, vectorArg, bodyArg] = args
 
 	guard(variableArg !== EmptyArgument && vectorArg !== EmptyArgument && bodyArg !== EmptyArgument, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
+
+	data = { ...data, controlFlowDependencies: [...data.controlFlowDependencies ?? [], name.info.id] }
 
 	const variable = processDataflowFor(variableArg, data)
 	const vector = processDataflowFor(vectorArg, data)
@@ -80,8 +82,8 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges([...variable.in, ...[...nameIdShares.values()].flat()], name.info.id, outEnvironment, nextGraph)],
-		out:               addControlEdges(outgoing, name.info.id, outEnvironment, nextGraph),
+		in:                [{ nodeId: rootId, name: name.content, controlDependency: data.controlFlowDependencies }, ...variable.in, ...[...nameIdShares.values()].flat()],
+		out:               outgoing,
 		graph:             nextGraph,
 		environment:       outEnvironment
 	}

@@ -80,7 +80,6 @@ describe('Lists with if-then constructs', withShell(shell => {
 	}
 	describe('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
-		const envWithX = () => define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2' }, false, initializeCleanEnvironments())
 		assertDataflow('assignment both branches in if',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } else { x <- 3}\n y <- x',

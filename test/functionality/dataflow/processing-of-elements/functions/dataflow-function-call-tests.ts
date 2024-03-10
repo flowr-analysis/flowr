@@ -244,7 +244,7 @@ a()()`,
 				.call('9', 'a', [], { environment: defWithAY })
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
-					in:                [{ nodeId: '1', name: 'y' }],
+					in:                [{ nodeId: '1', name: 'y', controlDependency: undefined }],
 					unknownReferences: [],
 					environment:       innerEnv,
 					graph:             new Set(['1'])
@@ -268,7 +268,7 @@ a()()`,
 a(,3)`, emptyGraph()
 			.call('13', 'a', [
 				EmptyArgument,
-				{ nodeId: '12', name: unnamedArgument('12') }
+				{ nodeId: '12', name: unnamedArgument('12'), controlDependency: undefined }
 			],
 			{ environment: withADefined })
 			.defineVariable('0', 'a')

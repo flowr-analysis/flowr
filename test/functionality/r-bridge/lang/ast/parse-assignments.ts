@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { OperatorDatabase, RawRType, RType } from '../../../../../src'
+import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 import { AssignmentOperators } from '../../../_helper/provider'
 

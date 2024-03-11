@@ -1,7 +1,6 @@
 import type { NodeId } from '../../../../../src'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { defaultEnv } from '../../../_helper/dataflow/environment-builder'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {

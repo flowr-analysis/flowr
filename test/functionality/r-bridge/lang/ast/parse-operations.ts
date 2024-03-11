@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider'
-import { OperatorDatabase, RawRType, type RShell, RType } from '../../../../../src'
+import { OperatorDatabase, type RShell, RType } from '../../../../../src'
 import { rangeFrom } from '../../../../../src/util/range'
 import { label } from '../../../_helper/label'
 import { startAndEndsWith } from '../../../../../src/util/strings'

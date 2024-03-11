@@ -4,8 +4,6 @@ import type { RComment } from '../../../../model'
 import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
-import { parseLog } from '../../../json/parser'
-
 
 /**
  * Normalize the given object as an R comment.

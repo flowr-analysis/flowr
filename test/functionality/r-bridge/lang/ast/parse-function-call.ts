@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { EmptyArgument, RawRType, RType } from '../../../../../src'
+import { EmptyArgument, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse function calls', withShell(shell => {

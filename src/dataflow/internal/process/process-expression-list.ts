@@ -4,7 +4,7 @@
  */
 import { initializeCleanDataflowInformation, type DataflowInformation } from '../../info'
 import type { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
-import { RType, visitAst } from '../../../r-bridge'
+import { RType } from '../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../processor'
 import { processDataflowFor } from '../../processor'
 import type {

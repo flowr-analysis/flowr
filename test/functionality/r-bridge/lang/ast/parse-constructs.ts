@@ -3,7 +3,7 @@ import { exprList, numVal } from '../../../_helper/ast-builder'
 import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
 import type { RExpressionList, RNode } from '../../../../../src'
-import { ensureExpressionList, RawRType, RType } from '../../../../../src'
+import { ensureExpressionList, RType } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
 

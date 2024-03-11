@@ -16,6 +16,7 @@ import { processWhileLoop } from '../internal/process/functions/call/built-in/bu
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
 import { guard } from '../../util/assert'
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement'
+import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote'
 
 export const BuiltIn = 'built-in'
 
@@ -145,7 +146,7 @@ registerBuiltInFunctions(processAssignment,       { swapSourceAndTarget: true },
 registerBuiltInFunctions(processAssignment,       { superAssignment: true, swapSourceAndTarget: true }, '->>')
 registerBuiltInFunctions(processSpecialBinOp,     { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,             {},                                                   '|>')
-/** TODO: handle null return: in general support quote and friends! */
+registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([1]) },            'quote', 'substitute', 'bquote')
 registerBuiltInFunctions(processForLoop,          {},                                                   'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')
 registerBuiltInFunctions(processWhileLoop,        {},                                                   'while')

@@ -3,6 +3,7 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
 import { DataflowGraph } from '../../../../graph'
+import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
 
@@ -15,7 +16,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	reverseOrder?: boolean,
 	/* allows to pass a data processor in-between each argument */
 	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
-): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] } {
+): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[], fnRef: IdentifierReference } {
 	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph()
@@ -43,7 +44,8 @@ export function processKnownFunctionCall<OtherInfo>(
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: rootId, name: functionCallName, controlDependency: data.controlDependency })
+	const fnRef = { nodeId: rootId, name: functionCallName, controlDependency: data.controlDependency }
+	inIds.push(fnRef)
 
 	return {
 		information: {
@@ -57,6 +59,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			breaks:            [],
 			nexts:             []
 		},
-		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments
+		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,
+		fnRef
 	}
 }

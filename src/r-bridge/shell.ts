@@ -8,6 +8,7 @@ import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
+import { getConfig } from '../config'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -89,8 +90,9 @@ export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
 
+export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R'
 export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
-	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
+	pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,

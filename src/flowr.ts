@@ -5,6 +5,7 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import { log, LogLevel } from './util/log'
+import type { RShellOptions } from './r-bridge'
 import { RShell } from './r-bridge'
 import type { OptionDefinition } from 'command-line-usage'
 import commandLineUsage from 'command-line-usage'
@@ -37,7 +38,8 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
-	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false }
+	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
+	{ name: 'r-path', type: String, description: 'The path to the R executable to use. Leave empty to use PATH.', multiple: false }
 ]
 
 export interface FlowrCliOptions {
@@ -51,6 +53,7 @@ export interface FlowrCliOptions {
 	execute:       string | undefined
 	script:        string | undefined
 	'config-file': string
+	'r-path':      string | undefined
 }
 
 export const optionHelp = [
@@ -88,14 +91,18 @@ setConfigFile(undefined, options['config-file'] ?? defaultConfigFile, true)
 
 function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)
-	return new RShell({
+	let config: Partial<RShellOptions> = {
 		revive:   'always',
 		onRevive: (code, signal) => {
 			const signalText = signal == null ? '' : ` and signal ${signal}`
 			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }))
 			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`))
 		},
-	})
+	}
+	if(options['r-path']) {
+		config = { ...config, pathToRExecutable: options['r-path'] }
+	}
+	return new RShell(config)
 }
 
 async function mainRepl() {

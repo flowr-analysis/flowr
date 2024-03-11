@@ -11,10 +11,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
 	ignoreSourceCalls: boolean
+	/**
+	 * The path to the R executable to use. If this is empty, {@link DEFAULT_R_PATH} will be used.
+	 */
+	rPath:             string | undefined
 }
 
 export const defaultConfigOptions: FlowrConfigOptions = {
-	ignoreSourceCalls: false
+	ignoreSourceCalls: false,
+	rPath:             undefined
 }
 export const defaultConfigFile = 'flowr.json'
 

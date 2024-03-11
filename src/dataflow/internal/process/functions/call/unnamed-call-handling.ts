@@ -54,6 +54,10 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		// we do not keep argument out as it has been linked by the function
 		out:               functionName.out,
 		graph:             finalGraph,
-		environment:       finalEnv
+		environment:       finalEnv,
+		returns:           [],
+		breaks:            [],
+		nexts:             [],
+		entryPoint:        functionRootId
 	}
 }

@@ -4,7 +4,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { appendEnvironment, type IdentifierReference, makeAllMaybe, resolvesToBuiltInConstant } from '../../../../../environments'
-import { dataflowLogger } from '../../../../../index'
+import { dataflowLogger, EdgeType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
 import { patchFunctionCall } from '../common'
@@ -40,6 +40,9 @@ export function processIfThenElse<OtherInfo>(
 	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true)
 	if(conditionIsFalse !== 'always') {
 		then = processDataflowFor(thenArg, data)
+		if(then.entryPoint) {
+			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns })
+		}
 		if(conditionIsTrue !== 'always') {
 			makeThenMaybe = true
 		}
@@ -49,6 +52,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeOtherwiseMaybe = false
 	if(otherwiseArg !== undefined && otherwiseArg !== EmptyArgument && conditionIsTrue !== 'always') {
 		otherwise = processDataflowFor(otherwiseArg, data)
+		if(otherwise.entryPoint) {
+			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns })
+		}
 		if(conditionIsFalse !== 'always') {
 			makeOtherwiseMaybe = true
 		}
@@ -86,6 +92,10 @@ export function processIfThenElse<OtherInfo>(
 		unknownReferences: [],
 		in:                [{ nodeId: rootId, name: name.content, controlDependency: originalDependency }, ...ingoing],
 		out:               outgoing,
+		breaks:            [],
+		returns:           [],
+		nexts:             [],
+		entryPoint:        name.info.id,
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

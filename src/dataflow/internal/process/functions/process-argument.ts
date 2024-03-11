@@ -48,6 +48,10 @@ export function processFunctionArgument<OtherInfo>(
 		// , ...value.out, ...(name?.out ?? [])
 		out:               [ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlDependency } ],
 		graph:             graph,
-		environment:       value?.environment ?? data.environment
+		environment:       value?.environment ?? data.environment,
+		entryPoint:        argument.info.id,
+		returns:           [],
+		breaks:            [],
+		nexts:             []
 	}
 }

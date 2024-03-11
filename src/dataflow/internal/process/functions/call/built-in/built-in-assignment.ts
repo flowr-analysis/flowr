@@ -127,7 +127,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation
-) {
+): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
 	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data)
@@ -152,11 +152,11 @@ function processAssignmentToSymbol<OtherInfo>(
 	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns })
 
 	return {
+		...information,
 		unknownReferences: [],
+		entryPoint:        name.info.id,
 		in:                readTargets,
 		out:               writeTargets,
-		graph:             information.graph,
-		environment:       information.environment
 	}
 }
 

@@ -108,11 +108,16 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	// TODO: use returns to find exit points
 
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
+		breaks:            [],
+		returns:           [],
+		nexts:             [],
+		entryPoint:        body.entryPoint,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment
 	}
@@ -136,6 +141,10 @@ export function processFunctionDefinition<OtherInfo>(
 		unknownReferences: [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
 		in:                [],
 		out:               [],
+		returns:           [],
+		breaks:            [],
+		nexts:             [],
+		entryPoint:        name.info.id,
 		graph,
 		environment:       originalEnvironment
 	}

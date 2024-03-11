@@ -136,28 +136,26 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 	const nextGraph = new DataflowGraph()
 	const out = []
 
+	let nexts: NodeId[] = []
+	let breaks: NodeId[] = []
+	let returns: NodeId[] = []
+
 	let expressionCounter = 0
-	let foundNextOrBreak = false
+	const foundNextOrBreak = false
 	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
 		// use the current environments for processing
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
 
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
-		if(!foundNextOrBreak) {
-			visitAst(expression, n => {
-				// we should track returns more consistently
-				if(n.type === RType.Next || n.type === RType.Break) {
-					foundNextOrBreak = true
-				}
-				return n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop || n.type === RType.FunctionDefinition
-			})
-		}
+		breaks = [...breaks, ...processed.breaks]
+		returns = [...returns, ...processed.returns]
+		nexts = [...nexts, ...processed.nexts]
+
 		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
-		if(foundNextOrBreak) {
+		if(breaks.length > 0 || returns.length > 0 || nexts.length > 0) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true)
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false)
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false)
@@ -200,6 +198,10 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		in:                [...remainingRead.values()].flat(),
 		out,
 		environment:       environment,
-		graph:             nextGraph
+		graph:             nextGraph,
+		entryPoint:        exprList.info.id,
+		returns:           returns,
+		breaks:            breaks,
+		nexts:             nexts
 	}
 }

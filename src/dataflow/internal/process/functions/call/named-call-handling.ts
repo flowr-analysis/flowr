@@ -17,7 +17,11 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		in:                [...info.in, ...newInfo.in],
 		out:               [...info.out, ...newInfo.out],
 		graph:             info.graph.mergeWith(newInfo.graph),
-		environment:       appendEnvironment(info.environment, newInfo.environment)
+		environment:       appendEnvironment(info.environment, newInfo.environment),
+		entryPoint:        newInfo.entryPoint,
+		returns:           [...info.returns, ...newInfo.returns],
+		breaks:            [...info.breaks, ...newInfo.breaks],
+		nexts:             [...info.nexts, ...newInfo.nexts]
 	}
 }
 

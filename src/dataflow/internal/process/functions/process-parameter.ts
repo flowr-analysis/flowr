@@ -42,6 +42,10 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
 		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
 		graph:             graph,
-		environment:       environment
+		environment:       environment,
+		entryPoint:        parameter.info.id,
+		returns:           [],
+		breaks:            [],
+		nexts:             []
 	}
 }

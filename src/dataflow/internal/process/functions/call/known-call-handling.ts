@@ -15,7 +15,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	reverseOrder?: boolean,
 	/* allows to pass a data processor in-between each argument */
 	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
-): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] }{
+): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] } {
 	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph()
@@ -51,7 +51,11 @@ export function processKnownFunctionCall<OtherInfo>(
 			in:                inIds,
 			out:               functionName.out, // we do not keep argument out as it has been linked by the function
 			graph:             finalGraph,
-			environment:       finalEnv
+			environment:       finalEnv,
+			entryPoint:        name.info.id,
+			returns:           [],
+			breaks:            [],
+			nexts:             []
 		},
 		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments
 	}

@@ -82,12 +82,18 @@ export function processForLoop<OtherInfo>(
 
 	patchFunctionCall(nextGraph, rootId, name, { ...data, controlDependency: originalDependency }, [variable, vector, body])
 
+	// TODO: handle break and next
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
 		in:                [{ nodeId: rootId, name: name.content, controlDependency: originalDependency }, ...variable.in, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
+		breaks:            [],
+		nexts:             [],
+		returns:           [...variable.returns, ...vector.returns, ...body.returns],
+		entryPoint:        name.info.id,
 		environment:       outEnvironment
 	}
 }

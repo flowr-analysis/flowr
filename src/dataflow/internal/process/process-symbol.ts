@@ -15,6 +15,10 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		in:                [],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, controlDependency: data.controlDependency })
+		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, controlDependency: data.controlDependency }),
+		returns:           [],
+		breaks:            [],
+		nexts:             [],
+		entryPoint:        symbol.info.id
 	}
 }

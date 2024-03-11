@@ -12,6 +12,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [{ nodeId: '0', name: 'x', controlDependency: undefined }],
 					graph:             new Set(['0']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '2',
 					environment:       defaultEnv().pushEnv()
 				})
 				.use('0', 'x', { }, false)
@@ -25,6 +29,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0', '2']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { },  false)
@@ -38,6 +46,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['4', '5', '3', '0']),
+					breaks:            [],
+					nexts:             [],
+					returns:           ['5'],
+					entryPoint:        '7',
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { },  false)
@@ -60,6 +72,10 @@ describe('Function Definition', withShell(shell => {
 						unknownReferences: [],
 						in:                [],
 						graph:             new Set(['5', '6', '4', '0']),
+						breaks:            [],
+						nexts:             [],
+						returns:           ['6'],
+						entryPoint:        '8',
 						environment:       envWithXDefined
 					})
 					.defineVariable('0', 'x', { },  false)
@@ -86,6 +102,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '8',
 					graph:             new Set(['0', '2', '4', '6']),
 					environment:       envWithXYZParam
 				})
@@ -105,6 +125,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [ { nodeId: '3', name: 'x', controlDependency: undefined } ],
 					graph:             new Set(['3']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '5',
 					environment:       defaultEnv().pushEnv()
 				})
 				.use('3', 'x', { }, false)
@@ -118,6 +142,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { },  false)
@@ -132,6 +160,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { },  false)
@@ -147,6 +179,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					graph:             new Set(['1']),
 					environment:       envWithXDefinedR
 				})
@@ -162,6 +198,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					graph:             new Set(['0']),
 					environment:       envWithXDefinedGlobal
 				},
@@ -179,6 +219,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					graph:             new Set(['1']),
 					environment:       envWithXDefinedGlobalR
 				},
@@ -198,6 +242,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '8',
 					graph:             new Set(['6', '3']),
 					environment:       envDefXSingle
 				})
@@ -215,6 +263,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [ { nodeId: '4', name: 'x', controlDependency: undefined } ],
 					graph:             new Set(['3', '4', '6']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '8',
 					environment:       envDefXSingle
 				})
 				.defineVariable('3', 'x', {  },  false)
@@ -234,6 +286,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['3', '5']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '7',
 					environment:       envWithXDefined
 				})
 				.defineVariable('3', 'x', { },  false)
@@ -250,6 +306,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0', '2']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '4',
 					environment:       envWithParam
 				})
 				.defineVariable('0', '...', { },  false)
@@ -268,6 +328,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					environment:       envWithAB,
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '8',
 					graph:             new Set(['0', '3', '4', '6'])
 				})
 				.defineVariable('0', 'a', { },  false)
@@ -289,6 +353,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '17',
 					environment:       envWithBothParamSecondB,
 					graph:             new Set(['0', '3', '10', '6', '1', '9', '13'])
 				})
@@ -319,6 +387,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '9',
 					environment:       envWithASpecial,
 					graph:             new Set(['0', '2', '5', '7', '6'])
 				})
@@ -348,6 +420,10 @@ describe('Function Definition', withShell(shell => {
 			.defineFunction('20', '20', ['12', '18'], {
 				out:               [],
 				unknownReferences: [],
+				breaks:            [],
+				nexts:             [],
+				returns:           [],
+				entryPoint:        '20',
 				in:                [ { nodeId: '8', name: 'z', controlDependency: undefined } ],
 				environment:       finalEnv,
 				graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
@@ -364,6 +440,10 @@ describe('Function Definition', withShell(shell => {
 				out:               [],
 				unknownReferences: [],
 				in:                [],
+				breaks:            [],
+				nexts:             [],
+				returns:           [],
+				entryPoint:        '3',
 				environment:       defaultEnv().pushEnv().pushEnv(),
 				graph:             new Set(['1'])
 			},
@@ -394,6 +474,10 @@ describe('Function Definition', withShell(shell => {
 						name:              'x',
 						controlDependency: undefined
 					}],
+					breaks:      [],
+					nexts:       [],
+					returns:     [],
+					entryPoint:  '2',
 					graph:       new Set(['0']),
 					environment: defaultEnv().pushEnv()
 				})
@@ -415,6 +499,10 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '12',
 					graph:             new Set(['10', '1', '8']),
 					environment:       withXParameterInOuter
 				})
@@ -427,6 +515,10 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [{ nodeId: '5', name: 'x', controlDependency: undefined }],
 					graph:             new Set(['5', '4', '2']),
+					breaks:            [],
+					nexts:             [],
+					returns:           [],
+					entryPoint:        '8',
 					environment:       withinNestedFunctionWithDef
 				},
 				{ environment: defaultEnv().pushEnv() }, false)

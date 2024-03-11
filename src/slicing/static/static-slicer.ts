@@ -152,6 +152,14 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
 
+		const returns = [...currentEdges].filter(([_, edge]) => edge.types.has(EdgeType.Returns))
+		if(returns.length >= 1) {
+			for(const [target, _] of returns) {
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+			}
+			continue
+		}
+
 		for(const [target, edge] of currentEdges) {
 			if(target === BuiltIn) {
 				continue

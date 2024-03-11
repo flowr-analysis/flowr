@@ -59,21 +59,25 @@ function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, grouping: [Code, Code] | undefined,  expressions: Code[], configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, exprList)) {
-		return plain(getLexeme(exprList))
-	}
-
+function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[]): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
 	if(subExpressions.length === 0) {
 		return []
 	} else if(subExpressions.length === 1) {
-		return subExpressions[0]
+		const [fst] = subExpressions
+		const g = exprList.grouping
+
+		if(g && fst.length > 0) {
+			fst[0].line = `${g[0].content} ${fst[0].line}`
+			fst[fst.length - 1].line = `${fst[fst.length - 1].line} ${g[1].content}`
+		}
+		return fst
 	} else {
+		const g = exprList.grouping
 		return [
-			{ line: '{', indent: 0 },
+			...(g ? plain(g[0].content) : plain('{')),
 			...indentBy(subExpressions.flat(), 1),
-			{ line: '}', indent: 0 }
+			...(g ? plain(g[1].content) : plain('}'))
 		]
 	}
 }
@@ -309,9 +313,9 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	if(body.length <= 1) {
 		// 'inline'
-		const bodyStr = body.length === 0 ? '' : `${body[0].line} ` /* add suffix space */
+		const bodyStr = body.length === 0 ? '' : `${body[0].line}`
 		// we keep the braces in every case because I do not like no-brace functions
-		return [{ line: `function(${parameters}) { ${bodyStr}}`, indent: 0 }]
+		return [{ line: `function(${parameters}) ${bodyStr}`, indent: 0 }]
 	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 		// 'block'
 		return [
@@ -322,7 +326,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	} else {
 		// unknown -> we add the braces just to be sure
 		return [
-			{ line: `function(${parameters}) {`, indent: 0 },
+			{ line: `function(${parameters})`, indent: 0 },
 			...indentBy(body, 1),
 			{ line: '}', indent: 0 }
 		]
@@ -333,8 +337,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
-	const lhs = args[0]
-	const rhs = args[1]
+	const [lhs, rhs] = args
 
 	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return []

@@ -14,7 +14,7 @@ a(i)`
 		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
 a <- function(x) { 1 }
 a(i)`)
-		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
+		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { 1 }')
 		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
 		assertSliced('Multiple unknown calls', shell, `
 foo(x, y)

@@ -39,7 +39,7 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
-	{ name: 'r-path', type: String, description: 'The path to the R executable to use. Leave empty to use PATH.', multiple: false }
+	{ name: 'r-path', type: String, description: 'The path to the R executable to use. Defaults to your PATH.', multiple: false }
 ]
 
 export interface FlowrCliOptions {

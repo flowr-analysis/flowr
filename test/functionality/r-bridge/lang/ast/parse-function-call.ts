@@ -268,15 +268,19 @@ describe('Parse function calls', withShell(shell => {
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:     RType.Delimiter,
-						location: rangeFrom(1, 1, 1, 1),
-						lexeme:   '(',
-						subtype:  RawRType.ParenLeft
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						lexeme:    '(',
+						content:   '(',
+						info:      {},
+						namespace: undefined
 					}, {
-						type:     RType.Delimiter,
-						location: rangeFrom(1, 19, 1, 19),
-						lexeme:   ')',
-						subtype:  RawRType.ParenRight
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 19, 1, 19),
+						lexeme:    ')',
+						content:   ')',
+						info:      {},
+						namespace: undefined
 					}],
 					children: [{
 						type:       RType.FunctionDefinition,
@@ -304,15 +308,19 @@ describe('Parse function calls', withShell(shell => {
 							lexeme:   undefined,
 							info:     {},
 							grouping: [{
-								type:     RType.Delimiter,
-								location: rangeFrom(1, 14, 1, 14),
-								lexeme:   '{',
-								subtype:  RawRType.BraceLeft
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 14, 1, 14),
+								lexeme:    '{',
+								content:   '{',
+								info:      {},
+								namespace: undefined
 							}, {
-								type:     RType.Delimiter,
-								location: rangeFrom(1, 18, 1, 18),
-								lexeme:   '}',
-								subtype:  RawRType.BraceRight
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 18, 1, 18),
+								lexeme:    '}',
+								content:   '}',
+								info:      {},
+								namespace: undefined
 							}],
 							children: [{
 								type:      RType.Symbol,

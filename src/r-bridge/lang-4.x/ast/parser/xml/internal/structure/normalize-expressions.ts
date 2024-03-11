@@ -14,7 +14,6 @@ import { expensiveTrace, log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
-import { normalizeDelimiter } from './normalize-delimiter'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
@@ -124,11 +123,13 @@ function handleExpressionList(raw: readonly NamedXmlBasedJson[]): HandledExpress
 }
 
 
-function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBasedJson], processed: readonly RNode[], comments: RComment[]) : RExpressionList {
+function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBasedJson], processed: readonly RNode[], comments: RComment[], data: NormalizerData) : RExpressionList {
+	const [newStart, newEnd] = [tryNormalizeSymbol(data, [start]), tryNormalizeSymbol(data, [end])]
+	guard(newStart !== undefined && newEnd !== undefined, () => `expected both start and end to be symbols, but ${JSON.stringify(start, jsonReplacer)} :: ${JSON.stringify(end, jsonReplacer)}`)
 	return {
 		type:     RType.ExpressionList,
 		children: processed,
-		grouping: [ normalizeDelimiter(start), normalizeDelimiter(end) ],
+		grouping: [newStart, newEnd],
 		lexeme:   undefined,
 		location: undefined,
 		info:     {
@@ -163,7 +164,7 @@ export function normalizeExpressions(
 			const processed = segments.flatMap(s => normalizeExpressions(data, s)) as RNode[]
 			guard(!processed.some(x => (x as RNode | RDelimiter).type === RType.Delimiter), () => `expected no delimiter tokens in ${JSON.stringify(processed)}`)
 			if(braces) {
-				return [processBraces(braces, processed, parsedComments)]
+				return [processBraces(braces, processed, parsedComments, data)]
 			} else if(processed.length > 0) {
 				if(parsedComments) {
 					processed[0].info.additionalTokens ??= []

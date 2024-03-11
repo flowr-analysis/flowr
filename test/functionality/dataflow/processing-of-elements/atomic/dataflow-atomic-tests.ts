@@ -711,7 +711,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		})
 	})
 	describe('inline non-strict boolean operations', () => {
-		assertDataflow('define call with multiple args should only be defined by the call-return',
+		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['&&'].capabilities]),
 			shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')

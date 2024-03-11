@@ -59,7 +59,7 @@ function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
+function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, grouping: [Code, Code] | undefined,  expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
 		return plain(getLexeme(exprList))
 	}

@@ -448,6 +448,12 @@ export const flowrCapabilities = {
 							id:           'important-built-ins',
 							capabilities: [
 								{
+									name:        'Non-Strict Logical Operators',
+									id:          'non-strict-logical-operators',
+									supported:   'fully',
+									description: '_Handle `&&`, `||`, ..._'
+								},
+								{
 									name:        'Pipe and Pipe-Bind',
 									id:          'built-in-pipe-and-pipe-bind',
 									supported:   'partially',

@@ -19,12 +19,6 @@ export class RShellExecutor {
 		this.prerequisites = [initCommand(this.options.eol)]
 	}
 
-	public continueOnError(): this {
-		executorLog.info('continue in case of Errors')
-		this.addPrerequisites('options(error=function() {})')
-		return this
-	}
-
 	public addPrerequisites(commands: string | string[]): this {
 		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands))
 		return this

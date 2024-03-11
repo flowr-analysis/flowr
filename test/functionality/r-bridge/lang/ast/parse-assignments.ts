@@ -40,7 +40,7 @@ describe('Parse simple assignments',
 
 		// allow assignments to strings and function calls
 		describe('Assignments to strings', () => {
-			assertAst(label('Assign to given string', ['binary-operator', 'infix-calls', 'function-calls', 'local-left-assignment', 'name-quoted', 'numbers']),
+			assertAst(label('Assign to Given String', ['binary-operator', 'infix-calls', 'function-calls', 'local-left-assignment', 'name-quoted', 'numbers']),
 				shell, '\'a\' <- 5', exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 5, 1, 6),
@@ -48,12 +48,15 @@ describe('Parse simple assignments',
 					operator: '<-',
 					info:     {},
 					lhs:      {
-						type:      RType.Symbol,
+						type:      RType.String,
 						location:  rangeFrom(1, 1, 1, 3),
 						namespace: undefined,
 						lexeme:    "'a'",
-						content:   'a',
-						info:      {}
+						content:   {
+							quotes: "'",
+							str:    'a'
+						},
+						info: {}
 					},
 					rhs: {
 						type:     RType.Number,
@@ -88,15 +91,19 @@ describe('Parse simple assignments',
 						location: undefined,
 						info:     {},
 						grouping: [{
-							type:     RType.Delimiter,
-							lexeme:   '{',
-							location: rangeFrom(1, 6, 1, 6),
-							subtype:  RawRType.BraceLeft
+							type:      RType.Symbol,
+							lexeme:    '{',
+							content:   '{',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 6, 1, 6)
 						}, {
-							type:     RType.Delimiter,
-							lexeme:   '}',
-							location: rangeFrom(1, 14, 1, 14),
-							subtype:  RawRType.BraceRight
+							type:      RType.Symbol,
+							lexeme:    '}',
+							content:   '}',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 14, 1, 14)
 						}],
 						children: [{
 							type:     RType.BinaryOp,

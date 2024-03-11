@@ -91,15 +91,19 @@ function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpress
 		lexeme:   undefined,
 		info:     {},
 		grouping: [{
-			type:     RType.Delimiter,
-			lexeme:   '{',
-			location: start,
-			subtype:  RawRType.BraceLeft
+			type:      RType.Symbol,
+			lexeme:    '{',
+			content:   '{',
+			info:      {},
+			namespace: undefined,
+			location:  start
 		}, {
-			type:     RType.Delimiter,
-			lexeme:   '}',
-			location: end,
-			subtype:  RawRType.BraceRight
+			type:      RType.Symbol,
+			lexeme:    '}',
+			content:   '}',
+			info:      {},
+			namespace: undefined,
+			location:  end
 		}],
 		children: [content]
 	}
@@ -377,15 +381,19 @@ describe('Parse simple constructs', withShell(shell => {
 						location: undefined,
 						lexeme:   undefined,
 						grouping: [{
-							type:     RType.Delimiter,
-							lexeme:   '{',
-							location: rangeFrom(1, 8, 1, 8),
-							subtype:  RawRType.BraceLeft
+							type:      RType.Symbol,
+							lexeme:    '{',
+							content:   '{',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 8, 1, 8)
 						}, {
-							type:     RType.Delimiter,
-							lexeme:   '}',
-							location: rangeFrom(1, 15, 1, 15),
-							subtype:  RawRType.BraceRight
+							type:      RType.Symbol,
+							lexeme:    '}',
+							content:   '}',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 15, 1, 15)
 						}],
 						info:     {},
 						children: [{
@@ -451,15 +459,19 @@ describe('Parse simple constructs', withShell(shell => {
 						location: undefined,
 						lexeme:   undefined,
 						grouping: [{
-							type:     RType.Delimiter,
-							lexeme:   '{',
-							location: rangeFrom(1, 15, 1, 15),
-							subtype:  RawRType.BraceLeft
+							type:      RType.Symbol,
+							lexeme:    '{',
+							content:   '{',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 15, 1, 15)
 						}, {
-							type:     RType.Delimiter,
-							lexeme:   '}',
-							location: rangeFrom(1, 22, 1, 22),
-							subtype:  RawRType.BraceRight
+							type:      RType.Symbol,
+							lexeme:    '}',
+							content:   '}',
+							info:      {},
+							namespace: undefined,
+							location:  rangeFrom(1, 22, 1, 22)
 						}],
 						info:     {},
 						children: [{

@@ -62,7 +62,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	};
 	/** The `otherwise` argument is `undefined` if the `else` branch is missing */
 	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
-	foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
+	foldExprList:   (exprList: RExpressionList<Info>, grouping: [start: Up, end: Up] | undefined, expressions: Up[], down: Down) => Up;
 	functions: {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
 		/** folds named and unnamed function calls */
@@ -123,7 +123,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.IfThenElse:
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
 		case RType.ExpressionList:
-			return folds.foldExprList(ast, ast.children.map(expr => foldAstStateful(expr, down, folds)), down)
+			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined ,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down)
 		default:
 			assertUnreachable(type)
 	}

@@ -129,16 +129,20 @@ describe('Parse expression lists', withShell(shell => {
 				location: undefined,
 				grouping: [
 					{
-						type:     RType.Delimiter,
-						subtype:  RawRType.BraceLeft,
-						location: rangeFrom(1, 1, 1, 1),
-						lexeme:   '{'
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						lexeme:    '{',
+						content:   '{',
+						info:      {},
+						namespace: undefined
 					},
 					{
-						type:     RType.Delimiter,
-						subtype:  RawRType.BraceRight,
-						location: rangeFrom(2, 3, 2, 3),
-						lexeme:   '}'
+						type:      RType.Symbol,
+						location:  rangeFrom(2, 3, 2, 3),
+						lexeme:    '}',
+						content:   '}',
+						info:      {},
+						namespace: undefined
 					}
 				],
 				lexeme:   undefined,
@@ -171,16 +175,20 @@ describe('Parse expression lists', withShell(shell => {
 					location: undefined,
 					grouping: [
 						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceLeft,
-							location: rangeFrom(1, 1, 1, 1),
-							lexeme:   '{'
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    '{',
+							content:   '{',
+							info:      {},
+							namespace: undefined
 						},
 						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceRight,
-							location: rangeFrom(2, 3, 2, 3),
-							lexeme:   '}'
+							type:      RType.Symbol,
+							location:  rangeFrom(2, 3, 2, 3),
+							lexeme:    '}',
+							content:   '}',
+							info:      {},
+							namespace: undefined
 						}
 					],
 					lexeme:   undefined,
@@ -210,16 +218,20 @@ describe('Parse expression lists', withShell(shell => {
 					lexeme:   undefined,
 					grouping: [
 						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceLeft,
-							location: rangeFrom(3, 1, 3, 1),
-							lexeme:   '{'
+							type:      RType.Symbol,
+							location:  rangeFrom(3, 1, 3, 1),
+							lexeme:    '{',
+							content:   '{',
+							info:      {},
+							namespace: undefined
 						},
 						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceRight,
-							location: rangeFrom(3, 5, 3, 5),
-							lexeme:   '}'
+							type:      RType.Symbol,
+							location:  rangeFrom(3, 5, 3, 5),
+							lexeme:    '}',
+							content:   '}',
+							info:      {},
+							namespace: undefined
 						}],
 					children: [{
 						type:      RType.Symbol,
@@ -270,16 +282,20 @@ describe('Parse expression lists', withShell(shell => {
 				location: undefined,
 				grouping: [
 					{
-						type:     RType.Delimiter,
-						subtype:  RawRType.BraceLeft,
-						location: rangeFrom(1, 1, 1, 1),
-						lexeme:   '{'
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						lexeme:    '{',
+						content:   '{',
+						info:      {},
+						namespace: undefined
 					},
 					{
-						type:     RType.Delimiter,
-						subtype:  RawRType.BraceRight,
-						location: rangeFrom(1, 6, 1, 6),
-						lexeme:   '}'
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 6, 1, 6),
+						lexeme:    '}',
+						content:   '}',
+						info:      {},
+						namespace: undefined
 					}
 				],
 				children: [{

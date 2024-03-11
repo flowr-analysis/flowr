@@ -15,7 +15,8 @@ import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
 import {
-	EmptyArgument } from '../nodes'
+	EmptyArgument
+} from '../nodes'
 import type {
 	RArgument,
 	RBinaryOp,
@@ -23,11 +24,13 @@ import type {
 	RNamedFunctionCall,
 	RParameter,
 	RPipe,
-	RUnnamedFunctionCall
+	RUnnamedFunctionCall,
+	RExpressionList
 } from '../nodes'
 import type { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
 import { RType } from '../type'
+import type { RDelimiter } from '../nodes/info'
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
 export type NodeId = string & { __brand?: 'node-id'};
@@ -62,7 +65,7 @@ function loc2Id([sl,sc,el,ec]: SourceRange): string {
  *
  * @param data - the node to generate an id for, must have location information
  */
-export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): NodeId {
+export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter): NodeId {
 	const loc = data.location
 	guard(loc !== undefined, 'location must be defined to generate a location id')
 	return loc2Id(loc)
@@ -311,9 +314,9 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, children: readonly RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+	return (data: RExpressionList<OtherInfo>, grouping: [RNodeWithParent<OtherInfo>, RNodeWithParent<OtherInfo>] | undefined, children: readonly RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, children } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, grouping, children } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		let i = 0
 		for(const child of children) {

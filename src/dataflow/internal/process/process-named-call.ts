@@ -6,17 +6,17 @@ import { processNamedCall } from './functions/call/named-call-handling'
 import { wrapArgumentsUnnamed } from './functions/call/argument/make-argument'
 
 export function processAsNamedCall<OtherInfo>(
-	op: RNode<OtherInfo & ParentInformation> & Base<OtherInfo> & Location,
+	functionName: RNode<OtherInfo & ParentInformation> & Base<OtherInfo> & Location,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: string,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	return processNamedCall({
 		type:      RType.Symbol,
-		info:      op.info,
+		info:      functionName.info,
 		content:   name,
-		lexeme:    op.lexeme,
-		location:  op.location,
+		lexeme:    functionName.lexeme,
+		location:  functionName.location,
 		namespace: undefined
-	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), op.info.id, data)
+	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), functionName.info.id, data)
 }

@@ -1,12 +1,12 @@
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { assertAst, withShell } from '../../../_helper/shell'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RawRType, RType } from '../../../../../src'
+import { RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse Larger Snippets', withShell((shell) => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
-		assertAst(label('Manual max function', [
+		assertAst(label('Manual Max Function', [
 			'name-normal', 'local-left-assignment', 'local-equal-assignment', 'local-right-assignment', 'super-left-assignment',
 			'super-right-assignment', 'numbers', 'if', 'binary-operator', 'grouping', 'newlines'
 		]), shell,
@@ -96,15 +96,19 @@ max
 				then: {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:     RType.Delimiter,
-						lexeme:   '{',
-						location: rangeFrom(4, 11, 4, 11),
-						subtype:  RawRType.BraceLeft
+						type:      RType.Symbol,
+						lexeme:    '{',
+						location:  rangeFrom(4, 11, 4, 11),
+						content:   '{',
+						info:      {},
+						namespace: undefined
 					}, {
-						type:     RType.Delimiter,
-						lexeme:   '}',
-						location: rangeFrom(7, 1, 7, 1),
-						subtype:  RawRType.BraceRight
+						type:      RType.Symbol,
+						lexeme:    '}',
+						location:  rangeFrom(7, 1, 7, 1),
+						content:   '}',
+						info:      {},
+						namespace: undefined
 					}],
 					lexeme:   undefined,
 					location: undefined,
@@ -163,15 +167,19 @@ max
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:     RType.Delimiter,
-						lexeme:   '{',
-						location: rangeFrom(7, 8, 7, 8),
-						subtype:  RawRType.BraceLeft
+						type:      RType.Symbol,
+						lexeme:    '{',
+						location:  rangeFrom(7, 8, 7, 8),
+						content:   '{',
+						info:      {},
+						namespace: undefined
 					}, {
-						type:     RType.Delimiter,
-						lexeme:   '}',
-						location: rangeFrom(9, 1, 9, 1),
-						subtype:  RawRType.BraceRight
+						type:      RType.Symbol,
+						lexeme:    '}',
+						location:  rangeFrom(9, 1, 9, 1),
+						content:   '}',
+						info:      {},
+						namespace: undefined
 					}],
 					children: [{
 						type:     RType.BinaryOp,

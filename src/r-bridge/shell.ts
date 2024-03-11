@@ -250,15 +250,6 @@ export class RShell {
 	}
 
 	/**
-   * usually R will stop execution on errors, with this the R session will try to
-   * continue working!
-   */
-	public continueOnError(): void {
-		this.log.info('continue in case of Errors')
-		this._sendCommand('options(error=function() {})')
-	}
-
-	/**
 	 * Obtain the temporary directory used by R.
 	 * Additionally, this marks the directory for removal when the shell exits.
 	 */

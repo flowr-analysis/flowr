@@ -150,7 +150,7 @@ class DataflowBuilderPrinter {
 				this.recordFnCall(fn, 'argument', [wrap(fn), wrap(id)])
 				this.coveredEdges.add(edgeId(fn, id, EdgeType.Argument))
 			}
-		} else if(!this.coveredEdges.has(edgeId(fn, id, EdgeType.Argument))) {
+		} else if(this.coveredVertices.has(id)) {
 			this.recordFnCall(fn, 'argument', [wrap(fn), wrap(id)])
 			this.coveredEdges.add(edgeId(fn, id, EdgeType.Argument))
 		}

@@ -8,8 +8,6 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { dataflowLogger  } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
-import { guard } from '../../../../../../util/assert'
-import { appendEnvironment } from '../../../../../environments'
 
 
 export function processSpecialBinOp<OtherInfo>(
@@ -26,12 +24,13 @@ export function processSpecialBinOp<OtherInfo>(
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	const { information, processedArguments: [lhs, rhs] } = processKnownFunctionCall(name, args, rootId, data)
+	const { information } = processKnownFunctionCall(name, args, rootId, data, false, (d, i) => {
+		if(i === 1) {
+			// the rhs will be overshadowed by the lhs
+			return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+		}
+		return d
+	})
 
-	guard(lhs !== undefined && rhs !== undefined, 'lhs and rhs are defined')
-
-	return {
-		...information,
-		environment: appendEnvironment(lhs.environment, rhs.environment)
-	}
+	return information
 }

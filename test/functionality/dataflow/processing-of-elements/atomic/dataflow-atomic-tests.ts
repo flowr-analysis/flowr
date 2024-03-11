@@ -133,23 +133,45 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		for(const op of BinaryNonAssignmentOperators.filter(x => !startAndEndsWith(x, '%'))) {
 			describe(`${op}`, () => {
 				const inputDifferent = `x ${op} y`
-				assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
-					shell,
-					inputDifferent,
-					emptyGraph()
-						.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
-						.use('0', 'x').use('1', 'y')
-				)
-
 				const inputSame = `x ${op} x`
-				assertDataflow(label(`${inputSame} (same variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
-					shell,
-					inputSame,
-					emptyGraph()
-						.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
-						.use('0', 'x').use('1', 'x')
-						.sameRead('0', '1')
-				)
+
+				const capabilities = OperatorDatabase[op].capabilities
+				if(capabilities.includes('non-strict-logical-operators')) {
+					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
+						shell,
+						inputDifferent,
+						emptyGraph()
+							.use('0', 'x')
+							.use('1', 'y', { controlDependency: ['2'] })
+							.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg', { controlDependency: ['2'] })], { returns: [], reads: [BuiltIn] })
+					)
+
+					assertDataflow(label(`${inputSame} (same variables)`, ['name-normal', ...capabilities]),
+						shell, inputSame,
+						emptyGraph()
+							.use('0', 'x')
+							.sameRead('0', '1')
+							.use('1', 'x', { controlDependency: ['2'] })
+							.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg', { controlDependency: ['2'] })], { returns: [], reads: [BuiltIn] })
+					)
+				} else {
+					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
+						shell,
+						inputDifferent,
+						emptyGraph()
+							.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
+							.use('0', 'x').use('1', 'y')
+					)
+
+					assertDataflow(label(`${inputSame} (same variables)`, ['name-normal', ...capabilities]),
+						shell,
+						inputSame,
+						emptyGraph()
+							.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
+							.use('0', 'x').use('1', 'x')
+							.sameRead('0', '1')
+					)
+				}
 			})
 		}
 	})
@@ -706,8 +728,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			)
 		})
 	})
-	describe('inline non-strict boolean operations', () => {
-		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['&&'].capabilities]),
+	describe('Inline Non-Strict Boolean Operations', () => {
+		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', 'semicolons', ...OperatorDatabase['&&'].capabilities, ...OperatorDatabase['<-'].capabilities]),
 			shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
@@ -720,8 +742,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		)
 	})
 
-	describe('loops', () => {
-		describe('for', () => {
+	describe('Loops', () => {
+		describe('For', () => {
 			assertDataflow('simple constant for-loop', shell,
 				'for(i in 1:10) { 1 }',
 				emptyGraph().defineVariable('0', 'i')
@@ -735,7 +757,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			)
 		})
 
-		describe('repeat', () => {
+		describe('Repeat', () => {
 			assertDataflow('simple constant repeat', shell,
 				'repeat 2',
 				emptyGraph()

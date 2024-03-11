@@ -205,7 +205,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						.defineVariable('0', 'x', { definedBy: ['1'] })
 						.use('1', 'y')
 				}
-				assertDataflow(`${variableAssignment} (variable assignment)`,
+				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities]),
 					shell,
 					variableAssignment,
 					dataflowGraph
@@ -395,7 +395,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			})
 		})
 		describe('Assignment with Function Call', () => {
-			assertDataflow('define call with multiple args should only be defined by the call-return',
+			assertDataflow(label('define call with multiple args should only be defined by the call-return', ['name-normal', 'numbers', 'unnamed-arguments', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
 					.use('4', 'x')

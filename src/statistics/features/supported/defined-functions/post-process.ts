@@ -10,7 +10,7 @@ import type { FeatureStatisticsWithMeta } from '../../feature'
 import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
 import type { StatisticsOutputFormat } from '../../../output'
-import fs from 'node:fs'
+import fs from 'fs'
 import { date2string } from '../../../../util/time'
 import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type {

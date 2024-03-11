@@ -17,7 +17,7 @@ import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import type { DataAccessInfo } from './data-access'
 import { bigint2number } from '../../../../util/numbers'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 

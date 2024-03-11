@@ -1,7 +1,7 @@
 import { log, LogLevel } from '../../util/log'
 import cp from 'child_process'
-import type { Readable, Writable } from 'node:stream'
-import readline from 'node:readline'
+import type { Readable, Writable } from 'stream'
+import readline from 'readline'
 import { guard } from '../../util/assert'
 
 type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined]

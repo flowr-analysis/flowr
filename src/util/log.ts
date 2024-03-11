@@ -60,6 +60,9 @@ export const enum LogLevel {
 
 function getActiveLog(): FlowrLogger {
 	return new FlowrLogger({
+		// set the default minimum level as Warn, and let all apps
+		// (like the REPL) update it to whatever they want it to be
+		minLevel:        LogLevel.Warn,
 		type:            'pretty',
 		name:            'main',
 		stylePrettyLogs: true,

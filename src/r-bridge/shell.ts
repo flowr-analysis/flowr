@@ -1,7 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
-import * as readline from 'node:readline'
+import * as readline from 'readline'
 import { ts2r } from './lang-4.x'
 import { expensiveTrace, log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'
@@ -10,6 +10,7 @@ import { getPlatform } from '../util/os'
 import fs from 'fs'
 import type { DeepReadonly } from 'ts-essentials'
 import { initCommand } from './init'
+import { getConfig } from '../config'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -97,8 +98,9 @@ export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
 
+export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R'
 export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
-	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
+	pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save', '--slave'],
 	cwd:                process.cwd(),
 	env:                undefined,

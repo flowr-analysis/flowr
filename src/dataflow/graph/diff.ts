@@ -161,7 +161,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 				position: `${ctx.position} In argument #${i} (of ${ctx.leftname}, named). `
 			})
 		} else {
-			diffFunctionArgumentsReferences(fn, aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument, { ...ctx, position: `${ctx.position} In argument #${i} (of ${ctx.leftname}, unnamed).` })
+			diffFunctionArgumentsReferences(fn, aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument, { ...ctx, position: `${ctx.position} In argument #${i} (of ${ctx.leftname}, unnamed). ` })
 		}
 	}
 }

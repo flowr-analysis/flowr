@@ -35,12 +35,12 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		environment:       data.environment,
 		/* can never be a direct built-in-call */
 		onlyBuiltin:       false,
-		controlDependency: undefined,
+		controlDependency: data.controlDependency,
 		args:              callArgs // same reference
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependency: data.controlFlowDependencies })
+	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependency: data.controlDependency })
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)

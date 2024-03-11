@@ -158,9 +158,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// update the environments for the next iteration with the previous writes
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(foundNextOrBreak) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment)
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment)
-			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment)
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true)
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false)
+			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false)
 		}
 
 		nextGraph.mergeWith(processed.graph)

@@ -12,7 +12,9 @@ export function processKnownFunctionCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
-	reverseOrder?: boolean
+	reverseOrder?: boolean,
+	/* allows to pass a data processor in-between each argument */
+	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
 ): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] }{
 	const functionName = processDataflowFor(name, data)
 
@@ -27,7 +29,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments(functionName, processArgs, data, finalGraph, rootId)
+	} = processAllArguments(functionName, processArgs, data, finalGraph, rootId, patchData)
 
 	finalGraph.addVertex({
 		tag:               'function-call',
@@ -36,12 +38,12 @@ export function processKnownFunctionCall<OtherInfo>(
 		environment:       data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
-		controlDependency: data.controlFlowDependencies,
+		controlDependency: data.controlDependency,
 		args:              reverseOrder ? callArgs.toReversed() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: rootId, name: functionCallName, controlDependency: data.controlFlowDependencies })
+	inIds.push({ nodeId: rootId, name: functionCallName, controlDependency: data.controlDependency })
 
 	return {
 		information: {

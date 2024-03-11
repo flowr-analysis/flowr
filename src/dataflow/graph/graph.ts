@@ -309,7 +309,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
 		const [node] = got
 		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-			guard(node.controlDependency === reference.controlDependency || node.controlDependency !== undefined || reference.controlDependency !== undefined, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+			guard(node.controlDependency !== undefined || reference.controlDependency !== undefined || arrayEqual(node.controlDependency, reference.controlDependency), () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
 			node.controlDependency = reference.controlDependency
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...node, tag: 'variable-definition' })

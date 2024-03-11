@@ -5,7 +5,6 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { EdgeType } from '../../../../graph'
-import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
 
@@ -14,7 +13,9 @@ export function processAllArguments<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	finalGraph: DataflowGraph,
-	functionRootId: NodeId
+	functionRootId: NodeId,
+	/* allows to pass a data processor in-between each argument; can not modify env currently */
+	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
 ) {
 	let finalEnv = functionName.environment
 	// arg env contains the environments with other args defined
@@ -22,7 +23,10 @@ export function processAllArguments<OtherInfo>(
 	const callArgs: FunctionArgument[] = []
 	const processedArguments = []
 	const remainingReadInArgs = []
+	let i = -1
 	for(const arg of args) {
+		i++
+		data = patchData(data, i)
 		if(arg === EmptyArgument) {
 			callArgs.push(EmptyArgument)
 			processedArguments.push(undefined)
@@ -77,7 +81,7 @@ export function patchFunctionCall<OtherInfo>(nextGraph: DataflowGraph, rootId: N
 		environment:       data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
-		controlDependency: undefined,
+		controlDependency: data.controlDependency,
 		args:              argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : arg.out[0])
 	})
 	for(const arg of argumentProcessResult) {

@@ -8,18 +8,18 @@ import { arrayEqual } from '../../util/arrays'
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different identifier references: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
+			info.report.addComment(`${info.position}Different identifier references: ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
 	}
 	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
+		info.report.addComment(`${info.position}Different identifier names: ${info.leftname}: ${a.name} vs. ${info.rightname}: ${b.name}`)
 	}
 	if(a.nodeId !== b.nodeId) {
-		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
+		info.report.addComment(`${info.position}Different nodeIds: ${info.leftname}: ${a.nodeId} vs. ${info.rightname}: ${b.nodeId}`)
 	}
-	if(a.controlDependency !== b.controlDependency) {
-		info.report.addComment(`${info.position}Different control dependency: ${JSON.stringify(a.controlDependency)} vs. ${JSON.stringify(b.controlDependency)}`)
+	if(!arrayEqual(a.controlDependency, b.controlDependency)) {
+		info.report.addComment(`${info.position}Different control dependency: ${info.leftname}: ${JSON.stringify(a.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(b.controlDependency)}`)
 	}
 }
 

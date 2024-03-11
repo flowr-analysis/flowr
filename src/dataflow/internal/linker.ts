@@ -239,8 +239,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`)
 			if(maybeForRemaining) {
-				/* TODO? */
-				bodyInput.controlDependency = []
+				bodyInput.controlDependency ??= []
 			}
 			givenInputs.push(bodyInput)
 		} else {

@@ -49,7 +49,7 @@ export function processPipe<OtherInfo>(
 		functionCallNode.args.unshift({
 			nodeId:            argId,
 			name:              `${UnnamedArgumentPrefix}${argId}`,
-			controlDependency: data.controlFlowDependencies
+			controlDependency: data.controlDependency
 		})
 		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument })
 	}

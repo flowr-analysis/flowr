@@ -128,7 +128,7 @@ export function processFunctionDefinition<OtherInfo>(
 		id:                name.info.id,
 		name:              name.info.id,
 		environment:       popLocalEnvironment(outEnvironment),
-		controlDependency: undefined,
+		controlDependency: data.controlDependency,
 		subflow:           flow,
 		exitPoints
 	})

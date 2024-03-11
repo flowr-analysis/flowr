@@ -39,11 +39,11 @@ export const processors: DataflowProcessors<ParentInformation> = {
 
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
-		completeAst:             ast,
-		environment:             initializeCleanEnvironments(),
+		completeAst:       ast,
+		environment:       initializeCleanEnvironments(),
 		processors,
-		currentRequest:          request,
-		controlFlowDependencies: undefined,
-		referenceChain:          [requestFingerprint(request)]
+		currentRequest:    request,
+		controlDependency: undefined,
+		referenceChain:    [requestFingerprint(request)]
 	})
 }

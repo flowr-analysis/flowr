@@ -41,7 +41,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	if(config.makeMaybe) {
-		makeAllMaybe(res.out, res.graph, res.environment)
+		makeAllMaybe(res.out, res.graph, res.environment, true)
 	}
 
 	return res

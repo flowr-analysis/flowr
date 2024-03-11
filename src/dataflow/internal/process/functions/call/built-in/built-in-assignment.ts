@@ -85,11 +85,12 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target }
 }
 
-function produceWrittenNodes(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>): IdentifierDefinition[] {
 	return target.in.map(ref => ({
 		...ref,
-		kind:      isFunctionDef ? 'function' : 'variable',
-		definedAt: rootId
+		kind:              isFunctionDef ? 'function' : 'variable',
+		definedAt:         rootId,
+		controlDependency: data.controlDependency
 	}))
 }
 
@@ -129,14 +130,14 @@ function processAssignmentToSymbol<OtherInfo>(
 ) {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef)
+	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
 	}
 
 	const readFromSourceWritten = sourceArg.out
-	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlFlowDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlDependency }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)

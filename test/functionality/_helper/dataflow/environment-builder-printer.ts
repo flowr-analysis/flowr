@@ -84,10 +84,10 @@ export class EnvironmentBuilderPrinter {
 	}
 
 	public print(): string {
-		if(this.env.level === 0 && this.env.current.id === BuiltInEnvironment.id) {
+		if(this.env.level === 0 && this.env.current.memory.size === 0) {
 			return ''
 		}
 		this.process()
-		return  'defaultEnv()' + this.lines.join('')
+		return 'defaultEnv()' + this.lines.join('')
 	}
 }

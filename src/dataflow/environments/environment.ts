@@ -10,26 +10,27 @@ import type { Identifier, IdentifierDefinition, IdentifierReference } from './id
 import { BuiltInMemory } from './built-in'
 
 
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
-	const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
-	for(const definition of definitions ?? []) {
-		if(definition.kind !== 'built-in-function') {
-			/* TODO: add cd */
-			definition.controlDependency = []
+	if(includeDefs) {
+		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
+		for(const definition of definitions ?? []) {
+			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
+				definition.controlDependency ??= []
+			}
 		}
 	}
 	if(node) {
-		node[0].controlDependency = []
+		node[0].controlDependency ??= []
 	}
-	return { ...ref, controlDependency: [] }
+	return { ...ref, controlDependency: ref.controlDependency ?? [] }
 }
 
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments))
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs))
 }
 
 

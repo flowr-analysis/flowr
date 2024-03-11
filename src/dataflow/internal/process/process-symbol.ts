@@ -11,10 +11,10 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependency: data.controlFlowDependencies } ],
+		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependency: data.controlDependency } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, controlDependency: data.controlFlowDependencies })
+		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, controlDependency: data.controlDependency })
 	}
 }

@@ -20,23 +20,29 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	data = { ...data, controlFlowDependencies: [...data.controlFlowDependencies ?? [], name.info.id] }
-
-	const { information, processedArguments } = processKnownFunctionCall(name, args, rootId, data)
+	/* we inject the cf-dependency of the while-loop after the condition */
+	const { information, processedArguments } = processKnownFunctionCall(name, args, rootId, data, false, (d, i) => {
+		if(i === 1) {
+			return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+		}
+		return d
+	})
 	const [condition, body] = processedArguments
+
+	const originalDependency = data.controlDependency
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`)
 
 	const remainingInputs = linkInputs([
-		...makeAllMaybe(body.unknownReferences, information.graph, information.environment),
-		...makeAllMaybe(body.in, information.graph, information.environment)
+		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, false),
+		...makeAllMaybe(body.in, information.graph, information.environment, false)
 	], information.environment, [...condition.in, ...condition.unknownReferences], information.graph, true)
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(remainingInputs), body.out)
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependency: data.controlFlowDependencies }, ...remainingInputs],
-		out:               [...makeAllMaybe(body.out, information.graph, information.environment), ...condition.out],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependency: originalDependency }, ...remainingInputs],
+		out:               [...makeAllMaybe(body.out, information.graph, information.environment, true), ...condition.out],
 		graph:             information.graph,
 		environment:       information.environment
 	}

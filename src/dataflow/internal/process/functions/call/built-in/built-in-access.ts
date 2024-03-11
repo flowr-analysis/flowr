@@ -63,11 +63,11 @@ export function processAccess<OtherInfo>(
      * ```
      * the read for a will use both accesses as potential definitions and not just the last one!
      */
-		unknownReferences: makeAllMaybe(information.unknownReferences, information.graph, information.environment),
+		unknownReferences: makeAllMaybe(information.unknownReferences, information.graph, information.environment, false),
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                information.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, information.graph, information.environment)
+				return makeReferenceMaybe(ref, information.graph, information.environment, false)
 			} else {
 				return ref
 			}

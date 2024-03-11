@@ -30,7 +30,7 @@ export function processFunctionArgument<OtherInfo>(
 
 	const argContent = argument.name?.content
 	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, controlDependency: undefined })
+	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, controlDependency: data.controlDependency })
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 
@@ -46,7 +46,7 @@ export function processFunctionArgument<OtherInfo>(
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs,
 		// , ...value.out, ...(name?.out ?? [])
-		out:               [ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlFlowDependencies } ],
+		out:               [ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlDependency } ],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment
 	}

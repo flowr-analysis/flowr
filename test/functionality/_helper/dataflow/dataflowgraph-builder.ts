@@ -63,18 +63,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
-		const argsWithoutControlDependency: FunctionArgument[] = args.map((a: FunctionArgument) => {
-			if(a === EmptyArgument) {
-				return a
-			} else if(Array.isArray(a) && a[1] !== '<value>') {
-				return [a[0], { ...a[1], controlDependency: undefined }] as const
-			} else if(a !== '<value>') {
-				return { ...a, controlDependency: undefined } as const
-			} else {
-				return a
-			}
-		})
-		this.addVertex({ tag: 'function-call', id, name, args: argsWithoutControlDependency, environment: info?.environment, controlDependency: info?.controlDependency, onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false }, asRoot)
+		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, controlDependency: info?.controlDependency, onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false }, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
 			for(const ret of info.returns) {

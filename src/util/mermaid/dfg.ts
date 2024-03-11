@@ -92,7 +92,8 @@ function printArg(arg: IdentifierReference | '<value>' | 'empty' | typeof EmptyA
 	} else if(arg === EmptyArgument) {
 		return '[empty]'
 	} else {
-		return `${arg.nodeId}`
+		const deps = arg.controlDependency ? '[' + arg.controlDependency.join(',') + ']': ''
+		return `${arg.nodeId}${deps}`
 	}
 }
 function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
@@ -179,7 +180,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	for(const [target, edge] of [...edges[1], ...(info.controlDependency ?? []).map(x => [x, { types: new Set(['CD']) }] as const)]) {
+	const artificialCdEdges = (info.controlDependency ?? []).map(x => [x, { types: new Set(['CD']) }] as const)
+	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead) || edge.types.has(EdgeType.Relates)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)
 		if(!mermaid.presentEdges.has(edgeId)) {
@@ -188,7 +190,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)
-			} else if(edge.types.has('CD')) {
+			}
+			if(edge.types.has('CD')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
 			if(target === BuiltIn) {

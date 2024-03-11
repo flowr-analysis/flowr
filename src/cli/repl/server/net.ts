@@ -1,7 +1,7 @@
 /**
  * This is just a simple layer to allow me to mock the server's behavior in tests.
  */
-import net from 'node:net'
+import net from 'net'
 import type WebSocket from 'ws'
 import { WebSocketServer } from 'ws'
 import type * as Buffer from 'buffer'
@@ -95,4 +95,3 @@ export class NetServer implements Server {
 		this.server.listen(port)
 	}
 }
-

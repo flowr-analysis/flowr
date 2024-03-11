@@ -351,6 +351,9 @@
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
   },
+  "engines" : {
+    "node": ">=16.0.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",

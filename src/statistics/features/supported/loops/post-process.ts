@@ -12,7 +12,7 @@ import {
 } from '../../common-syntax-probability'
 import { bigint2number } from '../../../../util/numbers'
 import path from 'path'
-import fs from 'node:fs'
+import fs from 'fs'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 

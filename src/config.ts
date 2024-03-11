@@ -12,7 +12,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 */
 	ignoreSourceCalls: boolean
 	/**
-	 * The path to the R executable to use. If this is empty, {@link DEFAULT_R_PATH} will be used.
+	 * The path to the R executable to use. If this is undefined, {@link DEFAULT_R_PATH} will be used.
 	 */
 	rPath:             string | undefined
 }

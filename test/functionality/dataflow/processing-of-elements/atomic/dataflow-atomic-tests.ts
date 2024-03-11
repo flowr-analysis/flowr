@@ -732,50 +732,109 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		assertDataflow(label('rhs has to depend on x', ['name-normal', 'logical', 'numbers', 'semicolons', ...OperatorDatabase['&&'].capabilities, ...OperatorDatabase['<-'].capabilities]),
 			shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
-				.defineVariable('0', 'y')
-				.defineVariable('4', 'y', { })
 				.use('3', 'x')
-				.use('8', 'y')
-				.reads('8', '0')
-				.reads('8', '4')
-				.sameDef('0', '4')
+				.use('11', 'y')
+				.reads('11', ['0', '6'])
+				.call('2', '<-', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('2', ['1-arg', '0-arg'])
+				.call('8', '<-', [argumentInCall('6-arg', { controlDependency: ['10'] }), argumentInCall('7-arg', { controlDependency: ['10'] })], { returns: ['6'], reads: [BuiltIn], controlDependency: ['10'], environment: defaultEnv().defineVariable('y', '0', '2') })
+				.argument('8', ['7-arg', '6-arg'])
+				.call('9', '(', [argumentInCall('8-arg', { controlDependency: ['10'] })], { returns: ['8-arg'], reads: [BuiltIn], controlDependency: ['10'], environment: defaultEnv().defineVariable('y', '0', '2').defineVariable('y', '6', '8', ['10']) })
+				.argument('9', '8-arg')
+				.call('10', '&&', [argumentInCall('3-arg'), argumentInCall('9-arg', { controlDependency: ['10'] })], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('y', '0', '2').defineVariable('y', '6', '8', ['10']) })
+				.argument('10', ['3-arg', '9-arg'])
+				.constant('1')
+				.defineVariable('0', 'y', { definedBy: ['1'] })
+				.constant('7', { controlDependency: ['10'] })
+				.defineVariable('6', 'y', { definedBy: ['7'], controlDependency: ['10'] })
+				.reads('6', '0')
+				.reads('8-arg', ['7', '6'])
+				.reads('9-arg', '7')
 		)
 	})
 
 	describe('Loops', () => {
 		describe('For', () => {
-			assertDataflow('simple constant for-loop', shell,
-				'for(i in 1:10) { 1 }',
-				emptyGraph().defineVariable('0', 'i')
-			)
-			assertDataflow('using loop variable in body', shell,
-				'for(i in 1:10) { i }',
+			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+				shell, 'for(i in 1:10) { 1 }',
 				emptyGraph()
-					.defineVariable('0', 'i')
-					.use('4', 'i', { controlDependency: [] })
-					.reads('4', '0')
+					.use('0', 'i')
+					.call('3', ':', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('3', ['1-arg', '2-arg'])
+					.call('7', '{', [argumentInCall('6-arg', { controlDependency: ['8'] })], { returns: ['6-arg'], reads: [BuiltIn], controlDependency: ['8'] })
+					.argument('7', '6-arg')
+					.call('8', 'for', [argumentInCall('0-arg'), argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: ['8'] })], { returns: [], reads: [BuiltIn] })
+					.constant('1')
+					.constant('2')
+					.reads('3-arg', ['1', '2'])
+					.constant('6', { controlDependency: ['8'] })
+					.reads('7-arg', '6')
+			)
+			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+				shell, 'for(i in 1:10) { i }',
+				emptyGraph()
+					.use('0', 'i')
+					.sameRead('0', '6')
+					.use('6', 'i', { controlDependency: ['8'] })
+					.call('3', ':', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('3', ['1-arg', '2-arg'])
+					.call('7', '{', [argumentInCall('6-arg', { controlDependency: ['8'] })], { returns: ['6-arg'], reads: [BuiltIn], controlDependency: ['8'] })
+					.argument('7', '6-arg')
+					.call('8', 'for', [argumentInCall('0-arg'), argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: ['8'] })], { returns: [], reads: [BuiltIn] })
+					.argument('8', ['0-arg', '3-arg', '7-arg'])
+					.constant('1')
+					.constant('2')
+					.reads('3-arg', ['1', '2'])
+					.reads('7-arg', '6')
 			)
 		})
 
 		describe('Repeat', () => {
-			assertDataflow('simple constant repeat', shell,
-				'repeat 2',
+			assertDataflow(label('simple constant repeat', ['repeat-loop', 'numbers']),
+				shell, 'repeat 2',
 				emptyGraph()
+					.use('1-arg', unnamedArgument('1-arg'))
+					.reads('1-arg', '0')
+					.argument('2', '1-arg')
+					.call('2', 'repeat', [argumentInCall('1-arg')], { returns: [], reads: [BuiltIn] })
+					.constant('0')
 			)
-			assertDataflow('using loop variable in body', shell,
-				'repeat x',
-				emptyGraph().use('0', 'x')
-			)
-			assertDataflow('using loop variable in body', shell,
-				'repeat { x <- 1 }',
-				emptyGraph().defineVariable('0', 'x')
-			)
-			assertDataflow('using variable in body', shell,
-				'repeat { x <- y }',
+			assertDataflow(label('using loop variable in body', ['repeat-loop', 'name-normal']),
+				shell, 'repeat x',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.use('1', 'y')
-					.definedBy('0', '1')
+					.use('0', 'x')
+					.use('1-arg', unnamedArgument('1-arg'))
+					.reads('1-arg', '0')
+					.argument('2', '1-arg')
+					.call('2', 'repeat', [argumentInCall('1-arg')], { returns: [], reads: [BuiltIn] })
+			)
+			assertDataflow(label('using loop variable in body', ['repeat-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'grouping']),
+				shell,  'repeat { x <- 1 }',
+				emptyGraph()
+					.call('4', '<-', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: ['2'], reads: [BuiltIn] })
+					.argument('4', ['3-arg', '2-arg'])
+					.call('5', '{', [argumentInCall('4-arg')], { returns: ['4-arg'], reads: [BuiltIn] })
+					.argument('5', '4-arg')
+					.call('6', 'repeat', [argumentInCall('5-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('6', '5-arg')
+					.constant('3')
+					.defineVariable('2', 'x', { definedBy: ['3'] })
+					.reads('4-arg', ['3', '2'])
+					.reads('5-arg', '3')
+			)
+			assertDataflow(label('using variable in body', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping']),
+				shell, 'repeat { x <- y }',
+				emptyGraph()
+					.use('3', 'y')
+					.call('4', '<-', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: ['2'], reads: [BuiltIn] })
+					.argument('4', ['3-arg', '2-arg'])
+					.call('5', '{', [argumentInCall('4-arg')], { returns: ['4-arg'], reads: [BuiltIn] })
+					.argument('5', '4-arg')
+					.call('6', 'repeat', [argumentInCall('5-arg')], { returns: [], reads: [BuiltIn] })
+					.argument('6', '5-arg')
+					.defineVariable('2', 'x', { definedBy: ['3'] })
+					.reads('4-arg', ['3', '2'])
+					.reads('5-arg', '3')
 			)
 		})
 	})

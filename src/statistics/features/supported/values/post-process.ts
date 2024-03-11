@@ -5,7 +5,7 @@ import {
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
 import type { ValueInfo } from './values'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { readLineByLineSync } from '../../../../util/files'

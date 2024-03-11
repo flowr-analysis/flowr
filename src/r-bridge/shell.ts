@@ -1,7 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
-import * as readline from 'node:readline'
+import * as readline from 'readline'
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'

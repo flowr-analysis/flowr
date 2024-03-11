@@ -9,7 +9,7 @@ import {
 } from '../../common-syntax-probability'
 import type { AssignmentInfo } from './assignments'
 import { bigint2number } from '../../../../util/numbers'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'

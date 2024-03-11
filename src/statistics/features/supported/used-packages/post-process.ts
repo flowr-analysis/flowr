@@ -10,7 +10,7 @@ import {
 } from '../../post-processing'
 import type { UsedPackageInfo } from './used-packages'
 import { initialUsedPackageInfos } from './used-packages'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
@@ -138,4 +138,3 @@ function retrieveDataForLoad(operator: string, readFromPath: string, outputPath:
 
 	return collected
 }
-

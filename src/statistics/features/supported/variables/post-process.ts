@@ -9,7 +9,7 @@ import {
 	recordFilePath
 } from '../../post-processing'
 import type { DefinedVariableInformation, VariableInfo } from './variables'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'

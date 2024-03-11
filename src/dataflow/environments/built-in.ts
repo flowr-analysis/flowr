@@ -52,14 +52,26 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last' }
+	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next' }
 ): DataflowInformation {
-	const res = processKnownFunctionCall(name, args, rootId, data).information
+	const res: DataflowInformation = processKnownFunctionCall(name, args, rootId, data).information
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
 		if(arg !== undefined && arg !== EmptyArgument) {
 			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns })
 		}
+	}
+	switch(config.cfg) {
+		case 'return':
+			res.returns = [...res.returns, rootId]
+			break
+		case 'break':
+			res.breaks = [...res.breaks, rootId]
+			break
+		case 'next':
+			res.nexts = [...res.nexts, rootId]
+			break
+
 	}
 	return res
 }
@@ -129,12 +141,12 @@ registerBuiltInConstant('TRUE', true)
 registerBuiltInConstant('T', true)
 registerBuiltInConstant('FALSE', false)
 registerBuiltInConstant('F', false)
-// maybe map to a control flow function?
-registerBuiltInConstant('break', 'break')
-registerBuiltInConstant('next', 'next')
 registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':')
 registerBuiltInFunctions(defaultBuiltInProcessor, {},                                                   'cat') /* returns null */
-registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 0 },                            'return', 'print', '(')
+registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 0 },                            'print', '(')
+registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 0, cfg: 'return' as const },    'return')
+registerBuiltInFunctions(defaultBuiltInProcessor, {  cfg: 'break' as const },                           'break')
+registerBuiltInFunctions(defaultBuiltInProcessor, {  cfg: 'next' as const },                            'next')
 registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 'last' as const },              '{')
 registerBuiltInFunctions(processSourceCall,       {},                                                   'source')
 registerBuiltInFunctions(processAccess,           { treatIndicesAsString: false },                      '[', '[[')

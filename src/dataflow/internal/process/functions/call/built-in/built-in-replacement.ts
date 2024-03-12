@@ -1,18 +1,23 @@
-import type {
+import {
+	EmptyArgument,
 	NodeId,
-	ParentInformation,
+	ParentInformation, type RArgument,
 	RFunctionArgument,
 	RSymbol
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../../info'
-import { dataflowLogger, makeAllMaybe } from '../../../../../index'
+import {dataflowLogger, IdentifierReference, makeAllMaybe} from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
 import { processAssignment } from './built-in-assignment'
 import { processAllArguments } from '../common'
 import { guard } from '../../../../../../util/assert'
+
+function isNotEmpty(a: RFunctionArgument<ParentInformation>): a is RArgument<ParentInformation> {
+	return a !== EmptyArgument;
+}
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -41,7 +46,14 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	if(config.makeMaybe) {
-		makeAllMaybe(res.out, res.graph, res.environment, true)
+		// we ignore the value
+		const targetArgReferences: IdentifierReference[] = args.slice(0,-1).filter(isNotEmpty).map(a => ({
+			nodeId: (a as RArgument<ParentInformation>).info.id,
+			name:  (a as RArgument<ParentInformation>).name?.content,
+			controlDependency: data.controlDependency
+		}))
+		// TODO: patch func args as well
+		makeAllMaybe(targetArgReferences, res.graph, res.environment, true)
 	}
 
 	return res

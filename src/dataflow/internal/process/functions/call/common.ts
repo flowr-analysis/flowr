@@ -21,7 +21,7 @@ export function processAllArguments<OtherInfo>(
 	// arg env contains the environments with other args defined
 	let argEnv = functionName.environment
 	const callArgs: FunctionArgument[] = []
-	const processedArguments = []
+	const processedArguments: (DataflowInformation | undefined)[] = []
 	const remainingReadInArgs = []
 	let i = -1
 	for(const arg of args) {

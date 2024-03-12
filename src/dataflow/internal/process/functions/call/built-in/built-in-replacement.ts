@@ -1,14 +1,17 @@
 import {
-	EmptyArgument,
+	EmptyArgument } from '../../../../../../r-bridge'
+import type {
 	NodeId,
-	ParentInformation, type RArgument,
+	ParentInformation,
 	RFunctionArgument,
 	RSymbol
+	, type RArgument
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../../info'
-import {dataflowLogger, IdentifierReference, makeAllMaybe} from '../../../../../index'
+import type { IdentifierReference } from '../../../../../index'
+import { dataflowLogger, makeAllMaybe } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
 import { processAssignment } from './built-in-assignment'
@@ -16,7 +19,7 @@ import { processAllArguments } from '../common'
 import { guard } from '../../../../../../util/assert'
 
 function isNotEmpty(a: RFunctionArgument<ParentInformation>): a is RArgument<ParentInformation> {
-	return a !== EmptyArgument;
+	return a !== EmptyArgument
 }
 
 export function processReplacementFunction<OtherInfo>(
@@ -48,8 +51,8 @@ export function processReplacementFunction<OtherInfo>(
 	if(config.makeMaybe) {
 		// we ignore the value
 		const targetArgReferences: IdentifierReference[] = args.slice(0,-1).filter(isNotEmpty).map(a => ({
-			nodeId: (a as RArgument<ParentInformation>).info.id,
-			name:  (a as RArgument<ParentInformation>).name?.content,
+			nodeId:            (a as RArgument<ParentInformation>).info.id,
+			name:              (a as RArgument<ParentInformation>).name?.content,
 			controlDependency: data.controlDependency
 		}))
 		// TODO: patch func args as well

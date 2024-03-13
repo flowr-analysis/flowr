@@ -19,14 +19,14 @@ import { sum } from '../../../arrays'
 import { summarizeReductions } from '../first-phase/process'
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
-	const commonMeasurements                             = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
-	const perSliceMeasurements                           = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
+	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
+	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
 	const reductions: Reduction<SummarizedMeasurement>[] = []
-	const inputs: SlicerStatsInput[]                     = []
-	const dataflows: SlicerStatsDataflow[]               = []
-	let failedToRepParse                                 = 0
-	let timesHitThreshold                                = 0
-	let totalSlices                                      = 0
+	const inputs: SlicerStatsInput[] = []
+	const dataflows: SlicerStatsDataflow[] = []
+	let failedToRepParse = 0
+	let timesHitThreshold = 0
+	let totalSlices = 0
 
 	for(const stat of stats) {
 		for(const [k, v] of stat.commonMeasurements) {

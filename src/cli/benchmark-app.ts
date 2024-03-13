@@ -38,7 +38,7 @@ guard(options.runs === undefined || options.runs > 0, 'runs must be greater than
 function removeIfExists(summarizedRaw: string) {
 	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`)
-		fs.unlinkSync(summarizedRaw)
+		fs.rmSync(summarizedRaw, { recursive: true })
 	}
 }
 

@@ -12,6 +12,7 @@ import { ultimateStats2String } from '../../../benchmark'
 import { processNextSummary, summarizeAllSummarizedStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
 import { readLineByLine, readLineByLineSync } from '../../files'
+import path from 'path'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -45,7 +46,10 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.config.intermediateOutputPath)
 		this.removeIfExists(this.config.outputLogPath)
 
-		await readLineByLine(this.config.inputPath, (line, lineNumber) => processNestMeasurement(line, lineNumber, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath))
+		for(const filename of fs.readdirSync(this.config.inputPath)){
+			const filepath = path.join(this.config.inputPath, filename)
+			await readLineByLine(filepath, (line, lineNumber) => processNestMeasurement(line, lineNumber, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath))
+		}
 
 		this.log('Done summarizing')
 	}

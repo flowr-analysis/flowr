@@ -40,9 +40,8 @@ function getBenchmarkSummarizer() {
 	return new BenchmarkSummarizer({
 		graphOutputPath:        options.graph ? `${outputBase}-graph.json` : undefined,
 		inputPath:              options.input,
-		intermediateOutputPath: `${outputBase}.json`,
+		intermediateOutputPath: outputBase,
 		outputPath:             `${outputBase}-ultimate.json`,
-		outputLogPath:          `${outputBase}.log`,
 		logger:                 console.log
 	})
 }
@@ -86,4 +85,3 @@ async function run() {
 
 
 void run()
-

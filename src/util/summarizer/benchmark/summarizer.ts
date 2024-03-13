@@ -30,10 +30,6 @@ export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfig
 	/**
 	 * Path for the final results of the summarization phase
 	 */
-	outputLogPath?:         string
-	/**
-	 * Path for the final results of the summarization phase
-	 */
 	outputPath:             string
 }
 
@@ -44,11 +40,13 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 
 	public async preparationPhase(): Promise<void> {
 		this.removeIfExists(this.config.intermediateOutputPath)
-		this.removeIfExists(this.config.outputLogPath)
+		fs.mkdirSync(this.config.intermediateOutputPath)
 
-		for(const filename of fs.readdirSync(this.config.inputPath)){
-			const filepath = path.join(this.config.inputPath, filename)
-			await readLineByLine(filepath, (line, lineNumber) => processNestMeasurement(line, lineNumber, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath))
+		const dirContent = fs.readdirSync(this.config.inputPath)
+		for(let i = 0; i < dirContent.length; i++){
+			const filepath   = path.join(this.config.inputPath, dirContent[i])
+			const outputPath = path.join(this.config.intermediateOutputPath, dirContent[i])
+			await readLineByLine(filepath, (line, lineNumber) => processNestMeasurement(line, i, lineNumber, `${outputPath}.log`, outputPath))
 		}
 
 		this.log('Done summarizing')
@@ -78,7 +76,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	private removeIfExists(path?: string) {
 		if(path && fs.existsSync(path)) {
 			this.log(`Removing existing ${path}`)
-			fs.unlinkSync(path)
+			fs.rmSync(path, { recursive: true })
 		}
 	}
 

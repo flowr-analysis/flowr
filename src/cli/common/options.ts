@@ -36,6 +36,8 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
+	{ name: 'file-id', alias: 'd', type: Number, description: 'A numeric file id that can be used to match an input and run-num to a file' },
+	{ name: 'run-num', alias: 'r', type: Number, description: 'The n-th time that the file with the given file-id is being benchmarked' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
 ]

@@ -73,9 +73,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 }
 
 export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]) {
-	let got = JSON.parse(line.toString()) as { filename: string, summarize: SummarizedSlicerStats }
+	let got = JSON.parse(line.toString()) as { filename: string, fileId: number, summarize: SummarizedSlicerStats }
 	got = {
 		filename:  got.filename,
+		fileId:    got.fileId,
 		summarize: {
 			input:              got.summarize.input,
 			request:            got.summarize.request,
@@ -101,4 +102,3 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 	}
 	allSummarized.push(got.summarize)
 }
-

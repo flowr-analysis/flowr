@@ -13,8 +13,10 @@ import fs from 'fs'
 import { jsonReplacer } from '../../../json'
 
 interface BenchmarkData {
-	filename: string,
-	stats:    SlicerStats
+	filename:  string,
+	'file-id': number,
+	'run-num': number,
+	stats:     SlicerStats
 }
 
 
@@ -23,8 +25,10 @@ export async function processNestMeasurement(line: Buffer, counter: number, summ
 	console.log(`[${counter}] Summarize for ${got.filename}`)
 	// now we have to recover the maps and bigints :C
 	got = {
-		filename: got.filename,
-		stats:    {
+		filename:  got.filename,
+		'file-id': got['file-id'],
+		'run-num': got['run-num'],
+		stats:     {
 			input:              got.stats.input,
 			request:            got.stats.request,
 			dataflow:           got.stats.dataflow,
@@ -52,6 +56,8 @@ export async function processNestMeasurement(line: Buffer, counter: number, summ
 	console.log(`    - Append raw summary to ${outputPath}`)
 	fs.appendFileSync(outputPath, `${JSON.stringify({
 		filename:  got.filename,
+		'file-id': got['file-id'],
+		'run-num': got['run-num'],
 		summarize: summarized
 	}, jsonReplacer)}\n`)
 

@@ -80,9 +80,19 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		failedToRepParse:     sum(stats.map(s => s.failedToRepParse)),
 		timesHitThreshold:    sum(stats.map(s => s.timesHitThreshold)),
 		reduction:            summarizeReductions(stats.map(s => s.reduction)),
-		// input and dataflow don't change between files, so just pick the first ones
-		input:                stats[0].input,
-		dataflow:             stats[0].dataflow
+		input:                {
+			numberOfLines:                   summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
+			numberOfCharacters:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
+			numberOfNonWhitespaceCharacters: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
+			numberOfRTokens:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),
+			numberOfNormalizedTokens:        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokens))
+		},
+		dataflow: {
+			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),
+			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
+			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
+			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges))
+		}
 	}
 }
 

@@ -14,6 +14,7 @@ export interface BenchmarkCliOptions {
 	slice:    string
 	parallel: number
 	limit?:   number
+	runs?:    number
 }
 
 
@@ -31,6 +32,7 @@ if(options.input.length === 0) {
 }
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
+guard(options.runs === undefined || options.runs > 0, 'runs must be greater than zero')
 
 function removeIfExists(summarizedRaw: string) {
 	if(fs.existsSync(summarizedRaw)) {
@@ -57,17 +59,21 @@ async function benchmark() {
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
+	const args = files.map(f => [f.content, '--output', options.output, '--slice', options.slice, ...verboseAdd])
 
-	const pool = new LimitedThreadPool(
-		`${__dirname}/benchmark-helper-app`,
-		files.map(f => [f.content, '--output', options.output, '--slice', options.slice, ...verboseAdd]),
-		limit,
-		options.parallel
-	)
-	await pool.run()
-	const stats = pool.getStats()
-	console.log(`Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
+	const runs = options.runs ?? 1
+	for(let i = 0; i < runs; i++) {
+		console.log(`Run ${i+1} of ${runs}`)
+		const pool = new LimitedThreadPool(
+			`${__dirname}/benchmark-helper-app`,
+			[...args],
+			limit,
+			options.parallel
+		)
+		await pool.run()
+		const stats = pool.getStats()
+		console.log(`Run ${i+1} of ${runs}: Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
+	}
 }
 
 void benchmark()
-

@@ -4,7 +4,9 @@ set -eu
 
 # default to 1 parallel processes
 PARALLEL="${1-1}"
-ONLY_SUITE="${2-}"
+# default to running 1 time
+RUNS="${2-1}"
+ONLY_SUITE="${3-}"
 
 
 SUITE_PREFIX="suite-"
@@ -23,8 +25,7 @@ fi
 
 for SUITE in "${SUITES[@]}"; do
   mkdir -p "${OUTPUT_DIR}/${SUITE}"
-  CMD=(bash run-suite.sh "${SUITE}" "$(pwd)/${OUTPUT_DIR}/${SUITE}/${SUITE}" "${PARALLEL}")
+  CMD=(bash run-suite.sh "${SUITE}" "$(pwd)/${OUTPUT_DIR}/${SUITE}/${SUITE}" "${PARALLEL}" "${RUNS}")
   echo -e "Suite-Command: \"${CMD[*]}\"..."
   "${CMD[@]}"
 done
-

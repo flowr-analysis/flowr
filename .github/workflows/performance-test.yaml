@@ -18,7 +18,8 @@ jobs:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
         name: ['artificial', 'social-science']
     with:
-      action: performance-test -- 1 "${{ matrix.name }}"
+      # 1 parallel process, 1 run
+      action: performance-test -- 1 1 "${{ matrix.name }}"
       coverage: false
       benchmark: ${{ matrix.name }}
       timeout-minutes: 400

@@ -199,3 +199,15 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	const total = data.map(d => d.total).filter(isNotUndefined).reduce((a, b) => a + b, 0)
 	return { min, max, median, mean, std, total }
 }
+
+export function summarizeReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
+	return {
+		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
+		numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
+		numberOfCharacters:              summarizeSummarizedMeasurement(reductions.map(r => r.numberOfCharacters)),
+		numberOfNonWhitespaceCharacters: summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters)),
+		numberOfLinesNoAutoSelection:    summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
+		numberOfNormalizedTokens:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
+		numberOfRTokens:                 summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens))
+	}
+}

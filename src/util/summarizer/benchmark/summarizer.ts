@@ -4,12 +4,12 @@
  */
 import type { CommonSummarizerConfiguration } from '../summarizer'
 import { Summarizer } from '../summarizer'
-import type { SummarizedSlicerStats, UltimateSlicerStats } from './data'
+import type { UltimateSlicerStats } from './data'
 import fs from 'fs'
-import { processNestMeasurement } from './first-phase/input'
+import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
 import { jsonReplacer } from '../../json'
 import { ultimateStats2String } from '../../../benchmark'
-import { processNextSummary, summarizeAllSummarizedStats } from './second-phase/process'
+import { summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
 import { readLineByLine, readLineByLineSync } from '../../files'
 import path from 'path'
@@ -39,14 +39,20 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	}
 
 	public async preparationPhase(): Promise<void> {
+		this.removeIfExists(`${this.config.intermediateOutputPath}.json`)
 		this.removeIfExists(this.config.intermediateOutputPath)
 		fs.mkdirSync(this.config.intermediateOutputPath)
 
 		const dirContent = fs.readdirSync(this.config.inputPath)
-		for(let i = 0; i < dirContent.length; i++){
-			const filepath   = path.join(this.config.inputPath, dirContent[i])
+		for(let i = 0; i < dirContent.length; i++) {
+			const filePath   = path.join(this.config.inputPath, dirContent[i])
 			const outputPath = path.join(this.config.intermediateOutputPath, dirContent[i])
-			await readLineByLine(filepath, (line, lineNumber) => processNestMeasurement(line, i, lineNumber, `${outputPath}.log`, outputPath))
+
+			// generate measurements for each run
+			await readLineByLine(filePath, (line, lineNumber) => processRunMeasurement(line, i, lineNumber, `${outputPath}.log`, outputPath))
+
+			// generate combined measurements for the file
+			processSummarizedFileMeasurement(filePath, outputPath, `${this.config.intermediateOutputPath}.json`)
 		}
 
 		this.log('Done summarizing')
@@ -58,11 +64,13 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 
 		this.removeIfExists(this.config.outputPath)
 
-		const allSummarized: SummarizedSlicerStats[] = []
-		readLineByLineSync(this.config.intermediateOutputPath, line => processNextSummary(line, allSummarized))
+		const allSummarized: UltimateSlicerStats[] = []
+		readLineByLineSync(`${this.config.intermediateOutputPath}.json`, line => {
+			const summary = JSON.parse(line.toString()) as {filename: string, summarize: UltimateSlicerStats }
+			allSummarized.push(summary.summarize)
+		})
 
-		// summarizedRaw
-		const ultimate = summarizeAllSummarizedStats(allSummarized)
+		const ultimate = summarizeAllUltimateStats(allSummarized)
 		this.log(`Writing ultimate summary to ${this.config.outputPath}`)
 		fs.writeFileSync(this.config.outputPath, JSON.stringify(ultimate, jsonReplacer))
 		console.log(ultimateStats2String(ultimate))

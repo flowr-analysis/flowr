@@ -1,7 +1,8 @@
 import type {
-	CommonSlicerMeasurements, PerSliceMeasurements,
+	PerSliceMeasurements,
 	PerSliceStats,
-	SlicerStats } from '../../../../benchmark'
+	SlicerStats, SummarizedSlicerStats ,
+	CommonSlicerMeasurements } from '../../../../benchmark'
 import {
 	stats2string,
 	summarizeSlicerStats
@@ -11,6 +12,8 @@ import type { SlicingCriteria } from '../../../../slicing'
 import { escape } from '../../../../statistics'
 import fs from 'fs'
 import { jsonReplacer } from '../../../json'
+import { readLineByLineSync } from '../../../files'
+import { processNextSummary, summarizeAllSummarizedStats } from '../second-phase/process'
 
 interface BenchmarkData {
 	filename:  string,
@@ -20,7 +23,7 @@ interface BenchmarkData {
 }
 
 
-export async function processNestMeasurement(line: Buffer, fileNum: number, lineNum: number, summarizedText: string, outputPath: string) {
+export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, summarizedText: string, outputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`)
 	// now we have to recover the maps and bigints :C
@@ -49,7 +52,7 @@ export async function processNestMeasurement(line: Buffer, fileNum: number, line
 	const totalSlices = got.stats.perSliceMeasurements.size
 	console.log(`Summarizing ${totalSlices} slices...`)
 	let atSliceNumber = 0
-	const summarized = await summarizeSlicerStats(got.stats, (criterion, stats) => {
+	const summarized  = await summarizeSlicerStats(got.stats, (criterion, stats) => {
 		console.log(`${escape}1F${escape}1G${escape}2K    [${++atSliceNumber}/${totalSlices}] Summarizing ${JSON.stringify(criterion)} (reconstructed has ${stats.reconstructedCode.code.length} characters)`)
 	})
 
@@ -63,6 +66,18 @@ export async function processNestMeasurement(line: Buffer, fileNum: number, line
 
 	console.log(`    - Append textual summary to ${summarizedText}`)
 	fs.appendFileSync(summarizedText, `${stats2string(summarized)}\n`)
+}
+
+export function processSummarizedFileMeasurement(file: string, summariesFile: string, outputPath: string) {
+	console.log(`Summarize all runs for ${file}`)
+
+	const summaries: SummarizedSlicerStats[] = []
+	readLineByLineSync(summariesFile, (l) => processNextSummary(l, summaries))
+
+	fs.appendFileSync(outputPath, `${JSON.stringify({
+		filename:  file,
+		summarize: summarizeAllSummarizedStats(summaries)
+	})}\n`)
 }
 
 function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteria, PerSliceStats] {

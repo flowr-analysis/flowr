@@ -72,12 +72,12 @@ export function processSummarizedFileMeasurement(file: string, summariesFile: st
 	console.log(`Summarize all runs for ${file}`)
 
 	const summaries: SummarizedSlicerStats[] = []
-	readLineByLineSync(summariesFile, (l) => processNextSummary(l, summaries))
+	readLineByLineSync(summariesFile, l => processNextSummary(l, summaries))
 
 	fs.appendFileSync(outputPath, `${JSON.stringify({
 		filename:  file,
 		summarize: summarizeAllSummarizedStats(summaries)
-	})}\n`)
+	}, jsonReplacer)}\n`)
 }
 
 function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteria, PerSliceStats] {

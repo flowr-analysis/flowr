@@ -9,7 +9,7 @@ import fs from 'fs'
 import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
 import { jsonReplacer } from '../../json'
 import { ultimateStats2String } from '../../../benchmark'
-import { summarizeAllUltimateStats } from './second-phase/process'
+import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
 import { readLineByLine, readLineByLineSync } from '../../files'
 import path from 'path'
@@ -64,13 +64,10 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 
 		this.removeIfExists(this.config.outputPath)
 
-		const allSummarized: UltimateSlicerStats[] = []
-		readLineByLineSync(`${this.config.intermediateOutputPath}.json`, line => {
-			const summary = JSON.parse(line.toString()) as {filename: string, summarize: UltimateSlicerStats }
-			allSummarized.push(summary.summarize)
-		})
+		const summaries: UltimateSlicerStats[] = []
+		readLineByLineSync(`${this.config.intermediateOutputPath}.json`, (l) => processNextUltimateSummary(l, summaries))
 
-		const ultimate = summarizeAllUltimateStats(allSummarized)
+		const ultimate = summarizeAllUltimateStats(summaries)
 		this.log(`Writing ultimate summary to ${this.config.outputPath}`)
 		fs.writeFileSync(this.config.outputPath, JSON.stringify(ultimate, jsonReplacer))
 		console.log(ultimateStats2String(ultimate))

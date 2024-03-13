@@ -86,7 +86,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 	}
 }
 
-export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]) {
+export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as { summarize: SummarizedSlicerStats }
 	got = {
 		summarize: {
@@ -109,6 +109,24 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 				failedToRepParse:   got.summarize.perSliceMeasurements.failedToRepParse,
 				sliceSize:          got.summarize.perSliceMeasurements.sliceSize
 			}
+		}
+	}
+	allSummarized.push(got.summarize)
+}
+
+export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
+	let got = JSON.parse(line.toString()) as { summarize: UltimateSlicerStats }
+	got = {
+		summarize: {
+			totalRequests:        got.summarize.totalRequests,
+			totalSlices:          got.summarize.totalSlices,
+			commonMeasurements:   new Map(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
+			perSliceMeasurements: new Map(got.summarize.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+			failedToRepParse:     got.summarize.failedToRepParse,
+			timesHitThreshold:    got.summarize.timesHitThreshold,
+			reduction:            got.summarize.reduction,
+			input:                got.summarize.input,
+			dataflow:             got.summarize.dataflow,
 		}
 	}
 	allSummarized.push(got.summarize)

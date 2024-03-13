@@ -5,6 +5,7 @@ import { LimitedThreadPool } from '../util/parallel'
 import { guard } from '../util/assert'
 import fs from 'fs'
 import { processCommandLineArgs } from './common'
+import path from 'path'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -43,7 +44,9 @@ function removeIfExists(summarizedRaw: string) {
 
 async function benchmark() {
 	removeIfExists(options.output)
-	console.log(`Writing output continuously to ${options.output}`)
+	fs.mkdirSync(options.output)
+
+	console.log(`Storing output in ${options.output}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 	// we do not use the limit argument to be able to pick the limit randomly
 	const files: RParseRequestFromFile[] = []
@@ -59,7 +62,11 @@ async function benchmark() {
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
-	const args = files.map((f,i) => [f.content, '--file-id', `${i}`, '--output', options.output, '--slice', options.slice, ...verboseAdd])
+	const args = files.map((f,i) => [
+		'--input', f.content,
+		'--file-id', `${i}`,
+		'--output', path.join(options.output, `${path.parse(f.content).name}.json`),
+		'--slice', options.slice, ...verboseAdd])
 
 	const runs = options.runs ?? 1
 	for(let i = 1; i <= runs; i++) {

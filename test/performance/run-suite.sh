@@ -12,7 +12,7 @@ set -eu
 SUITE_NAME="$1"
 OUT_BASE="$2"
 OUTPUT_FILE="${OUT_BASE}"
-RAW_OUTPUT="${OUT_BASE}-raw.json"
+RAW_OUTPUT="${OUT_BASE}-raw"
 # default to 1 parallel processes
 PARALLEL="${3-1}"
 # default to running 1 time

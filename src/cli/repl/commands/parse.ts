@@ -1,5 +1,6 @@
 import type { XmlBasedJson } from '../../../r-bridge'
-import { childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
+import { removeRQuotes , childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
+
 
 
 import {
@@ -126,7 +127,7 @@ export const parseCommand: ReplCommand = {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'parse',
 			shell,
-			request:        requestFromInput(remainingLine.trim())
+			request:        requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps()
 
 		const object = convertPreparedParsedData(prepareParsedData(result.parse))

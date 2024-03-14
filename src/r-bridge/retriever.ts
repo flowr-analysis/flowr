@@ -123,7 +123,7 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, she
 /**
  * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
  */
-export function removeTokenMapQuotationMarks(str: string): string {
+export function removeRQuotes(str: string): string {
 	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
 		return str.slice(1, -1)
 	} else {

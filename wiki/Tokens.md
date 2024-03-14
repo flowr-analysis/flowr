@@ -28,7 +28,6 @@ For more information, the ["Syntax" topic](https://www.rdocumentation.org/packag
 - [Tokens Representing Names](#tokens-representing-names)
 - [Tokens Representing Comments or Directives](#tokens-representing-comments-or-directives)
 - [Tokens Used To Delimit Parts of Expressions](#tokens-used-to-delimit-parts-of-expressions)
-- [Tokens Representing Meta-Elements](#tokens-representing-meta-elements)
 <!-- TOC -->
 
 Besides `PIPEBIND`, which at the moment must be enabled explicitly by setting an [environment variable](https://github.com/REditorSupport/languageserver/issues/432) all the tokens shown in the tables are supported by the normalization of *flowR* - although this is different from supporting all of their uses.
@@ -146,11 +145,3 @@ While some of these tokens, like `COLON_ASSIGN`, are explicitly marked as deprec
 | T60 | ✓ | `;`   | Separates expressions.                          |
 | T61 | ✓ | `{`   | Groups expressions, no effect on scoping.       |
 | T62 | ✓ | `}`   | Corresponding end of `{`.                       |
-
-## Tokens Representing Meta-Elements
-
-| #   | ✓ | Token                    | Description                                                                                                                                |
-|:----|:-:|:-------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------|
-| T63 | ✓ | `expr`                   | Represents an expression.                                                                                                                  |
-| T64 | ✓ | `expr_or_assign_or_help` | Used for example by `EQ-ASSIGN`, with the same semantics as `expr`.                                                                        |
-| T65 | ✓ | `exprlist`               | Added by [xml_parse_data](https://www.rdocumentation.org/packages/xmlparsedata/versions/1.0.5/topics/xml_parse_data) to group expressions. |

@@ -147,10 +147,11 @@ While some of these tokens, like `COLON_ASSIGN`, are explicitly marked as deprec
 | T61 | ✓ | `{`   | Groups expressions, no effect on scoping.       |
 | T62 | ✓ | `}`   | Corresponding end of `{`.                       |
 
+
 ## Tokens Representing Meta-Elements
 
 | #   | ✓ | Token                    | Description                                                                                                                                |
 |:----|:-:|:-------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------|
 | T63 | ✓ | `expr`                   | Represents an expression.                                                                                                                  |
 | T64 | ✓ | `expr_or_assign_or_help` | Used for example by `EQ-ASSIGN`, with the same semantics as `expr`.                                                                        |
-| T65 | ✓ | `exprlist`               | Added by [xml_parse_data](https://www.rdocumentation.org/packages/xmlparsedata/versions/1.0.5/topics/xml_parse_data) to group expressions. |
+| T65 | ✓ | `exprlist`               | Added by [xml_parse_data](https://www.rdocumentation.org/packages/xmlparsedata/versions/1.0.5/topics/xml_parse_data) to group expressions, no longer used since [#659](https://github.com/Code-Inspect/flowr/pull/659). |

@@ -26,7 +26,6 @@ import { guard, isNotNull } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
 import type {
 	Selection,
-	PrettyPrintLine,
 	Code,
 	AutoSelectPredicate } from './helper'
 import {
@@ -37,7 +36,6 @@ import {
 	removeExpressionListWrap,
 	getIndentString,
 	merge,
-	plainSplit,
 	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
@@ -153,6 +151,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	return merge([out])
 }
 
+//add heuristic to select needed semicollons
+//maybe if expr 1,5 => select next semicollon
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
 	return node.info.additionalTokens?.filter(t => t.lexeme && t.location)
 		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
@@ -173,6 +173,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
+//make use of additional tokens
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
 	const endPos = ifThenElse.location.end

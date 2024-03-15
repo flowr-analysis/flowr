@@ -26,9 +26,9 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
 export function replCompleter(line: string): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line)
 	if(splitLine.length > 0){
-		// autocomplete scripts through their defined options if the command has been typed fully
 		const commandNameColon = replCompleterKeywords.find(c => splitLine[0].startsWith(c))
 		if(commandNameColon) {
+			// autocomplete scripts if the command has been typed fully
 			const commandName = commandNameColon.slice(1)
 			if(getCommand(commandName)?.script === true){
 				const argCompletions = getValidArguments(scripts[commandName as keyof typeof scripts].options, splitLine)
@@ -38,7 +38,7 @@ export function replCompleter(line: string): [string[], string] {
 				if(currentArg == commandNameColon && line.endsWith(' ')) {
 					currentArg = ''
 				}
-				return [argCompletions.filter(a => a.startsWith(currentArg)), currentArg]
+				return [argCompletions.filter(a => a.startsWith(currentArg)).map(a => `${a} `), currentArg]
 
 
 			}
@@ -46,7 +46,7 @@ export function replCompleter(line: string): [string[], string] {
 	}
 
 	// if no command is already typed, just return all commands that match
-	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
+	return [replCompleterKeywords.filter(k => k.startsWith(line)).map(k => `${k} `), line]
 }
 
 export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {

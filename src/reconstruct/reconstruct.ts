@@ -181,7 +181,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}
-	otherwise ??= []  //what does ??= do and is it important
+	otherwise ??= []
 
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
 		return []

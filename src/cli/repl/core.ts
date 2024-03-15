@@ -15,7 +15,7 @@ import { executeRShellCommand } from './commands/execute'
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
-import { getValidArguments, scripts } from '../common'
+import { getValidOptionsForCompletion, scripts } from '../common'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
@@ -31,7 +31,8 @@ export function replCompleter(line: string): [string[], string] {
 			// autocomplete scripts if the command has been typed fully
 			const commandName = commandNameColon.slice(1)
 			if(getCommand(commandName)?.script === true){
-				const argCompletions = getValidArguments(scripts[commandName as keyof typeof scripts].options, splitLine)
+				const options = scripts[commandName as keyof typeof scripts].options
+				const argCompletions = getValidOptionsForCompletion(options, splitLine)
 
 				let currentArg = splitLine[splitLine.length - 1]
 				// we haven't started typing the arg yet (":command <tab>")

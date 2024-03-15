@@ -35,7 +35,7 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial
           path: benchmark-ai/
@@ -66,7 +66,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (social-science)"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: benchmark-results-social-science
           path: benchmark-ss/

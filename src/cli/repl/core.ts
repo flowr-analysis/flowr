@@ -40,7 +40,11 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
 		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
 		if(processor) {
-			await processor.fn(output, shell, statement.slice(command.length + 2).trim())
+			try {
+				await processor.fn(output, shell, statement.slice(command.length + 2).trim())
+			} catch(e){
+				console.log(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.`)
+			}
 		} else {
 			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 		}

@@ -25,9 +25,11 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
  */
 export function replCompleter(line: string): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line)
+	// did we just type a space (and are starting a new arg right now)?
+	const startingNewArg = line.endsWith(' ')
 
-	// if we typed a command fully already (":command "), autocomplete the arguments
-	if(splitLine.length > 1 || line.endsWith(' ')){
+	// if we typed a command fully already, autocomplete the arguments
+	if(splitLine.length > 1 || startingNewArg){
 		const commandNameColon = replCompleterKeywords.find(k => splitLine[0] === k)
 		if(commandNameColon) {
 			const completions: string[] = []
@@ -45,10 +47,8 @@ export function replCompleter(line: string): [string[], string] {
 			// add an empty option so that it doesn't autocomplete the only defined option immediately
 			completions.push(' ')
 
-			// if line ends with space, we haven't started typing the arg yet (":command <tab>")
-			const currentArg = line.endsWith(' ') ? '' : splitLine[splitLine.length - 1]
+			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1]
 			return [completions.filter(a => a.startsWith(currentArg)), currentArg]
-
 		}
 	}
 

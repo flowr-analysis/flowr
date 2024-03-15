@@ -192,18 +192,20 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }]
 	])
-	
+
 	if(!(when.length === 0)) {
 		out = merge([
 			out,
 			removeExpressionListWrap(when)
 		])
+	}
 	if(!(otherwise.length === 0)) {
-		out = merge([
-			out,
-			[{ linePart: [{ part: 'else', loc: conditionPos }], indent: 0 }], //may have to change the location
-			removeExpressionListWrap(otherwise)
-		])
+			out = merge([
+				out,
+				[{ linePart: [{ part: 'else', loc: conditionPos }], indent: 0 }], //may have to change the location
+				removeExpressionListWrap(otherwise)
+			])
+		}
 	return out
 }
 

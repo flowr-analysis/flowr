@@ -25,27 +25,30 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
  */
 export function replCompleter(line: string): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line)
-	if(splitLine.length > 0){
-		const commandNameColon = replCompleterKeywords.find(c => splitLine[0].startsWith(c))
+
+	// if we typed a command fully already (":command "), autocomplete the arguments
+	if(splitLine.length > 1 || line.endsWith(' ')){
+		const commandNameColon = replCompleterKeywords.find(k => splitLine[0] === k)
 		if(commandNameColon) {
-			// autocomplete scripts if the command has been typed fully
+			const completions: string[] = []
+
 			const commandName = commandNameColon.slice(1)
 			if(getCommand(commandName)?.script === true){
+				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options
-				const argCompletions = getValidOptionsForCompletion(options, splitLine)
-
-				// add an empty string so that it doesn't autocomplete the first dash if only options are available
-				argCompletions.push('')
-
-				let currentArg = splitLine[splitLine.length - 1]
-				// we haven't started typing the arg yet (":command <tab>")
-				if(currentArg == commandNameColon && line.endsWith(' ')) {
-					currentArg = ''
-				}
-				return [argCompletions.filter(a => a.startsWith(currentArg)).map(a => `${a} `), currentArg]
-
-
+				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `))
+			} else {
+				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
+				completions.push('file://')
 			}
+
+			// add an empty option so that it doesn't autocomplete the only defined option immediately
+			completions.push(' ')
+
+			// if line ends with space, we haven't started typing the arg yet (":command <tab>")
+			const currentArg = line.endsWith(' ') ? '' : splitLine[splitLine.length - 1]
+			return [completions.filter(a => a.startsWith(currentArg)), currentArg]
+
 		}
 	}
 

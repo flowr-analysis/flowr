@@ -34,6 +34,9 @@ export function replCompleter(line: string): [string[], string] {
 				const options = scripts[commandName as keyof typeof scripts].options
 				const argCompletions = getValidOptionsForCompletion(options, splitLine)
 
+				// add an empty string so that it doesn't autocomplete the first dash if only options are available
+				argCompletions.push('')
+
 				let currentArg = splitLine[splitLine.length - 1]
 				// we haven't started typing the arg yet (":command <tab>")
 				if(currentArg == commandNameColon && line.endsWith(' ')) {

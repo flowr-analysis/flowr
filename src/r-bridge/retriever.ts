@@ -8,6 +8,8 @@ import { RShellExecutor } from './shell-executor'
 import objectHash from 'object-hash'
 import { normalize } from './lang-4.x/ast/parser/json/parser'
 
+export const fileProtocol = 'file://' as const
+
 export interface RParseRequestFromFile {
 	readonly request:  'file';
 	/** The path to the file (absolute paths are probably best here */
@@ -32,14 +34,14 @@ export interface RParseRequestProvider {
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText)
 
-export function requestFromInput(input: `file://${string}`): RParseRequestFromFile
+export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: string): RParseRequestFromText
 
 /**
  * Creates a {@link RParseRequest} from a given input.
  */
-export function requestFromInput(input: `file://${string}` | string): RParseRequest {
-	const file = input.startsWith('file://')
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string): RParseRequest {
+	const file = input.startsWith(fileProtocol)
 	return {
 		request: file ? 'file' : 'text',
 		content: file ? input.slice(7) : input

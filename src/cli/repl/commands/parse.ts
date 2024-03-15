@@ -1,8 +1,5 @@
 import type { XmlBasedJson } from '../../../r-bridge'
-import { removeRQuotes , childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
-
-
-
+import { fileProtocol , removeRQuotes , childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
 import {
 	extractLocation,
 	getTokenType,
@@ -119,7 +116,7 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 
 
 export const parseCommand: ReplCommand = {
-	description:  'Prints ASCII Art of the parsed, unmodified AST, start with \'file://\' to indicate a file',
+	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,

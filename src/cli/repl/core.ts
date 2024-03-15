@@ -3,7 +3,7 @@
  *
  * @module
  */
-import { RShell } from '../../r-bridge'
+import { fileProtocol, RShell } from '../../r-bridge'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
@@ -14,6 +14,7 @@ import { executeRShellCommand } from './commands/execute'
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
+import { getValidOptionsForCompletion, scripts } from '../common'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
@@ -22,7 +23,36 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
-	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
+	const splitLine = splitAtEscapeSensitive(line)
+	// did we just type a space (and are starting a new arg right now)?
+	const startingNewArg = line.endsWith(' ')
+
+	// if we typed a command fully already, autocomplete the arguments
+	if(splitLine.length > 1 || startingNewArg){
+		const commandNameColon = replCompleterKeywords.find(k => splitLine[0] === k)
+		if(commandNameColon) {
+			const completions: string[] = []
+
+			const commandName = commandNameColon.slice(1)
+			if(getCommand(commandName)?.script === true){
+				// autocomplete script arguments
+				const options = scripts[commandName as keyof typeof scripts].options
+				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `))
+			} else {
+				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
+				completions.push(fileProtocol)
+			}
+
+			// add an empty option so that it doesn't autocomplete the only defined option immediately
+			completions.push(' ')
+
+			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1]
+			return [completions.filter(a => a.startsWith(currentArg)), currentArg]
+		}
+	}
+
+	// if no command is already typed, just return all commands that match
+	return [replCompleterKeywords.filter(k => k.startsWith(line)).map(k => `${k} `), line]
 }
 
 export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {

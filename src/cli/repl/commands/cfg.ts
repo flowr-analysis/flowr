@@ -1,7 +1,7 @@
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import type { RShell } from '../../../r-bridge'
-import { requestFromInput } from '../../../r-bridge'
+import { fileProtocol , requestFromInput } from '../../../r-bridge'
 import { extractCFG } from '../../../util/cfg/cfg'
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid'
 
@@ -14,7 +14,7 @@ async function controlflow(shell: RShell, remainingLine: string) {
 }
 
 export const controlflowCommand: ReplCommand = {
-	description:  'Get mermaid code for the control-flow graph of R code, start with \'file://\' to indicate a file',
+	description:  `Get mermaid code for the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
@@ -27,7 +27,7 @@ export const controlflowCommand: ReplCommand = {
 }
 
 export const controlflowStarCommand: ReplCommand = {
-	description:  'Get a mermaid url of the control-flow graph of R code, start with \'file://\' to indicate a file',
+	description:  `Get a mermaid url of the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,

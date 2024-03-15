@@ -1,8 +1,12 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
 import type { DeepPartial } from 'ts-essentials'
+import {
+	deterministicCountingIdGenerator, requestFromInput,
+	RShell
+} from '../../../src/r-bridge'
 import type {
-	DecoratedAstMap,
+	DecoratedAstMap, fileProtocol,
 	IdGenerator,
 	NodeId,
 	NoInfo,
@@ -10,11 +14,9 @@ import type {
 	RNode,
 	RNodeWithParent,
 	XmlParserHooks
+
 } from '../../../src/r-bridge'
-import {
-	deterministicCountingIdGenerator, requestFromInput,
-	RShell
-} from '../../../src/r-bridge'
+
 import { assert } from 'chai'
 import type { DataflowGraph } from '../../../src/dataflow'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
@@ -79,7 +81,7 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	}
 }
 
-export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
 	return (await new SteppingSlicer({
 		stepOfInterest: 'normalize',

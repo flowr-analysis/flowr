@@ -22,7 +22,7 @@ jobs:
           lfs: true
 
       - name: Check the README for broken links
-        uses: Wandalen/wretry.action@v1.3.0
+        uses: Wandalen/wretry.action@v1.4.10
         with:
           action: becheran/mlc@v0.16.2
           with: |
@@ -39,7 +39,7 @@ jobs:
           token: ${{ secrets.GH_DEPLOY_WIKI }}
 
       - name: Check the Wiki pages for broken links
-        uses: Wandalen/wretry.action@v1.3.0
+        uses: Wandalen/wretry.action@v1.4.10
         if: ${{ always() && !failure() }}
         with:
           action: becheran/mlc@v0.16.2

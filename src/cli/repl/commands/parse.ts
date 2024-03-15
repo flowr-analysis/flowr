@@ -11,7 +11,6 @@ import {
 import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
-import type { StepResult } from '../../../core'
 import { SteppingSlicer } from '../../../core'
 import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
@@ -125,18 +124,11 @@ export const parseCommand: ReplCommand = {
 	aliases:      [ 'p' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const request = requestFromInput(removeRQuotes(remainingLine.trim()))
-
-		let result: Record<'parse', StepResult<'parse'>>
-		try {
-			result = await new SteppingSlicer({
-				stepOfInterest: 'parse',
-				shell, request
-			}).allRemainingSteps()
-		} catch(e) {
-			output.stderr(`Failed to parse ${JSON.stringify(request)}: ${(e as Error)?.message}`)
-			return
-		}
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'parse',
+			shell,
+			request:        requestFromInput(removeRQuotes(remainingLine.trim()))
+		}).allRemainingSteps()
 
 		const object = convertPreparedParsedData(prepareParsedData(result.parse))
 

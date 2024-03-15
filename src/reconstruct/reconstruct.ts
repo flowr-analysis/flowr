@@ -176,35 +176,30 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}
-	otherwise ??= []
+	otherwise ??= []  //what does ??= do and is it important
+
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
 		return []
 	}
-	if(otherwise.length === 0 && when.length === 0) {
-		return [
-			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) { }`, loc: startPos }], indent: 0 }
-		]
-	} else if(otherwise.length === 0) {
-		return [
-			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos }], indent: 0 },
-			...indentBy(removeExpressionListWrap(when), 1),
-			{ linePart: [{ part: '}', loc: endPos }], indent: 0 }
-		]
-	} else if(when.length === 0) {
-		return [
-			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) { } else {`, loc: startPos }], indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ linePart: [{ part: '}', loc: startPos }], indent: 0 }
-		]
-	} else {
-		return [
-			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos }], indent: 0 },
-			...indentBy(removeExpressionListWrap(when), 1),
-			{ linePart: [{ part: '} else {', loc: conditionPos }], indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ linePart: [{ part: '}', loc: endPos }], indent: 0 }
-		]
-	}
+	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
+
+	let out = merge([
+		...additionalTokens,
+		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }]
+	])
+	
+	if(!(when.length === 0)) {
+		out = merge([
+			out,
+			removeExpressionListWrap(when)
+		])
+	if(!(otherwise.length === 0)) {
+		out = merge([
+			out,
+			[{ linePart: [{ part: 'else', loc: conditionPos }], indent: 0 }], //may have to change the location
+			removeExpressionListWrap(otherwise)
+		])
+	return out
 }
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {

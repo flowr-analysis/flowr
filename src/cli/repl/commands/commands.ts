@@ -113,6 +113,14 @@ export function getCommand(command: string): ReplCommand | undefined {
 	return commands[commandMapping[command]]
 }
 
+export function asOptionName(argument: string): string{
+	if(argument.length == 1) {
+		return `-${argument}`
+	} else {
+		return `--${argument}`
+	}
+}
+
 
 const longestKey = Array.from(Object.keys(commands), k => k.length).reduce((p, n) => Math.max(p, n), 0)
 function padCmd<T>(string: T) {

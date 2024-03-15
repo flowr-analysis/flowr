@@ -12,6 +12,7 @@ import {
 	slicerOptions, statisticHelperOptions, statisticOptions,
 	summarizerOptions
 } from './options'
+import { asOptionName } from '../repl/commands'
 
 
 interface BaseScriptInformation extends MergeableRecord {
@@ -99,3 +100,14 @@ const _scripts = {
 
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
 
+export function getValidArguments(options: OptionDefinition[], prevArgs: string[]): string[] {
+	return options
+		.filter(o => o.multiple || !prevArgs.includes(asOptionName(o.name)) && (!o.alias || !prevArgs.includes(asOptionName(o.alias))))
+		.flatMap(o => {
+			const args = [asOptionName(o.name)]
+			if(o.alias) {
+				args.push(asOptionName(o.alias))
+			}
+			return args
+		})
+}

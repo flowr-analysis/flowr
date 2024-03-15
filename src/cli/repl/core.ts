@@ -8,12 +8,14 @@ import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
 import { commandNames, getCommand, standardReplOutput } from './commands'
+
 import * as readline from 'readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
+import { getValidArguments, scripts } from '../common'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
@@ -22,6 +24,28 @@ const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
+	const splitLine = splitAtEscapeSensitive(line)
+	if(splitLine.length > 0){
+		// autocomplete scripts through their defined options if the command has been typed fully
+		const commandNameColon = replCompleterKeywords.find(c => splitLine[0].startsWith(c))
+		if(commandNameColon) {
+			const commandName = commandNameColon.slice(1)
+			if(getCommand(commandName)?.script === true){
+				const argCompletions = getValidArguments(scripts[commandName as keyof typeof scripts].options, splitLine)
+
+				let currentArg = splitLine[splitLine.length - 1]
+				// we haven't started typing the arg yet (":command <tab>")
+				if(currentArg == commandNameColon && line.endsWith(' ')) {
+					currentArg = ''
+				}
+				return [argCompletions.filter(a => a.startsWith(currentArg)), currentArg]
+
+
+			}
+		}
+	}
+
+	// if no command is already typed, just return all commands that match
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
 }
 

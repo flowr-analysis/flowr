@@ -101,13 +101,15 @@ const _scripts = {
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
 
 export function getValidOptionsForCompletion(options: OptionDefinition[], prevArgs: string[]): string[] {
-	return options
-		.filter(o => o.multiple || !prevArgs.includes(asOptionName(o.name)) && (!o.alias || !prevArgs.includes(asOptionName(o.alias))))
-		.flatMap(o => {
-			const args = [asOptionName(o.name)]
-			if(o.alias) {
-				args.push(asOptionName(o.alias))
-			}
-			return args
-		})
+	return options.filter(o => canAddOption(o, prevArgs)).flatMap(o => {
+		const args = [asOptionName(o.name)]
+		if(o.alias) {
+			args.push(asOptionName(o.alias))
+		}
+		return args
+	})
+}
+
+function canAddOption(option: OptionDefinition, prevArgs: string[]): boolean {
+	return option.multiple || !prevArgs.includes(asOptionName(option.name)) && (!option.alias || !prevArgs.includes(asOptionName(option.alias)))
 }

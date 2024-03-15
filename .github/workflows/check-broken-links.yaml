@@ -24,7 +24,7 @@ jobs:
       - name: Check the README for broken links
         uses: Wandalen/wretry.action@v1.4.10
         with:
-          action: becheran/mlc@v0.16.2
+          action: becheran/mlc@v0.16.3
           with: |
             args: README.md
           attempt_limit: 3
@@ -42,7 +42,7 @@ jobs:
         uses: Wandalen/wretry.action@v1.4.10
         if: ${{ always() && !failure() }}
         with:
-          action: becheran/mlc@v0.16.2
+          action: becheran/mlc@v0.16.3
           with: |
             args: wiki/
           attempt_limit: 3

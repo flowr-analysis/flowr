@@ -115,7 +115,8 @@ describe('Simple', withShell(shell => {
 
 	describe.only('Branches', () => {
 		const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
-			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4}', argument: ['3'], expected: 'if(TRUE) { x <- 3 }' }
+			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4}', argument: ['1'], expected: 'if(TRUE) { x <- 3 }' },
+			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4}', argument: ['1'], expected: 'if(FALSE) {        } else { x <- 4 }' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)

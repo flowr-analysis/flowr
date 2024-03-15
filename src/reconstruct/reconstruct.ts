@@ -33,12 +33,12 @@ import {
 	plain,
 	indentBy,
 	isSelected,
-	removeExpressionListWrap,
 	getIndentString,
 	merge,
 	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
+import { jsonReplacer } from '../util/json'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -171,12 +171,12 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 //make use of additional tokens
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
-	const endPos = ifThenElse.location.end
+	//const endPos = ifThenElse.location.end
 	const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}
-	otherwise ??= []  //what does ??= do and is it important
+	otherwise ??= []
 
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
 		return []
@@ -187,18 +187,27 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }]
 	])
+
+	console.log(JSON.stringify(when,jsonReplacer))
+	console.log(JSON.stringify(otherwise,jsonReplacer))
+
+	console.log(JSON.stringify(out,jsonReplacer))
 	
-	if(!(when.length === 0)) {
+	if(!(when[0].linePart.length === 2)) {
+		console.log('we have an if-body')
 		out = merge([
 			out,
-			removeExpressionListWrap(when)
+			when
 		])
-	if(!(otherwise.length === 0)) {
+	}
+	if(!(otherwise[0].linePart.length === 2)) {
+		console.log('we have an else-body')
 		out = merge([
 			out,
 			[{ linePart: [{ part: 'else', loc: conditionPos }], indent: 0 }], //may have to change the location
-			removeExpressionListWrap(otherwise)
+			otherwise
 		])
+	}
 	return out
 }
 

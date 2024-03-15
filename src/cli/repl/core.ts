@@ -3,12 +3,11 @@
  *
  * @module
  */
-import { RShell } from '../../r-bridge'
+import { fileProtocol, RShell } from '../../r-bridge'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
 import { commandNames, getCommand, standardReplOutput } from './commands'
-
 import * as readline from 'readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
@@ -41,7 +40,7 @@ export function replCompleter(line: string): [string[], string] {
 				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `))
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
-				completions.push('file://')
+				completions.push(fileProtocol)
 			}
 
 			// add an empty option so that it doesn't autocomplete the only defined option immediately

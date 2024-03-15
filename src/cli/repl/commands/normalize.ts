@@ -1,7 +1,7 @@
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import type { RShell } from '../../../r-bridge'
-import { requestFromInput } from '../../../r-bridge'
+import { fileProtocol , requestFromInput } from '../../../r-bridge'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid'
 
 async function normalize(shell: RShell, remainingLine: string) {
@@ -13,7 +13,7 @@ async function normalize(shell: RShell, remainingLine: string) {
 }
 
 export const normalizeCommand: ReplCommand = {
-	description:  'Get mermaid code for the normalized AST of R code, start with \'file://\' to indicate a file',
+	description:  `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
@@ -25,7 +25,7 @@ export const normalizeCommand: ReplCommand = {
 }
 
 export const normalizeStarCommand: ReplCommand = {
-	description:  'Get a mermaid url of the normalized AST of R code, start with \'file://\' to indicate a file',
+	description:  `Get a mermaid url of the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':normalize',
 	aliases:      [ 'n*' ],
 	script:       false,

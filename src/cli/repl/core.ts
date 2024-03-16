@@ -7,7 +7,7 @@ import { fileProtocol, RShell } from '../../r-bridge'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
-import { commandNames, getCommand, standardReplOutput } from './commands'
+import { getCommandNames , getCommand, standardReplOutput } from './commands'
 import * as readline from 'readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
@@ -16,7 +16,13 @@ import path from 'path'
 import fs from 'fs'
 import { getValidOptionsForCompletion, scripts } from '../common'
 
-const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
+let _replCompleterKeywords: string[] | undefined = undefined
+function replCompleterKeywords() {
+	if(_replCompleterKeywords === undefined) {
+		_replCompleterKeywords = Array.from(getCommandNames(), s => `:${s}`)
+	}
+	return _replCompleterKeywords
+}
 const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
 
 /**
@@ -29,7 +35,7 @@ export function replCompleter(line: string): [string[], string] {
 
 	// if we typed a command fully already, autocomplete the arguments
 	if(splitLine.length > 1 || startingNewArg){
-		const commandNameColon = replCompleterKeywords.find(k => splitLine[0] === k)
+		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k)
 		if(commandNameColon) {
 			const completions: string[] = []
 
@@ -52,7 +58,7 @@ export function replCompleter(line: string): [string[], string] {
 	}
 
 	// if no command is already typed, just return all commands that match
-	return [replCompleterKeywords.filter(k => k.startsWith(line)).map(k => `${k} `), line]
+	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line]
 }
 
 export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {

@@ -86,12 +86,12 @@ From your IDE of choice, you can also run all or some of the functionality tests
 With Visual Studio Code (or Codium), you also require the Mocha Test Explorer add-on. To run functionality tests, follow these steps:
 
 1. Install and enable the [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter).
-2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this: 
+2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this:
 
 ![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
 
-3. To run the full test suite, press the Play button (▶️) above. 
-   - To only run a single, or some of the tests, navigate to it, and press the Play button, too. 
+3. To run the full test suite, press the Play button (▶️) above.
+   - To only run a single, or some of the tests, navigate to it, and press the Play button, too.
    - You can cancel running tests by clicking on the Stop button (⏹️).
    - Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
 4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
@@ -109,7 +109,7 @@ With WebStorm, you can set up Run and Debug configurations from the IDE to run t
 ![A possible Run configuration for flowR's functionality tests in WebStorm](img/testing-config-webstorm.png)
 
    4. Press `OK` to save the test run configuration.
-   
+
    Afterwards, you can run or debug the flowR functionality test suite from the Run/Debug configurations part, by clicking on the Play and Debug buttons (▶️/🪲), respectively.
 
 ## CI Pipeline
@@ -160,4 +160,4 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](https://github.com/Code-Inspect/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).

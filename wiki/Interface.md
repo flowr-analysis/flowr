@@ -685,7 +685,7 @@ docker run -p1042:1042 -it --rm eagleoutice/flowr --server
 
 ##### Using Netcat
 
-Now, using a tool like [netcat](https://linux.die.net/man/1/nc) to connect:
+Now, using a tool like _netcat_ to connect:
 
 ```shell
 nc 127.0.0.1 1042
@@ -944,14 +944,14 @@ R> :parse file://test/testfiles/example.R
 
 ### Interfacing With R by Using The `RShell`
 
-The [`RShell`](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
+The `RShell` class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
 For now there are no alternatives (although we plan on providing more flexible drop-in replacements).
 
 > [!IMPORTANT]
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
-However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) for more information.
+However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the in-code _documentation_ for more information.
 
 With a shell object (let's call it `shell`), you can execute R code by using `RShell::sendCommand`, for example `shell.sendCommand("1 + 1")`. However, this does not return anything, so if you want to collect the output of your command, use `RShell::sendCommandWithOutput` instead.
 
@@ -959,7 +959,7 @@ Besides that, the command `RShell::tryToInjectHomeLibPath` may be of interest, a
 
 ### Slicing With The `SteppingSlicer`
 
-The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_core_slicer.SteppingSlicer.html) class. With *flowR*, this allows you to slice code like this:
+The main class that represents *flowR*'s slicing is the `SteppingSlicer` class. With *flowR*, this allows you to slice code like this:
 
 ```typescript
 const shell = new RShell()
@@ -988,7 +988,7 @@ Besides slicing, the stepping slicer:
 2. can be executed step-by-step
 3. can be told to stop after a given step
 
-See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_core_slicer.SteppingSlicer.html) for more.
+See the _documentation_ for more.
 
 #### Understanding the Steps
 
@@ -1001,7 +1001,7 @@ If you add a new step, make sure to modify all of these locations accordingly.
 
 #### Benchmark the Slicer With The `BenchmarkSlicer`
 
-Relying on the `SteppingSlicer`, the [`BenchmarkSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_benchmark_slicer.BenchmarkSlicer.html) instruments each step to allow measuring the required time. It is used by the `benchmark` script, explained in the [overview](https://github.com/Code-Inspect/flowr/wiki/Overview) wiki page.
+Relying on the `SteppingSlicer`, the `BenchmarkSlicer` instruments each step to allow measuring the required time. It is used by the `benchmark` script, explained in the [overview](https://github.com/Code-Inspect/flowr/wiki/Overview) wiki page.
 Furthermore, it provides a simple way to slice a file for all possible slicing points:
 
 ```typescript
@@ -1021,7 +1021,7 @@ Please create a new `BenchmarkSlicer` object per input file (this will probably 
 
 ### Augmenting the Normalization
 
-The normalization of a given input is essentially handled by the [`normalize` function](https://code-inspect.github.io/flowr/doc/functions/src_r_bridge.normalize.html) although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
+The normalization of a given input is essentially handled by the `normalize` function although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
 The call accepts a collection of *hooks* (the configuration of the `SteppingSlicer` allows them as well).
 
 These hooks allow the modification of the inputs and outputs of the normalization. If you want to count the amount of strings encountered while parsing, you can use something like this:
@@ -1046,7 +1046,7 @@ await new SteppingSlicer({
 // console.log(counter)
 ```
 
-The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example). See the [documentation](https://code-inspect.github.io/flowr/doc/interfaces/src_r_bridge_lang_4_x_ast_parser_xml_hooks.XmlParserHooks.html) for more information.
+The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example).
 
 ### Generate Statistics
 

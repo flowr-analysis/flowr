@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -351,7 +351,7 @@
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
   },
-  "engines" : {
+  "engines": {
     "node": ">=16.0.0"
   },
   "devDependencies": {

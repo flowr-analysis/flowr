@@ -23,8 +23,8 @@
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
-    "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",
-    "lint": "npm run license-compat -- --summary && eslint src/ test/",
+    "lint-local": "eslint src/ benchmark/ cli/ statistics/ test/ --rule \"no-warning-comments: off\"",
+    "lint": "npm run license-compat -- --summary && eslint src/ benchmark/ cli/ statistics/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
@@ -55,7 +55,12 @@
     "extension": [
       ".ts"
     ],
-    "include": "src/**/*.ts",
+    "include": [
+      "src/**/*.ts",
+      "benchmark/**/*.ts",
+      "cli/**/*.ts",
+      "statistics/**/*.ts"
+    ],
     "reporter": [
       "html",
       "text",
@@ -72,6 +77,9 @@
     ],
     "entryPoints": [
       "src",
+      "benchmark",
+      "cli",
+      "statistics",
       "test/helper"
     ],
     "entryPointStrategy": "expand",
@@ -143,6 +151,13 @@
       "@stylistic/ts",
       "import"
     ],
+    "settings": {
+      "import/resolver": {
+        "node": {
+          "extensions": [".ts"]
+        }
+      }
+    },
     "rules": {
       "@stylistic/js/object-curly-spacing": [
         "error",
@@ -314,7 +329,30 @@
         "1tbs"
       ],
       "@stylistic/js/new-parens": "error",
-      "import/no-duplicates": "error"
+      "import/no-duplicates": "error",
+      "import/no-restricted-paths": [
+        "error",
+        {
+          "zones": [
+            {
+              "target": "benchmark",
+              "from": ["cli", "statistics"]
+            },
+            {
+              "target": "cli",
+              "from": ["benchmark", "statistics"]
+            },
+            {
+              "target": "statistics",
+              "from": ["benchmark", "cli"]
+            },
+            {
+              "target": "src",
+              "from": ["benchmark", "cli", "statistics"]
+            }
+          ]
+        }
+      ]
     }
   },
   "release-it": {

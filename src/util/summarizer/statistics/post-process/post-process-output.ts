@@ -1,5 +1,5 @@
-import type { FeatureKey, FeatureSelection } from '../../../../statistics'
-import { ALL_FEATURES , ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics'
+import type { FeatureKey, FeatureSelection } from '../../../../../statistics/src'
+import { ALL_FEATURES , ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../../statistics/src'
 import path from 'path'
 import { log } from '../../../log'
 import fs from 'fs'

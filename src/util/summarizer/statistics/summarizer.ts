@@ -5,7 +5,7 @@ import { list } from 'tar'
 import { longestCommonPrefix } from '../../strings'
 import fs from 'fs'
 import path from 'path'
-import type { FeatureSelection } from '../../../statistics'
+import type { FeatureSelection } from '../../../../statistics/src'
 import { date2string } from '../../time'
 import { FileMigrator } from './first-phase/process'
 import { postProcessFeatureFolder } from './second-phase/process'
@@ -167,4 +167,3 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		return Promise.resolve(undefined)
 	}
 }
-

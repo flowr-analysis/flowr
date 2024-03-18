@@ -3,10 +3,10 @@ import path from 'path'
 import type {
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
-} from '../../../../statistics'
+} from '../../../../../statistics/src'
 import {
 	ALL_FEATURES
-} from '../../../../statistics'
+} from '../../../../../statistics/src'
 import type { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'

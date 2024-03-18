@@ -7,7 +7,7 @@ import type {
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../../benchmark'
+} from '../../../../../benchmark/src'
 import { log } from '../../../log'
 import type { SlicingCriteria } from '../../../../slicing'
 import { DefaultMap } from '../../../defaultmap'

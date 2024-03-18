@@ -4,7 +4,7 @@ import {
 	stats2string,
 	summarizeSlicerStats,
 	PerSliceMeasurements
-} from '../../../src/benchmark'
+} from '../../../benchmark/src'
 import { assert } from 'chai'
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {

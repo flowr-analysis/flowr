@@ -5,7 +5,7 @@
  * @module
  */
 import LineByLine from 'n-readlines'
-import type { StatisticsOutputFormat } from '../../../../statistics'
+import type { StatisticsOutputFormat } from '../../../../../statistics/src'
 import { DefaultMap } from '../../../defaultmap'
 import type { NodeId } from '../../../../r-bridge'
 import { deterministicCountingIdGenerator } from '../../../../r-bridge'

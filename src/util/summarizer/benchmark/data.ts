@@ -4,7 +4,7 @@ import type {
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../benchmark'
+} from '../../../../benchmark/src'
 
 
 export interface SummarizedMeasurement<T = number> {

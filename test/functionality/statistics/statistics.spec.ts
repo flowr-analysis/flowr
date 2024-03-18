@@ -1,12 +1,12 @@
 import type { AppendFnType,
 	DummyAppendMemoryMap,
 	FeatureKey,
-	FeatureValue } from '../../../src/statistics'
+	FeatureValue } from '../../../statistics/src'
 import {
 	ALL_FEATURES,
 	extractUsageStatistics, initDummyFileProvider,
 	staticRequests
-} from '../../../src/statistics'
+} from '../../../statistics/src'
 import { assert } from 'chai'
 import type { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'

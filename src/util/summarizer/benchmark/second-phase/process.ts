@@ -3,7 +3,7 @@ import { DefaultMap } from '../../../defaultmap'
 import type {
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../../benchmark'
+} from '../../../../../benchmark/src'
 import {
 	PerSliceMeasurements
 	,
@@ -11,7 +11,7 @@ import {
 	,
 	summarizeMeasurement,
 	summarizeSummarizedMeasurement
-} from '../../../../benchmark'
+} from '../../../../../benchmark/src'
 
 
 import { guard } from '../../../assert'

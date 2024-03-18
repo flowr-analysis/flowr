@@ -2,7 +2,7 @@ import type { NodeId, NormalizedAst } from '../../r-bridge'
 import type { SourceRange } from '../../util/range'
 import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range'
 import { isNotUndefined } from '../../util/assert'
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../statistics'
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../../statistics/src'
 
 function grayOut(): string {
 	return ansiFormatter.getFormatString({ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Faint })

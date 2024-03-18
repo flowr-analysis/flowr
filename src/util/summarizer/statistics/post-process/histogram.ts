@@ -4,7 +4,7 @@ import { guard, isNotUndefined } from '../../../assert'
 import type { Table } from '../../../files'
 import { BiMap } from '../../../bimap'
 import fs from 'fs'
-import { summarizeMeasurement } from '../../../../benchmark'
+import { summarizeMeasurement } from '../../../../../benchmark/src'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).

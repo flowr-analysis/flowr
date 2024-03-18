@@ -2,14 +2,14 @@ import type {
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats, SummarizedSlicerStats ,
-	CommonSlicerMeasurements } from '../../../../benchmark'
+	CommonSlicerMeasurements } from '../../../../../benchmark/src'
 import {
 	stats2string,
 	summarizeSlicerStats
-} from '../../../../benchmark'
+} from '../../../../../benchmark/src'
 import { guard } from '../../../assert'
 import type { SlicingCriteria } from '../../../../slicing'
-import { escape } from '../../../../statistics'
+import { escape } from '../../../../../statistics/src'
 import fs from 'fs'
 import { jsonReplacer } from '../../../json'
 import { readLineByLineSync } from '../../../files'

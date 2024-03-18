@@ -3,18 +3,18 @@ import path from 'path'
 import type {
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
-} from '../../../../../statistics/src'
+} from '../../../../statistics/src'
 import {
 	ALL_FEATURES
-} from '../../../../../statistics/src'
-import type { CommonSummarizerConfiguration } from '../../summarizer'
-import { readLineByLineSync } from '../../../files'
-import { guard } from '../../../assert'
-import { date2string } from '../../../time'
+} from '../../../../statistics/src'
 import type { StatisticsSummarizerConfiguration } from '../summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../benchmark/data'
-import { summarizeMeasurement } from '../../benchmark/first-phase/process'
-import { sum } from '../../../arrays'
+import { readLineByLineSync } from '../../../../src/util/files'
+import { guard } from '../../../../src/util/assert'
+import { date2string } from '../../../../src/util/time'
+import { sum } from '../../../../src/util/arrays'
+import type { CommonSummarizerConfiguration } from '../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../src/util/summarizer'
+
 
 function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
 	for(const featureName of config.featuresToUse) {

@@ -4,12 +4,8 @@
  */
 import { guard } from '../../../src/util/assert'
 import type { ElapsedTime, PerSliceMeasurements } from './stats'
-import type {
-	SummarizedMeasurement,
-	SummarizedPerSliceStats,
-	SummarizedSlicerStats,
-	UltimateSlicerStats
-} from '../../../src/util/summarizer/benchmark/data'
+import type { SummarizedMeasurement } from '../../../src/util/summarizer'
+import type { SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 
 const padSize = 15
 

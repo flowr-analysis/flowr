@@ -1,5 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import type { LoopInfo } from './loops'
@@ -13,8 +12,8 @@ import {
 import { bigint2number } from '../../../../../src/util/numbers'
 import path from 'path'
 import fs from 'fs'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../../src/util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 type LoopInfoPostProcess = MergeableRecord & {
 	[k in keyof LoopInfo]: LoopInfo[k] extends number | bigint ? SummarizedWithProject : CommonSyntaxTypeCounts<number[][]>

@@ -1,5 +1,5 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
@@ -10,10 +10,9 @@ import type { MergeableRecord } from '../../../../../src/util/objects'
 import type { ControlflowInfo } from './control-flow'
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../../src/util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
 import fs from 'fs'
 import path from 'path'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
 
 interface ControlFlowMetaPostProcessing<Measurement> extends MergeableRecord {
 	ifThen:           CommonSyntaxTypeCounts<Measurement>

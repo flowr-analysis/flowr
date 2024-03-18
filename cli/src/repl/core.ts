@@ -4,7 +4,7 @@
  * @module
  */
 import { fileProtocol, RShell } from '../../../src/r-bridge'
-import { bold } from '../../../statistics/src'
+import { bold } from '../../../src/util/ansi'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
 import { getCommandNames , getCommand, standardReplOutput } from './commands'

@@ -1,13 +1,7 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
-import {
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../../src/util/summarizer/benchmark/data'
 import type { ValueInfo } from './values'
 import fs from 'fs'
 import path from 'path'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
 import { readLineByLineSync } from '../../../../../src/util/files'
 import { date2string } from '../../../../../src/util/time'
 import type { StatisticsOutputFormat } from '../../../output'
@@ -20,6 +14,8 @@ import {
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
 
 // values contains - and + values
 

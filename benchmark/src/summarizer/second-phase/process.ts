@@ -1,21 +1,11 @@
-import type { Reduction, SummarizedMeasurement, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
-import { DefaultMap } from '../../../defaultmap'
-import type {
-	SlicerStatsDataflow,
-	SlicerStatsInput
-} from '../../../../../benchmark/src'
-import {
-	PerSliceMeasurements
-	,
-	CommonSlicerMeasurements
-	,
-	summarizeMeasurement,
-	summarizeSummarizedMeasurement
-} from '../../../../../benchmark/src'
-
-
-import { guard } from '../../../assert'
-import { summarizeReductions } from '../first-phase/process'
+import type { Reduction, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
+import { DefaultMap } from '../../../../src/util/defaultmap'
+import type { SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats'
+import { PerSliceMeasurements, CommonSlicerMeasurements } from '../../stats/stats'
+import { guard } from '../../../../src/util/assert'
+import type { SummarizedMeasurement } from '../../../../src/util/summarizer'
+import { summarizeMeasurement } from '../../../../src/util/summarizer'
+import { summarizeReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])

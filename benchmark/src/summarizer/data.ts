@@ -4,29 +4,9 @@ import type {
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../../benchmark/src'
+} from '../stats/stats'
+import type { SummarizedMeasurement } from '../../../src/util/summarizer'
 
-
-export interface SummarizedMeasurement<T = number> {
-	min:    T
-	max:    T
-	median: T
-	/** total may be useless for some measurements, especially if they are weighted before (it is just the sum...)*/
-	total:  T
-	/** average */
-	mean:   number
-	/** standard deviation */
-	std:    number
-}
-
-export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
-	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`
-}
-
-const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total']
-export function summarizedMeasurement2CsvHeader(prefix?: string): string {
-	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',')
-}
 
 export interface SliceSizeCollection {
 	lines:                   number[]

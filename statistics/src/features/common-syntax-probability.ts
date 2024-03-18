@@ -3,9 +3,9 @@
  */
 import type { RNodeWithParent } from '../../../src/r-bridge'
 import { RFalse, RTrue, RType } from '../../../src/r-bridge'
-import type { SummarizedMeasurement } from '../../../src/util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../src/util/summarizer/benchmark/first-phase/process'
 import { bigint2number } from '../../../src/util/numbers'
+import type { SummarizedMeasurement } from '../../../src/util/summarizer'
+import { summarizeMeasurement } from '../../../src/util/summarizer'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)

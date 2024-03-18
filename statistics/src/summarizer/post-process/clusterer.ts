@@ -5,11 +5,11 @@
  * @module
  */
 import LineByLine from 'n-readlines'
-import type { StatisticsOutputFormat } from '../../../../../statistics/src'
-import { DefaultMap } from '../../../defaultmap'
-import type { NodeId } from '../../../../r-bridge'
-import { deterministicCountingIdGenerator } from '../../../../r-bridge'
-import type { MergeableRecord } from '../../../objects'
+import type { StatisticsOutputFormat } from '../../../../statistics/src'
+import { DefaultMap } from '../../../../src/util/defaultmap'
+import type { NodeId } from '../../../../src'
+import { deterministicCountingIdGenerator } from '../../../../src'
+import type { MergeableRecord } from '../../../../src/util/objects'
 
 export type ContextsWithCount = DefaultMap<NodeId, number>
 export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>

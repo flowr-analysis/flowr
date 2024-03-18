@@ -1,19 +1,13 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type {
-	SummarizedMeasurement } from '../../../../../src/util/summarizer/benchmark/data'
-import {
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../../src/util/summarizer/benchmark/data'
 import type { MergeableRecord } from '../../../../../src/util/objects'
 import type { CommentInfo } from './comments'
 import { initialCommentInfo } from './comments'
 import { guard } from '../../../../../src/util/assert'
 import fs from 'fs'
 import path from 'path'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
-
+import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord & {
 	[K in keyof CommentInfo]: Measurement

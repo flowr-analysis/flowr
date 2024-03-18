@@ -1,5 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -12,11 +11,11 @@ import type { UsedPackageInfo } from './used-packages'
 import { initialUsedPackageInfos } from './used-packages'
 import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../../src/util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
 import { readLineByLineSync } from '../../../../../src/util/files'
 import { array2bag } from '../../../../../src/util/arrays'
 import { startAndEndsWith } from '../../../../../src/util/strings'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
 
 type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
 

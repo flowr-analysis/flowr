@@ -1,14 +1,14 @@
-import type { FeatureKey, FeatureSelection } from '../../../../../statistics/src'
-import { ALL_FEATURES , ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../../statistics/src'
+import type { FeatureKey, FeatureSelection } from '../../../../statistics/src'
+import { ALL_FEATURES, defaultStatisticsFileSuffix } from '../../../../statistics/src'
 import path from 'path'
-import { log } from '../../../log'
+import { log } from '../../../../src/util/log'
 import fs from 'fs'
 import type { ClusterContextIdMap, ClusterReport } from './clusterer'
 import { clusterStatisticsOutput } from './clusterer'
-
-import type { NodeId } from '../../../../r-bridge'
-import { deterministicCountingIdGenerator } from '../../../../r-bridge'
-import { DefaultMap } from '../../../defaultmap'
+import type { NodeId } from '../../../../src/r-bridge'
+import { deterministicCountingIdGenerator } from '../../../../src/r-bridge'
+import { DefaultMap } from '../../../../src/util/defaultmap'
+import { ColorEffect, Colors, FontStyles, formatter } from '../../../../src/util/ansi'
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.

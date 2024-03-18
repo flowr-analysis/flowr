@@ -7,11 +7,11 @@
  */
 
 import { processCommandLineArgs } from './common'
-import { BenchmarkSummarizer } from '../../src/util/summarizer/benchmark/summarizer'
-import { detectSummarizationType } from '../../src/util/summarizer/auto-detect'
-import { StatisticsSummarizer } from '../../src/util/summarizer/statistics/summarizer'
-import { SummarizerType } from '../../src/util/summarizer/summarizer'
 import { allFeatureNames } from '../../statistics/src'
+import { BenchmarkSummarizer } from '../../benchmark/src/summarizer/summarizer'
+import { StatisticsSummarizer } from '../../statistics/src/summarizer/summarizer'
+import { SummarizerType } from '../../src/util/summarizer'
+import { detectSummarizationType } from '../../statistics/src/summarizer/auto-detect'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean

@@ -1,6 +1,6 @@
 import type { FeatureKey, FeatureStatistics } from '../features'
 import { ALL_FEATURES } from '../features'
-import { ColorEffect, Colors, formatter } from './ansi'
+import { ColorEffect, Colors, formatter } from '../../../src/util/ansi'
 import type { MetaStatistics } from '../meta-statistics'
 import { jsonReplacer } from '../../../src/util/json'
 

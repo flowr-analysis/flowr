@@ -2,9 +2,9 @@ import { RShell } from '../../src/r-bridge'
 import type { FeatureKey } from '../../statistics/src'
 import {
 	extractUsageStatistics,
-	setFormatter,
-	voidFormatter, staticRequests, initFileProvider, statisticsFileProvider
+	staticRequests, initFileProvider, statisticsFileProvider
 } from '../../statistics/src'
+import { setFormatter, voidFormatter } from '../../src/util/ansi'
 import { log } from '../../src/util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../../src/util/json'

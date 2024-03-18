@@ -1,20 +1,21 @@
 import * as tmp from 'tmp'
-import type { Reduction, SliceSizeCollection, SummarizedMeasurement, SummarizedSlicerStats } from '../data'
-import { isNotUndefined } from '../../../assert'
+import type { Reduction, SliceSizeCollection, SummarizedSlicerStats } from '../data'
+import type { SummarizedMeasurement } from '../../../../src/util/summarizer'
+import { summarizeMeasurement } from '../../../../src/util/summarizer'
+import { isNotUndefined } from '../../../../src/util/assert'
 import type {
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../../../benchmark/src'
-import { log } from '../../../log'
-import type { SlicingCriteria } from '../../../../slicing'
-import { DefaultMap } from '../../../defaultmap'
-import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../r-bridge'
-import { withoutWhitespace } from '../../../strings'
+} from '../../stats/stats'
+import { log } from '../../../../src/util/log'
+import type { SlicingCriteria } from '../../../../src'
+import { DefaultMap } from '../../../../src/util/defaultmap'
+import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../src/r-bridge'
+import { withoutWhitespace } from '../../../../src/util/strings'
 import fs from 'fs'
-import { sum } from '../../../arrays'
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined
@@ -172,20 +173,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 			}
 		}
 	}
-}
-
-export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
-	// just to avoid in-place modification
-	const sorted = [...data].sort((a, b) => a - b)
-	const min = sorted[0]
-	const max = sorted[sorted.length - 1]
-	const median = sorted[Math.floor(sorted.length / 2)]
-	const total = sum(sorted)
-	const length = totalNumberOfDataPoints ?? sorted.length
-	const mean = total / length
-	// sqrt(sum(x-mean)^2 / n)
-	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / length)
-	return { min, max, median, mean, std, total }
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {

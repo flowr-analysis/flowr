@@ -2,16 +2,16 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import type { CommonSummarizerConfiguration } from '../summarizer'
-import { Summarizer } from '../summarizer'
+import type { CommonSummarizerConfiguration } from '../../../src/util/summarizer'
+import { Summarizer } from '../../../src/util/summarizer'
 import type { UltimateSlicerStats } from './data'
 import fs from 'fs'
 import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
-import { jsonReplacer } from '../../json'
-import { ultimateStats2String } from '../../../../benchmark/src'
+import { jsonReplacer } from '../../../src/util/json'
+import { ultimateStats2String } from '../stats'
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
-import { readLineByLine, readLineByLineSync } from '../../files'
+import { readLineByLine, readLineByLineSync } from '../../../src/util/files'
 import path from 'path'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {

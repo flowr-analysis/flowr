@@ -23,7 +23,7 @@ import {
 	requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
-import { ansiFormatter, voidFormatter } from '../../../../statistics/src'
+import { ansiFormatter, voidFormatter } from '../../../../src/util/ansi'
 import { LogLevel } from '../../../../src/util/log'
 import type { ControlFlowInformation } from '../../../../src/util/cfg/cfg'
 import { cfg2quads, extractCFG } from '../../../../src/util/cfg/cfg'

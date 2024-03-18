@@ -1,5 +1,5 @@
 import type { RShell } from '../../../../src/r-bridge'
-import { italic } from '../../../../statistics/src'
+import { italic } from '../../../../src/util/ansi'
 import type { ReplCommand, ReplOutput } from './main'
 
 

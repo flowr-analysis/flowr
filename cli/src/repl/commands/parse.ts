@@ -5,8 +5,8 @@ import {
 	getTokenType,
 	objectWithArrUnwrap,
 } from '../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
-import type { OutputFormatter } from '../../../../statistics/src'
-import { FontStyles } from '../../../../statistics/src'
+import type { OutputFormatter } from '../../../../src/util/ansi'
+import { FontStyles } from '../../../../src/util/ansi'
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../../src/core'
 import { prepareParsedData } from '../../../../src/r-bridge/lang-4.x/ast/parser/json/format'

@@ -1,7 +1,7 @@
-import type { MergeableRecord } from '../../../objects'
+import type { MergeableRecord } from '../../../../src/util/objects'
 import type { UltimateSlicerStats } from '../data'
 import fs from 'fs'
-import { jsonReplacer } from '../../../json'
+import { jsonReplacer } from '../../../../src/util/json'
 
 interface BenchmarkGraphEntry extends MergeableRecord {
 	name:   string,

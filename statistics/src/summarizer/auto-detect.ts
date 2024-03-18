@@ -1,7 +1,7 @@
-import { SummarizerType } from './summarizer'
+import { SummarizerType } from '../../../src/util/summarizer'
 import fs from 'fs'
-import { log } from '../log'
-import { statisticsFileNameRegex } from './statistics/summarizer'
+import { log } from '../../../src/util/log'
+import { statisticsFileNameRegex } from './summarizer'
 
 export async function detectSummarizationType(inputPath: string): Promise<SummarizerType> {
 	if(fs.statSync(inputPath).isFile()) {

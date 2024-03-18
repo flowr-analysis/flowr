@@ -1,8 +1,7 @@
 import {
 	initFileProvider,
-	setFormatter,
-	voidFormatter
 } from '../../statistics/src'
+import { setFormatter, voidFormatter } from '../../src/util/ansi'
 import { log } from '../../src/util/log'
 import { allRFilesFrom } from '../../src/util/files'
 import { processCommandLineArgs } from './common'

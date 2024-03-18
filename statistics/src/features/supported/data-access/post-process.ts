@@ -1,11 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../../src/util/summarizer/statistics/summarizer'
-import type {
-	SummarizedMeasurement } from '../../../../../src/util/summarizer/benchmark/data'
-import {
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../../src/util/summarizer/benchmark/data'
 import type { MergeableRecord } from '../../../../../src/util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
@@ -19,7 +12,9 @@ import type { DataAccessInfo } from './data-access'
 import { bigint2number } from '../../../../../src/util/numbers'
 import fs from 'fs'
 import path from 'path'
-import { summarizeMeasurement } from '../../../../../src/util/summarizer/benchmark/first-phase/process'
+import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 interface DataAccessMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	singleBracket:         Map<number, Measurement | CommonSyntaxTypeCounts<Measurement>>,

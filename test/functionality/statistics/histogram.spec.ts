@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { histogramFromNumbers } from '../../../statistics/src'
+import { histogramFromNumbers } from '../../../statistics/src/summarizer/post-process'
 
 describe('Histogram', () => {
 	describe('histogramFromNumbers', () => {

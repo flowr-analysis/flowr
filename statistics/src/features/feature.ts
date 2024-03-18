@@ -22,7 +22,7 @@ import type { NormalizedAst } from '../../../src/r-bridge'
 import type { DataflowInformation } from '../../../src/dataflow/internal/info'
 import { variables } from './supported/variables/variables'
 import type { MetaStatistics } from '../meta-statistics'
-import type { StatisticsSummarizerConfiguration } from '../../../src/util/summarizer/statistics/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

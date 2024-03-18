@@ -1,19 +1,18 @@
 import type {
 	PerSliceMeasurements,
 	PerSliceStats,
-	SlicerStats, SummarizedSlicerStats ,
-	CommonSlicerMeasurements } from '../../../../../benchmark/src'
-import {
-	stats2string,
-	summarizeSlicerStats
-} from '../../../../../benchmark/src'
-import { guard } from '../../../assert'
-import type { SlicingCriteria } from '../../../../slicing'
-import { escape } from '../../../../../statistics/src'
+	SlicerStats ,
+	CommonSlicerMeasurements } from '../../../src/stats/stats'
+import type { SummarizedSlicerStats } from '../data'
+import { stats2string } from '../../stats/print'
+import { guard } from '../../../../src/util/assert'
+import type { SlicingCriteria } from '../../../../src'
+import { escape } from '../../../../src/util/ansi'
 import fs from 'fs'
-import { jsonReplacer } from '../../../json'
-import { readLineByLineSync } from '../../../files'
+import { jsonReplacer } from '../../../../src/util/json'
+import { readLineByLineSync } from '../../../../src/util/files'
 import { processNextSummary, summarizeAllSummarizedStats } from '../second-phase/process'
+import { summarizeSlicerStats } from './process'
 
 interface BenchmarkData {
 	filename:  string,

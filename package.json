@@ -339,10 +339,6 @@
               "from": ["cli", "statistics"]
             },
             {
-              "target": "cli",
-              "from": ["benchmark", "statistics"]
-            },
-            {
               "target": "statistics",
               "from": ["benchmark", "cli"]
             },

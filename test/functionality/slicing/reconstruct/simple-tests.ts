@@ -100,7 +100,7 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('function definition', () => {
-		const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
+		const testCases: {name: string, case: string, argument: string[], expected: string}[] = [
 			//this test does not reconstruct the function
 			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
 			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
@@ -114,9 +114,9 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe.only('Branches', () => {
-		const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
-			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4}', argument: ['1'], expected: 'if(TRUE) { x <- 3 }' },
-			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4}', argument: ['1'], expected: 'if(FALSE) {        } else { x <- 4 }' }
+		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
+			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: '10', expected: 'if(TRUE) { x <- 3 }\nx' },
+			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: '10', expected: 'if(FALSE) {        } else { x <- 4 }\nx' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)

@@ -172,7 +172,9 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
 	//const endPos = ifThenElse.location.end
-	const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
+	//const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
+
+
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}
@@ -182,17 +184,17 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		return []
 	}
 	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
+	console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
 
 	let out = merge([
 		...additionalTokens,
-		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }]
+		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }],
+		when
 	])
 
-	console.log(JSON.stringify(when,jsonReplacer))
-	console.log(JSON.stringify(otherwise,jsonReplacer))
-
-	console.log(JSON.stringify(out,jsonReplacer))
-	
+	console.log('when: ', JSON.stringify(when,jsonReplacer))
+	console.log('otherwise: ', JSON.stringify(otherwise,jsonReplacer))
+	/*
 	if(!(when[0].linePart.length === 2)) {
 		console.log('we have an if-body')
 		out = merge([
@@ -200,14 +202,19 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			when
 		])
 	}
+	*/
 	if(!(otherwise[0].linePart.length === 2)) {
 		console.log('we have an else-body')
+		const hBody = out[out.length - 1].linePart
+		const elsePos = hBody[hBody.length - 1].loc
 		out = merge([
 			out,
-			[{ linePart: [{ part: 'else', loc: conditionPos }], indent: 0 }], //may have to change the location
+			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 } }], indent: 0 }], //may have to change the location
 			otherwise
 		])
 	}
+
+	console.log('out: ', JSON.stringify(out,jsonReplacer))
 	return out
 }
 

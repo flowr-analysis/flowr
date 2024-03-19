@@ -13,7 +13,6 @@
   },
   "scripts": {
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
-    "main": "ts-node src/flowr.ts",
     "release": "release-it --ci",
     "build": "tsc --project .",
     "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",

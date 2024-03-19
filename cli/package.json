@@ -12,6 +12,7 @@
         "url": "https://github.com/Code-Inspect/flowr/issues"
     },
     "scripts": {
+        "main": "ts-node src/flowr.ts",
         "stats": "ts-node src/statistics-app.ts",
         "stats-helper": "ts-node src/statistics-helper-app.ts",
         "slicer": "ts-node src/slicer-app.ts",

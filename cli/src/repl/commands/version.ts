@@ -1,6 +1,7 @@
 import type { ReplCommand, ReplOutput } from './main'
 import { RShell } from '@eagleoutice/flowr/r-bridge'
 import { guard } from '@eagleoutice/flowr/util/assert'
+import { flowrVersion } from '../../../../src/util/version'
 
 type Version = `${number}.${number}.${number}`
 
@@ -21,7 +22,7 @@ export async function retrieveVersionInformation(shell?: RShell): Promise<Versio
 		shell = new RShell()
 		process.on('exit', () => (shell as RShell).close())
 	}
-	const flowr = '0.0.0' // TODO get flowR version correctly again
+	const flowr = flowrVersion().toString()
 	const r = (await shell.usedRVersion())?.format() ?? 'unknown'
 
 	guard(versionRegex.test(flowr), `flowR version ${flowr} does not match the expected format!`)

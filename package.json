@@ -22,7 +22,8 @@
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
-    "test-full": "npm run test -- --test-installation"
+    "test-full": "npm run test -- --test-installation",
+    "postinstall": "cd benchmark && npm i && cd .. && cd cli && npm i && cd .. && cd statistics && npm i"
   },
   "keywords": [
     "static code analysis",

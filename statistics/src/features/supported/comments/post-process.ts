@@ -1,12 +1,12 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { CommentInfo } from './comments'
 import { initialCommentInfo } from './comments'
-import { guard } from '../../../../../src/util/assert'
+import { guard } from '@eagleoutice/flowr/util/assert'
 import fs from 'fs'
 import path from 'path'
-import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord & {

@@ -6,24 +6,24 @@
 import type {
 	NormalizedAst,
 	RParseRequestFromFile, RParseRequestFromText
-} from '../../src/r-bridge'
+} from '@eagleoutice/flowr/r-bridge'
 import {
 	collectAllIds,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell
-} from '../../src/r-bridge'
+} from '@eagleoutice/flowr/r-bridge'
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
-import { guard } from '../../src/util/assert'
-import type { DataflowInformation } from '../../src/dataflow/internal/info'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import type { DataflowInformation } from '@eagleoutice/flowr/dataflow/internal/info'
 import type {
 	SlicingCriteria,
 	SlicingCriteriaFilter,
 	SliceResult, ReconstructionResult
-} from '../../src/slicing'
+} from '@eagleoutice/flowr/slicing'
 import {
 	collectAllSlicingCriteria
-} from '../../src/slicing'
+} from '@eagleoutice/flowr/slicing'
 import type {
 	CommonSlicerMeasurements,
 	ElapsedTime,
@@ -32,11 +32,11 @@ import type {
 	SlicerStats
 } from './stats'
 import fs from 'fs'
-import { log, LogLevel } from '../../src/util/log'
-import type { MergeableRecord } from '../../src/util/objects'
-import type { STEPS, StepResult } from '../../src/core'
-import { LAST_STEP, SteppingSlicer } from '../../src/core'
-import { withoutWhitespace } from '../../src/util/strings'
+import { log, LogLevel } from '@eagleoutice/flowr/util/log'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
+import type { STEPS, StepResult } from '@eagleoutice/flowr/core'
+import { LAST_STEP, SteppingSlicer } from '@eagleoutice/flowr/core'
+import { withoutWhitespace } from '@eagleoutice/flowr/util/strings'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 

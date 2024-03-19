@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
-import { guard } from '../../../src/util/assert'
-import { log, LogLevel } from '../../../src/util/log'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import { log, LogLevel } from '@eagleoutice/flowr/util/log'
 
 type FileDescriptor = number
 export type AppendFnType = string | number | symbol

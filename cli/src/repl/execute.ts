@@ -1,8 +1,8 @@
-import { log } from '../../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 import cp from 'child_process'
 import type { Readable, Writable } from 'stream'
 import readline from 'readline'
-import { guard } from '../../../src/util/assert'
+import { guard } from '@eagleoutice/flowr/util/assert'
 
 type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined]
 export type StdioProcessor = (stdio: Stdio) => void

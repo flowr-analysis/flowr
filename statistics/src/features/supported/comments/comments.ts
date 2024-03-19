@@ -1,6 +1,6 @@
 import type { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
-import { guard, isNotNull, isNotUndefined } from '../../../../../src/util/assert'
+import { guard, isNotNull, isNotUndefined } from '@eagleoutice/flowr/util/assert'
 import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'

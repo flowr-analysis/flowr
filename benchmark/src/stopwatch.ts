@@ -1,4 +1,4 @@
-import { guard } from '../../src/util/assert'
+import { guard } from '@eagleoutice/flowr/util/assert'
 
 export interface IStoppableStopwatch {
 	/** Stop the given stopwatch. */

@@ -1,10 +1,10 @@
 import type { Reduction, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
-import { DefaultMap } from '../../../../src/util/defaultmap'
+import { DefaultMap } from '@eagleoutice/flowr/util/defaultmap'
 import type { SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats'
 import { PerSliceMeasurements, CommonSlicerMeasurements } from '../../stats/stats'
-import { guard } from '../../../../src/util/assert'
-import type { SummarizedMeasurement } from '../../../../src/util/summarizer'
-import { summarizeMeasurement } from '../../../../src/util/summarizer'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import { summarizeReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {

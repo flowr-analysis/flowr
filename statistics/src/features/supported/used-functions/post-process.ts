@@ -1,5 +1,5 @@
 
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
@@ -7,16 +7,16 @@ import {
 	emptyCommonSyntaxTypeCounts,
 } from '../../common-syntax-probability'
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import { readLineByLineSync } from '../../../../../src/util/files'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
 import path from 'path'
 import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'fs'
-import { date2string } from '../../../../../src/util/time'
+import { date2string } from '@eagleoutice/flowr/util/time'
 import type { FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { AllCallsFileBase } from './used-functions'
-import { bigint2number } from '../../../../../src/util/numbers'
-import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { bigint2number } from '@eagleoutice/flowr/util/numbers'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]

@@ -1,5 +1,5 @@
-import type { FeatureKey } from '../../../statistics/src'
-import { allFeatureNames } from '../../../statistics/src'
+import type { FeatureKey } from '@eagleoutice/flowr-statistics'
+import { allFeatureNames } from '@eagleoutice/flowr-statistics'
 import path from 'path'
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {

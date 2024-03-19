@@ -1,5 +1,5 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
@@ -9,11 +9,11 @@ import {
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import type { DataAccessInfo } from './data-access'
-import { bigint2number } from '../../../../../src/util/numbers'
+import { bigint2number } from '@eagleoutice/flowr/util/numbers'
 import fs from 'fs'
 import path from 'path'
-import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 interface DataAccessMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {

@@ -4,25 +4,24 @@
  * If started with arguments it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
-import { log, LogLevel } from '../../src/util/log'
-import type { RShellOptions } from '../../src/r-bridge'
-import { RShell } from '../../src/r-bridge'
+import { log, LogLevel } from '@eagleoutice/flowr/util/log'
+import type { RShellOptions } from '@eagleoutice/flowr/r-bridge'
+import { RShell } from '@eagleoutice/flowr/r-bridge'
 import type { OptionDefinition } from 'command-line-usage'
 import commandLineUsage from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
-import { guard } from '../../src/util/assert'
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../../src/util/ansi'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '@eagleoutice/flowr/util/ansi'
 import { repl, replProcessAnswer, waitOnScript } from './repl'
 import type { ScriptInformation } from './common'
 import { scripts } from './common'
 import type { DeepReadonly } from 'ts-essentials'
-import { version } from '../../package.json'
 import { printVersionInformation } from './repl/commands/version'
 import { FlowRServer } from './repl/server/server'
 import { standardReplOutput } from './repl/commands'
 import type { Server } from './repl/server/net'
 import { NetServer, WebSocketServerWrapper } from './repl/server/net'
-import { defaultConfigFile, setConfigFile } from '../../src/config'
+import { defaultConfigFile, setConfigFile } from '@eagleoutice/flowr/config'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -58,7 +57,8 @@ export interface FlowrCliOptions {
 
 export const optionHelp = [
 	{
-		header:  `flowR (version ${String(version)})`,
+		// TODO readd flowR version here
+		header:  'flowR (version ???)',
 		content: 'A static dataflow analyzer and program slicer for R programs'
 	},
 	{

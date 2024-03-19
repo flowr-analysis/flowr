@@ -1,7 +1,7 @@
 import type { IdMessageBase, MessageDefinition } from './messages'
-import type { LAST_PER_FILE_STEP, StepResults } from '../../../../../src/core'
+import type { LAST_PER_FILE_STEP, StepResults } from '@eagleoutice/flowr/core'
 import Joi from 'joi'
-import type { ControlFlowInformation } from '../../../../../src/util/cfg/cfg'
+import type { ControlFlowInformation } from '@eagleoutice/flowr/util/cfg/cfg'
 
 /**
  * Send by the client to request an analysis of a given file.

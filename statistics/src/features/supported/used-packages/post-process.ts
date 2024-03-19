@@ -11,11 +11,11 @@ import type { UsedPackageInfo } from './used-packages'
 import { initialUsedPackageInfos } from './used-packages'
 import fs from 'fs'
 import path from 'path'
-import { readLineByLineSync } from '../../../../../src/util/files'
-import { array2bag } from '../../../../../src/util/arrays'
-import { startAndEndsWith } from '../../../../../src/util/strings'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
+import { array2bag } from '@eagleoutice/flowr/util/arrays'
+import { startAndEndsWith } from '@eagleoutice/flowr/util/strings'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
 

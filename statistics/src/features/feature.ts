@@ -17,9 +17,9 @@ import {
 	values
 } from './supported'
 import type { EvalOptions } from 'xpath-ts2/src/parse-api'
-import type { MergeableRecord } from '../../../src/util/objects'
-import type { NormalizedAst } from '../../../src/r-bridge'
-import type { DataflowInformation } from '../../../src/dataflow/internal/info'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
+import type { NormalizedAst } from '@eagleoutice/flowr/r-bridge'
+import type { DataflowInformation } from '@eagleoutice/flowr/dataflow/internal/info'
 import { variables } from './supported/variables/variables'
 import type { MetaStatistics } from '../meta-statistics'
 import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'

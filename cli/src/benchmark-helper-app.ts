@@ -1,10 +1,10 @@
-import { log } from '../../src/util/log'
-import { BenchmarkSlicer } from '../../benchmark/src'
-import { DefaultAllVariablesFilter } from '../../src/slicing'
-import type { RParseRequestFromFile } from '../../src/r-bridge'
+import { log } from '@eagleoutice/flowr/util/log'
+import { BenchmarkSlicer } from '@eagleoutice/flowr-benchmark'
+import { DefaultAllVariablesFilter } from '@eagleoutice/flowr/slicing'
+import type { RParseRequestFromFile } from '@eagleoutice/flowr/r-bridge'
 import fs from 'fs'
-import { jsonReplacer } from '../../src/util/json'
-import { guard } from '../../src/util/assert'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
+import { guard } from '@eagleoutice/flowr/util/assert'
 import { processCommandLineArgs } from './common'
 
 

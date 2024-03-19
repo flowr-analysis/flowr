@@ -14,17 +14,10 @@
   "scripts": {
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
     "main": "ts-node src/flowr.ts",
-    "stats": "ts-node src/cli/statistics-app.ts",
-    "stats-helper": "ts-node src/cli/statistics-helper-app.ts",
-    "slicer": "ts-node src/cli/slicer-app.ts",
     "release": "release-it --ci",
-    "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
-    "benchmark": "npm run build && node dist/src/cli/benchmark-app.js",
-    "summarizer": "ts-node src/cli/summarizer-app.ts",
-    "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
-    "lint-local": "eslint src/ benchmark/ cli/ statistics/ test/ --rule \"no-warning-comments: off\"",
-    "lint": "npm run license-compat -- --summary && eslint src/ benchmark/ cli/ statistics/ test/",
+    "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",
+    "lint": "npm run license-compat -- --summary && eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
@@ -55,12 +48,7 @@
     "extension": [
       ".ts"
     ],
-    "include": [
-      "src/**/*.ts",
-      "benchmark/**/*.ts",
-      "cli/**/*.ts",
-      "statistics/**/*.ts"
-    ],
+    "include": "src/**/*.ts",
     "reporter": [
       "html",
       "text",
@@ -77,9 +65,6 @@
     ],
     "entryPoints": [
       "src",
-      "benchmark",
-      "cli",
-      "statistics",
       "test/helper"
     ],
     "entryPointStrategy": "expand",
@@ -151,13 +136,6 @@
       "@stylistic/ts",
       "import"
     ],
-    "settings": {
-      "import/resolver": {
-        "node": {
-          "extensions": [".ts"]
-        }
-      }
-    },
     "rules": {
       "@stylistic/js/object-curly-spacing": [
         "error",
@@ -329,26 +307,7 @@
         "1tbs"
       ],
       "@stylistic/js/new-parens": "error",
-      "import/no-duplicates": "error",
-      "import/no-restricted-paths": [
-        "error",
-        {
-          "zones": [
-            {
-              "target": "benchmark",
-              "from": ["cli", "statistics"]
-            },
-            {
-              "target": "statistics",
-              "from": ["benchmark", "cli"]
-            },
-            {
-              "target": "src",
-              "from": ["benchmark", "cli", "statistics"]
-            }
-          ]
-        }
-      ]
+      "import/no-duplicates": "error"
     }
   },
   "release-it": {
@@ -384,9 +343,6 @@
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
-  },
-  "engines": {
-    "node": ">=16.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",

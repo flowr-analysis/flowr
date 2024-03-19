@@ -2,9 +2,9 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import { guard } from '../../../src/util/assert'
+import { guard } from '@eagleoutice/flowr/util/assert'
 import type { ElapsedTime, PerSliceMeasurements } from './stats'
-import type { SummarizedMeasurement } from '../../../src/util/summarizer'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import type { SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 
 const padSize = 15

@@ -1,5 +1,5 @@
 import type { ReplCommand } from './main'
-import { log } from '../../../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 
 export const quitCommand: ReplCommand = {
 	description:  'End the repl',

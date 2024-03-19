@@ -5,7 +5,7 @@ import {
 	DummyAppendProvider,
 	StatisticFileProvider
 } from './file-provider'
-import { log } from '../../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 
 
 /**

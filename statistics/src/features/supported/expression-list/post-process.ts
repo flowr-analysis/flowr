@@ -11,7 +11,7 @@ import type { ExpressionListInfo } from './expression-list'
 import fs from 'fs'
 import path from 'path'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 type UsedExpressionListPostProcessing = ReplaceKeysForSummary<ExpressionListInfo, SummarizedWithProject>
 

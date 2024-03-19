@@ -1,5 +1,5 @@
-import type { RShell } from '../../../../src/r-bridge'
-import { italic } from '../../../../src/util/ansi'
+import type { RShell } from '@eagleoutice/flowr/r-bridge'
+import { italic } from '@eagleoutice/flowr/util/ansi'
 import type { ReplCommand, ReplOutput } from './main'
 
 

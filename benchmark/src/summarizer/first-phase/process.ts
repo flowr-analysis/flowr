@@ -1,8 +1,8 @@
 import * as tmp from 'tmp'
 import type { Reduction, SliceSizeCollection, SummarizedSlicerStats } from '../data'
-import type { SummarizedMeasurement } from '../../../../src/util/summarizer'
-import { summarizeMeasurement } from '../../../../src/util/summarizer'
-import { isNotUndefined } from '../../../../src/util/assert'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { isNotUndefined } from '@eagleoutice/flowr/util/assert'
 import type {
 	PerSliceMeasurements,
 	PerSliceStats,
@@ -10,11 +10,11 @@ import type {
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../../stats/stats'
-import { log } from '../../../../src/util/log'
-import type { SlicingCriteria } from '../../../../src'
-import { DefaultMap } from '../../../../src/util/defaultmap'
-import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../src/r-bridge'
-import { withoutWhitespace } from '../../../../src/util/strings'
+import { log } from '@eagleoutice/flowr/util/log'
+import type { SlicingCriteria } from '@eagleoutice/flowr'
+import { DefaultMap } from '@eagleoutice/flowr/util/defaultmap'
+import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '@eagleoutice/flowr/r-bridge'
+import { withoutWhitespace } from '@eagleoutice/flowr/util/strings'
 import fs from 'fs'
 
 const tempfile = (() => {

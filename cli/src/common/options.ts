@@ -1,7 +1,7 @@
 import type { OptionDefinition } from 'command-line-usage'
 import os from 'os'
-import { date2string } from '../../../src/util/time'
-import { allFeatureNames } from '../../../statistics/src'
+import { date2string } from '@eagleoutice/flowr/util/time'
+import { allFeatureNames } from '@eagleoutice/flowr-statistics'
 
 /**
  * This interface describes options, that every script *must* provide.

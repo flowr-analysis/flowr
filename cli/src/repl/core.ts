@@ -3,13 +3,13 @@
  *
  * @module
  */
-import { fileProtocol, RShell } from '../../../src/r-bridge'
-import { bold } from '../../../src/util/ansi'
+import { fileProtocol, RShell } from '@eagleoutice/flowr/r-bridge'
+import { bold } from '@eagleoutice/flowr/util/ansi'
 import { prompt } from './prompt'
 import type { ReplOutput } from './commands'
 import { getCommandNames , getCommand, standardReplOutput } from './commands'
 import * as readline from 'readline'
-import { splitAtEscapeSensitive } from '../../../src/util/args'
+import { splitAtEscapeSensitive } from '@eagleoutice/flowr/util/args'
 import { executeRShellCommand } from './commands/execute'
 import os from 'os'
 import path from 'path'

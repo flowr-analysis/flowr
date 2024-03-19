@@ -1,10 +1,10 @@
 import type { ClusterReport } from './clusterer'
-import { DefaultMap } from '../../../../src/util/defaultmap'
-import { guard, isNotUndefined } from '../../../../src/util/assert'
-import type { Table } from '../../../../src/util/files'
-import { BiMap } from '../../../../src/util/bimap'
+import { DefaultMap } from '@eagleoutice/flowr/util/defaultmap'
+import { guard, isNotUndefined } from '@eagleoutice/flowr/util/assert'
+import type { Table } from '@eagleoutice/flowr/util/files'
+import { BiMap } from '@eagleoutice/flowr/util/bimap'
 import fs from 'fs'
-import { summarizeMeasurement } from '../../../../src/util/summarizer'
+import { summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).

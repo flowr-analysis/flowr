@@ -3,17 +3,17 @@ import path from 'path'
 import type {
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
-} from '../../../../statistics/src'
+} from '../../'
 import {
 	ALL_FEATURES
-} from '../../../../statistics/src'
+} from '../../'
 import type { StatisticsSummarizerConfiguration } from '../summarizer'
-import { readLineByLineSync } from '../../../../src/util/files'
-import { guard } from '../../../../src/util/assert'
-import { date2string } from '../../../../src/util/time'
-import { sum } from '../../../../src/util/arrays'
-import type { CommonSummarizerConfiguration } from '../../../../src/util/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../src/util/summarizer'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import { date2string } from '@eagleoutice/flowr/util/time'
+import { sum } from '@eagleoutice/flowr/util/arrays'
+import type { CommonSummarizerConfiguration } from '@eagleoutice/flowr/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 
 function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {

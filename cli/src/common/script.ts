@@ -6,9 +6,9 @@
 import { scripts } from './scripts-info'
 import commandLineUsage from 'command-line-usage'
 import type { CommonOptions } from './options'
-import { log, LogLevel } from '../../../src/util/log'
+import { log, LogLevel } from '@eagleoutice/flowr/util/log'
 import commandLineArgs from 'command-line-args'
-import { italic } from '../../../src/util/ansi'
+import { italic } from '@eagleoutice/flowr/util/ansi'
 
 /**
  * Just a helping data structure to allow the user to provide example usages of the respective script.

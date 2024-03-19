@@ -7,11 +7,11 @@
  */
 
 import { processCommandLineArgs } from './common'
-import { allFeatureNames } from '../../statistics/src'
-import { BenchmarkSummarizer } from '../../benchmark/src/summarizer/summarizer'
-import { StatisticsSummarizer } from '../../statistics/src/summarizer/summarizer'
-import { SummarizerType } from '../../src/util/summarizer'
-import { detectSummarizationType } from '../../statistics/src/summarizer/auto-detect'
+import { allFeatureNames } from '@eagleoutice/flowr-statistics'
+import { BenchmarkSummarizer } from '@eagleoutice/flowr-benchmark/summarizer/summarizer'
+import { StatisticsSummarizer } from '@eagleoutice/flowr-statistics/summarizer/summarizer'
+import { SummarizerType } from '@eagleoutice/flowr/util/summarizer'
+import { detectSummarizationType } from '@eagleoutice/flowr-statistics/summarizer/auto-detect'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean

@@ -1,6 +1,6 @@
-import { SummarizerType } from '../../../src/util/summarizer'
+import { SummarizerType } from '@eagleoutice/flowr/util/summarizer'
 import fs from 'fs'
-import { log } from '../../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 import { statisticsFileNameRegex } from './summarizer'
 
 export async function detectSummarizationType(inputPath: string): Promise<SummarizerType> {

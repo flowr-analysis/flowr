@@ -1,8 +1,8 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
-import type { NodeId, RNodeWithParent } from '../../../../../src/r-bridge'
-import { RType, visitAst, RoleInParent, rolesOfParents } from '../../../../../src/r-bridge'
-import { assertUnreachable, guard } from '../../../../../src/util/assert'
+import type { NodeId, RNodeWithParent } from '@eagleoutice/flowr/r-bridge'
+import { RType, visitAst, RoleInParent, rolesOfParents } from '@eagleoutice/flowr/r-bridge'
+import { assertUnreachable, guard } from '@eagleoutice/flowr/util/assert'
 import { appendStatisticsFile } from '../../../output'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'

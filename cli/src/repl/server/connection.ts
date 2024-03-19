@@ -1,6 +1,6 @@
-import type { StepResults } from '../../../../src/core'
-import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '../../../../src/core'
-import type { NormalizedAst, RShell } from '../../../../src/r-bridge'
+import type { StepResults } from '@eagleoutice/flowr/core'
+import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '@eagleoutice/flowr/core'
+import type { NormalizedAst, RShell } from '@eagleoutice/flowr/r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import type {
@@ -23,14 +23,14 @@ import {
 	requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
-import { ansiFormatter, voidFormatter } from '../../../../src/util/ansi'
-import { LogLevel } from '../../../../src/util/log'
-import type { ControlFlowInformation } from '../../../../src/util/cfg/cfg'
-import { cfg2quads, extractCFG } from '../../../../src/util/cfg/cfg'
-import { StepOutputFormat } from '../../../../src/core/print/print'
-import type { DataflowInformation } from '../../../../src/dataflow/internal/info'
-import type { QuadSerializationConfiguration } from '../../../../src/util/quads'
-import { defaultQuadIdGenerator } from '../../../../src/util/quads'
+import { ansiFormatter, voidFormatter } from '@eagleoutice/flowr/util/ansi'
+import { LogLevel } from '@eagleoutice/flowr/util/log'
+import type { ControlFlowInformation } from '@eagleoutice/flowr/util/cfg/cfg'
+import { cfg2quads, extractCFG } from '@eagleoutice/flowr/util/cfg/cfg'
+import { StepOutputFormat } from '@eagleoutice/flowr/core/print/print'
+import type { DataflowInformation } from '@eagleoutice/flowr/dataflow/internal/info'
+import type { QuadSerializationConfiguration } from '@eagleoutice/flowr/util/quads'
+import { defaultQuadIdGenerator } from '@eagleoutice/flowr/util/quads'
 
 /**
  * Each connection handles a single client, answering to its requests.

@@ -1,9 +1,9 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
-import type { RNodeWithParent } from '../../../../../src/r-bridge'
-import { RType, visitAst } from '../../../../../src/r-bridge'
-import { EdgeType } from '../../../../../src/dataflow'
+import type { RNodeWithParent } from '@eagleoutice/flowr/r-bridge'
+import { RType, visitAst } from '@eagleoutice/flowr/r-bridge'
+import { EdgeType } from '@eagleoutice/flowr/dataflow'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {

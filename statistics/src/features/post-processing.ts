@@ -1,4 +1,4 @@
-import type { MergeableRecord } from '../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import path from 'path'
 import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
 

@@ -2,10 +2,10 @@ import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { ValueInfo } from './values'
 import fs from 'fs'
 import path from 'path'
-import { readLineByLineSync } from '../../../../../src/util/files'
-import { date2string } from '../../../../../src/util/time'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
+import { date2string } from '@eagleoutice/flowr/util/time'
 import type { StatisticsOutputFormat } from '../../../output'
-import { array2bag } from '../../../../../src/util/arrays'
+import { array2bag } from '@eagleoutice/flowr/util/arrays'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -15,7 +15,7 @@ import {
 	recordFilePath
 } from '../../post-processing'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 // values contains - and + values
 

@@ -1,15 +1,15 @@
 import {
 	initFileProvider,
-} from '../../statistics/src'
-import { setFormatter, voidFormatter } from '../../src/util/ansi'
-import { log } from '../../src/util/log'
-import { allRFilesFrom } from '../../src/util/files'
+} from '@eagleoutice/flowr-statistics'
+import { setFormatter, voidFormatter } from '@eagleoutice/flowr/util/ansi'
+import { log } from '@eagleoutice/flowr/util/log'
+import { allRFilesFrom } from '@eagleoutice/flowr/util/files'
 import { processCommandLineArgs } from './common'
-import type { Arguments } from '../../src/util/parallel'
-import { LimitedThreadPool } from '../../src/util/parallel'
+import type { Arguments } from '@eagleoutice/flowr/util/parallel'
+import { LimitedThreadPool } from '@eagleoutice/flowr/util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
-import { jsonReplacer } from '../../src/util/json'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
 import fs from 'fs'
 
 export interface StatsCliOptions {

@@ -6,13 +6,13 @@ import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { ControlflowInfo } from './control-flow'
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 interface ControlFlowMetaPostProcessing<Measurement> extends MergeableRecord {
 	ifThen:           CommonSyntaxTypeCounts<Measurement>

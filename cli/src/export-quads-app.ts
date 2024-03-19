@@ -1,9 +1,9 @@
-import type { RParseRequestFromFile } from '../../src/r-bridge'
-import { retrieveNormalizedAstFromRCode, RShell } from '../../src/r-bridge'
-import { log } from '../../src/util/log'
-import { serialize2quads } from '../../src/util/quads'
+import type { RParseRequestFromFile } from '@eagleoutice/flowr/r-bridge'
+import { retrieveNormalizedAstFromRCode, RShell } from '@eagleoutice/flowr/r-bridge'
+import { log } from '@eagleoutice/flowr/util/log'
+import { serialize2quads } from '@eagleoutice/flowr/util/quads'
 import fs from 'fs'
-import { allRFilesFrom } from '../../src/util/files'
+import { allRFilesFrom } from '@eagleoutice/flowr/util/files'
 import { processCommandLineArgs } from './common'
 
 export interface QuadsCliOptions {

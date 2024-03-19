@@ -1,10 +1,10 @@
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import { readLineByLineSync } from '../../../../../src/util/files'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
 import path from 'path'
 import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'fs'
-import { date2string } from '../../../../../src/util/time'
+import { date2string } from '@eagleoutice/flowr/util/time'
 import type {
 	FunctionDefinitionInfo,
 	SingleFunctionDefinitionInformation
@@ -14,9 +14,9 @@ import {
 } from './defined-functions'
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
-import { array2bag } from '../../../../../src/util/arrays'
-import type { SummarizedMeasurement } from '../../../../../src/util/summarizer'
-import { summarizedMeasurement2CsvHeader , summarizeMeasurement, summarizedMeasurement2Csv } from '../../../../../src/util/summarizer'
+import { array2bag } from '@eagleoutice/flowr/util/arrays'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizedMeasurement2CsvHeader , summarizeMeasurement, summarizedMeasurement2Csv } from '@eagleoutice/flowr/util/summarizer'
 
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 

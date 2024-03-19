@@ -1,8 +1,8 @@
-import { jsonReplacer } from '../../../../src/util/json'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
 import type { IdMessageBase } from './messages/messages'
 import type { Socket } from './net'
 import { serverLog } from './server'
-import { LogLevel } from '../../../../src/util/log'
+import { LogLevel } from '@eagleoutice/flowr/util/log'
 
 export function getUnnamedSocketName(c: Socket): string {
 	return `${c.remoteAddress ?? '?'}@${c.remotePort ?? '?'}`

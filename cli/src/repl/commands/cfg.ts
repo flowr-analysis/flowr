@@ -1,9 +1,9 @@
 import type { ReplCommand } from './main'
-import { SteppingSlicer } from '../../../../src/core'
-import type { RShell } from '../../../../src/r-bridge'
-import { fileProtocol , requestFromInput } from '../../../../src/r-bridge'
-import { extractCFG } from '../../../../src/util/cfg/cfg'
-import { cfgToMermaid, cfgToMermaidUrl } from '../../../../src/util/mermaid'
+import { SteppingSlicer } from '@eagleoutice/flowr/core'
+import type { RShell } from '@eagleoutice/flowr/r-bridge'
+import { fileProtocol , requestFromInput } from '@eagleoutice/flowr/r-bridge'
+import { extractCFG } from '@eagleoutice/flowr/util/cfg/cfg'
+import { cfgToMermaid, cfgToMermaidUrl } from '@eagleoutice/flowr/util/mermaid'
 
 async function controlflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({

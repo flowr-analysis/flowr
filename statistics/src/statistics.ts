@@ -2,19 +2,19 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
-	RShell } from '../../src/r-bridge'
+	RShell } from '@eagleoutice/flowr/r-bridge'
 import { ts2r
-} from '../../src/r-bridge'
+} from '@eagleoutice/flowr/r-bridge'
 import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { ALL_FEATURES, allFeatureNames } from './features'
 import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
-import { log } from '../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
-import type { StepResults } from '../../src/core'
-import { SteppingSlicer } from '../../src/core'
-import { jsonReplacer, jsonRetriever } from '../../src/util/json'
+import type { StepResults } from '@eagleoutice/flowr/core'
+import { SteppingSlicer } from '@eagleoutice/flowr/core'
+import { jsonReplacer, jsonRetriever } from '@eagleoutice/flowr/util/json'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files

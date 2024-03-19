@@ -10,10 +10,10 @@ import {
 import type { DefinedVariableInformation, VariableInfo } from './variables'
 import fs from 'fs'
 import path from 'path'
-import { readLineByLineSync } from '../../../../../src/util/files'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import { readLineByLineSync } from '@eagleoutice/flowr/util/files'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWithProject>
 

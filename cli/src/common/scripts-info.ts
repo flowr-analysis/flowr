@@ -3,7 +3,7 @@
  *
  * @module
  */
-import type { MergeableRecord } from '../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { OptionDefinition } from 'command-line-usage'
 import {
 	benchmarkHelperOptions,

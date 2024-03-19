@@ -2,17 +2,17 @@ import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { SummarizedWithProject } from '../../post-processing'
 import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import type { LoopInfo } from './loops'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { bigint2number } from '../../../../../src/util/numbers'
+import { bigint2number } from '@eagleoutice/flowr/util/numbers'
 import path from 'path'
 import fs from 'fs'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 
 type LoopInfoPostProcess = MergeableRecord & {

@@ -1,7 +1,7 @@
-import type { MergeableRecord } from '../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type { UltimateSlicerStats } from '../data'
 import fs from 'fs'
-import { jsonReplacer } from '../../../../src/util/json'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
 
 interface BenchmarkGraphEntry extends MergeableRecord {
 	name:   string,

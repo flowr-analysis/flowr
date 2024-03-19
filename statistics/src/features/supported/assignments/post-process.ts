@@ -1,5 +1,5 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
@@ -7,13 +7,13 @@ import {
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import type { AssignmentInfo } from './assignments'
-import { bigint2number } from '../../../../../src/util/numbers'
+import { bigint2number } from '@eagleoutice/flowr/util/numbers'
 import fs from 'fs'
 import path from 'path'
-import { getUniqueCombinationsOfSize } from '../../../../../src/util/arrays'
-import { guard } from '../../../../../src/util/assert'
+import { getUniqueCombinationsOfSize } from '@eagleoutice/flowr/util/arrays'
+import { guard } from '@eagleoutice/flowr/util/assert'
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '../../../../../src/util/summarizer'
+import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader, summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 interface OperatorInformation<Measurement, Uniques> {
 	uniqueProjects: Uniques

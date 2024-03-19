@@ -1,4 +1,4 @@
-import type { RParseRequestFromFile, RParseRequestFromText } from '../../src/r-bridge'
+import type { RParseRequestFromFile, RParseRequestFromText } from '@eagleoutice/flowr/r-bridge'
 
 /**
  * Statistics on skipped files, the time required, and more.

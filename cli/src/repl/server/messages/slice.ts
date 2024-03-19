@@ -1,5 +1,5 @@
-import type { SlicingCriteria } from '../../../../../src/slicing'
-import type { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../../src/core'
+import type { SlicingCriteria } from '@eagleoutice/flowr/slicing'
+import type { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '@eagleoutice/flowr/core'
 import type { IdMessageBase, MessageDefinition } from './messages'
 import * as Joi from 'joi'
 

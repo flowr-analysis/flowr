@@ -1,21 +1,21 @@
-import { RShell } from '../../src/r-bridge'
-import type { FeatureKey } from '../../statistics/src'
+import { RShell } from '@eagleoutice/flowr/r-bridge'
+import type { FeatureKey } from '@eagleoutice/flowr-statistics'
 import {
 	extractUsageStatistics,
 	staticRequests, initFileProvider, statisticsFileProvider
-} from '../../statistics/src'
-import { setFormatter, voidFormatter } from '../../src/util/ansi'
-import { log } from '../../src/util/log'
+} from '@eagleoutice/flowr-statistics'
+import { setFormatter, voidFormatter } from '@eagleoutice/flowr/util/ansi'
+import { log } from '@eagleoutice/flowr/util/log'
 import { processCommandLineArgs } from './common'
-import { jsonReplacer } from '../../src/util/json'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
 import fs from 'fs'
-import { guard } from '../../src/util/assert'
+import { guard } from '@eagleoutice/flowr/util/assert'
 import { retrieveArchiveName } from './common/features'
-import { printStepResult } from '../../src/core'
-import { StepOutputFormat } from '../../src/core/print/print'
-import { date2string } from '../../src/util/time'
+import { printStepResult } from '@eagleoutice/flowr/core'
+import { StepOutputFormat } from '@eagleoutice/flowr/core/print/print'
+import { date2string } from '@eagleoutice/flowr/util/time'
 import { create } from 'tar'
-import { extractCFG } from '../../src/util/cfg/cfg'
+import { extractCFG } from '@eagleoutice/flowr/util/cfg/cfg'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 

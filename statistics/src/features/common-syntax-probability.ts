@@ -1,11 +1,11 @@
 /**
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
-import type { RNodeWithParent } from '../../../src/r-bridge'
-import { RFalse, RTrue, RType } from '../../../src/r-bridge'
-import { bigint2number } from '../../../src/util/numbers'
-import type { SummarizedMeasurement } from '../../../src/util/summarizer'
-import { summarizeMeasurement } from '../../../src/util/summarizer'
+import type { RNodeWithParent } from '@eagleoutice/flowr/r-bridge'
+import { RFalse, RTrue, RType } from '@eagleoutice/flowr/r-bridge'
+import { bigint2number } from '@eagleoutice/flowr/util/numbers'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
+import { summarizeMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)

@@ -1,13 +1,13 @@
-import { log } from '../../src/util/log'
+import { log } from '@eagleoutice/flowr/util/log'
 import fs from 'fs'
-import { guard } from '../../src/util/assert'
-import type { ReconstructionResult, SingleSlicingCriterion, SliceResult, SlicingCriteria } from '../../src/slicing'
-import { BenchmarkSlicer, stats2string } from '../../benchmark/src'
-import { summarizeSlicerStats } from '../../benchmark/src/summarizer/first-phase/process'
-import type { NodeId } from '../../src/r-bridge'
+import { guard } from '@eagleoutice/flowr/util/assert'
+import type { ReconstructionResult, SingleSlicingCriterion, SliceResult, SlicingCriteria } from '@eagleoutice/flowr/slicing'
+import { BenchmarkSlicer, stats2string } from '@eagleoutice/flowr-benchmark'
+import { summarizeSlicerStats } from '@eagleoutice/flowr-benchmark/summarizer/first-phase/process'
+import type { NodeId } from '@eagleoutice/flowr/r-bridge'
 import { processCommandLineArgs } from './common'
-import { jsonReplacer } from '../../src/util/json'
-import { sliceDiffAnsi } from '../../src/core/print/slice-diff-ansi'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
+import { sliceDiffAnsi } from '@eagleoutice/flowr/core/print/slice-diff-ansi'
 
 export interface SlicerCliOptions {
 	verbose:         boolean

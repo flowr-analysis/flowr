@@ -1,16 +1,16 @@
-import type { XmlBasedJson } from '../../../../src/r-bridge'
-import { fileProtocol , removeRQuotes , childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../../src/r-bridge'
+import type { XmlBasedJson } from '@eagleoutice/flowr/r-bridge'
+import { fileProtocol , removeRQuotes , childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '@eagleoutice/flowr/r-bridge'
 import {
 	extractLocation,
 	getTokenType,
 	objectWithArrUnwrap,
-} from '../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
-import type { OutputFormatter } from '../../../../src/util/ansi'
-import { FontStyles } from '../../../../src/util/ansi'
+} from '@eagleoutice/flowr/r-bridge/lang-4.x/ast/parser/xml/internal'
+import type { OutputFormatter } from '@eagleoutice/flowr/util/ansi'
+import { FontStyles } from '@eagleoutice/flowr/util/ansi'
 import type { ReplCommand } from './main'
-import { SteppingSlicer } from '../../../../src/core'
-import { prepareParsedData } from '../../../../src/r-bridge/lang-4.x/ast/parser/json/format'
-import { convertPreparedParsedData } from '../../../../src/r-bridge/lang-4.x/ast/parser/json/parser'
+import { SteppingSlicer } from '@eagleoutice/flowr/core'
+import { prepareParsedData } from '@eagleoutice/flowr/r-bridge/lang-4.x/ast/parser/json/format'
+import { convertPreparedParsedData } from '@eagleoutice/flowr/r-bridge/lang-4.x/ast/parser/json/parser'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 

@@ -2,16 +2,16 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import type { CommonSummarizerConfiguration } from '../../../src/util/summarizer'
-import { Summarizer } from '../../../src/util/summarizer'
+import type { CommonSummarizerConfiguration } from '@eagleoutice/flowr/util/summarizer'
+import { Summarizer } from '@eagleoutice/flowr/util/summarizer'
 import type { UltimateSlicerStats } from './data'
 import fs from 'fs'
 import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
-import { jsonReplacer } from '../../../src/util/json'
+import { jsonReplacer } from '@eagleoutice/flowr/util/json'
 import { ultimateStats2String } from '../stats'
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
-import { readLineByLine, readLineByLineSync } from '../../../src/util/files'
+import { readLineByLine, readLineByLineSync } from '@eagleoutice/flowr/util/files'
 import path from 'path'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {

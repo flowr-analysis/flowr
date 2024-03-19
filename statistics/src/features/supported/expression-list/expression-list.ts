@@ -1,6 +1,6 @@
 import type { Writable } from 'ts-essentials'
 import type { Feature, FeatureProcessorInput } from '../../feature'
-import { RType, visitAst } from '../../../../../src/r-bridge'
+import { RType, visitAst } from '@eagleoutice/flowr/r-bridge'
 import { postProcess } from './post-process'
 
 const initialExpressionListInfo = {

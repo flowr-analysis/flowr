@@ -5,7 +5,7 @@ import type {
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../stats/stats'
-import type { SummarizedMeasurement } from '../../../src/util/summarizer'
+import type { SummarizedMeasurement } from '@eagleoutice/flowr/util/summarizer'
 
 
 export interface SliceSizeCollection {

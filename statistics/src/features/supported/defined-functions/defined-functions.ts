@@ -1,18 +1,18 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
-import type { SourcePosition } from '../../../../../src/util/range'
-import type { MergeableRecord } from '../../../../../src/util/objects'
+import type { SourcePosition } from '@eagleoutice/flowr/util/range'
+import type { MergeableRecord } from '@eagleoutice/flowr/util/objects'
 import type {
 	ParentInformation,
 	RFunctionDefinition,
-	RNodeWithParent } from '../../../../../src/r-bridge'
+	RNodeWithParent } from '@eagleoutice/flowr/r-bridge'
 import {
 	RType,
 	visitAst
-} from '../../../../../src/r-bridge'
-import { EdgeType } from '../../../../../src/dataflow'
-import { guard, isNotUndefined } from '../../../../../src/util/assert'
+} from '@eagleoutice/flowr/r-bridge'
+import { EdgeType } from '@eagleoutice/flowr/dataflow'
+import { guard, isNotUndefined } from '@eagleoutice/flowr/util/assert'
 import { postProcess } from './post-process'
 
 const initialFunctionDefinitionInfo = {

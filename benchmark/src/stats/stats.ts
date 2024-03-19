@@ -1,5 +1,5 @@
-import type { ReconstructionResult, SingleSlicingCriterion, SlicingCriteria } from '../../../src/slicing'
-import type { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../../src/r-bridge'
+import type { ReconstructionResult, SingleSlicingCriterion, SlicingCriteria } from '@eagleoutice/flowr/slicing'
+import type { NodeId, RParseRequestFromFile, RParseRequestFromText } from '@eagleoutice/flowr/r-bridge'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]

@@ -9,16 +9,17 @@ import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
 import { parseLog } from '../../json/parser'
+import type { NamedJsonEntry } from '../../json/format'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).
  *
  * @param data           - The data used by the parser (see {@link ParserData})
- * @param mappedWithName - The json object to extract the meta-information from
+ * @param mappedWithName - The json objects to extract the meta-information from
  *
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
-export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
+export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedJsonEntry[]): RAccess | undefined {
 	parseLog.trace('trying to parse access')
 	mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
@@ -111,7 +112,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 }
 
 
-function parseAccessArgument(operator: RAccess['operator'], data: ParserData, elements: NamedXmlBasedJson[]): RArgument | RNode | undefined {
+function parseAccessArgument(operator: RAccess['operator'], data: ParserData, elements: NamedJsonEntry[]): RArgument | RNode | undefined {
 	// within access the content is *not* wrapped within another expression, that means if we have a SYMBOL_SUB we can directly parse the argument,
 	// otherwise we have to add the expression layer
 	// console.log('parseAccessArgument', elements.map(x => x.name))

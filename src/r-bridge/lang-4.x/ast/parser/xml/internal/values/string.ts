@@ -1,4 +1,4 @@
-import type { XmlBasedJson } from '../../input-format'
+import type { JsonEntry } from '../../../json/format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../values'
 import type { RString } from '../../../../model'
@@ -9,17 +9,17 @@ import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../../json/parser'
 
 /**
- * Normalize the given object as a R string (see {@link string2ts}).
+ * Normalize the given entry as a R string (see {@link string2ts}).
  * This requires you to check the corresponding name beforehand.
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param obj  - The json object to extract the meta-information from
+ * @param data  - The data used by the parser (see {@link ParserData})
+ * @param entry  - The entry to extract the meta-information from
  */
-export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
+export function normalizeString(data: ParserData, entry: JsonEntry): RString {
 	parseLog.debug('[string]')
-	obj = executeHook(data.hooks.values.onString.before, data, obj)
+	entry = executeHook(data.hooks.values.onString.before, data, entry)
 
-	const { location, content } = retrieveMetaStructure(obj)
+	const { location, content } = retrieveMetaStructure(entry)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.
 	// therefore, we recover the full string from the surrounding expr lexeme field

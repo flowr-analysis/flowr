@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { retrieveMetaStructure } from '../meta'
 import type { RNode, RParameter } from '../../../../model'
 import { RType, RawRType } from '../../../../model'
@@ -15,27 +15,27 @@ import { parseLog } from '../../../json/parser'
  * Probably directly called by the function definition parser as otherwise, we do not expect to find parameters.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
+ * @param entries - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
  * @returns The parsed parameter or `undefined` if the given object is not a parameter.
  */
-export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[]): RParameter | undefined {
+export function tryNormalizeParameter(data: ParserData, entries: NamedJsonEntry[]): RParameter | undefined {
 	parseLog.debug('[parameter]')
-	objs = executeHook(data.hooks.functions.onParameter.before, data, objs)
+	entries = executeHook(data.hooks.functions.onParameter.before, data, entries)
 
-	if(objs.length !== 1 && objs.length !== 3) {
-		log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`)
-		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
+	if(entries.length !== 1 && entries.length !== 3) {
+		log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(entries)}`)
+		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, entries)
 	}
 
 
-	const symbol = objs[0]
+	const symbol = entries[0]
 	if(symbol.name !== RawRType.SymbolFormals) {
-		log.warn(`expected symbol for parameter, yet received ${JSON.stringify(objs)}`)
-		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
+		log.warn(`expected symbol for parameter, yet received ${JSON.stringify(entries)}`)
+		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, entries)
 	}
 
-	const defaultValue: RNode | RDelimiter | undefined = objs.length === 3 ? parseWithDefaultValue(data, objs) : undefined
+	const defaultValue: RNode | RDelimiter | undefined = entries.length === 3 ? parseWithDefaultValue(data, entries) : undefined
 
 	const { location, content } = retrieveMetaStructure(symbol.content)
 
@@ -66,7 +66,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 	return executeHook(data.hooks.functions.onParameter.after, data, result)
 }
 
-function parseWithDefaultValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | RDelimiter {
+function parseWithDefaultValue(data: ParserData, objs: NamedJsonEntry[]): RNode | RDelimiter {
 	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
 	return tryNormalizeSingleNode(data, objs[2])

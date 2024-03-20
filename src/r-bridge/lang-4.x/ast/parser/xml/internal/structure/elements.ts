@@ -1,4 +1,3 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
@@ -17,8 +16,9 @@ import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import type { RDelimiter } from '../../../../model/nodes/info'
 import { parseLog } from '../../../json/parser'
+import type { JsonEntry, NamedJsonEntry } from '../../../json/format'
 
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedJsonEntry[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
 		return [tryNormalizeSingleNode(data, mappedWithName[0])]
 	} else if(mappedWithName.length === 2) {
@@ -106,7 +106,7 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 	return parseNodesWithUnknownType(data, mappedWithName)
 }
 
-export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
+export function splitComments(mappedWithName: NamedJsonEntry[]) {
 	const comments = []
 	const others = []
 	for(const elem of mappedWithName) {
@@ -121,19 +121,19 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 
 export function normalizeBasedOnType(
 	data: ParserData,
-	obj: XmlBasedJson[] | NamedXmlBasedJson[]
+	entries: JsonEntry[] | NamedJsonEntry[]
 ): (RNode | RDelimiter)[] {
-	if(obj.length === 0) {
+	if(entries.length === 0) {
 		parseLog.warn('no children received, skipping')
 		return []
 	}
 
-	let mappedWithName: NamedXmlBasedJson[]
+	let mappedWithName: NamedJsonEntry[]
 
-	if(obj[0].name) {
-		mappedWithName = obj as NamedXmlBasedJson[]
+	if(entries[0].name) {
+		mappedWithName = entries as NamedJsonEntry[]
 	} else {
-		mappedWithName = getWithTokenType(obj as XmlBasedJson[])
+		mappedWithName = getWithTokenType(entries as JsonEntry[])
 	}
 
 	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
@@ -185,7 +185,7 @@ export function normalizeBasedOnType(
 	return [...parsedComments, ...result]
 }
 
-export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
+export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedJsonEntry[]): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
 	for(const elem of mappedWithName) {

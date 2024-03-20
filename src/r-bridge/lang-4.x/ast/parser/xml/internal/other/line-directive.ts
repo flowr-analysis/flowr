@@ -1,4 +1,3 @@
-import type { XmlBasedJson } from '../../input-format'
 import type { RComment, RLineDirective } from '../../../../model'
 import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../meta'
@@ -6,22 +5,23 @@ import { guard } from '../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { parseLog } from '../../../json/parser'
+import type { JsonEntry } from '../../../json/format'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 
 /**
- * Normalize the given object as an R line directive (`#line <number> "<file>"`).
+ * Normalizes the given entry as an R line directive (`#line <number> "<file>"`).
  * This requires you to check the corresponding name beforehand.
  * If the given object turns out to be no line directive, this returns a normal comment instead.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj  - The json object to extract the meta-information from
+ * @param entry  - The json object to extract the meta-information from
  */
-export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective | RComment {
+export function normalizeLineDirective(data: ParserData, entry: JsonEntry): RLineDirective | RComment {
 	parseLog.debug('[line-directive]')
-	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
+	entry = executeHook(data.hooks.other.onLineDirective.before, data, entry)
 
-	const { location, content } = retrieveMetaStructure(obj)
+	const { location, content } = retrieveMetaStructure(entry)
 	guard(content.startsWith('#line'), 'line directive must start with #line')
 	const match = LineDirectiveRegex.exec(content)
 	let result: RLineDirective | RComment

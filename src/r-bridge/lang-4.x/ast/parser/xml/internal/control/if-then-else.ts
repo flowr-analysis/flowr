@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
@@ -15,13 +15,13 @@ import { parseLog } from '../../../json/parser'
 export function tryNormalizeIfThenElse(
 	data: ParserData,
 	tokens: [
-		ifToken:    NamedXmlBasedJson,
-		leftParen:  NamedXmlBasedJson,
-		condition:  NamedXmlBasedJson,
-		rightParen: NamedXmlBasedJson,
-		then:       NamedXmlBasedJson,
-		elseToken:  NamedXmlBasedJson,
-		elseBlock:  NamedXmlBasedJson
+		ifToken:    NamedJsonEntry,
+		leftParen:  NamedJsonEntry,
+		condition:  NamedJsonEntry,
+		rightParen: NamedJsonEntry,
+		then:       NamedJsonEntry,
+		elseToken:  NamedJsonEntry,
+		elseBlock:  NamedJsonEntry
 	]): RIfThenElse | undefined {
 	// we start by parsing a regular if-then structure
 	parseLog.trace('trying to parse if-then-else structure')

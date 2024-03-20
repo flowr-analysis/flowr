@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { guard } from '../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
 import type { RSymbol } from '../../../../model'
@@ -9,34 +9,34 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
 import { parseLog } from '../../../json/parser'
 
 /**
- * Normalize the given object as an R symbol (incorporating namespace information).
- * <p>
+ * Normalize the given entries as R symbols (incorporating namespace information).
+ *
  * The special symbols `T` and `F` are parsed as logic values.
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - The json object to extract the meta-information from
+ * @param data    - The data used by the parser (see {@link ParserData})
+ * @param entries - The json entries to extract the meta-information from
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSymbol | undefined {
-	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
+export function tryNormalizeSymbol(data: ParserData, entries: NamedJsonEntry[]): RSymbol | undefined {
+	guard(entries.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug('trying to parse symbol')
-	objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
+	entries = executeHook(data.hooks.values.onSymbol.before, data, entries)
 
 	let location, content, namespace
 
-	if(objs.length === 1 && isSymbol(objs[0].name)) {
-		const meta  = retrieveMetaStructure(objs[0].content)
+	if(entries.length === 1 && isSymbol(entries[0].name)) {
+		const meta  = retrieveMetaStructure(entries[0].content)
 		location    = meta.location
 		content     = meta.content
 		namespace   = undefined
-	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
-		const meta  = retrieveMetaStructure(objs[2].content)
+	} else if(entries.length === 3 && isSymbol(entries[2].name)) {
+		const meta  = retrieveMetaStructure(entries[2].content)
 		location    = meta.location
 		content     = meta.content
-		namespace   = retrieveMetaStructure(objs[0].content).content
+		namespace   = retrieveMetaStructure(entries[0].content).content
 	} else {
-		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
+		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, entries)
 	}
 
 	const result: RSymbol = {

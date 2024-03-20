@@ -18,7 +18,7 @@ interface Entry extends Record<string, unknown> {
 }
 
 /**
- * CsvEntry type - mapping of ParsedDataRow to a JSON type.
+ * CsvEntry type - mapping of ParsedDataRow to a JS object structure.
  * Contains construction information - whether we deal with a terminal, IDs, and children.
  */
 export interface CsvEntry extends Entry {
@@ -29,11 +29,19 @@ export interface CsvEntry extends Entry {
 }
 
 /**
- * JsonEntry type - what we work with during normalization.
- * Has Children (entry may be empty.)
+ * Type-safe object structure that we work with during normalization.
+ * Has Children (empty list indicates no children).
  */
 export interface JsonEntry extends Entry {
 	children: JsonEntry[]
+}
+
+/**
+ * Named JSON entries - these also have a RawRType assigned to them.
+ */
+export interface NamedJsonEntry {
+	name:    RawRType
+	content: JsonEntry
 }
 
 type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string]
@@ -74,8 +82,8 @@ export function convertPreparedParsedData(valueMapping: Map<number, CsvEntry>): 
 		col1:     start.col1,
 		line2:    end.line2,
 		col2:     end.col2,
-		token:	  RawRType.ExpressionList,
-		text:	  '',
+		token:    RawRType.ExpressionList,
+		text:     '',
 		id:       RootId,
 		parent:   RootId,
 		terminal: false,

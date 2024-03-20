@@ -1,5 +1,4 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey , getKeysGuarded } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
@@ -32,7 +31,7 @@ import { parseLog } from '../../../json/parser'
  * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
-export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
+export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedJsonEntry[]): RFunctionCall | RNext | RBreak | undefined {
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
@@ -47,8 +46,8 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	parseLog.trace('trying to parse function call')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
-	const { unwrappedObj, content, location } = retrieveMetaStructure(fnBase.content)
-	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, childrenKey)
+	const { entry, content, location } = retrieveMetaStructure(fnBase.content)
+	const symbolContent = entry.children
 
 	let result: RFunctionCall | RNext | RBreak
 
@@ -71,7 +70,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }
 
-function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
+function parseArguments(mappedWithName: NamedJsonEntry[], data: ParserData): (RArgument | undefined)[] {
 	const argContainer = mappedWithName.slice(1)
 	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, 'expected args in parenthesis')
 	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)
@@ -81,7 +80,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
 	})
 }
 
-function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | RNext | RBreak | undefined {
+function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedJsonEntry[], location: SourceRange, content: string): RUnnamedFunctionCall | RNext | RBreak | undefined {
 	// maybe remove symbol-content again because I just use the root expr of mapped with name
 	if(mappedWithName.length < 3) {
 		parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
@@ -137,7 +136,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 }
 
 
-function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
+function parseNamedFunctionCall(data: ParserData, symbolContent: NamedJsonEntry[], mappedWithName: NamedJsonEntry[], location: SourceRange, content: string): RNamedFunctionCall {
 	let functionName: RNode | undefined
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content)

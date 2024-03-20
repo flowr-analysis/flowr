@@ -1,6 +1,3 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey , getKeysGuarded } from '../../input-format'
-
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'
@@ -12,25 +9,26 @@ import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../util/arrays'
 import { parseLog } from '../../../json/parser'
+import type { JsonEntry } from '../../../json/format'
 
 /**
- * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
+ * Returns an expression list if there are multiple children,
+ * otherwise returns the single child directly with no expr wrapper.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj  - The json object to extract the meta-information from
+ * @param entry  - The json object to extract the meta-information from.
  */
-export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode {
+export function normalizeExpression(data: ParserData, entry: JsonEntry): RNode {
 	parseLog.debug('Parsing expr')
-	obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
+	entry = executeHook(data.hooks.expression.onExpression.before, data, entry)
 
 	const {
-		unwrappedObj,
 		content,
 		location
-	} = retrieveMetaStructure(obj)
+	} = retrieveMetaStructure(entry)
 
-	const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, childrenKey)
-	const typed: NamedXmlBasedJson[] = getWithTokenType(childrenSource)
+	const childrenSource = entry.children
+	const typed = getWithTokenType(childrenSource)
 
 	const { others, comments } = splitComments(typed)
 

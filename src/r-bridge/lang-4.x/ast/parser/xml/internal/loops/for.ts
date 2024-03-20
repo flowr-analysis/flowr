@@ -1,7 +1,5 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey , getKeysGuarded, XmlParseError } from '../../input-format'
-
-import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
+import { XmlParseError } from '../../input-format'
+import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
@@ -11,12 +9,13 @@ import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
 import { parseLog } from '../../../json/parser'
+import type { JsonEntry, NamedJsonEntry } from '../../../json/format'
 
 export function tryNormalizeFor(
 	data: ParserData,
-	forToken: NamedXmlBasedJson,
-	head: NamedXmlBasedJson,
-	body: NamedXmlBasedJson
+	forToken: NamedJsonEntry,
+	head: NamedJsonEntry,
+	body: NamedJsonEntry
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
 	if(forToken.name !== RawRType.For) {
@@ -70,9 +69,9 @@ export function tryNormalizeFor(
 	return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
-function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
+function normalizeForHead(data: ParserData, forCondition: JsonEntry): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, childrenKey).map(content => ({ name: getTokenType(content), content }))
+	const children = getWithTokenType(forCondition.children)
 	const { comments, others } = splitComments(children)
 
 	const inPosition = others.findIndex(elem => elem.name === RawRType.ForIn)

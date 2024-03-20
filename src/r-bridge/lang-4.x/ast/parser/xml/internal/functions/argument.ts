@@ -1,4 +1,3 @@
-import type { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import type { RNode, RSymbol, RArgument } from '../../../../model'
 import { RType, RawRType } from '../../../../model'
@@ -9,27 +8,28 @@ import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
 import type { RDelimiter } from '../../../../model/nodes/info'
 import { parseLog } from '../../../json/parser'
+import type { NamedJsonEntry } from '../../../json/format'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
+ * @param data    - The data used by the parser (see {@link ParserData})
+ * @param entries - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
+export function tryToNormalizeArgument(data: ParserData, entries: NamedJsonEntry[]): RArgument | undefined {
 	parseLog.debug('[argument]')
-	objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
+	entries = executeHook(data.hooks.functions.onArgument.before, data, entries)
 
-	if(objs.length < 1 || objs.length > 3) {
-		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
-		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
+	if(entries.length < 1 || entries.length > 3) {
+		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${entries.map(o => o.name).join(', ')}`)
+		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, entries)
 	}
 
 
-	const symbolOrExpr = objs[0]
+	const symbolOrExpr = entries[0]
 	const { location, content } = retrieveMetaStructure(symbolOrExpr.content)
 
 	let parsedValue: RNode | RDelimiter | undefined |  null
@@ -50,13 +50,13 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 				fullLexeme:       content
 			}
 		}
-		parsedValue = parseWithValue(data, objs)
+		parsedValue = parseWithValue(data, entries)
 	} else {
-		log.warn(`expected symbol or expr for argument, yet received ${objs.map(o => o.name).join(',')}`)
-		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
+		log.warn(`expected symbol or expr for argument, yet received ${entries.map(o => o.name).join(',')}`)
+		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, entries)
 	}
 
-	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
+	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(entries)}`)
 
 	const result: RArgument = {
 		type:   RType.Argument,
@@ -74,7 +74,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	return executeHook(data.hooks.functions.onArgument.after, data, result)
 }
 
-function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | RDelimiter | undefined | null{
+function parseWithValue(data: ParserData, objs: NamedJsonEntry[]): RNode | RDelimiter | undefined | null{
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
 	return objs[2] ? tryNormalizeSingleNode(data, objs[2]) : null

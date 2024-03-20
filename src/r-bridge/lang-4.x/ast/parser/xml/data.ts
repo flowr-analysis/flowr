@@ -1,14 +1,14 @@
 import type { MergeableRecord } from '../../../../../util/objects'
 import type { DeepReadonly } from 'ts-essentials'
-import type { XmlParserHooks } from './hooks'
+import type { ParserHooks } from './hooks'
 import type { SourceRange } from '../../../../../util/range'
 
 /**
  * Contains all information populated and present during parsing and normalization of the R AST.
  */
 export interface ParserData extends MergeableRecord {
-	/** @see XmlParserHooks */
-	readonly hooks: DeepReadonly<XmlParserHooks>
+	/** @see ParserHooks */
+	readonly hooks: DeepReadonly<ParserHooks>
 	/**
    * The currently active source range during parsing, i.e. the full range of the current element.
    */

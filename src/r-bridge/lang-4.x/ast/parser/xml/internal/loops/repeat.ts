@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
@@ -17,7 +17,7 @@ import { parseLog } from '../../../json/parser'
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedJsonEntry, body: NamedJsonEntry): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
 		return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })

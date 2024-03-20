@@ -1,4 +1,3 @@
-import type { XmlBasedJson } from '../../input-format'
 import type { RComment } from '../../../../model'
 import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../meta'
@@ -6,15 +5,16 @@ import { guard } from '../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { parseLog } from '../../../json/parser'
+import type { JsonEntry } from '../../../json/format'
 
 /**
  * Normalize the given object as an R comment.
  * This requires you to check the corresponding name beforehand.
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param obj  - The json object to extract the meta-information from
+ * @param data  - The data used by the parser (see {@link ParserData})
+ * @param entry - The json entry to extract the meta-information from
  */
-export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment {
+export function normalizeComment(data: ParserData, obj: JsonEntry): RComment {
 	parseLog.debug('[comment]')
 	obj = executeHook(data.hooks.other.onComment.before, data, obj)
 

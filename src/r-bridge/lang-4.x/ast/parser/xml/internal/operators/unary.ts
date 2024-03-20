@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
@@ -26,7 +26,7 @@ import { parseLog } from '../../../json/parser'
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
+export function tryNormalizeUnary(data: ParserData, operator: NamedJsonEntry, operand: NamedJsonEntry): RNode | undefined {
 	parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
 	let flavor: UnaryOperatorFlavor
 	if(ArithmeticOperatorsRAst.has(operator.name)) {
@@ -41,7 +41,7 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 	return parseUnaryOp(data, flavor, operator, operand)
 }
 
-function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
+function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedJsonEntry, operand: NamedJsonEntry): RUnaryOp {
 	parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
 	({ flavor, operator, operand } = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 

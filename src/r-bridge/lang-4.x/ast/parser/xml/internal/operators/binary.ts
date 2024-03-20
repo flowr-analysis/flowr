@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { XmlParseError } from '../../input-format'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'
@@ -28,9 +28,9 @@ import { parseLog } from '../../../json/parser'
  */
 export function tryNormalizeBinary(
 	data: ParserData,
-	lhs: NamedXmlBasedJson,
-	operator: NamedXmlBasedJson,
-	rhs: NamedXmlBasedJson
+	lhs: NamedJsonEntry,
+	operator: NamedJsonEntry,
+	rhs: NamedJsonEntry
 ): RNode | undefined {
 	parseLog.trace(`binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
@@ -54,7 +54,7 @@ export function tryNormalizeBinary(
 	return parseBinaryOp(data, flavor, lhs, operator, rhs)
 }
 
-function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedJsonEntry, operator: NamedJsonEntry, rhs: NamedJsonEntry): RFunctionCall | RBinaryOp | RPipe {
 	parseLog.debug(`[binary op] trying to parse ${flavor}`);
 	({ flavor, lhs, rhs, operator } = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, operator, rhs }))
 

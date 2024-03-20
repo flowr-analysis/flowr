@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { XmlParseError } from '../../input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { tryNormalizeSingleNode } from '../structure'
@@ -10,11 +10,11 @@ import { parseLog } from '../../../json/parser'
 
 export function tryNormalizeWhile(
 	data: ParserData,
-	whileToken: NamedXmlBasedJson,
-	leftParen: NamedXmlBasedJson,
-	condition: NamedXmlBasedJson,
-	rightParen: NamedXmlBasedJson,
-	body: NamedXmlBasedJson
+	whileToken: NamedJsonEntry,
+	leftParen: NamedJsonEntry,
+	condition: NamedJsonEntry,
+	rightParen: NamedJsonEntry,
+	body: NamedJsonEntry
 ): RWhileLoop | undefined {
 	if(whileToken.name !== RawRType.While) {
 		parseLog.debug(

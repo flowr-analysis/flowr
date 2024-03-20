@@ -1,10 +1,9 @@
-import type { NamedXmlBasedJson } from '../input-format'
-import { contentKey , XmlParseError } from '../input-format'
+import { XmlParseError } from '../input-format'
 import type { SourceRange } from '../../../../../../util/range'
 import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
 import type { RawRType, RExpressionList, RNode } from '../../../model'
 import { RType } from '../../../model'
-import type { JsonEntry } from '../../json/format'
+import type { JsonEntry, NamedJsonEntry } from '../../json/format'
 
 /**
  * given a xml element, extract the source location of the corresponding element in the R-ast
@@ -51,18 +50,18 @@ export function getTokenType(content: JsonEntry): RawRType {
 	return content.token as RawRType
 }
 
-export function getWithTokenType(obj: JsonEntry[]) {
+export function getWithTokenType(obj: JsonEntry[]) : NamedJsonEntry[] {
 	return obj.map((content) => ({
 		name: getTokenType(content),
 		content
 	}))
 }
 
-export function retrieveOpName(operator: NamedXmlBasedJson): string {
+export function retrieveOpName(operator: NamedJsonEntry): string {
 	/*
-   * only real arithmetic ops have their operation as their own name, the others identify via content
+   * only real arithmetic ops have their operation as their own name, the others identify via content/text
    */
-	return operator.content[contentKey] as string
+	return operator.content.text
 }
 
 /**

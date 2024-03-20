@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { XmlParseError } from '../../input-format'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
@@ -12,7 +12,7 @@ import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
 import type { RDelimiter } from '../../../../model/nodes/info'
 
-function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
+function normalizeDelimiter(elem: NamedJsonEntry): RDelimiter {
 	const {
 		location,
 		content
@@ -33,13 +33,13 @@ function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimit
  *
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
-export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | RDelimiter {
+export function tryNormalizeSingleNode(data: ParserData, elem: NamedJsonEntry): RNode | RDelimiter {
 	switch(elem.name) {
 		case RawRType.ParenLeft:
 		case RawRType.ParenRight:
 		case RawRType.BraceLeft:
 		case RawRType.BraceRight:
-			return normalizeDelimiter(data, elem)
+			return normalizeDelimiter(elem)
 		case RawRType.Comment:
 			return normalizeComment(data, elem.content)
 		case RawRType.LineDirective:
@@ -59,7 +59,7 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson
 		case RawRType.Symbol:
 		case RawRType.Slot:
 		case RawRType.NullConst: {
-			const symbol =  tryNormalizeSymbol(data, getWithTokenType([elem.content]))
+			const symbol = tryNormalizeSymbol(data, getWithTokenType([elem.content]))
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
 			return symbol
 		}

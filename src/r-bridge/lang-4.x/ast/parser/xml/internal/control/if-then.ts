@@ -1,4 +1,4 @@
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import { XmlParseError } from '../../input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
@@ -14,11 +14,11 @@ import { parseLog } from '../../../json/parser'
 export function tryNormalizeIfThen(
 	data: ParserData,
 	tokens: [
-		ifToken:    NamedXmlBasedJson,
-		leftParen:  NamedXmlBasedJson,
-		condition:  NamedXmlBasedJson,
-		rightParen: NamedXmlBasedJson,
-		then:       NamedXmlBasedJson
+		ifToken:    NamedJsonEntry,
+		leftParen:  NamedJsonEntry,
+		condition:  NamedJsonEntry,
+		rightParen: NamedJsonEntry,
+		then:       NamedJsonEntry
 	]): RIfThenElse | undefined {
 	parseLog.trace('trying to parse if-then structure')
 	if(tokens[0].name !== RawRType.If) {

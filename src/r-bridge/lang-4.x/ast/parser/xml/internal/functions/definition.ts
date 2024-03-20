@@ -1,5 +1,5 @@
 import type { ParserData } from '../../data'
-import type { NamedXmlBasedJson } from '../../input-format'
+import type { NamedJsonEntry } from '../../../json/format'
 import type { RFunctionDefinition, RParameter } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
@@ -19,7 +19,7 @@ import { parseLog } from '../../../json/parser'
  *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
-export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
+export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: NamedJsonEntry[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Function && fnBase.name !== RawRType.Lambda) {
 		parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)

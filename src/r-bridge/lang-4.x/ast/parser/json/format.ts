@@ -76,12 +76,12 @@ export function convertPreparedParsedData(valueMapping: Map<number, CsvEntry>): 
 	const start = rootEntries[0]
 	const end = rootEntries[rootEntries.length - 1]
 
-	// Construct CsvEntry for the root.
+	// Construct CsvEntry for the root, handling empty input.
 	const csvParent: CsvEntry = {
-		line1:    start.line1,
-		col1:     start.col1,
-		line2:    end.line2,
-		col2:     end.col2,
+		line1:    start ? start.line1 : 1,
+		col1:     start ? start.col1  : 1,
+		line2:    end ? end.line2 : 1,
+		col2:     end ? end.col2: 1,
 		token:    RawRType.ExpressionList,
 		text:     '',
 		id:       RootId,

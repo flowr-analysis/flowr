@@ -1,4 +1,3 @@
-import type { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
 import type { ParserData } from '../data'
 import type { RAccess, RNode, RArgument } from '../../../model'

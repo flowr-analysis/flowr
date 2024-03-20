@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { XmlParseError } from '../../input-format'
+import { ParseError } from "../../data"
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'
 import type { ParserData } from '../../data'
@@ -63,7 +63,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 	let parsedRhs = tryNormalizeSingleNode(data, rhs)
 
 	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
-		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
+		throw new ParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
 	}
 
 	const operationName = retrieveOpName(operator)

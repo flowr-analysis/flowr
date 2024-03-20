@@ -18,3 +18,13 @@ export interface ParserData extends MergeableRecord {
    */
 	currentLexeme:  string | undefined
 }
+
+/**
+ * Thrown if the given input is not valid/contains unexpected elements.
+ */
+export class ParseError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = 'ParseError'
+	}
+}

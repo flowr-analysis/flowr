@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { XmlParseError } from '../../input-format'
+import { ParseError } from "../../data"
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
@@ -22,13 +22,13 @@ export function tryNormalizeWhile(
 		)
 		return executeUnknownHook(data.hooks.loops.onWhileLoop.unknown, data, { whileToken, leftParen, condition, rightParen, body })
 	} else if(leftParen.name !== RawRType.ParenLeft) {
-		throw new XmlParseError(
+		throw new ParseError(
 			`expected left-parenthesis for while but found ${JSON.stringify(
 				leftParen
 			)}`
 		)
 	} else if(rightParen.name !== RawRType.ParenRight) {
-		throw new XmlParseError(
+		throw new ParseError(
 			`expected right-parenthesis for while but found ${JSON.stringify(
 				rightParen
 			)}`
@@ -44,7 +44,7 @@ export function tryNormalizeWhile(
 	const parseBody = tryNormalizeSingleNode(data, body)
 
 	if(parsedCondition.type === RType.Delimiter || parseBody.type === RType.Delimiter) {
-		throw new XmlParseError(
+		throw new ParseError(
 			`unexpected under-sided while-loop, received ${JSON.stringify([
 				parsedCondition,
 				parseBody,

@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { XmlParseError } from '../../input-format'
+import { ParseError } from "../../data"
 import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
@@ -25,9 +25,9 @@ export function tryNormalizeIfThen(
 		parseLog.debug('encountered non-if token for supposed if-then structure')
 		return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)
 	} else if(tokens[1].name !== RawRType.ParenLeft) {
-		throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
+		throw new ParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
 	} else if(tokens[3].name !== RawRType.ParenRight) {
-		throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
+		throw new ParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
 	}
 
 	tokens = executeHook(data.hooks.control.onIfThen.before, data, tokens)
@@ -37,7 +37,7 @@ export function tryNormalizeIfThen(
 
 
 	if(parsedCondition.type === RType.Delimiter || parsedThen.type === RType.Delimiter) {
-		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
+		throw new ParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 
 	const { location, content } = retrieveMetaStructure(tokens[0].content)

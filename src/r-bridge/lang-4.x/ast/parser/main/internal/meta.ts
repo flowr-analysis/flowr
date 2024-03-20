@@ -1,4 +1,4 @@
-import { XmlParseError } from '../input-format'
+import { ParseError } from "../data"
 import type { SourceRange } from '../../../../../../util/range'
 import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
 import type { RawRType, RExpressionList, RNode } from '../../../model'
@@ -36,7 +36,7 @@ export function retrieveMetaStructure(entry: JsonEntry): {
 
 export function assureTokenType(token: string, expectedName: RawRType): void {
 	if(token !== expectedName) {
-		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${token}`)
+		throw new ParseError(`expected name to be ${expectedName}, yet received ${token}`)
 	}
 }
 
@@ -74,7 +74,7 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: Json
 	const firstOtherLoc = extractLocation(first)
 	const secondOtherLoc = extractLocation(second)
 	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
-		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
+		throw new ParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
 	}
 }
 

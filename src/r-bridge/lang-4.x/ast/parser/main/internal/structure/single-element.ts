@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { XmlParseError } from '../../input-format'
+import { ParseError } from "../../data"
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'
@@ -64,6 +64,6 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedJsonEntry): 
 			return symbol
 		}
 		default:
-			throw new XmlParseError(`unknown type ${elem.name} for ${JSON.stringify(elem)} in ${JSON.stringify(data)}`)
+			throw new ParseError(`unknown type ${elem.name} for ${JSON.stringify(elem)} in ${JSON.stringify(data)}`)
 	}
 }

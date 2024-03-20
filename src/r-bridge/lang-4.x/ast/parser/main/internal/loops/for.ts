@@ -1,4 +1,4 @@
-import { XmlParseError } from '../../input-format'
+import { ParseError } from "../../data"
 import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'
@@ -22,9 +22,9 @@ export function tryNormalizeFor(
 		parseLog.debug('encountered non-for token for supposed for-loop structure')
 		return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition: head, body })
 	} else if(head.name !== RawRType.ForCondition) {
-		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
+		throw new ParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
 	} else if(body.name !== RawRType.Expression && body.name !== RawRType.ExprOfAssignOrHelp) {
-		throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
+		throw new ParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
 	}
 
 	parseLog.debug('trying to parse for-loop')
@@ -42,7 +42,7 @@ export function tryNormalizeFor(
     parsedVector === undefined ||
     parseBody.type === RType.Delimiter
 	) {
-		throw new XmlParseError(
+		throw new ParseError(
 			`unexpected under-sided for-loop, received ${JSON.stringify([
 				parsedVariable,
 				parsedVariable,

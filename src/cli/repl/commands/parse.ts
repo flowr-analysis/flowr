@@ -1,4 +1,4 @@
-import { fileProtocol , removeRQuotes , contentKey , requestFromInput } from '../../../r-bridge'
+import { fileProtocol , removeRQuotes , requestFromInput } from '../../../r-bridge'
 import {
 	extractLocation,
 	getTokenType,
@@ -88,7 +88,7 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 
 		result += f.reset()
 
-		const content = node[contentKey] as string | undefined
+		const content = node.text
 		let location = ''
 		location = retrieveLocationString(node)
 

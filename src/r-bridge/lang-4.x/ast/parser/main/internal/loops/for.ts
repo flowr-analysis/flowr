@@ -1,4 +1,4 @@
-import { ParseError } from "../../data"
+import { ParseError } from '../../data'
 import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'

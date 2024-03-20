@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { ParseError } from "../../data"
+import { ParseError } from '../../data'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'

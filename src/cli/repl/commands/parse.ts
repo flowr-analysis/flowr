@@ -2,7 +2,7 @@ import { fileProtocol , removeRQuotes , requestFromInput } from '../../../r-brid
 import {
 	extractLocation,
 	getTokenType,
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
+} from '../../../r-bridge/lang-4.x/ast/parser/main/internal'
 import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'

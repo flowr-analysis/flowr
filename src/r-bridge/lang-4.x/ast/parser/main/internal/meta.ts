@@ -1,4 +1,4 @@
-import { ParseError } from "../data"
+import { ParseError } from '../data'
 import type { SourceRange } from '../../../../../../util/range'
 import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
 import type { RawRType, RExpressionList, RNode } from '../../../model'

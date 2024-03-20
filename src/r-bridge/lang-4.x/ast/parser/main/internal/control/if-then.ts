@@ -1,5 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
-import { ParseError } from "../../data"
+import { ParseError } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'

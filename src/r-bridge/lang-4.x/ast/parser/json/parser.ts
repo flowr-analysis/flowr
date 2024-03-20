@@ -1,11 +1,11 @@
 import type { DeepPartial } from 'ts-essentials'
-import type { ParserHooks , ParserData } from '../xml'
-import { DEFAULT_PARSER_HOOKS } from '../xml'
+import type { ParserHooks , ParserData } from '../main'
+import { DEFAULT_PARSER_HOOKS } from '../main'
 import { decorateAst, deterministicCountingIdGenerator } from '../../model'
 import type { IdGenerator, NoInfo , NormalizedAst } from '../../model'
 import { deepMergeObject } from '../../../../../util/objects'
 import { prepareParsedData , convertPreparedParsedData } from './format'
-import { parseRootObjToAst } from '../xml/internal'
+import { parseRootObjToAst } from '../main/internal'
 import { log } from '../../../../../util/log'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })

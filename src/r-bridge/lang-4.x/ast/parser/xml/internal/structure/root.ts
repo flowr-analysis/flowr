@@ -8,19 +8,19 @@ import { RType, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
 import type { RDelimiter } from '../../../../model/nodes/info'
+import type { JsonEntry } from '../../../json/format'
 
 export function parseRootObjToAst(
 	data: ParserData,
-	obj: XmlBasedJson
+	obj: JsonEntry
 ): RExpressionList {
-	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
+	const exprContent = obj.token
 	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(childrenKey in exprContent) {
-		const children = getKeysGuarded<XmlBasedJson[]>(exprContent, childrenKey)
-
+	if(obj.children.length > 0) {
+		const children = obj.children
 		parsedChildren = normalizeBasedOnType(data, children)
 	} else {
 		log.debug('no children found, assume empty input')

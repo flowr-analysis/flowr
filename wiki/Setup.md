@@ -44,7 +44,7 @@ After cloning the repository,<a href="#note2" id="note2ref"><sup>&lt;2&gt;</sup>
 npm i
 ```
 
-After that, you should be fine! You may test *flowR* by running:
+After that, you should be fine! You may test *flowR*'s command-line interface by running the following from the `cli` directory:
 
 ```shell
 npm run slicer -- --criterion "12@product" test/testfiles/example.R

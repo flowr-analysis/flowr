@@ -17,7 +17,7 @@
         "stats-helper": "ts-node src/statistics-helper-app.ts",
         "slicer": "ts-node src/slicer-app.ts",
         "benchmark-helper": "ts-node src/benchmark-helper-app.ts",
-        "benchmark": "npm run build && node dist/src/benchmark-app.js",
+        "benchmark": "ts-node src/benchmark-app.ts",
         "summarizer": "ts-node src/summarizer-app.ts",
         "export-quads": "ts-node src/export-quads-app.ts",
         "build": "tsc --project ."

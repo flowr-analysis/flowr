@@ -22,7 +22,7 @@ import { standardReplOutput } from './repl/commands'
 import type { Server } from './repl/server/net'
 import { NetServer, WebSocketServerWrapper } from './repl/server/net'
 import { defaultConfigFile, setConfigFile } from '@eagleoutice/flowr/config'
-import { flowrVersion } from '../../src/util/version'
+import { flowrVersion } from '@eagleoutice/flowr/util/version'
 import { version } from '../package.json'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')

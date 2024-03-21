@@ -1,7 +1,7 @@
 import type { ReplCommand, ReplOutput } from './main'
 import { RShell } from '@eagleoutice/flowr/r-bridge'
 import { guard } from '@eagleoutice/flowr/util/assert'
-import { flowrVersion } from '../../../../src/util/version'
+import { flowrVersion } from '@eagleoutice/flowr/util/version'
 
 type Version = `${number}.${number}.${number}`
 

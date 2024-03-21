@@ -1,6 +1,6 @@
 import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
-import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
+import { emptyCommonSyntaxTypeCounts } from '../../../../statistics/src/features/common-syntax-probability'
 
 describe('Data Access', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
@@ -313,4 +313,3 @@ describe('Data Access', withShell(shell => {
 		}
 	])
 }))
-

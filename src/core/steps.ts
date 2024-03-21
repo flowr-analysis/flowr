@@ -70,7 +70,7 @@ export interface IStep<
 export const STEPS_PER_FILE = {
 	'parse': {
 		description: 'Parse the given R code into an AST',
-		processor:   retrieveParseDataFromRCode,
+		processor:   (r, s) => retrieveParseDataFromRCode(r, s),
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
@@ -80,7 +80,7 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof retrieveParseDataFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
-		processor:   normalize,
+		processor:   (j, h, g) => normalize(j, h, g),
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,
@@ -107,7 +107,7 @@ export const STEPS_PER_FILE = {
 export const STEPS_PER_SLICE = {
 	'slice': {
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
-		processor:   staticSlicing,
+		processor:   (d, a, c) => staticSlicing(d, a, c),
 		required:    'once-per-slice',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
@@ -115,7 +115,7 @@ export const STEPS_PER_SLICE = {
 	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
 		description: 'Reconstruct R code from the static slice',
-		processor:   reconstructToCode,
+		processor:   (a, s) => reconstructToCode(a, s),
 		required:    'once-per-slice',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter

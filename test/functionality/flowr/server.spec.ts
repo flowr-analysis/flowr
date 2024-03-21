@@ -1,9 +1,9 @@
 import { withShell } from '../_helper/shell'
 import { fakeSend, withSocket } from '../_helper/net'
-import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version'
-import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
+import { retrieveVersionInformation } from '../../../cli/src/repl/commands/version'
+import type { FlowrHelloResponseMessage } from '../../../cli/src/repl/server/messages/hello'
 import { assert } from 'chai'
-import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from '../../../src/cli/repl/server/messages/analysis'
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from '../../../cli/src/repl/server/messages/analysis'
 import type { DecoratedAstMap, ParentInformation } from '../../../src/r-bridge'
 import { requestFromInput } from '../../../src/r-bridge'
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../../src/core'
@@ -12,7 +12,7 @@ import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
 	ExecuteRequestMessage
-} from '../../../src/cli/repl/server/messages/repl'
+} from '../../../cli/src/repl/server/messages/repl'
 import { extractCFG } from '../../../src/util/cfg/cfg'
 
 describe('flowr', () => {

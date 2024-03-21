@@ -5,7 +5,7 @@
  */
 
 import { log, LogLevel } from '../../src/util/log'
-import { serverLog } from '../../src/cli/repl/server/server'
+import { serverLog } from '../../cli/src/repl/server/server'
 import chai from 'chai'
 
 chai.config.includeStack = true

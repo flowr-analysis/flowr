@@ -2,10 +2,10 @@ import {
 	BenchmarkSlicer,
 	CommonSlicerMeasurements,
 	stats2string,
-	summarizeSlicerStats,
 	PerSliceMeasurements
-} from '../../../src/benchmark'
+} from '../../../benchmark/src'
 import { assert } from 'chai'
+import { summarizeSlicerStats } from '../../../benchmark/src/summarizer/first-phase/process'
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish()

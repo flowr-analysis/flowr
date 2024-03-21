@@ -1,8 +1,8 @@
-import type { OnConnect, Server, Socket } from '../../../src/cli/repl/server/net'
+import type { OnConnect, Server, Socket } from '../../../cli/src/repl/server/net'
 import * as Buffer from 'buffer'
-import type { IdMessageBase } from '../../../src/cli/repl'
+import type { IdMessageBase } from '../../../cli/src/repl'
 import type { RShell } from '../../../src/r-bridge'
-import { FlowRServer } from '../../../src/cli/repl/server/server'
+import { FlowRServer } from '../../../cli/src/repl/server/server'
 import { jsonReplacer } from '../../../src/util/json'
 import { guard } from '../../../src/util/assert'
 

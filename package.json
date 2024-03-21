@@ -13,15 +13,7 @@
   },
   "scripts": {
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
-    "main": "ts-node src/flowr.ts",
-    "stats": "ts-node src/cli/statistics-app.ts",
-    "stats-helper": "ts-node src/cli/statistics-helper-app.ts",
-    "slicer": "ts-node src/cli/slicer-app.ts",
     "release": "release-it --ci",
-    "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
-    "benchmark": "npm run build && node dist/src/cli/benchmark-app.js",
-    "summarizer": "ts-node src/cli/summarizer-app.ts",
-    "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
     "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && eslint src/ test/",
@@ -29,7 +21,8 @@
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
-    "test-full": "npm run test -- --test-installation"
+    "test-full": "npm run test -- --test-installation",
+    "postinstall": "cd benchmark && npm i && cd .. && cd cli && npm i && cd .. && cd statistics && npm i"
   },
   "keywords": [
     "static code analysis",
@@ -350,9 +343,6 @@
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
     }
-  },
-  "engines": {
-    "node": ">=16.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",

@@ -141,7 +141,7 @@ To generate a slice you need to provide two things:
 1. A [slicing criterion](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion): the location of a single variable or several variables of interest to slice for, like "`12@product`"
 2. The path to an R&nbsp;file that should be sliced.
 
-For example, you can run
+For example, from the `cli` directory, you can run
 
 ```shell
 npm run slicer -- --criterion "12@product" "test/testfiles/example.R"
@@ -150,7 +150,7 @@ npm run slicer -- --criterion "12@product" "test/testfiles/example.R"
 This slices for the first use of the variable `product` in line&nbsp;12 of the source file at `test/testfiles/example.R` (see the [slicing criterion](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) definition for more information).
 By default, the resulting slice is output to the standard output.
 
-For more options see,
+For more options, run the following from the `cli` directory:
 
 ```shell
 npm run slicer -- --help
@@ -172,13 +172,13 @@ Within the original [thesis](https://github.com/Code-Inspect/flowr/wiki/Thesis),
 The corresponding *benchmark* script ultimately allows to do the same thing as the *slicing* script, but 1) parallel for many files and 2) for a wider selection of slicing points.
 By default, it starts by collecting all variables in a script, producing a slice for each of them.
 
-For example, to run the benchmark on 500 randomly picked files of the folder `<folder>` using 8 threads and writing the output to `<output.json>`, you can use:
+For example, to run the benchmark on 500 randomly picked files of the folder `<folder>` using 8 threads and writing the output to `<output.json>`, you can run this from the `cli` directory:
 
 ```shell
 npm run benchmark -- --limit 500 --parallel 8 --output "<output.json>" "<folder>"
 ```
 
-For more options see,
+For more options, run the following from the `cli` directory:
 
 ```shell
 npm run benchmark -- --help
@@ -187,7 +187,7 @@ npm run benchmark -- --help
 #### Summarizing the Benchmark Results
 
 The resulting JSON file can be rather larger (starting off with a couple of hundred megabytes). Therefore, you probably want to summarize the results of the benchmark.
-For this, you can make use of the *summarizer* script like this:
+For this, you can make use of the *summarizer* script from within the `cli` directory like this:
 
 ```shell
 npm run summarizer -- "<output.json>"
@@ -200,7 +200,7 @@ Please note that the summarizer may require a long time as it parses, normalizes
 
 As the ultimate summary is much quicker, you can re-run it by specifically adding the `--ultimate-only` flag (although this is only really of use if you modify what should be summarized within the source code of *flowR*).
 
-For more options see,
+For more options, run the following from the `cli` directory:
 
 ```shell
 npm run summarizer -- --help
@@ -210,7 +210,7 @@ npm run summarizer -- --help
 
 If you want to reproduce the statistics as presented in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/Code-Inspect/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
 
-See
+For more information, run the following from the `cli` directory:
 
 ```shell
 npm run stats -- --help
@@ -218,7 +218,9 @@ npm run stats -- --help
 
 ### Export RDF N-Quads
 
-If you know what the RDF N-Quads refer to, then you are good to go! If not, you do not have to worry - you probably do not need them (they are for a graph search that is based on *flowR*). See the following for more information:
+If you know what the RDF N-Quads refer to, then you are good to go! If not, you do not have to worry - you probably do not need them (they are for a graph search that is based on *flowR*). 
+
+For more information, run the following from the `cli` directory:
 
 ```shell
 npm run export-quads -- --help

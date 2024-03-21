@@ -56,7 +56,7 @@ sequenceDiagram
 </details>
 
 After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;*flowR* and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
-See the implementation of the [hello message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/hello.ts) for more information regarding the contents of the message.
+See the implementation of the [hello message](https://github.com/Code-Inspect/flowr/tree/main/cli/src/repl/server/messages/hello.ts) for more information regarding the contents of the message.
 
 
 <details open>
@@ -111,7 +111,7 @@ The message can contain a `filetoken`, which is used to identify the file in lat
 
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
-See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.
+See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/cli/src/repl/server/messages/analysis.ts) for more information.
 
 
 <details open>
@@ -445,7 +445,7 @@ The `results` field of the response effectively contains three keys of importanc
 
 
 You receive an error if, for whatever reason, the analysis fails (e.g., the message or code you sent contained syntax errors).
-It contains a human-readable description *why* the analysis failed (see the [error message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/error.ts) implementation for more details).
+It contains a human-readable description *why* the analysis failed (see the [error message](https://github.com/Code-Inspect/flowr/tree/main/cli/src/repl/server/messages/error.ts) implementation for more details).
 
 <details>
     <summary>Example Error Message</summary>
@@ -743,7 +743,7 @@ sequenceDiagram
 
 In order to slice, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly slice the same file.
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
-See the implementation of the [request-slice message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/slice.ts) for more information.
+See the implementation of the [request-slice message](https://github.com/Code-Inspect/flowr/tree/main/cli/src/repl/server/messages/slice.ts) for more information.
 
 <details open>
     <summary>Example Request</summary>
@@ -851,7 +851,7 @@ We strongly recommend you to make use of the `id` field to link answers with req
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
 
-See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/repl.ts) for more information.
+See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr/tree/main/cli/src/repl/server/messages/repl.ts) for more information.
 The semantics of the error message are similar to other messages.
 
 <details open>

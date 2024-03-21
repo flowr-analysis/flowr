@@ -42,9 +42,9 @@ flowchart TD
    click slice href "https://github.com/Code-Inspect/flowr/tree/main/src/slicing" "Jump to the Implementation"
    click rc href "https://github.com/Code-Inspect/flowr/blob/main/src/reconstruct/reconstruct.ts" "Jump to the Implementation"
    click core href "https://github.com/Code-Inspect/flowr/blob/main/src/core" "Jump to the Implementation"
-   click benchmark href "https://github.com/Code-Inspect/flowr/tree/main/src/benchmark" "Jump to the Implementation"
-   click stat href "https://github.com/Code-Inspect/flowr/tree/main/src/statistics" "Jump to the Implementation"
-   click utility href "https://github.com/Code-Inspect/flowr/tree/main/src/util" "Jump to the Implementation"
+   click benchmark href "https://github.com/Code-Inspect/flowr/tree/main/benchmark" "Jump to the Implementation"
+   click stat href "https://github.com/Code-Inspect/flowr/tree/main/statistics" "Jump to the Implementation"
+   click utility href "https://github.com/Code-Inspect/flowr/tree/main/util" "Jump to the Implementation"
 ```
 
 The [mermaid](https://mermaid.js.org/) diagram above presents the architecture of *flowR*, with the important components directly related to the actual slicing highlighted accordingly (all boxes should be hyperlinks to the corresponding implementation *if* you are interested - depending on your browser you may have to specifically open them in a new tab).
@@ -52,7 +52,7 @@ The [mermaid](https://mermaid.js.org/) diagram above presents the architecture o
 Primarily, *flowR* provides a backward [program slicer](https://en.wikipedia.org/wiki/Program_slicing) for the [*R*](https://www.r-project.org/) programming language, which is available with the corresponding [slicer](https://github.com/Code-Inspect/flowr/tree/main/src/slicing) module and exposed by the [`slicer`](#generate-static-slices) script.
 Its subcomponents (like the custom [R bridge](https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge) or the static [dataflow analysis]("https://github.com/Code-Inspect/flowr/tree/main/src/dataflow)) are not important if you simply wish to use *flowR*.
 
-The [benchmarker](https://github.com/Code-Inspect/flowr/tree/main/src/benchmark) module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
+The [benchmarker](https://github.com/Code-Inspect/flowr/tree/main/benchmark) module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
 The [statistics](https://github.com/Code-Inspect/flowr/tree/main/src/statistics) module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [`statistics`](#generate-usage-statistics-of-r-code) script.
 

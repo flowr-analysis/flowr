@@ -75,35 +75,19 @@
           "zones": [
             {
               "target": "benchmark",
-              "from": [
-                "cli",
-                "src",
-                "statistics"
-              ]
+              "from": ["cli", "src", "statistics"]
             },
             {
               "target": "cli",
-              "from": [
-                "benchmark",
-                "src",
-                "statistics"
-              ]
+              "from": ["benchmark", "src", "statistics"]
             },
             {
               "target": "statistics",
-              "from": [
-                "benchmark",
-                "cli",
-                "src"
-              ]
+              "from": ["benchmark", "cli", "src"]
             },
             {
               "target": "src",
-              "from": [
-                "benchmark",
-                "cli",
-                "statistics"
-              ]
+              "from": ["benchmark", "cli", "statistics"]
             }
           ]
         }

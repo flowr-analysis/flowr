@@ -55,16 +55,16 @@
       "cobertura"
     ]
   },
-  "settings": {
-    "import/resolver": {
-      "node": {
-        "extensions": [
-          ".ts"
-        ]
-      }
-    }
-  },
   "eslintConfig": {
+    "settings": {
+      "import/resolver": {
+        "node": {
+          "extensions": [
+            ".ts"
+          ]
+        }
+      }
+    },
     "extends": [
       "@eagleoutice/eslint-config-flowr"
     ],
@@ -87,6 +87,10 @@
             },
             {
               "target": "src",
+              "from": ["benchmark", "cli", "statistics"]
+            },
+            {
+              "target": "test",
               "from": ["benchmark", "cli", "statistics"]
             }
           ]

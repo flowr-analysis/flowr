@@ -1,1 +1,0 @@
-export { variables } from './variables'

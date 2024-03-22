@@ -179,7 +179,6 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	//const endPos = ifThenElse.location.end
 	//const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
 
-
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}

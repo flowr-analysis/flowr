@@ -58,11 +58,16 @@
   "settings": {
     "import/resolver": {
       "node": {
-        "extensions": [".ts"]
+        "extensions": [
+          ".ts"
+        ]
       }
     }
   },
   "eslintConfig": {
+    "extends": [
+      "@eagleoutice/eslint-config-flowr"
+    ],
     "rules": {
       "import/no-restricted-paths": [
         "error",
@@ -70,19 +75,35 @@
           "zones": [
             {
               "target": "benchmark",
-              "from": ["cli", "src", "statistics"]
+              "from": [
+                "cli",
+                "src",
+                "statistics"
+              ]
             },
             {
               "target": "cli",
-              "from": ["benchmark", "src", "statistics"]
+              "from": [
+                "benchmark",
+                "src",
+                "statistics"
+              ]
             },
             {
               "target": "statistics",
-              "from": ["benchmark", "cli", "src"]
+              "from": [
+                "benchmark",
+                "cli",
+                "src"
+              ]
             },
             {
               "target": "src",
-              "from": ["benchmark", "cli", "statistics"]
+              "from": [
+                "benchmark",
+                "cli",
+                "statistics"
+              ]
             }
           ]
         }
@@ -177,6 +198,7 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",
+    "@eagleoutice/eslint-config-flowr": "^1.0.2",
     "@stylistic/eslint-plugin": "^1.6.2",
     "@stylistic/eslint-plugin-plus": "^1.6.2",
     "@stylistic/eslint-plugin-ts": "^1.6.2",

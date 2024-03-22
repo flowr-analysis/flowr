@@ -15,5 +15,4 @@ done
 
 DIR="./statistics-out/top-$(date +%Y-%m-%d-%H-%M-%S)/"
 mkdir -p "${DIR}"
-npm run stats -- "${arr[@]}" --output-dir "${DIR}" |& tee -a "./full.log"
-
+npm run stats --prefix ../cli -- "${arr[@]}" --output-dir "${DIR}" |& tee -a "./full.log"

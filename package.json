@@ -55,6 +55,40 @@
       "cobertura"
     ]
   },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".ts"]
+      }
+    }
+  },
+  "eslintConfig": {
+    "rules": {
+      "import/no-restricted-paths": [
+        "error",
+        {
+          "zones": [
+            {
+              "target": "benchmark",
+              "from": ["cli", "src", "statistics"]
+            },
+            {
+              "target": "cli",
+              "from": ["benchmark", "src", "statistics"]
+            },
+            {
+              "target": "statistics",
+              "from": ["benchmark", "cli", "src"]
+            },
+            {
+              "target": "src",
+              "from": ["benchmark", "cli", "statistics"]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "typedocOptions": {
     "includeVersion": true,
     "plugin": [

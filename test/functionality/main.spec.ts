@@ -5,7 +5,6 @@
  */
 
 import { log, LogLevel } from '../../src/util/log'
-import { serverLog } from '../../cli/src/repl/server/server'
 import chai from 'chai'
 
 chai.config.includeStack = true
@@ -18,14 +17,12 @@ chai.config.truncateThreshold = 0
  * @param log2File - Whether to log to a file as well
  */
 function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
-	for(const logger of [log, serverLog]) {
-		if(log2File) {
-			logger.logToFile()
-		}
-		logger.updateSettings(logger => {
-			logger.settings.minLevel = minLevel
-		})
+	if(log2File) {
+		log.logToFile()
 	}
+	log.updateSettings(logger => {
+		logger.settings.minLevel = minLevel
+	})
 }
 
 export const VERBOSE_TESTS = process.argv.includes('--verbose')

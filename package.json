@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -75,23 +75,43 @@
           "zones": [
             {
               "target": "benchmark",
-              "from": ["cli", "src", "statistics"]
+              "from": [
+                "cli",
+                "src",
+                "statistics"
+              ]
             },
             {
               "target": "cli",
-              "from": ["benchmark", "src", "statistics"]
+              "from": [
+                "benchmark",
+                "src",
+                "statistics"
+              ]
             },
             {
               "target": "statistics",
-              "from": ["benchmark", "cli", "src"]
+              "from": [
+                "benchmark",
+                "cli",
+                "src"
+              ]
             },
             {
               "target": "src",
-              "from": ["benchmark", "cli", "statistics"]
+              "from": [
+                "benchmark",
+                "cli",
+                "statistics"
+              ]
             },
             {
               "target": "test",
-              "from": ["benchmark", "cli", "statistics"]
+              "from": [
+                "benchmark",
+                "cli",
+                "statistics"
+              ]
             }
           ]
         }

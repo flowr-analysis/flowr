@@ -28,13 +28,15 @@ RUN apk add --no-cache R
 
 COPY ./scripts/demo.R LICENSE /app/
 
-# install all modules so that we have dependencies in here too
-# (we don't copy them from the builder because builder modules include dev deps too)
+# copy all package.jsons so we can install them (see below)
 COPY ./package.json /app/
 COPY ./package.json /app/dist/
 COPY ./modules/benchmark/package.json /app/modules/benchmark/
 COPY ./modules/cli/package.json /app/modules/cli/
 COPY ./modules/statistics/package.json /app/modules/statistics/
+
+# install all modules so that we have dependencies in here too
+# (we don't copy them from the builder because builder modules include dev deps too)
 RUN npm install --omit=dev
 RUN cd modules/benchmark && npm install --omit=dev
 RUN cd modules/cli && npm install --omit=dev

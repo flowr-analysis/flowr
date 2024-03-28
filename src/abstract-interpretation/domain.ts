@@ -167,3 +167,17 @@ export function subtractDomains(domain1: Domain, domain2: Domain): Domain {
 	}
 	return Domain.fromIntervals(intervals)
 }
+
+export const enum NarrowKind {
+	Equal,
+	Smaller,
+	Greater
+}
+
+export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind: NarrowKind): Domain {
+	// TODO: Implement
+	boundDomain
+	narrowKind
+	return baseDomain
+
+}

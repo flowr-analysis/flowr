@@ -74,43 +74,43 @@
         {
           "zones": [
             {
-              "target": "benchmark",
+              "target": "modules/benchmark",
               "from": [
-                "cli",
+                "modules/cli",
                 "src",
-                "statistics"
+                "modules/statistics"
               ]
             },
             {
-              "target": "cli",
+              "target": "modules/cli",
               "from": [
-                "benchmark",
+                "modules/benchmark",
                 "src",
-                "statistics"
+                "modules/statistics"
               ]
             },
             {
-              "target": "statistics",
+              "target": "modules/statistics",
               "from": [
-                "benchmark",
-                "cli",
+                "modules/benchmark",
+                "modules/cli",
                 "src"
               ]
             },
             {
               "target": "src",
               "from": [
-                "benchmark",
-                "cli",
-                "statistics"
+                "modules/benchmark",
+                "modules/cli",
+                "modules/statistics"
               ]
             },
             {
               "target": "test",
               "from": [
-                "benchmark",
-                "cli",
-                "statistics"
+                "modules/benchmark",
+                "modules/cli",
+                "modules/statistics"
               ]
             }
           ]

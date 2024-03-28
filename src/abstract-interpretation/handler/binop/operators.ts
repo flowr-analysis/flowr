@@ -1,32 +1,33 @@
 import {guard} from '../../../util/assert'
 import {BinOpOperators} from './binop'
 import {addDomains, subtractDomains} from '../../domain'
+import { AINodeStore } from '../../ainode'
 
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {
-		return {
+		return new AINodeStore({
 			nodeId:       lhs.nodeId,
 			expressionId: node.info.id,
 			domain:       rhs.domain,
 			astNode:      node.lhs,
-		}
+		})
 	},
 	'arithmetic': (lhs, rhs, node) => {
 		switch(node.operator) {
 			case '+':
-				return {
+				return new AINodeStore({
 					nodeId:       node.info.id,
 					expressionId: node.info.id,
 					domain:       addDomains(lhs.domain, rhs.domain),
 					astNode:      node,
-				}
+				})
 			case '-':
-				return {
+				return new AINodeStore({
 					nodeId:       node.info.id,
 					expressionId: node.info.id,
 					domain:       subtractDomains(lhs.domain, rhs.domain),
 					astNode:      node,
-				}
+				})
 			default:
 				guard(false, `Unknown binary operator ${node.operator}`)
 		}

@@ -6,7 +6,7 @@ import {operators} from './operators'
 import { AINode, AINodeStore } from '../../ainode'
 
 export type BinOpOperators = {
-	[key in BinaryOperatorFlavor]: (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINode
+	[key in BinaryOperatorFlavor]: (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINodeStore
 }
 
 export class BinOp implements Handler {
@@ -27,8 +27,7 @@ export class BinOp implements Handler {
 		aiLogger.trace(`Exited ${this.getName()}`)
 		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
 		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
-		const operatorResult = operators[this.node.flavor](this.lhs, this.rhs, this.node)
-		return new AINodeStore(operatorResult)
+		return operators[this.node.flavor](this.lhs, this.rhs, this.node)
 	}
 
 	next(aiNodes: AINodeStore): void {

@@ -30,7 +30,6 @@ COPY ./scripts/demo.R LICENSE /app/
 
 # copy all package.jsons so we can install them (see below)
 COPY ./package.json /app/
-COPY ./package.json /app/dist/
 COPY ./modules/benchmark/package.json /app/modules/benchmark/
 COPY ./modules/cli/package.json /app/modules/cli/
 COPY ./modules/statistics/package.json /app/modules/statistics/

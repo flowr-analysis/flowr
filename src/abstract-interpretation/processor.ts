@@ -9,6 +9,7 @@ import {BinOp} from './handler/binop/binop'
 import {Conditional} from './handler/conditional/conditional'
 import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
+import {ExprList} from './handler/exprlist/exprlist'
 import {AINodeStore, mergeDomainStores} from './ainode'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
@@ -51,6 +52,8 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			operationStack.push(new BinOp(astNode)).enter()
 		} else if(astNode?.type === RType.IfThenElse) {
 			operationStack.push(new Conditional(astNode)).enter()
+		} else if(astNode?.type === RType.ExpressionList) {
+			operationStack.push(new ExprList()).enter()
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next(new AINodeStore({
 				nodeId:       astNode.info.id,

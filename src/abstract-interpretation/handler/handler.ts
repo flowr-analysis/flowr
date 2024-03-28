@@ -1,6 +1,8 @@
-export interface Handler<ValueType> {
+import {AINodeStore} from '../processor'
+
+export interface Handler {
 	getName: () => string,
 	enter:   () => void
-	exit:    () => ValueType
-	next:    (value: ValueType) => void
+	exit:    () => AINodeStore
+	next:    (aiNodes: AINodeStore) => void
 }

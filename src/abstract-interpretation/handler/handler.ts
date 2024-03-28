@@ -1,4 +1,4 @@
-import {AINodeStore} from '../processor'
+import {AINodeStore} from '../ainode'
 
 export interface Handler {
 	getName: () => string,

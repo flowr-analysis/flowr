@@ -1,6 +1,7 @@
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 import { guard } from '../../../util/assert'
-import { AINode, AINodeStore, aiLogger } from '../../processor'
+import { AINode, AINodeStore } from '../../ainode'
+import { aiLogger } from '../../processor'
 import { Handler } from '../handler'
 
 export class Conditional implements Handler {

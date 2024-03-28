@@ -28,16 +28,22 @@ RUN apk add --no-cache R
 
 COPY ./scripts/demo.R LICENSE /app/
 
-# install all modules (not in dev mode this time!)
+# install all modules so that we have dependencies in here too
+# (we don't copy them from the builder because builder modules include dev deps too)
+COPY ./package.json /app/
+COPY ./package.json /app/dist/
+COPY ./modules/benchmark/package.json /app/modules/benchmark/
+COPY ./modules/cli/package.json /app/modules/cli/
+COPY ./modules/statistics/package.json /app/modules/statistics/
 RUN npm install --omit=dev
 RUN cd modules/benchmark && npm install --omit=dev
 RUN cd modules/cli && npm install --omit=dev
 RUN cd modules/statistics && npm install --omit=dev
 
 COPY --from=builder /app/dist/src /app/dist
-COPY --from=builder /app/modules/benchmark/dist/src /app/modules/benchmark/dist
+COPY --from=builder /app/modules/benchmark/dist /app/modules/benchmark/dist
 COPY --from=builder /app/modules/cli/dist/src /app/modules/cli/dist
-COPY --from=builder /app/modules/statistics/dist/src /app/modules/statistics/dist
+COPY --from=builder /app/modules/statistics/dist /app/modules/statistics/dist
 
 RUN rm -rf /app/**/tsconfig.tsbuildinfo
 

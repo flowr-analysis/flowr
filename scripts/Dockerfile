@@ -41,9 +41,9 @@ RUN cd modules/benchmark && npm install --omit=dev
 RUN cd modules/cli && npm install --omit=dev
 RUN cd modules/statistics && npm install --omit=dev
 
-COPY --from=builder /app/dist/src /app/dist
+COPY --from=builder /app/dist /app/dist
 COPY --from=builder /app/modules/benchmark/dist /app/modules/benchmark/dist
-COPY --from=builder /app/modules/cli/dist/src /app/modules/cli/dist
+COPY --from=builder /app/modules/cli/dist /app/modules/cli/dist
 COPY --from=builder /app/modules/statistics/dist /app/modules/statistics/dist
 
 RUN rm -rf /app/**/tsconfig.tsbuildinfo

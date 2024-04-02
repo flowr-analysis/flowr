@@ -4,12 +4,16 @@ FROM node:21.4-alpine3.19 AS builder
 
 WORKDIR /app
 
-# copy all modules into the workdir
-COPY ./src /app/src/
+# copy the source and build files of all modules into the workdir
+# (by doing this, we explicitly omit test sources)
+COPY ./src /app/src
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
-COPY ./modules/benchmark /app/modules/benchmark
-COPY ./modules/cli /app/modules/cli
-COPY ./modules/statistics /app/modules/statistics
+COPY ./modules/benchmark/src /app/modules/benchmark/src
+COPY ./modules/benchmark/package.json ./modules/benchmark/package-lock.json ./modules/benchmark/tsconfig.json /app/modules/benchmark/
+COPY ./modules/cli/src /app/modules/cli/src
+COPY ./modules/cli/package.json ./modules/cli/package-lock.json ./modules/cli/tsconfig.json /app/modules/cli/
+COPY ./modules/statistics/src /app/modules/statistics/src
+COPY ./modules/statistics/package.json ./modules/statistics/package-lock.json ./modules/statistics/tsconfig.json /app/modules/statistics/
 
 # install and build all modules
 RUN npm install && npm run build

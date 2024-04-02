@@ -201,6 +201,15 @@
       "after:bump": "npm run build",
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+    },
+    "plugins": {
+      "@j-ulrich/release-it-regex-bumper": {
+        "out": {
+          "file": "src/util/version.ts",
+          "search": "const version = '[\\d.]+'",
+          "replace": "const version = '{{version}}'"
+        }
+      }
     }
   },
   "devDependencies": {
@@ -239,7 +248,8 @@
     "typedoc-plugin-missing-exports": "^2.1.0",
     "typedoc-theme-hierarchy": "^4.1.2",
     "typedoc-umlclass": "^0.8.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@j-ulrich/release-it-regex-bumper": "^5.1.0"
   },
   "dependencies": {
     "@types/semver": "^7.5.6",

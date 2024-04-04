@@ -37,6 +37,11 @@ name: "Run one of flowR's npm-actions with a specific version"
         required: false
         default: ''
         type: string
+      submodule-deps:
+        description: "Whether to install the npm dependencies of submodules"
+        required: false
+        default: false
+        type: boolean
 
 
 jobs:
@@ -52,13 +57,19 @@ jobs:
 
       - name: Install Node Dependencies
         run: npm ci
+      - name: Install Submodule Node Dependencies
+        if: ${{ inputs.submodule-deps }}
+        run: |
+          cd modules/benchmark && npm ci && cd ../..
+          cd modules/cli && npm ci && cd ../..
+          cd modules/statistics && npm ci && cd ../..
 
       - name: Install Graphviz for Documentation
         # we expect this to only work on Linux/Ubuntu
         if: ${{ inputs.action == 'doc' }}
         run: |
-            sudo apt-get update
-            sudo apt-get install graphviz
+          sudo apt-get update
+          sudo apt-get install graphviz
 
       - name: "Run the corresponding action '${{ inputs.action }}'"
         run:
@@ -94,5 +105,5 @@ jobs:
         if: ${{ inputs.benchmark != '' }}
         uses: actions/upload-artifact@v4
         with:
-            name: benchmark-results-${{ inputs.benchmark }}
-            path: test/performance/results/
+          name: benchmark-results-${{ inputs.benchmark }}
+          path: test/performance/results/

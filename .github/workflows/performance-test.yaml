@@ -23,6 +23,7 @@ jobs:
       coverage: false
       benchmark: ${{ matrix.name }}
       timeout-minutes: 400
+      submodule-deps: true
 
   performance-test-upload:
     name: "Upload Performance Test Results"

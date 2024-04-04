@@ -16,10 +16,10 @@ COPY ./modules/statistics/src /app/modules/statistics/src
 COPY ./modules/statistics/package.json ./modules/statistics/package-lock.json ./modules/statistics/tsconfig.json /app/modules/statistics/
 
 # install and build all modules
-RUN npm install && npm run build
-RUN cd modules/benchmark && npm install && npm run build
-RUN cd modules/cli && npm install && npm run build
-RUN cd modules/statistics && npm install && npm run build
+RUN npm ci && npm run build
+RUN cd modules/benchmark && npm ci && npm run build
+RUN cd modules/cli && npm ci && npm run build
+RUN cd modules/statistics && npm ci && npm run build
 
 
 FROM node:21.4-alpine3.19 AS flowR
@@ -33,17 +33,17 @@ RUN apk add --no-cache R
 COPY ./scripts/demo.R LICENSE /app/
 
 # copy all package.jsons so we can install them (see below)
-COPY ./package.json /app/
-COPY ./modules/benchmark/package.json /app/modules/benchmark/
-COPY ./modules/cli/package.json /app/modules/cli/
-COPY ./modules/statistics/package.json /app/modules/statistics/
+COPY ./package.json ./package-lock.json /app/
+COPY ./modules/benchmark/package.json ./modules/benchmark/package-lock.json /app/modules/benchmark/
+COPY ./modules/cli/package.json ./modules/cli/package-lock.json /app/modules/cli/
+COPY ./modules/statistics/package.json ./modules/statistics/package-lock.json /app/modules/statistics/
 
 # install all modules so that we have dependencies in here too
 # (we don't copy them from the builder because builder modules include dev deps too)
-RUN npm install --omit=dev
-RUN cd modules/benchmark && npm install --omit=dev
-RUN cd modules/cli && npm install --omit=dev
-RUN cd modules/statistics && npm install --omit=dev
+RUN npm ci --omit=dev
+RUN cd modules/benchmark && npm ci --omit=dev
+RUN cd modules/cli && npm ci --omit=dev
+RUN cd modules/statistics && npm ci --omit=dev
 
 COPY --from=builder /app/dist /app/dist
 COPY --from=builder /app/modules/benchmark/dist /app/modules/benchmark/dist

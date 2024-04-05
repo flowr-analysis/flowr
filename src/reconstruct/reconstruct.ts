@@ -38,7 +38,7 @@ import {
 	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
-import { jsonReplacer } from '../util/json'
+//import { jsonReplacer } from '../util/json'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -188,7 +188,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		return []
 	}
 	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
-	console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
+	//console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
 
 	let out = merge([
 		...additionalTokens,
@@ -196,17 +196,8 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		when
 	])
 
-	/*
-	if(!(when[0].linePart.length === 2)) {
-		console.log('we have an if-body')
-		out = merge([
-			out,
-			when
-		])
-	}
-	*/
 	if(!(otherwise[0].linePart.length === 2)) {
-		console.log('we have an else-body')
+		//console.log('we have an else-body')
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
 		out = merge([
@@ -216,7 +207,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		])
 	}
 
-	console.log('out: ', JSON.stringify(out,jsonReplacer))
+	//console.log('out: ', JSON.stringify(out,jsonReplacer))
 	return out
 }
 

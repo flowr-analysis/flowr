@@ -196,18 +196,20 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		when
 	])
 
-	if(!(otherwise[0].linePart.length === 2)) {
+	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
 		//console.log('we have an else-body')
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
+		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' { } ', loc: { line: elsePos.line, column: elsePos.column + 2 } }], indent: 0 }] : []
+		const elseOffset = when.length === 0 ? 4 : 0
 		out = merge([
 			out,
-			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 } }], indent: 0 }], //may have to change the location
+			fakeWhenBlock,
+			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 +elseOffset } }], indent: 0 }], //may have to change the location
 			otherwise
 		])
 	}
 
-	//console.log('out: ', JSON.stringify(out,jsonReplacer))
 	return out
 }
 

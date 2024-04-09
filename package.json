@@ -21,7 +21,8 @@
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
-    "test-full": "npm run test -- --test-installation"
+    "test-full": "npm run test -- --test-installation",
+    "install-submodules":"cd modules/benchmark && npm ci && cd ../cli && npm ci && cd ../statistics && npm ci && cd ../.."
   },
   "keywords": [
     "static code analysis",
@@ -221,13 +222,10 @@
     "@stylistic/eslint-plugin-ts": "^1.6.2",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.8",
-    "@types/command-line-args": "^5.2.3",
-    "@types/command-line-usage": "^5.0.4",
     "@types/mocha": "^10.0.6",
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.16.4",
     "@types/object-hash": "^3.0.6",
-    "@types/tmp": "^0.2.6",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "chai": "^4.3.10",
     "chai-as-promised": "^7.1.1",
@@ -253,23 +251,13 @@
   },
   "dependencies": {
     "@types/semver": "^7.5.6",
-    "@types/tar": "^6.1.10",
-    "@types/ws": "^8.5.10",
-    "@xmldom/xmldom": "^0.8.10",
-    "command-line-args": "^5.2.1",
-    "command-line-usage": "^7.0.1",
-    "csv-parse": "^5.5.3",
     "joi": "^17.11.0",
     "n-readlines": "^1.0.1",
     "n3": "^1.17.2",
     "object-hash": "^3.0.0",
     "rotating-file-stream": "^3.1.1",
     "semver": "^7.5.4",
-    "tar": "^6.2.0",
-    "tmp": "^0.2.1",
     "ts-essentials": "^9.4.1",
-    "tslog": "^4.9.2",
-    "ws": "^8.16.0",
-    "xpath-ts2": "^1.4.2"
+    "tslog": "^4.9.2"
   }
 }

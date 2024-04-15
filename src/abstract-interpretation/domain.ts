@@ -169,15 +169,64 @@ export function subtractDomains(domain1: Domain, domain2: Domain): Domain {
 }
 
 export const enum NarrowKind {
-	Equal,
-	Smaller,
-	Greater
+	Equal = 1,
+	Smaller = 2,
+	Greater = 4
 }
 
-export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind: NarrowKind): Domain {
-	// TODO: Implement
-	boundDomain
-	narrowKind
-	return baseDomain
+interface IntervalOverlap {
+	smaller:      Interval | undefined,
+	intersection: Interval | undefined,
+	larger:       Interval | undefined
+}
 
+function flipInclusiveness(intervalBound: IntervalBound): IntervalBound {
+	return {value: intervalBound.value, inclusive: !intervalBound.inclusive}
+
+}
+
+export function overlapIntervals(interval1: Interval, interval2: Interval): IntervalOverlap {
+	const diffMin = compareIntervalsByTheirMinimum(interval1, interval2)
+	const diffMax = compareIntervalsByTheirMaximum(interval1, interval2)
+
+	const intersectionStart = diffMin > 0 ? interval1.min : interval2.min
+	const intersectionEnd = diffMax < 0 ? interval1.max : interval2.max
+	const intersection = new Interval(intersectionStart, intersectionEnd)
+
+	const smallerOverhang = diffMin < 0 ? new Interval(interval1.min, flipInclusiveness(intersectionStart)) : undefined
+	const greaterOverhang = diffMax > 0 ? new Interval(flipInclusiveness(intersectionEnd), interval1.max) : undefined
+
+	return {
+		smaller:      smallerOverhang,
+		intersection: intersection,
+		larger:       greaterOverhang
+	}
+}
+
+// TODO: Handle NarrowKind.Equal cases and in- and exclusive bounds
+export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind: NarrowKind): Domain {
+	guard(!((narrowKind & NarrowKind.Greater) !== 0 && (narrowKind & NarrowKind.Smaller) !== 0), 'Greater and Smaller cannot be combined')
+
+	const result = Domain.bottom()
+	const addIntervalPartToResult = (interval: Interval | undefined) => {
+		if(interval !== undefined) {
+			result.addInterval(interval)
+		}
+	}
+	let handleOneSideOfTheOverlap: (overlap : IntervalOverlap) => void
+	if((narrowKind & NarrowKind.Greater) !== 0) {
+		handleOneSideOfTheOverlap = overlap => addIntervalPartToResult(overlap.larger)
+	} else if((narrowKind & NarrowKind.Smaller) !== 0) {
+		handleOneSideOfTheOverlap = overlap => addIntervalPartToResult(overlap.smaller)
+	} else { guard(false, 'Should not reach') }
+
+	for(const baseInterval of baseDomain.intervals) {
+		for(const boundInterval of boundDomain.intervals) {
+			const overlap = overlapIntervals(baseInterval, boundInterval)
+			addIntervalPartToResult(overlap.intersection)
+			handleOneSideOfTheOverlap(overlap)
+		}
+	}
+
+	return result
 }

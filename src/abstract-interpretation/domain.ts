@@ -8,7 +8,7 @@ interface IntervalBound {
 export class Interval {
 	constructor(readonly min: IntervalBound, readonly max: IntervalBound) {
 		guard(min.value <= max.value, () => `The interval ${this.toString()} has a minimum that is greater than its maximum`)
-		guard(min.value !== max.value || (min.inclusive === max.inclusive), `The bound ${min.value} cannot be in- and exclusive at the same time`)
+		guard(min.value !== max.value || (min.inclusive && max.inclusive), `The interval ${this.toString()} is not possible. Both bounds should be inclusive if they are equal.`)
 	}
 
 	toString(): string {
@@ -98,12 +98,12 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval): bo
 	if(diff1 < 0 || diff2 < 0) {
 		return false
 	}
-	// If their end and start are equal, they only overlap if both are inclusive
+	// If their start and end are equal, they only overlap (or rather touch) if at least one is inclusive
 	if(diff1 === 0) {
-		return interval1.max.inclusive && interval2.min.inclusive
+		return interval1.max.inclusive || interval2.min.inclusive
 	}
 	if(diff2 === 0) {
-		return interval2.max.inclusive && interval1.min.inclusive
+		return interval2.max.inclusive || interval1.min.inclusive
 	}
 
 	return true

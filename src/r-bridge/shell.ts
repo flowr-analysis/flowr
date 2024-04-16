@@ -58,8 +58,7 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	postamble: `🐧${'-'.repeat(5)}🐧`,
 	timeout:   {
 		ms:             750_000,
-		resetOnNewData: true,
-		reject:         true
+		resetOnNewData: true
 	},
 	keepPostamble:           false,
 	automaticallyTrimOutput: true,

@@ -21,6 +21,10 @@ export interface CollectorTimeout extends MergeableRecord {
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
+	/**
+	 * If false, the promise will resolve with empty data, instead of rejecting, if the timeout is reached
+	 */
+	reject:         boolean
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -53,7 +57,8 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	postamble: `🐧${'-'.repeat(5)}🐧`,
 	timeout:   {
 		ms:             750_000,
-		resetOnNewData: true
+		resetOnNewData: true,
+		reject:         true
 	},
 	keepPostamble:           false,
 	automaticallyTrimOutput: true,
@@ -162,10 +167,20 @@ export class RShell {
 			return this.versionCache
 		}
 		// retrieve raw version:
-		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
+		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`, {
+			timeout: {
+				ms:             1000,
+				resetOnNewData: false,
+				reject:         false
+			}
+		})
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		this.versionCache = semver.coerce(result[0])
-		return result.length === 1 ? this.versionCache : null
+		if(result.length === 1) {
+			this.versionCache = semver.coerce(result[0])
+			return this.versionCache
+		} else {
+			return null
+		}
 	}
 
 	public injectLibPaths(...paths: string[]): void {
@@ -337,7 +352,11 @@ class RShellSession {
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
-				reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				if(timeout.reject) {
+					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				} else {
+					resolve([])
+				}
 			}, timeout.ms)
 			this.collectionTimeout = makeTimer()
 

@@ -229,7 +229,6 @@ export function overlapIntervals(interval1: Interval, interval2: Interval): Inte
 	}
 }
 
-// TODO: Handle NarrowKind.Equal cases and in- and exclusive bounds
 export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind: NarrowKind): Domain {
 	const isSmaller = (narrowKind & NarrowKind.Smaller) !== 0
 	const isGreater = (narrowKind & NarrowKind.Greater) !== 0
@@ -237,26 +236,30 @@ export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind
 
 	guard(!(isGreater && isSmaller), 'Greater and Smaller cannot be combined')
 
-	const result = Domain.bottom()
-	const addIntervalToResult = (interval: Interval | undefined) => {
-		if(interval !== undefined) {
-			result.addInterval(interval)
-		}
-	}
-	let handleOneSideOfTheOverlap: (overlap : IntervalOverlap) => void
+	let getNarrowedIntervals: (overlap: IntervalOverlap, bound: Interval) => (Interval | undefined)[]
 	if(isGreater) {
-		handleOneSideOfTheOverlap = overlap => addIntervalToResult(overlap.larger)
+		getNarrowedIntervals = ({intersection, larger}, bound) => {
+			if(!isEqual && intersection !== undefined && compareIntervalsByTheirMinimum(intersection, bound) === 0) {
+				intersection = new Interval({value: intersection.min.value, inclusive: false}, intersection.max)
+			}
+			return [intersection, larger]
+		}
 	} else if(isSmaller) {
-		handleOneSideOfTheOverlap = overlap => addIntervalToResult(overlap.smaller)
-	} else { guard(false, 'Should not reach') }
+		getNarrowedIntervals = ({smaller, intersection}, bound) => {
+			if(!isEqual && intersection !== undefined && compareIntervalsByTheirMaximum(intersection, bound) === 0) {
+				intersection = new Interval(intersection.min, {value: intersection.max.value, inclusive: false})
+			}
+			return [intersection, smaller]
+		}
+	} else {guard(false, 'Either isGreater or isSmaller must be set')}
 
+	const narrowedIntervals: (Interval | undefined)[] = []
 	for(const baseInterval of baseDomain.intervals) {
 		for(const boundInterval of boundDomain.intervals) {
 			const overlap = overlapIntervals(baseInterval, boundInterval)
-			addIntervalToResult(overlap.intersection)
-			handleOneSideOfTheOverlap(overlap)
+			narrowedIntervals.push(...getNarrowedIntervals(overlap, boundInterval))
 		}
 	}
 
-	return result
+	return Domain.fromIntervals(narrowedIntervals.filter(interval => interval !== undefined).map(interval => interval as Interval))
 }

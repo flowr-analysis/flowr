@@ -42,7 +42,8 @@ describe('RShell sessions', function() {
 			shell.sendCommandWithOutput('Sys.sleep(42)', {
 				timeout: {
 					ms:             1,
-					resetOnNewData: false
+					resetOnNewData: false,
+					reject:         true
 				}
 			})
 		)

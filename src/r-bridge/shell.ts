@@ -9,6 +9,7 @@ import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
 import { getConfig } from '../config'
+import type { AsyncOrSync } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -22,9 +23,9 @@ export interface CollectorTimeout extends MergeableRecord {
    */
 	resetOnNewData: boolean
 	/**
-	 * If false, the promise will resolve with empty data, instead of rejecting, if the timeout is reached
+	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
 	 */
-	reject:         boolean
+	onTimeout?:     (resolve: (value: AsyncOrSync<string[]>) => void, reject: (value: AsyncOrSync<string[]>) => void, partialResult: string[]) => void
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -171,7 +172,8 @@ export class RShell {
 			timeout: {
 				ms:             1000,
 				resetOnNewData: false,
-				reject:         false
+				// just resolve on timeout and handle the empty array case below
+				onTimeout:      resolve => resolve([])
 			}
 		})
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
@@ -352,10 +354,10 @@ class RShellSession {
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
-				if(timeout.reject) {
-					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				if(timeout.onTimeout) {
+					timeout.onTimeout(resolve, reject, result)
 				} else {
-					resolve([])
+					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
 				}
 			}, timeout.ms)
 			this.collectionTimeout = makeTimer()

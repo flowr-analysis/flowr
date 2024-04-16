@@ -90,23 +90,41 @@ function compareIntervalsByTheirMaximum(interval1: Interval, interval2: Interval
 	return compareIntervals(CompareType.Max, interval1.max, interval2.max)
 }
 
-export function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
+export const enum OverlapKind {
+	Overlap = 0,
+	Touch = 1,
+}
+
+export function doIntervalsOverlap(interval1: Interval, interval2: Interval, kind: OverlapKind = OverlapKind.Overlap): boolean {
 	const diff1 = compareIntervals(CompareType.IgnoreInclusivity, interval1.max, interval2.min)
 	const diff2 = compareIntervals(CompareType.IgnoreInclusivity, interval2.max, interval1.min)
 
+	let doIntervalsOverlap = true
+	let doIntervalsTouch = true
+
 	// If one interval ends before the other starts, they don't overlap
 	if(diff1 < 0 || diff2 < 0) {
-		return false
+		doIntervalsOverlap = false
+		doIntervalsTouch = false
 	}
-	// If their start and end are equal, they only overlap (or rather touch) if at least one is inclusive
-	if(diff1 === 0) {
-		return interval1.max.inclusive || interval2.min.inclusive
-	}
-	if(diff2 === 0) {
-		return interval2.max.inclusive || interval1.min.inclusive
+	// If their bounds have the same value, they overlap if both are inclusive
+	// and touch if only one is inclusive
+	else if(diff1 === 0) {
+		doIntervalsOverlap = interval1.max.inclusive && interval2.min.inclusive
+		doIntervalsTouch = interval1.max.inclusive !== interval2.min.inclusive
+	} else if(diff2 === 0) {
+		doIntervalsOverlap = interval2.max.inclusive && interval1.min.inclusive
+		doIntervalsTouch = interval2.max.inclusive !== interval1.min.inclusive
 	}
 
-	return true
+	switch(kind) {
+		case OverlapKind.Overlap:
+			return doIntervalsOverlap
+		case OverlapKind.Touch:
+			return doIntervalsTouch
+		default:
+			return doIntervalsOverlap && doIntervalsTouch
+	}
 }
 
 export function unifyDomains(domains: Domain[]): Domain {
@@ -123,7 +141,7 @@ export function unifyOverlappingIntervals(intervals: Interval[]): Interval[] {
 	const unifiedIntervals: Interval[] = []
 	let currentInterval = sortedIntervals[0]
 	for(const nextInterval of sortedIntervals) {
-		if(doIntervalsOverlap(currentInterval, nextInterval)) {
+		if(doIntervalsOverlap(currentInterval, nextInterval, OverlapKind.Touch | OverlapKind.Overlap)) {
 			const intervalWithEarlierStart = compareIntervalsByTheirMinimum(currentInterval, nextInterval) < 0 ? currentInterval : nextInterval
 			const intervalWithLaterEnd = compareIntervalsByTheirMaximum(currentInterval, nextInterval) > 0 ? currentInterval : nextInterval
 			currentInterval = new Interval(intervalWithEarlierStart.min, intervalWithLaterEnd.max)

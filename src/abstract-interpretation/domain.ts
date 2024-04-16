@@ -189,6 +189,14 @@ export function overlapIntervals(interval1: Interval, interval2: Interval): Inte
 	const diffMin = compareIntervalsByTheirMinimum(interval1, interval2)
 	const diffMax = compareIntervalsByTheirMaximum(interval1, interval2)
 
+	if(!doIntervalsOverlap(interval1, interval2)) {
+		if(diffMin < 0) {
+			return {smaller: interval1, intersection: undefined, larger: undefined}
+		} else if(diffMin > 0) {
+			return {smaller: undefined, intersection: undefined, larger: interval1}
+		} else { guard(false, 'Their lower bounds cannot be the same as they do not overlap') }
+	}
+
 	const intersectionStart = diffMin > 0 ? interval1.min : interval2.min
 	const intersectionEnd = diffMax < 0 ? interval1.max : interval2.max
 	const intersection = new Interval(intersectionStart, intersectionEnd)

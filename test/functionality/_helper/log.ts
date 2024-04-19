@@ -1,5 +1,4 @@
 import { log, LogLevel } from '../../../src/util/log'
-import { serverLog } from '../../../src/cli/repl/server/server'
 
 /**
  * Update the minimum level of all flowr loggers (including the detached {@link serverLog}).
@@ -7,14 +6,12 @@ import { serverLog } from '../../../src/cli/repl/server/server'
  * @param log2File - Whether to log to a file as well
  */
 export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
-	for(const logger of [log, serverLog]) {
-		if(log2File) {
-			logger.logToFile()
-		}
-		logger.updateSettings(logger => {
-			logger.settings.minLevel = minLevel
-		})
+	if(log2File) {
+		log.logToFile()
 	}
+	log.updateSettings(logger => {
+		logger.settings.minLevel = minLevel
+	})
 }
 
 /**

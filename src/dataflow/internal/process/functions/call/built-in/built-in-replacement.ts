@@ -1,11 +1,11 @@
 import {
-	EmptyArgument } from '../../../../../../r-bridge'
+	EmptyArgument, RArgument
+} from '../../../../../../r-bridge'
 import type {
 	NodeId,
 	ParentInformation,
 	RFunctionArgument,
 	RSymbol
-	, type RArgument
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'

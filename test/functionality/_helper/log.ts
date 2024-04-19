@@ -1,7 +1,7 @@
 import { log, LogLevel } from '../../../src/util/log'
 
 /**
- * Update the minimum level of all flowr loggers (including the detached {@link serverLog}).
+ * Update the minimum level of all flowr loggers.
  * @param minLevel - The new minimum level to show messages from (inclusive)
  * @param log2File - Whether to log to a file as well
  */

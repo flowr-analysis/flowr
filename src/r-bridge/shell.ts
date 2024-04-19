@@ -11,6 +11,7 @@ import fs from 'fs'
 import type { DeepReadonly } from 'ts-essentials'
 import { initCommand } from './init'
 import { getConfig } from '../config'
+import type { AsyncOrSync } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -23,6 +24,10 @@ export interface CollectorTimeout extends MergeableRecord {
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
+	/**
+	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
+	 */
+	onTimeout?:     (resolve: (value: AsyncOrSync<string[]>) => void, reject: (value: AsyncOrSync<string[]>) => void, partialResult: string[]) => void
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -170,10 +175,21 @@ export class RShell {
 			return this.versionCache
 		}
 		// retrieve raw version:
-		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
+		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`, {
+			timeout: {
+				ms:             1000,
+				resetOnNewData: false,
+				// just resolve on timeout and handle the empty array case below
+				onTimeout:      resolve => resolve([])
+			}
+		})
 		expensiveTrace(this.log, () => `raw version: ${JSON.stringify(result)}`)
-		this.versionCache = semver.coerce(result[0])
-		return result.length === 1 ? this.versionCache : null
+		if(result.length === 1) {
+			this.versionCache = semver.coerce(result[0])
+			return this.versionCache
+		} else {
+			return null
+		}
 	}
 
 	public injectLibPaths(...paths: readonly string[]): void {
@@ -346,7 +362,11 @@ class RShellSession {
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
-				reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				if(timeout.onTimeout) {
+					timeout.onTimeout(resolve, reject, result)
+				} else {
+					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				}
 			}, timeout.ms)
 			this.collectionTimeout = makeTimer()
 

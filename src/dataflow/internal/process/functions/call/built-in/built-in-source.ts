@@ -9,7 +9,8 @@ import type {
 } from '../../../../../../r-bridge'
 import {
 	EmptyArgument
-	, requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, removeTokenMapQuotationMarks, retrieveParseDataFromRCode } from '../../../../../../r-bridge'
+	, requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, retrieveParseDataFromRCode,
+	removeRQuotes} from '../../../../../../r-bridge'
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -41,7 +42,7 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	if(sourceFile !== EmptyArgument && sourceFile?.value?.type == RType.String) {
-		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
+		const path = removeRQuotes(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it

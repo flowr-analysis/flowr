@@ -1,4 +1,4 @@
-import { removeTokenMapQuotationMarks } from '../../../../retriever'
+import { removeRQuotes } from '../../../../retriever'
 import { guard } from '../../../../../util/assert'
 
 export const RootId = 0
@@ -26,7 +26,7 @@ export function prepareParsedData(data: string): Entry[] {
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`)
 
 	const ret = new Map<number, Entry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
-		return [id, { line1, col1, line2, col2, id, parent, token: removeTokenMapQuotationMarks(token), terminal, text }] satisfies [number, Entry]
+		return [id, { line1, col1, line2, col2, id, parent, token: removeRQuotes(token), terminal, text }] satisfies [number, Entry]
 	}))
 
 	const roots: Entry[] = []

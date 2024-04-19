@@ -57,7 +57,7 @@ sequenceDiagram
 </details>
 
 After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;*flowR* and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
-See the implementation of the [hello message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/hello.ts) for more information regarding the contents of the message.
+See the implementation of the [hello message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/hello.ts) for more information regarding the contents of the message.
 
 
 <details open>
@@ -112,7 +112,7 @@ The message can contain a `filetoken`, which is used to identify the file in lat
 
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
-See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.
+See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/analysis.ts) for more information.
 
 
 <details open>
@@ -446,7 +446,7 @@ The `results` field of the response effectively contains three keys of importanc
 
 
 You receive an error if, for whatever reason, the analysis fails (e.g., the message or code you sent contained syntax errors).
-It contains a human-readable description *why* the analysis failed (see the [error message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/error.ts) implementation for more details).
+It contains a human-readable description *why* the analysis failed (see the [error message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/error.ts) implementation for more details).
 
 <details>
     <summary>Example Error Message</summary>
@@ -686,7 +686,7 @@ docker run -p1042:1042 -it --rm eagleoutice/flowr --server
 
 ##### Using Netcat
 
-Now, using a tool like [netcat](https://linux.die.net/man/1/nc) to connect:
+Now, using a tool like _netcat_ to connect:
 
 ```shell
 nc 127.0.0.1 1042
@@ -744,7 +744,7 @@ sequenceDiagram
 
 In order to slice, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly slice the same file.
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
-See the implementation of the [request-slice message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/slice.ts) for more information.
+See the implementation of the [request-slice message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/slice.ts) for more information.
 
 <details open>
     <summary>Example Request</summary>
@@ -852,7 +852,7 @@ We strongly recommend you to make use of the `id` field to link answers with req
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
 
-See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/repl.ts) for more information.
+See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/repl.ts) for more information.
 The semantics of the error message are similar to other messages.
 
 <details open>
@@ -945,14 +945,14 @@ R> :parse file://test/testfiles/example.R
 
 ### Interfacing With R by Using The `RShell`
 
-The [`RShell`](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
+The `RShell` class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
 For now there are no alternatives (although we plan on providing more flexible drop-in replacements).
 
 > [!IMPORTANT]
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
-However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) for more information.
+However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the in-code _documentation_ for more information.
 
 With a shell object (let's call it `shell`), you can execute R code by using `RShell::sendCommand`, for example `shell.sendCommand("1 + 1")`. However, this does not return anything, so if you want to collect the output of your command, use `RShell::sendCommandWithOutput` instead.
 
@@ -988,7 +988,7 @@ See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_cor
 > 💡 Information\
 > Please note, that the `SteppingSlicer` has been deprecated with the *Dataflow v2* update, in favor of a far more general `PipelineExecutor` (which now backs the `SteppingSlicer` using a custom legacy-`Pipeline` to ensure that it behaves similar).
 
-The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_core_slicer.SteppingSlicer.html) class. With *flowR*, this allows you to slice code like this:
+The main class that represents *flowR*'s slicing is the `SteppingSlicer` class. With *flowR*, this allows you to slice code like this:
 
 ```typescript
 const stepper = new SteppingSlicer({
@@ -1015,7 +1015,7 @@ Besides slicing, the stepping slicer:
 2. can be executed step-by-step
 3. can be told to stop after a given step
 
-See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_core_stepping-slicer.SteppingSlicer.html) for more.
+See the _documentation_ for more.
 
 #### Understanding the Steps
 
@@ -1028,7 +1028,7 @@ If you add a new step, make sure to modify all of these locations accordingly.
 
 #### Benchmark the Slicer With The `BenchmarkSlicer`
 
-Relying on the `SteppingSlicer`, the [`BenchmarkSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_benchmark_slicer.BenchmarkSlicer.html) instruments each step to allow measuring the required time. It is used by the `benchmark` script, explained in the [overview](https://github.com/Code-Inspect/flowr/wiki/Overview) wiki page.
+Relying on the `SteppingSlicer`, the `BenchmarkSlicer` instruments each step to allow measuring the required time. It is used by the `benchmark` script, explained in the [overview](https://github.com/Code-Inspect/flowr/wiki/Overview) wiki page.
 Furthermore, it provides a simple way to slice a file for all possible slicing points:
 
 ```typescript
@@ -1048,7 +1048,7 @@ Please create a new `BenchmarkSlicer` object per input file (this will probably 
 
 ### Augmenting the Normalization
 
-The normalization of a given input is essentially handled by the [`normalize` function](https://code-inspect.github.io/flowr/doc/functions/src_r_bridge.normalize.html) although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
+The normalization of a given input is essentially handled by the `normalize` function although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
 The call accepts a collection of *hooks* (the configuration of the `SteppingSlicer` allows them as well).
 
 These hooks allow the modification of the inputs and outputs of the normalization. If you want to count the amount of strings encountered while parsing, you can use something like this:
@@ -1073,7 +1073,7 @@ await new SteppingSlicer({
 // console.log(counter)
 ```
 
-The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example). See the [documentation](https://code-inspect.github.io/flowr/doc/interfaces/src_r_bridge_lang_4_x_ast_parser_xml_hooks.XmlParserHooks.html) for more information.
+The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example).
 
 ### Generate Statistics
 
@@ -1117,7 +1117,7 @@ Whenever this name appears, you may substitute this with whatever name fits your
 
    The `initialExampleInfo` type holds the initial values for each counter that you want to maintain during the feature extraction (they will usually be initialized with 0). The resulting `ExampleInfo` type holds the structure of the data that is to be counted. Due to the vast amount of data processed, information like the name and location of a function call is not stored here, but instead written to disk (see below).
 
-   Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr/tree/main/src/statistics/features/feature.ts) type, with `Info` referring to a `FeatureInfo` (like `ExampleInfo` in this example). Next to a `name` and a `description`, each Feature must provide:
+   Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr-statistics/blob/main/src/features/feature.ts) type, with `Info` referring to a `FeatureInfo` (like `ExampleInfo` in this example). Next to a `name` and a `description`, each Feature must provide:
 
    - a processor that extracts the information from the input, adding it to the existing information.
    - a function returning the initial value of the information (in this case, `initialExampleInfo`).

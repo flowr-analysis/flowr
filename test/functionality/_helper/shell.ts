@@ -1,14 +1,14 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
 import type {
-	DecoratedAstMap,
+	DecoratedAstMap, fileProtocol,
 	IdGenerator,
 	NodeId,
 	NoInfo,
 	RExpressionList,
 	RNode,
-	RNodeWithParent
-	, SlicingCriteria } from '../../../src'
+	RNodeWithParent,
+	SlicingCriteria } from '../../../src'
 import {
 	deterministicCountingIdGenerator, requestFromInput,
 	RShell
@@ -31,6 +31,7 @@ import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
 import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
+import { DeepPartial } from 'ts-essentials';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -83,7 +84,7 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	}
 }
 
-export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string): Promise<RNodeWithParent> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
 	return (await new SteppingSlicer({
 		stepOfInterest: 'normalize',

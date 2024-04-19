@@ -116,5 +116,8 @@ describe('Objects', () => {
 				throws(true as boolean[], true as boolean[], 'lied booleans as arrays')
 			})
 		})
+		describe('with undefined', () => {
+			merged({ a: 3, b: 4 }, { a: undefined, b: 7 }, { a: 3, b: 7 }, 'do not overwrite on undefined')
+		})
 	})
 })

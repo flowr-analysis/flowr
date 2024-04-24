@@ -25,8 +25,8 @@ export class AINodeStore extends Map<NodeId, AINode> {
 		}
 	}
 
-	register(node: AINode): void {
-		guard(!this.has(node.nodeId), `Node with ID ${node.nodeId} already exists in the store`)
+	register(node: AINode, overwrite = false): void {
+		guard(!this.has(node.nodeId) || overwrite, `Node with ID ${node.nodeId} already exists in the store`)
 		this.set(node.nodeId, node)
 	}
 }
@@ -39,7 +39,7 @@ export function mergeDomainStores(...stores: AINodeStore[]): AINodeStore {
 				const existing = result.get(id)
 				guard(existing !== undefined, `Domain for ID ${id} is missing`)
 				const unified = unifyDomains([existing.domain, node.domain])
-				result.register({...node, domain: unified})
+				result.register({...node, domain: unified}, true)
 			} else {
 				result.register(node)
 			}

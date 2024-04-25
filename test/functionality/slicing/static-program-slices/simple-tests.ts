@@ -61,14 +61,14 @@ cat(x)`)
 		describe('definitions', () => {
 			describe('[[', () => {
 				const code = '\na <- list(1,2)\na[[1]] = 2\na[[2]] = 3\nb[[4]] = 5\ncat(a)\na <- list(3,4)\ncat(a)\n'
-				//may be fixed
+				//we get an added space in front of the access
 				assertSliced('Repeated named access and definition', shell, code, ['6@a'], 'a <- list(1,2)\na[[1]] = 2\na[[2]] = 3\ncat(a)')
 				assertSliced('Full redefinitions still apply', shell, code, ['8@a'], `a <- list(3,4)
 cat(a)`)
 			})
 			describe('$', () => {
 				const codeB = '\na <- list(a=1,b=2)\na$a = 2\na$b = 3\nb[[4]] = 5\ncat(a)\na <- list(a=3,b=4)\ncat(a)\n'
-				//may be fixed
+				//we get an added space in front of the access
 				assertSliced('Repeated named access and definition', shell, codeB, ['6@a'], 'a <- list(a=1,b=2)\na$a = 2\na$b = 3\ncat(a)')
 				assertSliced('Full redefinitions still apply', shell, codeB, ['8@a'], `a <- list(a=3,b=4)
 cat(a)`)

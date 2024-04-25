@@ -87,16 +87,10 @@ a(x = 3)`
 
 		assertSliced('Must work for same named arguments too', shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')
 
-		//this test fails, result gets shifted to the beginning of the line
-		assertSliced('Must work for same named arguments nested', shell, `
-f <- function(some_variable="hello") {
-  result <- some::other(some_variable=some_variable)
-  result
-}
-    `, ['4@result'], `function(some_variable="hello") {
-    result <- some::other(some_variable=some_variable)
-    result
-}`)
+		//may be fixed
+		assertSliced('Must work for same named arguments nested', shell, 
+			'\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 
+			'f <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}')
 
 
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
@@ -183,7 +177,8 @@ a <- function(x) {
 	return(b())
 }
 a(m)()`)
-		//may be fixed
+		//offsets seem to be wrong if the function is in an assignment
+		//we may have to look at offsets again
 		assertSliced('Higher order anonymous function', shell, 
 			'a <- function(b) {\n  b\n}\nx <- a(function() 2 + 3)() + a(function() 7)()', ['4@x'],
 			'a <- function(b) {\n  b\n}\nx <- a(function() 2 + 3)() + a(function() 7)()')
@@ -201,13 +196,15 @@ cat(x)`)
 f()
 cat(x)
     `, ['3@x'], 'cat(x)')
-		//may be fixed
+		//offsets seem to be wrong if the function is in an assignment
+		//we may have to look at offsets again
 		assertSliced('Nested Side-Effect For Last', shell, 
 			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  a()\n  x <- 2\n  a()\n}\nb <- f()', ['8@b'],
 			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  a()\n  x <- 2\n  a()\n}\nb <- f()')
 		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
 		// however, this read edge should not apply when the call happens within the same scope
-		//line offsets may be fixed
+		//offsets seem to be wrong if the function is in an assignment
+		//we may have to look at offsets again
 		assertSliced('Nested Side-Effect For First', shell, 
 			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', ['9@b'], 
 			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n')
@@ -284,7 +281,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['4@x'], `a <- function() {
+cat(x)`, ['6@x'], `a <- function() {
         function(b) {
             if(runif() > .5) {
                 x <<- b

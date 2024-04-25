@@ -87,7 +87,7 @@ a(x = 3)`
 
 		assertSliced('Must work for same named arguments too', shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')
 
-		//may be fixed
+		//somehow line offsets get lost
 		assertSliced('Must work for same named arguments nested', shell, 
 			'\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 
 			'f <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}')
@@ -165,18 +165,11 @@ b(a)`
 		assertSliced('Slice of b-call uses function', shell, code, ['4@b'], `a <- function() {         i }
 b <- function(f) { i <- 5; f() }
 b(a)`)
-		//line offsets for a's function body may be wrong
-		assertSliced('Directly call returned function', shell, `m <- 12
-a <- function(x) {
-	b <- function() { function() { x } }
-	return(b())
-}
-a(m)()`, ['$25' /* we can't directly slice the second call as the "a" name would take the inner call */], `m <- 12
-a <- function(x) {
-	b <- function() { function() { x } }
-	return(b())
-}
-a(m)()`)
+		//offsets seem to be wrong if the function is in an assignment
+		//we may have to look at offsets again
+		assertSliced('Directly call returned function', shell, 
+			'm <- 12\na <- function(x) {\n	b <- function() { function() { x } }\n	return(b())\n}\na(m)()', ['$25' /* we can't directly slice the second call as the "a" name would take the inner call */], 
+			'm <- 12\na <- function(x) {\n	b <- function() { function() { x } }\n	return(b())\n}\na(m)()')
 		//offsets seem to be wrong if the function is in an assignment
 		//we may have to look at offsets again
 		assertSliced('Higher order anonymous function', shell, 
@@ -281,7 +274,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['6@x'], `a <- function() {
+cat(x)`, ['3@x'], `a <- function() {
         function(b) {
             if(runif() > .5) {
                 x <<- b

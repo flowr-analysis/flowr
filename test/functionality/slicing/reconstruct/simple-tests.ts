@@ -123,6 +123,18 @@ describe('Simple', withShell(shell => {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
 		}
 	})
+
+	describe('Functions in assignments', () => {
+		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
+			{ name:     'Nested Side-Effect For First', 
+				case:     'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', 
+				argument: ['0', '4', '5', '19', '20'], 
+				expected: 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n' }
+		] 
+		for(const test of testCases) {
+			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
+		}
+	})
 	describe('Failures in practice', () => {
 		assertReconstructed('Reconstruct expression list in call', shell, `
 a <- foo({

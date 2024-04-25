@@ -38,7 +38,7 @@ import {
 	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
-//import { jsonReplacer } from '../util/json'
+import { jsonReplacer } from '../util/json'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -154,8 +154,11 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 //add heuristic to select needed semicollons
 //maybe if expr 1,5 => select next semicollon
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
-	return node.info.additionalTokens?.filter(t => t.lexeme && t.location)
+	const out = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
 		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
+
+	console.log(JSON.stringify(out,jsonReplacer))
+	return out
 }
 
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {

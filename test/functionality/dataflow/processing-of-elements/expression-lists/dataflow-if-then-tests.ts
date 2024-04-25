@@ -1,5 +1,8 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
+import { EmptyArgument } from '../../../../../src'
+import { BuiltIn } from '../../../../../src/dataflow'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {
@@ -10,21 +13,53 @@ describe('Lists with if-then constructs', withShell(shell => {
 					{ label: 'with else', text: ' else { 1 }' },
 				]) {
 					describe(`${b.label}`, () => {
+						const cd = b.text === '' ? ['8'] : ['12']
+						const baseGraph = emptyGraph()
+							.use('3', 'x')
+							.reads('3', '0')
+							.call('2', assign, [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.argument('2', ['1-arg', '0-arg'])
+							.call('7', '{', [argumentInCall('6-arg', { controlDependency: cd })], { returns: ['6-arg'], reads: [BuiltIn], controlDependency: cd, environment: defaultEnv().defineVariable('x', '0', '2') })
+							.argument('7', '6-arg')
+							.constant('6', { controlDependency: cd })
+						if(b.text !== '') {
+							baseGraph.sameRead('7', '11')
+								.call('11', '{', [argumentInCall('10-arg', { controlDependency: ['12'] })], { returns: ['10-arg'], reads: [BuiltIn], controlDependency: ['12'], environment: defaultEnv().defineVariable('x', '0', '2') })
+								.argument('11', '10-arg')
+								.call('12', 'if', [argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: ['12'] }), argumentInCall('11-arg', { controlDependency: ['12'] })], { returns: ['7-arg', '11-arg'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+								.argument('12', ['7-arg', '11-arg', '3-arg'])
+								.constant('1')
+								.defineVariable('0', 'x', { definedBy: ['1'] })
+								.constant('6', { controlDependency: ['12'] })
+								.constant('10', { controlDependency: ['12'] })
+						} else {
+							baseGraph.call('8', 'if', [argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: ['8'] }), EmptyArgument], { returns: ['7-arg'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+								.argument('8', ['7-arg', '3-arg'])
+								.constant('1')
+								.defineVariable('0', 'x', { definedBy: ['1'] })
+						}
 						assertDataflow('read previous def in cond',
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
-							emptyGraph()
-								.defineVariable('0', 'x')
-								.use('3', 'x')
-								.reads('3', '0')
+							baseGraph
 						)
+						const previousGraph = emptyGraph()
+							.use('6', 'x', { controlDependency: cd })
+							.reads('6', '0')
+							.call('2', assign, [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.argument('2', ['1-arg', '0-arg'])
+							.call('7', '{', [argumentInCall('6-arg', { controlDependency: cd })], { returns: ['6-arg'], reads: [BuiltIn], controlDependency: cd, environment: defaultEnv().defineVariable('x', '0', '2') })
+							.argument('7', '6-arg')
+							.call(cd[0], 'if', [argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: cd }), EmptyArgument], { returns: ['7-arg'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+							.argument(cd[0], ['7-arg', '3-arg'])
+							.constant('1')
+							.defineVariable('0', 'x', { definedBy: ['1'] })
+							.constant('3')
+						// otherwise will be pruned by TRUE
 						assertDataflow('read previous def in then',
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
-							emptyGraph()
-								.defineVariable('0', 'x')
-								.use('4', 'x')
-								.reads('4', '0')
+							previousGraph
 						)
 					})
 				}
@@ -32,9 +67,25 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,
 					emptyGraph()
-						.defineVariable('0', 'x')
-						.use('6', 'x')
-						.reads('6', '0')
+						.use('10', 'x', { controlDependency: ['12'] })
+						.reads('10', '0')
+						.call('2', assign, [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['0'], reads: [BuiltIn] })
+						.argument('2', ['1-arg', '0-arg'])
+						.call('11', '{', [argumentInCall('10-arg', { controlDependency: ['12'] })], {
+							returns:           ['10-arg'],
+							reads:             [BuiltIn],
+							controlDependency: ['12'],
+							environment:       defaultEnv().defineVariable('x', '0', '2') })
+						.argument('11', '10-arg')
+						.call('12', 'if', [argumentInCall('3-arg'), EmptyArgument, argumentInCall('11-arg', { controlDependency: ['12'] })], {
+							returns:     ['11-arg'],
+							reads:       [BuiltIn],
+							environment: defaultEnv().defineVariable('x', '0', '2')
+						})
+						.argument('12', ['11-arg', '3-arg'])
+						.constant('1')
+						.defineVariable('0', 'x', { definedBy: ['1'] })
+						.constant('3')
 				)
 			})
 			describe('write within if', () => {

@@ -159,7 +159,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
 		const oldVertex = this.vertexInformation.get(vertex.id)
 		if(oldVertex !== undefined) {
-			guard(oldVertex.name === vertex.name, `vertex names must match for the same id if added, but: ${JSON.stringify(oldVertex.name)} vs ${JSON.stringify(vertex.name)}`)
+			guard(oldVertex.name === vertex.name, `vertex names must match for the same id ${vertex.id} if added, but: ${JSON.stringify(oldVertex.name)} vs ${JSON.stringify(vertex.name)}`)
 			return this
 		}
 

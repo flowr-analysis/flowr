@@ -97,21 +97,19 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.use('4', 'y').reads('5', '4')
 				.reads('3-arg', '0')
 		)
-		// TODO: defines by still missing
 		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
 			'a[x] <- 5',
 			emptyGraph()
 				.use('0-arg', unnamedArgument('0-arg'), { controlDependency: [] })
-				.use('4-arg', unnamedArgument('4-arg'), { controlDependency: [] })
+				.use('2', unnamedArgument('2'), { controlDependency: [] })
+				.argument('3', '2')
 				.argument('3', '0-arg')
-				.argument('3', '4-arg')
 				.reads('4-arg', '4')
 				.reads('0-arg', '0')
 				.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
 				.constant('4')
-				.definedBy('0', '4')
 				.reads('2', '1')
-				.defineVariable('0', 'a', { controlDependency: [] })
+				.defineVariable('0', 'a', { definedBy: ['4'] })
 				.use('1', 'x')
 		)
 	})
@@ -309,33 +307,37 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				shell, 'a[x] <- x <- 3',
 				emptyGraph()
 					.use('1', 'x')
-					.use('2', unnamedArgument('2'))
+					.use('2', unnamedArgument('2'), { controlDependency: [] })
+					.use('0-arg', unnamedArgument('0-arg'), { controlDependency: [] })
+					.reads('0-arg', '0')
 					.reads('2', '1')
 					.call('6', '<-', [argumentInCall('4-arg'), argumentInCall('5-arg')], { returns: ['4'], reads: [BuiltIn] })
 					.argument('6', ['5-arg', '4-arg'])
 					.argument('3', '2')
-					.call('3', '[<-', [argumentInCall('0-arg', { controlDependency: [] }), argumentInCall('2'), argumentInCall('6-arg', { controlDependency: [] })], { returns: ['0'], reads: [BuiltIn] })
+					.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('6-arg')], { returns: ['0'], reads: [BuiltIn] })
 					.argument('3', ['6-arg', '0-arg'])
 					.constant('5')
 					.defineVariable('4', 'x', { definedBy: ['5'] })
 					.reads('6-arg', '4')
-					.defineVariable('0', 'a', { definedBy: ['6'], controlDependency: [] })
+					.defineVariable('0', 'a', { definedBy: ['6'] })
 			)
 			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', 'local-right-assignment', 'return-value-of-assignments']),
 				shell, '3 -> x -> a[x]',
 				emptyGraph()
 					.use('4', 'x')
-					.use('5', unnamedArgument('5'))
+					.use('5', unnamedArgument('5'), { controlDependency: [] })
+					.use('3-arg', unnamedArgument('3-arg'), { controlDependency: [] })
+					.reads('3-arg', '3')
 					.reads('5', '4')
 					.call('2', '->', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['1'], reads: [BuiltIn] })
 					.argument('2', ['0-arg', '1-arg'])
 					.argument('6', '5')
-					.call('6', '[<-', [argumentInCall('3-arg', { controlDependency: [] }), argumentInCall('5'), argumentInCall('2-arg', { controlDependency: [] })], { returns: ['3'], reads: [BuiltIn] })
+					.call('6', '[<-', [argumentInCall('3-arg'), argumentInCall('5'), argumentInCall('2-arg')], { returns: ['3'], reads: [BuiltIn] })
 					.argument('6', ['2-arg', '3-arg'])
 					.constant('0')
 					.defineVariable('1', 'x', { definedBy: ['0'] })
 					.reads('2-arg', '1')
-					.defineVariable('3', 'a', { definedBy: ['2'], controlDependency: [] })
+					.defineVariable('3', 'a', { definedBy: ['2'] })
 			)
 		})
 
@@ -367,7 +369,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.call('5', '<-', [argumentInCall('0-arg'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
 							.argument('5', ['4-arg', '0-arg'])
 							.constant('2', { controlDependency: ['4'] })
-							.reads('4-arg', ['1', '2'])
+							.reads('4-arg', ['1'])
 							.defineVariable('0', 'x', { definedBy: ['4'] })
 					)
 
@@ -386,7 +388,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.argument('8', ['7-arg', '0-arg'])
 							.constant('2')
 							.constant('3')
-							.reads('4-arg', ['2', '3'])
 							.constant('5', { controlDependency: ['7'] })
 							.reads('7-arg', ['1', '4'])
 							.defineVariable('0', 'x', { definedBy: ['7'] })
@@ -479,9 +480,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 
 
 	describe('if-then-else', () => {
-		// spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
+		// spacing issues etc. are dealt with within the parser; however, braces are not allowed to introduce scoping artifacts
 		describe('if-then, no else', () => {
-			assertDataflow(label('Completely Constant', ['if', 'logical', 'numbers']),
+			assertDataflow(label('completely constant', ['if', 'logical', 'numbers']),
 				shell, 'if (TRUE) 1',
 				emptyGraph()
 					.use('2-arg', unnamedArgument('2-arg'), { controlDependency: ['3'] })
@@ -492,7 +493,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.constant('0')
 					.constant('1', { controlDependency: ['3'] })
 			)
-			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', ...OperatorDatabase['>'].capabilities]),
+			assertDataflow(label('Compare Condition', ['if', 'logical', 'numbers', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) 1',
 				emptyGraph()
 					.use('0', 'x')
@@ -504,7 +505,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('5', 'if', [argumentInCall('2-arg'), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: ['4-arg'], reads: [BuiltIn] })
 					.argument('5', '2-arg')
 					.constant('1')
-					.reads('2-arg', ['0', '1'])
+					.reads('2-arg', ['0'])
 					.constant('3', { controlDependency: ['5'] })
 			)
 			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase['>'].capabilities]),
@@ -520,7 +521,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('5', 'if', [argumentInCall('2-arg'), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: ['4-arg'], reads: [BuiltIn] })
 					.argument('5', '2-arg')
 					.constant('1')
-					.reads('2-arg', ['0', '1'])
+					.reads('2-arg', ['0'])
 			)
 			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > y) z',
@@ -587,7 +588,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('5', '2-arg')
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1'] })
-					.reads('2-arg', ['1', '0'])
+					.reads('2-arg', ['0'])
 			)
 		})
 
@@ -601,7 +602,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('9', ['4-arg', '0-arg'])
 					.constant('0')
 					.constant('3', { controlDependency: ['9'] })
-					.reads('4-arg', '3')
 			)
 			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { 1 } else { 42 }',
@@ -617,11 +617,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('11', 'if', [argumentInCall('2-arg'), argumentInCall('6-arg', { controlDependency: ['11'] }), argumentInCall('10-arg', { controlDependency: ['11'] })], { returns: ['6-arg', '10-arg'], reads: [BuiltIn] })
 					.argument('11', ['6-arg', '10-arg', '2-arg'])
 					.constant('1')
-					.reads('2-arg', ['0', '1'])
+					.reads('2-arg', ['0'])
 					.constant('5', { controlDependency: ['11'] })
-					.reads('6-arg', '5')
 					.constant('9', { controlDependency: ['11'] })
-					.reads('10-arg', '9')
 			)
 			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { 42 }',
@@ -638,10 +636,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('11', 'if', [argumentInCall('2-arg'), argumentInCall('6-arg', { controlDependency: ['11'] }), argumentInCall('10-arg', { controlDependency: ['11'] })], { returns: ['6-arg', '10-arg'], reads: [BuiltIn] })
 					.argument('11', ['6-arg', '10-arg', '2-arg'])
 					.constant('1')
-					.reads('2-arg', ['0', '1'])
+					.reads('2-arg', ['0'])
 					.reads('6-arg', '5')
 					.constant('9', { controlDependency: ['11'] })
-					.reads('10-arg', '9')
 			)
 			assertDataflow(label('compare cond. symbol in then & else', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { z }',
@@ -659,7 +656,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('11', 'if', [argumentInCall('2-arg'), argumentInCall('6-arg', { controlDependency: ['11'] }), argumentInCall('10-arg', { controlDependency: ['11'] })], { returns: ['6-arg', '10-arg'], reads: [BuiltIn] })
 					.argument('11', ['6-arg', '10-arg', '2-arg'])
 					.constant('1')
-					.reads('2-arg', ['0', '1'])
+					.reads('2-arg', ['0'])
 					.reads('6-arg', '5')
 					.reads('10-arg', '9')
 			)
@@ -748,8 +745,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.constant('7', { controlDependency: ['10'] })
 				.defineVariable('6', 'y', { definedBy: ['7'], controlDependency: ['10'] })
 				.reads('6', '0')
-				.reads('8-arg', ['7', '6'])
-				.reads('9-arg', '7')
+				.reads('8-arg', ['6'])
 		)
 	})
 
@@ -766,9 +762,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('8', 'for', [argumentInCall('0-arg'), argumentInCall('3-arg'), argumentInCall('7-arg', { controlDependency: ['8'] })], { returns: [], reads: [BuiltIn] })
 					.constant('1')
 					.constant('2')
-					.reads('3-arg', ['1', '2'])
 					.constant('6', { controlDependency: ['8'] })
-					.reads('7-arg', '6')
 			)
 			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
 				shell, 'for(i in 1:10) { i }',
@@ -784,7 +778,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('8', ['0-arg', '3-arg', '7-arg'])
 					.constant('1')
 					.constant('2')
-					.reads('3-arg', ['1', '2'])
 					.reads('7-arg', '6')
 			)
 		})
@@ -819,8 +812,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('6', '5-arg')
 					.constant('3')
 					.defineVariable('2', 'x', { definedBy: ['3'] })
-					.reads('4-arg', ['3', '2'])
-					.reads('5-arg', '3')
+					.reads('4-arg', ['2'])
 			)
 			assertDataflow(label('using variable in body', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping']),
 				shell, 'repeat { x <- y }',

@@ -39,6 +39,11 @@ function getEffectiveOrder<T>(config: {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args
 }
 
+/**
+ * Processes an assignment, i.e., `<target> <- <source>`.
+ * Handling it as a function call `` `<-`(<target>, <source>)``.
+ * This includes handling of replacement functions (e.g., `names(x) <- ...` as `` `names<-`(x, ...) ``).
+ */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
@@ -118,6 +123,9 @@ function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation
 	return vertex?.[0].tag === 'function-definition'
 }
 
+/**
+ * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
+ */
 function processAssignmentToSymbol<OtherInfo>(
 	superAssignment: boolean,
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -137,7 +145,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	const readFromSourceWritten = sourceArg.out
-	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlDependency }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlDependency }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)

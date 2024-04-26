@@ -155,6 +155,17 @@ function processAssignmentToSymbol<OtherInfo>(
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
 		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })
+		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+		const out = information.graph.outgoingEdges(write.nodeId)
+		for(const [id,edge] of (out?? [])) {
+			if(edge.types.has(EdgeType.Reads)) {
+				if(edge.types.size === 1) {
+					out?.delete(id)
+				} else {
+					edge.types.delete(EdgeType.Reads)
+				}
+			}
+		}
 	}
 
 	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns })

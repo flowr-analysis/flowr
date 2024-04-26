@@ -1,5 +1,7 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
+import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import {
 	linkCircularRedefinitionsWithinALoop,
@@ -15,14 +17,15 @@ export function processRepeatLoop<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(args.length !== 1) {
+	if(args.length !== 1 || args[0] === EmptyArgument) {
 		dataflowLogger.warn(`Repeat-Loop ${name.content} does not have 1 argument, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	const { information, processedArguments } = processKnownFunctionCall(name, args, rootId, data)
+	/* similar to the for loop, we ignore the last argument, as it is a reverse dep. */
+	const { information } = processKnownFunctionCall(name, [], rootId, data)
 
-	const body = processedArguments[0]
+	const body = processDataflowFor(args[0], data)
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`)
 
 	const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])

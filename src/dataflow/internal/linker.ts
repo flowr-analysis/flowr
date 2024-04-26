@@ -133,11 +133,11 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls) || e.types.has(EdgeType.Relates)).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
-
 	for(const def of functionDefs.values()) {
 		guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {
+			console.log('linking function call with environment', def.subflow.in)
 			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
 			for(const ingoing of def.subflow.in) {
 				const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined

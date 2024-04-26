@@ -14,7 +14,7 @@ export function processAllArguments<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	finalGraph: DataflowGraph,
 	functionRootId: NodeId,
-	/* allows to pass a data processor in-between each argument; can not modify env currently */
+	/* allows passing a data processor in-between each argument; cannot modify env currently */
 	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
 ) {
 	let finalEnv = functionName.environment
@@ -37,6 +37,19 @@ export function processAllArguments<OtherInfo>(
 		processedArguments.push(processed)
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment)
+
+		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
+		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv) : undefined
+
+			if(tryToResolve === undefined) {
+				remainingReadInArgs.push(ingoing)
+			} else {
+				for(const resolved of tryToResolve) {
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads })
+				}
+			}
+		}
 		argEnv = overwriteEnvironment(argEnv, processed.environment)
 
 		finalGraph.mergeWith(processed.graph)
@@ -50,18 +63,7 @@ export function processAllArguments<OtherInfo>(
 
 		// add an argument edge to the final graph
 		finalGraph.addEdge(functionRootId, processed.out[0], { type: EdgeType.Argument })
-		// resolve reads within argument
-		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv) : undefined
 
-			if(tryToResolve === undefined) {
-				remainingReadInArgs.push(ingoing)
-			} else {
-				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads })
-				}
-			}
-		}
 		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
 				{ ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },

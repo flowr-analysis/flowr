@@ -3,7 +3,13 @@ import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { appendEnvironment, define, makeAllMaybe, overwriteEnvironment } from '../../../../../environments'
+import {
+	appendEnvironment,
+	define,
+	initializeCleanEnvironments,
+	makeAllMaybe,
+	overwriteEnvironment
+} from '../../../../../environments'
 import {
 	linkCircularRedefinitionsWithinALoop,
 	linkIngoingVariablesInSameScope,
@@ -30,7 +36,6 @@ export function processForLoop<OtherInfo>(
 
 	guard(variableArg !== EmptyArgument && vectorArg !== EmptyArgument && bodyArg !== EmptyArgument, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
 
-
 	const variable = processDataflowFor(variableArg, data)
 	const vector = processDataflowFor(vectorArg, data)
 
@@ -38,14 +43,15 @@ export function processForLoop<OtherInfo>(
 	data = { ...data, controlDependency: [...data.controlDependency ?? [], name.info.id] }
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
-	const headGraph= variable.graph.mergeWith(vector.graph)
+	const headGraph = variable.graph.mergeWith(vector.graph)
 
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
 	}
 	data = { ...data, environment: headEnvironments }
-	const body = processDataflowFor(bodyArg, data)
+	/* process the body without any environment first, to retrieve all open references */
+	const body = processDataflowFor(bodyArg, { ...data, environment: initializeCleanEnvironments() })
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 
@@ -80,7 +86,8 @@ export function processForLoop<OtherInfo>(
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
-	patchFunctionCall(nextGraph, rootId, name, { ...data, controlDependency: originalDependency }, [variable, vector, body])
+	/* note this does not have the last argument as the body 1) may not be executed 2) is not a dependent of the loop (but the other way around) */
+	patchFunctionCall(nextGraph, rootId, name, { ...data, controlDependency: originalDependency }, [variable, vector])
 
 	// TODO: handle break and next
 

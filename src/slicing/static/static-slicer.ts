@@ -26,9 +26,9 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
  */
 interface NodeToSlice {
 	id:                 NodeId
-	/** used for calling context etc. */
+	/** used for calling context, etc. */
 	baseEnvironment:    REnvironmentInformation
-	/** if we add a function call we may need it only for its side effects (e.g., a redefinition of a global variable), if so, 'returns' links will not be traced */
+	/** if we add a function call, we may need it only for its side effects (e.g., a redefinition of a global variable), if so, 'returns' links will not be traced */
 	onlyForSideEffects: boolean
 }
 
@@ -51,8 +51,8 @@ function fingerprint(id: NodeId, envFingerprint: Fingerprint, onlyForSideEffects
 export interface SliceResult {
 	/**
 	 * Number of times the set threshold was hit (i.e., the same node was visited too often).
-	 * While any number above 0 might indicate a wrong slice, it does not have to as usually even revisiting the same node does not
-	 * often cause more ids to be included in the slice.
+	 * While any number above 0 might indicate a wrong slice, it does not have to as usually even revisiting the same node
+	 * seldom causes more ids to be included in the slice.
 	 */
 	timesHitThreshold: number
 	/**
@@ -76,6 +76,13 @@ class VisitingQueue {
 		this.threshold = threshold
 	}
 
+	/**
+	 * Adds a node to the queue if it has not been seen before.
+	 * @param target             - the node to add
+	 * @param env                - the environment the node is traversed in
+	 * @param envFingerprint     - the fingerprint of the environment
+	 * @param onlyForSideEffects - whether the node is only used for its side effects
+	 */
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target) ?? 0
 
@@ -155,6 +162,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		const returns = [...currentEdges].filter(([_, edge]) => edge.types.has(EdgeType.Returns))
 		if(returns.length >= 1) {
 			for(const [target, _] of returns) {
+				// console.log('Adding by returns', target, 'by', baseId, currentVertex.name)
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			}
 			continue
@@ -165,13 +173,16 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 				continue
 			}
 			if(shouldTraverseEdge(edge.types)) {
+				// console.log('Adding by edge', target, 'by', baseId, currentVertex.name)
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			} else if(edge.types.has(EdgeType.SideEffectOnCall)) {
+				// console.log('Adding by side effect', target, 'by', baseId, currentVertex.name)
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 		}
 		if(currentVertex.controlDependency) {
 			for(const cd of currentVertex.controlDependency) {
+				// console.log('Adding by control dependency', cd, 'by', baseId, currentVertex.name)
 				queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
 			}
 		}

@@ -14,7 +14,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
 	reverseOrder?: boolean,
-	/* allows to pass a data processor in-between each argument */
+	/* allows passing a data processor in-between each argument */
 	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
 ): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[], fnRef: IdentifierReference } {
 	const functionName = processDataflowFor(name, data)

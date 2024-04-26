@@ -38,7 +38,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		}
 	}
 
-	// keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
+	// keep it, for we have no target, as read-ids are unique within the same fold, this should work for same links
 	// we keep them if they are defined outside the current parent and maybe throw them away later
 	if(probableTarget === undefined) {
 		return

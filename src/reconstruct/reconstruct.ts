@@ -105,11 +105,7 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	}
 }
 
-function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n))
-	}
-
+function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code): Code {
 	if(lhs.length === 0 && rhs.length === 0) {
 		return []
 	}
@@ -123,10 +119,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
-function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
-	}
+function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
 	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
 	} else {
@@ -185,10 +178,7 @@ function removeExpressionListWrap(code: Code) {
 }
 
 
-function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, ifThenElse)) {
-		return plain(getLexeme(ifThenElse))
-	}
+function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined): Code {
 	otherwise ??= []
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
 		return []
@@ -199,32 +189,27 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		]
 	} else if(otherwise.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+			{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ line: '}', indent: 0 }
 		]
 	} else if(when.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
+			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ line: '}', indent: 0 }
+			{ line: '', indent: 0 }
 		]
 	} else {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+			{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ line: '} else {', indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ line: '}', indent: 0 }
+			{ line: 'else', indent: 0 },
+			...indentBy(removeExpressionListWrap(otherwise), 1)
 		]
 	}
 }
 
 
-function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
-	}
+function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code): Code {
 	if(body.length === 0 && condition.length === 0) {
 		return []
 	} else {
@@ -263,11 +248,7 @@ function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 	return a !== EmptyArgument
 }
 
-function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, node)) {
-		return plain(getLexeme(node))
-	}
-
+function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
 	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
@@ -277,11 +258,7 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	return plain(getLexeme(node))
 }
 
-function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, argument)) {
-		return plain(getLexeme(argument))
-	}
-
+function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined): Code {
 	if(argument.name !== undefined && name !== undefined && name.length > 0) {
 		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`)
 	} else {
@@ -290,11 +267,7 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 }
 
 
-function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, parameter)) {
-		return plain(getLexeme(parameter))
-	}
-
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined): Code {
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {
@@ -305,9 +278,9 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 }
 
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
-	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
+	if(functionParameters.every(p => p.length === 0)) {
 		return body
 	}
 	const parameters = reconstructParameters(definition.parameters).join(', ')

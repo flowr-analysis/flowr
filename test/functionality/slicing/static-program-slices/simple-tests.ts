@@ -7,8 +7,8 @@ describe('Simple', withShell(shell => {
 		}
 	})
 	describe('Constant conditionals', () => {
-		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
-		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
+		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
+		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
 	})
 	describe('Independent Control-Flow', () => {
 		assertSliced('For-Loop', shell, `
@@ -120,40 +120,40 @@ cat("Product:", product, "\\n")
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) sum <- sum + i + w`
+for(i in 1:(N-1)) { sum <- sum + i + w }`
 		)
 
 		assertSliced('Sum rhs in for', shell, code, ['8:10'],
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) sum <- sum + i + w`
+for(i in 1:(N-1)) { sum <- sum + i + w }`
 		)
 
 		assertSliced('Product lhs in for', shell, code, ['9:3'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) product <- product * i`
+for(i in 1:(N-1)) { product <- product * i }`
 		)
 
 		assertSliced('Product rhs in for', shell, code, ['9:14'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) product <- product * i`
+for(i in 1:(N-1)) { product <- product * i }`
 		)
 
 		assertSliced('Sum in call', shell, code, ['12:13'],
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) sum <- sum + i + w
+for(i in 1:(N-1)) { sum <- sum + i + w }
 cat("Sum:", sum, "\\n")`
 		)
 
 		assertSliced('Product in call', shell, code, ['13:17'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) product <- product * i
+for(i in 1:(N-1)) { product <- product * i }
 cat("Product:", product, "\\n")`
 		)
 

@@ -39,6 +39,7 @@ export function processFunctionDefinition<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	console.log('fn-def')
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
@@ -107,6 +108,7 @@ export function processFunctionDefinition<OtherInfo>(
 			})
 		}
 	}
+	console.log(remainingRead)
 
 	// TODO: use returns to find exit points
 

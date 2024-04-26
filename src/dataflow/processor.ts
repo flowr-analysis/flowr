@@ -12,7 +12,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly completeAst:       NormalizedAst<OtherInfo>
 	/**
    * Correctly contains pushed local scopes introduced by `function` scopes.
-   * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
+   * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
    */
 	readonly environment:       REnvironmentInformation
 	/**

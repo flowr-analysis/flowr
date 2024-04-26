@@ -82,7 +82,7 @@ function reconstructRawBinaryOperator(lhs: Code, n: string, rhs: Code): Code {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
 		{ linePart: [{ part: `${prettyPrintCodeToString([lhs[lhs.length - 1]])} ${n} ${prettyPrintCodeToString([rhs[0]])}`, loc: lhs[lhs.length - 1].linePart[lhs.length - 1].loc }], indent: 0 },
-		...indentBy(rhs.slice(1, rhs.length), 1)
+		...rhs.slice(1, rhs.length)
 	]
 }
 

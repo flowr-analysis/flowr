@@ -115,6 +115,7 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	// treat first argument to Symbol
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
 	const res = processKnownFunctionCall(name, mappedArgs, rootId, data,  !config.swapSourceAndTarget)
+	console.log(res.processedArguments.map(p => p?.in))
 	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 }
 
@@ -152,6 +153,7 @@ function processAssignmentToSymbol<OtherInfo>(
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
+		console.log('defining', write.name, write.nodeId, write.controlDependency)
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
 		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })

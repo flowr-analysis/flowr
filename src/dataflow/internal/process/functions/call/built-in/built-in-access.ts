@@ -52,8 +52,8 @@ export function processAccess<OtherInfo>(
 
 	return {
 		...information,
-		/*
-     * keep active nodes in case of assignments etc.
+	/*
+     * Keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
      * This way when using
      * ```ts

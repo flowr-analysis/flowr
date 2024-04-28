@@ -195,8 +195,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	} else if(when.length === 0) {
 		return [
 			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ line: '', indent: 0 }
+			...indentBy(removeExpressionListWrap(otherwise), 1)
 		]
 	} else {
 		return [
@@ -249,6 +248,8 @@ function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 }
 
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
+	console.log(node.info.id)
+
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
 	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
@@ -452,6 +453,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
  * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
+	console.log(selection)
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}

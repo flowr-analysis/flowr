@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import type { EmptyArgument, NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import {EmptyArgument, NodeId, NoInfo, RNodeWithParent} from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
@@ -27,6 +27,10 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
+
+export function isPositional(arg: FunctionArgument): arg is PositionalFunctionArgument {
+	return arg !== EmptyArgument && !Array.isArray(arg)
+}
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependency'>  | IdentifierDefinition
 

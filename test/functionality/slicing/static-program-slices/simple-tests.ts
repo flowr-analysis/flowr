@@ -7,8 +7,8 @@ describe('Simple', withShell(shell => {
 		}
 	})
 	describe('Constant conditionals', () => {
-		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
-		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
+		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE)\n    { x <- 3 }\nx')
+		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else\n    { x <- 4 }\nx')
 	})
 	describe('Independent Control-Flow', () => {
 		assertSliced('For-Loop', shell, `

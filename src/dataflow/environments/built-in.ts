@@ -54,7 +54,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next' }
 ): DataflowInformation {
-	const res: DataflowInformation = processKnownFunctionCall(name, args, rootId, data).information
+	const res: DataflowInformation = processKnownFunctionCall({ name, args, rootId, data }).information
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
 		if(arg !== undefined && arg !== EmptyArgument) {
@@ -158,6 +158,7 @@ registerBuiltInFunctions(processAssignment,       { swapSourceAndTarget: true },
 registerBuiltInFunctions(processAssignment,       { superAssignment: true, swapSourceAndTarget: true }, '->>')
 registerBuiltInFunctions(processSpecialBinOp,     { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,             {},                                                   '|>')
+// TODO: add nse edge for quote
 registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([1]) },            'quote', 'substitute', 'bquote')
 registerBuiltInFunctions(processForLoop,          {},                                                   'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')

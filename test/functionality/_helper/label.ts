@@ -43,7 +43,7 @@ export function label(testname: string, ids: readonly SupportedFlowrCapabilityId
 	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids)
 	const label: TestLabel = {
 		id:      uniqueTestId(),
-		name:    testname,
+		name:    testname.toLowerCase(),
 		capabilities,
 		context: context === undefined ? new Set() : new Set(context)
 	}

@@ -29,7 +29,7 @@ export function processForLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 3) {
 		dataflowLogger.warn(`For-Loop ${name.content} does not have 3 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const [variableArg, vectorArg, bodyArg] = args
@@ -86,10 +86,15 @@ export function processForLoop<OtherInfo>(
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
-	/* note this does not have the last argument as the body 1) may not be executed 2) is not a dependent of the loop (but the other way around) */
-	patchFunctionCall(nextGraph, rootId, name, { ...data, controlDependency: originalDependency }, [variable, vector])
-
-	// TODO: handle break and next
+	patchFunctionCall({
+		nextGraph,
+		rootId,
+		name,
+		data:                  { ...data, controlDependency: originalDependency },
+		argumentProcessResult: [variable, vector, body]
+	})
+	/* mark the last argument as nse */
+	nextGraph.addEdge(rootId, body.out[0], { type: EdgeType.NonStandardEvaluation })
 
 	return {
 		unknownReferences: [],

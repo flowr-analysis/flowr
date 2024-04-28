@@ -28,18 +28,19 @@ export function printAsBuilder(graph: DataflowGraph): string {
 }
 
 const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
-	[EdgeType.Reads]:            'reads',
-	[EdgeType.DefinedBy]:        'definedBy',
-	[EdgeType.SameReadRead]:     'sameRead',
-	[EdgeType.SameDefDef]:       'sameDef',
-	[EdgeType.Calls]:            'calls',
-	[EdgeType.Returns]:          'returns',
-	[EdgeType.DefinesOnCall]:    'definesOnCall',
-	[EdgeType.Argument]: 	       'argument',
-	[EdgeType.Relates]:          'relates',
-	/* TODO */
-	[EdgeType.DefinedByOnCall]:  undefined,
-	[EdgeType.SideEffectOnCall]: undefined
+	[EdgeType.Reads]:                 'reads',
+	[EdgeType.DefinedBy]:             'definedBy',
+	[EdgeType.SameReadRead]:          'sameRead',
+	[EdgeType.SameDefDef]:            'sameDef',
+	[EdgeType.Calls]:                 'calls',
+	[EdgeType.Returns]:               'returns',
+	[EdgeType.DefinesOnCall]:         'definesOnCall',
+	[EdgeType.Argument]: 	            'argument',
+	[EdgeType.Relates]:               'relates',
+	[EdgeType.NonStandardEvaluation]: 'nse',
+	/* TODO -------------------------------------------- */
+	[EdgeType.DefinedByOnCall]:       undefined,
+	[EdgeType.SideEffectOnCall]:      undefined
 }
 
 class DataflowBuilderPrinter {

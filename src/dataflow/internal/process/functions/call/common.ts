@@ -5,18 +5,33 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { EdgeType } from '../../../../graph'
+import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
+import { markNonStandardEvaluationEdges } from './known-call-handling'
+
+export interface ProcessAllArgumentInput<OtherInfo> {
+	readonly functionName:   DataflowInformation
+	readonly args:           readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
+	readonly finalGraph:     DataflowGraph
+	readonly functionRootId: NodeId
+	/* allows passing a data processor in-between each argument; cannot modify env currently */
+	readonly patchData?:     (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
+	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
+	readonly markAsNSE?:     readonly number[]
+}
+
+export interface ProcessAllArgumentResult {
+	readonly finalEnv:            REnvironmentInformation
+	readonly callArgs:            FunctionArgument[]
+	readonly remainingReadInArgs: IdentifierReference[]
+	readonly processedArguments:  (DataflowInformation | undefined)[]
+}
 
 export function processAllArguments<OtherInfo>(
-	functionName: DataflowInformation,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	finalGraph: DataflowGraph,
-	functionRootId: NodeId,
-	/* allows passing a data processor in-between each argument; cannot modify env currently */
-	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
-) {
+	{ functionName, args, data, finalGraph, functionRootId, patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
+): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment
 	// arg env contains the environments with other args defined
 	let argEnv = functionName.environment
@@ -75,7 +90,17 @@ export function processAllArguments<OtherInfo>(
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments }
 }
 
-export function patchFunctionCall<OtherInfo>(nextGraph: DataflowGraph, rootId: NodeId, name: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, argumentProcessResult: (DataflowInformation | undefined)[]) {
+export interface PatchFunctionCallInput<OtherInfo> {
+	readonly nextGraph:             DataflowGraph
+	readonly rootId:                NodeId
+	readonly name:                  RSymbol<OtherInfo & ParentInformation>
+	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
+	readonly argumentProcessResult: readonly (DataflowInformation | undefined)[]
+}
+
+export function patchFunctionCall<OtherInfo>(
+	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
+): void {
 	nextGraph.addVertex({
 		tag:               'function-call',
 		id:                rootId,

@@ -42,7 +42,7 @@ export function processFunctionDefinition<OtherInfo>(
 	console.log('fn-def')
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const parameters = args.slice(0, -1)
@@ -111,7 +111,6 @@ export function processFunctionDefinition<OtherInfo>(
 	console.log(remainingRead)
 
 	// TODO: use returns to find exit points
-
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
@@ -202,7 +201,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
  */
 function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
-	// first we try to bind again within parameters - if we have it, fine
+	// first, we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {
 		const resolved = read.name ? resolveByName(read.name, parameterEnvs) : undefined
@@ -212,9 +211,9 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			}
 			continue
 		}
-		// if not resolved, link all outs within the body as potential reads
-		// regarding the sort we can ignore equality as nodeIds are unique
-		// we sort to get the lowest id - if it is an 'always' flag we can safely use it instead of all of them
+		// If not resolved, link all outs within the body as potential reads.
+		// Regarding the sort we can ignore equality as nodeIds are unique.
+		// We sort to get the lowest id - if it is an 'always' flag we can safely use it instead of all of them.
 		const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => a.nodeId < b.nodeId ? 1 : -1)
 		if(writingOuts.length === 0) {
 			remainingRead.push(read)
@@ -235,7 +234,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
 	for(const exitPoint of exitPoints) {
 		const exitPointNode = graph.get(exitPoint, true)
-		// if there already is an exit point it is either a variable or already linked
+		// if there already is an exit point, it is either a variable or already linked
 		if(exitPointNode !== undefined) {
 			continue
 		}

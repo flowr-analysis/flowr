@@ -1,7 +1,6 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
-import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import {
 	linkCircularRedefinitionsWithinALoop, linkInputs,
@@ -19,18 +18,24 @@ export function processWhileLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 2 || args[1] === EmptyArgument) {
 		dataflowLogger.warn(`While-Loop ${name.content} does not have 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
-	/* we inject the cf-dependency of the while-loop after the condition, similar to the for-loop we ignore the body, as it is a reverse dep. */
-	const { information, processedArguments } = processKnownFunctionCall(name, [args[0]], rootId, data, false, (d, i) => {
-		if(i === 1) {
-			return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
-		}
-		return d
-	})
-	const [condition] = processedArguments
-	const body = processDataflowFor(args[1], data)
+	/* we inject the cf-dependency of the while-loop after the condition */
+	const { information, processedArguments } = processKnownFunctionCall({
+		name,
+		args,
+		rootId,
+		data,
+		markAsNSE: [1],
+		patchData: (d, i) => {
+			if(i === 1) {
+				return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+			}
+			return d
+		} })
+	const [condition, body] = processedArguments
+
 
 	const originalDependency = data.controlDependency
 
@@ -43,7 +48,6 @@ export function processWhileLoop<OtherInfo>(
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(remainingInputs), body.out)
 
 	// TODO: handle break and next
-
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependency: originalDependency }, ...remainingInputs],

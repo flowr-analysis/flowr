@@ -16,17 +16,17 @@ export function processAccess<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 	const head = args[0]
 	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
 
 	let information: DataflowInformation
 	if(!config.treatIndicesAsString) {
-		information = processKnownFunctionCall(name, args, rootId, data).information
+		information = processKnownFunctionCall({ name, args, rootId, data }).information
 	} else {
 		const newArgs = [...args]
-		// if the argument is a symbol we convert it to a string for this perspective
+		// if the argument is a symbol, we convert it to a string for this perspective
 		for(let i = 1; i < newArgs.length; i++) {
 			const arg = newArgs[i]
 			if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
@@ -45,14 +45,14 @@ export function processAccess<OtherInfo>(
 				}
 			}
 		}
-		information = processKnownFunctionCall(name, newArgs, rootId, data).information
+		information = processKnownFunctionCall({ name, args: newArgs, rootId, data }).information
 	}
 
 	information.graph.addEdge(name.info.id, head.info.id, { type: EdgeType.Returns })
 
 	return {
 		...information,
-	/*
+		/*
      * Keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
      * This way when using

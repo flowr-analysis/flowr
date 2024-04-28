@@ -169,7 +169,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		}
 
 		for(const [target, edge] of currentEdges) {
-			if(target === BuiltIn) {
+			if(target === BuiltIn || edge.types.has(EdgeType.NonStandardEvaluation)) {
 				continue
 			}
 			if(shouldTraverseEdge(edge.types)) {

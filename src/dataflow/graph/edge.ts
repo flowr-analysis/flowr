@@ -1,7 +1,8 @@
 /**
- * An edge consist of the target node (i.e., the variable or processing node),
- * a type (if it is read or used in the context), and an attribute (if this edge exists for every program execution or
- * if it is only one possible execution path).
+ * An edge consist of:
+ * - the target node (i.e., the variable or processing node),
+ * - a type (if it is read or used in the context), and
+ * - an attribute (if this edge exists for every program execution or if it is only one possible execution path).
  */
 export interface DataflowGraphEdge {
 	// currently multiple edges are represented by multiple types
@@ -34,14 +35,29 @@ export enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 'side-effect-on-call',
 	/** The source and edge relate to each other bidirectionally */
-	Relates = 'relates'
+	Relates = 'relates',
+	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
+	NonStandardEvaluation = 'non-standard-evaluation',
 }
 
-const validEdges: ReadonlySet<EdgeType> = new Set([EdgeType.Reads, EdgeType.DefinedBy, EdgeType.Argument, EdgeType.Calls, EdgeType.Relates, EdgeType.DefinesOnCall])
+const traverseEdge: Record<EdgeType, boolean> = {
+	[EdgeType.Reads]:                 true,
+	[EdgeType.DefinedBy]:             true,
+	[EdgeType.Argument]:              true,
+	[EdgeType.Calls]:                 true,
+	[EdgeType.Relates]:               true,
+	[EdgeType.DefinesOnCall]:         false,
+	[EdgeType.DefinedByOnCall]:       false,
+	[EdgeType.SideEffectOnCall]:      false,
+	[EdgeType.NonStandardEvaluation]: false,
+	[EdgeType.SameReadRead]:          true,
+	[EdgeType.SameDefDef]:            true,
+	[EdgeType.Returns]:               true
+} as const
 
 export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): boolean {
 	for(const type of types) {
-		if(validEdges.has(type)) {
+		if(traverseEdge[type]) {
 			return true
 		}
 	}

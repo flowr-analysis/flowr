@@ -45,7 +45,7 @@ export function processNamedCall<OtherInfo>(
 		}
 	}
 	if(defaultProcessor) {
-		information = mergeInformation(information, processKnownFunctionCall(name, args, rootId, data).information)
+		information = mergeInformation(information, processKnownFunctionCall({ name, args, rootId, data }).information)
 	} else if(builtIn) {
 		// mark the function call as built in only
 		const v = (information as DataflowInformation).graph.get(name.info.id)

@@ -54,14 +54,14 @@ export function processAssignment<OtherInfo>(
 ): DataflowInformation {
 	if(args.length != 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>])
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
 
 	if(target.type === RType.Symbol) {
-		const res = processKnownFunctionCall(name, args, rootId, data, !config.swapSourceAndTarget)
+		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -77,7 +77,7 @@ export function processAssignment<OtherInfo>(
 	}
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
-	return processKnownFunctionCall(name, effectiveArgs, rootId, data).information
+	return processKnownFunctionCall({ name, args: effectiveArgs, rootId, data }).information
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
@@ -114,7 +114,7 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 
 	// treat first argument to Symbol
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
-	const res = processKnownFunctionCall(name, mappedArgs, rootId, data,  !config.swapSourceAndTarget)
+	const res = processKnownFunctionCall({ name, args: mappedArgs, rootId, data, reverseOrder: !config.swapSourceAndTarget })
 	console.log(res.processedArguments.map(p => p?.in))
 	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 }

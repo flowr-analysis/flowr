@@ -18,18 +18,20 @@ export function processSpecialBinOp<OtherInfo>(
 	config: { lazy: boolean }
 ): DataflowInformation {
 	if(!config.lazy) {
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	} else if(args.length != 2) {
 		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
-	const { information } = processKnownFunctionCall(name, args, rootId, data, false, (d, i) => {
-		if(i === 1) {
+	const { information } = processKnownFunctionCall({ name, args, rootId, data,
+		patchData: (d, i) => {
+			if(i === 1) {
 			// the rhs will be overshadowed by the lhs
-			return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+				return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+			}
+			return d
 		}
-		return d
 	})
 
 	return information

@@ -1,6 +1,3 @@
-import {
-	EmptyArgument, RArgument, RNode, RNodeWithParent, visitAst
-} from '../../../../../../r-bridge'
 import type {
 	NodeId,
 	ParentInformation,
@@ -10,7 +7,7 @@ import type {
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../../info'
-import {IdentifierReference, isPositional} from '../../../../../index'
+import type { IdentifierReference } from '../../../../../index'
 import { dataflowLogger, makeAllMaybe } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
@@ -28,7 +25,7 @@ export function processReplacementFunction<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
@@ -38,7 +35,13 @@ export function processReplacementFunction<OtherInfo>(
 	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-' })
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs, processedArguments } = processAllArguments(initializeCleanDataflowInformation(data), args.slice(1, -1), data, res.graph, rootId)
+	const { callArgs, processedArguments } = processAllArguments({
+		functionName:   initializeCleanDataflowInformation(data),
+		args:           args.slice(1, -1),
+		data,
+		functionRootId: rootId,
+		finalGraph:     res.graph,
+	})
 	const fn = res.graph.get(rootId)
 	guard(fn !== undefined && fn[0].tag === 'function-call' && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
 	fn[0].args = [fn[0].args[0], ...callArgs, fn[0].args[1]]

@@ -26,7 +26,13 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		finalEnv,
 		callArgs,
 		remainingReadInArgs
-	} = processAllArguments(functionName, functionCall.arguments, data, finalGraph, functionRootId)
+	} = processAllArguments({
+		functionName,
+		args: functionCall.arguments,
+		data,
+		finalGraph,
+		functionRootId
+	})
 
 	finalGraph.addVertex({
 		tag:               'function-call',
@@ -51,7 +57,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	return {
 		unknownReferences: [],
 		in:                inIds,
-		// we do not keep argument out as it has been linked by the function
+		// we do not keep the argument out as it has been linked by the function
 		out:               functionName.out,
 		graph:             finalGraph,
 		environment:       finalEnv,

@@ -10,7 +10,7 @@ import type {
 import {
 	EmptyArgument
 	, requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, retrieveParseDataFromRCode,
-	removeRQuotes} from '../../../../../../r-bridge'
+	removeRQuotes } from '../../../../../../r-bridge'
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -32,7 +32,7 @@ export function processSourceCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const information = processKnownFunctionCall(name, args, rootId, data).information
+	const information = processKnownFunctionCall({ name, args, rootId, data }).information
 
 	const sourceFile = args[0]
 

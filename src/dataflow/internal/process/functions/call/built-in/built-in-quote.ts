@@ -16,7 +16,7 @@ export function processQuote<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config?: { quoteArgumentsWithIndex?: Set<number> }
 ): DataflowInformation {
-	const { information, processedArguments, fnRef  } = processKnownFunctionCall(name, args, rootId, data)
+	const { information, processedArguments, fnRef  } = processKnownFunctionCall({ name, args, rootId, data })
 
 	const inRefs: IdentifierReference[] = [fnRef]
 	const outRefs: IdentifierReference[] = []

@@ -2,21 +2,62 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
-import { DataflowGraph } from '../../../../graph'
+import type {
+	FunctionArgument } from '../../../../graph'
+import {
+	DataflowGraph,
+	EdgeType,
+	isPositional
+} from '../../../../graph'
 import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
 
-export function processKnownFunctionCall<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+export interface ProcessKnownFunctionCallInput<OtherInfo> {
+	readonly name:          RSymbol<OtherInfo & ParentInformation>
+	readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+	readonly rootId:        NodeId
+	readonly data:          DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
-	reverseOrder?: boolean,
+	readonly reverseOrder?: boolean
+	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
+	readonly markAsNSE?:    readonly number[]
 	/* allows passing a data processor in-between each argument */
-	patchData: (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation> = d => d
-): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[], fnRef: IdentifierReference } {
+	readonly patchData?:    (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
+}
+
+export interface ProcessKnownFunctionCallResult {
+	readonly information:        DataflowInformation
+	readonly processedArguments: readonly (DataflowInformation | undefined)[]
+	readonly fnRef:              IdentifierReference
+}
+
+export function markNonStandardEvaluationEdges(
+	markAsNSE:  readonly number[] | undefined,
+	callArgs:   readonly FunctionArgument[],
+	finalGraph: DataflowGraph,
+	rootId:     NodeId
+) {
+	if(markAsNSE === undefined) {
+		return
+	}
+	for(const nse of markAsNSE) {
+		if(nse < callArgs.length) {
+			const arg = callArgs[nse]
+			if(isPositional(arg) && arg !== '<value>') {
+				finalGraph.addEdge(rootId, arg, { type: EdgeType.NonStandardEvaluation })
+			} else if(arg[1] !== '<value>') {
+				finalGraph.addEdge(rootId, arg[1], { type: EdgeType.NonStandardEvaluation })
+			}
+		} else {
+			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`)
+		}
+	}
+}
+
+export function processKnownFunctionCall<OtherInfo>(
+	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, patchData = d => d }: ProcessKnownFunctionCallInput<OtherInfo>
+): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph()
@@ -30,7 +71,8 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments(functionName, processArgs, data, finalGraph, rootId, patchData)
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData })
+	markNonStandardEvaluationEdges(markAsNSE, callArgs, finalGraph, rootId)
 
 	finalGraph.addVertex({
 		tag:               'function-call',
@@ -51,7 +93,8 @@ export function processKnownFunctionCall<OtherInfo>(
 		information: {
 			unknownReferences: [],
 			in:                inIds,
-			out:               functionName.out, // we do not keep argument out as it has been linked by the function
+			/* we do not keep the argument out as it has been linked by the function */
+			out:               functionName.out,
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        name.info.id,

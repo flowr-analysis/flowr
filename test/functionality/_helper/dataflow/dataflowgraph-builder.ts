@@ -19,14 +19,16 @@ export function emptyGraph() {
 	return new DataflowGraphBuilder()
 }
 
+export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
+
 /**
  * This DataflowGraphBuilder extends {@link DataflowGraph} with builder methods to
  * easily and compactly add vertices and edges to a dataflow graph. Its usage thus
- * simplifies writing tests for dataflows.
+ * simplifies writing tests for dataflow graphs.
  */
 export class DataflowGraphBuilder extends DataflowGraph {
 	/**
-	 * Adds a vertex for a function definition (V1).
+	 * Adds a **vertex** for a **function definition** (V1).
 	 *
 	 * @param id - AST node ID
 	 * @param name - AST node text
@@ -44,7 +46,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a vertex for a function call (V2).
+	 * Adds a **vertex** for a **function call** (V2).
 	 *
 	 * @param id - AST node ID
 	 * @param name - Function name
@@ -86,7 +88,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this
 	}
 
-	/* automatically adds argument links if they do not already exist */
+	/** automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
 			if(arg === EmptyArgument) {
@@ -109,7 +111,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a vertex for an exit point of a function (V3).
+	 * Adds a **vertex** for an **exit point** of a function (V3).
 	 *
 	 * @param id - AST node ID
 	 * @param name - AST node text
@@ -124,7 +126,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a vertex for a variable definition (V4).
+	 * Adds a **vertex** for a **variable definition** (V4).
 	 *
 	 * @param id - AST node ID
 	 * @param name - Variable name
@@ -144,12 +146,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a vertex for variable use (V5). Intended for creating dataflow graphs as part of function tests.
+	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
 	 *
 	 * @param id - AST node id
 	 * @param name - Variable name
-	 * @param info - Additional/optional properties;
-	 * i.e. scope, when, or environment.
+	 * @param info - Additional/optional properties; i.e., scope, when, or environment.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
@@ -159,7 +160,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 
 
 	/**
-	 * Adds a vertex for a constant value (V6).
+	 * Adds a **vertex** for a **constant value** (V6).
 	 *
 	 * @param id - AST node ID
 	 * @param options - Additional/optional properties;
@@ -170,142 +171,107 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, controlDependency: options?.controlDependency, environment: undefined }, asRoot)
 	}
 
+	private edgeHelper(from: NodeId, to: DataflowGraphEdgeTarget, type: EdgeType) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.edgeHelper(from, t as NodeId, type)
+			}
+			return this
+		}
+		return this.addEdge(from, to as NodeId, { type })
+	}
+
 	/**
-	 * Adds a read edge (E1) for simple testing.
+	 * Adds a **read edge** (E1).
 	 *
 	 * @param from - Vertex/NodeId
 	 * @param to   - see from
 	 */
-	public reads(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.reads(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.Reads })
+	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Reads)
 	}
 
 	/**
-	 * Adds a defined-by edge (E2), with from as defined variable, and to
+	 * Adds a **defined-by edge** (E2), with from as defined variable, and to
 	 * as a variable/function contributing to its definition.
 	 *
 	 * @see reads for parameters.
 	 */
-	public definedBy(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.definedBy(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.DefinedBy })
+	public definedBy(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.DefinedBy)
 	}
 
 	/**
-	 * Adds a same-read-read edge (E3), with from and to as two variable uses
+	 * Adds a **same-read-read edge** (E3), with from and to as two variable uses
 	 * on the same variable.
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameRead(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.sameRead(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.SameReadRead })
+	public sameRead(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.SameReadRead)
 	}
 
 	/**
-	 * Adds a same-def-def edge (E4), with from and to as two variables
+	 * Adds a **same-def-def edge** (E4), with from and to as two variables
 	 * that share a defining variable.
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameDef(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.sameDef(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.SameDefDef })
+	public sameDef(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.SameDefDef)
 	}
 
 	/**
-	 * Adds a call edge (E5) with from as caller, and to as callee.
+	 * Adds a **call edge** (E5) with from as caller, and to as callee.
 	 *
 	 * @see reads for parameters.
 	 */
-	public calls(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.calls(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.Calls })
+	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Calls)
 	}
 
 	/**
-	 * Adds a return edge (E6) with from as function, and to as exit point.
+	 * Adds a **return edge** (E6) with from as function, and to as exit point.
 	 *
 	 * @see reads for parameters.
 	 */
-	public returns(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.returns(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.Returns })
+	public returns(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Returns)
 	}
 
 	/**
-	 * Adds a defines-on-call edge (E7) with from as variable, and to as its definition
+	 * Adds a **defines-on-call edge** (E7) with from as variable, and to as its definition
 	 *
 	 * @see reads for parameters.
 	 */
-	public definesOnCall(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.definesOnCall(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.DefinesOnCall })
+	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.DefinesOnCall)
 	}
 
 	/**
-	 * Adds an argument edge (E9) with from as function call, and to as argument.
+	 * Adds an **argument edge** (E9) with from as function call, and to as argument.
 	 *
 	 * @see reads for parameters.
 	 */
-	public argument(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.argument(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.Argument })
+	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Argument)
 	}
 
 	/**
-	 * Adds a relation (E10) with from as exit point, and to as any other vertex.
+	 * Adds a **relation edge** (E10) with from as exit point, and to as any other vertex.
 	 *
 	 * @see reads for parameters.
 	 */
-	public relates(from: NodeId, to: NodeId | NodeId[]) {
-		if(Array.isArray(to)) {
-			for(const t of to) {
-				this.relates(from, t)
-			}
-			return this
-		}
-		return this.addEdge(from, to, { type: EdgeType.Relates })
+	public relates(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Relates)
+	}
+
+	/**
+	 * Adds a **non-standard evaluation edge** with from as vertex, and to as vertex.
+	 *
+	 * @see reads for parameters.
+	 */
+	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation)
 	}
 }

@@ -17,14 +17,14 @@ export function processIfThenElse<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
 		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const [condArg, thenArg, otherwiseArg] = args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation> | undefined]
 
 	if(condArg === EmptyArgument || thenArg === EmptyArgument) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data).information
+		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const cond = processDataflowFor(condArg, data)
@@ -86,7 +86,13 @@ export function processIfThenElse<OtherInfo>(
 	]
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
-	patchFunctionCall(nextGraph, rootId, name, { ...data, controlDependency: originalDependency }, [cond, then, otherwise])
+	patchFunctionCall({
+		nextGraph,
+		rootId,
+		name,
+		data:                  { ...data, controlDependency: originalDependency },
+		argumentProcessResult: [cond, then, otherwise]
+	})
 
 	return {
 		unknownReferences: [],

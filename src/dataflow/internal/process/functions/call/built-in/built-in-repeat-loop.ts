@@ -28,6 +28,15 @@ export function processRepeatLoop<OtherInfo>(
 	const body = processDataflowFor(args[0], data)
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`)
 
+	// integrate the body again (TODO: unify merge)
+	information.graph = information.graph.mergeWith(body.graph)
+	information.environment = body.environment
+	information.in = [...information.in, ...body.in, ...body.unknownReferences]
+	information.out = [...information.out, ...body.out]
+	information.returns = [...information.returns, ...body.returns]
+	information.breaks = [...information.breaks, ...body.breaks]
+	information.nexts = [...information.nexts, ...body.nexts]
+
 	const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])
 	linkCircularRedefinitionsWithinALoop(information.graph, namedIdShares, body.out)
 

@@ -153,7 +153,6 @@ function processAssignmentToSymbol<OtherInfo>(
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		console.log('defining', write.name, write.nodeId, write.controlDependency)
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
 		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })

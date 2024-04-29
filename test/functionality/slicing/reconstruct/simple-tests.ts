@@ -117,7 +117,7 @@ describe('Simple', withShell(shell => {
 	describe('Branches', () => {
 		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
 			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: ['10', '3', '0'], expected: 'if(TRUE) { x <- 3 }\nx' },
-			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: ['10', '7', '0'], expected: 'if(FALSE) {} else        { x <- 4 }\nx' }
+			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: ['10', '7', '0'], expected: 'if(FALSE) {} else         { x <- 4 }\nx' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
@@ -128,8 +128,8 @@ describe('Simple', withShell(shell => {
 		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
 			{ name:     'Nested Side-Effect For First', 
 				case:     'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', 
-				argument: ['0', '4', '5', '19', '20'], 
-				expected: 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n' }
+				argument: ['0', '1', '2', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '20', '21', '22', '23'], 
+				expected: 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()' }
 		] 
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
@@ -146,6 +146,7 @@ a <- foo({
 
     c <- 3
     })`)
+		//we need a way to detect if the offset can be zeroed
 		assertReconstructed('Reconstruct access in pipe', shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, '2', 'x[[1]]')

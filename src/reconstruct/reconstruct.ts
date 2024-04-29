@@ -71,10 +71,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(exprList)
-		return merge([
+		return merge(
 			...subExpressions,
 			...additionalTokens
-		])
+		)
 	}
 }
 
@@ -121,7 +121,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		return plain(getLexeme(loop), start ?? loop.location.start)
 	}
 	if(isSelected(configuration, loop.body)) {
-		return merge([body])
+		return merge(body)
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
@@ -132,12 +132,12 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		return []
 	}
 
-	const out = merge([
+	const out = merge(
 		[{ linePart: [{ part: 'for', loc: start ?? loop.location.start }], indent: 0 }],
 		[{ linePart: [{ part: getLexeme(loop.variable), loc: loop.variable.location.start }], indent: 0 }],
 		reconstructedVector,
 		...additionalTokens
-	])
+	)
 	//if body empty
 	if(body.length < 1) {
 		// puts {} with one space separation after for(...)
@@ -148,7 +148,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 	//normal reconstruct
 	out.push(...body)
-	return merge([out])
+	return merge(out)
 }
 
 //add heuristic to select needed semicollons
@@ -168,15 +168,14 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(loop)
-		return merge([
+		return merge(
 			[{ linePart: [{ part: 'repeat', loc: loop.location.start }], indent: 0 }],
 			body,
 			...additionalTokens
-		])
+		)
 	}
 }
 
-//make use of additional tokens
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
 	//const endPos = ifThenElse.location.end
@@ -193,11 +192,11 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
 	//console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
 
-	let out = merge([
+	let out = merge(
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }],
 		when
-	])
+	)
 
 	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
 		//console.log('we have an else-body')
@@ -205,12 +204,12 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		const elsePos = hBody[hBody.length - 1].loc
 		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: { line: elsePos.line, column: elsePos.column + 2 } }], indent: 0 }] : []
 		const elseOffset = when.length === 0 ? 4 : 0
-		out = merge([
+		out = merge(
 			out,
 			fakeWhenBlock,
 			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 +elseOffset } }], indent: 0 }], //may have to change the location
 			otherwise
-		])
+		)
 	}
 
 	return out
@@ -222,10 +221,10 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		return plain(getLexeme(loop), start)
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
-	const out = merge([
+	const out = merge(
 		[{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? loop.location.start }], indent: 0 }],
 		...additionalTokens
-	])
+	)
 	if(body.length < 1) {
 		//this puts {} one space after while(...)
 		const hBody = out[out.length - 1].linePart
@@ -234,7 +233,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	} else {
 		out.push(...body)
 	}
-	return merge([out])
+	return merge(out)
 }
 
 function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
@@ -297,11 +296,11 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
-		return merge([body])
+		return merge(body)
 	}
 
 	if(isSelected(configuration, definition.body)) {
-		const out = merge([body])
+		const out = merge(body)
 		const h = out[out.length - 1].linePart
 		if(h[h.length - 1].part === ';') {
 			out.pop()
@@ -314,11 +313,11 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	const additionalTokens = reconstructAdditionalTokens(definition)
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 
-	return merge([
+	return merge(
 		[{ linePart: [{ part: `function(${parameters})`, loc: startPos }], indent: 0 }],
 		body,
 		...additionalTokens
-	])
+	)
 }
 
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
@@ -333,9 +332,9 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
 	if(lhs !== undefined && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, lhs[0].linePart[0].loc.column)}`).join('\n')
+		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
 		if(rhs !== undefined && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, rhs[0].linePart[0].loc.column)}`).join('\n')
+			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
 			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location.start)
 		} else {
 			return plain(lhsText, call.location.start)
@@ -366,7 +365,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 			// add empty call braces if not present
 			functionName[0].linePart[functionName[0].linePart.length - 1].part += '()'
 		}
-		return [{ linePart: functionName[0].linePart, indent: functionName[0].indent }]
+		const additionalTokens = reconstructAdditionalTokens(call)
+		return merge([{ linePart: functionName[0].linePart, indent: functionName[0].indent }], ...additionalTokens)
 	} else {
 		return plain(getLexeme(call), call.location.start)
 	}

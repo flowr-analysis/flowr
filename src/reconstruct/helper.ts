@@ -55,7 +55,7 @@ export function plainSplit(text: string, location: SourcePosition): Code {
 /**
  * this function will merge up to n code pieces into a singular code piece, garanting that there are no duplicate lines and all lines are in order
  */
-export function merge(snipbits: Code[]): Code {
+export function merge(...snipbits: Code[]): Code {
 	const buckets: PrettyPrintLine[] = []
 	const result: Code = []
 
@@ -136,7 +136,7 @@ export function getIndentString(indent: number): string {
 }
 
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
-	code = merge([code])
+	code = merge(code)
 	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc.column)}`).join(lf)
 }
 

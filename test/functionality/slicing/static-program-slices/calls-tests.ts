@@ -88,6 +88,7 @@ a(x = 3)`
 		assertSliced('Must work for same named arguments too', shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')
 
 		//somehow line offsets get lost
+		//the assignment gets lost too
 		assertSliced('Must work for same named arguments nested', shell, 
 			'\nf <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}\n    ', ['4@result'], 
 			'f <- function(some_variable="hello") {\n  result <- some::other(some_variable=some_variable)\n  result\n}')
@@ -133,6 +134,8 @@ u <- a()
 u()`
 
 			//this test fails, we still need to retain some semicollons
+			//a() gets preserved but the assignment is removed
+			//we may want to fix a() to the start of the line in this case
 			assertSliced('Must include function shell', shell, code, ['5@a'], `a <- function() { x <- function()          ;          return(x) }
 a()`)
 			//this test fails, semicollons should not get removed here
@@ -200,7 +203,7 @@ cat(x)
 		//we may have to look at offsets again
 		assertSliced('Nested Side-Effect For First', shell, 
 			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', ['9@b'], 
-			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n')
+			'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()')
 	})
 	describe('Recursive functions', () => {
 		const code = `f <- function() { f() }
@@ -274,7 +277,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['3@x'], `a <- function() {
+cat(x)`, ['7@x'], `a <- function() {
         function(b) {
             if(runif() > .5) {
                 x <<- b
@@ -323,6 +326,7 @@ cat(4 %b% 5)
 cat(3 %a% 4)`)
 		assertSliced('Must link with backticks', shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
 cat(4 %b% 5)`)
+		//something went wrong
 		assertSliced('Must work with assigned custom pipes too', shell, 'a <- b %>% c %>% d', ['1@a'], 'a <- b %>% c %>% d')
 	})
 	describe('Using own alias infix operators', () => {

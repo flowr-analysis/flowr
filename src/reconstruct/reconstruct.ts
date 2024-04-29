@@ -31,7 +31,6 @@ import type {
 import {
 	prettyPrintPartToString,
 	plain,
-	indentBy,
 	isSelected,
 	getIndentString,
 	merge,

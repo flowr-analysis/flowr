@@ -354,6 +354,12 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 		return []
 	}
 
+	functionName = merge(functionName)
+	if(args !== undefined) {
+		const defArgs: Code[] = args as Code[]
+		args = [merge(...defArgs)]
+	}
+
 	if(args.length === 0) {
 		guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
 		if(call.flavor === 'unnamed' && !functionName[0].linePart[functionName[0].linePart.length - 1].part.endsWith(')')) {

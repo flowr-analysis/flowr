@@ -24,7 +24,7 @@ describe('Functions Reconstruct', () => {
 	describe('merge', () => {
 		function positive(snipbits: Code[],expected: Code) {
 			it(prettyPrintCodeToString(expected),() => {
-				const result:Code = merge(snipbits)
+				const result:Code = merge(...snipbits)
 				//console.log(JSON.stringify(result))
 				assert.deepStrictEqual(result, expected)
 			})
@@ -134,7 +134,7 @@ describe('Functions Reconstruct', () => {
 			function positive(lines: number) {
 				const snipbit = makeTestCase(lines)
 				it(`case with ${lines} lines`, () => {
-					const merged = merge(snipbit)
+					const merged = merge(...snipbit)
 					assert.isTrue(checkTestCase(merged), JSON.stringify(merged))
 				})
 			}

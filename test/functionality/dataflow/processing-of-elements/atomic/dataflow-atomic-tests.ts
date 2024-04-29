@@ -86,14 +86,16 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('3-arg', '0')
 			)
 		})
-		assertDataflow(label('Chained bracket access with variables', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities]), shell,
+		assertDataflow(label('chained bracket access with variables', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities]), shell,
 			'a[x][y]', emptyGraph()
 				.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+				.reads('3', '2')
 				.use('0', 'a', { controlDependency: [] })
 				.use('1', 'x')
 				.reads('2', '1')
 				// and now the outer access
 				.call('6', '[', [argumentInCall('3-arg'), argumentInCall('5')], { returns: ['3-arg'], reads: [BuiltIn] })
+				.reads('6', '5')
 				.use('4', 'y').reads('5', '4')
 				.reads('3-arg', '0')
 		)

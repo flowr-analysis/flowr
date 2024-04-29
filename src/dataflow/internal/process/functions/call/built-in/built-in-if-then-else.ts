@@ -64,7 +64,7 @@ export function processIfThenElse<OtherInfo>(
 
 	const thenEnvironment = then?.environment ?? cond.environment
 
-	// if there is no "else" case we have to recover whatever we had before as it may be not executed
+	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
 	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment)
 
 	// again within an if-then-else we consider all actives to be read
@@ -93,6 +93,9 @@ export function processIfThenElse<OtherInfo>(
 		data:                  { ...data, controlDependency: originalDependency },
 		argumentProcessResult: [cond, then, otherwise]
 	})
+
+	// as an if always evaluates its condition, we add a 'reads'-edge
+	nextGraph.addEdge(name.info.id, cond.out[0], { type: EdgeType.Reads })
 
 	return {
 		unknownReferences: [],

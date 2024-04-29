@@ -71,6 +71,8 @@ class VisitingQueue {
 	private seen                              = new Map<Fingerprint, NodeId>()
 	private idThreshold                       = new Map<NodeId, number>()
 	private queue:              NodeToSlice[] = []
+	// the set of potential arguments holds arguments which may be added if found with the `defined-by-on-call` edge
+	public potentialArguments:  Set<NodeId> = new Set()
 
 	constructor(threshold: number) {
 		this.threshold = threshold
@@ -159,13 +161,23 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
 
-		const returns = [...currentEdges].filter(([_, edge]) => edge.types.has(EdgeType.Returns))
-		if(returns.length >= 1) {
-			for(const [target, _] of returns) {
-				// console.log('Adding by returns', target, 'by', baseId, currentVertex.name)
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+		if(!current.onlyForSideEffects) {
+			const returns = [...currentEdges].filter(([_, edge]) => edge.types.has(EdgeType.Returns))
+			if(returns.length >= 1) {
+
+				for(const [target, _] of returns) {
+					queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+				}
+				// add all arguments to the list of 'maybes' - they will be added when we get them with a 'defined-by-on-call' edge
+				for(const [target, edge] of currentEdges) {
+					if(edge.types.has(EdgeType.Reads)) {
+						queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+					} else if(edge.types.has(EdgeType.Argument)) {
+						queue.potentialArguments.add(target)
+					}
+				}
+				continue
 			}
-			continue
 		}
 
 		for(const [target, edge] of currentEdges) {
@@ -173,16 +185,16 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 				continue
 			}
 			if(shouldTraverseEdge(edge.types)) {
-				// console.log('Adding by edge', target, 'by', baseId, currentVertex.name)
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			} else if(edge.types.has(EdgeType.SideEffectOnCall)) {
-				// console.log('Adding by side effect', target, 'by', baseId, currentVertex.name)
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
+			} else if(edge.types.has(EdgeType.DefinedByOnCall) && queue.potentialArguments.has(target)) {
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+				queue.potentialArguments.delete(target)
 			}
 		}
 		if(currentVertex.controlDependency) {
 			for(const cd of currentVertex.controlDependency) {
-				// console.log('Adding by control dependency', cd, 'by', baseId, currentVertex.name)
 				queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
@@ -216,6 +228,7 @@ function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo,
 	// lift baseEnv on the same level
 	const baseEnvironment = current.baseEnvironment
 	const baseEnvPrint = envFingerprint(baseEnvironment)
+
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
@@ -228,7 +241,6 @@ function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo,
 	}
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
-
 	for(const [_, functionCallTarget] of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {

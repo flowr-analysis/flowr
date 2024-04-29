@@ -7,8 +7,8 @@ describe('Simple', withShell(shell => {
 		}
 	})
 	describe('Constant conditionals', () => {
-		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE)\n    { x <- 3 }\nx')
-		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else\n    { x <- 4 }\nx')
+		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE) { x <- 3 }\nx')
+		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else { x <- 4 }\nx')
 	})
 	describe('Independent Control-Flow', () => {
 		assertSliced('For-Loop', shell, `
@@ -34,9 +34,7 @@ if(i > 3) {
 }
 cat(x)
     `, ['6@x'], `x <- 1
-if(i > 3) {
-    x <- x * 2
-}
+if(i > 3) { x <- x * 2 }
 cat(x)`)
 
 		assertSliced('Independent If-Then with extra requirements', shell, `
@@ -48,16 +46,14 @@ if(i > 3) {
 cat(x)
     `, ['7@x'], `x <- 1
 i <- 3
-if(i > 3) {
-    x <- x * 2
-}
+if(i > 3) { x <- x * 2 }
 cat(x)`)
 	})
 	describe('Access', () => {
 		assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na')
 		assertSliced('Variable', shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[i]')
 		assertSliced('Subset Sequence', shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[1:i,]')
-		describe('definitions', () => {
+		describe('Definitions', () => {
 			describe('[[', () => {
 				const code = `
 a <- list(1,2)
@@ -120,40 +116,40 @@ cat("Product:", product, "\\n")
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) { sum <- sum + i + w }`
+for(i in 1:(N-1)) sum <- sum + i + w`
 		)
 
 		assertSliced('Sum rhs in for', shell, code, ['8:10'],
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) { sum <- sum + i + w }`
+for(i in 1:(N-1)) sum <- sum + i + w`
 		)
 
 		assertSliced('Product lhs in for', shell, code, ['9:3'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) { product <- product * i }`
+for(i in 1:(N-1)) product <- product * i`
 		)
 
 		assertSliced('Product rhs in for', shell, code, ['9:14'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) { product <- product * i }`
+for(i in 1:(N-1)) product <- product * i`
 		)
 
 		assertSliced('Sum in call', shell, code, ['12:13'],
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) { sum <- sum + i + w }
+for(i in 1:(N-1)) sum <- sum + i + w
 cat("Sum:", sum, "\\n")`
 		)
 
 		assertSliced('Product in call', shell, code, ['13:17'],
 			`product <- 1
 N <- 10
-for(i in 1:(N-1)) { product <- product * i }
+for(i in 1:(N-1)) product <- product * i
 cat("Product:", product, "\\n")`
 		)
 

@@ -1,14 +1,8 @@
-import type {
-	NodeId,
-	ParentInformation,
-	RFunctionArgument,
-	RSymbol
-} from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../../info'
-import type { IdentifierReference } from '../../../../../index'
-import { dataflowLogger, makeAllMaybe } from '../../../../../index'
+import { dataflowLogger, EdgeType, getReferenceOfArgument } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
 import { processAssignment } from './built-in-assignment'
@@ -32,10 +26,10 @@ export function processReplacementFunction<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`)
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-' })
+	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-', makeMaybe: config.makeMaybe })
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs, processedArguments } = processAllArguments({
+	const { callArgs } = processAllArguments({
 		functionName:   initializeCleanDataflowInformation(data),
 		args:           args.slice(1, -1),
 		data,
@@ -46,12 +40,12 @@ export function processReplacementFunction<OtherInfo>(
 	guard(fn !== undefined && fn[0].tag === 'function-call' && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
 	fn[0].args = [fn[0].args[0], ...callArgs, fn[0].args[1]]
 
-	if(config.makeMaybe) {
-		// we ignore the value
-		const targetArgReferences: readonly IdentifierReference[] = processedArguments.slice(0,-1).flatMap(p => [p?.in ?? [], p?.unknownReferences ?? []]).flat()
-		// TODO: patch func args as well
-		makeAllMaybe(targetArgReferences, res.graph, res.environment, true)
-
+	/* a replacement reads all of its call args as well, at least as far as I am aware of */
+	for(const arg of callArgs) {
+		const ref = getReferenceOfArgument(arg)
+		if(ref !== undefined) {
+			res.graph.addEdge(rootId, ref, { type: EdgeType.Reads })
+		}
 	}
 
 	return res

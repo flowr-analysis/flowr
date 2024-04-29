@@ -63,7 +63,15 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 	}
 	const subflowId = `${idPrefix}flow-${nodeId}`
 	mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
-	const subgraph = graphToMermaidGraph(subflow.graph, { graph: mermaid.rootGraph, rootGraph: mermaid.rootGraph, dataflowIdMap, idPrefix, includeEnvironments: mermaid.includeEnvironments, mark: mermaid.mark })
+	const subgraph = graphToMermaidGraph(subflow.graph, {
+		graph:               mermaid.rootGraph,
+		rootGraph:           mermaid.rootGraph,
+		dataflowIdMap,
+		idPrefix,
+		includeEnvironments: mermaid.includeEnvironments,
+		mark:                mermaid.mark,
+		prefix:              null
+	})
 	mermaid.nodeLines.push(...subgraph.nodeLines)
 	mermaid.edgeLines.push(...subgraph.edgeLines)
 	for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.unknownReferences]]) {
@@ -103,7 +111,7 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
-function encodeEdge(from: string, to: string, types: Set<string>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD'>): string {
 	// sort from and to for same edges and relates be order independent
 	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef) || types.has(EdgeType.Relates)) {
 		if(from > to) {
@@ -180,7 +188,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	const artificialCdEdges = (info.controlDependency ?? []).map(x => [x, { types: new Set(['CD']) }] as const)
+	const artificialCdEdges = (info.controlDependency ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead) || edge.types.has(EdgeType.Relates)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)

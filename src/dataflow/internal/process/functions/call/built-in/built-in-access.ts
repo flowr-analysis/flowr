@@ -49,6 +49,13 @@ export function processAccess<OtherInfo>(
 	}
 
 	information.graph.addEdge(name.info.id, head.info.id, { type: EdgeType.Returns })
+	/* access always reads all of its indices */
+	for(let i = 1; i < args.length; i++) {
+		const arg = args[i]
+		if(arg !== EmptyArgument) {
+			information.graph.addEdge(name.info.id, arg.info.id, { type: EdgeType.Reads })
+		}
+	}
 
 	return {
 		...information,

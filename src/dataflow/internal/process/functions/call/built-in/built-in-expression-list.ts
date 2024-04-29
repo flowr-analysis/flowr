@@ -2,25 +2,34 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { initializeCleanDataflowInformation, type DataflowInformation } from '../../info'
-import type { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
-import { RType } from '../../../r-bridge'
-import type { DataflowProcessorInformation } from '../../processor'
-import { processDataflowFor } from '../../processor'
+import { type DataflowInformation } from '../../../../../info'
+import type {
+	NodeId,
+	ParentInformation,
+	RFunctionArgument,
+	RNodeWithParent,
+	RSymbol
+} from '../../../../../../r-bridge'
+import {
+	EmptyArgument
+	, RType
+} from '../../../../../../r-bridge'
+import type { DataflowProcessorInformation } from '../../../../../processor'
+import { processDataflowFor } from '../../../../../processor'
 import type {
 	IdentifierReference, IEnvironment,
-	REnvironmentInformation } from '../../environments'
+	REnvironmentInformation } from '../../../../../environments'
 import { makeAllMaybe,
 	overwriteEnvironment, popLocalEnvironment,
 	resolveByName
-} from '../../environments'
-import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
-import { DefaultMap } from '../../../util/defaultmap'
-import type { DataflowGraphVertexInfo } from '../../graph'
-import { CONSTANT_NAME , DataflowGraph } from '../../graph'
-import { dataflowLogger, EdgeType } from '../../index'
-import { guard } from '../../../util/assert'
-import { processAsNamedCall } from './process-named-call'
+} from '../../../../../environments'
+import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../../../../linker'
+import { DefaultMap } from '../../../../../../util/defaultmap'
+import type { DataflowGraphVertexInfo } from '../../../../../graph'
+import { CONSTANT_NAME , DataflowGraph } from '../../../../../graph'
+import { dataflowLogger, EdgeType } from '../../../../../index'
+import { guard } from '../../../../../../util/assert'
+import { unpackArgument } from '../argument/unpack-argument'
 
 
 const dotDotDotAccess = /\.\.\d+/
@@ -107,25 +116,15 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return inputEnvironment
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	const expressions = exprList.children
-
-	if(exprList.grouping !== undefined) {
-		const start = exprList.grouping[0]
-		return processAsNamedCall({
-			type:      RType.Symbol,
-			info:      exprList.info,
-			content:   start.lexeme,
-			lexeme:    start.lexeme,
-			location:  start.location,
-			namespace: undefined
-		}, data, start.lexeme, expressions)
-	}
+export function processExpressionList<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const expressions = args.map(unpackArgument)
 
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
-	if(expressions.length === 0) {
-		return initializeCleanDataflowInformation(data)
-	}
 
 	let environment = data.environment
 	// used to detect if a "write" happens within the same expression list
@@ -142,8 +141,13 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 	let expressionCounter = 0
 	const foundNextOrBreak = false
+	let lastExpr: RNodeWithParent | undefined = undefined
 	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
+		if(expression === undefined) {
+			continue
+		}
+		lastExpr = expression
 		// use the current environments for processing
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
@@ -187,19 +191,47 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 	}
 
 
-	// now, we have to link same reads
-	linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
+	if(expressions.length > 0) {
+		// now, we have to link same reads
+		linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
+	}
 
 	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)
+
+
+	nextGraph.addVertex({
+		tag:               'function-call',
+		id:                rootId,
+		name:              name.content,
+		environment:       environment,
+		onlyBuiltin:       false,
+		controlDependency: data.controlDependency,
+		args:              args.map(a => {
+			// TODO: patch wrap
+			if(a === EmptyArgument) {
+				return EmptyArgument
+			}
+			if(a.type !== RType.Argument || !a.name) {
+				return { nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency }
+			} else {
+				return [a.name.content, { nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency }]
+			}
+		})
+	})
+
+	/* we return the last expression (TODO: handle control flow impact) */
+	if(lastExpr) {
+		nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
+	}
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		in:                [...remainingRead.values()].flat(),
+		in:                [{ nodeId: rootId, name: name.content, controlDependency: data.controlDependency }, ...remainingRead.values()].flat(),
 		out,
 		environment:       environment,
 		graph:             nextGraph,
-		entryPoint:        exprList.info.id,
+		entryPoint:        rootId,
 		returns:           returns,
 		breaks:            breaks,
 		nexts:             nexts

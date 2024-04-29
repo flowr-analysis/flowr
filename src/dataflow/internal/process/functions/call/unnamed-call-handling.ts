@@ -11,24 +11,26 @@ import { linkArgumentsOnCall } from '../../../linker'
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	const functionName = processDataflowFor(functionCall.calledFunction, data)
+	const calledFunction = processDataflowFor(functionCall.calledFunction, data)
 
 	const finalGraph = new DataflowGraph()
 	const functionRootId = functionCall.info.id
+	const calledRootId = functionCall.calledFunction.info.id
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 	// we know, that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, { type: EdgeType.Calls })
+	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Calls })
+	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Reads })
 	// keep the defined function
-	finalGraph.mergeWith(functionName.graph)
+	finalGraph.mergeWith(calledFunction.graph)
 
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs
 	} = processAllArguments({
-		functionName,
-		args: functionCall.arguments,
+		functionName: calledFunction,
+		args:         functionCall.arguments,
 		data,
 		finalGraph,
 		functionRootId
@@ -52,18 +54,18 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
 	}
 	// push the called function to the ids:
-	inIds.push(...functionName.in, ...functionName.unknownReferences)
+	inIds.push(...calledFunction.in, ...calledFunction.unknownReferences)
 
 	return {
 		unknownReferences: [],
 		in:                inIds,
 		// we do not keep the argument out as it has been linked by the function
-		out:               functionName.out,
+		out:               calledFunction.out,
 		graph:             finalGraph,
 		environment:       finalEnv,
 		returns:           [],
 		breaks:            [],
 		nexts:             [],
-		entryPoint:        functionRootId
+		entryPoint:        calledRootId
 	}
 }

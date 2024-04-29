@@ -7,7 +7,7 @@ import type {
 import {
 	DataflowGraph,
 	EdgeType,
-	isPositional
+	isPositionalArgument
 } from '../../../../graph'
 import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
@@ -44,7 +44,7 @@ export function markNonStandardEvaluationEdges(
 	for(const nse of markAsNSE) {
 		if(nse < callArgs.length) {
 			const arg = callArgs[nse]
-			if(isPositional(arg) && arg !== '<value>') {
+			if(isPositionalArgument(arg) && arg !== '<value>') {
 				finalGraph.addEdge(rootId, arg, { type: EdgeType.NonStandardEvaluation })
 			} else if(arg[1] !== '<value>') {
 				finalGraph.addEdge(rootId, arg[1], { type: EdgeType.NonStandardEvaluation })

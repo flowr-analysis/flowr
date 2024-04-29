@@ -30,7 +30,7 @@ import {
 	pushLocalEnvironment,
 	resolveByName
 } from '../../../../../environments'
-import { retrieveExitPointsOfFunctionDefinition } from '../../exit-points'
+import { retrieveExitPointOfFunctionDefinition } from '../../exit-points'
 
 // TODO: we have to map the named alist correctly
 export function processFunctionDefinition<OtherInfo>(
@@ -39,7 +39,6 @@ export function processFunctionDefinition<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	console.log('fn-def')
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`)
 		return processKnownFunctionCall({ name, args, rootId, data }).information
@@ -108,7 +107,6 @@ export function processFunctionDefinition<OtherInfo>(
 			})
 		}
 	}
-	console.log(remainingRead)
 
 	// TODO: use returns to find exit points
 	const flow: DataflowFunctionFlowInformation = {
@@ -123,9 +121,9 @@ export function processFunctionDefinition<OtherInfo>(
 		environment:       outEnvironment
 	}
 
-	const exitPoints = retrieveExitPointsOfFunctionDefinition(bodyArg)
+	const exitPoints = [retrieveExitPointOfFunctionDefinition(body, bodyArg)]
 	// if exit points are extra, we must link them to all dataflow nodes they relate to.
-	linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
+	linkExitPointInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
 	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, name)
 
 	const graph = new DataflowGraph().mergeWith(subgraph, false)
@@ -212,8 +210,8 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue
 		}
 		// If not resolved, link all outs within the body as potential reads.
-		// Regarding the sort we can ignore equality as nodeIds are unique.
-		// We sort to get the lowest id - if it is an 'always' flag we can safely use it instead of all of them.
+		// Regarding the sort, we can ignore equality as nodeIds are unique.
+		// We sort to get the lowest id - if it is an 'always' flag, we can safely use it instead of all of them.
 		const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => a.nodeId < b.nodeId ? 1 : -1)
 		if(writingOuts.length === 0) {
 			remainingRead.push(read)
@@ -231,7 +229,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 }
 
 
-function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
+function linkExitPointInGraph<OtherInfo>(exitPoints: readonly NodeId[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
 	for(const exitPoint of exitPoints) {
 		const exitPointNode = graph.get(exitPoint, true)
 		// if there already is an exit point, it is either a variable or already linked

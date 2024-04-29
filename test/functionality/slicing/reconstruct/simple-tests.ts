@@ -105,8 +105,8 @@ a <- foo({
 		assertReconstructed('Reconstruct access in pipe (variable)', shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, '2', 'x')
-	})
-	assertReconstructed('Reconstruct access in pipe (access)', shell, `
+		assertReconstructed('Reconstruct access in pipe (access)', shell, `
 ls <- x[[1]] %>% st_cast()
-class(ls)`, '5', 'x[[1]]')
+class(ls)`, '13', 'ls <- x[[1]] %>% st_cast()\nclass(ls)')
+	})
 }))

@@ -5,13 +5,15 @@ import type { DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf'
 import { processSymbol } from './internal/process/process-symbol'
-import { processExpressionList } from './internal/process/process-expression-list'
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling'
 import { processFunctionParameter } from './internal/process/functions/process-parameter'
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/process-argument'
 import { processAsNamedCall } from './internal/process/process-named-call'
 import { processValue } from './internal/process/process-value'
+import { processNamedCall } from './internal/process/functions/call/named-call-handling'
+import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument'
+import { rangeFrom } from '../util/range'
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -34,7 +36,14 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.FunctionDefinition]: (n, d) => processAsNamedCall(n, d, n.lexeme, [...n.parameters, n.body]),
 	[RType.Parameter]:          processFunctionParameter,
 	[RType.Argument]:           processFunctionArgument,
-	[RType.ExpressionList]:     processExpressionList
+	[RType.ExpressionList]:     (n, d) => processNamedCall({
+		type:      RType.Symbol,
+		info:      n.info,
+		content:   '{',
+		lexeme:    '{',
+		location:  n.location ?? rangeFrom(-1, -1, -1, -1),
+		namespace: undefined
+	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
 }
 
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {

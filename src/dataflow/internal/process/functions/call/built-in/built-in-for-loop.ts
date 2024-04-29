@@ -95,6 +95,10 @@ export function processForLoop<OtherInfo>(
 	})
 	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.out[0], { type: EdgeType.NonStandardEvaluation })
+	// as the for-loop always evaluates its variable and condition
+	nextGraph.addEdge(name.info.id, variable.out[0], { type: EdgeType.Reads })
+	nextGraph.addEdge(name.info.id, vector.out[0], { type: EdgeType.Reads })
+
 
 	return {
 		unknownReferences: [],

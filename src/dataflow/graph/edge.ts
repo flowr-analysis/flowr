@@ -13,7 +13,7 @@ export interface DataflowGraphEdge {
 /**
  * Represents the relationship between the source and the target vertex in the dataflow graph.
  */
-export enum EdgeType {
+export const enum EdgeType {
 	/** The edge determines that source reads target */
 	Reads = 'reads',
 	/** The edge determines that source is defined by target */
@@ -37,7 +37,7 @@ export enum EdgeType {
 	/** The source and edge relate to each other bidirectionally */
 	Relates = 'relates',
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 'non-standard-evaluation',
+	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
 const traverseEdge: Record<EdgeType, boolean> = {
@@ -46,13 +46,13 @@ const traverseEdge: Record<EdgeType, boolean> = {
 	[EdgeType.Argument]:              true,
 	[EdgeType.Calls]:                 true,
 	[EdgeType.Relates]:               true,
-	[EdgeType.DefinesOnCall]:         false,
+	[EdgeType.DefinesOnCall]:         true,
 	[EdgeType.DefinedByOnCall]:       false,
 	[EdgeType.SideEffectOnCall]:      false,
 	[EdgeType.NonStandardEvaluation]: false,
-	[EdgeType.SameReadRead]:          true,
-	[EdgeType.SameDefDef]:            true,
-	[EdgeType.Returns]:               true
+	[EdgeType.SameReadRead]:          false,
+	[EdgeType.SameDefDef]:            false,
+	[EdgeType.Returns]:               false
 } as const
 
 export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): boolean {

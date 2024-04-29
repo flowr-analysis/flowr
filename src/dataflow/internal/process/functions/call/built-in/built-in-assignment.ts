@@ -6,7 +6,8 @@ import type {
 	RNode, RNodeWithParent, RString,
 	RSymbol, RUnnamedArgument
 } from '../../../../../../r-bridge'
-import {
+import { removeRQuotes
+	,
 	RType
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
@@ -39,6 +40,13 @@ function getEffectiveOrder<T>(config: {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args
 }
 
+export interface AssignmentConfiguration {
+	readonly superAssignment?:     boolean
+	readonly swapSourceAndTarget?: boolean
+	/* Make maybe if assigned to symbol */
+	readonly makeMaybe?:           boolean
+}
+
 /**
  * Processes an assignment, i.e., `<target> <- <source>`.
  * Handling it as a function call `` `<-`(<target>, <source>)``.
@@ -50,7 +58,7 @@ export function processAssignment<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { superAssignment?: boolean, swapSourceAndTarget?: boolean }
+	config: AssignmentConfiguration
 ): DataflowInformation {
 	if(args.length != 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`)
@@ -62,7 +70,7 @@ export function processAssignment<OtherInfo>(
 
 	if(target.type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
+		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe)
 	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
@@ -90,12 +98,12 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target }
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
 	return target.in.map(ref => ({
 		...ref,
 		kind:              isFunctionDef ? 'function' : 'variable',
 		definedAt:         rootId,
-		controlDependency: data.controlDependency
+		controlDependency: data.controlDependency ?? makeMaybe ? [] : undefined
 	}))
 }
 
@@ -106,7 +114,7 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
 		type:      RType.Symbol,
 		info:      target.info,
-		content:   target.lexeme,
+		content:   removeRQuotes(target.lexeme),
 		lexeme:    target.lexeme,
 		location:  target.location,
 		namespace: undefined
@@ -115,7 +123,6 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	// treat first argument to Symbol
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
 	const res = processKnownFunctionCall({ name, args: mappedArgs, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-	console.log(res.processedArguments.map(p => p?.in))
 	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 }
 
@@ -135,19 +142,21 @@ function processAssignmentToSymbol<OtherInfo>(
 	[targetArg, sourceArg]: [DataflowInformation, DataflowInformation],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	information: DataflowInformation
+	information: DataflowInformation,
+	makeMaybe?: boolean
 ): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data)
+	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data, makeMaybe ?? false)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
 	}
 
-	const readFromSourceWritten = sourceArg.out
+	// we drop the first arg which we use to pass along arguments :D
+	const readFromSourceWritten = sourceArg.out.slice(1)
 	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlDependency }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
-	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
+	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
 
@@ -156,6 +165,7 @@ function processAssignmentToSymbol<OtherInfo>(
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
 		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })
+		information.graph.addEdge(write, rootId, { type: EdgeType.DefinedBy })
 		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 		const out = information.graph.outgoingEdges(write.nodeId)
 		for(const [id,edge] of (out?? [])) {
@@ -169,7 +179,9 @@ function processAssignmentToSymbol<OtherInfo>(
 		}
 	}
 
-	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns })
+	information.graph.addEdge(name.info.id, targetArg.out[0], { type: EdgeType.Returns })
+	/* an assignment reads its source */
+	// TODO: this doesnt work atm to find functionns information.graph.addEdge(name.info.id, sourceArg.out[0], { type: EdgeType.Reads })
 
 	return {
 		...information,

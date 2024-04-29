@@ -3,11 +3,13 @@ import type {
 	ParentInformation,
 	RExpressionList,
 	RIfThenElse, RLoopConstructs,
-	RNode } from '../../../../r-bridge'
+	RNode, RNodeWithParent
+} from '../../../../r-bridge'
 import {
 	RType
 } from '../../../../r-bridge'
 import { assertUnreachable } from '../../../../util/assert'
+import type { DataflowInformation } from '../../../info'
 
 interface ExitPointsInformation {
 	/** For those it is known that they exit the current scope, (e.g. return statements) */
@@ -16,13 +18,11 @@ interface ExitPointsInformation {
 	potentialIds: NodeId[]
 }
 
-// TODO: wir wollen exit points für alle expression lists nicht nur für function definitions -> wir schlagen alle mit einer klappe :3
-export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(body: RNode<OtherInfo & ParentInformation>): NodeId[] {
-	const exitPoints = visitExitPoints(body)
-	return exitPoints.knownIds.concat(exitPoints.potentialIds)
+export function retrieveExitPointOfFunctionDefinition(body: DataflowInformation, bodyNode: RNodeWithParent): NodeId {
+	return body.entryPoint ?? bodyNode.info.id
 }
 
-// TODO: fold
+// TODO: move to expr list
 function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): ExitPointsInformation {
 	const type = node.type
 	switch(type) {

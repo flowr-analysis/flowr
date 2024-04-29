@@ -25,6 +25,17 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	}
 }
 
+function processDefaultFunctionProcessor<OtherInfo>(
+	information: DataflowInformation | undefined,
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+) {
+	const call = processKnownFunctionCall({ name, args, rootId, data })
+	return mergeInformation(information, call.information)
+}
+
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -45,7 +56,7 @@ export function processNamedCall<OtherInfo>(
 		}
 	}
 	if(defaultProcessor) {
-		information = mergeInformation(information, processKnownFunctionCall({ name, args, rootId, data }).information)
+		information = processDefaultFunctionProcessor(information, name, args, rootId, data)
 	} else if(builtIn) {
 		// mark the function call as built in only
 		const v = (information as DataflowInformation).graph.get(name.info.id)

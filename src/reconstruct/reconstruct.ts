@@ -59,17 +59,22 @@ function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[]): Code {
+function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
 	if(subExpressions.length === 0) {
 		return []
 	} else if(subExpressions.length === 1) {
+		if(!isSelected(config, exprList)) {
+			return subExpressions[0]
+		}
 		const [fst] = subExpressions
 		const g = exprList.grouping
 
 		if(g && fst.length > 0) {
-			fst[0].line = `${g[0].content} ${fst[0].line}`
-			fst[fst.length - 1].line = `${fst[fst.length - 1].line} ${g[1].content}`
+			const start = g[0].content
+			const end = g[1].content
+			fst[0].line = `${start}${start === '{' ? ' ' : ''}${fst[0].line}`
+			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${end}`
 		}
 		return fst
 	} else {
@@ -169,15 +174,6 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
-function removeExpressionListWrap(code: Code) {
-	if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
-		return indentBy(code.slice(1, code.length - 1), -1)
-	} else {
-		return code
-	}
-}
-
-
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined): Code {
 	otherwise ??= []
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
@@ -189,20 +185,20 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		]
 	} else if(otherwise.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
-			...indentBy(removeExpressionListWrap(when), 1),
+			{ line: `if(${getLexeme(ifThenElse.condition)}) ${when[0].line}`, indent: 0 },
+			...indentBy(when.splice(1), 1),
 		]
 	} else if(when.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1)
+			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0 },
+			...indentBy(otherwise.splice(1), 1)
 		]
 	} else {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
-			...indentBy(removeExpressionListWrap(when), 1),
-			{ line: 'else', indent: 0 },
-			...indentBy(removeExpressionListWrap(otherwise), 1)
+			{ line: `if(${getLexeme(ifThenElse.condition)}) ${when[0].line}`, indent: 0 },
+			...indentBy(when.splice(1), 1),
+			{ line: `else ${otherwise[1].line}`, indent: 0 },
+			...indentBy(otherwise.splice(1), 1)
 		]
 	}
 }
@@ -248,8 +244,6 @@ function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 }
 
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
-	console.log(node.info.id)
-
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
 	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
@@ -268,7 +262,7 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 }
 
 
-function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined): Code {
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code): Code {
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {
@@ -279,30 +273,28 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 }
 
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code): Code {
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(functionParameters.every(p => p.length === 0)) {
-		return body
+		const empty = body === undefined || body.length === 0
+		const selected = isSelected(config, definition)
+		if(empty && selected) { // give function stub
+			return plain(`function(${reconstructParameters(definition.parameters).join(', ')}) { }`)
+		} else if(!selected) { // do not require function
+			return body
+		}
 	}
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	if(body.length <= 1) {
 		// 'inline'
-		const bodyStr = body.length === 0 ? '' : `${body[0].line}`
+		const bodyStr = body.length === 0 ? '{ }' : `${body[0].line}`
 		// we keep the braces in every case because I do not like no-brace functions
 		return [{ line: `function(${parameters}) ${bodyStr}`, indent: 0 }]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+	} else {
 		// 'block'
 		return [
-			{ line: `function(${parameters}) {`, indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		]
-	} else {
-		// unknown -> we add the braces just to be sure
-		return [
-			{ line: `function(${parameters})`, indent: 0 },
-			...indentBy(body, 1),
-			{ line: '}', indent: 0 }
+			{ line: `function(${parameters}) ${body[0].line}`, indent: 0 },
+			...body.slice(1),
 		]
 	}
 
@@ -453,7 +445,6 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
  * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
-	console.log(selection)
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}

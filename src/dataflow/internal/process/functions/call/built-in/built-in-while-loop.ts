@@ -6,7 +6,7 @@ import {
 	linkCircularRedefinitionsWithinALoop, linkInputs,
 	produceNameSharedIdMap
 } from '../../../../linker'
-import { dataflowLogger, makeAllMaybe } from '../../../../../index'
+import { dataflowLogger, EdgeType, makeAllMaybe } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 
@@ -46,6 +46,9 @@ export function processWhileLoop<OtherInfo>(
 		...makeAllMaybe(body.in, information.graph, information.environment, false)
 	], information.environment, [...condition.in, ...condition.unknownReferences], information.graph, true)
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(remainingInputs), body.out)
+
+	// as the while-loop always evaluates its condition
+	information.graph.addEdge(name.info.id, condition.out[0], { type: EdgeType.Reads })
 
 	// TODO: handle break and next
 	return {

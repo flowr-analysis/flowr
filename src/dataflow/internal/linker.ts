@@ -137,8 +137,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {
-			console.log('linking function call with environment', def.subflow.in)
-			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
+			// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 			for(const ingoing of def.subflow.in) {
 				const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined
 				if(defs === undefined) {
@@ -205,12 +204,11 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 
 		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Returns))
 		if(returnEdges.length > 0) {
-			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
+			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function calls itself
 			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)))
 			continue
 		}
 		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall) || e.types.has(EdgeType.Relates))
-
 
 		if(currentInfo[0].subflow !== undefined) {
 			result.set(currentId, currentInfo[0])

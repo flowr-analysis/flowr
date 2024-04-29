@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert'
-import {EmptyArgument, NodeId, NoInfo, RNodeWithParent} from '../../r-bridge'
+import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import { EmptyArgument } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
@@ -28,8 +29,17 @@ export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
 
-export function isPositional(arg: FunctionArgument): arg is PositionalFunctionArgument {
+export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {
 	return arg !== EmptyArgument && !Array.isArray(arg)
+}
+
+export function getReferenceOfArgument(arg: FunctionArgument): IdentifierReference | undefined {
+	if(isPositionalArgument(arg) && arg !== '<value>') {
+		return arg
+	} else if(Array.isArray(arg) && arg[1] !== '<value>') {
+		return arg[1]
+	}
+	return undefined
 }
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependency'>  | IdentifierDefinition
@@ -224,7 +234,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 	private installEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
 		// sort (on id so that sorting is the same, independent of the attribute)
-		const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
+		const bidirectional = type === EdgeType.SameReadRead || type === EdgeType.SameDefDef || type === EdgeType.Relates
 
 		if(bidirectional) {
 			const existingTo = this.edgeInformation.get(toId)
@@ -233,7 +243,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			} else {
 				existingTo.set(fromId, edge)
 			}
-		} else if(type === 'defines-on-call') {
+		} else if(type === EdgeType.DefinesOnCall) {
 			const otherEdge: Edge = {
 				...edge,
 				types: new Set([EdgeType.DefinedByOnCall])

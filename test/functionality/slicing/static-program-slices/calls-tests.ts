@@ -11,11 +11,12 @@ a(i)`
 		const constFunction = `i <- 4
 a <- function(x) { x <- 2; 1 }
 a(i)`
-		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
-a <- function(x) { 1 }
+		/* actually, i does not have to be defined, as it is _not used_ by the function */
+		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `a <- function(x) { 1 }
 a(i)`)
-		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { 1 }')
-		assertSliced('Slice within function', shell, constFunction, ['2:20'], '{ x <- 2 }')
+		/* nothing of the function-content is required */
+		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
+		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
 		assertSliced('Multiple unknown calls', shell, `
 foo(x, y)
 foo(x, 3)
@@ -152,8 +153,9 @@ u <- a()
 u()`)
 		})
 	})
-	describe('Anonymous functions', () => {
-		assertSliced('Keep anonymous', shell, `
+	// TODO: drop not needed unnmaed arguments
+	describe('Anonymous Functions', () => {
+		assertSliced('keep anonymous', shell, `
 x <- (function() {
   x <- 4
   x - 5
@@ -163,7 +165,7 @@ cat(x)
     `, ['7@x'], `x <- (function() { 3 })()
 cat(x)`)
 	})
-	describe('Higher-order functions', () => {
+	describe('Higher-order Functions', () => {
 		const code = `a <- function() { x <- 3; i }
 i <- 4
 b <- function(f) { i <- 5; f() }
@@ -181,12 +183,12 @@ a <- function(x) {
   b <- function() { function() { x } }
   return(b())
 }
-a(m)()`, ['$25' /* we can't directly slice the second call as the "a" name would take the inner call */], `m <- 12
+res <- a(m)()`, ['6@res'], `m <- 12
 a <- function(x) {
         b <- function() { function() { x } }
         return(b())
     }
-a(m)()`)
+res <- a(m)()`)
 		assertSliced('Higher order anonymous function', shell, `a <- function(b) {
   b
 }
@@ -198,7 +200,7 @@ x <- a(function() 2 + 3)() + a(function() 7)()`)
 f <- function() { x <<- 3 }
 f()
 cat(x)
-    `, ['4@x'], `f <- function() { x <<- 3 }
+    `, ['4@x'], `f <- function() x <<- 3
 f()
 cat(x)`)
 
@@ -273,7 +275,7 @@ a <- function() { x <<- x + 5; cat(x) }
 x <- 3
 a()
 cat(x)`
-		assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5 }
+		assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() x <<- x + 5
 x <- 3
 a()
 cat(x)`)
@@ -282,15 +284,15 @@ a <- function() { x <<- 5; cat(x) }
 x <- 3
 a()
 cat(x)`
-		assertSliced('The local assignment is only needed if the global reads', shell, globalCodeWithoutLocal, ['5@x'], `a <- function() { x <<- 5 }
+		assertSliced('The local assignment is only needed if the global reads', shell, globalCodeWithoutLocal, ['5@x'], `a <- function() x <<- 5
 a()
 cat(x)`)
 
-		assertSliced('Must work with nested globals', shell, `a <- function() { function(b) { x <<- b } }
+		assertSliced('Must work with nested globals', shell, `a <- function() { function(b) x <<- b }
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() { function(b) { x <<- b } }
+cat(x)`, ['5@x'], `a <- function() { function(b) x <<- b }
 y <- 5
 a()(y)
 cat(x)`)
@@ -306,13 +308,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() {
-        function(b) {
-            if(runif() > .5) {
-                x <<- b
-            }
-        }
-    }
+cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) { x <<- b } }
 y <- 5
 x <- 2
 a()(y)

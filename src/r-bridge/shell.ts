@@ -169,7 +169,7 @@ export class RShell {
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`, {
 			timeout: {
-				ms:             1000,
+				ms:             5000,
 				resetOnNewData: false,
 				// just resolve on timeout and handle the empty array case below
 				onTimeout:      resolve => resolve([])

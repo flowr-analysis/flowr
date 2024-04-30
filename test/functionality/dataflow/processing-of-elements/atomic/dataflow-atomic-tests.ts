@@ -106,7 +106,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.use('2', unnamedArgument('2'))
 				.reads('2', '1')
 				.argument('3', '2')
-				.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('4-arg')], { returns: ['0-arg'], reads: ['2', BuiltIn] })
+				.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('4-arg')], { returns: ['0-arg'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 				.argument('3', ['4-arg', '0-arg'])
 				.constant('4')
 				.defineVariable('0', 'a', { definedBy: ['4', '3'] })

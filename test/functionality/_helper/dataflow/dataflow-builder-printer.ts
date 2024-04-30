@@ -108,11 +108,15 @@ class DataflowBuilderPrinter {
 			this.coveredEdges.add(edgeId(id, target, EdgeType.Reads))
 		}
 
+		let readSuffix = ''
+		if(reads.length > 1 && vertex.onlyBuiltin) {
+			readSuffix = ', onlyBuiltIn: true'
+		}
 		this.recordFnCall(id,'call', [
 			wrap(id),
 			wrap(vertex.name),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		])
 	}

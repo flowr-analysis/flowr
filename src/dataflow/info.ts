@@ -21,6 +21,7 @@ export interface DataflowInformation {
 	nexts:             readonly NodeId[],
 	/** intended to construct a hammock graph this represents the current entry into the graph, with undefined exit points representing a block that should not be part of the CFG (like a comment) */
 	entryPoint:        NodeId | undefined,
+	// TODO: add exist point
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */

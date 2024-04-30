@@ -99,17 +99,17 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.use('4', 'y').reads('5', '4')
 				.reads('3-arg', '0')
 		)
-		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
+		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
 			'a[x] <- 5',
 			emptyGraph()
 				.use('1', 'x')
 				.use('2', unnamedArgument('2'))
 				.reads('2', '1')
 				.argument('3', '2')
-				.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
+				.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('4-arg')], { returns: ['0-arg'], reads: ['2', BuiltIn] })
 				.argument('3', ['4-arg', '0-arg'])
 				.constant('4')
-				.defineVariable('0', 'a', { definedBy: ['4'] })
+				.defineVariable('0', 'a', { definedBy: ['4', '3'] })
 		)
 	})
 

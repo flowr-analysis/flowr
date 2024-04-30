@@ -199,35 +199,43 @@ export function processExpressionList<OtherInfo>(
 	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)
 
 
-	nextGraph.addVertex({
-		tag:               'function-call',
-		id:                rootId,
-		name:              name.content,
-		environment:       environment,
-		onlyBuiltin:       false,
-		controlDependency: data.controlDependency,
-		args:              args.map(a => {
-			// TODO: patch wrap
-			if(a === EmptyArgument) {
-				return EmptyArgument
-			}
-			if(a.type !== RType.Argument || !a.name) {
-				return { nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency }
-			} else {
-				return [a.name.content, { nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency }]
-			}
-		})
-	})
+	const ingoing = [...remainingRead.values()].flat()
 
-	/* we return the last expression (TODO: handle control flow impact) */
-	if(lastExpr) {
-		nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
+	const rootNode = data.completeAst.idMap.get(rootId)
+	const isRoot = rootNode?.info.role === 'root'
+	if(!isRoot) {
+		nextGraph.addVertex({
+			tag: 'function-call',
+			id: rootId,
+			name: name.content,
+			environment: environment,
+			onlyBuiltin: false,
+			controlDependency: data.controlDependency,
+			args: args.map(a => {
+				// TODO: patch wrap
+				if (a === EmptyArgument) {
+					return EmptyArgument
+				}
+				if (a.type !== RType.Argument || !a.name) {
+					return {nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency}
+				} else {
+					return [a.name.content, {nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency}]
+				}
+			})
+		})
+
+		/* we return the last expression (TODO: handle control flow impact) */
+		if (lastExpr) {
+			nextGraph.addEdge(rootId, lastExpr.info.id, {type: EdgeType.Returns})
+		}
+		ingoing.push({ nodeId: rootId, name: name.content, controlDependency: data.controlDependency })
 	}
+
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependency: data.controlDependency }, ...remainingRead.values()].flat(),
+		in:                ingoing,
 		out,
 		environment:       environment,
 		graph:             nextGraph,

@@ -20,6 +20,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					parent: undefined,
 					id:     '1',
 					index:  0,
+					depth:  0,
 					role:   RoleInParent.Root
 				},
 				children,
@@ -36,6 +37,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info: {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0,
 					},
@@ -50,6 +52,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:     {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},
@@ -64,6 +67,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:     {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},
@@ -79,6 +83,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:      {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},

@@ -59,7 +59,7 @@ export function withShell(fn: (shell: RShell) => void): () => void {
 
 function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role') {
+		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'depth') {
 			return undefined
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined

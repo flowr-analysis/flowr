@@ -71,7 +71,7 @@ describe('Constant Parsing',
 							location: range,
 							lexeme:   number.str,
 							content:  number.val,
-							info:     {}
+							info:     { }
 						})
 					)
 				}

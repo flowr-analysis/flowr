@@ -2,7 +2,7 @@ import type { RExpressionList, RNode, RParameter, RNumberValue } from '../../../
 import { RType } from '../../../src/r-bridge'
 import type { SourceRange } from '../../../src/util/range'
 
-const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
+const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined, depth: 0 }
 
 export function exprList(...children: RNode[]): RExpressionList {
 	return { type: RType.ExpressionList, children, lexeme: undefined, info: emptyInfo, grouping: undefined, location: undefined }

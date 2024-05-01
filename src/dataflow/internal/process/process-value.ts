@@ -10,7 +10,7 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph().addVertex({
-			tag:               VertexType.Use,
+			tag:               VertexType.Value,
 			id:                value.info.id,
 			name:              CONSTANT_NAME,
 			value:             value.lexeme,

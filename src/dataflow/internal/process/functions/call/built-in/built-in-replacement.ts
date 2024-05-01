@@ -30,7 +30,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
 	const { callArgs } = processAllArguments({
-		functionName:   initializeCleanDataflowInformation(data),
+		functionName:   initializeCleanDataflowInformation(rootId, data),
 		args:           args.slice(1, -1),
 		data,
 		functionRootId: rootId,
@@ -39,6 +39,7 @@ export function processReplacementFunction<OtherInfo>(
 	const fn = res.graph.get(rootId)
 	guard(fn !== undefined && fn[0].tag === VertexType.FunctionCall && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
 	fn[0].args = [fn[0].args[0], ...callArgs, fn[0].args[1]]
+
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {

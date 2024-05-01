@@ -39,10 +39,10 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.ExpressionList]:     (n, d) => processNamedCall({
 		type:      RType.Symbol,
 		info:      n.info,
-		content:   '{',
-		lexeme:    '{',
+		content:   n.grouping?.[0].content ?? '{',
+		lexeme:    n.grouping?.[0].lexeme ?? '{',
 		location:  n.location ?? rangeFrom(-1, -1, -1, -1),
-		namespace: undefined
+		namespace: n.grouping?.[0].content ? undefined : 'base'
 	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
 }
 

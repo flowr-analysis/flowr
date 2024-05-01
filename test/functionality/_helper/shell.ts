@@ -252,7 +252,7 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 			}
 		}, {})
 		assert.strictEqual(reconstructed.code, expected,
-			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`)
+			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`)
 	})
 }
 
@@ -270,11 +270,10 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,
-				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, true, result.slice.result)}`
+				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, true, result.slice.result)}`
 			)
 		} catch(e) {
 			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`)
-			console.error('vis-got:\n', graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap))
 			throw e
 		}
 	})

@@ -4,11 +4,10 @@
  */
 import { type DataflowInformation } from '../../../../../info'
 import type { NodeId, ParentInformation, RFunctionArgument, RNodeWithParent, RSymbol } from '../../../../../../r-bridge'
-import { EmptyArgument, RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { IdentifierReference, IEnvironment, REnvironmentInformation } from '../../../../../environments'
-import { makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
+import { BuiltIn , makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../../../../linker'
 import { DefaultMap } from '../../../../../../util/defaultmap'
 import type { DataflowGraphVertexInfo } from '../../../../../graph'
@@ -16,6 +15,7 @@ import { CONSTANT_NAME, DataflowGraph, VertexType } from '../../../../../graph'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
+import { patchFunctionCall } from '../common'
 
 
 const dotDotDotAccess = /\.\.\d+/
@@ -88,7 +88,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while(current !== undefined) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
-						if(def.kind !== 'built-in-function') {
+						if(def.definedAt !== BuiltIn) {
 							nextGraph.addEdge(def.nodeId, functionCall, { type: EdgeType.SideEffectOnCall })
 						}
 					}
@@ -128,15 +128,19 @@ export function processExpressionList<OtherInfo>(
 	let expressionCounter = 0
 	const foundNextOrBreak = false
 	let lastExpr: RNodeWithParent | undefined = undefined
+	const processedExpressions: (DataflowInformation | undefined)[] = []
+
 	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
 		if(expression === undefined) {
+			processedExpressions.push(undefined)
 			continue
 		}
 		lastExpr = expression
 		// use the current environments for processing
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
+		processedExpressions.push(processed)
 
 		breaks = [...breaks, ...processed.breaks]
 		returns = [...returns, ...processed.returns]
@@ -188,33 +192,20 @@ export function processExpressionList<OtherInfo>(
 	const ingoing = [...remainingRead.values()].flat()
 
 	const rootNode = data.completeAst.idMap.get(rootId)
-	const isRoot = rootNode?.info.role === 'root'
-	if(!isRoot) {
-		nextGraph.addVertex({
-			tag:               VertexType.FunctionCall,
-			id:                rootId,
-			name:              name.content,
-			environment:       environment,
-			onlyBuiltin:       false,
-			controlDependency: data.controlDependency,
-			args:              args.map(a => {
-				// TODO: patch wrap
-				if(a === EmptyArgument) {
-					return EmptyArgument
-				}
-				if(a.type !== RType.Argument || !a.name) {
-					return { nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency }
-				} else {
-					return [a.name.content, { nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency }]
-				}
-			})
+	const withGroup = rootNode?.grouping
+	if(withGroup) {
+		ingoing.push({ nodeId: rootId, name: name.content, controlDependency: data.controlDependency })
+		patchFunctionCall({
+			nextGraph,
+			rootId,
+			name,
+			data,
+			argumentProcessResult: processedExpressions
 		})
-
 		/* we return the last expression (TODO: handle control flow impact) */
 		if(lastExpr) {
 			nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
 		}
-		ingoing.push({ nodeId: rootId, name: name.content, controlDependency: data.controlDependency })
 	}
 
 
@@ -225,7 +216,7 @@ export function processExpressionList<OtherInfo>(
 		out,
 		environment:       environment,
 		graph:             nextGraph,
-		entryPoint:        rootId,
+		entryPoint:        withGroup ? rootId : (lastExpr?.info.id ?? rootId),
 		returns:           returns,
 		breaks:            breaks,
 		nexts:             nexts

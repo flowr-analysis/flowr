@@ -7,8 +7,6 @@ import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { VertexType , EdgeType } from '../../../../graph'
 import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
-import { guard } from '../../../../../util/assert'
-import { markNonStandardEvaluationEdges } from './known-call-handling'
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly functionName:   DataflowInformation
@@ -69,19 +67,17 @@ export function processAllArguments<OtherInfo>(
 
 		finalGraph.mergeWith(processed.graph)
 
-		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
 		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push(processed.out[0])
+			callArgs.push({ nodeId: processed.entryPoint, controlDependency: undefined })
 		} else {
-			callArgs.push([arg.name.content, processed.out[0]])
+			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependency: undefined })
 		}
 
-		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], { type: EdgeType.Argument })
+		finalGraph.addEdge(functionRootId, processed.entryPoint, { type: EdgeType.Argument })
 
 		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
-				{ ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },
+				{ nodeId: processed.entryPoint, name: arg.name.content, definedAt: arg.info.id, kind: 'argument', controlDependency: data.controlDependency },
 				false,
 				argEnv
 			)
@@ -109,11 +105,11 @@ export function patchFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
 		controlDependency: data.controlDependency,
-		args:              argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : arg.out[0])
+		args:              argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependency: undefined })
 	})
 	for(const arg of argumentProcessResult) {
 		if(arg) {
-			nextGraph.addEdge(rootId, arg.out[0], { type: EdgeType.Argument })
+			nextGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Argument })
 		}
 	}
 }

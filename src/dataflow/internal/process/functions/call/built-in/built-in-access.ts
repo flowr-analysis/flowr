@@ -5,6 +5,7 @@ import type { DataflowInformation } from '../../../../../info'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
+import type { ProcessKnownFunctionCallResult } from '../known-call-handling'
 import { processKnownFunctionCall } from '../known-call-handling'
 
 export function processAccess<OtherInfo>(
@@ -21,9 +22,9 @@ export function processAccess<OtherInfo>(
 	const head = args[0]
 	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
 
-	let information: DataflowInformation
+	let fnCall: ProcessKnownFunctionCallResult
 	if(!config.treatIndicesAsString) {
-		information = processKnownFunctionCall({ name, args, rootId, data }).information
+		fnCall = processKnownFunctionCall({ name, args, rootId, data })
 	} else {
 		const newArgs = [...args]
 		// if the argument is a symbol, we convert it to a string for this perspective
@@ -45,20 +46,26 @@ export function processAccess<OtherInfo>(
 				}
 			}
 		}
-		information = processKnownFunctionCall({ name, args: newArgs, rootId, data }).information
+		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data })
 	}
 
-	information.graph.addEdge(name.info.id, head.info.id, { type: EdgeType.Returns })
+	const info = fnCall.information
+
+	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, { type: EdgeType.Returns })
+
 	/* access always reads all of its indices */
-	for(let i = 1; i < args.length; i++) {
-		const arg = args[i]
-		if(arg !== EmptyArgument) {
-			information.graph.addEdge(name.info.id, arg.info.id, { type: EdgeType.Reads })
+	for(const arg of fnCall.processedArguments) {
+		if(arg !== undefined) {
+			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })
+		}
+		if(config.treatIndicesAsString) {
+			// everything but the first is disabled here
+			break
 		}
 	}
 
 	return {
-		...information,
+		...info,
 		/*
      * Keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
@@ -70,11 +77,12 @@ export function processAccess<OtherInfo>(
      * ```
      * the read for a will use both accesses as potential definitions and not just the last one!
      */
-		unknownReferences: makeAllMaybe(information.unknownReferences, information.graph, information.environment, false),
+		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
+		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
-		in:                information.in.map(ref => {
+		in:                info.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, information.graph, information.environment, false)
+				return makeReferenceMaybe(ref, info.graph, info.environment, false)
 			} else {
 				return ref
 			}

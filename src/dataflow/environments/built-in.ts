@@ -56,11 +56,11 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next' }
 ): DataflowInformation {
-	const res: DataflowInformation = processKnownFunctionCall({ name, args, rootId, data }).information
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
 	if(config.returnsNthArgument !== undefined) {
-		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
-		if(arg !== undefined && arg !== EmptyArgument) {
-			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns })
+		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument]
+		if(arg !== undefined) {
+			res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Returns })
 		}
 	}
 	switch(config.cfg) {

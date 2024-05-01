@@ -308,7 +308,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) { x <<- b } }
+cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) x <<- b }
 y <- 5
 x <- 2
 a()(y)

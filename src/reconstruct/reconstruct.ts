@@ -124,53 +124,53 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
-function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
-	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
+function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, config: ReconstructionConfiguration): Code {
+	if(!isSelected(config, loop) && variable.length === 0 && vector.length === 0) {
+		return body
+	} else if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
+	} else if(body.length <= 1) {
+		// 'inline'
+		return [{
+			line:   `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`,
+			indent: 0
+		}]
+	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+		// 'block'
+		return [
+			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
+			...body.slice(1, body.length - 1),
+			{ line: '}', indent: 0 }
+		]
 	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-			// 'block'
-			return [
-				{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
+		// unknown
+		return [
+			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, indent: 0 },
+			...indentBy(body, 1)
+		]
 	}
 }
 
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
-	} else if(body.length === 0) {
-		return []
+	const sel = isSelected(configuration, loop)
+	if(!sel) {
+		return body
+	} else if(body.length <= 1) {
+		// 'inline'
+		return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
+	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+		// 'block'
+		return [
+			{ line: 'repeat {', indent: 0 },
+			...body.slice(1, body.length - 1),
+			{ line: '}', indent: 0 }
+		]
 	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-			// 'block'
-			return [
-				{ line: 'repeat {', indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ line: 'repeat', indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
+		// unknown
+		return [
+			{ line: 'repeat', indent: 0 },
+			...indentBy(body, 1)
+		]
 	}
 }
 
@@ -204,27 +204,28 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 }
 
 
-function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code): Code {
-	if(body.length === 0 && condition.length === 0) {
+function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
+	const sel = isSelected(configuration, loop)
+	if(!sel && condition.length === 0) {
+		return body
+	} else if(body.length === 0 && condition.length === 0) {
 		return []
+	} else if(body.length <= 1) {
+		// 'inline'
+		return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
+	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+		// 'block'
+		return [
+			{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
+			...body.slice(1, body.length - 1),
+			{ line: '}', indent: 0 }
+		]
 	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-			// 'block'
-			return [
-				{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ line: `while(${getLexeme(loop.condition)})`, indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
+		// unknown
+		return [
+			{ line: `while(${getLexeme(loop.condition)})`, indent: 0 },
+			...indentBy(body, 1)
+		]
 	}
 }
 

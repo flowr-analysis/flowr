@@ -3,7 +3,6 @@ import type { FunctionArgument, IdentifierDefinition, REnvironmentInformation, E
 import {
 	initializeCleanEnvironments
 } from '../../../../src/dataflow'
-import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/process-argument'
 import {
 	appendEnvironment,
 	define,
@@ -21,17 +20,8 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: NodeId[] }): FunctionArgument {
-	if(options?.name === undefined) {
-		return { nodeId, name: unnamedArgument(nodeId), controlDependency: options?.controlDependency }
-	} else {
-		return [options.name, { nodeId, name: options.name, controlDependency: options?.controlDependency }]
-	}
+	return { nodeId, name: options?.name, controlDependency: options?.controlDependency }
 }
-
-export function unnamedArgument(id: NodeId) {
-	return `${UnnamedArgumentPrefix}${id}`
-}
-
 /**
  * The constant global environment with all pre-defined functions.
  */

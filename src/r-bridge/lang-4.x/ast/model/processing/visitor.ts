@@ -37,6 +37,7 @@ class NodeVisitor<OtherInfo = NoInfo> {
 				this.visitSingle(node.body)
 				break
 			case RType.ExpressionList:
+				this.visit(node.grouping)
 				this.visit(node.children)
 				break
 			case RType.ForLoop:

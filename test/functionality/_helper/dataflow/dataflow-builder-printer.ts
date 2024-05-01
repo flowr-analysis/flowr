@@ -4,12 +4,13 @@
  */
 import type {
 	DataflowGraph,
-	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexUse,
 	FunctionArgument,
-	REnvironmentInformation } from '../../../../src/dataflow'
-import {
+	REnvironmentInformation
+} from '../../../../src/dataflow'
+import { isPositionalArgument,
 	EdgeType,
 	VertexType
 } from '../../../../src/dataflow'
@@ -18,7 +19,7 @@ import { EmptyArgument } from '../../../../src'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { DefaultMap } from '../../../../src/util/defaultmap'
 import { EnvironmentBuilderPrinter } from './environment-builder-printer'
-import { wrap } from './printer'
+import { wrap, wrapReference } from './printer'
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
@@ -40,9 +41,9 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.Argument]: 	            'argument',
 	[EdgeType.Relates]:               'relates',
 	[EdgeType.NonStandardEvaluation]: 'nse',
-	/* TODO -------------------------------------------- */
-	[EdgeType.DefinedByOnCall]:       undefined,
-	[EdgeType.SideEffectOnCall]:      undefined
+	[EdgeType.SideEffectOnCall]:      'sideEffectOnCall',
+	/* treated specially as done by automated mirroring */
+	[EdgeType.DefinedByOnCall]:       undefined
 }
 
 class DataflowBuilderPrinter {
@@ -127,24 +128,18 @@ class DataflowBuilderPrinter {
 		return this.rootIds.has(id) ? undefined : 'false'
 	}
 
-	private processArgumentInCall(fn: NodeId, arg: FunctionArgument): string {
-		if(arg === EmptyArgument) {
+	private processArgumentInCall(fn: NodeId, arg: FunctionArgument | undefined): string {
+		if(arg === undefined || arg === EmptyArgument) {
 			return 'EmptyArgument'
-		} else if(Array.isArray(arg)) {
-			if(arg[1] === '<value>') {
-				return '<value>'
-			}
-			this.coveredVertices.add(arg[1].nodeId)
-			this.handleArgumentArgLinkage(fn, arg[1].nodeId)
-			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg[1].nodeId), ', ', '') ?? ''
-			return `argumentInCall('${arg[1].nodeId}', { name: '${arg[0]}'${suffix} } )`
-		} else if(arg !== '<value>') {
+		} else if(isPositionalArgument(arg)) {
 			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg.nodeId), ', { ') ?? ''
-			this.coveredVertices.add(arg.nodeId)
 			this.handleArgumentArgLinkage(fn, arg.nodeId)
 			return `argumentInCall('${arg.nodeId}'${suffix})`
 		} else {
-			return '<value>'
+			this.coveredVertices.add(arg.nodeId)
+			this.handleArgumentArgLinkage(fn, arg.nodeId)
+			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg.nodeId), ', ', '') ?? ''
+			return `argumentInCall('${arg.nodeId}', { name: '${arg.name}'${suffix} } )`
 		}
 	}
 
@@ -191,7 +186,7 @@ class DataflowBuilderPrinter {
 			case VertexType.Value:
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
-					this.getControlDependencySuffix(vertex.controlDependency),
+					this.getControlDependencySuffix(vertex.controlDependency) ?? 'undefined',
 					this.asRootArg(id)
 				])
 				break
@@ -199,7 +194,7 @@ class DataflowBuilderPrinter {
 				this.processVariableDefinition(id, vertex)
 				break
 			case VertexType.FunctionDefinition:
-				console.log('TODO: function-definition')
+				this.processFunctionDefinition(id, vertex)
 				break
 			case VertexType.ExitPoint:
 				console.log('TODO: exit-point')
@@ -224,10 +219,31 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id, 'use', [
 			wrap(id),
 			wrap(vertex.name),
-			this.getControlDependencySuffix(vertex.controlDependency),
+			this.getControlDependencySuffix(vertex.controlDependency) ?? 'undefined',
 			this.asRootArg(id)
 		])
 	}
+
+	private processFunctionDefinition(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition) {
+		const suffix = this.getEnvironmentSuffix(vertex.environment, ', { ', ' }')
+		this.recordFnCall(id,'defineFunction', [
+			wrap(id),
+			wrap(vertex.name),
+			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
+			`{
+				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
+				in:                [${vertex.subflow.in.map(wrapReference).join(', ')}],
+				unknownReferences: [${vertex.subflow.unknownReferences.map(wrapReference).join(', ')}],
+				breaks:            [${vertex.subflow.breaks.map(wrap).join(', ')}],
+				nexts:             [${vertex.subflow.nexts.map(wrap).join(', ')}],
+				returns:           [${vertex.subflow.returns.map(wrap).join(', ')}],
+				entryPoint:        ${wrap(vertex.subflow.entryPoint)},
+				graph:             new Set([${[...vertex.subflow.graph].map(wrap).join(', ')}]),
+				environment:       ${new EnvironmentBuilderPrinter(vertex.subflow.environment).print()}
+			}`, suffix
+		])
+	}
+
 
 	private processVariableDefinition(id: NodeId, vertex: DataflowGraphVertexInfo) {
 		const definedBy = this.groupEdgeTypesFrom(id).get(EdgeType.DefinedBy)
@@ -280,7 +296,10 @@ class DataflowBuilderPrinter {
 
 		const mappedName = EdgeTypeFnMap[type]
 		if(mappedName === undefined) {
-			console.log('TODO: edge type', type)
+			// we ignore this edge type as it is a special case
+			if(type !== EdgeType.DefinedByOnCall) {
+				console.log('TODO: edge type', type)
+			}
 			return
 		}
 		this.recordFnCall(from, mappedName, [wrap(from),  this.optionalArrayWrap(to)])

@@ -3,7 +3,7 @@ import type { RType } from '../type'
 import type { RSymbol } from './r-symbol'
 import type { RArgument } from './r-argument'
 
-export const EmptyArgument = '<>' as const
+export const EmptyArgument = '<>'
 
 export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument
 

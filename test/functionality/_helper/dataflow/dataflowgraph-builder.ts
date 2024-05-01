@@ -4,12 +4,14 @@ import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraphVertexUse,
 	FunctionArgument,
-	REnvironmentInformation } from '../../../../src/dataflow'
+	REnvironmentInformation
+} from '../../../../src/dataflow'
 import {
 	BuiltIn,
 	CONSTANT_NAME,
 	DataflowGraph,
 	EdgeType,
+	isPositionalArgument,
 	VertexType
 } from '../../../../src/dataflow'
 import { deepMergeObject } from '../../../../src/util/objects'
@@ -76,7 +78,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			tag:               VertexType.FunctionCall,
 			id,
 			name,
-			args,
+			args:              args.map(a =>  a === EmptyArgument ? EmptyArgument : { ...a, controlDependency: undefined }),
 			environment:       info?.environment,
 			controlDependency: info?.controlDependency,
 			onlyBuiltin:       info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
@@ -101,18 +103,17 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			if(arg === EmptyArgument) {
 				continue
 			}
-			if(Array.isArray(arg)) {
-				if(arg[1] !== '<value>' && arg[1].name !== undefined && !this.hasVertex(arg[1].nodeId, true)) {
-					this.use(arg[1].nodeId, arg[1].name, { controlDependency: arg[1].controlDependency })
-					this.argument(id, arg[1].nodeId)
-				}
-			} else if(arg !== '<value>'&& arg.name !== undefined && !this.hasVertex(arg.nodeId, true)) {
-				this.use(arg.nodeId, arg.name, { controlDependency: arg.controlDependency })
+			if(isPositionalArgument(arg)) {
+				// TODO:
+				// this.use(arg.nodeId, unnamedArgument(arg.nodeId), { controlDependency: arg.controlDependency })
 				this.argument(id, arg.nodeId)
 				if(arg.nodeId.endsWith('-arg')) {
 					const withoutSuffix = arg.nodeId.slice(0, -4)
 					this.reads(arg.nodeId, withoutSuffix)
 				}
+			} else if(!this.hasVertex(arg.nodeId, true)) {
+				this.use(arg.nodeId, arg.name, { controlDependency: arg.controlDependency })
+				this.argument(id, arg.nodeId)
 			}
 		}
 	}
@@ -303,5 +304,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation)
+	}
+
+	/**
+	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
+	 *
+	 * @see reads for parameters.
+	 */
+	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall)
 	}
 }

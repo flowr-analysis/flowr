@@ -30,12 +30,15 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 	expensiveTrace(slicerLogger, () =>`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 	const queue = new VisitingQueue(threshold)
 
+	let minDepth = Number.MAX_SAFE_INTEGER
 	// every node ships the call environment which registers the calling environment
 	{
 		const emptyEnv = initializeCleanEnvironments()
 		const basePrint = envFingerprint(emptyEnv)
 		for(const startId of decodedCriteria) {
-			queue.add(startId.id, emptyEnv, basePrint, false)
+			queue.add(startId.id, emptyEnv, basePrint, false, false)
+			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
+			minDepth = Math.min(minDepth, ast.idMap.get(startId.id)?.info.depth ?? minDepth)
 		}
 	}
 
@@ -71,18 +74,21 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 			}
 			const t = shouldTraverseEdge(types)
 			if(t === TraverseEdge.Always) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false, current.inCall)
 			} else if(t === TraverseEdge.DefinedByOnCall && queue.potentialArguments.has(target)) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false, current.inCall)
 				queue.potentialArguments.delete(target)
 			} else if(t === TraverseEdge.SideEffect) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, true, current.inCall)
 			}
 		}
 
+		// we only add control dependencies iff 1) we are in function call or 2) they have, at least, the same depth as the slicing seed
 		if(currentVertex.controlDependency) {
 			for(const cd of currentVertex.controlDependency) {
-				queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
+				if(current.inCall || (ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
+					queue.add(cd, baseEnvironment, baseEnvFingerprint, false, current.inCall)
+				}
 			}
 		}
 	}

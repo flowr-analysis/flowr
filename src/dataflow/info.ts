@@ -20,15 +20,15 @@ export interface DataflowInformation {
 	/** all vertices which trigger an active 'next' in the current dataflow graph */
 	nexts:             readonly NodeId[],
 	/** intended to construct a hammock graph this represents the current entry into the graph, with undefined exit points representing a block that should not be part of the CFG (like a comment) */
-	entryPoint:        NodeId | undefined,
-	// TODO: add exist point
+	entryPoint:        NodeId,
+	// TODO: add exit point
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
 }
 
-export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'environment'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],
@@ -36,7 +36,7 @@ export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcess
 		returns:           [],
 		breaks:            [],
 		nexts:             [],
-		entryPoint:        undefined,
+		entryPoint:        entryPoint,
 		environment:       data.environment,
 		graph:             new DataflowGraph()
 	}

@@ -60,7 +60,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${a !== undefined ? 'present' : 'undefined'} vs. ${info.rightname}: ${b !== undefined ? 'present' : 'undefined'}`)
 		}
 		return
 	}
@@ -68,7 +68,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${a.name}  vs. ${info.rightname}: ${b.name}`)
 	}
 	if(a.memory.size !== b.memory.size) {
-		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${a.memory.size} vs. ${info.rightname}: ${b.memory.size}`)
 		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {
 			...info,
 			position: `${info.position}Key comparison. `

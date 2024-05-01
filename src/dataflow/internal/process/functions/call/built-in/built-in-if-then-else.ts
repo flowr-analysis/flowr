@@ -95,7 +95,7 @@ export function processIfThenElse<OtherInfo>(
 	})
 
 	// as an if always evaluates its condition, we add a 'reads'-edge
-	nextGraph.addEdge(name.info.id, cond.out[0], { type: EdgeType.Reads })
+	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads })
 
 	return {
 		unknownReferences: [],

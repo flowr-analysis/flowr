@@ -103,7 +103,7 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 		...ref,
 		kind:              isFunctionDef ? 'function' : 'variable',
 		definedAt:         rootId,
-		controlDependency: data.controlDependency ?? makeMaybe ? [] : undefined
+		controlDependency: data.controlDependency ?? (makeMaybe ? [] : undefined)
 	}))
 }
 
@@ -179,9 +179,9 @@ function processAssignmentToSymbol<OtherInfo>(
 		}
 	}
 
-	information.graph.addEdge(name.info.id, targetArg.out[0], { type: EdgeType.Returns })
+	information.graph.addEdge(name.info.id, targetArg.entryPoint, { type: EdgeType.Returns })
 	/* an assignment reads its source */
-	// TODO: this doesnt work atm to find functionns information.graph.addEdge(name.info.id, sourceArg.out[0], { type: EdgeType.Reads })
+	// TODO: this doesnt work atm to find functionns information.graph.addEdge(name.info.id, sourceArg.entryPoint, { type: EdgeType.Reads })
 
 	return {
 		...information,

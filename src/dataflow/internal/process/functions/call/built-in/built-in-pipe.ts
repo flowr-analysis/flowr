@@ -11,7 +11,6 @@ import { dataflowLogger, EdgeType, graphToMermaidUrl, VertexType } from '../../.
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
-import { UnnamedArgumentPrefix } from '../../process-argument'
 
 
 export function processPipe<OtherInfo>(
@@ -47,8 +46,8 @@ export function processPipe<OtherInfo>(
 
 		dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`)
 		functionCallNode.args.unshift({
+			name:              undefined,
 			nodeId:            argId,
-			name:              `${UnnamedArgumentPrefix}${argId}`,
 			controlDependency: data.controlDependency
 		})
 		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument })

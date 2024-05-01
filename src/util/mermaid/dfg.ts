@@ -10,7 +10,9 @@ import type {
 	IdentifierDefinition,
 	IdentifierReference,
 	IEnvironment } from '../../dataflow'
-import { VertexType,
+import { isNamedArgument
+	, isPositionalArgument
+	, VertexType,
 	BuiltIn,
 	BuiltInEnvironment,
 	CONSTANT_NAME,
@@ -91,22 +93,25 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 }
 
 
-function printArg(arg: IdentifierReference | '<value>' | 'empty' | typeof EmptyArgument | undefined): string {
-	if(arg === 'empty') {
-		return ''
-	} else if(arg === undefined || arg === '<value>') {
+function printArg(arg: FunctionArgument | undefined): string {
+	if(arg === undefined) {
 		return '??'
 	} else if(arg === EmptyArgument) {
 		return '[empty]'
-	} else {
-		const deps = arg.controlDependency ? '[' + arg.controlDependency.join(',') + ']': ''
+	} else if(isNamedArgument(arg)) {
+		const deps = arg.controlDependency ? ', :maybe:' + arg.controlDependency.join(',') : ''
+		return `${arg.name} (${arg.nodeId}, ${deps})`
+	} else if(isPositionalArgument(arg)) {
+		const deps = arg.controlDependency ? ' (:maybe:' + arg.controlDependency.join(',') + ')': ''
 		return `${arg.nodeId}${deps}`
+	} else {
+		return '??'
 	}
 }
-function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
+function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): string {
 	const result = []
 	for(const arg of argMapping) {
-		result.push(Array.isArray(arg) ? `${arg[0]} -> ${printArg(arg[1])}` : `${printArg(arg)}`)
+		result.push(printArg(arg))
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }

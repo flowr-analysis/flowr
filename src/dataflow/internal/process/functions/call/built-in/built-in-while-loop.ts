@@ -48,7 +48,7 @@ export function processWhileLoop<OtherInfo>(
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(remainingInputs), body.out)
 
 	// as the while-loop always evaluates its condition
-	information.graph.addEdge(name.info.id, condition.out[0], { type: EdgeType.Reads })
+	information.graph.addEdge(name.info.id, condition.entryPoint, { type: EdgeType.Reads })
 
 	// TODO: handle break and next
 	return {

@@ -50,7 +50,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 
 		expensiveTrace(slicerLogger, () => `can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`)
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall && nodeInfo.type !== RType.Argument || nodeInfo.type === RType.ExpressionList) {
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
 			continue
 		}
 
@@ -73,7 +73,7 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
 
 		slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for line ${line} and name ${name}`)
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall && nodeInfo.type !== RType.Argument || nodeInfo.type === RType.ExpressionList) {
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
 			continue
 		}
 		candidate = nodeInfo

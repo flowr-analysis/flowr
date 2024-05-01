@@ -6,7 +6,7 @@ import { RType, decorateAst, collectAllIds, RoleInParent } from '../../../src'
 import { assert } from 'chai'
 
 describe('Assign unique Ids and Parents', withShell((shell) => {
-	describe('Testing deterministic counting Id assignment', () => {
+	describe('Testing Deterministic Counting of Id Assignment', () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
 			assertDecoratedAst(name, shell, input, expected)
 		}
@@ -91,7 +91,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 			)
 		})
 	})
-	describe('Collect all íds in ast', () => {
+	describe('Collect all Ids in AST', () => {
 		function assertIds(name: string, input: string, expected: Set<NodeId>, stop?: (node: RNodeWithParent) => boolean) {
 			it(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input)
@@ -102,9 +102,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 		}
 		assertIds('Without stop', 'x <- 2', new Set(['0', '1', '2', '3']))
 		assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === RType.Number)
-		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']))
+		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']))
 		// if, TRUE, [when]
-		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8', '9']), n => n.type === RType.BinaryOp)
+		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '4', '5', '9', '10', '11']), n => n.type === RType.BinaryOp)
 	})
 })
 )

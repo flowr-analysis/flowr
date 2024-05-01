@@ -13,13 +13,14 @@ export class EnvironmentBuilderPrinter {
 
 	private process() {
 		let current = this.env.current
+		let i = this.env.level
 		while(current !== undefined && current.id !== BuiltInEnvironment.id) {
+			if(i-- > 0) {
+				this.push()
+			}
 			this.processEnvironment(current)
 			current = current.parent
-			this.push()
 		}
-		// drop last push
-		this.lines.pop()
 	}
 
 	private processEnvironment(env: IEnvironment) {
@@ -45,6 +46,7 @@ export class EnvironmentBuilderPrinter {
 				this.recordFnCall('defineFunction', [
 					wrap(name),
 					wrap(def.nodeId),
+					wrap(def.definedAt),
 					this.getControlDependencyArgument(def)
 				])
 				break
@@ -56,6 +58,7 @@ export class EnvironmentBuilderPrinter {
 				this.recordFnCall('defineArgument', [
 					wrap(name),
 					wrap(def.nodeId),
+					wrap(def.definedAt),
 					this.getControlDependencyArgument(def)
 				])
 				break
@@ -63,6 +66,7 @@ export class EnvironmentBuilderPrinter {
 				this.recordFnCall('defineParameter', [
 					wrap(name),
 					wrap(def.nodeId),
+					wrap(def.definedAt),
 					this.getControlDependencyArgument(def)
 				])
 				break

@@ -1,7 +1,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -55,7 +55,6 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', { },  false)
 				.use('3', 'x', { }, false)
 				.call('5', 'return', [argumentInCall('4')], { environment: envWithXDefined }, false)
-				.use('4',unnamedArgument('4'), { }, false)
 				.reads('5', BuiltIn)
 				.calls('5', BuiltIn)
 				.reads('3', '0')
@@ -398,7 +397,6 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('2', '...', { },  false)
 				.use('5', '...', { }, false)
 				.call('7', 'foo', [argumentInCall('6')], { environment: envWithASpecial }, false)
-				.use('6',unnamedArgument('6'), { }, false)
 				.argument('7', '6')
 				.reads('6', '5')
 				.reads('5', '2')
@@ -434,7 +432,6 @@ describe('Function Definition', withShell(shell => {
 			.use('8', 'z', { }, false)
 			.use('10', 'g', { }, false)
 			.use('18', 'g', { }, false)
-			.use('11', unnamedArgument('11'), { }, false)
 			.call('12', 'return', [argumentInCall('11')], { controlDependency: [], environment: envWithFirstY }, false)
 			.defineFunction('3', '3', ['1'], {
 				out:               [],

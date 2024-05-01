@@ -67,5 +67,5 @@ export function processNamedCall<OtherInfo>(
 	}
 
 
-	return information ?? initializeCleanDataflowInformation(data)
+	return information ?? initializeCleanDataflowInformation(rootId, data)
 }

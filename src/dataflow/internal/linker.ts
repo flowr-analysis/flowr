@@ -3,9 +3,10 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
 	FunctionArgument,
-	NamedFunctionArgument,
-	PositionalFunctionArgument } from '../graph'
-import { VertexType
+	PositionalFunctionArgument
+} from '../graph'
+import { isNamedArgument
+	, VertexType
 	,
 	CONSTANT_NAME
 } from '../graph'
@@ -55,7 +56,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 }
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
-	const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const))
 	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]))
 
 	const specialDotParameter = params.find(p => p.special)
@@ -66,10 +67,6 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 	// first map names
 	for(const [name, arg] of nameArgMap) {
-		if(arg === '<value>') {
-			dataflowLogger.trace(`skipping value argument for ${name}`)
-			continue
-		}
 		const param = nameParamMap.get(name)
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
@@ -86,7 +83,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 	for(let i = 0; i < remainingArguments.length; i++) {
 		const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
-		if(arg === '<value>' || arg === 'empty') {
+		if(arg === 'empty') {
 			dataflowLogger.trace(`skipping value argument for ${i}`)
 			continue
 		}

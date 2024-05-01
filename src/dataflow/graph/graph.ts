@@ -26,19 +26,25 @@ export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherI
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>  & { graph: Set<NodeId> }
 
-export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
-export type PositionalFunctionArgument = IdentifierReference | '<value>'
+export interface NamedFunctionArgument extends IdentifierReference {
+	readonly name: string
+}
+export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
+	readonly name?: undefined
+}
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
 
 export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {
-	return arg !== EmptyArgument && !Array.isArray(arg)
+	return arg !== EmptyArgument && arg.name === undefined
 }
 
-export function getReferenceOfArgument(arg: FunctionArgument): IdentifierReference | undefined {
-	if(isPositionalArgument(arg) && arg !== '<value>') {
-		return arg
-	} else if(Array.isArray(arg) && arg[1] !== '<value>') {
-		return arg[1]
+export function isNamedArgument(arg: FunctionArgument): arg is NamedFunctionArgument {
+	return arg !== EmptyArgument && arg.name !== undefined
+}
+
+export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefined {
+	if(arg !== EmptyArgument) {
+		return arg.nodeId
 	}
 	return undefined
 }

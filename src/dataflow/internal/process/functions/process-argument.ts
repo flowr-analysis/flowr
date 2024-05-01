@@ -7,8 +7,6 @@ import { processDataflowFor } from '../../../processor'
 import type { DataflowInformation } from '../../../info'
 
 
-export const UnnamedArgumentPrefix = 'noname-'
-
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id))
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
@@ -28,20 +26,24 @@ export function processFunctionArgument<OtherInfo>(
 	// we do not keep the graph of the name, as this is no node that should ever exist
 	const graph = value?.graph ?? new DataflowGraph()
 
-	const argContent = argument.name?.content
-	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({
-		tag:               VertexType.Use,
-		id:                argument.info.id,
-		name:              argumentName,
-		controlDependency: data.controlDependency
-	})
+
+	const argumentName = argument.name?.content
+	let entryPoint = value?.entryPoint
+	if(argumentName) {
+		graph.addVertex({
+			tag:               VertexType.Use,
+			id:                argument.info.id,
+			name:              argumentName,
+			controlDependency: data.controlDependency
+		})
+		entryPoint = argument.info.id
+	}
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 
-	if(argument.value?.type === RType.FunctionDefinition) {
-		graph.addEdge(argument.info.id, argument.value.info.id, { type: EdgeType.Reads })
-	} else {
+	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
+		graph.addEdge(entryPoint, argument.value.info.id, { type: EdgeType.Reads })
+	} else if(argumentName) {
 		// we only need to link against those which are not already bound to another function call argument
 		linkReadsForArgument(argument, [...ingoingRefs, ...value?.out ?? [] /* value may perform definitions */], graph)
 	}
@@ -51,10 +53,10 @@ export function processFunctionArgument<OtherInfo>(
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs.filter(r => r.name !== undefined),
 		// , ...value.out, ...(name?.out ?? [])
-		out:               [ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlDependency } ],
+		out:               argumentName ?[ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlDependency } ] : [],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
-		entryPoint:        argument.info.id,
+		entryPoint:        entryPoint ?? argument.info.id,
 		returns:           [],
 		breaks:            [],
 		nexts:             []

@@ -1,15 +1,10 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
-import type {
-	FunctionArgument } from '../../../../graph'
-import { VertexType
-	,
-	DataflowGraph,
-	EdgeType,
-	isPositionalArgument
-} from '../../../../graph'
+import type { FunctionArgument } from '../../../../graph'
+import { DataflowGraph, EdgeType, VertexType } from '../../../../graph'
 import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
@@ -35,7 +30,7 @@ export interface ProcessKnownFunctionCallResult {
 
 export function markNonStandardEvaluationEdges(
 	markAsNSE:  readonly number[] | undefined,
-	callArgs:   readonly FunctionArgument[],
+	callArgs:   readonly (DataflowInformation | undefined)[],
 	finalGraph: DataflowGraph,
 	rootId:     NodeId
 ) {
@@ -45,10 +40,8 @@ export function markNonStandardEvaluationEdges(
 	for(const nse of markAsNSE) {
 		if(nse < callArgs.length) {
 			const arg = callArgs[nse]
-			if(isPositionalArgument(arg) && arg !== '<value>') {
-				finalGraph.addEdge(rootId, arg, { type: EdgeType.NonStandardEvaluation })
-			} else if(arg[1] !== '<value>') {
-				finalGraph.addEdge(rootId, arg[1], { type: EdgeType.NonStandardEvaluation })
+			if(arg !== undefined) {
+				finalGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.NonStandardEvaluation })
 			}
 		} else {
 			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`)
@@ -73,7 +66,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		remainingReadInArgs,
 		processedArguments
 	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData })
-	markNonStandardEvaluationEdges(markAsNSE, callArgs, finalGraph, rootId)
+	markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
 
 	finalGraph.addVertex({
 		tag:               VertexType.FunctionCall,
@@ -98,7 +91,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			out:               functionName.out,
 			graph:             finalGraph,
 			environment:       finalEnv,
-			entryPoint:        name.info.id,
+			entryPoint:        rootId,
 			returns:           [],
 			breaks:            [],
 			nexts:             []

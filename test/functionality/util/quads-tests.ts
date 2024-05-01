@@ -49,7 +49,6 @@ describe('Quads', withShell(shell => {
 		// ids are deterministic, so we can compare the quads
 		await compareQuadsDfg('foo(x)', `
 <${idPrefix}0> <${domain}rootIds> "1" <${context}> .
-<${idPrefix}0> <${domain}rootIds> "2" <${context}> .
 <${idPrefix}0> <${domain}rootIds> "3" <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}1> <${context}> .
 <${idPrefix}1> <${domain}next> <${idPrefix}2> <${context}> .
@@ -60,34 +59,25 @@ describe('Quads', withShell(shell => {
 <${idPrefix}1> <${domain}environment> <${idPrefix}3> <${context}> .
 <${idPrefix}3> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}2> <${context}> .
-<${idPrefix}2> <${domain}next> <${idPrefix}4> <${context}> .
-<${idPrefix}2> <${domain}tag> "use" <${context}> .
-<${idPrefix}2> <${domain}id> "2" <${context}> .
-<${idPrefix}2> <${domain}name> "noname-2" <${context}> .
+<${idPrefix}2> <${domain}tag> "function-call" <${context}> .
+<${idPrefix}2> <${domain}id> "3" <${context}> .
+<${idPrefix}2> <${domain}name> "foo" <${context}> .
+<${idPrefix}2> <${domain}environment> <${idPrefix}4> <${context}> .
+<${idPrefix}4> <${domain}current> <${idPrefix}5> <${context}> .
+<${idPrefix}4> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
+<${idPrefix}2> <${domain}args> <${idPrefix}6> <${context}> .
+<${idPrefix}6> <${domain}nodeId> "1" <${context}> .
 <${idPrefix}2> <${domain}when> "always" <${context}> .
-<${idPrefix}2> <${domain}environment> <${idPrefix}3> <${context}> .
-<${idPrefix}3> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}0> <${domain}vertices> <${idPrefix}4> <${context}> .
-<${idPrefix}4> <${domain}tag> "function-call" <${context}> .
-<${idPrefix}4> <${domain}id> "3" <${context}> .
-<${idPrefix}4> <${domain}name> "foo" <${context}> .
-<${idPrefix}4> <${domain}environment> <${idPrefix}5> <${context}> .
-<${idPrefix}5> <${domain}current> <${idPrefix}6> <${context}> .
-<${idPrefix}5> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}4> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
-<${idPrefix}4> <${domain}args> <${idPrefix}7> <${context}> .
-<${idPrefix}7> <${domain}name> "noname-2" <${context}> .
-<${idPrefix}7> <${domain}nodeId> "2" <${context}> .
-<${idPrefix}4> <${domain}when> "always" <${context}> .
+<${idPrefix}0> <${domain}edges> <${idPrefix}7> <${context}> .
+<${idPrefix}7> <${domain}next> <${idPrefix}8> <${context}> .
+<${idPrefix}7> <${domain}from> "2" <${context}> .
+<${idPrefix}7> <${domain}to> "1" <${context}> .
+<${idPrefix}7> <${domain}type> "reads" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}8> <${context}> .
-<${idPrefix}8> <${domain}next> <${idPrefix}9> <${context}> .
-<${idPrefix}8> <${domain}from> "2" <${context}> .
+<${idPrefix}8> <${domain}from> "3" <${context}> .
 <${idPrefix}8> <${domain}to> "1" <${context}> .
-<${idPrefix}8> <${domain}type> "reads" <${context}> .
-<${idPrefix}0> <${domain}edges> <${idPrefix}9> <${context}> .
-<${idPrefix}9> <${domain}from> "3" <${context}> .
-<${idPrefix}9> <${domain}to> "2" <${context}> .
-<${idPrefix}9> <${domain}type> "argument" <${context}> .
+<${idPrefix}8> <${domain}type> "argument" <${context}> .
     `)
 	})
 }))

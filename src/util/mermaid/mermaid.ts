@@ -7,12 +7,12 @@ export function escapeMarkdown(text: string): string {
  *
  * @param code - code to convert
  */
-export function mermaidCodeToUrl(code: string): string {
+export function mermaidCodeToUrl(code: string, edit = false): string {
 	const obj = {
 		code,
 		mermaid: {
 			autoSync: true
 		}
 	}
-	return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
+	return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
 }

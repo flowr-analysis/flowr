@@ -1,7 +1,4 @@
-import type {
-	DataflowGraph,
-	OutgoingEdges,
-	REnvironmentInformation } from '../../dataflow'
+import type { DataflowGraph } from '../../dataflow'
 import {
 	BuiltIn,
 	EdgeType,
@@ -16,36 +13,11 @@ import { expensiveTrace, log } from '../../util/log'
 import type { SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
 import type { SliceResult } from './slicer-types'
-import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { VisitingQueue } from './visiting-queue'
-import { sliceForCall } from './slice-call'
+import { handleReturns, sliceForCall } from './slice-call'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
-
-/** Returns true if we found at least one return edge */
-function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	let found = false
-	for(const [, edge] of currentEdges) {
-		if(edge.types.has(EdgeType.Returns)) {
-			found = true
-			break
-		}
-	}
-	if(!found) {
-		return false
-	}
-	for(const [target, edge] of currentEdges) {
-		if(edge.types.has(EdgeType.Returns)) {
-			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if(edge.types.has(EdgeType.Reads)) {
-			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if(edge.types.has(EdgeType.Argument)) {
-			queue.potentialArguments.add(target)
-		}
-	}
-	return true
-}
 
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -93,11 +65,11 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 			}
 		}
 
-		for(const [target, edge] of currentEdges) {
-			if(target === BuiltIn || edge.types.has(EdgeType.NonStandardEvaluation)) {
+		for(const [target, { types }] of currentEdges) {
+			if(target === BuiltIn || types.has(EdgeType.NonStandardEvaluation)) {
 				continue
 			}
-			const t = shouldTraverseEdge(edge.types)
+			const t = shouldTraverseEdge(types)
 			if(t === TraverseEdge.Always) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			} else if(t === TraverseEdge.DefinedByOnCall && queue.potentialArguments.has(target)) {

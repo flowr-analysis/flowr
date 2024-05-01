@@ -7,11 +7,13 @@ import type {
 	DataflowGraphVertexInfo,
 	REnvironmentInformation,
 	DataflowGraphVertexFunctionDefinition
+	, OutgoingEdges
 } from '../../dataflow'
 import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import type { NodeToSlice } from './slicer-types'
 import type { VisitingQueue } from './visiting-queue'
 import { guard } from '../../util/assert'
+import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 
@@ -68,4 +70,28 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 		}
 	}
+}
+
+/** Returns true if we found at least one return edge */
+export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
+	let found = false
+	for(const [, edge] of currentEdges) {
+		if(edge.types.has(EdgeType.Returns)) {
+			found = true
+			break
+		}
+	}
+	if(!found) {
+		return false
+	}
+	for(const [target, edge] of currentEdges) {
+		if(edge.types.has(EdgeType.Returns)) {
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+		} else if(edge.types.has(EdgeType.Reads)) {
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+		} else if(edge.types.has(EdgeType.Argument)) {
+			queue.potentialArguments.add(target)
+		}
+	}
+	return true
 }

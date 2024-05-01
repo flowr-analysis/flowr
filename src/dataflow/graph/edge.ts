@@ -40,27 +40,42 @@ export const enum EdgeType {
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
-const traverseEdge: Record<EdgeType, boolean> = {
-	[EdgeType.Reads]:                 true,
-	[EdgeType.DefinedBy]:             true,
-	[EdgeType.Argument]:              true,
-	[EdgeType.Calls]:                 true,
-	[EdgeType.Relates]:               true,
-	[EdgeType.DefinesOnCall]:         true,
-	[EdgeType.DefinedByOnCall]:       false,
-	[EdgeType.SideEffectOnCall]:      false,
-	[EdgeType.NonStandardEvaluation]: false,
-	[EdgeType.SameReadRead]:          false,
-	[EdgeType.SameDefDef]:            false,
-	[EdgeType.Returns]:               false
+export const enum TraverseEdge {
+	/** Do not traverse this edge */
+	Never = 0,
+	/** Traverse the edge as a side effect */
+	SideEffect = 1,
+	/** Traverse this edge if the definition is relevant */
+	DefinedByOnCall = 2,
+	/** Always traverse this edge */
+	Always = 3
+}
+
+const traverseEdge: Record<EdgeType, TraverseEdge> = {
+	[EdgeType.Reads]:                 TraverseEdge.Always,
+	[EdgeType.DefinedBy]:             TraverseEdge.Always,
+	[EdgeType.Argument]:              TraverseEdge.Always,
+	[EdgeType.Calls]:                 TraverseEdge.Always,
+	[EdgeType.Relates]:               TraverseEdge.Always,
+	[EdgeType.DefinesOnCall]:         TraverseEdge.Always,
+	[EdgeType.DefinedByOnCall]:       TraverseEdge.DefinedByOnCall,
+	[EdgeType.SideEffectOnCall]:      TraverseEdge.SideEffect,
+	[EdgeType.NonStandardEvaluation]: TraverseEdge.Never,
+	[EdgeType.SameReadRead]:          TraverseEdge.Never,
+	[EdgeType.SameDefDef]:            TraverseEdge.Never,
+	[EdgeType.Returns]:               TraverseEdge.Never
 } as const
 
-export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): boolean {
+export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): TraverseEdge {
+	let highest = TraverseEdge.Never
 	for(const type of types) {
-		if(traverseEdge[type]) {
-			return true
+		const v = traverseEdge[type]
+		if(v === TraverseEdge.Always) {
+			return v
+		} else if(v > highest) {
+			highest = v
 		}
 	}
-	return false
+	return highest
 }
 

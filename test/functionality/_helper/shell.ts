@@ -31,7 +31,6 @@ import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
 import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
-import { DeepPartial } from 'ts-essentials';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -252,7 +251,8 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 				result:            new Set(selectedIds)
 			}
 		}, {})
-		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
+		assert.strictEqual(reconstructed.code, expected,
+			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`)
 	})
 }
 

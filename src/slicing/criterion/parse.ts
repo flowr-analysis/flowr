@@ -90,7 +90,7 @@ export interface DecodedCriterion {
 	id:        NodeId
 }
 
-export type DecodedCriteria = DecodedCriterion[]
+export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
 
 export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: NormalizedAst): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))

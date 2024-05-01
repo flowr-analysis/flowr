@@ -2,24 +2,24 @@ import { assertReconstructed, withShell } from '../../_helper/shell'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
-		for(const code of [
-			'x <- 5',
-			'x <- 5; y <- 9',
-			'{ x <- 5 }',
-			'{ x <- 5; y <- 9 }'
-		]) {
-			assertReconstructed(code, shell, code, '0', 'x <- 5')
+		for(const [id, code] of [
+			[0, 'x <- 5'],
+			[0, 'x <- 5; y <- 9'],
+			[2, '{ x <- 5 }'],
+			[2, '{ x <- 5; y <- 9 }']
+		] as const) {
+			assertReconstructed(code, shell, code, `${id}`, 'x <- 5')
 		}
 	})
 	describe('Nested Assignments', () => {
 		for(const [code, id, expected] of [
-			['12 + (supi <- 42)', '0', '12 + (supi <- 42)' ],
-			['y <- x <- 42', '1', 'x <- 42' ],
-			['y <- x <- 42', '0', 'y <- x <- 42' ],
+			['12 + (supi <- 42)', 0, '12 + (supi <- 42)' ],
+			['y <- x <- 42', 1, 'x <- 42' ],
+			['y <- x <- 42', 0, 'y <- x <- 42' ],
 			// we are not smart enough right now to see, that the write is constant.
-			['for (i in 1:20) { x <- 5 }', '4', 'for(i in 1:20) x <- 5' ]
-		]) {
-			assertReconstructed(code, shell, code, id, expected)
+			['for (i in 1:20) { x <- 5 }', 6, 'x <- 5' ]
+		] as const) {
+			assertReconstructed(code, shell, code, `${id}`, expected)
 		}
 	})
 

@@ -1,25 +1,19 @@
-import type {
-	NodeId,
-	ParentInformation,
-	RFunctionArgument,
-	RSymbol
-} from '../../../../../../r-bridge'
-import {
-	EmptyArgument,
-	collectAllIds
-} from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
+import { collectAllIds, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import {
-	linkInputs
-} from '../../../../linker'
+import { linkInputs } from '../../../../linker'
 import {
 	type DataflowFunctionFlowInformation,
 	DataflowGraph,
-	dataflowLogger, type DataflowMap, EdgeType,
-	type IdentifierReference, initializeCleanEnvironments,
-	type REnvironmentInformation
+	dataflowLogger,
+	type DataflowMap,
+	EdgeType,
+	type IdentifierReference,
+	initializeCleanEnvironments,
+	type REnvironmentInformation,
+	VertexType
 } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
@@ -99,7 +93,7 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({
-				tag:               'use',
+				tag:               VertexType.Use,
 				id:                read.nodeId,
 				name:              read.name,
 				environment:       undefined,
@@ -128,7 +122,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const graph = new DataflowGraph().mergeWith(subgraph, false)
 	graph.addVertex({
-		tag:               'function-definition',
+		tag:               VertexType.FunctionDefinition,
 		id:                name.info.id,
 		name:              name.info.id,
 		environment:       popLocalEnvironment(outEnvironment),
@@ -239,7 +233,13 @@ function linkExitPointInGraph<OtherInfo>(exitPoints: readonly NodeId[], graph: D
 		const nodeInAst = idMap.get(exitPoint)
 
 		guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-		graph.addVertex({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, environment, controlDependency: undefined })
+		graph.addVertex({
+			tag:               VertexType.ExitPoint,
+			id:                exitPoint,
+			name:              `${nodeInAst.lexeme ?? '??'}`,
+			environment,
+			controlDependency: undefined
+		})
 
 		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
 		for(const relatedId of allIds) {

@@ -14,7 +14,8 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertices
+	DataflowGraphVertices } from './vertex'
+import { VertexType
 } from './vertex'
 import { arrayEqual } from '../../util/arrays'
 
@@ -338,7 +339,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
-	} else if(current.tag === 'function-call') {
+	} else if(current.tag === VertexType.FunctionCall) {
 		guard(equalFunctionArguments(current.id, current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
 	} else if(current.tag === 'function-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')

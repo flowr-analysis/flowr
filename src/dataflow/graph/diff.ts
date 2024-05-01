@@ -11,6 +11,7 @@ import {
 } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
+import { VertexType } from './vertex'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -202,8 +203,8 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 
-		if(lInfo.tag === 'function-call') {
-			if(rInfo.tag !== 'function-call') {
+		if(lInfo.tag === VertexType.FunctionCall) {
+			if(rInfo.tag !== VertexType.FunctionCall) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 			} else {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {

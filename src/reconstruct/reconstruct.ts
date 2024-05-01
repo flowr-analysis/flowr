@@ -33,7 +33,7 @@ import { expensiveTrace, log, LogLevel } from '../util/log'
 import { guard } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
 
-type Selection = Set<NodeId>
+type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {
 	line:   string
 	indent: number

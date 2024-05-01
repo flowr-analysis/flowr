@@ -1,7 +1,7 @@
 import type { ParentInformation, RArgument, RNode } from '../../../../r-bridge'
 import { collectAllIds, RType } from '../../../../r-bridge'
 import type { IdentifierReference } from '../../../environments'
-import { DataflowGraph, EdgeType } from '../../../graph'
+import { DataflowGraph, EdgeType, VertexType } from '../../../graph'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type { DataflowInformation } from '../../../info'
@@ -30,7 +30,12 @@ export function processFunctionArgument<OtherInfo>(
 
 	const argContent = argument.name?.content
 	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, controlDependency: data.controlDependency })
+	graph.addVertex({
+		tag:               VertexType.Use,
+		id:                argument.info.id,
+		name:              argumentName,
+		controlDependency: data.controlDependency
+	})
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 

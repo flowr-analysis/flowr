@@ -9,9 +9,8 @@ import type {
 	FunctionArgument,
 	IdentifierDefinition,
 	IdentifierReference,
-	IEnvironment
-} from '../../dataflow'
-import {
+	IEnvironment } from '../../dataflow'
+import { VertexType,
 	BuiltIn,
 	BuiltInEnvironment,
 	CONSTANT_NAME,
@@ -31,7 +30,7 @@ interface MermaidGraph {
 	edgeLines:           string[]
 	hasBuiltIn:          boolean
 	includeEnvironments: boolean
-	mark:                Set<Mark> | undefined
+	mark:                ReadonlySet<Mark> | undefined
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
 	// keep for sub-flows
@@ -128,7 +127,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 	if(tag === 'function-definition' || tag === 'variable-definition') {
 		open = '['
 		close = ']'
-	} else if(tag === 'function-call') {
+	} else if(tag === VertexType.FunctionCall) {
 		open = '[['
 		close = ']]'
 	} else if(tag === 'value') {
@@ -165,8 +164,8 @@ function recoverConstantName(dataflowIdMap: DataflowMap | undefined, info: Dataf
 	return node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??'
 }
 
-function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
-	const fCall = info.tag === 'function-call'
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: ReadonlySet<NodeId> | undefined): void {
+	const fCall = info.tag === VertexType.FunctionCall
 	const { open, close } = mermaidNodeBrackets(info.tag)
 
 	if(info.environment && mermaid.includeEnvironments) {
@@ -218,7 +217,7 @@ interface MermaidGraphConfiguration {
 	prefix?:              string | null,
 	idPrefix?:            string,
 	includeEnvironments?: boolean,
-	mark?:                Set<Mark>,
+	mark?:                ReadonlySet<Mark>,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>
 }
@@ -255,7 +254,7 @@ export function graphToMermaid(config: MermaidGraphConfiguration): { string: str
  * @param includeEnvironments - Whether to include the environments in the mermaid graph code
  * @param mark          - Special nodes to mark (e.g. those included in the slice)
  */
-export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap, includeEnvironments?: boolean, mark?: Set<NodeId>): string {
+export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>): string {
 	return mermaidCodeToUrl(graphToMermaid({ graph, dataflowIdMap, includeEnvironments, mark }).string)
 }
 

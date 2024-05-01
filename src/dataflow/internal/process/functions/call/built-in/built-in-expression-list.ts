@@ -3,30 +3,16 @@
  * @module
  */
 import { type DataflowInformation } from '../../../../../info'
-import type {
-	NodeId,
-	ParentInformation,
-	RFunctionArgument,
-	RNodeWithParent,
-	RSymbol
-} from '../../../../../../r-bridge'
-import {
-	EmptyArgument
-	, RType
-} from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RNodeWithParent, RSymbol } from '../../../../../../r-bridge'
+import { EmptyArgument, RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
-import type {
-	IdentifierReference, IEnvironment,
-	REnvironmentInformation } from '../../../../../environments'
-import { makeAllMaybe,
-	overwriteEnvironment, popLocalEnvironment,
-	resolveByName
-} from '../../../../../environments'
+import type { IdentifierReference, IEnvironment, REnvironmentInformation } from '../../../../../environments'
+import { makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../../../../linker'
 import { DefaultMap } from '../../../../../../util/defaultmap'
 import type { DataflowGraphVertexInfo } from '../../../../../graph'
-import { CONSTANT_NAME , DataflowGraph } from '../../../../../graph'
+import { CONSTANT_NAME, DataflowGraph, VertexType } from '../../../../../graph'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
@@ -172,7 +158,7 @@ export function processExpressionList<OtherInfo>(
 
 		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph)
 		const functionCallIds = [...processed.graph.vertices(true)]
-			.filter(([_,info]) => info.tag === 'function-call')
+			.filter(([_,info]) => info.tag === VertexType.FunctionCall)
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
@@ -205,28 +191,28 @@ export function processExpressionList<OtherInfo>(
 	const isRoot = rootNode?.info.role === 'root'
 	if(!isRoot) {
 		nextGraph.addVertex({
-			tag: 'function-call',
-			id: rootId,
-			name: name.content,
-			environment: environment,
-			onlyBuiltin: false,
+			tag:               VertexType.FunctionCall,
+			id:                rootId,
+			name:              name.content,
+			environment:       environment,
+			onlyBuiltin:       false,
 			controlDependency: data.controlDependency,
-			args: args.map(a => {
+			args:              args.map(a => {
 				// TODO: patch wrap
-				if (a === EmptyArgument) {
+				if(a === EmptyArgument) {
 					return EmptyArgument
 				}
-				if (a.type !== RType.Argument || !a.name) {
-					return {nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency}
+				if(a.type !== RType.Argument || !a.name) {
+					return { nodeId: a.info.id, name: a.lexeme, controlDependency: data.controlDependency }
 				} else {
-					return [a.name.content, {nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency}]
+					return [a.name.content, { nodeId: rootId, name: a.lexeme, controlDependency: data.controlDependency }]
 				}
 			})
 		})
 
 		/* we return the last expression (TODO: handle control flow impact) */
-		if (lastExpr) {
-			nextGraph.addEdge(rootId, lastExpr.info.id, {type: EdgeType.Returns})
+		if(lastExpr) {
+			nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
 		}
 		ingoing.push({ nodeId: rootId, name: name.content, controlDependency: data.controlDependency })
 	}

@@ -4,14 +4,13 @@ import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraphVertexUse,
 	FunctionArgument,
-	REnvironmentInformation
-} from '../../../../src/dataflow'
+	REnvironmentInformation } from '../../../../src/dataflow'
 import {
-	BuiltIn
-	,
+	BuiltIn,
 	CONSTANT_NAME,
 	DataflowGraph,
-	EdgeType
+	EdgeType,
+	VertexType
 } from '../../../../src/dataflow'
 import { deepMergeObject } from '../../../../src/util/objects'
 
@@ -42,7 +41,15 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
-		return this.addVertex({ tag: 'function-definition', id, name, subflow, exitPoints, controlDependency: info?.controlDependency, environment: info?.environment }, asRoot)
+		return this.addVertex({
+			tag:               VertexType.FunctionDefinition,
+			id,
+			name,
+			subflow,
+			exitPoints,
+			controlDependency: info?.controlDependency,
+			environment:       info?.environment
+		}, asRoot)
 	}
 
 	/**
@@ -66,7 +73,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
 		this.addVertex({
-			tag:               'function-call',
+			tag:               VertexType.FunctionCall,
 			id,
 			name,
 			args,
@@ -122,7 +129,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public exit(id: NodeId, name: string,
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
-		return this.addVertex({ tag: 'exit-point', id, environment: info?.environment, name, controlDependency: info?.controlDependency }, asRoot)
+		return this.addVertex({
+			tag:               VertexType.ExitPoint,
+			id,
+			environment:       info?.environment,
+			name,
+			controlDependency: info?.controlDependency
+		}, asRoot)
 	}
 
 	/**
@@ -136,7 +149,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineVariable(id: NodeId, name: string,
 		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
-		this.addVertex({ tag: 'variable-definition', id, name, controlDependency: info?.controlDependency }, asRoot)
+		this.addVertex({
+			tag:               VertexType.VariableDefinition,
+			id,
+			name,
+			controlDependency: info?.controlDependency
+		}, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
 				this.definedBy(id, def)
@@ -155,7 +173,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'use', id, name, controlDependency: undefined, environment: undefined }, info), asRoot)
+		return this.addVertex(deepMergeObject({
+			tag:               VertexType.Use,
+			id,
+			name,
+			controlDependency: undefined,
+			environment:       undefined
+		}, info), asRoot)
 	}
 
 
@@ -168,7 +192,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
-		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, controlDependency: options?.controlDependency, environment: undefined }, asRoot)
+		return this.addVertex({
+			tag:               VertexType.Value,
+			name:              CONSTANT_NAME,
+			id,
+			controlDependency: options?.controlDependency,
+			environment:       undefined
+		}, asRoot)
 	}
 
 	private edgeHelper(from: NodeId, to: DataflowGraphEdgeTarget, type: EdgeType) {

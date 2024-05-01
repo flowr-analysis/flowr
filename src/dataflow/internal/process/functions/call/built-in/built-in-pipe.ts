@@ -7,7 +7,7 @@ import type {
 import { RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../../../index'
+import { dataflowLogger, EdgeType, graphToMermaidUrl, VertexType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
@@ -40,7 +40,7 @@ export function processPipe<OtherInfo>(
 
 
 		const functionCallNode = maybeFunctionCallNode[0]
-		guard(functionCallNode.tag === 'function-call', () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
+		guard(functionCallNode.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
 
 		// make the lhs an argument node:
 		const argId =  lhs.info.id

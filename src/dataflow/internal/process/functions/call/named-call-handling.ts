@@ -4,6 +4,7 @@ import type { DataflowInformation } from '../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../info'
 import { processKnownFunctionCall } from './known-call-handling'
 import { appendEnvironment, resolveByName } from '../../../../environments'
+import { VertexType } from '../../../../graph'
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -60,7 +61,7 @@ export function processNamedCall<OtherInfo>(
 	} else if(builtIn) {
 		// mark the function call as built in only
 		const v = (information as DataflowInformation).graph.get(name.info.id)
-		if(v !== undefined && v[0].tag === 'function-call') {
+		if(v !== undefined && v[0].tag === VertexType.FunctionCall) {
 			v[0].onlyBuiltin = true
 		}
 	}

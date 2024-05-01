@@ -1,5 +1,5 @@
 import type { DataflowGraph } from '../../dataflow'
-import { BuiltIn, shouldTraverseEdge, EdgeType, initializeCleanEnvironments } from '../../dataflow'
+import { VertexType , BuiltIn, shouldTraverseEdge, EdgeType, initializeCleanEnvironments } from '../../dataflow'
 import { guard } from '../../util/assert'
 import type { NormalizedAst } from '../../r-bridge'
 import { expensiveTrace, log } from '../../util/log'
@@ -47,7 +47,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 
 		const [currentVertex, currentEdges] = currentInfo
 
-		if(currentVertex.tag === 'function-call' && !currentVertex.onlyBuiltin && !current.onlyForSideEffects) {
+		if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin && !current.onlyForSideEffects) {
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
 

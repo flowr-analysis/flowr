@@ -3,7 +3,7 @@ import { RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
-import { DataflowGraph, EdgeType } from '../../../../graph'
+import { DataflowGraph, EdgeType, VertexType } from '../../../../graph'
 import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
 import { linkArgumentsOnCall } from '../../../linker'
@@ -37,7 +37,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	})
 
 	finalGraph.addVertex({
-		tag:               'function-call',
+		tag:               VertexType.FunctionCall,
 		id:                functionRootId,
 		name:              functionCallName,
 		environment:       data.environment,

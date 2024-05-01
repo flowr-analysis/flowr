@@ -4,7 +4,8 @@ import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
 import type {
 	FunctionArgument } from '../../../../graph'
-import {
+import { VertexType
+	,
 	DataflowGraph,
 	EdgeType,
 	isPositionalArgument
@@ -75,7 +76,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	markNonStandardEvaluationEdges(markAsNSE, callArgs, finalGraph, rootId)
 
 	finalGraph.addVertex({
-		tag:               'function-call',
+		tag:               VertexType.FunctionCall,
 		id:                rootId,
 		name:              functionCallName,
 		environment:       data.environment,

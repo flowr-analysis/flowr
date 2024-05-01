@@ -5,6 +5,16 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
+
+export const enum VertexType {
+	Value = 'value',
+	Use = 'use',
+	FunctionCall = 'function-call',
+	VariableDefinition = 'variable-definition',
+	FunctionDefinition = 'function-definition',
+	ExitPoint = 'exit-point'
+}
+
 /**
  * Arguments required to construct a vertex in the dataflow graph.
  *
@@ -16,7 +26,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * Used to identify and separate different types of vertices.
 	 */
-	readonly tag:      string
+	readonly tag:      VertexType
 	/**
 	 * The id of the node (the id assigned by the {@link ParentInformation} decoration)
 	 */
@@ -39,13 +49,13 @@ interface DataflowGraphVertexBase extends MergeableRecord {
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
-	readonly tag:          'exit-point'
+	readonly tag:          VertexType.ExitPoint
 	readonly environment?: REnvironmentInformation
 }
 
 export const CONSTANT_NAME = '__@@C@@__'
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
-	readonly tag:          'value'
+	readonly tag:          VertexType.Value
 	readonly name:         typeof CONSTANT_NAME
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 	readonly environment?: undefined
@@ -55,7 +65,7 @@ export interface DataflowGraphValue extends DataflowGraphVertexBase {
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
-	readonly tag:          'use'
+	readonly tag:          VertexType.Use
 	readonly environment?: undefined
 }
 
@@ -63,7 +73,7 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
-	readonly tag:          'function-call'
+	readonly tag:          VertexType.FunctionCall
 	args:                  FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:           boolean
@@ -74,12 +84,12 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
  * Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
-	readonly tag:          'variable-definition'
+	readonly tag:          VertexType.VariableDefinition
 	readonly environment?: undefined
 }
 
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag: 'function-definition'
+	readonly tag: VertexType.FunctionDefinition
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.

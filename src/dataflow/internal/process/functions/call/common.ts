@@ -4,7 +4,7 @@ import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
-import { EdgeType } from '../../../../graph'
+import { VertexType , EdgeType } from '../../../../graph'
 import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
@@ -102,7 +102,7 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:               'function-call',
+		tag:               VertexType.FunctionCall,
 		id:                rootId,
 		name:              name.content,
 		environment:       data.environment,

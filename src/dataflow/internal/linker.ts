@@ -4,9 +4,9 @@ import type {
 	DataflowGraphVertexInfo,
 	FunctionArgument,
 	NamedFunctionArgument,
-	PositionalFunctionArgument
-} from '../graph'
-import {
+	PositionalFunctionArgument } from '../graph'
+import { VertexType
+	,
 	CONSTANT_NAME
 } from '../graph'
 import type {
@@ -174,7 +174,7 @@ export function linkFunctionCalls(
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
 	for(const [id, info] of functionCalls) {
-		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
+		guard(info.tag === VertexType.FunctionCall, () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
 		linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions)
 	}
 	return calledFunctionDefinitions

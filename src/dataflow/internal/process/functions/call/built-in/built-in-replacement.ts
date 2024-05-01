@@ -2,7 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { initializeCleanDataflowInformation } from '../../../../../info'
-import { dataflowLogger, EdgeType, getReferenceOfArgument } from '../../../../../index'
+import { dataflowLogger, EdgeType, getReferenceOfArgument, VertexType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
 import { processAssignment } from './built-in-assignment'
@@ -37,7 +37,7 @@ export function processReplacementFunction<OtherInfo>(
 		finalGraph:     res.graph,
 	})
 	const fn = res.graph.get(rootId)
-	guard(fn !== undefined && fn[0].tag === 'function-call' && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
+	guard(fn !== undefined && fn[0].tag === VertexType.FunctionCall && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
 	fn[0].args = [fn[0].args[0], ...callArgs, fn[0].args[1]]
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */

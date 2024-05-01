@@ -8,9 +8,11 @@ import type {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexUse,
 	FunctionArgument,
-	REnvironmentInformation
+	REnvironmentInformation } from '../../../../src/dataflow'
+import {
+	EdgeType,
+	VertexType
 } from '../../../../src/dataflow'
-import { EdgeType } from '../../../../src/dataflow'
 import type { NodeId } from '../../../../src'
 import { EmptyArgument } from '../../../../src'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
@@ -76,7 +78,7 @@ class DataflowBuilderPrinter {
 	}
 	private processCalls() {
 		for(const [id, vertex] of this.graph.vertices(true)) {
-			if(vertex.tag === 'function-call') {
+			if(vertex.tag === VertexType.FunctionCall) {
 				this.processVertex(id, vertex)
 			}
 		}
@@ -180,26 +182,26 @@ class DataflowBuilderPrinter {
 		this.coveredVertices.add(id)
 		const tag = vertex.tag
 		switch(tag) {
-			case 'function-call':
+			case VertexType.FunctionCall:
 				this.processCall(id, vertex)
 				break
-			case 'use':
+			case VertexType.Use:
 				this.processVertexUse(id, vertex)
 				break
-			case 'value':
+			case VertexType.Value:
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
 					this.getControlDependencySuffix(vertex.controlDependency),
 					this.asRootArg(id)
 				])
 				break
-			case 'variable-definition':
+			case VertexType.VariableDefinition:
 				this.processVariableDefinition(id, vertex)
 				break
-			case 'function-definition':
+			case VertexType.FunctionDefinition:
 				console.log('TODO: function-definition')
 				break
-			case 'exit-point':
+			case VertexType.ExitPoint:
 				console.log('TODO: exit-point')
 				break
 			default:

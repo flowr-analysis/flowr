@@ -4,6 +4,7 @@ import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
 import { arrayEqual } from '../../util/arrays'
+import { normalizeIdsForDiff } from '../graph'
 
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -32,8 +33,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 		}
 
 		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
-		const sorted = [...value].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
-		const sorted2 = [...value2].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
+		const sorted = [...value].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)))
+		const sorted2 = [...value2].sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId)))
 
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = sorted[i]
@@ -41,13 +42,13 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.name !== bVal.name) {
 				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
 			}
-			if(aVal.nodeId !== bVal.nodeId) {
+			if(normalizeIdsForDiff(aVal.nodeId) !== normalizeIdsForDiff(bVal.nodeId)) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(!arrayEqual(aVal.controlDependency, bVal.controlDependency)) {
 				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependency)}`)
 			}
-			if(aVal.definedAt !== bVal.definedAt) {
+			if(normalizeIdsForDiff(aVal.definedAt) !== normalizeIdsForDiff(bVal.definedAt)) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
 			}
 			if(aVal.kind !== bVal.kind) {

@@ -2,27 +2,16 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
-	FunctionArgument,
-	PositionalFunctionArgument
+	FunctionArgument
 } from '../graph'
-import { isNamedArgument
-	, VertexType
-	,
-	CONSTANT_NAME
-} from '../graph'
-import type {
-	IdentifierReference,
-	REnvironmentInformation
-} from '../environments'
-import {
-	BuiltIn,
-	resolveByName
-} from '../environments'
+import { CONSTANT_NAME, isNamedArgument, VertexType } from '../graph'
+import type { IdentifierReference, REnvironmentInformation } from '../environments'
+import { BuiltIn, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { expensiveTrace, log } from '../../util/log'
 import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
-import { RType } from '../../r-bridge'
+import { EmptyArgument, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
 
@@ -79,11 +68,11 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	}
 
 	const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
-	const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
+	const remainingArguments = args.filter(a => !isNamedArgument(a))
 
 	for(let i = 0; i < remainingArguments.length; i++) {
-		const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
-		if(arg === 'empty') {
+		const arg = remainingArguments[i]
+		if(arg === EmptyArgument) {
 			dataflowLogger.trace(`skipping value argument for ${i}`)
 			continue
 		}

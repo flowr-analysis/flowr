@@ -22,7 +22,7 @@ import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 
-type MarkVertex = `${string}`
+type MarkVertex = NodeId
 type MarkEdge = `${string}->${string}`
 
 type Mark = MarkVertex | MarkEdge
@@ -100,7 +100,7 @@ function printArg(arg: FunctionArgument | undefined): string {
 		return '[empty]'
 	} else if(isNamedArgument(arg)) {
 		const deps = arg.controlDependency ? ', :maybe:' + arg.controlDependency.join(',') : ''
-		return `${arg.name} (${arg.nodeId}, ${deps})`
+		return `${arg.name} (${arg.nodeId}${deps})`
 	} else if(isPositionalArgument(arg)) {
 		const deps = arg.controlDependency ? ' (:maybe:' + arg.controlDependency.join(',') + ')': ''
 		return `${arg.nodeId}${deps}`

@@ -1,5 +1,5 @@
 import type { DataflowInformation } from '../../../../info'
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RArgument, RFunctionArgument, RNode, RSymbol } from '../../../../../r-bridge'
 import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
@@ -10,7 +10,7 @@ import { define, overwriteEnvironment, resolveByName } from '../../../../environ
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly functionName:   DataflowInformation
-	readonly args:           readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
 	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
 	readonly finalGraph:     DataflowGraph
 	readonly functionRootId: NodeId
@@ -77,7 +77,7 @@ export function processAllArguments<OtherInfo>(
 
 		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
-				{ nodeId: processed.entryPoint, name: arg.name.content, definedAt: arg.info.id, kind: 'argument', controlDependency: data.controlDependency },
+				{ nodeId: processed.entryPoint, name: ((arg as RArgument).name as RSymbol).content, definedAt: arg.info.id, kind: 'argument', controlDependency: data.controlDependency },
 				false,
 				argEnv
 			)

@@ -64,7 +64,6 @@ export function processFunctionDefinition<OtherInfo>(
 	// as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
 	const bodyEnvironment = body.environment
 
-
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body)
 
 	const readInBody = [...body.in, ...body.unknownReferences]
@@ -124,7 +123,7 @@ export function processFunctionDefinition<OtherInfo>(
 	graph.addVertex({
 		tag:               VertexType.FunctionDefinition,
 		id:                name.info.id,
-		name:              name.info.id,
+		name:              String(name.info.id),
 		environment:       popLocalEnvironment(outEnvironment),
 		controlDependency: data.controlDependency,
 		subflow:           flow,

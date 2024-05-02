@@ -126,7 +126,7 @@ export function processExpressionList<OtherInfo>(
 	let returns: NodeId[] = []
 
 	let expressionCounter = 0
-	const foundNextOrBreak = false
+	let foundNextOrBreak = false
 	let lastExpr: RNodeWithParent | undefined = undefined
 	const processedExpressions: (DataflowInformation | undefined)[] = []
 
@@ -141,21 +141,22 @@ export function processExpressionList<OtherInfo>(
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
 		processedExpressions.push(processed)
+		nextGraph.mergeWith(processed.graph)
+
+		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
+		// update the environments for the next iteration with the previous writes
+		if(breaks.length > 0 || returns.length > 0 || nexts.length > 0) {
+			// TODO: correct control dependencies
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true)
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false)
+			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false)
+			foundNextOrBreak = true
+		}
 
 		breaks = [...breaks, ...processed.breaks]
 		returns = [...returns, ...processed.returns]
 		nexts = [...nexts, ...processed.nexts]
 
-		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
-		// update the environments for the next iteration with the previous writes
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
-		if(breaks.length > 0 || returns.length > 0 || nexts.length > 0) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true)
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false)
-			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false)
-		}
-
-		nextGraph.mergeWith(processed.graph)
 		out.push(...processed.out)
 
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
@@ -207,7 +208,6 @@ export function processExpressionList<OtherInfo>(
 			nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
 		}
 	}
-
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */

@@ -20,6 +20,7 @@ import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { patchFunctionCall } from '../common'
+import { unpackArgument } from '../argument/unpack-argument'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -32,9 +33,9 @@ export function processForLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
-	const [variableArg, vectorArg, bodyArg] = args
+	const [variableArg, vectorArg, bodyArg] = args.map(unpackArgument)
 
-	guard(variableArg !== EmptyArgument && vectorArg !== EmptyArgument && bodyArg !== EmptyArgument, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
+	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
 
 	const variable = processDataflowFor(variableArg, data)
 	const vector = processDataflowFor(vectorArg, data)
@@ -45,7 +46,7 @@ export function processForLoop<OtherInfo>(
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
 	const headGraph = variable.graph.mergeWith(vector.graph)
 
-	const writtenVariable = variable.unknownReferences
+	const writtenVariable = [...variable.unknownReferences, ...variable.in]
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
 	}
@@ -65,9 +66,7 @@ export function processForLoop<OtherInfo>(
 	const nameIdShares = produceNameSharedIdMap(ingoing)
 
 	for(const write of writtenVariable) {
-		for(const link of [...vector.in, ...vector.unknownReferences]) {
-			nextGraph.addEdge(write.nodeId, link.nodeId, { type: EdgeType.DefinedBy })
-		}
+		nextGraph.addEdge(write.nodeId, vector.entryPoint, { type: EdgeType.DefinedBy })
 
 		const name = write.name
 		if(name) {

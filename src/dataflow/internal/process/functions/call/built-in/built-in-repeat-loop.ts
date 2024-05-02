@@ -9,6 +9,7 @@ import {
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
+import { unpackArgument } from '../argument/unpack-argument'
 
 export function processRepeatLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -21,9 +22,10 @@ export function processRepeatLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
+	const unpacked = unpackArgument(args[0])
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
-		args,
+		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
 		markAsNSE: [0]

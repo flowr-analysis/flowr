@@ -1,9 +1,7 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
-import type { FunctionArgument } from '../../../../graph'
 import { DataflowGraph, EdgeType, VertexType } from '../../../../graph'
 import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
@@ -11,7 +9,7 @@ import { processAllArguments } from './common'
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> {
 	readonly name:          RSymbol<OtherInfo & ParentInformation>
-	readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+	readonly args:          readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
 	readonly rootId:        NodeId
 	readonly data:          DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */

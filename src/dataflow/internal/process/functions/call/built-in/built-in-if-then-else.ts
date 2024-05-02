@@ -1,13 +1,18 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { appendEnvironment, type IdentifierReference, makeAllMaybe, resolvesToBuiltInConstant } from '../../../../../environments'
+import {
+	appendEnvironment,
+	type IdentifierReference,
+	makeAllMaybe,
+	resolvesToBuiltInConstant
+} from '../../../../../environments'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
 import { patchFunctionCall } from '../common'
+import { unpackArgument } from '../argument/unpack-argument'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -20,9 +25,9 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
-	const [condArg, thenArg, otherwiseArg] = args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation> | undefined]
+	const [condArg, thenArg, otherwiseArg] = args.map(unpackArgument)
 
-	if(condArg === EmptyArgument || thenArg === EmptyArgument) {
+	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`)
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
@@ -30,7 +35,8 @@ export function processIfThenElse<OtherInfo>(
 	const cond = processDataflowFor(condArg, data)
 
 	const originalDependency = data.controlDependency
-	data = { ...data,controlDependency: [...data.controlDependency ?? [], name.info.id], environment: cond.environment }
+	// currently we update the cd afterward :sweat:
+	data = { ...data, environment: cond.environment }
 
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
@@ -50,7 +56,7 @@ export function processIfThenElse<OtherInfo>(
 
 	let otherwise: DataflowInformation | undefined
 	let makeOtherwiseMaybe = false
-	if(otherwiseArg !== undefined && otherwiseArg !== EmptyArgument && conditionIsTrue !== 'always') {
+	if(otherwiseArg !== undefined && conditionIsTrue !== 'always') {
 		otherwise = processDataflowFor(otherwiseArg, data)
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns })
@@ -70,19 +76,19 @@ export function processIfThenElse<OtherInfo>(
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [
 		...cond.in,
-		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false) : then?.in ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false) : otherwise?.in ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, rootId) : then?.in ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, rootId) : otherwise?.in ?? []),
 		...cond.unknownReferences,
-		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false) : then?.unknownReferences ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false) : otherwise?.unknownReferences ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, rootId) : then?.unknownReferences ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, rootId) : otherwise?.unknownReferences ?? []),
 	]
 
 	// we assign all with a maybe marker
 	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
 	const outgoing = [
 		...cond.out,
-		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true) : then?.out ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true) : otherwise?.out ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, rootId) : then?.out ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, rootId) : otherwise?.out ?? []),
 	]
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
@@ -101,9 +107,9 @@ export function processIfThenElse<OtherInfo>(
 		unknownReferences: [],
 		in:                [{ nodeId: rootId, name: name.content, controlDependency: originalDependency }, ...ingoing],
 		out:               outgoing,
-		breaks:            [],
-		returns:           [],
-		nexts:             [],
+		breaks:            [...cond.breaks, ...(then?.breaks ?? []), ...(otherwise?.breaks ?? [])],
+		returns:           [...cond.returns, ...(then?.returns ?? []), ...(otherwise?.returns ?? [])],
+		nexts:             [...cond.nexts, ...(then?.nexts ?? []), ...(otherwise?.nexts ?? [])],
 		entryPoint:        name.info.id,
 		environment:       finalEnvironment,
 		graph:             nextGraph

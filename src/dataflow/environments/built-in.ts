@@ -1,5 +1,4 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
 import type { DataflowProcessorInformation } from '../processor'
 import type { DataflowInformation } from '../info'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
@@ -54,13 +53,20 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next' }
+	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next', readAllArguments?: boolean }
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument]
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Returns })
+		}
+	}
+	if(config.readAllArguments) {
+		for(const arg of processedArguments) {
+			if(arg) {
+				res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Reads })
+			}
 		}
 	}
 	switch(config.cfg) {
@@ -120,7 +126,7 @@ export function registerReplacementFunctions(
 
 
 function registerSimpleFunctions(...names: readonly Identifier[]): void {
-	registerBuiltInFunctions(defaultBuiltInProcessor, {}, ...names)
+	registerBuiltInFunctions(defaultBuiltInProcessor, { readAllArguments: true }, ...names)
 }
 
 function registerBuiltInConstant<T>(name: Identifier, value: T): void {
@@ -160,7 +166,7 @@ registerBuiltInFunctions(processAssignment,         { swapSourceAndTarget: true 
 registerBuiltInFunctions(processAssignment,         { superAssignment: true, swapSourceAndTarget: true }, '->>')
 registerBuiltInFunctions(processSpecialBinOp,       { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,               {},                                                   '|>')
-registerBuiltInFunctions(processFunctionDefinition, {},                                                   'function')
+registerBuiltInFunctions(processFunctionDefinition, {},                                                   'function', '\\')
 // TODO: add nse edge for quote
 registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([1]) },       'quote', 'substitute', 'bquote')
 registerBuiltInFunctions(processForLoop,          {},                                                     'for')

@@ -62,7 +62,11 @@ function indentBy(lines: Code, indent: number): Code {
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
 	if(subExpressions.length === 0) {
-		return []
+		if(isSelected(config, exprList)) {
+			return plain('{}')
+		} else {
+			return []
+		}
 	} else if(subExpressions.length === 1) {
 		if(!isSelected(config, exprList)) {
 			return subExpressions[0]

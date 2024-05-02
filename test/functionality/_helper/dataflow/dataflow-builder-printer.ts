@@ -144,7 +144,7 @@ class DataflowBuilderPrinter {
 	}
 
 	private handleArgumentArgLinkage(fn: NodeId, id: NodeId) {
-		if(id.endsWith('-arg')) {
+		if(typeof id === 'string' && id.endsWith('-arg')) {
 			const withoutSuffix = id.slice(0, -4)
 			this.coveredEdges.add(edgeId(id, withoutSuffix, EdgeType.Reads))
 			if(!this.graph.hasVertex(withoutSuffix, true)) {
@@ -183,14 +183,15 @@ class DataflowBuilderPrinter {
 			case VertexType.Use:
 				this.processVertexUse(id, vertex)
 				break
-			case VertexType.Value:
+			case VertexType.Value: {
+				const root = this.asRootArg(id)
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
-					this.getControlDependencySuffix(vertex.controlDependency) ?? 'undefined',
-					this.asRootArg(id)
+					this.getControlDependencySuffix(vertex.controlDependency) ?? (root ? 'undefined' : undefined),
+					root
 				])
 				break
-			case VertexType.VariableDefinition:
+			} case VertexType.VariableDefinition:
 				this.processVariableDefinition(id, vertex)
 				break
 			case VertexType.FunctionDefinition:
@@ -207,7 +208,7 @@ class DataflowBuilderPrinter {
 
 	private processUseVertexInitial(id: NodeId, vertex: DataflowGraphVertexUse): boolean {
 		// if the id ends in arg and there is a vertex without the arg suffix we reset the vertex use and wait for the call
-		if(id.endsWith('-arg') && this.graph.hasVertex(id.slice(0, -4), true)) {
+		if(typeof id === 'string' && id.endsWith('-arg') && this.graph.hasVertex(id.slice(0, -4), true)) {
 			return false
 		}
 		this.coveredVertices.add(id)
@@ -216,16 +217,18 @@ class DataflowBuilderPrinter {
 	}
 
 	private processVertexUse(id: NodeId, vertex: DataflowGraphVertexUse) {
+		const root = this.asRootArg(id)
 		this.recordFnCall(id, 'use', [
 			wrap(id),
 			wrap(vertex.name),
-			this.getControlDependencySuffix(vertex.controlDependency) ?? 'undefined',
-			this.asRootArg(id)
+			this.getControlDependencySuffix(vertex.controlDependency) ?? (root ? 'undefined' : undefined),
+			root
 		])
 	}
 
 	private processFunctionDefinition(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition) {
-		const suffix = this.getEnvironmentSuffix(vertex.environment, ', { ', ' }')
+		const root = this.asRootArg(id)
+		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined)
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
 			wrap(vertex.name),
@@ -240,7 +243,7 @@ class DataflowBuilderPrinter {
 				entryPoint:        ${wrap(vertex.subflow.entryPoint)},
 				graph:             new Set([${[...vertex.subflow.graph].map(wrap).join(', ')}]),
 				environment:       ${new EnvironmentBuilderPrinter(vertex.subflow.environment).print()}
-			}`, suffix
+			}`, suffix, root
 		])
 	}
 

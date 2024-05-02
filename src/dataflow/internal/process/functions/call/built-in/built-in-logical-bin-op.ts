@@ -6,7 +6,7 @@ import type {
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger  } from '../../../../../index'
+import { dataflowLogger, EdgeType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 
 
@@ -24,7 +24,7 @@ export function processSpecialBinOp<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
-	const { information } = processKnownFunctionCall({ name, args, rootId, data,
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
 		patchData: (d, i) => {
 			if(i === 1) {
 			// the rhs will be overshadowed by the lhs
@@ -33,6 +33,17 @@ export function processSpecialBinOp<OtherInfo>(
 			return d
 		}
 	})
+
+	// TODO: allow to configure to read all arguments
+	for(const arg of processedArguments) {
+		if(arg) {
+			information.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })
+		}
+		// only do first if lazy
+		if(config.lazy) {
+			break
+		}
+	}
 
 	return information
 }

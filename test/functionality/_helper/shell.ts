@@ -182,7 +182,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 const legacyDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW)
 
-function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<string> | undefined {
+function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
 	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? p.id : `${p.from}->${p.to}`))
 }
 

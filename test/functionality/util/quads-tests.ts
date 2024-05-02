@@ -70,14 +70,9 @@ describe('Quads', withShell(shell => {
 <${idPrefix}6> <${domain}nodeId> "1" <${context}> .
 <${idPrefix}2> <${domain}when> "always" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}7> <${context}> .
-<${idPrefix}7> <${domain}next> <${idPrefix}8> <${context}> .
-<${idPrefix}7> <${domain}from> "2" <${context}> .
+<${idPrefix}7> <${domain}from> "3" <${context}> .
 <${idPrefix}7> <${domain}to> "1" <${context}> .
-<${idPrefix}7> <${domain}type> "reads" <${context}> .
-<${idPrefix}0> <${domain}edges> <${idPrefix}8> <${context}> .
-<${idPrefix}8> <${domain}from> "3" <${context}> .
-<${idPrefix}8> <${domain}to> "1" <${context}> .
-<${idPrefix}8> <${domain}type> "argument" <${context}> .
+<${idPrefix}7> <${domain}type> "argument" <${context}> .
     `)
 	})
 }))

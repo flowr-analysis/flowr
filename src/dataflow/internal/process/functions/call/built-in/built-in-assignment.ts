@@ -164,6 +164,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	for(const write of writeNodes) {
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
+		// TODO: replace this with a read edge!
 		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })
 		information.graph.addEdge(write, rootId, { type: EdgeType.DefinedBy })
 		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
@@ -188,7 +189,7 @@ function processAssignmentToSymbol<OtherInfo>(
 		unknownReferences: [],
 		entryPoint:        name.info.id,
 		in:                readTargets,
-		out:               writeTargets,
+		out:               writeTargets
 	}
 }
 

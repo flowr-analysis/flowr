@@ -32,7 +32,8 @@ import { RType } from '../type'
 import type { RDelimiter } from '../nodes/info'
 import { foldAstStateful } from './stateful-fold'
 
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
+// TODO: allow number!
+/** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId = string & { __brand?: 'node-id'};
 
 /**

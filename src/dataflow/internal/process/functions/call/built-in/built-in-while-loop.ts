@@ -1,4 +1,4 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../../r-bridge'
 import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -8,7 +8,8 @@ import {
 } from '../../../../linker'
 import { dataflowLogger, EdgeType, makeAllMaybe } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
-import { guard } from '../../../../../../util/assert'
+import { guard, isUndefined } from '../../../../../../util/assert'
+import { unpackArgument } from '../argument/unpack-argument'
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -21,10 +22,17 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
+	const unpackedArgs = args.map(unpackArgument)
+
+	if(unpackedArgs.some(isUndefined)) {
+		dataflowLogger.warn(`While-Loop ${name.content} has empty arguments in ${JSON.stringify(args)}, skipping`)
+		return processKnownFunctionCall({ name, args, rootId, data }).information
+	}
+
 	/* we inject the cf-dependency of the while-loop after the condition */
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
-		args,
+		args:      unpackedArgs as RNode<ParentInformation & OtherInfo>[],
 		rootId,
 		data,
 		markAsNSE: [1],

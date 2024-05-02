@@ -15,6 +15,7 @@ import {
 	VertexType
 } from '../../../../src/dataflow'
 import { deepMergeObject } from '../../../../src/util/objects'
+import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export function emptyGraph() {
 	return new DataflowGraphBuilder()
@@ -44,12 +45,19 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
-			tag:                 VertexType.FunctionDefinition,
-			id,
+			tag:     VertexType.FunctionDefinition,
+			id:      normalizeIdToNumberIfPossible(id),
 			name,
-			subflow,
-			exitPoints,
-			controlDependencies: info?.controlDependency,
+			subflow: {
+				...subflow,
+				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),
+				graph:             new Set([...subflow.graph].map(normalizeIdToNumberIfPossible)),
+				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(normalizeIdToNumberIfPossible) })),
+				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(normalizeIdToNumberIfPossible) })),
+				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(normalizeIdToNumberIfPossible) }))
+			} as DataflowFunctionFlowInformation,
+			exitPoints:          exitPoints.map(normalizeIdToNumberIfPossible),
+			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
 			environment:         info?.environment
 		}, asRoot)
 	}
@@ -76,11 +84,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
 		this.addVertex({
 			tag:                 VertexType.FunctionCall,
-			id,
+			id:                  normalizeIdToNumberIfPossible(id),
 			name,
-			args:                args.map(a =>  a === EmptyArgument ? EmptyArgument : { ...a, controlDependency: undefined }),
+			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependency: undefined }),
 			environment:         info?.environment,
-			controlDependencies: info?.controlDependency,
+			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
 			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
 		}, asRoot)
 		this.addArgumentLinks(id, args)
@@ -129,9 +137,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertex({
 			tag:                 VertexType.VariableDefinition,
-			id,
+			id:                  normalizeIdToNumberIfPossible(id),
 			name,
-			controlDependencies: info?.controlDependency
+			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
 		}, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -153,11 +161,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({
 			tag:                 VertexType.Use,
-			id,
+			id:                  normalizeIdToNumberIfPossible(id),
 			name,
 			controlDependencies: undefined,
 			environment:         undefined
-		}, info), asRoot)
+		}, {
+			...info,
+			controlDependencies: info?.controlDependencies?.map(normalizeIdToNumberIfPossible)
+		} as Partial<DataflowGraphVertexUse>), asRoot)
 	}
 
 
@@ -173,8 +184,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.addVertex({
 			tag:                 VertexType.Value,
 			name:                CONSTANT_NAME,
-			id,
-			controlDependencies: options?.controlDependency,
+			id:                  normalizeIdToNumberIfPossible(id),
+			controlDependencies: options?.controlDependency?.map(normalizeIdToNumberIfPossible),
 			environment:         undefined
 		}, asRoot)
 	}
@@ -186,7 +197,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			}
 			return this
 		}
-		return this.addEdge(from, to as NodeId, { type })
+		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), { type })
 	}
 
 	/**

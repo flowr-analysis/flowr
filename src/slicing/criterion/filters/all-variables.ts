@@ -1,6 +1,5 @@
 import type {
 	FoldFunctions,
-	NodeId,
 	ParentInformation,
 	RFunctionCall, RNodeWithParent, RSymbol
 } from '../../../r-bridge'
@@ -11,6 +10,7 @@ import {
 } from '../../../r-bridge'
 import type { SlicingCriteriaFilter } from '../collect-all'
 import { isNotNull } from '../../../util/assert'
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,

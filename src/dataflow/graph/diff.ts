@@ -22,27 +22,6 @@ interface ProblematicEdge {
 	to:   NodeId
 }
 
-/*
-function normalizeToNumberIfPossible(id: NodeId): NodeId {
-	// check if string is number
-	if(typeof id === 'string' && numIdRegex.test(id)) {
-		return Number(id)
-	}
-	return id
-}
-*/
-
-export function normalizeIdsForDiff<T>(id: T): T {
-	/*if(typeof id === 'string' /!* || typeof id === 'number' *!/ ) {
-		return String(id)
-	} else if(Array.isArray(id)) {
-		return id.map(String)
-	} else {
-		return new Set([...id].map(String))
-	}*/
-	return id
-}
-
 export type ProblematicDiffInfo = ProblematicVertex | ProblematicEdge
 
 export class DataflowDifferenceReport implements WriteableDifferenceReport {
@@ -107,25 +86,25 @@ function diff(ctx: DataflowDiffContext): boolean {
 
 
 function diffOutgoingEdges(ctx: DataflowDiffContext): void {
-	const lEdges = new Map([...ctx.left.edges()].map(([k,v]) => ([normalizeIdsForDiff(k), v] as const)))
-	const rEdges = new Map([...ctx.right.edges()].map(([k,v]) => ([normalizeIdsForDiff(k), v] as const)))
+	const lEdges = new Map([...ctx.left.edges()])
+	const rEdges = new Map([...ctx.right.edges()])
 	if(lEdges.size !== rEdges.size) {
 		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 
 	for(const [id, edge] of lEdges) {
-		diffEdges(ctx, id, edge, rEdges.get(normalizeIdsForDiff(id)))
+		diffEdges(ctx, id, edge, rEdges.get(id))
 	}
 	// just to make it both ways in case the length differs
 	for(const [id, edge] of rEdges) {
-		if(!lEdges.has(normalizeIdsForDiff(id))) {
+		if(!lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge)
 		}
 	}
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
-	setDifference(normalizeIdsForDiff(ctx.left.rootIds()), normalizeIdsForDiff(ctx.right.rootIds()), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
+	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
 }
 
 
@@ -208,8 +187,8 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 
 export function diffVertices(ctx: DataflowDiffContext): void {
 	// collect vertices from both sides
-	const lVert = [...ctx.left.vertices(true)].map(([id, info]) => ([normalizeIdsForDiff(id), info] as const))
-	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([normalizeIdsForDiff(id), info] as const))
+	const lVert = [...ctx.left.vertices(true)].map(([id, info]) => ([id, info] as const))
+	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([id, info] as const))
 	if(lVert.length !== rVert.length) {
 		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`)
 	}
@@ -253,7 +232,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			if(rInfo.tag !== 'function-definition') {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id })
 			} else {
-				if(!arrayEqual(normalizeIdsForDiff(lInfo.exitPoints), normalizeIdsForDiff(rInfo.exitPoints))) {
+				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints)) {
 					ctx.report.addComment(
 						`Vertex ${id} differs in exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`,
 						{ tag: 'vertex', id }
@@ -264,7 +243,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. `
 				})
-				setDifference(normalizeIdsForDiff(lInfo.subflow.graph), normalizeIdsForDiff(rInfo.subflow.graph), {
+				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `
 				})
@@ -307,7 +286,7 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 	}
 	// order independent compare
 	for(const [target, edge] of lEdges) {
-		const otherEdge = rEdges.get(normalizeIdsForDiff(target))
+		const otherEdge = rEdges.get(target)
 		if(otherEdge === undefined) {
 			ctx.report.addComment(
 				`Target of ${id}->${target} in ${ctx.leftname} is not present in ${ctx.rightname}`,

@@ -12,7 +12,7 @@ describe('Resolve', () => {
 			const result = resolveByName('x', env)
 			guard(result !== undefined, 'there should be a result')
 			expect(result, 'there should be exactly one definition for x').to.have.length(1)
-			expect(result[0], 'it should be x').to.be.equal(xVar)
+			expect(result[0], 'it should be x').to.deep.equal(xVar)
 		})
 		it(label('Locally with global distract', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			let env = defaultEnv()
@@ -22,7 +22,7 @@ describe('Resolve', () => {
 			const result = resolveByName('x', env)
 			guard(result !== undefined, 'there should be a result')
 			expect(result, 'there should be exactly one definition for x').to.have.length(1)
-			expect(result[0], 'it should be x').to.be.equal(xVar)
+			expect(result[0], 'it should be x').to.be.deep.equal(xVar)
 		})
 	})
 })

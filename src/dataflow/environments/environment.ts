@@ -90,10 +90,11 @@ export const BuiltInEnvironment = new Environment('built-in', undefined as unkno
 
 BuiltInEnvironment.memory = BuiltInMemory
 
+export const GLOBAL_ENV_NAME = 'global'
+
 export function initializeCleanEnvironments(): REnvironmentInformation {
-	const global = new Environment('global', BuiltInEnvironment)
 	return {
-		current: global,
+		current: new Environment(GLOBAL_ENV_NAME, BuiltInEnvironment),
 		level:   0
 	}
 }

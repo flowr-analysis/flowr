@@ -13,28 +13,24 @@ import type { NoInfo, RNode } from '../model'
 import { guard } from '../../../../../util/assert'
 import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
-import {
-	EmptyArgument
-} from '../nodes'
 import type {
 	RArgument,
 	RBinaryOp,
+	RExpressionList,
 	RFunctionCall,
 	RNamedFunctionCall,
 	RParameter,
 	RPipe,
-	RUnnamedFunctionCall,
-	RExpressionList
+	RUnnamedFunctionCall
 } from '../nodes'
+import { EmptyArgument } from '../nodes'
 import type { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
 import { RType } from '../type'
 import type { RDelimiter } from '../nodes/info'
 import { foldAstStateful } from './stateful-fold'
+import type { NodeId } from './node-id'
 
-// TODO: allow number!
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
-export type NodeId = string & { __brand?: 'node-id'};
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -49,7 +45,7 @@ export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => NodeId
  */
 export function deterministicCountingIdGenerator(start = 0): () => NodeId {
 	let id = start
-	return () => `${id++}`
+	return () => id++
 }
 
 export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
@@ -74,9 +70,9 @@ export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter)
 
 /**
  * Generates unique ids based on the locations of the node (see {@link nodeToLocationId}).
- * If a node has no location information, it will be assigned a unique counter value.
+ * If a node has no location information, it will be assigned a unique counter-value.
  *
- * @param start - the start value for the counter in case nodes do not have a location information
+ * @param start - the start value for the counter, in case nodes do not have location information
  */
 export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
 	let id = start
@@ -192,7 +188,6 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
 function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 	return (data: RNode<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		// TODO: get correct depth by fold down
 		const decorated = {
 			...data,
 			info: {

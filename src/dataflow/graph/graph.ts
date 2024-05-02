@@ -1,7 +1,7 @@
 import { guard } from '../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import { EmptyArgument } from '../../r-bridge'
-import type { IdentifierDefinition, IdentifierReference } from '../environments'
+import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
@@ -83,7 +83,11 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
-	private static DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
+	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
+
+	constructor() {
+		DataflowGraph.DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
+	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
@@ -230,11 +234,9 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 				existingFrom.set(toId, edge)
 			}
 			this.installEdge(type, toId, fromId, edge)
-		} else {
-			if(!edgeInFrom.types.has(type)) {
-				// adding the type
-				edgeInFrom.types.add(type)
-			}
+		} else if(!edgeInFrom.types.has(type)) {
+			// adding the type
+			edgeInFrom.types.add(type)
 		}
 		return this
 	}

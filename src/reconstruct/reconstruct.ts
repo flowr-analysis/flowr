@@ -340,16 +340,18 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 
 	if(args.length === 0) {
-		guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-		if(call.flavor === 'unnamed' && !functionName[0].line.endsWith(')')) {
-			functionName[0].line = `(${functionName[0].line})`
+		guard(functionName.length > 0, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
+		const last = functionName[functionName.length - 1]
+		if(call.flavor === 'unnamed' && !last.line.endsWith(')')) {
+			functionName[0].line = `(${functionName[0].line}`
+			last.line += ')'
 		}
 
-		if(!functionName[0].line.endsWith('()')) {
+		if(!last.line.endsWith('()')) {
 			// add empty call braces if not present
-			functionName[0].line += '()'
+			last.line += '()'
 		}
-		return [{ line: functionName[0].line, indent: functionName[0].indent }]
+		return functionName
 	} else {
 		return plain(getLexeme(call))
 	}

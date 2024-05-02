@@ -5,10 +5,9 @@ import type {
 import {
 	BuiltInEnvironment
 } from './environment'
-import { dataflowLogger } from '../index'
-import { expensiveTrace } from '../../util/log'
 import type { Ternary } from '../../util/logic'
 import type { Identifier, IdentifierDefinition } from './identifier'
+
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
@@ -18,10 +17,7 @@ import type { Identifier, IdentifierDefinition } from './identifier'
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
-// TODO: optimize this to just have a hash-map updated on scope change but flattened in a single map
 export function resolveByName(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
-	expensiveTrace(dataflowLogger, () => `Resolving local identifier ${name} (local stack size: ${environment.level})`)
-
 	let current: IEnvironment = environment.current
 	do{
 		const definition = current.memory.get(name)
@@ -31,7 +27,6 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 		current = current.parent
 	} while(current.id !== BuiltInEnvironment.id)
 
-	dataflowLogger.trace(`Unable to find identifier ${name} in stack, can be built-in`)
 	return current.memory.get(name)
 }
 

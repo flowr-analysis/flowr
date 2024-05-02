@@ -159,7 +159,7 @@ class DataflowBuilderPrinter {
 	}
 
 	private controlDependencyForArgument(id: NodeId): NodeId[] | undefined {
-		// we ignore the control dependency of the argument in the call as it is usually separate and the auto creation
+		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
 		const vertex = this.graph.get(id, true)
 		if(vertex !== undefined) {

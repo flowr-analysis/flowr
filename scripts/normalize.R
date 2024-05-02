@@ -1,4 +1,3 @@
-# TODO normalize, decorate etc.
 input <- file("../test/testfiles/example-cfg.R")
 exprs <- rlang::parse_exprs(input)
 

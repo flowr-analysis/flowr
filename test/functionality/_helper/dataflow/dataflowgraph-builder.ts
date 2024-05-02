@@ -104,8 +104,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				continue
 			}
 			if(isPositionalArgument(arg)) {
-				// TODO:
-				// this.use(arg.nodeId, unnamedArgument(arg.nodeId), { controlDependency: arg.controlDependency })
 				this.argument(id, arg.nodeId)
 				if(typeof arg.nodeId === 'string' && arg.nodeId.endsWith('-arg')) {
 					const withoutSuffix = arg.nodeId.slice(0, -4)

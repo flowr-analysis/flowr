@@ -153,7 +153,6 @@ u <- a()
 u()`)
 		})
 	})
-	// TODO: drop not needed unnmaed arguments
 	describe('Anonymous Functions', () => {
 		assertSliced('keep anonymous', shell, `
 x <- (function() {
@@ -241,6 +240,27 @@ b <- f()
         b
     }
 b <- f()`)
+	})
+	describe('Early return of function', () => {
+		const code = `x <- (function() {
+  g <- function() { y }
+  y <- 5
+  if(z)
+    return(g)
+  y <- 3
+  g
+})()
+res <- x()`
+		assertSliced('Double return points', shell, code, ['9@x'], `
+x <- (function() {
+  g <- function() { y }
+  y <- 5
+  if(z)
+    return(g)
+  y <- 3
+  g
+})()
+res <- x()`.trim())
 	})
 	describe('Recursive functions', () => {
 		const code = `f <- function() { f() }

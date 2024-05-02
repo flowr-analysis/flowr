@@ -3,6 +3,19 @@ import type { REnvironmentInformation, IdentifierReference } from './environment
 import type { DataflowProcessorInformation } from './processor'
 import type { NodeId } from '../r-bridge'
 
+export interface DataflowCfgInformation {
+	/** all vertices that trigger an active 'return' in the current dataflow graph if not already part of the {@link exitPoints} */
+	returns:           readonly NodeId[],
+	/** all vertices that trigger an active 'break' in the current dataflow graph */
+	breaks:            readonly NodeId[],
+	/** all vertices that trigger an active 'next' in the current dataflow graph */
+	nexts:             readonly NodeId[],
+	/** entry node into the subgraph */
+	entryPoint:        NodeId,
+	/** all already identified exit points of the respective structure. */
+	exitPoints:        readonly NodeId[]
+}
+
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
  */
@@ -13,15 +26,8 @@ export interface DataflowInformation {
 	in:                readonly IdentifierReference[]
 	/** References which are written to */
 	out:               readonly IdentifierReference[]
-	/** all vertices which trigger an active 'return' in the current dataflow graph */
-	returns:           readonly NodeId[],
-	/** all vertices which trigger an active 'break' in the current dataflow graph */
-	breaks:            readonly NodeId[],
-	/** all vertices which trigger an active 'next' in the current dataflow graph */
-	nexts:             readonly NodeId[],
-	/** intended to construct a hammock graph this represents the current entry into the graph, with undefined exit points representing a block that should not be part of the CFG (like a comment) */
-	entryPoint:        NodeId,
-	// TODO: add exit point
+	/** Control flow information, populated during the dataflow analysis */
+	cfg:               DataflowCfgInformation
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
@@ -33,10 +39,13 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		unknownReferences: [],
 		in:                [],
 		out:               [],
-		returns:           [],
-		breaks:            [],
-		nexts:             [],
-		entryPoint:        entryPoint,
+		cfg:               {
+			returns: [],
+			breaks: [],
+			nexts: [],
+			entryPoint,
+			exitPoints: [entryPoint]
+		},
 		environment:       data.environment,
 		graph:             new DataflowGraph()
 	}

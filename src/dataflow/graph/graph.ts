@@ -24,7 +24,7 @@ export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherI
 
 
 
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
 export interface NamedFunctionArgument extends IdentifierReference {
 	readonly name: string
@@ -49,7 +49,7 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 	return undefined
 }
 
-type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependency'>  | IdentifierDefinition
+type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependencies'>  | IdentifierDefinition
 
 
 /**
@@ -189,7 +189,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
-			when: vertex.controlDependency ?? 'always',
+			when: vertex.controlDependencies ?? 'always',
 			environment
 		} as unknown as Vertex)
 		if(asRoot) {
@@ -241,7 +241,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 	private installEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
 		// sort (on id so that sorting is the same, independent of the attribute)
-		const bidirectional = type === EdgeType.SameReadRead || type === EdgeType.SameDefDef || type === EdgeType.Relates
+		const bidirectional = type === EdgeType.SameReadRead || type === EdgeType.SameDefDef
 
 		if(bidirectional) {
 			const existingTo = this.edgeInformation.get(toId)
@@ -330,8 +330,8 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
 		const [node] = got
 		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-			guard(node.controlDependency !== undefined || reference.controlDependency !== undefined || arrayEqual(node.controlDependency, reference.controlDependency), () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-			node.controlDependency = reference.controlDependency
+			guard(node.controlDependencies !== undefined || reference.controlDependencies !== undefined || arrayEqual(node.controlDependencies, reference.controlDependencies), () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+			node.controlDependencies = reference.controlDependencies
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...node, tag: 'variable-definition' })
 		}

@@ -2,6 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
+import { filterOutLoopExitPoints } from '../../../../../info'
 import {
 	linkCircularRedefinitionsWithinALoop,
 	produceNameSharedIdMap
@@ -36,6 +37,8 @@ export function processRepeatLoop<OtherInfo>(
 
 	const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])
 	linkCircularRedefinitionsWithinALoop(information.graph, namedIdShares, body.out)
+
+	information.exitPoints = filterOutLoopExitPoints(information.exitPoints)
 
 	return information
 }

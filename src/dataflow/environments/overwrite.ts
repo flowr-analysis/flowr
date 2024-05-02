@@ -8,7 +8,7 @@ function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 		return true
 	}
 	for(const val of values) {
-		if(val.controlDependency !== undefined) {
+		if(val.controlDependencies !== undefined) {
 			return true
 		}
 	}

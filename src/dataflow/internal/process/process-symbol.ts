@@ -1,7 +1,7 @@
 import type { ParentInformation, RSymbol } from '../../../r-bridge'
 import { RNa, RNull } from '../../../r-bridge'
 import { DataflowGraph, VertexType } from '../../graph'
-import { type DataflowInformation } from '../../info'
+import { type DataflowInformation, ExitPointType } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
 import { processValue } from './process-value'
 
@@ -11,7 +11,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependency: data.controlDependency } ],
+		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
@@ -19,12 +19,10 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 			tag:  VertexType.Use,
 			id:   symbol.info.id,
 			name: symbol.content,
-			controlDependency:
-			data.controlDependency
+			controlDependencies:
+			data.controlDependencies
 		}),
-		returns:    [],
-		breaks:     [],
-		nexts:      [],
-		entryPoint: symbol.info.id
+		entryPoint: symbol.info.id,
+		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 	}
 }

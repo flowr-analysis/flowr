@@ -195,9 +195,9 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg.name !== bArg.name) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the name differs: ${aArg.name} vs ${bArg.name}.`)
 			}
-			if(!arrayEqual(aArg.controlDependency, bArg.controlDependency)) {
+			if(!arrayEqual(aArg.controlDependencies, bArg.controlDependencies)) {
 				ctx.report.addComment(
-					`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependency)} vs ${JSON.stringify(bArg.controlDependency)}.`,
+					`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.`,
 					{ tag: 'vertex', id: fn }
 				)
 			}
@@ -226,9 +226,9 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		if(lInfo.name !== rInfo.name) {
 			ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`, { tag: 'vertex', id })
 		}
-		if(!arrayEqual(lInfo.controlDependency, rInfo.controlDependency)) {
+		if(!arrayEqual(lInfo.controlDependencies, rInfo.controlDependencies)) {
 			ctx.report.addComment(
-				`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependency)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependency)}`,
+				`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
 				{ tag: 'vertex', id }
 			)
 		}

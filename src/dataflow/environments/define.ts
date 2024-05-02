@@ -8,7 +8,7 @@ import type { IdentifierDefinition } from './identifier'
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name)
 	// check if it is maybe or not
-	if(existing === undefined || definition.controlDependency === undefined) {
+	if(existing === undefined || definition.controlDependencies === undefined) {
 		newEnvironments.memory.set(name, [definition])
 	} else {
 		existing.push(definition)

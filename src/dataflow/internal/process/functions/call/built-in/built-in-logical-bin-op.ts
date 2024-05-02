@@ -28,7 +28,7 @@ export function processSpecialBinOp<OtherInfo>(
 		patchData: (d, i) => {
 			if(i === 1) {
 			// the rhs will be overshadowed by the lhs
-				return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], name.info.id] }
 			}
 			return d
 		}

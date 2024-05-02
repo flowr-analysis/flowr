@@ -5,6 +5,7 @@ import { BuiltIn } from '../../../../src/dataflow'
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
+import type { ExitPoint } from '../../../../src/dataflow/info'
 
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
@@ -28,5 +29,5 @@ function wrapControlDependency(controlDependency: NodeId[] | undefined): string 
 	}
 }
 export function wrapReference(ref: IdentifierReference): string {
-	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependency: ${wrapControlDependency(ref.controlDependency)} }`
+	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependency(ref.controlDependencies)} }`
 }

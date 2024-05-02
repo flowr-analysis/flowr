@@ -84,8 +84,8 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		}
 
 		// we only add control dependencies iff 1) we are in function call or 2) they have, at least, the same depth as the slicing seed
-		if(currentVertex.controlDependency) {
-			for(const cd of currentVertex.controlDependency) {
+		if(currentVertex.controlDependencies) {
+			for(const cd of currentVertex.controlDependencies) {
 				if(current.inCall || (ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
 					queue.add(cd, baseEnvironment, baseEnvFingerprint, false, current.inCall)
 				}

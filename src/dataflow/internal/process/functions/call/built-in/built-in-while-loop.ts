@@ -2,6 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } fro
 import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
+import { alwaysExits , filterOutLoopExitPoints } from '../../../../../info'
 import {
 	linkCircularRedefinitionsWithinALoop, linkInputs,
 	produceNameSharedIdMap
@@ -38,16 +39,19 @@ export function processWhileLoop<OtherInfo>(
 		markAsNSE: [1],
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependency: [...d.controlDependency ?? [], name.info.id] }
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], name.info.id] }
 			}
 			return d
 		} })
 	const [condition, body] = processedArguments
 
-
-	const originalDependency = data.controlDependency
-
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`)
+	const originalDependency = data.controlDependencies
+
+	if(alwaysExits(condition)) {
+		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`)
+		return condition
+	}
 
 	const remainingInputs = linkInputs([
 		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, false),
@@ -61,12 +65,10 @@ export function processWhileLoop<OtherInfo>(
 	// TODO: handle break and next
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependency: originalDependency }, ...remainingInputs],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency }, ...remainingInputs],
 		out:               [...makeAllMaybe(body.out, information.graph, information.environment, true), ...condition.out],
-		returns:           [...condition.returns, ...body.returns],
-		breaks:            [],
-		nexts:             [],
 		entryPoint:        name.info.id,
+		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
 		environment:       information.environment
 	}

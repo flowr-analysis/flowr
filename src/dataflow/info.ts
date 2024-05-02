@@ -3,31 +3,48 @@ import type { REnvironmentInformation, IdentifierReference } from './environment
 import type { DataflowProcessorInformation } from './processor'
 import type { NodeId } from '../r-bridge'
 
-export interface DataflowCfgInformation {
-	/** all vertices that trigger an active 'return' in the current dataflow graph if not already part of the {@link exitPoints} */
-	returns:           readonly NodeId[],
-	/** all vertices that trigger an active 'break' in the current dataflow graph */
-	breaks:            readonly NodeId[],
-	/** all vertices that trigger an active 'next' in the current dataflow graph */
-	nexts:             readonly NodeId[],
-	/** entry node into the subgraph */
-	entryPoint:        NodeId,
-	/** all already identified exit points of the respective structure. */
-	exitPoints:        readonly NodeId[]
+export const enum ExitPointType {
+	Default = 0,
+	Return = 1,
+	Break = 2,
+	Next = 3
+}
+
+export interface ExitPoint {
+	readonly type:                ExitPointType,
+	readonly nodeId:              NodeId,
+	readonly controlDependencies: NodeId[] | undefined
+}
+
+export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly ExitPoint[]): void {
+	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default))
 }
 
 /**
- * Continuously updated during the dataflow analysis to hold the current state.
+ * The control flow information for the current {@link DataflowInformation}.
  */
-export interface DataflowInformation {
+export interface DataflowCfgInformation {
+	/**
+	 * The entry node into the subgraph
+	 */
+	entryPoint: NodeId,
+	/**
+	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
+	 */
+	exitPoints: readonly ExitPoint[]
+}
+
+/**
+ * The dataflow information is continuously updated during the dataflow analysis
+ * and holds its current state for the respective subtree processed.
+ */
+export interface DataflowInformation extends DataflowCfgInformation {
 	/** References that have not been identified as read or write and will be so on higher */
 	unknownReferences: readonly IdentifierReference[]
 	/** References which are read */
 	in:                readonly IdentifierReference[]
 	/** References which are written to */
 	out:               readonly IdentifierReference[]
-	/** Control flow information, populated during the dataflow analysis */
-	cfg:               DataflowCfgInformation
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
@@ -39,14 +56,17 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		unknownReferences: [],
 		in:                [],
 		out:               [],
-		cfg:               {
-			returns: [],
-			breaks: [],
-			nexts: [],
-			entryPoint,
-			exitPoints: [entryPoint]
-		},
 		environment:       data.environment,
-		graph:             new DataflowGraph()
+		graph:             new DataflowGraph(),
+		entryPoint,
+		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
 	}
+}
+
+export function alwaysExits(data: DataflowInformation): boolean {
+	return data.exitPoints?.some(e => e.type !== ExitPointType.Default &&  e.controlDependencies === undefined) ?? false
+}
+
+export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
+	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default)
 }

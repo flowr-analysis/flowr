@@ -2,8 +2,9 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { type DataflowInformation } from '../../../../../info'
-import type { NodeId, ParentInformation, RFunctionArgument, RNodeWithParent, RSymbol } from '../../../../../../r-bridge'
+import type { ExitPoint, DataflowInformation } from '../../../../../info'
+import { addNonDefaultExitPoints , alwaysExits , ExitPointType } from '../../../../../info'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { IdentifierReference, IEnvironment, REnvironmentInformation } from '../../../../../environments'
@@ -11,9 +12,9 @@ import { BuiltIn , makeAllMaybe, overwriteEnvironment, popLocalEnvironment, reso
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../../../../linker'
 import { DefaultMap } from '../../../../../../util/defaultmap'
 import type { DataflowGraphVertexInfo } from '../../../../../graph'
-import { CONSTANT_NAME, DataflowGraph, VertexType } from '../../../../../graph'
+import { CONSTANT_NAME, DataflowGraph } from '../../../../../graph'
 import { dataflowLogger, EdgeType } from '../../../../../index'
-import { guard } from '../../../../../../util/assert'
+import { guard, isNotUndefined } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
 import { patchFunctionCall } from '../common'
 
@@ -120,15 +121,11 @@ export function processExpressionList<OtherInfo>(
 
 	const nextGraph = new DataflowGraph()
 	const out = []
-
-	let nexts: NodeId[] = []
-	let breaks: NodeId[] = []
-	let returns: NodeId[] = []
+	const exitPoints: ExitPoint[] = []
 
 	let expressionCounter = 0
-	let foundNextOrBreak = false
-	let lastExpr: RNodeWithParent | undefined = undefined
 	const processedExpressions: (DataflowInformation | undefined)[] = []
+	let defaultReturnExpr: undefined | DataflowInformation = undefined
 
 	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
@@ -136,51 +133,46 @@ export function processExpressionList<OtherInfo>(
 			processedExpressions.push(undefined)
 			continue
 		}
-		lastExpr = expression
 		// use the current environments for processing
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
 		processedExpressions.push(processed)
 		nextGraph.mergeWith(processed.graph)
+		defaultReturnExpr = processed
 
 		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
-		if(breaks.length > 0 || returns.length > 0 || nexts.length > 0) {
-			// TODO: correct control dependencies
+		if(exitPoints.length > 0) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true)
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false)
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false)
-			foundNextOrBreak = true
 		}
 
-		breaks = [...breaks, ...processed.breaks]
-		returns = [...returns, ...processed.returns]
-		nexts = [...nexts, ...processed.nexts]
+		addNonDefaultExitPoints(exitPoints, processed.exitPoints)
 
 		out.push(...processed.out)
 
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
 		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph)
-		const functionCallIds = [...processed.graph.vertices(true)]
-			.filter(([_,info]) => info.tag === VertexType.FunctionCall)
 
-		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
+		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph)
 
-		if(foundNextOrBreak) {
-			environment = overwriteEnvironment(environment, processed.environment)
-		} else {
-			environment = processed.environment
-		}
-
+		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph)
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId)
 		}
-	}
 
+		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
+		if(alwaysExits(processed)) {
+			/* if there is an always-exit expression, there is no default return active anymore */
+			defaultReturnExpr = undefined
+			break
+		}
+	}
 
 	if(expressions.length > 0) {
 		// now, we have to link same reads
@@ -189,13 +181,21 @@ export function processExpressionList<OtherInfo>(
 
 	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)
 
+	if(defaultReturnExpr) {
+		exitPoints.push({
+			type:                ExitPointType.Default,
+			nodeId:              defaultReturnExpr.entryPoint,
+			controlDependencies: data.controlDependencies
+		})
+	}
 
 	const ingoing = [...remainingRead.values()].flat()
 
 	const rootNode = data.completeAst.idMap.get(rootId)
 	const withGroup = rootNode?.grouping
+
 	if(withGroup) {
-		ingoing.push({ nodeId: rootId, name: name.content, controlDependency: data.controlDependency })
+		ingoing.push({ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies })
 		patchFunctionCall({
 			nextGraph,
 			rootId,
@@ -203,12 +203,15 @@ export function processExpressionList<OtherInfo>(
 			data,
 			argumentProcessResult: processedExpressions
 		})
-		/* we return the last expression (TODO: handle control flow impact) */
-		if(lastExpr) {
-			nextGraph.addEdge(rootId, lastExpr.info.id, { type: EdgeType.Returns })
+		// process all exit points as potential returns:
+		for(const exit of exitPoints) {
+			if(exit.type === ExitPointType.Return || exit.type === ExitPointType.Default) {
+				nextGraph.addEdge(rootId, exit.nodeId, { type: EdgeType.Returns })
+			}
 		}
 	}
 
+	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId)
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
@@ -216,9 +219,9 @@ export function processExpressionList<OtherInfo>(
 		out,
 		environment:       environment,
 		graph:             nextGraph,
-		entryPoint:        withGroup ? rootId : (lastExpr?.info.id ?? rootId),
-		returns:           returns,
-		breaks:            breaks,
-		nexts:             nexts
+		/* if we have no group we take the last evaluated expr */
+		entryPoint:        meId,
+		exitPoints:        withGroup ? [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			: exitPoints
 	}
 }

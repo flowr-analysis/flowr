@@ -1,14 +1,14 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { collectAllIds, EmptyArgument } from '../../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
+import type { DataflowInformation, ExitPoint } from '../../../../../info'
+import { ExitPointType } from '../../../../../info'
 import { linkInputs } from '../../../../linker'
 import {
 	type DataflowFunctionFlowInformation,
 	DataflowGraph,
 	dataflowLogger,
-	type DataflowMap,
 	EdgeType,
 	type IdentifierReference,
 	initializeCleanEnvironments,
@@ -24,7 +24,6 @@ import {
 	pushLocalEnvironment,
 	resolveByName
 } from '../../../../../environments'
-import { retrieveExitPointOfFunctionDefinition } from '../../exit-points'
 
 // TODO: we have to map the named alist correctly
 export function processFunctionDefinition<OtherInfo>(
@@ -38,8 +37,8 @@ export function processFunctionDefinition<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
+	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1)
-
 	const bodyArg = unpackArgument(args[args.length - 1])
 	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! Bad!`)
 
@@ -61,7 +60,8 @@ export function processFunctionDefinition<OtherInfo>(
 	const paramsEnvironments = data.environment
 
 	const body = processDataflowFor(bodyArg, data)
-	// as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
+	// As we know, parameters cannot technically duplicate (i.e., their names are unique), we overwrite their environments.
+	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
 	const bodyEnvironment = body.environment
 
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body)
@@ -92,50 +92,43 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({
-				tag:               VertexType.Use,
-				id:                read.nodeId,
-				name:              read.name,
-				environment:       undefined,
-				controlDependency: []
+				tag:                 VertexType.Use,
+				id:                  read.nodeId,
+				name:                read.name,
+				environment:         undefined,
+				controlDependencies: []
 			})
 		}
 	}
 
-	// TODO: use returns to find exit points
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
-		breaks:            [],
-		returns:           [],
-		nexts:             [],
 		entryPoint:        body.entryPoint,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment
 	}
 
-	const exitPoints = [retrieveExitPointOfFunctionDefinition(body, bodyArg)]
-	// if exit points are extra, we must link them to all dataflow nodes they relate to.
-	linkExitPointInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
+	const exitPoints = body.exitPoints
 	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, name)
 
 	const graph = new DataflowGraph().mergeWith(subgraph, false)
 	graph.addVertex({
-		tag:               VertexType.FunctionDefinition,
-		id:                name.info.id,
-		name:              String(name.info.id),
-		environment:       popLocalEnvironment(outEnvironment),
-		controlDependency: data.controlDependency,
-		subflow:           flow,
-		exitPoints
+		tag:                 VertexType.FunctionDefinition,
+		id:                  name.info.id,
+		name:                String(name.info.id),
+		environment:         popLocalEnvironment(outEnvironment),
+		controlDependencies: data.controlDependencies,
+		subflow:             flow,
+		exitPoints:          exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default).map(e => e.nodeId)	?? []
 	})
 	return {
-		unknownReferences: [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
+		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */
+		unknownReferences: [],
 		in:                [],
 		out:               [],
-		returns:           [],
-		breaks:            [],
-		nexts:             [],
+		exitPoints:        [],
 		entryPoint:        name.info.id,
 		graph,
 		environment:       originalEnvironment
@@ -144,23 +137,29 @@ export function processFunctionDefinition<OtherInfo>(
 
 
 
-function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, name: RSymbol<OtherInfo & ParentInformation>) {
-	// track *all* function definitions - included those nested within the current graph
+function updateNestedFunctionClosures<OtherInfo>(
+	exitPoints: readonly ExitPoint[],
+	subgraph: DataflowGraph,
+	outEnvironment: REnvironmentInformation,
+	name: RSymbol<OtherInfo & ParentInformation>
+) {
+	// track *all* function definitions - including those nested within the current graph
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, info] of subgraph.vertices(true)) {
-		if(info.tag !== 'function-definition') {
+		if(info.tag !== VertexType.FunctionDefinition) {
 			continue
 		}
+
 		const ingoingRefs = info.subflow.in
-		const remainingIn: IdentifierReference[] = []
+		const remainingIn: Set<IdentifierReference> = new Set()
 		for(const ingoing of ingoingRefs) {
-			for(const exitPoint of exitPoints) {
-				const node = subgraph.get(exitPoint, true)
+			for(const { nodeId } of exitPoints) {
+				const node = subgraph.get(nodeId, true)
 				const env = initializeCleanEnvironments()
-				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment?.current.memory ?? outEnvironment.current.memory
+				env.current.memory = node === undefined ? outEnvironment.current.memory : (node[0].environment?.current.memory ?? outEnvironment.current.memory)
 				const resolved = ingoing.name ? resolveByName(ingoing.name, env) : undefined
 				if(resolved === undefined) {
-					remainingIn.push(ingoing)
+					remainingIn.add(ingoing)
 					continue
 				}
 				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
@@ -169,8 +168,8 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 				}
 			}
 		}
-		dataflowLogger.trace(`Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
-		info.subflow.in = [...new Set(remainingIn)]
+		dataflowLogger.trace(`Keeping ${remainingIn.size} (unique) references to open ref ${id} in closure of function definition ${name.info.id}`)
+		info.subflow.in = [...remainingIn]
 	}
 }
 
@@ -210,7 +209,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			remainingRead.push(read)
 			continue
 		}
-		if(writingOuts[0].controlDependency === undefined) {
+		if(writingOuts[0].controlDependencies === undefined) {
 			parameters.addEdge(read, writingOuts[0], { type: EdgeType.Reads })
 			continue
 		}
@@ -220,32 +219,3 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	}
 	return remainingRead
 }
-
-
-function linkExitPointInGraph<OtherInfo>(exitPoints: readonly NodeId[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
-	for(const exitPoint of exitPoints) {
-		const exitPointNode = graph.get(exitPoint, true)
-		// if there already is an exit point, it is either a variable or already linked
-		if(exitPointNode !== undefined) {
-			continue
-		}
-		const nodeInAst = idMap.get(exitPoint)
-
-		guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-		graph.addVertex({
-			tag:               VertexType.ExitPoint,
-			id:                exitPoint,
-			name:              `${nodeInAst.lexeme ?? '??'}`,
-			environment,
-			controlDependency: undefined
-		})
-
-		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
-		for(const relatedId of allIds) {
-			if(relatedId !== exitPoint) {
-				graph.addEdge(exitPoint, relatedId, { type: EdgeType.Relates })
-			}
-		}
-	}
-}
-

@@ -5,6 +5,7 @@ import { DataflowGraph, EdgeType, VertexType } from '../../../graph'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type { DataflowInformation } from '../../../info'
+import { ExitPointType } from '../../../info'
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
@@ -31,10 +32,10 @@ export function processFunctionArgument<OtherInfo>(
 	let entryPoint = value?.entryPoint
 	if(argumentName) {
 		graph.addVertex({
-			tag:               VertexType.Use,
-			id:                argument.info.id,
-			name:              argumentName,
-			controlDependency: data.controlDependency
+			tag:                 VertexType.Use,
+			id:                  argument.info.id,
+			name:                argumentName,
+			controlDependencies: data.controlDependencies
 		})
 		entryPoint = argument.info.id
 	}
@@ -53,12 +54,10 @@ export function processFunctionArgument<OtherInfo>(
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs.filter(r => r.name !== undefined),
 		// , ...value.out, ...(name?.out ?? [])
-		out:               argumentName ?[ { name: argumentName, nodeId: argument.info.id, controlDependency: data.controlDependency } ] : [],
+		out:               argumentName ?[ { name: argumentName, nodeId: argument.info.id, controlDependencies: data.controlDependencies } ] : [],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
-		returns:           [],
-		breaks:            [],
-		nexts:             []
+		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 	}
 }

@@ -68,16 +68,16 @@ export function processAllArguments<OtherInfo>(
 		finalGraph.mergeWith(processed.graph)
 
 		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push({ nodeId: processed.entryPoint, controlDependency: undefined })
+			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined })
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependency: undefined })
+			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined })
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, { type: EdgeType.Argument })
 
 		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
-				{ nodeId: processed.entryPoint, name: ((arg as RArgument).name as RSymbol).content, definedAt: arg.info.id, kind: 'argument', controlDependency: data.controlDependency },
+				{ nodeId: processed.entryPoint, name: ((arg as RArgument).name as RSymbol).content, definedAt: arg.info.id, kind: 'argument', controlDependencies: data.controlDependencies },
 				false,
 				argEnv
 			)
@@ -98,14 +98,14 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		name:              name.content,
-		environment:       data.environment,
+		tag:                 VertexType.FunctionCall,
+		id:                  rootId,
+		name:                name.content,
+		environment:         data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		controlDependency: data.controlDependency,
-		args:              argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependency: undefined })
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined })
 	})
 	for(const arg of argumentProcessResult) {
 		if(arg) {

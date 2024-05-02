@@ -17,22 +17,22 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
-				if(definition.controlDependency && defaultCd && !definition.controlDependency.includes(defaultCd)) {
-					definition.controlDependency.push(defaultCd)
+				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.includes(defaultCd)) {
+					definition.controlDependencies.push(defaultCd)
 				} else {
-					definition.controlDependency = defaultCd ? [defaultCd] : []
+					definition.controlDependencies = defaultCd ? [defaultCd] : []
 				}
 			}
 		}
 	}
 	if(node) {
-		if(node[0].controlDependency && defaultCd && !node[0].controlDependency.includes(defaultCd)) {
-			node[0].controlDependency.push(defaultCd)
+		if(node[0].controlDependencies && defaultCd && !node[0].controlDependencies.includes(defaultCd)) {
+			node[0].controlDependencies.push(defaultCd)
 		} else {
-			node[0].controlDependency = defaultCd ? [defaultCd] : []
+			node[0].controlDependencies = defaultCd ? [defaultCd] : []
 		}
 	}
-	return { ...ref, controlDependency: [...ref.controlDependency ?? [], ...(defaultCd ? [defaultCd]: []) ] }
+	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] }
 }
 
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference[] {

@@ -99,10 +99,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 	} else if(arg === EmptyArgument) {
 		return '[empty]'
 	} else if(isNamedArgument(arg)) {
-		const deps = arg.controlDependency ? ', :maybe:' + arg.controlDependency.join(',') : ''
+		const deps = arg.controlDependencies ? ', :maybe:' + arg.controlDependencies.join(',') : ''
 		return `${arg.name} (${arg.nodeId}${deps})`
 	} else if(isPositionalArgument(arg)) {
-		const deps = arg.controlDependency ? ' (:maybe:' + arg.controlDependency.join(',') + ')': ''
+		const deps = arg.controlDependencies ? ' (:maybe:' + arg.controlDependencies.join(',') + ')': ''
 		return `${arg.nodeId}${deps}`
 	} else {
 		return '??'
@@ -117,7 +117,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD'>): string {
 	// sort from and to for same edges and relates be order independent
-	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef) || types.has(EdgeType.Relates)) {
+	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef)) {
 		if(from > to) {
 			({ from, to } = { from: to, to: from })
 		}
@@ -146,7 +146,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 }
 
 function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependency? ' {' + id.controlDependency.join(',') + '},' : ''} def. @${id.definedAt})`
+	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.join(',') + '},' : ''} def. @${id.definedAt})`
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
@@ -182,7 +182,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 	const escapedName = escapeMarkdown(info.name === CONSTANT_NAME ? recoverConstantName(dataflowIdMap, info) : info.name)
 
-	const deps = info.controlDependency ? ', :maybe:' + info.controlDependency.join(',') : ''
+	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
@@ -192,9 +192,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	const artificialCdEdges = (info.controlDependency ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
-		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead) || edge.types.has(EdgeType.Relates)
+		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)

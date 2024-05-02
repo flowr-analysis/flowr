@@ -11,8 +11,7 @@ export const enum VertexType {
 	Use = 'use',
 	FunctionCall = 'function-call',
 	VariableDefinition = 'variable-definition',
-	FunctionDefinition = 'function-definition',
-	ExitPoint = 'exit-point'
+	FunctionDefinition = 'function-definition'
 }
 
 /**
@@ -26,31 +25,23 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * Used to identify and separate different types of vertices.
 	 */
-	readonly tag:      VertexType
+	readonly tag:        VertexType
 	/**
 	 * The id of the node (the id assigned by the {@link ParentInformation} decoration)
 	 */
-	id:                NodeId
+	id:                  NodeId
 	/**
 	 * The name of the node, usually the variable name
 	 */
-	name:              string
+	name:                string
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?:      REnvironmentInformation | undefined
+	environment?:        REnvironmentInformation | undefined
 	/**
 	 * See {@link IdentifierReference}
 	 */
-	controlDependency: NodeId[] | undefined
-}
-
-/**
- * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
- */
-export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
-	readonly tag:          VertexType.ExitPoint
-	readonly environment?: REnvironmentInformation
+	controlDependencies: NodeId[] | undefined
 }
 
 export const CONSTANT_NAME = '__@@C@@__'
@@ -103,5 +94,5 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	environment?: REnvironmentInformation
 }
 
-export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue
+export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>

@@ -1,4 +1,5 @@
 import type { DataflowInformation } from '../../../info'
+import { ExitPointType } from '../../../info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type { IdentifierDefinition } from '../../../environments'
@@ -44,8 +45,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		graph:             graph,
 		environment:       environment,
 		entryPoint:        parameter.info.id,
-		returns:           [],
-		breaks:            [],
-		nexts:             []
+		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 	}
 }

@@ -44,13 +44,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
-			tag:               VertexType.FunctionDefinition,
+			tag:                 VertexType.FunctionDefinition,
 			id,
 			name,
 			subflow,
 			exitPoints,
-			controlDependency: info?.controlDependency,
-			environment:       info?.environment
+			controlDependencies: info?.controlDependency,
+			environment:         info?.environment
 		}, asRoot)
 	}
 
@@ -75,13 +75,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
 		this.addVertex({
-			tag:               VertexType.FunctionCall,
+			tag:                 VertexType.FunctionCall,
 			id,
 			name,
-			args:              args.map(a =>  a === EmptyArgument ? EmptyArgument : { ...a, controlDependency: undefined }),
-			environment:       info?.environment,
-			controlDependency: info?.controlDependency,
-			onlyBuiltin:       info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
+			args:                args.map(a =>  a === EmptyArgument ? EmptyArgument : { ...a, controlDependency: undefined }),
+			environment:         info?.environment,
+			controlDependencies: info?.controlDependency,
+			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
 		}, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
@@ -110,31 +110,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 					this.reads(arg.nodeId, withoutSuffix)
 				}
 			} else if(!this.hasVertex(arg.nodeId, true)) {
-				this.use(arg.nodeId, arg.name, { controlDependency: arg.controlDependency })
+				this.use(arg.nodeId, arg.name, { controlDependencies: arg.controlDependencies })
 				this.argument(id, arg.nodeId)
 			}
 		}
-	}
-
-	/**
-	 * Adds a **vertex** for an **exit point** of a function (V3).
-	 *
-	 * @param id - AST node ID
-	 * @param name - AST node text
-	 * @param info - Additional/optional properties.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
-	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
-	 */
-	public exit(id: NodeId, name: string,
-		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
-		asRoot: boolean = true) {
-		return this.addVertex({
-			tag:               VertexType.ExitPoint,
-			id,
-			environment:       info?.environment,
-			name,
-			controlDependency: info?.controlDependency
-		}, asRoot)
 	}
 
 	/**
@@ -149,10 +128,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public defineVariable(id: NodeId, name: string,
 		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertex({
-			tag:               VertexType.VariableDefinition,
+			tag:                 VertexType.VariableDefinition,
 			id,
 			name,
-			controlDependency: info?.controlDependency
+			controlDependencies: info?.controlDependency
 		}, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -173,11 +152,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({
-			tag:               VertexType.Use,
+			tag:                 VertexType.Use,
 			id,
 			name,
-			controlDependency: undefined,
-			environment:       undefined
+			controlDependencies: undefined,
+			environment:         undefined
 		}, info), asRoot)
 	}
 
@@ -192,11 +171,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
 		return this.addVertex({
-			tag:               VertexType.Value,
-			name:              CONSTANT_NAME,
+			tag:                 VertexType.Value,
+			name:                CONSTANT_NAME,
 			id,
-			controlDependency: options?.controlDependency,
-			environment:       undefined
+			controlDependencies: options?.controlDependency,
+			environment:         undefined
 		}, asRoot)
 	}
 
@@ -284,15 +263,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Argument)
-	}
-
-	/**
-	 * Adds a **relation edge** (E10) with from as exit point, and to as any other vertex.
-	 *
-	 * @see reads for parameters.
-	 */
-	public relates(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Relates)
 	}
 
 	/**

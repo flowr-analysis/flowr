@@ -257,8 +257,10 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 }
 
 
-export function assertSliced(name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
-	return it(`${JSON.stringify(criteria)} ${name}`, async function() {
+export function assertSliced(name: string | TestLabel, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+	const fullname = decorateLabelContext(name, ['slice'])
+
+	return it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
 		const result = await new SteppingSlicer({
 			stepOfInterest: LAST_STEP,
 			getId,

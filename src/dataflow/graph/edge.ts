@@ -34,8 +34,6 @@ export const enum EdgeType {
 	Argument = 'argument',
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 'side-effect-on-call',
-	/** The source and edge relate to each other bidirectionally */
-	Relates = 'relates',
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
@@ -56,7 +54,6 @@ const traverseEdge: Record<EdgeType, TraverseEdge> = {
 	[EdgeType.DefinedBy]:             TraverseEdge.Always,
 	[EdgeType.Argument]:              TraverseEdge.Always,
 	[EdgeType.Calls]:                 TraverseEdge.Always,
-	[EdgeType.Relates]:               TraverseEdge.Always,
 	[EdgeType.DefinesOnCall]:         TraverseEdge.Always,
 	[EdgeType.DefinedByOnCall]:       TraverseEdge.DefinedByOnCall,
 	[EdgeType.SideEffectOnCall]:      TraverseEdge.SideEffect,

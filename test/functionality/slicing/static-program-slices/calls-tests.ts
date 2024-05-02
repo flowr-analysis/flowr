@@ -1,4 +1,5 @@
 import { assertSliced, withShell } from '../../_helper/shell'
+import { label } from '../../_helper/label'
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
@@ -6,7 +7,9 @@ describe('Calls', withShell(shell => {
 a <- function(x) { x }
 a(i)`
 		for(const criterion of ['3:1', '3@a'] as const) {
-			assertSliced(JSON.stringify(code), shell, code, [criterion], code)
+			assertSliced(label(JSON.stringify(code), ['function-definitions', 'name-normal', 'call-normal', 'local-left-assignment', 'unnamed-arguments']),
+				shell, code, [criterion], code
+			)
 		}
 		const constFunction = `i <- 4
 a <- function(x) { x <- 2; 1 }
@@ -245,21 +248,20 @@ b <- f()`)
 		const code = `x <- (function() {
   g <- function() { y }
   y <- 5
-  if(z)
-    return(g)
+  if(z) 
+  	return(g)
   y <- 3
   g
 })()
 res <- x()`
-		assertSliced('Double return points', shell, code, ['9@x'], `
+		assertSliced('Double return points', shell, code, ['9@res'], `
 x <- (function() {
-  g <- function() { y }
-  y <- 5
-  if(z)
-    return(g)
-  y <- 3
-  g
-})()
+        g <- function() { y }
+        y <- 5
+        if(z) return(g)
+        y <- 3
+        g
+    })()
 res <- x()`.trim())
 	})
 	describe('Recursive functions', () => {

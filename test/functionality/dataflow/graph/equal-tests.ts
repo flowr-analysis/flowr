@@ -45,8 +45,8 @@ describe('Equal', () => {
 				const rhs = emptyGraph().use('0', 'x')
 				neq('Id', emptyGraph().use('1', 'x'), rhs)
 				neq('Name', emptyGraph().use('0', 'y'), rhs)
-				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependency: ['1'] }), rhs)
-				neq('Tag', emptyGraph().exit('0', 'x'), rhs)
+				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: ['1'] }), rhs)
+				neq('Tag', emptyGraph().constant('0'), rhs)
 			})
 			describe('Different edges', () => {
 				const rhs = emptyGraph().reads('0', '1')

@@ -1,6 +1,7 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
 import type { DataflowProcessorInformation } from '../processor'
-import type { DataflowInformation } from '../info'
+import { ExitPointType } from '../info'
+import type { DataflowInformation  } from '../info'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
 import { EdgeType } from '../graph'
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
@@ -53,7 +54,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last', cfg?: 'return' | 'break' | 'next', readAllArguments?: boolean }
+	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean }
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
 	if(config.returnsNthArgument !== undefined) {
@@ -69,17 +70,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 			}
 		}
 	}
-	switch(config.cfg) {
-		case 'return':
-			res.returns = [...res.returns, rootId]
-			break
-		case 'break':
-			res.breaks = [...res.breaks, rootId]
-			break
-		case 'next':
-			res.nexts = [...res.nexts, rootId]
-			break
 
+	if(config.cfg !== undefined) {
+		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }]
 	}
 	return res
 }
@@ -92,12 +85,12 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 	for(const name of names) {
 		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 		BuiltInMemory.set(name, [{
-			kind:              'built-in-function',
-			definedAt:         BuiltIn,
-			controlDependency: undefined,
-			processor:         (name, args, rootId, data) => processor(name, args, rootId, data, config),
+			kind:                'built-in-function',
+			definedAt:           BuiltIn,
+			controlDependencies: undefined,
+			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
 			name,
-			nodeId:            BuiltIn
+			nodeId:              BuiltIn
 		}])
 	}
 }
@@ -113,12 +106,12 @@ export function registerReplacementFunctions(
 			const effectiveName = `${prefix}${assignment}`
 			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
 			BuiltInMemory.set(effectiveName, [{
-				kind:              'built-in-function',
-				definedAt:         BuiltIn,
-				processor:         (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
-				name:              effectiveName,
-				controlDependency: undefined,
-				nodeId:            BuiltIn
+				kind:                'built-in-function',
+				definedAt:           BuiltIn,
+				processor:           (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
+				name:                effectiveName,
+				controlDependencies: undefined,
+				nodeId:              BuiltIn
 			}])
 		}
 	}
@@ -132,12 +125,12 @@ function registerSimpleFunctions(...names: readonly Identifier[]): void {
 function registerBuiltInConstant<T>(name: Identifier, value: T): void {
 	guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 	BuiltInMemory.set(name, [{
-		kind:              'built-in-value',
-		definedAt:         BuiltIn,
-		controlDependency: undefined,
+		kind:                'built-in-value',
+		definedAt:           BuiltIn,
+		controlDependencies: undefined,
 		value,
 		name,
-		nodeId:            BuiltIn
+		nodeId:              BuiltIn
 	}])
 }
 
@@ -152,9 +145,9 @@ registerBuiltInConstant('F', false)
 registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':')
 registerBuiltInFunctions(defaultBuiltInProcessor,   {},                                                   'cat') /* returns null */
 registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0 },                            'print', '(')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: 'return' as const },    'return')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: 'break' as const },                            'break')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: 'next' as const },                             'next')
+registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }, 'return')
+registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: ExitPointType.Break },                         'break')
+registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: ExitPointType.Next },                          'next')
 registerBuiltInFunctions(processExpressionList,     {},                                                   '{')
 registerBuiltInFunctions(processSourceCall,         {},                                                   'source')
 registerBuiltInFunctions(processAccess,             { treatIndicesAsString: false },                      '[', '[[')

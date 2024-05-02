@@ -11,7 +11,7 @@ import {
 } from '../../../../src/dataflow/environments'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependency: undefined }
+	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined }
 }
 
 /**
@@ -20,7 +20,7 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: NodeId[] }): FunctionArgument {
-	return { nodeId, name: options?.name, controlDependency: options?.controlDependency }
+	return { nodeId, name: options?.name, controlDependencies: options?.controlDependency }
 }
 /**
  * The constant global environment with all pre-defined functions.
@@ -56,7 +56,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineInEnv({ name, kind: 'argument', definedAt, nodeId, controlDependency })
+		return this.defineInEnv({ name, kind: 'argument', definedAt, nodeId, controlDependencies: controlDependency })
 	}
 
 	/**
@@ -67,7 +67,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineInEnv({ name, kind: 'function', definedAt, nodeId,  controlDependency })
+		return this.defineInEnv({ name, kind: 'function', definedAt, nodeId,  controlDependencies: controlDependency })
 	}
 
 	/**
@@ -78,7 +78,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 * */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineInEnv({ name, kind: 'parameter', definedAt, nodeId, controlDependency: controlDependency })
+		return this.defineInEnv({ name, kind: 'parameter', definedAt, nodeId, controlDependencies: controlDependency })
 	}
 
 	/**
@@ -89,7 +89,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineInEnv({ name, kind: 'variable', definedAt, nodeId, controlDependency })
+		return this.defineInEnv({ name, kind: 'variable', definedAt, nodeId, controlDependencies: controlDependency })
 	}
 
 	/**

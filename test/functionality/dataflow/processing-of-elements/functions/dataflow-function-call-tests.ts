@@ -29,9 +29,6 @@ describe('Function Call', withShell(shell => {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '9',
 				graph:             new Set(['4', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
@@ -62,9 +59,6 @@ describe('Function Call', withShell(shell => {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
-					breaks:            [],
-					nexts:             [],
-					returns:           [],
 					entryPoint:        '9',
 					graph:             new Set(['4', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
@@ -101,11 +95,8 @@ a(i)`,  emptyGraph()
 			.constant('14', undefined, false)
 			.defineFunction('16', '16', ['15'], {
 				out:               [],
-				in:                [{ nodeId: '14', name: undefined, controlDependency: [] }],
+				in:                [{ nodeId: '14', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '15',
 				graph:             new Set(['4', '9', '8', '10', '12', '11', '13', '14', '15']),
 				environment:       defaultEnv().pushEnv().defineVariable('x', '11', '13')
@@ -130,9 +121,6 @@ a(i)`,  emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '9',
 				graph:             new Set(['2', '6', '7', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '2', '3')
@@ -160,11 +148,8 @@ a()()`,  emptyGraph()
 			.constant('5', undefined, false)
 			.defineFunction('7', '7', ['6'], {
 				out:               [],
-				in:                [{ nodeId: '5', name: undefined, controlDependency: [] }],
+				in:                [{ nodeId: '5', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '6',
 				graph:             new Set(['5', '6']),
 				environment:       defaultEnv().pushEnv().pushEnv()
@@ -173,9 +158,6 @@ a()()`,  emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '8',
 				graph:             new Set(['7', '8']),
 				environment:       defaultEnv().pushEnv()
@@ -201,11 +183,8 @@ a()()`,  emptyGraph()
 			.constant('3', undefined, false)
 			.defineFunction('5', '5', ['4'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependency: [] }],
+				in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '4',
 				graph:             new Set(['3', '4']),
 				environment:       defaultEnv().pushEnv()
@@ -238,11 +217,8 @@ a()()`,  emptyGraph()
 			.calls('11', '5')
 			.defineFunction('5', '5', ['4'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: 'y', controlDependency: [] }],
+				in:                [{ nodeId: '3', name: 'y', controlDependencies: [] }],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '4',
 				graph:             new Set(['3', '4']),
 				environment:       defaultEnv().pushEnv()
@@ -269,9 +245,6 @@ a(,3)`,  emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				breaks:            [],
-				nexts:             [],
-				returns:           [],
 				entryPoint:        '9',
 				graph:             new Set(['1', '2', '4', '8', '9']),
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3').defineParameter('y', '4', '5')

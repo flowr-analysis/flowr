@@ -19,8 +19,8 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${info.leftname}: ${a.nodeId} vs. ${info.rightname}: ${b.nodeId}`)
 	}
-	if(!arrayEqual(a.controlDependency, b.controlDependency)) {
-		info.report.addComment(`${info.position}Different control dependency: ${info.leftname}: ${JSON.stringify(a.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(b.controlDependency)}`)
+	if(!arrayEqual(a.controlDependencies, b.controlDependencies)) {
+		info.report.addComment(`${info.position}Different control dependency: ${info.leftname}: ${JSON.stringify(a.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(b.controlDependencies)}`)
 	}
 }
 
@@ -45,8 +45,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(normalizeIdsForDiff(aVal.nodeId) !== normalizeIdsForDiff(bVal.nodeId)) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
-			if(!arrayEqual(aVal.controlDependency, bVal.controlDependency)) {
-				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependency)}`)
+			if(!arrayEqual(aVal.controlDependencies, bVal.controlDependencies)) {
+				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependencies)}`)
 			}
 			if(normalizeIdsForDiff(aVal.definedAt) !== normalizeIdsForDiff(bVal.definedAt)) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)

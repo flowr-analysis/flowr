@@ -39,7 +39,6 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.Returns]:               'returns',
 	[EdgeType.DefinesOnCall]:         'definesOnCall',
 	[EdgeType.Argument]: 	            'argument',
-	[EdgeType.Relates]:               'relates',
 	[EdgeType.NonStandardEvaluation]: 'nse',
 	[EdgeType.SideEffectOnCall]:      'sideEffectOnCall',
 	/* treated specially as done by automated mirroring */
@@ -119,7 +118,7 @@ class DataflowBuilderPrinter {
 			wrap(id),
 			wrap(vertex.name),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		])
 	}
@@ -163,7 +162,7 @@ class DataflowBuilderPrinter {
 		// will respect the corresponding node!
 		const vertex = this.graph.get(id, true)
 		if(vertex !== undefined) {
-			return vertex[0].controlDependency
+			return vertex[0].controlDependencies
 		}
 		return undefined
 	}
@@ -187,7 +186,7 @@ class DataflowBuilderPrinter {
 				const root = this.asRootArg(id)
 				this.recordFnCall(id, 'constant', [
 					wrap(id),
-					this.getControlDependencySuffix(vertex.controlDependency) ?? (root ? 'undefined' : undefined),
+					this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 					root
 				])
 				break
@@ -196,9 +195,6 @@ class DataflowBuilderPrinter {
 				break
 			case VertexType.FunctionDefinition:
 				this.processFunctionDefinition(id, vertex)
-				break
-			case VertexType.ExitPoint:
-				console.log('TODO: exit-point')
 				break
 			default:
 				assertUnreachable(tag)
@@ -221,7 +217,7 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id, 'use', [
 			wrap(id),
 			wrap(vertex.name),
-			this.getControlDependencySuffix(vertex.controlDependency) ?? (root ? 'undefined' : undefined),
+			this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 			root
 		])
 	}
@@ -237,9 +233,6 @@ class DataflowBuilderPrinter {
 				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
 				in:                [${vertex.subflow.in.map(wrapReference).join(', ')}],
 				unknownReferences: [${vertex.subflow.unknownReferences.map(wrapReference).join(', ')}],
-				breaks:            [${vertex.subflow.breaks.map(wrap).join(', ')}],
-				nexts:             [${vertex.subflow.nexts.map(wrap).join(', ')}],
-				returns:           [${vertex.subflow.returns.map(wrap).join(', ')}],
 				entryPoint:        ${wrap(vertex.subflow.entryPoint)},
 				graph:             new Set([${[...vertex.subflow.graph].map(wrap).join(', ')}]),
 				environment:       ${new EnvironmentBuilderPrinter(vertex.subflow.environment).print()}
@@ -258,7 +251,7 @@ class DataflowBuilderPrinter {
 		this.recordFnCall(id,'defineVariable', [
 			wrap(id),
 			wrap(vertex.name),
-			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? '') + ' }',
+			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)
 		])
 	}

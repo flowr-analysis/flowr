@@ -2,6 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
+import { alwaysExits } from '../../../../../info'
 import {
 	appendEnvironment,
 	type IdentifierReference,
@@ -34,7 +35,12 @@ export function processIfThenElse<OtherInfo>(
 
 	const cond = processDataflowFor(condArg, data)
 
-	const originalDependency = data.controlDependency
+	if(alwaysExits(cond)) {
+		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`)
+		return cond
+	}
+
+	const originalDependency = data.controlDependencies
 	// currently we update the cd afterward :sweat:
 	data = { ...data, environment: cond.environment }
 
@@ -67,7 +73,6 @@ export function processIfThenElse<OtherInfo>(
 	}
 
 	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph)
-
 	const thenEnvironment = then?.environment ?? cond.environment
 
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
@@ -96,20 +101,23 @@ export function processIfThenElse<OtherInfo>(
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, controlDependency: originalDependency },
+		data:                  { ...data, controlDependencies: originalDependency },
 		argumentProcessResult: [cond, then, otherwise]
 	})
 
 	// as an if always evaluates its condition, we add a 'reads'-edge
 	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads })
 
+	const exitPoints = [
+		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? []] : e.controlDependencies })),
+		...(otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? []] : e.controlDependencies }))
+	]
+
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependency: originalDependency }, ...ingoing],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...ingoing],
 		out:               outgoing,
-		breaks:            [...cond.breaks, ...(then?.breaks ?? []), ...(otherwise?.breaks ?? [])],
-		returns:           [...cond.returns, ...(then?.returns ?? []), ...(otherwise?.returns ?? [])],
-		nexts:             [...cond.nexts, ...(then?.nexts ?? []), ...(otherwise?.nexts ?? [])],
+		exitPoints,
 		entryPoint:        name.info.id,
 		environment:       finalEnvironment,
 		graph:             nextGraph

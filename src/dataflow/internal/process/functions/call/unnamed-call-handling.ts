@@ -37,18 +37,18 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	})
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                functionRootId,
-		name:              functionCallName,
-		environment:       data.environment,
+		tag:                 VertexType.FunctionCall,
+		id:                  functionRootId,
+		name:                functionCallName,
+		environment:         data.environment,
 		/* can never be a direct built-in-call */
-		onlyBuiltin:       false,
-		controlDependency: data.controlDependency,
-		args:              callArgs // same reference
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                callArgs // same reference
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependency: data.controlDependency })
+	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies })
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
@@ -63,9 +63,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		out:               calledFunction.out,
 		graph:             finalGraph,
 		environment:       finalEnv,
-		returns:           [],
-		breaks:            [],
-		nexts:             [],
-		entryPoint:        calledRootId
+		entryPoint:        calledRootId,
+		exitPoints:        calledFunction.exitPoints
 	}
 }

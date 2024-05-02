@@ -76,7 +76,7 @@ export class EnvironmentBuilderPrinter {
 	}
 
 	private getControlDependencyArgument(def: IdentifierDefinition) {
-		return def.controlDependency ? `[${def.controlDependency.map(wrap).join(', ')}]` : undefined
+		return def.controlDependencies ? `[${def.controlDependencies.map(wrap).join(', ')}]` : undefined
 	}
 
 	private push() {

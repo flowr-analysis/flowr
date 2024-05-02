@@ -101,9 +101,9 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
 	return target.in.map(ref => ({
 		...ref,
-		kind:              isFunctionDef ? 'function' : 'variable',
-		definedAt:         rootId,
-		controlDependency: data.controlDependency ?? (makeMaybe ? [] : undefined)
+		kind:                isFunctionDef ? 'function' : 'variable',
+		definedAt:           rootId,
+		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined)
 	}))
 }
 
@@ -155,7 +155,7 @@ function processAssignmentToSymbol<OtherInfo>(
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1)
-	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependency: data.controlDependency }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)

@@ -116,7 +116,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	const edges = graph.get(id, true)
 	guard(edges !== undefined, () => `id ${id} must be present in graph`)
 
-	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls) || e.types.has(EdgeType.Relates)).map(([target, _]) => target)
+	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls)).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
@@ -155,13 +155,13 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: DecoratedAstMap,
-	functionCalls: readonly [NodeId, DataflowGraphVertexInfo][],
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
+	const functionCalls = [...thisGraph.vertices(true)]
+		.filter(([_,info]) => info.tag === VertexType.FunctionCall)
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
 	for(const [id, info] of functionCalls) {
-		guard(info.tag === VertexType.FunctionCall, () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
-		linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions)
+		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions)
 	}
 	return calledFunctionDefinitions
 }
@@ -194,7 +194,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)))
 			continue
 		}
-		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall) || e.types.has(EdgeType.Relates))
+		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall))
 
 		if(currentInfo[0].subflow !== undefined) {
 			result.set(currentId, currentInfo[0])
@@ -223,7 +223,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`)
 			if(maybeForRemaining) {
-				bodyInput.controlDependency ??= []
+				bodyInput.controlDependencies ??= []
 			}
 			givenInputs.push(bodyInput)
 		} else {

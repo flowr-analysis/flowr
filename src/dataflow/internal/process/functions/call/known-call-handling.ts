@@ -2,6 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } fro
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
+import { ExitPointType } from '../../../../info'
 import { DataflowGraph, EdgeType, VertexType } from '../../../../graph'
 import type { IdentifierReference } from '../../../../index'
 import { dataflowLogger } from '../../../../index'
@@ -67,18 +68,18 @@ export function processKnownFunctionCall<OtherInfo>(
 	markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		name:              functionCallName,
-		environment:       data.environment,
+		tag:                 VertexType.FunctionCall,
+		id:                  rootId,
+		name:                functionCallName,
+		environment:         data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		controlDependency: data.controlDependency,
-		args:              reverseOrder ? [...callArgs].reverse() : callArgs
+		onlyBuiltin:         false,
+		controlDependencies: data.controlDependencies,
+		args:                reverseOrder ? [...callArgs].reverse() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
-	const fnRef = { nodeId: rootId, name: functionCallName, controlDependency: data.controlDependency }
+	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies }
 	inIds.push(fnRef)
 
 	return {
@@ -90,9 +91,8 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			returns:           [],
-			breaks:            [],
-			nexts:             []
+			// TODO: find a better one
+			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
 		fnRef

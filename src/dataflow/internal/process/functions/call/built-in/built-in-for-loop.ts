@@ -2,6 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
+import { filterOutLoopExitPoints , ExitPointType , alwaysExits } from '../../../../../info'
 import {
 	appendEnvironment,
 	define,
@@ -28,19 +29,24 @@ export function processForLoop<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 3) {
-		dataflowLogger.warn(`For-Loop ${name.content} does not have 3 arguments, skipping`)
+		dataflowLogger.warn(`For-Loop ${name.content} does not have three arguments, skipping`)
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	}
 
 	const [variableArg, vectorArg, bodyArg] = args.map(unpackArgument)
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
+	const vector = processDataflowFor(vectorArg, data)
+	if(alwaysExits(vector)) {
+		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`)
+		return vector
+	}
 
 	const variable = processDataflowFor(variableArg, data)
-	const vector = processDataflowFor(vectorArg, data)
+	// this should not be able to exit always!
 
-	const originalDependency = data.controlDependency
-	data = { ...data, controlDependency: [...data.controlDependency ?? [], name.info.id] }
+	const originalDependency = data.controlDependencies
+	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], name.info.id] }
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
 	const headGraph = variable.graph.mergeWith(vector.graph)
@@ -54,12 +60,16 @@ export function processForLoop<OtherInfo>(
 	const body = processDataflowFor(bodyArg, { ...data, environment: initializeCleanEnvironments() })
 
 	const nextGraph = headGraph.mergeWith(body.graph)
-
 	const outEnvironment = appendEnvironment(headEnvironments, body.environment)
 
 	// again within an if-then-else we consider all actives to be read
 	// currently I add it at the end, but is this correct?
-	const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironment, false), ...vector.unknownReferences, ...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironment, false)]
+	const ingoing = [
+		...vector.in,
+		...makeAllMaybe(body.in, nextGraph, outEnvironment, false),
+		...vector.unknownReferences,
+		...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironment, false)
+	]
 
 	// now we have to bind all open reads with the given name to the locally defined writtenVariable!
 	const nameIdShares = produceNameSharedIdMap(ingoing)
@@ -88,7 +98,7 @@ export function processForLoop<OtherInfo>(
 		nextGraph,
 		rootId,
 		name,
-		data:                  { ...data, controlDependency: originalDependency },
+		data:                  { ...data, controlDependencies: originalDependency },
 		argumentProcessResult: [variable, vector, body]
 	})
 	/* mark the last argument as nse */
@@ -97,17 +107,14 @@ export function processForLoop<OtherInfo>(
 	nextGraph.addEdge(name.info.id, variable.entryPoint, { type: EdgeType.Reads })
 	nextGraph.addEdge(name.info.id, vector.entryPoint, { type: EdgeType.Reads })
 
-
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, controlDependency: originalDependency }, ...variable.in, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...variable.in, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
-		breaks:            [],
-		nexts:             [],
-		returns:           [...variable.returns, ...vector.returns, ...body.returns],
 		entryPoint:        name.info.id,
+		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		environment:       outEnvironment
 	}
 }

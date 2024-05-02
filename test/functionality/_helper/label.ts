@@ -20,7 +20,7 @@ const uniqueTestId = (() => {
 })()
 
 
-export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other'
+export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other' | 'slice'
 export interface TestLabel extends MergeableRecord {
 	readonly id:           number
 	readonly name:         string

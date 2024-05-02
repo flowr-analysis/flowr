@@ -220,7 +220,7 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",
-    "@eagleoutice/eslint-config-flowr": "^1.0.2",
+    "@eagleoutice/eslint-config-flowr": "^1.0.5",
     "@stylistic/eslint-plugin": "^1.6.2",
     "@stylistic/eslint-plugin-plus": "^1.6.2",
     "@stylistic/eslint-plugin-ts": "^1.6.2",

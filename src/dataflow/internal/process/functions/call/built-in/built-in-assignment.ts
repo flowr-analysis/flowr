@@ -49,8 +49,8 @@ export interface AssignmentConfiguration {
 
 /**
  * Processes an assignment, i.e., `<target> <- <source>`.
- * Handling it as a function call `` `<-`(<target>, <source>)``.
- * This includes handling of replacement functions (e.g., `names(x) <- ...` as `` `names<-`(x, ...) ``).
+ * Handling it as a function call \`&lt;-\` `(<target>, <source>)`.
+ * This includes handling of replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
  */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

@@ -35,8 +35,8 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - the object to retrieve the id for
- * @param context - In order to provide unique ids even for different contexts, we add the context to the id.
+ * @param obj - The object to retrieve the id for
+ * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string
 

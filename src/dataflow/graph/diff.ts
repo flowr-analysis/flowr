@@ -22,8 +22,6 @@ interface ProblematicEdge {
 	to:   NodeId
 }
 
-const numIdRegex = /^\d+$/
-
 /*
 function normalizeToNumberIfPossible(id: NodeId): NodeId {
 	// check if string is number

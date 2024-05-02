@@ -8,10 +8,9 @@ import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import type { DeepReadonly } from 'ts-essentials'
+import type { DeepReadonly , AsyncOrSync } from 'ts-essentials'
 import { initCommand } from './init'
 import { getConfig } from '../config'
-import type { AsyncOrSync } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 

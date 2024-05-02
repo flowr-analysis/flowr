@@ -100,11 +100,11 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 				assert.deepStrictEqual(ids, expected, `Ids do not match for input ${input}`)
 			})
 		}
-		assertIds('Without stop', 'x <- 2', new Set(['0', '1', '2', '3']))
-		assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === RType.Number)
-		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']))
+		assertIds('Without stop', 'x <- 2', new Set([0, 1, 2, 3]))
+		assertIds('Stop one', 'x <- 2', new Set([0, 2, 3]), n => n.type === RType.Number)
+		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))
 		// if, TRUE, [when]
-		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '4', '5', '9', '10', '11']), n => n.type === RType.BinaryOp)
+		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set([3, 4, 5, 9, 10, 11]), n => n.type === RType.BinaryOp)
 	})
 })
 )

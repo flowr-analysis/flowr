@@ -11,6 +11,7 @@ import type { RShell } from '../../../../src/r-bridge'
 import { decorateAst } from '../../../../src/r-bridge'
 import { retrieveNormalizedAst, withShell } from '../../_helper/shell'
 import { assert } from 'chai'
+import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
 function assertRetrievedIdsWith(shell: RShell, name: string, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return it(name, async() => {
@@ -18,11 +19,11 @@ function assertRetrievedIdsWith(shell: RShell, name: string, input: string, filt
 		const decorated = decorateAst(ast)
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
-			.map(m => ({ id: m.id, name: decorated.idMap.get(m.id)?.lexeme }))
+			.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme }))
 		const expectedMapped = expected
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
 
-		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: m.id, name: decorated.idMap.get(m.id)?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`)
+		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`)
 	})
 }
 

@@ -56,7 +56,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	const functionCallName = name.content
 	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
 
-	const processArgs = reverseOrder ? args.toReversed() : args
+	const processArgs = reverseOrder ? [...args].reverse() : args
 
 	const {
 		finalEnv,
@@ -74,7 +74,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
 		controlDependency: data.controlDependency,
-		args:              reverseOrder ? callArgs.toReversed() : callArgs
+		args:              reverseOrder ? [...callArgs].reverse() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
@@ -94,7 +94,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			breaks:            [],
 			nexts:             []
 		},
-		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,
+		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
 		fnRef
 	}
 }

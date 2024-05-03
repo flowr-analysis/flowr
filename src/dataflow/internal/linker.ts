@@ -1,21 +1,22 @@
-import {
-	CONSTANT_NAME,
+import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
-	FunctionArgument,
+	FunctionArgument } from '../graph'
+import {
+	CONSTANT_NAME,
 	isNamedArgument,
 	VertexType
 } from '../graph'
-import type {IdentifierReference, REnvironmentInformation} from '../environments'
-import {BuiltIn, resolveByName} from '../environments'
-import {DefaultMap} from '../../util/defaultmap'
-import {guard} from '../../util/assert'
-import {expensiveTrace, log} from '../../util/log'
-import type {DecoratedAstMap, NodeId, ParentInformation, RParameter} from '../../r-bridge'
-import {EmptyArgument, RType} from '../../r-bridge'
-import {slicerLogger} from '../../slicing'
-import {dataflowLogger, EdgeType} from '../index'
+import type { IdentifierReference, REnvironmentInformation } from '../environments'
+import { BuiltIn, resolveByName } from '../environments'
+import { DefaultMap } from '../../util/defaultmap'
+import { guard } from '../../util/assert'
+import { expensiveTrace, log } from '../../util/log'
+import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
+import { EmptyArgument, RType } from '../../r-bridge'
+import { slicerLogger } from '../../slicing'
+import { dataflowLogger, EdgeType } from '../index'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)

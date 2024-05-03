@@ -191,7 +191,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	} else if(otherwise.length === 0) {
 		if(isSelected(config, ifThenElse)) {
 			return [
-				{line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0},
+				{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0 },
 				...indentBy(then.splice(1), 1)
 			]
 		} else {
@@ -200,7 +200,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	} else if(then.length === 0) {
 		if(isSelected(config, ifThenElse)) {
 			return [
-				{line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0},
+				{ line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0 },
 				...indentBy(otherwise.splice(1), 1)
 			]
 		} else {

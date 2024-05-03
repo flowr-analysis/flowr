@@ -8,7 +8,7 @@ import {
 	VertexType
 } from '../../dataflow'
 import { guard } from '../../util/assert'
-import type {NodeId, NormalizedAst} from '../../r-bridge'
+import type { NodeId, NormalizedAst } from '../../r-bridge'
 import { expensiveTrace, log } from '../../util/log'
 import type { SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
@@ -31,7 +31,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 	const queue = new VisitingQueue(threshold)
 
 	let minDepth = Number.MAX_SAFE_INTEGER
-	let sliceSeedIds = new Set<NodeId>()
+	const sliceSeedIds = new Set<NodeId>()
 	// every node ships the call environment which registers the calling environment
 	{
 		const emptyEnv = initializeCleanEnvironments()

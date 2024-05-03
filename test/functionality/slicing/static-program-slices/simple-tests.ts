@@ -1,6 +1,6 @@
 import { assertSliced, withShell } from '../../_helper/shell'
-import {label} from "../../_helper/label";
-import {SupportedFlowrCapabilityId} from "../../../../src/r-bridge/data";
+import { label } from '../../_helper/label'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
@@ -171,7 +171,7 @@ cat("Sum:", sum, "\\n")`
 		)
 
 		assertSliced(label('Product in call', capabilities),
-		shell, code, ['13:17'],
+			shell, code, ['13:17'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i

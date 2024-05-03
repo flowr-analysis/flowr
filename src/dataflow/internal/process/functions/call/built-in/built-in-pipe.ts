@@ -7,7 +7,7 @@ import type {
 import { RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger, EdgeType, graphToMermaidUrl, VertexType } from '../../../../../index'
+import { dataflowLogger, EdgeType, VertexType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'

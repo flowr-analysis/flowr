@@ -1,6 +1,6 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
-import {SupportedFlowrCapabilityId} from "../../../../src/r-bridge/data";
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {

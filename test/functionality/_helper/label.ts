@@ -41,9 +41,6 @@ export function label(testname: string, ids: readonly SupportedFlowrCapabilityId
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
 	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids)
-	if(capabilities.has('name-normal')) {
-		capabilities.add('global-scope')
-	}
 	const label: TestLabel = {
 		id:      uniqueTestId(),
 		name:    testname.toLowerCase(),

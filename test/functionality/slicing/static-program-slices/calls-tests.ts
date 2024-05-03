@@ -1,5 +1,6 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
+import {SupportedFlowrCapabilityId} from "../../../../src/r-bridge/data";
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
@@ -7,30 +8,36 @@ describe('Calls', withShell(shell => {
 a <- function(x) { x }
 a(i)`
 		for(const criterion of ['3:1', '3@a'] as const) {
-			assertSliced(label(JSON.stringify(code), ['function-definitions', 'name-normal', 'call-normal', 'local-left-assignment', 'unnamed-arguments']),
+			assertSliced(label(JSON.stringify(code), ['function-definitions', 'formals-named', 'name-normal', 'call-normal', 'local-left-assignment', 'unnamed-arguments']),
 				shell, code, [criterion], code
 			)
 		}
+		const constCapabilities: SupportedFlowrCapabilityId[] = ['function-definitions', 'formals-named', 'name-normal', 'numbers', 'call-normal', 'local-left-assignment', 'unnamed-arguments', 'implicit-return']
 		const constFunction = `i <- 4
 a <- function(x) { x <- 2; 1 }
 a(i)`
-		/* actually, i does not have to be defined, as it is _not used_ by the function */
-		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `a <- function(x) { 1 }
+		/* actually, `i` does not have to be defined, as it is _not used_ by the function, so we do not have to include `i <- 4` */
+		assertSliced(label('Function call with constant function', constCapabilities),
+			shell, constFunction, ['3:1'], `a <- function(x) { 1 }
 a(i)`)
 		/* nothing of the function-content is required */
-		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
-		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
-		assertSliced('Multiple unknown calls', shell, `
+		assertSliced(label('Slice function definition', constCapabilities),
+			shell, constFunction, ['2@a'], 'a <- function(x) { }')
+		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2:20'], 'x <- 2')
+		assertSliced(label('Multiple unknown calls', ['name-normal', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
+			shell, `
 foo(x, y)
 foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)')
-		assertSliced('Multiple unknown calls sharing known def', shell, `
+		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
+			shell, `
 x. <- function (x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
 foo(x, x.(3))`)
-		assertSliced('Using ...', shell, `
+		assertSliced(label('Using ...', ['name-normal', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', 'local-left-assignment', 'newlines']),
+			shell, `
 f1 <- function (a,b) { c }
 f2 <- function (...) { f1(...) }
 x <- 3

@@ -2,7 +2,7 @@ import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../.
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { filterOutLoopExitPoints , ExitPointType , alwaysExits } from '../../../../../info'
+import { filterOutLoopExitPoints, alwaysExits } from '../../../../../info'
 import {
 	appendEnvironment,
 	define,

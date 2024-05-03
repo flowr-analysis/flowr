@@ -1,12 +1,12 @@
 import type { DataflowInformation } from '../../../../info'
-import type { NodeId, ParentInformation, RArgument, RFunctionArgument, RNode, RSymbol } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../r-bridge'
 import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { VertexType , EdgeType } from '../../../../graph'
 import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
-import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
+import { overwriteEnvironment, resolveByName } from '../../../../environments'
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	readonly functionName:   DataflowInformation

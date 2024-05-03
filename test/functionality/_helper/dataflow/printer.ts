@@ -5,7 +5,6 @@ import { BuiltIn } from '../../../../src/dataflow'
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
-import type { ExitPoint } from '../../../../src/dataflow/info'
 
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {

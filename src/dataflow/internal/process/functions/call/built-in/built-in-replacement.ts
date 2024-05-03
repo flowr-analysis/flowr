@@ -36,9 +36,9 @@ export function processReplacementFunction<OtherInfo>(
 		functionRootId: rootId,
 		finalGraph:     res.graph,
 	})
-	const fn = res.graph.get(rootId)
-	guard(fn !== undefined && fn[0].tag === VertexType.FunctionCall && fn[0].args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
-	fn[0].args = [fn[0].args[0], ...callArgs, fn[0].args[1]]
+	const fn = res.graph.getVertex(rootId)
+	guard(fn?.tag === VertexType.FunctionCall && fn.args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
+	fn.args = [fn.args[0], ...callArgs, fn.args[1]]
 
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */

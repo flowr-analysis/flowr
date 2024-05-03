@@ -154,9 +154,9 @@ function updateNestedFunctionClosures<OtherInfo>(
 		const remainingIn: Set<IdentifierReference> = new Set()
 		for(const ingoing of ingoingRefs) {
 			for(const { nodeId } of exitPoints) {
-				const node = subgraph.get(nodeId, true)
+				const node = subgraph.getVertex(nodeId, true)
 				const env = initializeCleanEnvironments()
-				env.current.memory = node === undefined ? outEnvironment.current.memory : (node[0].environment?.current.memory ?? outEnvironment.current.memory)
+				env.current.memory = node === undefined ? outEnvironment.current.memory : (node.environment?.current.memory ?? outEnvironment.current.memory)
 				const resolved = ingoing.name ? resolveByName(ingoing.name, env) : undefined
 				if(resolved === undefined) {
 					remainingIn.add(ingoing)

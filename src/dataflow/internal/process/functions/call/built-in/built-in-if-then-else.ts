@@ -118,7 +118,7 @@ export function processIfThenElse<OtherInfo>(
 		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...ingoing],
 		out:               outgoing,
 		exitPoints,
-		entryPoint:        name.info.id,
+		entryPoint:        rootId,
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

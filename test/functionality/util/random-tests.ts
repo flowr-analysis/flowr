@@ -51,7 +51,7 @@ describe('Random', () => {
 					)
 				}
 			})
-			it('Floating Point', function() {
+			it('floating point', function() {
 				for(const length of [2.3, 42.42, Math.PI]) {
 					assert.throws(
 						() => randomString(length),

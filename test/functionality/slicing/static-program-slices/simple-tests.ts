@@ -1,14 +1,20 @@
 import { assertSliced, withShell } from '../../_helper/shell'
+import {label} from "../../_helper/label";
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
-			assertSliced(`x <- [${i}]`, shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`)
+			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', 'local-left-assignment', 'newlines']),
+				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
+			)
 		}
 	})
 	describe('Constant conditionals', () => {
-		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(TRUE) x <- 3\nx')
-		assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'if(FALSE) { } else x <- 4\nx')
+		assertSliced(label('if(TRUE)', ['name-normal', 'logical', 'numbers', 'local-left-assignment', 'newlines', 'if']),
+			shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 3\nx'
+		)
+		assertSliced(label('if(FALSE)', ['name-normal', 'logical', 'numbers', 'local-left-assignment', 'newlines', 'if']),
+			shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 4\nx')
 	})
 	describe('Independent Control-Flow', () => {
 		assertSliced('For-Loop', shell, `

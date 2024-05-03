@@ -59,9 +59,9 @@ export function processNamedCall<OtherInfo>(
 		information = processDefaultFunctionProcessor(information, name, args, rootId, data)
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		const v = information.graph.get(rootId)
-		if(v !== undefined && v[0].tag === VertexType.FunctionCall) {
-			v[0].onlyBuiltin = true
+		const v = information.graph.getVertex(rootId)
+		if(v?.tag === VertexType.FunctionCall) {
+			v.onlyBuiltin = true
 		}
 	}
 

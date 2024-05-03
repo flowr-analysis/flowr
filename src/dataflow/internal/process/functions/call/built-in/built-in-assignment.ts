@@ -1,26 +1,26 @@
 import type {
-	Base, Location,
+	Base,
+	Location,
 	NodeId,
 	ParentInformation,
 	RFunctionArgument,
-	RNode, RNodeWithParent, RString,
-	RSymbol, RUnnamedArgument
+	RNode,
+	RNodeWithParent,
+	RString,
+	RSymbol,
+	RUnnamedArgument
 } from '../../../../../../r-bridge'
-import { removeRQuotes
-	,
-	RType
-} from '../../../../../../r-bridge'
-import type { DataflowProcessorInformation } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
-import type { IdentifierReference, IdentifierDefinition } from '../../../../../index'
-import { dataflowLogger, EdgeType  } from '../../../../../index'
-import { processKnownFunctionCall } from '../known-call-handling'
-import { guard } from '../../../../../../util/assert'
-import { log, LogLevel } from '../../../../../../util/log'
-import { define, overwriteEnvironment } from '../../../../../environments'
-import { unpackArgument } from '../argument/unpack-argument'
-import { processAsNamedCall } from '../../../process-named-call'
-import { toUnnamedArgument } from '../argument/make-argument'
+import {removeRQuotes, RType} from '../../../../../../r-bridge'
+import type {DataflowProcessorInformation} from '../../../../../processor'
+import type {DataflowInformation} from '../../../../../info'
+import {dataflowLogger, EdgeType, IdentifierDefinition, IdentifierReference, VertexType} from '../../../../../index'
+import {processKnownFunctionCall} from '../known-call-handling'
+import {guard} from '../../../../../../util/assert'
+import {log, LogLevel} from '../../../../../../util/log'
+import {define, overwriteEnvironment} from '../../../../../environments'
+import {unpackArgument} from '../argument/unpack-argument'
+import {processAsNamedCall} from '../../../process-named-call'
+import {toUnnamedArgument} from '../argument/make-argument'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -127,8 +127,7 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 }
 
 function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation) {
-	const vertex = sourceInfo.graph.get(source.info.id)
-	return vertex?.[0].tag === 'function-definition'
+	return sourceInfo.graph.getVertex(source.info.id)?.tag === VertexType.FunctionDefinition
 }
 
 /**

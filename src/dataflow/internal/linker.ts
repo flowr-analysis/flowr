@@ -1,19 +1,21 @@
-import type {
+import {
+	CONSTANT_NAME,
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
-	FunctionArgument
+	FunctionArgument,
+	isNamedArgument,
+	VertexType
 } from '../graph'
-import { CONSTANT_NAME, isNamedArgument, VertexType } from '../graph'
-import type { IdentifierReference, REnvironmentInformation } from '../environments'
-import { BuiltIn, resolveByName } from '../environments'
-import { DefaultMap } from '../../util/defaultmap'
-import { guard } from '../../util/assert'
-import { expensiveTrace, log } from '../../util/log'
-import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
-import { EmptyArgument, RType } from '../../r-bridge'
-import { slicerLogger } from '../../slicing'
-import { dataflowLogger, EdgeType } from '../index'
+import type {IdentifierReference, REnvironmentInformation} from '../environments'
+import {BuiltIn, resolveByName} from '../environments'
+import {DefaultMap} from '../../util/defaultmap'
+import {guard} from '../../util/assert'
+import {expensiveTrace, log} from '../../util/log'
+import type {DecoratedAstMap, NodeId, ParentInformation, RParameter} from '../../r-bridge'
+import {EmptyArgument, RType} from '../../r-bridge'
+import {slicerLogger} from '../../slicing'
+import {dataflowLogger, EdgeType} from '../index'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)
@@ -113,14 +115,17 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	functionCall: NodeId;
 	called:       DataflowGraphVertexInfo[]
 }[]) {
-	const edges = graph.get(id, true)
-	guard(edges !== undefined, () => `id ${id} must be present in graph`)
+	const edges = graph.outgoingEdges(id)
+	if(edges === undefined) {
+		/* no outgoing edges */
+		return
+	}
 
-	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls)).map(([target, _]) => target)
+	const functionDefinitionReadIds = [...edges].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls)).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
-		guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
+		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {
 			// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it

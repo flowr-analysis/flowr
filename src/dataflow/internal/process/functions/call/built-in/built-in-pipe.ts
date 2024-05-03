@@ -33,13 +33,8 @@ export function processPipe<OtherInfo>(
 	if(rhs.type !== RType.FunctionCall) {
 		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${rhs.type} instead.`)
 	} else {
-		const maybeFunctionCallNode = information.graph.get(rhs.info.id, true)
-		guard(maybeFunctionCallNode !== undefined,
-			() => `Expected function call node with id ${rhs.info.id} to be present in graph, but got undefined instead (graph: ${graphToMermaidUrl(information.graph, data.completeAst.idMap)}).`)
-
-
-		const functionCallNode = maybeFunctionCallNode[0]
-		guard(functionCallNode.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
+		const functionCallNode = information.graph.getVertex(rhs.info.id, true)
+		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`)
 
 		// make the lhs an argument node:
 		const argId =  lhs.info.id

@@ -1,23 +1,23 @@
-import { guard } from '../../util/assert'
-import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
-import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
-import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
-import type { BiMap } from '../../util/bimap'
-import type { DataflowGraphEdge } from './edge'
-import { EdgeType } from './edge'
-import type { DataflowInformation } from '../info'
-import type { DataflowDifferenceReport } from './diff'
-import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
-import type {
+import {guard} from '../../util/assert'
+import type {NodeId, NoInfo, RNodeWithParent} from '../../r-bridge'
+import {EmptyArgument} from '../../r-bridge'
+import type {IdentifierDefinition, IdentifierReference, REnvironmentInformation} from '../environments'
+import {cloneEnvironmentInformation, initializeCleanEnvironments} from '../environments'
+import type {BiMap} from '../../util/bimap'
+import type {DataflowGraphEdge} from './edge'
+import {EdgeType} from './edge'
+import type {DataflowInformation} from '../info'
+import type {DataflowDifferenceReport} from './diff'
+import {diffOfDataflowGraphs, equalFunctionArguments} from './diff'
+import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertices } from './vertex'
-import { VertexType
+	DataflowGraphVertices,
+	VertexType
 } from './vertex'
-import { arrayEqual } from '../../util/arrays'
+import {arrayEqual} from '../../util/arrays'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -102,12 +102,27 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	 * @param id                      - The id of the node to get
 	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
+	 *
+	 * @see #getVertex
 	 */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
-		const vertex: Vertex | undefined = includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined
+		const vertex: Vertex | undefined = this.getVertex(id, includeDefinedFunctions)
 
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()]
+	}
+
+	/**
+	 * Get the {@link DataflowGraphVertexInfo} attached to a vertex.
+	 *
+	 * @param id                      - The id of the node to get
+	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
+	 * @returns the node info for the given id (if it exists)
+	 *
+	 * @see #get
+	 */
+	public getVertex(id: NodeId, includeDefinedFunctions = true): Vertex | undefined {
+		return includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined;
 	}
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
@@ -328,14 +343,16 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	 * @param reference - The reference to the vertex to mark as definition
 	 */
 	public setDefinitionOfVertex(reference: IdentifierReference): void {
-		const got = this.get(reference.nodeId, true)
-		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
-		const [node] = got
-		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-			guard(node.controlDependencies !== undefined || reference.controlDependencies !== undefined || arrayEqual(node.controlDependencies, reference.controlDependencies), () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-			node.controlDependencies = reference.controlDependencies
+		const vertex = this.getVertex(reference.nodeId, true)
+		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
+		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
+			guard(vertex.controlDependencies !== undefined
+				|| reference.controlDependencies !== undefined
+				|| arrayEqual(vertex.controlDependencies, reference.controlDependencies),
+				() => `node ${JSON.stringify(vertex)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+			vertex.controlDependencies = reference.controlDependencies
 		} else {
-			this.vertexInformation.set(reference.nodeId, { ...node, tag: 'variable-definition' })
+			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: 'variable-definition' })
 		}
 	}
 }

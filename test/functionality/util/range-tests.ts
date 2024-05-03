@@ -89,10 +89,10 @@ describe('Range', () => {
 			)
 		}
 
-		const assertIndependentOfOrder = (
+		function assertIndependentOfOrder(
 			expected: SourceRange,
 			...a: SourceRange[]
-		): void => {
+		): void {
 			for(const permutation of allPermutations(a)) {
 				assertMerged(expected, ...permutation)
 			}

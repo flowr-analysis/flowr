@@ -63,12 +63,12 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 				continue
 			}
 			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
-				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects, true)
+				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
 			}
 		}
 
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects, true)
+			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 		}
 	}
 }
@@ -87,9 +87,9 @@ export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges,
 	}
 	for(const [target, edge] of currentEdges) {
 		if(edge.types.has(EdgeType.Returns)) {
-			queue.add(target, baseEnvironment, baseEnvFingerprint, false, true)
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 		} else if(edge.types.has(EdgeType.Reads)) {
-			queue.add(target, baseEnvironment, baseEnvFingerprint, false, true)
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 		} else if(edge.types.has(EdgeType.Argument)) {
 			queue.potentialArguments.add(target)
 		}

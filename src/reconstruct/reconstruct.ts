@@ -178,29 +178,38 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
-function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined): Code {
+function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, then: Code, otherwise: Code | undefined, config: ReconstructionConfiguration): Code {
 	otherwise ??= []
-	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
-		return []
-	}
-	if(otherwise.length === 0 && when.length === 0) {
-		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }
-		]
+	if(then.length === 0 && otherwise.length === 0) {
+		if(isSelected(config, ifThenElse)) {
+			return [{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }]
+		} else if(condition.length > 0) {
+			return condition
+		} else {
+			return []
+		}
 	} else if(otherwise.length === 0) {
-		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) ${when[0].line}`, indent: 0 },
-			...indentBy(when.splice(1), 1),
-		]
-	} else if(when.length === 0) {
-		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0 },
-			...indentBy(otherwise.splice(1), 1)
-		]
+		if(isSelected(config, ifThenElse)) {
+			return [
+				{line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0},
+				...indentBy(then.splice(1), 1)
+			]
+		} else {
+			return then
+		}
+	} else if(then.length === 0) {
+		if(isSelected(config, ifThenElse)) {
+			return [
+				{line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0},
+				...indentBy(otherwise.splice(1), 1)
+			]
+		} else {
+			return otherwise
+		}
 	} else {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) ${when[0].line}`, indent: 0 },
-			...indentBy(when.splice(1), 1),
+			{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0 },
+			...indentBy(then.splice(1), 1),
 			{ line: `else ${otherwise[1].line}`, indent: 0 },
 			...indentBy(otherwise.splice(1), 1)
 		]

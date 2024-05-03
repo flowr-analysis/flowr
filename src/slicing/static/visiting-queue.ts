@@ -24,9 +24,8 @@ export class VisitingQueue {
 	 * @param env                - the environment the node is traversed in
 	 * @param envFingerprint     - the fingerprint of the environment
 	 * @param onlyForSideEffects - whether the node is only used for its side effects
-	 * @param inCall             - whether the node is traversed in a function call
 	 */
-	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean, inCall: boolean): void {
+	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target) ?? 0
 
 		if(idCounter > this.threshold) {
@@ -42,7 +41,7 @@ export class VisitingQueue {
 
 		if(!this.seen.has(print)) {
 			this.seen.set(print, target)
-			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects: onlyForSideEffects, inCall })
+			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects })
 		}
 	}
 

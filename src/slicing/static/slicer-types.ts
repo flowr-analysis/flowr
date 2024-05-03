@@ -13,8 +13,6 @@ export interface NodeToSlice {
 	readonly baseEnvironment:    REnvironmentInformation
 	/** if we add a function call, we may need it only for its side effects (e.g., a redefinition of a global variable), if so, 'returns' links will not be traced */
 	readonly onlyForSideEffects: boolean
-	/** Signal that we traverse a function call */
-	readonly inCall:             boolean
 }
 
 /**

@@ -10,7 +10,7 @@ import {
 	equalCfg,
 	extractCFG
 } from '../../../src/util/cfg/cfg'
-import type { NodeId } from '../../../src/r-bridge'
+import type { NodeId } from '../../../src'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'

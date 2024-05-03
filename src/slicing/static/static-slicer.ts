@@ -8,7 +8,7 @@ import {
 	VertexType
 } from '../../dataflow'
 import { guard } from '../../util/assert'
-import type { NormalizedAst } from '../../r-bridge'
+import type {NodeId, NormalizedAst} from '../../r-bridge'
 import { expensiveTrace, log } from '../../util/log'
 import type { SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
@@ -24,42 +24,52 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
  */
-export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
+export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
 	expensiveTrace(slicerLogger, () =>`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 	const queue = new VisitingQueue(threshold)
 
 	let minDepth = Number.MAX_SAFE_INTEGER
+	let sliceSeedIds = new Set<NodeId>()
 	// every node ships the call environment which registers the calling environment
 	{
 		const emptyEnv = initializeCleanEnvironments()
 		const basePrint = envFingerprint(emptyEnv)
 		for(const startId of decodedCriteria) {
-			queue.add(startId.id, emptyEnv, basePrint, false, false)
+			queue.add(startId.id, emptyEnv, basePrint, false)
 			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
 			minDepth = Math.min(minDepth, ast.idMap.get(startId.id)?.info.depth ?? minDepth)
+			sliceSeedIds.add(startId.id)
 		}
 	}
 
 	while(queue.nonEmpty()) {
 		const current = queue.next()
-
-		const baseEnvironment = current.baseEnvironment
-		const baseId = current.id
+		const { baseEnvironment, id, onlyForSideEffects } = current
 		const baseEnvFingerprint = envFingerprint(baseEnvironment)
 
-		const currentInfo = dataflowGraph.get(baseId, true)
+		const currentInfo = graph.get(id, true)
 		if(currentInfo === undefined) {
-			slicerLogger.warn(`id: ${baseId} must be in graph but can not be found, keep in slice to be sure`)
+			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`)
 			continue
 		}
 
 		const [currentVertex, currentEdges] = currentInfo
 
-		if(!current.onlyForSideEffects) {
+		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
+		if(currentVertex.controlDependencies) {
+			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
+			for(const cd of currentVertex.controlDependencies) {
+				if(!topLevel || (ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
+					queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
+				}
+			}
+		}
+
+		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, dataflowGraph, queue)
+				sliceForCall(current, currentVertex, graph, queue)
 			}
 
 			const ret = handleReturns(queue, currentEdges, baseEnvFingerprint, baseEnvironment)
@@ -74,21 +84,12 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 			}
 			const t = shouldTraverseEdge(types)
 			if(t === TraverseEdge.Always) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false, current.inCall)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			} else if(t === TraverseEdge.DefinedByOnCall && queue.potentialArguments.has(target)) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false, current.inCall)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 				queue.potentialArguments.delete(target)
 			} else if(t === TraverseEdge.SideEffect) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true, current.inCall)
-			}
-		}
-
-		// we only add control dependencies iff 1) we are in function call or 2) they have, at least, the same depth as the slicing seed
-		if(currentVertex.controlDependencies) {
-			for(const cd of currentVertex.controlDependencies) {
-				if(current.inCall || (ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
-					queue.add(cd, baseEnvironment, baseEnvFingerprint, false, current.inCall)
-				}
+				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 		}
 	}

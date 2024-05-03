@@ -1,64 +1,67 @@
 import { assertReconstructed, withShell } from '../../_helper/shell'
 import type { NodeId } from '../../../../src'
+import { label } from '../../_helper/label'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
-		for(const [id, code] of [
-			[0, 'x <- 5'],
-			[0, 'x <- 5; y <- 9'],
-			[2, '{ x <- 5 }'],
-			[2, '{ x <- 5; y <- 9 }']
-		] as const) {
-			assertReconstructed(code, shell, code, id, 'x <- 5')
+		for(const [id, code, caps] of [
+			[0, 'x <- 5', ['name-normal', 'local-left-assignment', 'numbers']],
+			[0, 'x <- 5; y <- 9', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons']],
+			[2, '{ x <- 5 }', ['grouping', 'name-normal', 'local-left-assignment', 'numbers']],
+			[2, '{ x <- 5; y <- 9 }', ['grouping', 'name-normal', 'local-left-assignment', 'numbers', 'semicolons']],
+		] as [number, string, SupportedFlowrCapabilityId[]][]){
+			assertReconstructed(label(code, caps), shell, code, id, 'x <- 5')
 		}
 	})
 	describe('Nested Assignments', () => {
-		for(const [code, id, expected] of [
-			['12 + (supi <- 42)', 0, '12 + (supi <- 42)' ],
-			['y <- x <- 42', 1, 'x <- 42' ],
-			['y <- x <- 42', 0, 'y <- x <- 42' ],
-			['for (i in 1:20) { x <- 5 }', 6, 'x <- 5' ]
-		] as const) {
-			assertReconstructed(code, shell, code, id, expected)
+		for(const [code, id, expected, caps] of [
+			['12 + (supi <- 42)', 0, '12 + (supi <- 42)', ['binary-operator', 'infix-calls', 'grouping', 'name-normal', 'local-left-assignment']],
+			['y <- x <- 42', 1, 'x <- 42', ['local-left-assignment', 'name-normal', 'numbers', 'return-value-of-assignments'] ],
+			['y <- x <- 42', 0, 'y <- x <- 42', ['local-left-assignment', 'name-normal', 'numbers', 'return-value-of-assignments'] ],
+			['for (i in 1:20) { x <- 5 }', 6, 'x <- 5', ['for-loop', 'name-normal', 'local-left-assignment', 'numbers'] ]
+		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
+			assertReconstructed(label(code, caps), shell, code, id, expected)
 		}
 	})
 
 	describe('Access', () => {
-		for(const [code, id, expected] of [
+		for(const [code, id, expected, caps] of [
 			/* we are interested in 'a' not in the result of the access*/
-			['a[3]', 0, 'a' ],
-			['a[x]', 1, 'x' ]
-		] as const) {
-			assertReconstructed(code, shell, code, id, expected)
+			['a[3]', 0, 'a', ['single-bracket-access', 'numbers', 'name-normal'] ],
+			['a[x]', 1, 'x', ['single-bracket-access', 'name-normal'] ]
+		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
+			assertReconstructed(label(code, caps), shell, code, id, expected)
 		}
 	})
 
 	describe('Loops', () => {
 		describe('repeat', () => {
-			const pool: [string, NodeId | NodeId[], string][] = [
-				['repeat { x }', 2, 'x'],
-				['repeat { x <- 5; y <- 9 }', 2, 'x <- 5'],
-				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9']
+			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+				['repeat { x }', 2, 'x', ['repeat-loop', 'name-normal']],
+				['repeat { x <- 5; y <- 9 }', 2, 'x <- 5', ['repeat-loop', 'name-normal', 'local-left-assignment', 'semicolons', 'numbers']],
+				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9', ['repeat-loop', 'name-normal', 'local-left-assignment', 'semicolons', 'numbers']]
 			]
-			for(const [code, id, expected] of pool) {
-				assertReconstructed(code, shell, code, id, expected)
+			for(const [code, id, expected, caps] of pool) {
+				assertReconstructed(label(code, caps), shell, code, id, expected)
 			}
 		})
 
 		describe('while', () => {
-			const pool: [string, NodeId | NodeId[], string][] = [
-				['while(TRUE) { x }', 3, 'x'],
-				['while(TRUE) { x <- 5 }', 3, 'x <- 5'],
-				['while(TRUE) { x <- 5; y <- 9 }', 3, 'x <- 5'],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 3], 'while(TRUE) x <- 5'],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 3, 5], 'while(TRUE) x <- 5'],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 6], 'while(TRUE) y <- 9'],
-				['while(TRUE) { x <- 5; y <- 9 }', [3, 4, 6], 'x <- 5\ny <- 9'],
-				['while(x + 2 > 3) { x <- 0 }', [7], 'x <- 0'],
-				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3) x <- 0']
+			const fiveNineCaps: SupportedFlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', 'local-left-assignment', 'numbers', 'semicolons']
+			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+				['while(TRUE) { x }', 3, 'x', ['while-loop', 'logical', 'name-normal']],
+				['while(TRUE) { x <- 5 }', 3, 'x <- 5', ['while-loop', 'logical', 'name-normal', 'local-left-assignment', 'numbers']],
+				['while(TRUE) { x <- 5; y <- 9 }', 3, 'x <- 5', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 3], 'while(TRUE) x <- 5', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 3, 5], 'while(TRUE) x <- 5', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 6], 'while(TRUE) y <- 9', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [3, 4, 6], 'x <- 5\ny <- 9', fiveNineCaps],
+				['while(x + 2 > 3) { x <- 0 }', [7], 'x <- 0', ['while-loop', 'binary-operator', 'infix-calls', 'name-normal', 'local-left-assignment', 'numbers']],
+				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3) x <- 0', ['while-loop', 'binary-operator', 'infix-calls', 'name-normal', 'local-left-assignment', 'numbers']]
 			]
-			for(const [code, id, expected] of pool) {
-				assertReconstructed(code, shell, code, id, expected)
+			for(const [code, id, expected, caps] of pool) {
+				assertReconstructed(label(code, caps), shell, code, id, expected)
 			}
 		})
 
@@ -70,6 +73,7 @@ describe('Simple', withShell(shell => {
         12 -> x
       }
     `
+			const caps: SupportedFlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', 'local-left-assignment', 'local-right-assignment', 'newlines']
 			const pool: [string, NodeId | NodeId[], string][] = [
 				[largeFor, 0, 'for(i in 1:20) {}'],
 				[largeFor, 6, 'y <- 9'],
@@ -82,12 +86,12 @@ describe('Simple', withShell(shell => {
 			]
 
 			for(const [code, id, expected] of pool) {
-				assertReconstructed(`${JSON.stringify(id)}: ${code}`, shell, code, id, expected)
+				assertReconstructed(label(`${JSON.stringify(id)}: ${code}`, caps), shell, code, id, expected)
 			}
 		})
 	})
 	describe('Failures in practice', () => {
-		assertReconstructed('Reconstruct expression list in call', shell, `
+		assertReconstructed(label('Reconstruct expression list in call', ['name-normal', 'local-left-assignment', 'unnamed-arguments', 'call-normal', 'newlines']), shell, `
 a <- foo({
     a <- b()
 
@@ -97,10 +101,12 @@ a <- foo({
 
     c <- 3
     })`)
-		assertReconstructed('Reconstruct access in pipe (variable)', shell, `
+
+		const caps: SupportedFlowrCapabilityId[] = ['name-normal', 'local-left-assignment', 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments']
+		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 2, 'x')
-		assertReconstructed('Reconstruct access in pipe (access)', shell, `
+		assertReconstructed(label('Reconstruct access in pipe (access)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 13, 'class(ls)')
 	})

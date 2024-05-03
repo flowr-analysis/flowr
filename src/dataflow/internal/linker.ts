@@ -121,7 +121,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		return
 	}
 
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls)).map(([target, _]) => target)
+	const functionDefinitionReadIds = [...edges].filter(([_, e]) => !e.types.has(EdgeType.Argument) && (e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls))).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {

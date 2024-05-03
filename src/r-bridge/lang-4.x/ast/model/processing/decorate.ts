@@ -366,6 +366,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 				const argInfo = arg.info
 				argInfo.parent = id
 				argInfo.index = idx
+				argInfo.role = RoleInParent.FunctionCallArgument
 			}
 		}
 		return decorated

@@ -1,4 +1,4 @@
-import { EmptyArgument, requestProviderFromFile, requestProviderFromText } from '../../../../../src'
+import { EmptyArgument, OperatorDatabase, requestProviderFromFile, requestProviderFromText } from '../../../../../src'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
@@ -17,7 +17,7 @@ describe('source', withShell(shell => {
 	}
 	setSourceProvider(requestProviderFromText(sources))
 
-	assertDataflow(label('simple source', ['name-normal', 'local-left-assignment', 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
 		.reads('5', 'simple-1:1-1:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
@@ -70,7 +70,7 @@ describe('source', withShell(shell => {
 		.constant('1')
 	)
 
-	assertDataflow(label('recursive source', ['name-normal', 'local-left-assignment', 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
+	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
 		.use('recursive2-2:1-2:6-1', 'x')
 		.reads('recursive2-2:1-2:6-1', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
@@ -84,7 +84,7 @@ describe('source', withShell(shell => {
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
-	assertDataflow(label('non-constant source', ['name-normal', 'local-left-assignment', 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
+	assertDataflow(label('non-constant source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })

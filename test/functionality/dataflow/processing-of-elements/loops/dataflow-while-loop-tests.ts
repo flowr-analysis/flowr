@@ -3,6 +3,7 @@ import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { label } from '../../../_helper/label'
+import { OperatorDatabase } from '../../../../../src'
 
 describe('While', withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
@@ -17,7 +18,7 @@ describe('While', withShell(shell => {
 		.nse('3', '1')
 		.constant('0')
 	)
-	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', 'local-left-assignment', 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
+	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
 		.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [BuiltIn], controlDependency: [] })
 		.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [] })
 		.call('7', 'while', [argumentInCall('0'), argumentInCall('6')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
@@ -26,7 +27,7 @@ describe('While', withShell(shell => {
 		.constant('4', { controlDependency: ['7'] })
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], controlDependency: [] })
 	)
-	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', 'local-left-assignment', 'name-normal', 'infix-calls', 'binary-operator']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
+	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities]), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
 		.use('3', 'x')
 		.use('12', 'x', { controlDependencies: [] })
 		.reads('12', '2')

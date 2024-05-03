@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { EmptyArgument, RType } from '../../../../../src'
+import { EmptyArgument, OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse value access', withShell(shell => {
@@ -87,7 +87,7 @@ describe('Parse value access', withShell(shell => {
 				}]
 			})
 		)
-		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers']),
+		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', ...OperatorDatabase['-'].capabilities]),
 			shell, 'a[x + 3]', exprList({
 				type:     RType.Access,
 				location: rangeFrom(1, 2, 1, 2),

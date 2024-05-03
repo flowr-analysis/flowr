@@ -1,14 +1,13 @@
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { assertAst, withShell } from '../../../_helper/shell'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse Larger Snippets', withShell((shell) => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(label('Manual Max Function', [
-			'name-normal', 'local-left-assignment', 'local-equal-assignment', 'local-right-assignment', 'super-left-assignment',
-			'super-right-assignment', 'numbers', 'if', 'binary-operator', 'grouping', 'newlines'
+			'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->>'].capabilities, 'numbers', 'if', ...OperatorDatabase['>'].capabilities, 'grouping', 'newlines'
 		]), shell,
 		`
 a <- 3

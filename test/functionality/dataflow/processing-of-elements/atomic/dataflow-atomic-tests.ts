@@ -248,7 +248,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable('1', 'y', { definedBy: ['2', '3'] })
 					.defineVariable('0', 'x', { definedBy: ['3', '4'] })
 			)
-			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', 'local-right-assignment', 'return-value-of-assignments']),
+			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
 				shell, '1 -> x -> y', emptyGraph()
 					.call('2', '->', [argumentInCall('0'), argumentInCall('1')], { returns: ['1'], reads: [BuiltIn] })
 					.argument('2', ['0', '1'])
@@ -260,7 +260,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable('1', 'x', { definedBy: ['0', '2'] })
 					.defineVariable('3', 'y', { definedBy: ['2', '4'] })
 			)
-			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'local-right-assignment', 'return-value-of-assignments']),
+			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- 1 -> y', emptyGraph()
 					.call('3', '->', [argumentInCall('1'), argumentInCall('2')], { returns: ['2'], reads: [BuiltIn] })
 					.argument('3', ['1', '2'])
@@ -327,7 +327,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable('4', 'x', { definedBy: ['5', '6'] })
 					.defineVariable('0', 'a', { definedBy: ['6', '3'] })
 			)
-			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', 'local-right-assignment', 'return-value-of-assignments']),
+			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['->'].capabilities, 'return-value-of-assignments']),
 				shell, '3 -> x -> a[x]', emptyGraph()
 					.use('4', 'x')
 					.call('2', '->', [argumentInCall('0'), argumentInCall('1')], { returns: ['1'], reads: [BuiltIn] })

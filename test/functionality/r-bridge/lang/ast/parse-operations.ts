@@ -56,7 +56,7 @@ describe('Parse simple operations', withShell(shell => {
 		}
 
 		describe('Intermixed with comments', () => {
-			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines']),
+			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines', ...OperatorDatabase['+'].capabilities]),
 				shell, '1 + # comment\n2', exprList({ // hoist children
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 1),

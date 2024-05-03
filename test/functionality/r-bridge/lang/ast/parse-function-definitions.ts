@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal, parameter } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse function definitions', withShell(shell => {
@@ -39,7 +39,7 @@ describe('Parse function definitions', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 		)
-		assertAst(label('No Args', ['normal-definition', 'name-normal', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping']),
+		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
 			shell, 'function() { x + 2 * 3 }',exprList({
 				type:       RType.FunctionDefinition,
 				location:   rangeFrom(1, 1, 1, 8),

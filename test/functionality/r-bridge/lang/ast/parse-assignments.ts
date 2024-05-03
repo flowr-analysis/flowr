@@ -40,7 +40,7 @@ describe('Parse simple assignments',
 
 		// allow assignments to strings and function calls
 		describe('Assignments to strings', () => {
-			assertAst(label('Assign to Given String', ['binary-operator', 'infix-calls', 'function-calls', 'local-left-assignment', 'name-quoted', 'numbers']),
+			assertAst(label('Assign to Given String', ['binary-operator', 'infix-calls', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'name-quoted', 'numbers']),
 				shell, '\'a\' <- 5', exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 5, 1, 6),
@@ -70,7 +70,7 @@ describe('Parse simple assignments',
 		})
 
 		describe('Assignment with an expression list', () => {
-			assertAst(label('x <- { 2 * 3 }', ['binary-operator', 'infix-calls', 'function-calls', 'local-left-assignment', 'name-normal', 'numbers', 'grouping']),
+			assertAst(label('x <- { 2 * 3 }', [...OperatorDatabase['*'].capabilities, 'function-calls', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers', 'grouping']),
 				shell, 'x <- { 2 * 3 }', exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 3, 1, 4),

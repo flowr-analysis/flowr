@@ -4,6 +4,7 @@ import { setSourceProvider } from '../../../../../src/dataflow/internal/process/
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { assertDataflow, withShell } from '../../../_helper/shell'
+import { label } from '../../../_helper/label'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -16,7 +17,7 @@ describe('source', withShell(shell => {
 	}
 	setSourceProvider(requestProviderFromText(sources))
 
-	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', emptyGraph()
+	assertDataflow(label('simple source', ['name-normal', 'local-left-assignment', 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
 		.reads('5', 'simple-1:1-1:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
@@ -27,7 +28,7 @@ describe('source', withShell(shell => {
 		.defineVariable('simple-1:1-1:6-0', 'N', { definedBy: ['simple-1:1-1:6-1', 'simple-1:1-1:6-2'] })
 	)
 
-	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
+	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
 		.use('12', 'N')
 		.reads('12', 'simple-3:1-3:6-0')
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
@@ -49,7 +50,7 @@ describe('source', withShell(shell => {
 		.defineVariable('simple-3:1-3:6-0', 'N', { definedBy: ['simple-3:1-3:6-1', 'simple-3:1-3:6-2'] })
 	)
 
-	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
+	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
 		.use('0', 'x')
 		.use('10', 'N')
 		.reads('10', 'simple-1:10-1:15-0')
@@ -64,12 +65,12 @@ describe('source', withShell(shell => {
 	)
 
 	// missing sources should just be ignored
-	assertDataflow('missing source', shell, 'source("missing")', emptyGraph()
+	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), shell, 'source("missing")', emptyGraph()
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 		.constant('1')
 	)
 
-	assertDataflow('recursive source', shell, sources.recursive1,  emptyGraph()
+	assertDataflow(label('recursive source', ['name-normal', 'local-left-assignment', 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
 		.use('recursive2-2:1-2:6-1', 'x')
 		.reads('recursive2-2:1-2:6-1', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
@@ -83,7 +84,7 @@ describe('source', withShell(shell => {
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
-	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
+	assertDataflow(label('non-constant source', ['name-normal', 'local-left-assignment', 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })

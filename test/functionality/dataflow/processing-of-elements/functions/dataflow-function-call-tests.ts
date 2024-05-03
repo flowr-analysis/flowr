@@ -7,10 +7,11 @@ import {
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
 import { EmptyArgument } from '../../../../../src'
 import { BuiltIn } from '../../../../../src/dataflow'
+import { label } from '../../../_helper/label'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
-		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',  emptyGraph()
+		assertDataflow(label('Calling function a', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']), shell, 'i <- 4; a <- function(x) { x }\na(i)',  emptyGraph()
 			.use('8', 'x', undefined, false)
 			.reads('8', '4')
 			.use('13', 'i', undefined)
@@ -36,7 +37,7 @@ describe('Function Call', withShell(shell => {
 			.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 		)
 
-		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
+		assertDataflow(label('Calling function a with an indirection', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
 				.use('8', 'x', undefined, false)
 				.reads('8', '4')
@@ -67,7 +68,7 @@ describe('Function Call', withShell(shell => {
 				.defineVariable('12', 'b', { definedBy: ['13', '14'] })
 		)
 
-		assertDataflow('Calling with a constant function', shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', ['name-normal', 'local-left-assignment', 'numbers', 'newlines', 'formals-named', 'implicit-return', 'unnamed-arguments']), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`,  emptyGraph()
 			.use('9', 'x', undefined, false)
@@ -128,15 +129,15 @@ a(i)`,  emptyGraph()
 			.constant('12', undefined)
 			.definesOnCall('12', '2')
 
-		assertDataflow('Calling with constant argument using lambda', shell, '(\\(x) { x + 1 })(2)',
+		assertDataflow(label('Calling with constant argument using lambda', ['lambda-syntax', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers']), shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		)
-		assertDataflow('Calling with constant argument', shell, '(function(x) { x + 1 })(2)',
+		assertDataflow(label('Calling with constant argument', ['formals-named', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers']), shell, '(function(x) { x + 1 })(2)',
 			outGraph
 		)
 
-		assertDataflow('Calling a function which returns another', shell, `a <- function() { function() { 42 } }
+		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers']), shell, `a <- function() { function() { 42 } }
 a()()`,  emptyGraph()
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -167,7 +168,7 @@ a()()`,  emptyGraph()
 	})
 
 	describe('Argument which is expression', () => {
-		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)', emptyGraph()
+		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers']), shell, 'foo(1 + x)', emptyGraph()
 			.use('2', 'x')
 			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [BuiltIn] })
 			.reads('3', ['1', '2'])
@@ -177,7 +178,7 @@ a()()`,  emptyGraph()
 	})
 
 	describe('Argument which is anonymous function call', () => {
-		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',  emptyGraph()
+		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), shell, 'f(function() { 3 })',  emptyGraph()
 			.call('4', '{', [argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('7', 'f', [argumentInCall('5')], { returns: [], reads: [] })
 			.constant('3', undefined, false)
@@ -193,7 +194,7 @@ a()()`,  emptyGraph()
 	})
 
 	describe('Multiple out refs in arguments', () => {
-		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
+		assertDataflow(label('Calling \'seq\'', ['function-calls', 'numbers', 'unnamed-arguments', 'named-arguments']), shell, 'seq(1, length(pkgnames), by = stepsize)',
 			emptyGraph()
 				.use('4', 'pkgnames')
 				.use('9', 'stepsize')
@@ -207,7 +208,7 @@ a()()`,  emptyGraph()
 	})
 
 	describe('Late function bindings', () => {
-		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',  emptyGraph()
+		assertDataflow(label('Late binding of y', ['name-normal', 'local-left-assignment', 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), shell, 'a <- function() { y }\ny <- 12\na()',  emptyGraph()
 			.use('3', 'y', undefined, false)
 			.call('4', '{', [argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [BuiltIn] })
@@ -230,7 +231,7 @@ a()()`,  emptyGraph()
 	})
 
 	describe('Deal with empty calls', () => {
-		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
+		assertDataflow(label('Not giving first parameter', ['name-normal', 'local-left-assignment', 'formals-named', 'formals-default', 'implicit-return', 'newlines', 'empty-arguments', 'unnamed-arguments']), shell, `a <- function(x=3,y) { y }
 a(,3)`,  emptyGraph()
 			.use('8', 'y', undefined, false)
 			.reads('8', '4')
@@ -255,7 +256,7 @@ a(,3)`,  emptyGraph()
 		)
 	})
 	describe('Reuse parameters in call', () => {
-		assertDataflow('Not giving first argument', shell, 'a(x=3, x)',  emptyGraph()
+		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), shell, 'a(x=3, x)',  emptyGraph()
 			.use('3', 'x')
 			.reads('3', '2')
 			.use('4', 'x')
@@ -265,7 +266,7 @@ a(,3)`,  emptyGraph()
 		)
 	})
 	describe('Define in parameters', () => {
-		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x',  emptyGraph()
+		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', 'local-left-assignment', 'numbers', 'semicolons']), shell, 'foo(x <- 3); x',  emptyGraph()
 			.use('6', 'x')
 			.reads('6', '1')
 			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [BuiltIn] })

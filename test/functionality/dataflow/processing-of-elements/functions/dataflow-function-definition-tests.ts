@@ -3,10 +3,11 @@ import { BuiltIn } from '../../../../../src/dataflow'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { EmptyArgument } from '../../../../../src'
+import { label } from '../../../_helper/label'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
-		assertDataflow('unknown read in function', shell, 'function() { x }', emptyGraph()
+		assertDataflow(label('unknown read in function', ['normal-definition', 'implicit-return', 'name-normal']), shell, 'function() { x }', emptyGraph()
 			.use('2', 'x', undefined, false)
 			.argument('3', '2')
 			.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -20,7 +21,7 @@ describe('Function Definition', withShell(shell => {
 			})
 		)
 
-		assertDataflow('read of parameter', shell, 'function(x) { x }', emptyGraph()
+		assertDataflow(label('read of parameter', ['formals-named', 'implicit-return', 'name-normal']), shell, 'function(x) { x }', emptyGraph()
 			.use('4', 'x', undefined, false)
 			.reads('4', '0')
 			.argument('5', '4')
@@ -35,7 +36,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
 			})
 		)
-		assertDataflow('read of parameter in return', shell, 'function(x) { return(x) }',  emptyGraph()
+		assertDataflow(label('read of parameter in return', ['formals-named', 'return', 'name-normal']), shell, 'function(x) { return(x) }',  emptyGraph()
 			.use('5', 'x', undefined, false)
 			.reads('5', '0')
 			.argument('7', '5')
@@ -54,7 +55,7 @@ describe('Function Definition', withShell(shell => {
 		)
 
 		describe('x', () => {
-			assertDataflow('return parameter named', shell, 'function(x) { return(x=x) }',  emptyGraph()
+			assertDataflow(label('return parameter named', ['formals-named', 'return', 'named-arguments']), shell, 'function(x) { return(x=x) }',  emptyGraph()
 				.use('6', 'x', undefined, false)
 				.reads('6', '0')
 				.use('7', 'x', undefined, false)
@@ -79,7 +80,7 @@ describe('Function Definition', withShell(shell => {
 		const envWithXYParam = envWithXParam.defineParameter('y', '2', '3')
 		const envWithXYZParam = envWithXYParam.defineParameter('z', '4', '5')
 
-		assertDataflow('read of one parameter', shell, 'function(x,y,z) y',
+		assertDataflow(label('read of one parameter', ['formals-named', 'implicit-return', 'name-normal']), shell, 'function(x,y,z) y',
 			emptyGraph()
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
@@ -97,7 +98,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Scoping of body', () => {
-		assertDataflow('previously defined read in function', shell, 'x <- 3; function() { x }', emptyGraph()
+		assertDataflow(label('previously defined read in function', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'normal-definition', 'implicit-return']), shell, 'x <- 3; function() { x }', emptyGraph()
 			.use('5', 'x', undefined, false)
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 			.argument('2', ['1', '0'])
@@ -114,7 +115,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv()
 			})
 		)
-		assertDataflow('local define with <- in function, read after', shell, 'function() { x <- 3; }; x', emptyGraph()
+		assertDataflow(label('local define with <- in function, read after', ['normal-definition', 'semicolons', 'name-normal', 'local-left-assignment', 'numbers']), shell, 'function() { x <- 3; }; x', emptyGraph()
 			.use('7', 'x')
 			.call('4', '<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -129,7 +130,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineVariable('x', '2', '4')
 			})
 		)
-		assertDataflow('local define with = in function, read after', shell, 'function() { x = 3; }; x', emptyGraph()
+		assertDataflow(label('local define with = in function, read after', ['normal-definition', 'local-equal-assignment', 'semicolons', 'name-normal', 'numbers']), shell, 'function() { x = 3; }; x', emptyGraph()
 			.use('7', 'x')
 			.call('4', '=', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -145,7 +146,7 @@ describe('Function Definition', withShell(shell => {
 			})
 		)
 
-		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',  emptyGraph()
+		assertDataflow(label('local define with -> in function, read after', ['normal-definition', 'numbers', 'local-right-assignment', 'semicolons', 'name-normal']), shell, 'function() { 3 -> x; }; x',  emptyGraph()
 			.use('7', 'x')
 			.call('4', '->', [argumentInCall('2'), argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -160,7 +161,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineVariable('x', '3', '4')
 			})
 		)
-		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',  emptyGraph()
+		assertDataflow(label('global define with <<- in function, read after', ['normal-definition', 'name-normal', 'numbers', 'super-left-assignment', 'semicolons']), shell, 'function() { x <<- 3; }; x',  emptyGraph()
 			.use('7', 'x')
 			.call('4', '<<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -175,7 +176,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().defineVariable('x', '2', '4').pushEnv()
 			}, { environment: defaultEnv().defineVariable('x', '2', '4') })
 		)
-		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x', emptyGraph()
+		assertDataflow(label('global define with ->> in function, read after', ['normal-definition', 'numbers', 'super-right-assignment', 'semicolons', 'name-normal']), shell, 'function() { 3 ->> x; }; x', emptyGraph()
 			.use('7', 'x')
 			.call('4', '->>', [argumentInCall('2'), argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -190,7 +191,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().defineVariable('x', '3', '4').pushEnv()
 			}, { environment: defaultEnv().defineVariable('x', '3', '4') })
 		)
-		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',  emptyGraph()
+		assertDataflow(label('shadow in body',  ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'normal-definition']), shell, 'x <- 2; function() { x <- 3; x }; x',  emptyGraph()
 			.use('8', 'x', undefined, false)
 			.reads('8', '5')
 			.use('11', 'x')
@@ -211,7 +212,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineVariable('x', '5', '7')
 			})
 		)
-		assertDataflow('shadow in body with closure', shell, 'x <- 2; function() { x <- x; x }; x',  emptyGraph()
+		assertDataflow(label('shadow in body with closure', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'normal-definition']), shell, 'x <- 2; function() { x <- x; x }; x',  emptyGraph()
 			.use('6', 'x', undefined, false)
 			.use('8', 'x', undefined, false)
 			.reads('8', '5')
@@ -234,7 +235,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Scoping of parameters', () => {
-		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',  emptyGraph()
+		assertDataflow(label('parameter shadows', ['name-normal', 'local-left-assignment', 'numbers', 'semicolons', 'formals-named', 'implicit-return']), shell, 'x <- 3; function(x) { x }',  emptyGraph()
 			.use('7', 'x', undefined, false)
 			.reads('7', '3')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
@@ -255,7 +256,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Access dot-dot-dot', () => {
-		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',  emptyGraph()
+		assertDataflow(label('parameter shadows', ['formals-dot-dot-dot', 'implicit-return']), shell, 'function(...) { ..11 }',  emptyGraph()
 			.use('4', '..11', undefined, false)
 			.reads('4', '0')
 			.argument('5', '4')
@@ -272,7 +273,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Using named arguments', () => {
-		assertDataflow('Read first parameter', shell, 'function(a=3, b=a) { b }',  emptyGraph()
+		assertDataflow(label('Read first parameter', ['formals-default', 'implicit-return', 'name-normal']), shell, 'function(a=3, b=a) { b }',  emptyGraph()
 			.use('4', 'a', undefined, false)
 			.reads('4', '0')
 			.use('8', 'b', undefined, false)
@@ -291,7 +292,7 @@ describe('Function Definition', withShell(shell => {
 			})
 		)
 
-		assertDataflow('Read later definition', shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
+		assertDataflow(label('Read later definition', ['formals-named', 'name-normal', 'name-normal', 'numbers', 'local-left-assignment', 'semicolons', 'binary-operator', 'infix-calls']), shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }', emptyGraph()
 			.use('1', 'b', undefined, false)
 			.reads('1', '8')
 			.use('11', 'a', undefined, false)
@@ -324,7 +325,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Using special argument', () => {
-		assertDataflow('Return ...', shell, 'function(a, ...) { foo(...) }',  emptyGraph()
+		assertDataflow(label('Return ...', ['formals-named', 'formals-dot-dot-dot', 'unnamed-arguments', 'implicit-return']), shell, 'function(a, ...) { foo(...) }',  emptyGraph()
 			.use('7', '...', undefined, false)
 			.reads('7', '2')
 			.argument('9', '7')
@@ -343,7 +344,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
-		assertDataflow('Two possible exit points to bind y closure', shell, `function() {
+		assertDataflow(label('Two possible exit points to bind y closure', ['normal-definition', 'name-normal', 'local-left-assignment', 'implicit-return', 'if', 'return']), shell, `function() {
   g <- function() { y }
   y <- 5
   if(z)
@@ -392,7 +393,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Late binding of environment variables', () => {
-		assertDataflow('define after function definition', shell, 'function() { x }; x <- 3',  emptyGraph()
+		assertDataflow(label('define after function definition', ['normal-definition', 'implicit-return', 'semicolons', 'name-normal', 'local-left-assignment', 'numbers']), shell, 'function() { x }; x <- 3',  emptyGraph()
 			.use('2', 'x', undefined, false)
 			.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn] })
@@ -410,7 +411,7 @@ describe('Function Definition', withShell(shell => {
 	})
 
 	describe('Nested Function Definitions', () => {
-		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',  emptyGraph()
+		assertDataflow(label('double nested functions', ['name-normal', 'local-left-assignment', 'normal-definition', 'unnamed-arguments', 'semicolons']), shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',  emptyGraph()
 			.use('9', 'b', undefined, false)
 			.use('14', 'x', undefined, false)
 			.reads('14', '3')

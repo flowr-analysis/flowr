@@ -3,9 +3,10 @@ import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { BuiltIn } from '../../../../../src/dataflow'
 import { EmptyArgument } from '../../../../../src'
+import { label } from '../../../_helper/label'
 
 describe('for', withShell(shell => {
-	assertDataflow('Single-vector for Loop',
+	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
 		shell, 'for(i in 0) i',  emptyGraph()
 			.use('2', 'i', { controlDependencies: [] })
 			.reads('2', '0')
@@ -18,7 +19,7 @@ describe('for', withShell(shell => {
 	)
 
 	describe('Potential redefinition with break', () => {
-		assertDataflow('Potential redefinition inside the same loop',
+		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', 'local-left-assignment', 'numbers', 'if', 'break']),
 			shell,
 			`repeat {
   x <- 2
@@ -45,7 +46,7 @@ x`, emptyGraph()
 		)
 	})
 
-	assertDataflow('Read in for Loop', shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
+	assertDataflow(label('Read in for Loop', ['name-normal', 'local-left-assignment', 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
 		.use('7', 'x', { controlDependencies: [] })
 		.reads('7', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
@@ -58,7 +59,7 @@ x`, emptyGraph()
 		.constant('4')
 		.constant('5')
 	)
-	assertDataflow('Read after for loop', shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
+	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', 'local-left-assignment', 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
 		.use('11', 'x')
 		.reads('11', '6')
 		.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: ['1', '2', BuiltIn], onlyBuiltIn: true })
@@ -74,7 +75,7 @@ x`, emptyGraph()
 	)
 
 
-	assertDataflow('Read after for loop with outer def', shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
+	assertDataflow(label('Read after for loop with outer def', ['name-normal', 'local-left-assignment', 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
 		.use('14', 'x')
 		.reads('14', ['0', '9'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
@@ -93,7 +94,7 @@ x`, emptyGraph()
 		.constant('10', { controlDependency: ['13'] })
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependency: [] })
 	)
-	assertDataflow('redefinition within loop', shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
+	assertDataflow(label('redefinition within loop', ['name-normal', 'local-left-assignment', 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
 		.use('10', 'x', { controlDependencies: [] })
 		.reads('10', ['9', '0'])
 		.use('14', 'x')
@@ -114,7 +115,7 @@ x`, emptyGraph()
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependency: [] })
 	)
 
-	assertDataflow('double redefinition within loop', shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
+	assertDataflow(label('double redefinition within loop', ['name-normal', 'local-left-assignment', 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
 		.use('10', 'x', { controlDependencies: [] })
 		.reads('10', ['12', '0'])
 		.use('13', 'x', { controlDependencies: ['16'] })
@@ -141,7 +142,7 @@ x`, emptyGraph()
 		.defineVariable('12', 'x', { definedBy: ['13', '14'], controlDependency: [] })
 	)
 
-	assertDataflow('loop-variable redefined within loop', shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
+	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
 		.use('6', 'i', { controlDependencies: [] })
 		.reads('6', '0')
 		.use('12', 'i')

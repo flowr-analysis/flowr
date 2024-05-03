@@ -2,21 +2,22 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { BuiltIn } from '../../../../../src/dataflow'
+import { label } from '../../../_helper/label'
 
 describe('While', withShell(shell => {
-	assertDataflow('simple constant while', shell, 'while (TRUE) 2', emptyGraph()
+	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.nse('3', '1')
 		.constant('0')
 		.constant('1', { controlDependency: [] })
 	)
-	assertDataflow('using variable in body', shell, 'while (TRUE) x', emptyGraph()
+	assertDataflow(label('using variable in body', ['while-loop', 'logical', 'name-normal']), shell, 'while (TRUE) x', emptyGraph()
 		.use('1', 'x', { controlDependencies: [] })
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.nse('3', '1')
 		.constant('0')
 	)
-	assertDataflow('assignment in loop body', shell, 'while (TRUE) { x <- 3 }', emptyGraph()
+	assertDataflow(label('assignment in loop body', ['while-loop', 'logical', 'name-normal', 'local-left-assignment', 'numbers']), shell, 'while (TRUE) { x <- 3 }', emptyGraph()
 		.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [BuiltIn], controlDependency: [] })
 		.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [] })
 		.call('7', 'while', [argumentInCall('0'), argumentInCall('6')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
@@ -25,7 +26,7 @@ describe('While', withShell(shell => {
 		.constant('4', { controlDependency: ['7'] })
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], controlDependency: [] })
 	)
-	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
+	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', 'local-left-assignment', 'name-normal', 'infix-calls', 'binary-operator']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
 		.use('3', 'x')
 		.use('12', 'x', { controlDependencies: [] })
 		.reads('12', '2')
@@ -40,7 +41,7 @@ describe('While', withShell(shell => {
 		.defineVariable('2', 'x', { definedBy: ['5', '6'] })
 		.constant('8')
 	)
-	assertDataflow('Endless while loop with variables', shell, 'while(x) y', emptyGraph()
+	assertDataflow(label('Endless while loop with variables', ['while-loop', 'name-normal']), shell, 'while(x) y', emptyGraph()
 		.use('0', 'x')
 		.use('1', 'y', { controlDependencies: [] })
 		.argument('3', '0')

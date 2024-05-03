@@ -122,6 +122,9 @@ y <- 4
 f()`, ['5@f'], `f <- function(a=y) { a }
 y <- 4
 f()`)
+
+		assertSliced('Named argument collides with variable', shell, 'x <- 100\nlist(123, x = 200, 234)\nprint(x)',
+			['3@x'], 'x <- 100\nprint(x)')
 	})
 	describe('Functions with nested definitions', () => {
 		describe('Simple Function pass with return', () => {

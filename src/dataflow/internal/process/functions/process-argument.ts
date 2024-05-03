@@ -27,7 +27,6 @@ export function processFunctionArgument<OtherInfo>(
 	// we do not keep the graph of the name, as this is no node that should ever exist
 	const graph = value?.graph ?? new DataflowGraph()
 
-
 	const argumentName = argument.name?.content
 	let entryPoint = value?.entryPoint
 	if(argumentName) {
@@ -53,8 +52,7 @@ export function processFunctionArgument<OtherInfo>(
 		unknownReferences: [],
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs.filter(r => r.name !== undefined),
-		// , ...value.out, ...(name?.out ?? [])
-		out:               argumentName ?[ { name: argumentName, nodeId: argument.info.id, controlDependencies: data.controlDependencies } ] : [],
+		out:               [...value?.out ?? [], ...(name?.out ?? [])],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,

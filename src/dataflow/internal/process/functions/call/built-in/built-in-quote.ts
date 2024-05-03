@@ -24,7 +24,7 @@ export function processQuote<OtherInfo>(
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i]
-		if(processedArg && !config?.quoteArgumentsWithIndex?.has(i)) {
+		if(processedArg && config?.quoteArgumentsWithIndex?.has(i)) {
 			inRefs.push(...processedArg.in)
 			outRefs.push(...processedArg.out)
 			unknownRefs.push(...processedArg.unknownReferences)

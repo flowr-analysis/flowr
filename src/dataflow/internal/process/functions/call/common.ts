@@ -74,14 +74,6 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, { type: EdgeType.Argument })
-
-		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
-			argEnv = define(
-				{ nodeId: processed.entryPoint, name: ((arg as RArgument).name as RSymbol).content, definedAt: arg.info.id, kind: 'argument', controlDependencies: data.controlDependencies },
-				false,
-				argEnv
-			)
-		}
 	}
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments }
 }

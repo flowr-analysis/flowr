@@ -343,7 +343,6 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
-		// TODO: check on slice
 		assertDataflow('Two possible exit points to bind y closure', shell, `function() {
   g <- function() { y }
   y <- 5

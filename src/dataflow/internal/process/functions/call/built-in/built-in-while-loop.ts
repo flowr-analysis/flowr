@@ -62,7 +62,6 @@ export function processWhileLoop<OtherInfo>(
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(name.info.id, condition.entryPoint, { type: EdgeType.Reads })
 
-	// TODO: handle break and next
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency }, ...remainingInputs],

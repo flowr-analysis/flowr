@@ -181,8 +181,6 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	information.graph.addEdge(name.info.id, targetArg.entryPoint, { type: EdgeType.Returns })
-	/* an assignment reads its source */
-	// TODO: this doesnt work atm to find functionns information.graph.addEdge(name.info.id, sourceArg.entryPoint, { type: EdgeType.Reads })
 
 	return {
 		...information,

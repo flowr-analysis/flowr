@@ -34,7 +34,6 @@ export function processSpecialBinOp<OtherInfo>(
 		}
 	})
 
-	// TODO: allow to configure to read all arguments
 	for(const arg of processedArguments) {
 		if(arg) {
 			information.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })

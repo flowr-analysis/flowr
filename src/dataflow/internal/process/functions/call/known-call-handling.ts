@@ -91,7 +91,6 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			// TODO: find a better one
 			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
 		},
 		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,

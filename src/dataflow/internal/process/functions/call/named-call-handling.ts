@@ -12,7 +12,6 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		return newInfo
 	}
 
-	// TODO: remove duplicate in, out and unknownReferences
 	return {
 		unknownReferences: [...info.unknownReferences, ...newInfo.unknownReferences],
 		in:                [...info.in, ...newInfo.in],

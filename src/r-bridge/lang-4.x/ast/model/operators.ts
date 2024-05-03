@@ -38,7 +38,6 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
   /* model formulae */
   '~':    { name: 'model formulae',               stringUsedInRAst: RawRType.Tilde,       stringUsedInternally: '~',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation', capabilities: ['binary-operator', 'infix-calls', 'model-formula', 'function-calls'] },
   /* arithmetic */
-	// TODO: find a way to map unary and binary accordingly
   '+':    { name: 'addition or unary +',          stringUsedInRAst: RawRType.Plus,        stringUsedInternally: '+',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation', capabilities: ['function-calls'] },
   '-':    { name: 'subtraction or unary -',       stringUsedInRAst: RawRType.Minus,       stringUsedInternally: '-',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation', capabilities: ['function-calls'] },
   '*':    { name: 'multiplication',               stringUsedInRAst: RawRType.Times,       stringUsedInternally: '*',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation', capabilities: ['binary-operator', 'infix-calls', 'function-calls'] },

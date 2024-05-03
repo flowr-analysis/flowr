@@ -23,7 +23,6 @@ import { normalizeDelimiter } from './normalize-delimiter'
  */
 export function normalizeSingleNode(data: NormalizerData, elem: NamedXmlBasedJson): RNode | RDelimiter {
 	switch(elem.name) {
-		// TODO: handle as unary op
 		case RawRType.ParenLeft:
 		case RawRType.ParenRight:
 		case RawRType.BraceLeft:

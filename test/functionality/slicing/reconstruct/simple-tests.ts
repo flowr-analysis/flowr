@@ -100,14 +100,13 @@ describe('Simple', withShell(shell => {
 		})
 	})
 
-	describe('function definition', () => {
+	describe.only('function definition', () => {
 		const testCases: {name: string, case: string, argument: string[], expected: string}[] = [
-			//this test does not reconstruct the function
 			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
 			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
-			//this test does not reconstruct the function
 			{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
-			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
+			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' },
+			{ name: 'semicollon reconstruction', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['0', '1', '2', '3', '4', '5', '6', '7', '8'], expected: 'a <- function (x) { x <- 2; x + 4 }' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)

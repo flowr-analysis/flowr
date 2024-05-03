@@ -1,3 +1,4 @@
+import { boolean } from 'joi'
 import type { NodeId, ParentInformation, RNode } from '../r-bridge'
 import { RType } from '../r-bridge'
 import type { SourcePosition } from '../util/range'
@@ -135,8 +136,27 @@ export function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4)
 }
 
+function addSemis(code: Code): boolean {
+	const line: string[][] = []
+	for(const elem of code) {
+		let currLine = 0
+		for(const linePart of elem.linePart) {
+			currLine = linePart.loc.line
+			line[currLine].push(linePart.part)
+		}
+	}
+
+	for(const lineElements of line) {
+		//add search for space in need of semicolon
+		//if two stetment blocks follow each other add a delimiter
+	}
+
+	return true
+}
+
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge(code)
+	addSemis(code)
 	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc.column)}`).join(lf)
 }
 

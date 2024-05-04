@@ -18,8 +18,8 @@ describe('Simple', withShell(shell => {
 	describe('Nested Assignments', () => {
 		for(const [code, id, expected, caps] of [
 			['12 + (supi <- 42)', 0, '12 + (supi <- 42)', ['grouping', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities]],
-			['y <- x <- 42', 1, 'x <- 42', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities] ],
-			['y <- x <- 42', 0, 'y <- x <- 42', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities] ],
+			['y <- x <- 42', 1, 'x <- 42', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
+			['y <- x <- 42', 0, 'y <- x <- 42', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
 			['for (i in 1:20) { x <- 5 }', 6, 'x <- 5', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities] ]
 		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected)
@@ -103,7 +103,7 @@ a <- foo({
     c <- 3
     })`)
 
-		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments']
+		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']
 		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 2, 'x')

@@ -19,7 +19,7 @@ describe('Simple', withShell(shell => {
 			shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 4\nx')
 	})
 	describe('Independent Control-Flow', () => {
-		assertSliced(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', 'built-in-sequencing', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities]),
+		assertSliced(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', 'built-in-sequencing', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 for(i in 1:10) {
@@ -27,7 +27,7 @@ for(i in 1:10) {
 }
 cat(x)
     `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\ncat(x)')
-		assertSliced(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities]),
+		assertSliced(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 while(i > 3) {
@@ -36,7 +36,7 @@ while(i > 3) {
 cat(x)
     `, ['6@x'], 'x <- 1\nwhile(i > 3) x <- x * 2\ncat(x)')
 
-		assertSliced(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities]),
+		assertSliced(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 if(i > 3) {
@@ -47,7 +47,7 @@ cat(x)
 if(i > 3) { x <- x * 2 }
 cat(x)`)
 
-		assertSliced(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities]),
+		assertSliced(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 i <- 3
@@ -116,7 +116,7 @@ a <- 5
     `, ['3@a'], 'a <- 5')
 	})
 	describe('The classic', () => {
-		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'built-in-sequencing', 'strings']
+		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'built-in-sequencing', 'strings', 'precedence']
 		const code = `
 sum <- 0
 product <- 1

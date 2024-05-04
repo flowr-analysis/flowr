@@ -27,7 +27,7 @@ describe('While', withShell(shell => {
 		.constant('4', { controlDependency: ['7'] })
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], controlDependency: [] })
 	)
-	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities]), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
+	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
 		.use('3', 'x')
 		.use('12', 'x', { controlDependencies: [] })
 		.reads('12', '2')

@@ -82,8 +82,8 @@ export const flowrCapabilities = {
 						{
 							name:        'Accessing Exported Names',
 							id:          'accessing-exported-names',
-							supported:   'not',
-							description: '_Resolving calls with `::` to their origin._ Accessing external files is currently work in progress.'
+							supported:   'partially',
+							description: '_Resolving calls with `::` to their origin._ Accessing external files is allowed, although the name of packages etc. is not resolved correctly.'
 						},
 						{
 							name:        'Accessing Internal Names',
@@ -713,7 +713,7 @@ export const flowrCapabilities = {
 					name:        'Sourcing External Files',
 					id:          'sourcing-external-files',
 					supported:   'partially',
-					description: '_Handle `source`, `sys.source`, ..._ We are currently working on supporting the inclusion of external files.'
+					description: '_Handle `source`, `sys.source`, ..._ We are currently working on supporting the inclusion of external files. Currently we can handle `source`.'
 				},
 				{
 					name:        'Handling Binary Riles',

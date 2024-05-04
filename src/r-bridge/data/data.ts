@@ -70,7 +70,7 @@ export const flowrCapabilities = {
 						{
 							name:        'Search Path',
 							id:          'search-path',
-							supported:   'partially',
+							supported:   'not',
 							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
 						},
 						{

@@ -160,8 +160,7 @@ registerBuiltInFunctions(processAssignment,         { superAssignment: true, swa
 registerBuiltInFunctions(processSpecialBinOp,       { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,               {},                                                   '|>')
 registerBuiltInFunctions(processFunctionDefinition, {},                                                   'function', '\\')
-// TODO: add nse edge for quote
-registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([1]) },       'quote', 'substitute', 'bquote')
+registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([0]) },       'quote', 'substitute', 'bquote')
 registerBuiltInFunctions(processForLoop,          {},                                                     'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                     'repeat')
 registerBuiltInFunctions(processWhileLoop,        {},                                                     'while')

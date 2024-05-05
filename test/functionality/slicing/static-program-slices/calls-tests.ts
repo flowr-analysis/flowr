@@ -120,7 +120,7 @@ f <- function(some_variable="hello") {
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `
-		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
+		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
 			shell, lateCode, ['2@f'], `f <- function(a=b, m=3) {
         b <- 1
         a + 1
@@ -129,10 +129,10 @@ f()`)
 		const lateCodeB = `f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `
-		assertSliced(label('Late bindings of parameter in parameters', ['name-normal',  'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines','binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
+		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines','binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
 			shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) { a + 1 }
 f()`)
-		assertSliced(label('Parameters binding context', ['name-normal',  'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+		assertSliced(label('Parameters binding context', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
 			shell, `f <- function(a=y) { a }
 a <- 5
 y <- 3
@@ -430,5 +430,9 @@ cat(4 %a% 5)
 			shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)`)
+	})
+	describe('Quotation', () => {
+		assertSliced(label('Quote does not Reference Variables', []),
+			shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)')
 	})
 }))

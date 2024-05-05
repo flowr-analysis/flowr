@@ -514,8 +514,8 @@ export const flowrCapabilities = {
 										{
 											name:        'Parsing',
 											id:          'built-in-parsing',
-											supported:   'partially',
-											description: '_Handle `parse`, `deparse`, ..._ We handle them as unknown function calls, which, in a sense, is already doing something.'
+											supported:   'not',
+											description: '_Handle `parse`, `deparse`, ..._ We handle them as unknown function calls, but not specifically besides that.'
 										}
 									]
 								}

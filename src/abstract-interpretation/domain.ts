@@ -14,12 +14,20 @@ export class Interval {
 		if(this.isEmpty()) {
 			return '∅'
 		}
+		if(this.isSingleton()) {
+			return this.min.value.toString()
+		}
 		return `${this.min.inclusive ? '[' : '('}${this.min.value}, ${this.max.value}${this.max.inclusive ? ']' : ')'}`
 	}
 
 	// An interval is considered empty if it's of the form [T, T) or (T, T]
 	isEmpty(): boolean {
 		return this.min.value === this.max.value && !(this.min.inclusive && this.max.inclusive)
+	}
+
+	// An interval is considered singleton if it's of the form [T, T]
+	isSingleton(): boolean {
+		return this.min.value === this.max.value && this.min.inclusive && this.max.inclusive
 	}
 }
 

@@ -25,7 +25,6 @@ import {
 	resolveByName
 } from '../../../../../environments'
 
-// TODO: we have to map the named alist correctly
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

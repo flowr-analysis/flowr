@@ -5,7 +5,6 @@ import type { NodeId } from '../../r-bridge'
 export type Fingerprint = string
 
 export function envFingerprint(env: REnvironmentInformation): Fingerprint {
-	/* TODO: speed up hashing as we know the hash of the root element is always the same, maybe use a replacer? */
 	return objectHash(env, { excludeKeys: key => key === 'id' })
 }
 

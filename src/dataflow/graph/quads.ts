@@ -20,7 +20,6 @@ export function df2quads(graph: DataflowGraph, config: QuadSerializationConfigur
 				from: fromId,
 				to:   toId,
 				type: [...info.types],
-				when: info.attribute
 			}))
 		)
 	},

@@ -14,7 +14,7 @@ This wiki page should give the in-depth explanation of the inner workings of *fl
 
 ## The Slicing Process
 
-All slicing steps are defined in [src/core/steps.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/steps.ts). This is the core definition of all steps executed by the [`SteppingSlicer`](https://github.com/Code-Inspect/flowr/blob/main/src/core/slicer.ts) (refer to the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information on how to use the stepping slicer).
+All slicing steps are defined in [src/core/steps.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/steps.ts). This is the core definition of all steps executed by the `SteppingSlicer` (refer to the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information on how to use the stepping slicer).
 
 If you want to execute a single step (for whatever reason) there are two ways to do that:
 

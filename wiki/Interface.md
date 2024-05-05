@@ -981,7 +981,7 @@ Similarly, the new `PipelineExecutor`...
 2. can be executed step-by-step
 3. can repeat steps (e.g., to calculate multiple slices on the same input)
 
-See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_core_pipeline-executor.PipelineExecutor.html) for more information.
+See the documentation for more information.
 
 ### (Deprecated) Slicing With The `SteppingSlicer`
 
@@ -1022,7 +1022,6 @@ See the _documentation_ for more.
 The definition of all steps happens in [src/core/steps.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/steps.ts).
 Investigating the file provides you an overview of the slicing phases, as well as the functions that are called to perform the respective step.
 The [`SteppingSlicer`](https://github.com/Code-Inspect/flowr/blob/main/src/core/stepping-slicer.ts) simply glues them together and passes the results of one step to the next.
-If you are interested in the type magic associated with the stepping slicers output type, refer to [src/core/output.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/output.ts).
 
 If you add a new step, make sure to modify all of these locations accordingly.
 

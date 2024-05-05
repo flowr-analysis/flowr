@@ -8,11 +8,18 @@ interface IntervalBound {
 export class Interval {
 	constructor(readonly min: IntervalBound, readonly max: IntervalBound) {
 		guard(min.value <= max.value, () => `The interval ${this.toString()} has a minimum that is greater than its maximum`)
-		guard(min.value !== max.value || (min.inclusive && max.inclusive), `The interval ${this.toString()} is not possible. Both bounds should be inclusive if they are equal.`)
 	}
 
 	toString(): string {
+		if(this.isEmpty()) {
+			return '∅'
+		}
 		return `${this.min.inclusive ? '[' : '('}${this.min.value}, ${this.max.value}${this.max.inclusive ? ']' : ')'}`
+	}
+
+	// An interval is considered empty if it's of the form [T, T) or (T, T]
+	isEmpty(): boolean {
+		return this.min.value === this.max.value && !(this.min.inclusive && this.max.inclusive)
 	}
 }
 
@@ -20,7 +27,7 @@ export class Domain {
 	private readonly _intervals: Set<Interval>
 
 	private constructor(intervals: Interval[] = []) {
-		this._intervals = new Set(unifyOverlappingIntervals(intervals))
+		this._intervals = new Set(unifyOverlappingIntervals(intervals).filter(interval => !interval.isEmpty()))
 	}
 
 	static bottom(): Domain {

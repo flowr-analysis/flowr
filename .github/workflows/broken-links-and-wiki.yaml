@@ -23,7 +23,11 @@ jobs:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs:        true
+          submodules: true
+
+      - name: "Checkout LFS"
+        run: git lfs checkout
 
       - name: Update the Capabilities Wiki Page
         run: |

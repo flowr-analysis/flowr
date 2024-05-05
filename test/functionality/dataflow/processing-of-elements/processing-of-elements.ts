@@ -2,19 +2,19 @@ import { requireAllTestsInFolder } from '../../_helper/collect-tests'
 import path from 'path'
 
 describe('Processing of Elements', () => {
-	describe('atomic', () =>
+	describe('Atomic', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'atomic'))
 	)
 
-	describe('expression-lists', () =>
+	describe('Expression Lists', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'expression-lists'))
 	)
 
-	describe('functions', () =>
+	describe('Functions', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'functions'))
 	)
 
-	describe('loops', () =>
+	describe('Loops', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'loops'))
 	)
 })

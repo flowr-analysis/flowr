@@ -45,6 +45,10 @@ export class Domain {
 		)])
 	}
 
+	isBottom(): boolean {
+		return this.intervals.size === 0
+	}
+
 	get intervals(): Set<Interval> {
 		return this._intervals
 	}
@@ -61,7 +65,11 @@ export class Domain {
 	}
 
 	toString(): string {
-		return `{${Array.from(this.intervals).join(', ')}}`
+		if(this.isBottom()) {
+			return '⊥'
+		} else {
+			return `{${Array.from(this.intervals).join(', ')}}`
+		}
 	}
 }
 

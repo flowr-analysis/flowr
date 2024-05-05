@@ -61,12 +61,14 @@ if(i > 3) { x <- x * 2 }
 cat(x)`)
 	})
 	describe('Access', () => {
-		assertSliced(label('Constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		assertSliced(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na')
-		assertSliced(label('Variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
+		assertSliced(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[i]')
-		assertSliced(label('Subset Sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access']),
+		assertSliced(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting']),
 			shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[1:i,]')
+		assertSliced(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting', 'range-assignment']),
+			shell, 'a <- 1:10\na[1:5] <- 3\na', ['3@a'], 'a <- 1 : 10\na[1:5] <- 3\na')
 		describe('Definitions', () => {
 			describe('[[', () => {
 				const code = `

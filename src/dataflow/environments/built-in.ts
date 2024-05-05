@@ -143,7 +143,7 @@ registerBuiltInConstant('T', true)
 registerBuiltInConstant('FALSE', false)
 registerBuiltInConstant('F', false)
 registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':', 'list')
-registerBuiltInFunctions(defaultBuiltInProcessor,   {},                                                   'cat') /* returns null */
+registerBuiltInFunctions(defaultBuiltInProcessor,   {},                                                   'cat', 'switch') /* returns null */
 registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0 },                            'print', '(')
 registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }, 'return')
 registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: ExitPointType.Break },                         'break')

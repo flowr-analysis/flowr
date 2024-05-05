@@ -468,8 +468,8 @@ export const flowrCapabilities = {
 								{
 									name:        'Internal and Primitive Functions',
 									id:          'built-in-internal-and-primitive-functions',
-									supported:   'partially',
-									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. Yet we support some (like control-flow) as defined above.'
+									supported:   'not',
+									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.'
 								},
 								{
 									name:        'Options',

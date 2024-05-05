@@ -426,13 +426,21 @@ pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)
       `
-		assertSliced(label('Must link alias with namespace', ['accessing-exported-names', 'resolve-arguments', 'name-quoted', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'special-operator', 'unnamed-arguments']),
+		assertSliced(label('must link alias with namespace', ['accessing-exported-names', 'resolve-arguments', 'name-quoted', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'special-operator', 'unnamed-arguments']),
 			shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)`)
 	})
 	describe('Quotation', () => {
-		assertSliced(label('Quote does not Reference Variables', []),
+		assertSliced(label('quote does not reference variables', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]),
 			shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)')
+	})
+	describe('Redefine built-ins', () => {
+		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']),
+			shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x')
+	})
+	describe('Switch', () => {
+		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]),
+			shell, 'x <- switch("a", a=1, b=2, c=3)', ['1@x'], 'x <- switch("a", a=1, b=2, c=3)')
 	})
 }))

@@ -1,6 +1,7 @@
 import { assert } from 'chai'
 import type { Code, PrettyPrintLinePart } from '../../../../src/reconstruct/helper'
-import { plain, merge, prettyPrintCodeToString, prettyPrintPartToString } from '../../../../src/reconstruct/helper'
+import { plain, merge, prettyPrintCodeToString, prettyPrintPartToString, plainSplit } from '../../../../src/reconstruct/helper'
+import { jsonReplacer } from '../../../../src/util/json'
 
 describe('Functions Reconstruct', () => {
 	describe('plain', () => {
@@ -159,5 +160,25 @@ describe('Functions Reconstruct', () => {
 		]) {
 			positive(testCase.input, testCase.expected, testCase.msg, testCase.columnOffset)
 		}
+	})
+	describe.only('semicolon reconstruction', () => {
+		function positive(input: string, expected: string, msg: string) {
+			it(`Add semicolons to ${JSON.stringify(input, jsonReplacer)}`, () => {
+				const convertedInput = plainSplit(input, { line: 1, column: 1 })
+				const out = prettyPrintCodeToString(convertedInput)
+				//console.log(`initial input: ${JSON.stringify(convertedInput, jsonReplacer)}`)
+				assert.strictEqual(out, expected, msg)
+			})
+		}
+
+		const testCases = [
+			{ input: 'a <- function (x) { x <- 2  x + 4 }', expected: 'a <- function (x) { x <- 2; x + 4 }', msg: 'semi in function that gets assigned' },
+			{ input: 'function (x) {x <- 2  3}', expected: 'function (x) {x <- 2; 3}', msg: 'standart single line function' }
+		]
+		for(const testCase of testCases) {
+			positive(testCase.input, testCase.expected, testCase.msg)
+		}
+
+		//[{ linePart: [{ part: 'a', loc: { line: 1, column: 1 } }], indent: 0 }, { linePart: [{ part: '<-', loc: { line: 1, column: 3 } }], indent: 0 }, { linePart: [{ part: 'function (x)', loc: { line: 1, column: 1 } }], indent: 0 }]
 	})
 })

@@ -37,7 +37,6 @@ import {
 	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
-import { jsonReplacer } from '../util/json'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -155,8 +154,6 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
 	const out = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
 		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
-
-	console.log(JSON.stringify(out,jsonReplacer))
 	return out
 }
 

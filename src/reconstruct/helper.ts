@@ -1,6 +1,6 @@
-import { boolean } from 'joi'
 import type { NodeId, ParentInformation, RNode } from '../r-bridge'
 import { RType } from '../r-bridge'
+import { jsonReplacer } from '../util/json'
 import type { SourcePosition } from '../util/range'
 import type { ReconstructionConfiguration } from './reconstruct'
 
@@ -136,21 +136,113 @@ export function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4)
 }
 
+/*
+function dist(pos1: number, pos2: number) {
+	Math.abs(pos1 - pos2)
+}
+*/
+
 function addSemis(code: Code): boolean {
-	const line: string[][] = []
+
+	function contains(array: string[], elem: string): boolean {
+		if(elem === '<-' || elem === '->' || elem === '<<-' || elem === '->>') {
+			return true
+		}
+		for(const arrElem of array) {
+			for(const char of elem) {
+				if(arrElem === char) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	const line: PrettyPrintLinePart[][] = []
+	const specialChar = ['+', '-', '*', '/', ':', '<-', '->', '<<-', '->>', '$', '$$', '&', '&&', '||', '?', '<', '>', '=', '<=', '>=', '==', '(', ')', '{', '}', '[', '[[', ']', ']]']
 	for(const elem of code) {
-		let currLine = 0
+		let currLine = 1
 		for(const linePart of elem.linePart) {
 			currLine = linePart.loc.line
-			line[currLine].push(linePart.part)
+			if(line[currLine] === undefined) {
+				line[currLine] = []
+			}
+			line[currLine].push(linePart)
 		}
 	}
 
 	for(const lineElements of line) {
-		//add search for space in need of semicolon
-		//if two stetment blocks follow each other add a delimiter
-	}
+		if(lineElements === undefined) {
+			continue
+		}
+		//console.log('current line: ', lineElements[0].loc.line)
+		const heuristic = { assignment: false, brackets: false, lastChar: lineElements[0], statement: false, addedSemi: false }
+		let possibleSemi = heuristic.lastChar.loc
+		for(const elem of lineElements) {
+			console.log('\nelem: ', JSON.stringify(elem, jsonReplacer),'\n')
 
+			const lastChar = heuristic.lastChar.part
+			heuristic.brackets = lastChar[lastChar.length - 1] === ')' || lastChar[lastChar.length - 1] === '}'
+			heuristic.statement = contains(specialChar, heuristic.lastChar.part)
+
+			//check if the current element may be followed by a semicolon
+			if(elem.part[elem.part.length - 1] === ')' || elem.part[elem.part.length - 1] === '}') {
+				//closing brackets
+				const lastSemi = { line: possibleSemi.line, column: possibleSemi.column + 1 }
+				const other = { line: elem.loc.line, column: elem.loc.column }
+				//possibleSemi = (dist(lastSemi.column, elem.loc.column) < dist(other.column, elem.loc.column))? other : possibleSemi
+				possibleSemi = other
+				heuristic.addedSemi = (lastSemi.line === possibleSemi.line) && (lastSemi.column === possibleSemi.column)
+				console.log('\n    last semi: ', JSON.stringify(lastSemi, jsonReplacer), '\n    other: ', JSON.stringify(other, jsonReplacer), '\n    possibleSemi: ', JSON.stringify(possibleSemi, jsonReplacer), '\n   elem.loc: ', JSON.stringify(elem.loc, jsonReplacer), '\n')
+			} else if((elem.loc.column - heuristic.lastChar.loc.column - heuristic.lastChar.part.length) >= 2) {
+				//large space
+				const other = { line: heuristic.lastChar.loc.line, column: heuristic.lastChar.loc.column + 1 }
+				const lastSemi = { line: possibleSemi.line, column: possibleSemi.column }
+				//possibleSemi = (dist(lastSemi.column, elem.loc.column) < dist(other.column, elem.loc.column))? other : possibleSemi
+				possibleSemi = other
+				heuristic.addedSemi = (lastSemi.line === possibleSemi.line) && (lastSemi.column === possibleSemi.column)
+				console.log('\n    last semi: ', JSON.stringify(lastSemi, jsonReplacer), '\n    other: ', JSON.stringify(other, jsonReplacer), '\n    possibleSemi: ', JSON.stringify(possibleSemi, jsonReplacer), '\n   elem.loc: ', JSON.stringify(elem.loc, jsonReplacer), '\n')
+			}
+			console.log('possible semis: ', JSON.stringify(possibleSemi, jsonReplacer), '\n    heuristic: ', JSON.stringify(heuristic, jsonReplacer), '\n')
+
+
+			//checking condishions for adding semicolons
+			if((elem.part === '<-') || (elem.part === '->') || (elem.part === '<<-') || (elem.part === '->>')) {
+				//check for assignments
+				if(heuristic.assignment) {
+					if(!heuristic.addedSemi) {
+						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
+						heuristic.addedSemi = true
+						console.log(`semicolon added: ${JSON.stringify(possibleSemi,jsonReplacer)}`)
+					}
+				}
+				heuristic.assignment = !heuristic.assignment
+			} else if((elem.part[0] === '(' || elem.part[0] === '{')) {
+				//check for brackets
+				heuristic.assignment = false
+				if(heuristic.brackets) {
+					if(!heuristic.addedSemi) {
+						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
+						heuristic.addedSemi = true
+						console.log(`semicolon added: ${JSON.stringify(possibleSemi,jsonReplacer)}`)
+					}
+					heuristic.brackets = false
+				}
+			} else if(!contains(specialChar, elem.part)) {
+				//check for two consecutive statements
+				if(heuristic.statement) {
+					if(!heuristic.addedSemi) {
+						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
+						heuristic.addedSemi = true
+						console.log(`semicolon added: ${JSON.stringify(possibleSemi,jsonReplacer)}`)
+					}
+				}
+			}
+
+			//update the last character seen
+			heuristic.lastChar = elem
+		}
+	}
+	code = merge(code)
 	return true
 }
 

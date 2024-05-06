@@ -11,7 +11,6 @@ import {
 } from '../../../../../environments'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
-import { linkIngoingVariablesInSameScope } from '../../../../linker'
 import { patchFunctionCall } from '../common'
 import { unpackArgument } from '../argument/unpack-argument'
 
@@ -95,7 +94,6 @@ export function processIfThenElse<OtherInfo>(
 		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, rootId) : then?.out ?? []),
 		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, rootId) : otherwise?.out ?? []),
 	]
-	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
 	patchFunctionCall({
 		nextGraph,

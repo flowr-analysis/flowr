@@ -12,7 +12,6 @@ import {
 } from '../../../../../environments'
 import {
 	linkCircularRedefinitionsWithinALoop,
-	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../../../linker'
 import { EdgeType } from '../../../../../graph'
@@ -91,7 +90,6 @@ export function processForLoop<OtherInfo>(
 
 	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, true)]
 
-	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
 	patchFunctionCall({

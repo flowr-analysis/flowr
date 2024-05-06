@@ -33,8 +33,6 @@ export function printAsBuilder(graph: DataflowGraph): string {
 const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.Reads]:                 'reads',
 	[EdgeType.DefinedBy]:             'definedBy',
-	[EdgeType.SameReadRead]:          'sameRead',
-	[EdgeType.SameDefDef]:            'sameDef',
 	[EdgeType.Calls]:                 'calls',
 	[EdgeType.Returns]:               'returns',
 	[EdgeType.DefinesOnCall]:         'definesOnCall',
@@ -312,9 +310,5 @@ class DataflowBuilderPrinter {
 }
 
 function edgeId(from: NodeId, to: NodeId, type: EdgeType): string {
-	if(type === EdgeType.SameReadRead || type === EdgeType.SameDefDef) {
-		// we don't care about the direction
-		[from, to] = from > to ? [to, from] : [from, to]
-	}
 	return `${from}->${to}[${type}]`
 }

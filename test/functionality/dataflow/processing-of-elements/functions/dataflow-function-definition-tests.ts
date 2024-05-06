@@ -300,7 +300,6 @@ describe('Function Definition', withShell(shell => {
 			.use('15', 'a', undefined, false)
 			.reads('15', '0')
 			.call('10', '<-', [argumentInCall('8'), argumentInCall('9')], { returns: ['8'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('m', '3', '5') }, false)
-			.sameRead('10', '14')
 			.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('m', '3', '5').defineVariable('b', '8', '10') }, false)
 			.call('17', '+', [argumentInCall('15'), argumentInCall('16')], { returns: [], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('m', '3', '5').defineVariable('b', '12', '14') }, false)
 			.reads('17', ['15', '16'])
@@ -310,7 +309,6 @@ describe('Function Definition', withShell(shell => {
 			.constant('4', undefined, false)
 			.constant('9', undefined, false)
 			.defineVariable('8', 'b', { definedBy: ['9', '10'] }, false)
-			.sameDef('8', '12')
 			.constant('13', undefined, false)
 			.defineVariable('12', 'b', { definedBy: ['13', '14'] }, false)
 			.constant('16', undefined, false)
@@ -361,7 +359,6 @@ describe('Function Definition', withShell(shell => {
 			.reads('22', '2')
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.call('8', '<-', [argumentInCall('2'), argumentInCall('7')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
-			.sameRead('8', ['11', '21'])
 			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8') }, false)
 			.call('16', 'return', [argumentInCall('14')], { returns: ['14'], reads: [BuiltIn], controlDependency: ['18'], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.call('18', 'if', [argumentInCall('12'), argumentInCall('16'), EmptyArgument], { returns: ['16'], reads: ['12', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
@@ -379,7 +376,6 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('2', 'g', { definedBy: ['7', '8'] }, false)
 			.constant('10', undefined, false)
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
-			.sameDef('9', '19')
 			.constant('20', undefined, false)
 			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependency: [] }, false)
 			.defineFunction('24', '24', ['23'], {
@@ -422,10 +418,8 @@ describe('Function Definition', withShell(shell => {
 			.call('13', '<-', [argumentInCall('3'), argumentInCall('12')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('15', '{', [argumentInCall('13'), argumentInCall('14')], { returns: ['14'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineFunction('x', '3', '13') }, false)
 			.call('17', '<-', [argumentInCall('0'), argumentInCall('16')], { returns: ['0'], reads: [BuiltIn] })
-			.sameRead('17', '20')
 			.call('20', '<-', [argumentInCall('18'), argumentInCall('19')], { returns: ['18'], reads: [BuiltIn], environment: defaultEnv().defineFunction('a', '0', '17') })
 			.defineVariable('4', 'x', { definedBy: [] }, false)
-			.sameDef('4', '8')
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }, false)
 			.defineFunction('12', '12', ['11'], {
 				out:               [],

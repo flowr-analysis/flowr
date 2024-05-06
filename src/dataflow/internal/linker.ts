@@ -18,11 +18,6 @@ import { EmptyArgument, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
 
-export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
-	const nameIdShares = produceNameSharedIdMap(references)
-	linkReadVariablesInSameScopeWithNames(graph, nameIdShares)
-}
-
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
@@ -33,18 +28,6 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 		}
 	}
 	return nameIdShares
-}
-
-export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
-	for(const [name, ids] of nameIdShares.entries()) {
-		if(ids.length <= 1 || name === CONSTANT_NAME) {
-			continue
-		}
-		const base = ids[0]
-		for(let i = 1; i < ids.length; i++) {
-			graph.addEdge(base.nodeId, ids[i].nodeId, { type: EdgeType.SameReadRead })
-		}
-	}
 }
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {

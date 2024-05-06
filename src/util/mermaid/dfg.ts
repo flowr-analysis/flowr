@@ -116,12 +116,6 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD'>): string {
-	// sort from and to for same edges and relates be order independent
-	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef)) {
-		if(from > to) {
-			({ from, to } = { from: to, to: from })
-		}
-	}
 	return `${from}->${to}["${[...types].join(':')}"]`
 }
 
@@ -194,11 +188,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	guard(edges !== undefined, `node ${id} must be found`)
 	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
-		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
+			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)

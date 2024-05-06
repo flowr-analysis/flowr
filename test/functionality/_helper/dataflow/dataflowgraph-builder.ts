@@ -221,26 +221,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a **same-read-read edge** (E3), with from and to as two variable uses
-	 * on the same variable.
-	 *
-	 * @see reads for parameters.
-	 */
-	public sameRead(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.SameReadRead)
-	}
-
-	/**
-	 * Adds a **same-def-def edge** (E4), with from and to as two variables
-	 * that share a defining variable.
-	 *
-	 * @see reads for parameters.
-	 */
-	public sameDef(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.SameDefDef)
-	}
-
-	/**
 	 * Adds a **call edge** (E5) with from as caller, and to as callee.
 	 *
 	 * @see reads for parameters.

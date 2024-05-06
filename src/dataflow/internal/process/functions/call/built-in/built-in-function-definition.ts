@@ -73,19 +73,6 @@ export function processFunctionDefinition<OtherInfo>(
 
 	dataflowLogger.trace(`Function definition with id ${name.info.id} has ${remainingRead.length} remaining reads`)
 
-	// link same-def-def with arguments
-	for(const writeTarget of body.out) {
-		const writeName = writeTarget.name
-
-		const resolved = writeName ? resolveByName(writeName, paramsEnvironments) : undefined
-		if(resolved !== undefined) {
-			// write-write
-			for(const target of resolved) {
-				subgraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef })
-			}
-		}
-	}
-
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
 
 	for(const read of remainingRead) {

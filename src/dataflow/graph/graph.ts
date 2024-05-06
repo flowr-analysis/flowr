@@ -258,17 +258,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	}
 
 	private installEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
-		// sort (on id so that sorting is the same, independent of the attribute)
-		const bidirectional = type === EdgeType.SameReadRead || type === EdgeType.SameDefDef
-
-		if(bidirectional) {
-			const existingTo = this.edgeInformation.get(toId)
-			if(existingTo === undefined) {
-				this.edgeInformation.set(toId, new Map([[fromId, edge]]))
-			} else {
-				existingTo.set(fromId, edge)
-			}
-		} else if(type === EdgeType.DefinesOnCall) {
+		if(type === EdgeType.DefinesOnCall) {
 			const otherEdge: Edge = {
 				...edge,
 				types: new Set([EdgeType.DefinedByOnCall])

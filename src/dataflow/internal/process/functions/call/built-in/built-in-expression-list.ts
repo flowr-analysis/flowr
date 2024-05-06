@@ -9,8 +9,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { IdentifierReference, IEnvironment, REnvironmentInformation } from '../../../../../environments'
 import { BuiltIn , makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
-import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../../../../linker'
-import { DefaultMap } from '../../../../../../util/defaultmap'
+import { linkFunctionCalls } from '../../../../linker'
 import type { DataflowGraphVertexInfo } from '../../../../../graph'
 import { CONSTANT_NAME, DataflowGraph } from '../../../../../graph'
 import { dataflowLogger, EdgeType } from '../../../../../index'
@@ -54,21 +53,9 @@ function processNextExpression(
 	remainingRead: Map<string, IdentifierReference[]>,
 	nextGraph: DataflowGraph
 ) {
-	// all inputs that have not been written until know, are read!
+	// all inputs that have not been written until now, are read!
 	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
 		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph)
-	}
-	// add same variable reads for deferred if they are read previously but not dependent
-	for(const writeTarget of currentElement.out) {
-		const writeName = writeTarget.name
-
-		const resolved = writeName ? resolveByName(writeName, environment) : undefined
-		if(resolved !== undefined) {
-			// write-write
-			for(const target of resolved) {
-				nextGraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef })
-			}
-		}
 	}
 }
 
@@ -172,11 +159,6 @@ export function processExpressionList<OtherInfo>(
 			defaultReturnExpr = undefined
 			break
 		}
-	}
-
-	if(expressions.length > 0) {
-		// now, we have to link same reads
-		linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 	}
 
 	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)

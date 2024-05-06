@@ -4,7 +4,6 @@ import type {
 	DataflowGraphVertexInfo,
 	FunctionArgument } from '../graph'
 import {
-	CONSTANT_NAME,
 	isNamedArgument,
 	VertexType
 } from '../graph'

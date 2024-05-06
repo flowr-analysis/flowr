@@ -9,14 +9,15 @@ import type {
 	FunctionArgument,
 	IdentifierDefinition,
 	IdentifierReference,
-	IEnvironment } from '../../dataflow'
-import { isNamedArgument
-	, isPositionalArgument
-	, VertexType,
+	IEnvironment,
+	EdgeType
+} from '../../dataflow'
+import { isNamedArgument,
+	isPositionalArgument,
+	VertexType,
 	BuiltIn,
 	BuiltInEnvironment,
-	CONSTANT_NAME,
-	EdgeType
+	CONSTANT_NAME
 } from '../../dataflow'
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'

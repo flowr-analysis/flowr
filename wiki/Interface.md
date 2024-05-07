@@ -965,7 +965,7 @@ const slice = await slicer.allRemainingSteps()
 // console.log(slice.reconstruct.code)
 ```
 
-If you compare this, with what you would have done with the old `SteppingSlicer`, this essentially just requires you to replace the `SteppingSlicer` with the `PipelineExecutor` and to pass the `DEFAULT_SLICING_PIPELINE` as the first argument.
+If you compare this, with what you would have done with the old (and removed) `SteppingSlicer`, this essentially just requires you to replace the `SteppingSlicer` with the `PipelineExecutor` and to pass the `DEFAULT_SLICING_PIPELINE` as the first argument.
 The `PipelineExecutor`...
 
 1. allows to investigate the results of all intermediate steps

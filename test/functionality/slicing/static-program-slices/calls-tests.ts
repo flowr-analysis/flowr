@@ -97,7 +97,6 @@ a(x = 3)`
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `
-		//this test fails, semicollons should not be removed
 		assertSliced('Late bindings of parameter in body', shell, lateCode, ['2@f'], `f <- function(a=b, m=3) { b <- 1;            a + 1 }
 f()`)
 		const lateCodeB = `f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }
@@ -133,12 +132,10 @@ z <- 5
 u <- a()
 u()`
 
-			//this test fails, we still need to retain some semicollons
 			//a() gets preserved but the assignment is removed
 			//we may want to fix a() to the start of the line in this case
-			assertSliced('Must include function shell', shell, code, ['5@a'], `a <- function() { x <- function()          ;          return(x) }
+			assertSliced('Must include function shell', shell, code, ['5@a'], `a <- function() { x <- function();                    return(x) }
 a()`)
-			//this test fails, semicollons should not get removed here
 			assertSliced('Must include function shell on call', shell, code, ['6@u'], `a <- function() { x <- function() { z + y }; y <- 12; return(x) }
 z <- 5
 u <- a()
@@ -164,7 +161,6 @@ b <- function(f) { i <- 5; f() }
 b(a)`
 		assertSliced('Only i, not bound in context', shell, code, ['1@i'], 'i')
 		assertSliced('Slice of b is independent', shell, code, ['3@b'], 'b <- function(f)')
-		//this test fails, semicollons need to be preserved here
 		assertSliced('Slice of b-call uses function', shell, code, ['4@b'], `a <- function() {         i }
 b <- function(f) { i <- 5; f() }
 b(a)`)
@@ -227,7 +223,6 @@ a()
 cat(x)`
 		assertSliced('Local redefinition has no effect', shell, localCode, ['5@x'], `x <- 3
 cat(x)`)
-		//this test fails, semicollons must be preserved here
 		assertSliced('Local redefinition must be kept as part of call', shell, localCode, ['4@a'], `a <- function() { x = x + 5; cat(x) }
 x <- 3
 a()`)
@@ -277,7 +272,7 @@ cat(x)`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['7@x'], `a <- function() {
+cat(x)`, ['5@x'], `a <- function() {
         function(b) {
             if(runif() > .5) {
                 x <<- b

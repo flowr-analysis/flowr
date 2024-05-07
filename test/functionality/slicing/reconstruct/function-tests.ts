@@ -26,7 +26,6 @@ describe('Functions Reconstruct', () => {
 		function positive(snipbits: Code[],expected: Code) {
 			it(prettyPrintCodeToString(expected),() => {
 				const result:Code = merge(...snipbits)
-				//console.log(JSON.stringify(result))
 				assert.deepStrictEqual(result, expected)
 			})
 		}
@@ -161,24 +160,22 @@ describe('Functions Reconstruct', () => {
 			positive(testCase.input, testCase.expected, testCase.msg, testCase.columnOffset)
 		}
 	})
-	describe.only('semicolon reconstruction', () => {
+	describe('semicolon reconstruction', () => {
 		function positive(input: string, expected: string, msg: string) {
 			it(`Add semicolons to ${JSON.stringify(input, jsonReplacer)}`, () => {
 				const convertedInput = plainSplit(input, { line: 1, column: 1 })
 				const out = prettyPrintCodeToString(convertedInput)
-				//console.log(`initial input: ${JSON.stringify(convertedInput, jsonReplacer)}`)
 				assert.strictEqual(out, expected, msg)
 			})
 		}
 
 		const testCases = [
 			{ input: 'a <- function (x) { x <- 2  x + 4 }', expected: 'a <- function (x) { x <- 2; x + 4 }', msg: 'semi in function that gets assigned' },
-			{ input: 'function (x) {x <- 2  3}', expected: 'function (x) {x <- 2; 3}', msg: 'standart single line function' }
+			{ input: 'function (x) { x <- 2  3 }', expected: 'function (x) { x <- 2; 3 }', msg: 'standart single line function' },
+			{ input: 'x <- 3  y <- 4', expected: 'x <- 3; y <- 4', msg: 'single line, double assign' }
 		]
 		for(const testCase of testCases) {
 			positive(testCase.input, testCase.expected, testCase.msg)
 		}
-
-		//[{ linePart: [{ part: 'a', loc: { line: 1, column: 1 } }], indent: 0 }, { linePart: [{ part: '<-', loc: { line: 1, column: 3 } }], indent: 0 }, { linePart: [{ part: 'function (x)', loc: { line: 1, column: 1 } }], indent: 0 }]
 	})
 })

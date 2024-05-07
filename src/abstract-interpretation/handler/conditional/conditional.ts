@@ -1,9 +1,10 @@
 import {ParentInformation, RIfThenElse} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
 import {AINodeStore} from '../../ainode'
-import {aiLogger} from '../../processor'
+import {aiLogger, getDfgChildrenOfType} from '../../processor'
 import {Handler} from '../handler'
 import {DataflowInformation} from '../../../dataflow/internal/info'
+import {EdgeType} from '../../../dataflow'
 
 export class Conditional extends Handler {
 	condition: AINodeStore | undefined
@@ -25,7 +26,16 @@ export class Conditional extends Handler {
 	next(aiNodes: AINodeStore): void {
 		aiLogger.trace(`${this.name} received`)
 		if(this.condition === undefined) {
-			this.condition = aiNodes
+			this.condition = new AINodeStore()
+			for(const [_, node] of aiNodes) {
+				const children = getDfgChildrenOfType(node.nodeId, this.dfg, EdgeType.Reads)
+				for(const child of children ?? []) {
+					this.condition.register({
+						...node,
+						nodeId: child
+					})
+				}
+			}
 		} else if(this.then === undefined) {
 			this.then = aiNodes
 		} else if(this.else === undefined) {

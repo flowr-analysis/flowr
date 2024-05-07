@@ -26,13 +26,20 @@ class Stack<ElementType> {
 	}
 }
 
-function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore: AINodeStore): Domain {
+export function getDfgChildrenOfType(node: NodeId, dfg: DataflowInformation, ...types: EdgeType[]): NodeId[] | undefined {
 	const dfgNode: [DataflowGraphVertexInfo, OutgoingEdges] | undefined = dfg.graph.get(node)
-	guard(dfgNode !== undefined, `No DFG-Node found with ID ${node}`)
+	if(dfgNode === undefined) {
+		return undefined
+	}
 	const [_, children] = dfgNode
-	const ids = Array.from(children.entries())
-		.filter(([_, edge]) => edge.types.has(EdgeType.Reads))
+	return Array.from(children.entries())
+		.filter(([_, edge]) => types.some(type => edge.types.has(type)))
 		.map(([id, _]) => id)
+}
+
+function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore: AINodeStore): Domain {
+	const ids = getDfgChildrenOfType(node, dfg, EdgeType.Reads)
+	guard(ids !== undefined, `No DFG-Node found with ID ${node}`)
 	const domains: Domain[] = []
 	for(const id of ids) {
 		const domain = domainStore.get(id)?.domain

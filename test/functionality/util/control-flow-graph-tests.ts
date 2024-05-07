@@ -16,9 +16,7 @@ import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { createPipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline'
-import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
-import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline'
 
 function normAllIds(ids: NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible)

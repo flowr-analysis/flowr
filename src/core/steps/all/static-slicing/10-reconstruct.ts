@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import type { IPipelineStep } from '../../step'
-import { PipelineStepStage } from '../../step'
+import type { IPipelineStep } from '../../pipeline-step'
+import { PipelineStepStage } from '../../pipeline-step'
 import type { AutoSelectPredicate } from '../../../../slicing'
 import { reconstructToCode } from '../../../../slicing'
 import type { DeepReadonly } from 'ts-essentials'

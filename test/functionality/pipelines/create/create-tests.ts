@@ -1,5 +1,5 @@
 import { createPipeline } from '../../../../src/core/steps/pipeline'
-import type { IPipelineStep, PipelineStepName } from '../../../../src/core/steps/step'
+import type { IPipelineStep, PipelineStepName } from '../../../../src/core/steps/pipeline-step'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'

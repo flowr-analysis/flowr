@@ -30,6 +30,7 @@ export const enum PipelineStepStage {
 	OncePerRequest
 }
 
+/** Name of a single {@link IPipelineStep|step} in a pipeline (branded to avoid type-mishaps). */
 export type PipelineStepName = string & { __brand?: 'StepName' }
 
 /**

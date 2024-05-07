@@ -51,18 +51,27 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
-	const operationStack = new Stack<Handler>()
+	const operationStack = new Stack<{ handler: Handler, domains: AINodeStore }>()
 	let domainStore = new AINodeStore()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		if(astNode?.type === RType.BinaryOp) {
-			operationStack.push(new BinOp(dfg, astNode)).enter()
+			operationStack.push({
+				domains: domainStore,
+				handler: new BinOp(dfg, astNode)
+			}).handler.enter()
 		} else if(astNode?.type === RType.IfThenElse) {
-			operationStack.push(new Conditional(dfg, astNode)).enter()
+			operationStack.push({
+				domains: domainStore,
+				handler: new Conditional(dfg, astNode)
+			}).handler.enter()
 		} else if(astNode?.type === RType.ExpressionList) {
-			operationStack.push(new ExprList(dfg)).enter()
+			operationStack.push({
+				domains: domainStore,
+				handler: new ExprList(dfg)
+			}).handler.enter()
 		} else if(astNode?.type === RType.Symbol) {
-			operationStack.peek()?.next(new AINodeStore({
+			operationStack.peek()?.handler.next(new AINodeStore({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
 				domain:       getDomainOfDfgChild(node.id, dfg, domainStore),
@@ -70,7 +79,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			}))
 		} else if(astNode?.type === RType.Number){
 			const num = astNode.content.num
-			operationStack.peek()?.next(new AINodeStore({
+			operationStack.peek()?.handler.next(new AINodeStore({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
 				domain:       Domain.fromScalar(num),
@@ -81,9 +90,10 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			if(operation === undefined) {
 				return
 			}
-			const operationResult = operation.exit()
+			const operationResult = operation.handler.exit()
 			domainStore = mergeDomainStores(domainStore, operationResult)
-			operationStack.peek()?.next(operationResult)
+			// TODO: use the result from next as a base for the next operation
+			operationStack.peek()?.handler.next(operationResult)
 		} else {
 			aiLogger.warn(`Unknown node type ${node.type}`)
 		}

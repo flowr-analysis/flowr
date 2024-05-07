@@ -1,8 +1,8 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import type { DataflowInformation } from '../../../../dataflow/info'
-import type { IPipelineStep } from '../../step'
+import type { IPipelineStep } from '../../pipeline-step'
 import type { DeepReadonly } from 'ts-essentials'
-import { PipelineStepStage } from '../../step'
+import { PipelineStepStage } from '../../pipeline-step'
 
 // Use runAbstractInterpretation here when it's ready
 function processor(results: { dataflow?: DataflowInformation }, _input: unknown): DataflowInformation {

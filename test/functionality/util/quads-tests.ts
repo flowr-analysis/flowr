@@ -3,7 +3,8 @@ import { decorateAst, requestFromInput } from '../../../src'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer'
-import { SteppingSlicer } from '../../../src/core/stepping-slicer'
+import { PipelineExecutor } from '../../../src/core/pipeline-executor'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline'
 
 describe('Quads', withShell(shell => {
 	const context = 'test'
@@ -34,9 +35,8 @@ describe('Quads', withShell(shell => {
 	})
 
 	const compareQuadsDfg = async(code: string, expected: string) => {
-		const info = await new SteppingSlicer({
-			stepOfInterest: 'dataflow',
-			request:        requestFromInput(code),
+		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+			request: requestFromInput(code),
 			shell
 		}).allRemainingSteps()
 

@@ -1,37 +1,32 @@
-***This wiki page is currently under construction***
-
 Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/Code-Inspect/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 <!-- TOC -->
-- [💬 Communicating With the Server](#-communicating-with-the-server)
+- [💬 Communicating with the Server](#-communicating-with-the-server)
   - [The Hello Message](#the-hello-message)
   - [The Analysis Request](#the-analysis-request)
     - [Including the Control Flow Graph](#including-the-control-flow-graph)
     - [Retrieve the Output as RDF N-Quads](#retrieve-the-output-as-rdf-n-quads)
-    - [Complete Example](#complete-example)
+    - [Complete Example (without WebSocket)](#complete-example-without-websocket)
       - [Using Netcat](#using-netcat)
       - [Using Python](#using-python)
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
-  - [Interfacing With the File System](#interfacing-with-the-file-system)
+  - [Interfacing with the File System](#interfacing-with-the-file-system)
 - [⚒️ Writing Code](#️-writing-code)
-  - [Interfacing With R by Using The `RShell`](#interfacing-with-r-by-using-the-rshell)
+  - [Interfacing with R by Using the `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [The Pipeline Executor](#the-pipeline-executor)
-  - [(Deprecated) Slicing With The `SteppingSlicer`](#deprecated-slicing-with-the-steppingslicer)
-    - [Understanding the Steps](#understanding-the-steps)
-    - [Benchmark the Slicer With The `BenchmarkSlicer`](#benchmark-the-slicer-with-the-benchmarkslicer)
-  - [Augmenting the Normalization](#augmenting-the-normalization)
   - [Generate Statistics](#generate-statistics)
     - [Extract Statistics with `extractUsageStatistics()`](#extract-statistics-with-extractusagestatistics)
     - [Adding a New Feature to Extract](#adding-a-new-feature-to-extract)
 <!-- TOC -->
 
-## 💬 Communicating With the Server
+## 💬 Communicating with the Server
 
 As explained in the [Overview](https://github.com/Code-Inspect/flowr/wiki/Overview), you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the `--server` flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
-Currently, every connection is handled by the same underlying `RShell` - so the server is not designed to handle many clients at a time.  Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary amount of&nbsp;R shell sessions on the target machine).
+Currently, every connection is handled by the same underlying `RShell` - so the server is not designed to handle many clients at a time.
+Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary amount of&nbsp;R shell sessions on the target machine).
 
 Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
@@ -79,8 +74,8 @@ See the implementation of the [hello message](https://github.com/Code-Inspect/fl
 </details>
 
 There are currently a few messages that you can send after the hello message.
-If you want to *slice* a piece of R code you first have to send an analysis request, so that you can send one or multiple slice requests afterward.
-Requests for the repl are independent of that.
+If you want to *slice* a piece of R code you first have to send an [analysis request](#the-analysis-request), so that you can send one or multiple slice requests afterward.
+Requests for the [REPL](#the-repl-request) are independent of that.
 
 ### The Analysis Request
 
@@ -105,15 +100,14 @@ sequenceDiagram
 </details>
 
 The request allows the server to analyze a file and prepare it for slicing.
-The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore be unavailable for slicing).
+The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent slicing).
 
 > [!IMPORTANT]
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
 
-Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
+Furthermore, the request must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (this path must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
 See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/analysis.ts) for more information.
-
 
 <details open>
     <summary>Example Request</summary>
@@ -466,7 +460,7 @@ It contains a human-readable description *why* the analysis failed (see the [err
 
 #### Including the Control Flow Graph
 
-While *flowR* does (for the time being) not use an explicit control flow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) for any bug you may encounter).
+While *flowR* does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) for any bug you may encounter).
 For this, the analysis request may add `cfg: true` to its list of options.
 
 <details open>
@@ -629,11 +623,9 @@ The response is basically the same as the response sent without the `cfg` flag. 
 
 </details>
 
-
 #### Retrieve the Output as RDF N-Quads
 
-The default response is formatted as JSON. However, by specifying `format: "n-quads"`, you can retrieve the individual results (e.g., the normalized AST), as [RDF N-Quads](https://www.w3.org/TR/n-quads/). This works with, and without `cfg: true`.
-
+The default response is formatted as JSON. However, by specifying `format: "n-quads"`, you can retrieve the individual results (e.g., the normalized AST), as [RDF N-Quads](https://www.w3.org/TR/n-quads/). This works with, and without [`cfg: true`](#including-the-control-flow-graph).
 
 <details open>
     <summary>Example Request</summary>
@@ -676,7 +668,7 @@ Please note, that the base message format is still JSON. Only the individual res
 ```
 </details>
 
-#### Complete Example
+#### Complete Example (without WebSocket)
 
 Suppose, you want to launch the server using a docker container. Then, start the server by (forwarding the internal default port):
 
@@ -686,7 +678,7 @@ docker run -p1042:1042 -it --rm eagleoutice/flowr --server
 
 ##### Using Netcat
 
-Now, using a tool like _netcat_ to connect:
+Now, using a tool like *netcat* to connect:
 
 ```shell
 nc 127.0.0.1 1042
@@ -844,16 +836,16 @@ sequenceDiagram
 
 The REPL execution message allows to send a REPL command to receive its output. For more on the REPL, see the [introduction](https://github.com/Code-Inspect/flowr/wiki/Overview#the-read-eval-print-loop-repl), or the [description below](#using-the-repl).
 You only have to pass the command you want to execute in the `expression` field. Furthermore, you can set the `ansi` field to `true` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
-We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts, which then happens in parallel.
+We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
 > [!WARNING]
-> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine.
+> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful.
 
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
 
 See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr-cli/blob/main/src/repl/server/messages/repl.ts) for more information.
-The semantics of the error message are similar to other messages.
+The semantics of the error message are similar to that of the other messages.
 
 <details open>
     <summary>Example Request</summary>
@@ -930,7 +922,7 @@ flowchart LR
 
 The graph returned for you may differ, depending on the evolution of *flowR*.
 
-### Interfacing With the File System
+### Interfacing with the File System
 
 Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:
 
@@ -938,21 +930,20 @@ Many commands that allow for an R-expression (like `:dataflow*`) allow for a fil
 R> :parse file://test/testfiles/example.R
 ```
 
-
 ## ⚒️ Writing Code
 
 *flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/Code-Inspect/flowr/wiki/Core) wiki page for more information).
 
-### Interfacing With R by Using The `RShell`
+### Interfacing with R by Using the `RShell`
 
 The `RShell` class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
-For now there are no alternatives (although we plan on providing more flexible drop-in replacements).
+For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
-However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the in-code _documentation_ for more information.
+However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the in-code *documentation* for more information.
 
 With a shell object (let's call it `shell`), you can execute R code by using `RShell::sendCommand`, for example `shell.sendCommand("1 + 1")`. However, this does not return anything, so if you want to collect the output of your command, use `RShell::sendCommandWithOutput` instead.
 
@@ -974,109 +965,16 @@ const slice = await slicer.allRemainingSteps()
 // console.log(slice.reconstruct.code)
 ```
 
-If you compare this, with what you would have done with the [old `SteppingSlicer`](#deprecated-slicing-with-the-steppingslicer) this essentially just requires you to replace the `SteppingSlicer` with the `PipelineExecutor` and to pass the `DEFAULT_SLICING_PIPELINE` as the first argument.
-Similarly, the new `PipelineExecutor`...
+If you compare this, with what you would have done with the old (and removed) `SteppingSlicer`, this essentially just requires you to replace the `SteppingSlicer` with the `PipelineExecutor` and to pass the `DEFAULT_SLICING_PIPELINE` as the first argument.
+The `PipelineExecutor`...
 
 1. allows to investigate the results of all intermediate steps
 2. can be executed step-by-step
 3. can repeat steps (e.g., to calculate multiple slices on the same input)
 
-See the documentation for more information.
-
-### (Deprecated) Slicing With The `SteppingSlicer`
-
-> 💡 Information\
-> Please note, that the `SteppingSlicer` has been deprecated with the *Dataflow v2* update, in favor of a far more general `PipelineExecutor` (which now backs the `SteppingSlicer` using a custom legacy-`Pipeline` to ensure that it behaves similar).
-
-The main class that represents *flowR*'s slicing is the `SteppingSlicer` class. With *flowR*, this allows you to slice code like this:
-
-```typescript
-const stepper = new SteppingSlicer({
-  shell:     new RShell(),
-  request:   requestFromInput('x <- 1\nx + 1'),
-  criterion: ['2@x']
-})
-
-const slice = await stepper.allRemainingSteps()
-// console.log(slice.reconstruct.code)
-```
-
-After that, you can request more slices with the help of `SteppingSlicer::updateCriterion`:
-
-```typescript
-stepper.updateCriterion(['1@x'])
-const sliceB = await stepper.allRemainingSteps()
-// console.log(sliceB.reconstruct.code)
-```
-
-Besides slicing, the stepping slicer:
-
-1. allows to investigate the results of all intermediate steps
-2. can be executed step-by-step
-3. can be told to stop after a given step
-
-See the _documentation_ for more.
-
-#### Understanding the Steps
-
-The definition of all steps happens in [src/core/steps.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/steps.ts).
-Investigating the file provides you an overview of the slicing phases, as well as the functions that are called to perform the respective step.
-The [`SteppingSlicer`](https://github.com/Code-Inspect/flowr/blob/main/src/core/stepping-slicer.ts) simply glues them together and passes the results of one step to the next.
-
-If you add a new step, make sure to modify all of these locations accordingly.
-
-#### Benchmark the Slicer With The `BenchmarkSlicer`
-
-Relying on the `SteppingSlicer`, the `BenchmarkSlicer` instruments each step to allow measuring the required time. It is used by the `benchmark` script, explained in the [overview](https://github.com/Code-Inspect/flowr/wiki/Overview) wiki page.
-Furthermore, it provides a simple way to slice a file for all possible slicing points:
-
-```typescript
-const slicer = new BenchmarkSlicer()
-
-await slicer.init({ request: 'text', content: 'y <- 2 + x' })
-await slicer.sliceForAll(DefaultAllVariablesFilter)
-
-const result = slicer.finish()
-```
-
-Please create a new `BenchmarkSlicer` object per input file (this will probably change as soon as *flowR* allows for multiple input files).
-
-> [!TIP]
-> Calling `BenchmarkSlicer::finish` will automatically take care of closing the underlying shell session.
-> However, if you want to be sure (or need it in case of exceptions), you can use `BenchmarkSlicer::ensureSessionClosed`.
-
-### Augmenting the Normalization
-
-The normalization of a given input is essentially handled by the `normalize` function although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
-The call accepts a collection of *hooks* (the configuration of the `SteppingSlicer` allows them as well).
-
-These hooks allow the modification of the inputs and outputs of the normalization. If you want to count the amount of strings encountered while parsing, you can use something like this:
-
-```ts
-const shell = new RShell()
-
-let counter = 0
-
-await new SteppingSlicer({
-  stepOfInterest: 'normalize', shell,
-  request: requestFromInput('x <- "foo"'),
-  hooks: {
-    values: {
-      onString: {
-        after: () => { counter++ },
-      }
-    }
-  }
-}).allRemainingSteps()
-
-// console.log(counter)
-```
-
-The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example).
+See the in-code documentation for more information.
 
 ### Generate Statistics
-
-**TODO: will probably change as part of the planned paper**
 
 #### Extract Statistics with `extractUsageStatistics()`
 

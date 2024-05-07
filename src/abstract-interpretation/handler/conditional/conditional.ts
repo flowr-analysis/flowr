@@ -23,7 +23,7 @@ export class Conditional extends Handler {
 		return this.condition
 	}
 
-	next(aiNodes: AINodeStore): void {
+	next(aiNodes: AINodeStore): AINodeStore {
 		aiLogger.trace(`${this.name} received`)
 		if(this.condition === undefined) {
 			this.condition = new AINodeStore()
@@ -36,12 +36,14 @@ export class Conditional extends Handler {
 					})
 				}
 			}
-		} else if(this.then === undefined) {
-			this.then = aiNodes
-		} else if(this.else === undefined) {
-			this.else = aiNodes
-		} else {
-			guard(false, `Conditional ${this.node.info.id} already has condition, then and else`)
+			return this.condition
 		}
+		if(this.then === undefined) {
+			return this.then = aiNodes
+		}
+		if(this.else === undefined) {
+			return this.else = aiNodes
+		}
+		guard(false, `Conditional ${this.node.info.id} already has condition, then and else`)
 	}
 }

@@ -9,5 +9,5 @@ export abstract class Handler {
 		aiLogger.trace(`Entered ${this.name}`)
 	}
 	abstract exit(): AINodeStore
-	abstract next(aiNodes: AINodeStore): void
+	abstract next(aiNodes: AINodeStore): AINodeStore
 }

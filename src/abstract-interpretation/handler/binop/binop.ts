@@ -25,16 +25,16 @@ export class BinOp extends Handler {
 		return operators[this.node.flavor](this.lhs, this.rhs, this.node)
 	}
 
-	next(aiNodes: AINodeStore): void {
+	next(aiNodes: AINodeStore): AINodeStore {
 		aiLogger.trace(`${this.name} received`)
 		guard(aiNodes.size === 1, 'Welp, next received more than one AINodes')
 		const node = aiNodes.values().next().value as AINode
 		if(this.lhs === undefined) {
-			this.lhs = node
-		} else if(this.rhs === undefined) {
-			this.rhs = node
-		} else {
-			guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
+			return new AINodeStore(this.lhs = node)
 		}
+		if(this.rhs === undefined) {
+			return new AINodeStore(this.rhs = node)
+		}
+		guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
 	}
 }

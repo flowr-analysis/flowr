@@ -13,7 +13,7 @@ export class ExprList extends Handler {
 		return this.exprList
 	}
 
-	next(aiNodes: AINodeStore): void {
-		this.exprList = mergeDomainStores(aiNodes, this.exprList)
+	next(aiNodes: AINodeStore): AINodeStore {
+		return this.exprList = mergeDomainStores(aiNodes, this.exprList)
 	}
 }

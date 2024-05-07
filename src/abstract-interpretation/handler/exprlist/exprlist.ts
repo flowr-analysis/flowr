@@ -1,16 +1,12 @@
-import { AINodeStore, mergeDomainStores } from '../../ainode'
-import { aiLogger } from '../../processor'
-import { Handler } from '../handler'
+import {AINodeStore, mergeDomainStores} from '../../ainode'
+import {Handler} from '../handler'
+import {DataflowInformation} from '../../../dataflow/internal/info'
 
-export class ExprList implements Handler {
+export class ExprList extends Handler {
 	private exprList: AINodeStore = new AINodeStore()
 
-	getName(): string {
-		return 'ExprList'
-	}
-
-	enter(): void {
-		aiLogger.trace(`Entered ${this.getName()}`)
+	constructor(readonly dfg: DataflowInformation) {
+		super(dfg, 'ExprList')
 	}
 
 	exit(): AINodeStore {

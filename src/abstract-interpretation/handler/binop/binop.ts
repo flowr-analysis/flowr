@@ -3,35 +3,30 @@ import {aiLogger} from '../../processor'
 import {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
 import {operators} from './operators'
-import { AINode, AINodeStore } from '../../ainode'
+import {AINode, AINodeStore} from '../../ainode'
+import {DataflowInformation} from '../../../dataflow/internal/info'
 
 export type BinOpOperators = {
 	[key in BinaryOperatorFlavor]: (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINodeStore
 }
 
-export class BinOp implements Handler {
+export class BinOp extends Handler {
 	lhs: AINode | undefined
 	rhs: AINode | undefined
 
-	constructor(readonly node: RBinaryOp<ParentInformation>) {}
-
-	getName(): string {
-		return `Bin Op (${this.node.flavor})`
-	}
-
-	enter(): void {
-		aiLogger.trace(`Entered ${this.getName()}`)
+	constructor(readonly dfg: DataflowInformation, readonly node: RBinaryOp<ParentInformation>) {
+		super(dfg, `Bin Op (${node.flavor})`)
 	}
 
 	exit(): AINodeStore {
-		aiLogger.trace(`Exited ${this.getName()}`)
+		aiLogger.trace(`Exited ${this.name}`)
 		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
 		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
 		return operators[this.node.flavor](this.lhs, this.rhs, this.node)
 	}
 
 	next(aiNodes: AINodeStore): void {
-		aiLogger.trace(`${this.getName()} received`)
+		aiLogger.trace(`${this.name} received`)
 		guard(aiNodes.size === 1, 'Welp, next received more than one AINodes')
 		const node = aiNodes.values().next().value as AINode
 		if(this.lhs === undefined) {

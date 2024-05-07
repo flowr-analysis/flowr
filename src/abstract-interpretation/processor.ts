@@ -49,11 +49,11 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		if(astNode?.type === RType.BinaryOp) {
-			operationStack.push(new BinOp(astNode)).enter()
+			operationStack.push(new BinOp(dfg, astNode)).enter()
 		} else if(astNode?.type === RType.IfThenElse) {
-			operationStack.push(new Conditional(astNode)).enter()
+			operationStack.push(new Conditional(dfg, astNode)).enter()
 		} else if(astNode?.type === RType.ExpressionList) {
-			operationStack.push(new ExprList()).enter()
+			operationStack.push(new ExprList(dfg)).enter()
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next(new AINodeStore({
 				nodeId:       astNode.info.id,

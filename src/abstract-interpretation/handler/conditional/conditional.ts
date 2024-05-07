@@ -1,26 +1,21 @@
-import { ParentInformation, RIfThenElse } from '../../../r-bridge'
-import { guard } from '../../../util/assert'
-import { AINodeStore } from '../../ainode'
-import { aiLogger } from '../../processor'
-import { Handler } from '../handler'
+import {ParentInformation, RIfThenElse} from '../../../r-bridge'
+import {guard} from '../../../util/assert'
+import {AINodeStore} from '../../ainode'
+import {aiLogger} from '../../processor'
+import {Handler} from '../handler'
+import {DataflowInformation} from '../../../dataflow/internal/info'
 
-export class Conditional implements Handler {
+export class Conditional extends Handler {
 	condition: AINodeStore | undefined
 	then:      AINodeStore | undefined
 	else:      AINodeStore | undefined
 
-	constructor(readonly node: RIfThenElse<ParentInformation>) {}
-
-	getName(): string {
-		return 'IfThenElse'
-	}
-
-	enter(): void {
-		aiLogger.trace(`Entered ${this.getName()}`)
+	constructor(readonly dfg: DataflowInformation, readonly node: RIfThenElse<ParentInformation>) {
+		super(dfg, 'IfThenElse')
 	}
 
 	exit(): AINodeStore {
-		aiLogger.trace(`Exited ${this.getName()}`)
+		aiLogger.trace(`Exited ${this.name}`)
 		guard(this.condition !== undefined, `No condition found for conditional ${this.node.info.id}`)
 		guard(this.then !== undefined, `No then-branch found for conditional ${this.node.info.id}`)
 		// TODO: calculate new domain
@@ -28,7 +23,7 @@ export class Conditional implements Handler {
 	}
 
 	next(aiNodes: AINodeStore): void {
-		aiLogger.trace(`${this.getName()} received`)
+		aiLogger.trace(`${this.name} received`)
 		if(this.condition === undefined) {
 			this.condition = aiNodes
 		} else if(this.then === undefined) {

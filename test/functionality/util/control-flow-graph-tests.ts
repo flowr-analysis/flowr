@@ -14,8 +14,11 @@ import type { NodeId } from '../../../src'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import { PipelineExecutor } from '../../../src/core/pipeline-executor'
+import { createPipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline'
+import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
+import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 
 function normAllIds(ids: NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible)
@@ -26,10 +29,9 @@ describe('Control Flow Graph', withShell(shell => {
 		// shallow copy is important to avoid killing the CFG :c
 		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected }
 		return it(code, async()=> {
-			const result = await new SteppingSlicer({
-				stepOfInterest: 'normalize',
+			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				shell,
-				request:        requestFromInput(code)
+				request: requestFromInput(code)
 			}).allRemainingSteps()
 			const cfg = extractCFG(result.normalize)
 
@@ -120,10 +122,9 @@ describe('Control Flow Graph', withShell(shell => {
 		const domain = 'https://uni-ulm.de/r-ast/'
 		const context = 'test'
 
-		const result = await new SteppingSlicer({
-			stepOfInterest: 'normalize',
+		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			shell,
-			request:        requestFromInput('if(TRUE) 1')
+			request: requestFromInput('if(TRUE) 1')
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 

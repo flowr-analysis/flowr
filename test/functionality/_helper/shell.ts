@@ -19,11 +19,10 @@ import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { guard } from '../../../src/util/assert'
-import { createPipeline } from '../../../src/core/steps/pipeline'
+import { createPipeline, DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
-import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { LAST_STEP } from '../../../src/core/steps/steps'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
@@ -86,10 +85,8 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
-	return (await new SteppingSlicer({
-		stepOfInterest: 'normalize',
-		shell,
-		request
+	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+		shell, request
 	}).allRemainingSteps()).normalize.ast
 }
 
@@ -136,8 +133,6 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
 	return steps.map(step => ({ step, wanted }))
 }
 
-const normalizePipeline = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE)
-
 /**
  * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
  *
@@ -151,7 +146,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	return it(`${fullname} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const pipeline = new PipelineExecutor(normalizePipeline, {
+		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			shell,
 			request: requestFromInput(input)
 		})
@@ -167,11 +162,10 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
-		const result = await new SteppingSlicer({
-			stepOfInterest: 'normalize',
-			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+		const result = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),{
+			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			shell,
-			request:        requestFromInput(input),
+			request: requestFromInput(input),
 		}).allRemainingSteps()
 
 		const ast = result.normalize.ast
@@ -238,10 +232,9 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 	return it(decorateLabelContext(name, ['slice']), async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const result = await new SteppingSlicer({
-			stepOfInterest: 'normalize',
-			getId:          getId,
-			request:        requestFromInput(input),
+		const result = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),{
+			getId:   getId,
+			request: requestFromInput(input),
 			shell
 		}).allRemainingSteps()
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
@@ -262,12 +255,11 @@ export function assertSliced(name: string | TestLabel, shell: RShell, input: str
 	const fullname = decorateLabelContext(name, ['slice'])
 
 	return it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
-		const result = await new SteppingSlicer({
-			stepOfInterest: LAST_STEP,
+		const result = await new PipelineExecutor(DEFAULT_RECONSTRUCT_PIPELINE,{
 			getId,
-			request:        requestFromInput(input),
+			request:   requestFromInput(input),
 			shell,
-			criterion:      criteria,
+			criterion: criteria,
 		}).allRemainingSteps()
 
 		try {

@@ -9,7 +9,7 @@ import objectHash from 'object-hash'
 import { normalize } from './lang-4.x/ast/parser/json/parser'
 import { ErrorMarker } from './init'
 
-export const fileProtocol = 'file://' as const
+export const fileProtocol = 'file://'
 
 export interface RParseRequestFromFile {
 	readonly request:  'file';

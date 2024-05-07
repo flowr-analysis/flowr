@@ -53,7 +53,7 @@ export interface IStep<
 	description: string
 	/** The main processor that essentially performs the logic of this step */
 	processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
-	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
+	/* does this step have to be repeated for each new slice, or can it be performed only once in the initialization? */
 	required:    StepRequired
 	printer: {
 		[K in StepOutputFormat]?: IPipelineStepPrinter<Fn, K, never[]>
@@ -121,8 +121,8 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
-export const LAST_PER_FILE_STEP = 'dataflow' as const
-export const LAST_STEP = 'reconstruct' as const
+export const LAST_PER_FILE_STEP = 'dataflow'
+export const LAST_STEP = 'reconstruct'
 
 export type StepName = keyof typeof STEPS
 export type Step<Name extends StepName> = typeof STEPS[Name]

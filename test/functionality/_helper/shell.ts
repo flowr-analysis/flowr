@@ -203,7 +203,7 @@ export function assertDataflow(
 				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
-			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph, info.normalize.idMap))
+			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
 
 			console.error('diff:\n', diff)
 			throw e

@@ -6,7 +6,7 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse, DataflowMap,
+	DataflowGraphVertexUse,
 	FunctionArgument,
 	REnvironmentInformation
 } from '../../../../src/dataflow'
@@ -26,8 +26,8 @@ import { wrap, wrapReference } from './printer'
 type Lines = [NodeId, string][]
 
 
-export function printAsBuilder(graph: DataflowGraph, idMap?: DataflowMap): string {
-	return new DataflowBuilderPrinter(graph, idMap).print()
+export function printAsBuilder(graph: DataflowGraph): string {
+	return new DataflowBuilderPrinter(graph).print()
 }
 
 const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
@@ -46,15 +46,13 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 class DataflowBuilderPrinter {
 	private lines:           Lines = []
 	private graph:           DataflowGraph
-	private idMap?:          DataflowMap
 	private rootIds:         Set<NodeId>
 	private coveredVertices: Set<NodeId> = new Set()
 	private coveredEdges:    Set<string> = new Set()
 
-	constructor(graph: DataflowGraph, idMap?: DataflowMap) {
+	constructor(graph: DataflowGraph) {
 		this.rootIds = new Set(graph.rootIds())
 		this.graph = graph
-		this.idMap = idMap
 	}
 
 	private process() {

@@ -19,10 +19,10 @@ import { patchFunctionCall } from '../common'
 
 
 const dotDotDotAccess = /\.\.\d+/
-function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name ?? '__@@C@@__'
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
+	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name
 
-	const probableTarget = resolveByName(readName, environments)
+	const probableTarget = readName ? resolveByName(readName, environments) : undefined
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {

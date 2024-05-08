@@ -80,7 +80,6 @@ export function processFunctionDefinition<OtherInfo>(
 			subgraph.addVertex({
 				tag:                 VertexType.Use,
 				id:                  read.nodeId,
-				name:                read.name,
 				environment:         undefined,
 				controlDependencies: []
 			})
@@ -103,7 +102,6 @@ export function processFunctionDefinition<OtherInfo>(
 	graph.addVertex({
 		tag:                 VertexType.FunctionDefinition,
 		id:                  name.info.id,
-		name:                String(name.info.id),
 		environment:         popLocalEnvironment(outEnvironment),
 		controlDependencies: data.controlDependencies,
 		subflow:             flow,

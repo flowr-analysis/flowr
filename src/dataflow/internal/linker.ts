@@ -16,6 +16,7 @@ import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../
 import { EmptyArgument, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -128,8 +129,8 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 			graph.addEdge(id, exitPoint, { type: EdgeType.Returns })
 		}
 
-		const defName = idMap.get(def.id)?.lexeme
-		dataflowLogger.trace(`recording expression-list-level call from ${idMap.get(info.id)?.lexeme} to ${defName}`)
+		const defName = recoverName(def.id, idMap)
+		expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`)
 		graph.addEdge(id, def.id, { type: EdgeType.Calls })
 		linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph)
 	}

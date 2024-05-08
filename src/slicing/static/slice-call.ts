@@ -16,6 +16,7 @@ import { guard } from '../../util/assert'
 import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
@@ -45,7 +46,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const name = idMap.get(callerInfo.id)?.lexeme
+	const name = recoverName(callerInfo.id, idMap)
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`)
 	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 

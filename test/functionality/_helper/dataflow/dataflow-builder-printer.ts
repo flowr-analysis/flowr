@@ -114,7 +114,6 @@ class DataflowBuilderPrinter {
 		}
 		this.recordFnCall(id,'call', [
 			wrap(id),
-			wrap(vertex.name),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
 			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
@@ -210,7 +209,6 @@ class DataflowBuilderPrinter {
 		const root = this.asRootArg(id)
 		this.recordFnCall(id, 'use', [
 			wrap(id),
-			wrap(vertex.name),
 			this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 			root
 		])
@@ -221,7 +219,6 @@ class DataflowBuilderPrinter {
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined)
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
-			wrap(vertex.name),
 			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
 			`{
 				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
@@ -244,7 +241,6 @@ class DataflowBuilderPrinter {
 
 		this.recordFnCall(id,'defineVariable', [
 			wrap(id),
-			wrap(vertex.name),
 			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)
 		])

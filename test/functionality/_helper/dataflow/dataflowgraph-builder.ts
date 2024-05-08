@@ -8,7 +8,6 @@ import type {
 } from '../../../../src/dataflow'
 import {
 	BuiltIn,
-	CONSTANT_NAME,
 	DataflowGraph,
 	EdgeType,
 	isPositionalArgument,
@@ -183,7 +182,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
 		return this.addVertex({
 			tag:                 VertexType.Value,
-			name:                CONSTANT_NAME,
 			id:                  normalizeIdToNumberIfPossible(id),
 			controlDependencies: options?.controlDependency?.map(normalizeIdToNumberIfPossible),
 			environment:         undefined

@@ -1,3 +1,5 @@
+import type { DataflowMap } from '../../../../../dataflow'
+
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 const numIdRegex = /^\d+$/
@@ -9,4 +11,8 @@ export function normalizeIdToNumberIfPossible(id: NodeId): NodeId {
 		return Number(id)
 	}
 	return id
+}
+
+export function recoverName(id: NodeId, idMap?: DataflowMap): string | undefined {
+	return idMap?.get(id)?.lexeme
 }

@@ -200,7 +200,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
 		const oldVertex = this.vertexInformation.get(vertex.id)
 		if(oldVertex !== undefined) {
-			guard(oldVertex.name === vertex.name, `vertex names must match for the same id ${vertex.id} if added, but: ${JSON.stringify(oldVertex.name)} vs ${JSON.stringify(vertex.name)}`)
 			return this
 		}
 
@@ -350,7 +349,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
-	guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
 	guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
 
 	if(current.tag === 'variable-definition') {

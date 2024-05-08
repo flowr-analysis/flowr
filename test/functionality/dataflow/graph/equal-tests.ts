@@ -29,23 +29,22 @@ describe('Equal', () => {
 		}
 
 		eq('Empty graphs', emptyGraph(), emptyGraph())
-		eq('Same vertex', emptyGraph().use('0', 'x'), emptyGraph().use('0', 'x'))
+		eq('Same vertex', emptyGraph().use('0'), emptyGraph().use('0'))
 	})
 	describe('Negative', () => {
 		function neq(name: string, a: DataflowGraph, b: DataflowGraph) {
 			raw(name, a, b, 'should differ', x => assert.isFalse(x))
 		}
 		describe('More elements', () => {
-			neq('Additional root vertex', emptyGraph(), emptyGraph().use('0', 'x'))
-			neq('Additional non-root vertex', emptyGraph(), emptyGraph().use('0', 'x', {}, false))
+			neq('Additional root vertex', emptyGraph(), emptyGraph().use('0'))
+			neq('Additional non-root vertex', emptyGraph(), emptyGraph().use('0', {}, false))
 			neq('Additional edge', emptyGraph(), emptyGraph().reads('0', '1'))
 		})
 		describe('Different elements', () => {
 			describe('Different vertices', () => {
-				const rhs = emptyGraph().use('0', 'x')
-				neq('Id', emptyGraph().use('1', 'x'), rhs)
-				neq('Name', emptyGraph().use('0', 'y'), rhs)
-				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: ['1'] }), rhs)
+				const rhs = emptyGraph().use('0')
+				neq('Id', emptyGraph().use('1'), rhs)
+				neq('Control Dependency', emptyGraph().use('0', { controlDependencies: ['1'] }), rhs)
 				neq('Tag', emptyGraph().constant('0'), rhs)
 			})
 			describe('Different edges', () => {

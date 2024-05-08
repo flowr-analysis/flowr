@@ -87,12 +87,11 @@ export interface PatchFunctionCallInput<OtherInfo> {
 }
 
 export function patchFunctionCall<OtherInfo>(
-	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
+	{ nextGraph, rootId, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
 		tag:                 VertexType.FunctionCall,
 		id:                  rootId,
-		name:                name.content,
 		environment:         data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,

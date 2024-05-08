@@ -39,7 +39,6 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	finalGraph.addVertex({
 		tag:                 VertexType.FunctionCall,
 		id:                  functionRootId,
-		name:                functionCallName,
 		environment:         data.environment,
 		/* can never be a direct built-in-call */
 		onlyBuiltin:         false,

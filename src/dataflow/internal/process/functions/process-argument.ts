@@ -33,6 +33,7 @@ export function processFunctionArgument<OtherInfo>(
 		graph.addVertex({
 			tag:                 VertexType.Use,
 			id:                  argument.info.id,
+			name:                argumentName,
 			controlDependencies: data.controlDependencies
 		})
 		entryPoint = argument.info.id

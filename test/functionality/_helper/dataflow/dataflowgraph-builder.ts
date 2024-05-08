@@ -32,19 +32,21 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **vertex** for a **function definition** (V1).
 	 *
 	 * @param id - AST node ID
+	 * @param name - AST node text
 	 * @param subflow - Subflow data graph for the defined function.
 	 * @param exitPoints - Node IDs for exit point vertices.
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineFunction(id: NodeId,
+	public defineFunction(id: NodeId, name: string,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
 			id:      normalizeIdToNumberIfPossible(id),
+			name,
 			subflow: {
 				...subflow,
 				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),
@@ -63,12 +65,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **vertex** for a **function call** (V2).
 	 *
 	 * @param id - AST node ID
+	 * @param name - Function name
 	 * @param args - Function arguments; may be empty
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public call(id: NodeId, args: FunctionArgument[],
+	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
 			returns?:           readonly NodeId[],
 			reads?:             readonly NodeId[],
@@ -81,6 +84,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		this.addVertex({
 			tag:                 VertexType.FunctionCall,
 			id:                  normalizeIdToNumberIfPossible(id),
+			name,
 			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependency: undefined }),
 			environment:         info?.environment,
 			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
@@ -113,7 +117,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 					this.reads(arg.nodeId, withoutSuffix)
 				}
 			} else if(!this.hasVertex(arg.nodeId, true)) {
-				this.use(arg.nodeId, { controlDependencies: arg.controlDependencies })
+				this.use(arg.nodeId, arg.name, { controlDependencies: arg.controlDependencies })
 				this.argument(id, arg.nodeId)
 			}
 		}
@@ -123,15 +127,17 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **vertex** for a **variable definition** (V4).
 	 *
 	 * @param id - AST node ID
+	 * @param name - Variable name
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineVariable(id: NodeId,
+	public defineVariable(id: NodeId, name: string,
 		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertex({
 			tag:                 VertexType.VariableDefinition,
 			id:                  normalizeIdToNumberIfPossible(id),
+			name,
 			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
 		}, asRoot)
 		if(info?.definedBy) {
@@ -146,14 +152,16 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
 	 *
 	 * @param id - AST node id
+	 * @param name - Variable name
 	 * @param info - Additional/optional properties; i.e., scope, when, or environment.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
-	public use(id: NodeId, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({
 			tag:                 VertexType.Use,
 			id:                  normalizeIdToNumberIfPossible(id),
+			name,
 			controlDependencies: undefined,
 			environment:         undefined
 		}, {

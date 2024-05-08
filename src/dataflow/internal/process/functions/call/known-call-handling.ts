@@ -70,6 +70,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	finalGraph.addVertex({
 		tag:                 VertexType.FunctionCall,
 		id:                  rootId,
+		name:                functionCallName,
 		environment:         data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,

@@ -6,7 +6,7 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse,
+	DataflowGraphVertexUse, DataflowMap,
 	FunctionArgument,
 	REnvironmentInformation
 } from '../../../../src/dataflow'
@@ -26,8 +26,8 @@ import { wrap, wrapReference } from './printer'
 type Lines = [NodeId, string][]
 
 
-export function printAsBuilder(graph: DataflowGraph): string {
-	return new DataflowBuilderPrinter(graph).print()
+export function printAsBuilder(graph: DataflowGraph, idMap: DataflowMap): string {
+	return new DataflowBuilderPrinter(graph, idMap).print()
 }
 
 const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
@@ -46,13 +46,15 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 class DataflowBuilderPrinter {
 	private lines:           Lines = []
 	private graph:           DataflowGraph
+	private idMap:           DataflowMap
 	private rootIds:         Set<NodeId>
 	private coveredVertices: Set<NodeId> = new Set()
 	private coveredEdges:    Set<string> = new Set()
 
-	constructor(graph: DataflowGraph) {
+	constructor(graph: DataflowGraph, idMap: DataflowMap) {
 		this.rootIds = new Set(graph.rootIds())
 		this.graph = graph
+		this.idMap = idMap
 	}
 
 	private process() {
@@ -114,7 +116,7 @@ class DataflowBuilderPrinter {
 		}
 		this.recordFnCall(id,'call', [
 			wrap(id),
-			wrap(vertex.name),
+			wrap(this.idMap.get(id)?.lexeme),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
 			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
@@ -210,7 +212,7 @@ class DataflowBuilderPrinter {
 		const root = this.asRootArg(id)
 		this.recordFnCall(id, 'use', [
 			wrap(id),
-			wrap(vertex.name),
+			wrap(this.idMap.get(id)?.lexeme),
 			this.getControlDependencySuffix(vertex.controlDependencies) ?? (root ? 'undefined' : undefined),
 			root
 		])
@@ -221,7 +223,7 @@ class DataflowBuilderPrinter {
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined)
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
-			wrap(vertex.name),
+			wrap(this.idMap.get(id)?.lexeme),
 			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
 			`{
 				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
@@ -244,7 +246,7 @@ class DataflowBuilderPrinter {
 
 		this.recordFnCall(id,'defineVariable', [
 			wrap(id),
-			wrap(vertex.name),
+			wrap(this.idMap.get(id)?.lexeme),
 			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.controlDependencies, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)
 		])

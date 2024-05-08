@@ -8,7 +8,7 @@ import type {
 	REnvironmentInformation,
 	DataflowGraphVertexFunctionDefinition
 	, OutgoingEdges
-} from '../../dataflow'
+	, DataflowMap } from '../../dataflow'
 import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import type { NodeToSlice } from './slicer-types'
 import type { VisitingQueue } from './visiting-queue'
@@ -33,7 +33,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue, idMap: DataflowMap): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -45,7 +45,9 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const functionCallDefs = resolveByName(callerInfo.name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
+	const name = idMap.get(callerInfo.id)?.lexeme
+	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`)
+	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(outgoingEdge.types.has(EdgeType.Calls)) {

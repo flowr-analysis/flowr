@@ -31,10 +31,6 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 */
 	id:                  NodeId
 	/**
-	 * The name of the node, usually the variable name
-	 */
-	name:                string
-	/**
 	 * The environment in which the vertex is set.
 	 */
 	environment?:        REnvironmentInformation | undefined
@@ -44,10 +40,8 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	controlDependencies: NodeId[] | undefined
 }
 
-export const CONSTANT_NAME = '__@@C@@__'
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
-	readonly name:         typeof CONSTANT_NAME
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 	readonly environment?: undefined
 }

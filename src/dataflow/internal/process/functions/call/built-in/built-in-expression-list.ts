@@ -11,7 +11,7 @@ import type { IdentifierReference, IEnvironment, REnvironmentInformation } from 
 import { BuiltIn , makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
 import { linkFunctionCalls } from '../../../../linker'
 import type { DataflowGraphVertexInfo } from '../../../../../graph'
-import { CONSTANT_NAME, DataflowGraph } from '../../../../../graph'
+import { DataflowGraph } from '../../../../../graph'
 import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard, isNotUndefined } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
@@ -20,7 +20,7 @@ import { patchFunctionCall } from '../common'
 
 const dotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name ?? CONSTANT_NAME
+	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name ?? '__@@C@@__'
 
 	const probableTarget = resolveByName(readName, environments)
 

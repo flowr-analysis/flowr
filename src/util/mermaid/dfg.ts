@@ -17,7 +17,6 @@ import { isNamedArgument,
 	VertexType,
 	BuiltIn,
 	BuiltInEnvironment,
-	CONSTANT_NAME
 } from '../../dataflow'
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
@@ -159,11 +158,6 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines
 }
 
-function recoverConstantName(dataflowIdMap: DataflowMap | undefined, info: DataflowGraphVertexInfo): string {
-	const node = dataflowIdMap?.get(info.id)
-	return node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??'
-}
-
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall
 	const { open, close } = mermaidNodeBrackets(info.tag)
@@ -175,7 +169,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
 		}
 	}
-	const escapedName = escapeMarkdown(info.name === CONSTANT_NAME ? recoverConstantName(dataflowIdMap, info) : info.name)
+
+	const node = dataflowIdMap?.get(info.id)
+	const escapedName = escapeMarkdown(node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??')
 
 	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${

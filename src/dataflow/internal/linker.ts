@@ -77,7 +77,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 }
 
 
-function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
 	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId)
 	if(linkedFunction === undefined) {
@@ -127,9 +127,11 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		for(const exitPoint of exitPoints) {
 			graph.addEdge(id, exitPoint, { type: EdgeType.Returns })
 		}
-		dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
+
+		const defName = idMap.get(def.id)?.lexeme
+		dataflowLogger.trace(`recording expression-list-level call from ${idMap.get(info.id)?.lexeme} to ${defName}`)
 		graph.addEdge(id, def.id, { type: EdgeType.Calls })
-		linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
+		linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph)
 	}
 	if(thisGraph.isRoot(id)) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })

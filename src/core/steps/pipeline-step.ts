@@ -30,6 +30,7 @@ export const enum PipelineStepStage {
 	OncePerRequest
 }
 
+/** Name of a single {@link IPipelineStep|step} in a pipeline (branded to avoid type-mishaps). */
 export type PipelineStepName = string & { __brand?: 'StepName' }
 
 /**
@@ -49,7 +50,7 @@ export interface IPipelineStepOrder<
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
 	readonly dependencies: readonly PipelineStepName[]
-	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
+	/* does this step have to be repeated for each new request, or can it be performed only once in the initialization? */
 	readonly executed:     PipelineStepStage
 	/**
 	 * This is similar to {@link dependencies}, but is used to say that a given step _decorates_ another one.
@@ -83,7 +84,7 @@ export interface IPipelineStep<
 	readonly printer: {
 		[K in StepOutputFormat]?: IPipelineStepPrinter<Fn, K, never[]>
 	} & {
-		// we always want to have the internal printer
+		// we always want to have an internal printer
 		[StepOutputFormat.Internal]: InternalStepPrinter<Fn>
 	}
 	/**

@@ -61,7 +61,7 @@ jobs:
     with:
       action: test-full -- --forbid-only
       coverage: true
-
+    secrets: inherit
 
   performance-test:
     needs: [ test ]

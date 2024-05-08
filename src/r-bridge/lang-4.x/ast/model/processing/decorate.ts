@@ -43,8 +43,7 @@ export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => NodeId
 /**
  * The simplest id generator which just increments a number on each call.
  */
-export function deterministicCountingIdGenerator(start = 0): () => NodeId {
-	let id = start
+export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++
 }
 

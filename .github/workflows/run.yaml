@@ -78,8 +78,9 @@ jobs:
       - name: Upload Coverage Reports to Codecov
         if: ${{ inputs.coverage }}
         uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
       - name: Commit New Documentation
         if: ${{ inputs.action == 'doc' }}

@@ -14,13 +14,6 @@ This wiki page should give the in-depth explanation of the inner workings of *fl
 
 ## The Slicing Process
 
-All slicing steps are defined in [src/core/steps.ts](https://github.com/Code-Inspect/flowr/blob/main/src/core/steps.ts). This is the core definition of all steps executed by the `SteppingSlicer` (refer to the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information on how to use the stepping slicer).
-
-If you want to execute a single step (for whatever reason) there are two ways to do that:
-
-1. Use the `SteppingSlicer` with its `SteppingSlicer::hasNextStep` and `SteppingSlicer::nextStep` methods. This is the recommended way as it executes all required steps before your step of interest as well.
-2. Calling `executeSingleSubStep(<step name>, <remaining arguments>)` which only executes the given step (it is up to you to provide the correct arguments).
-
 ### The Steps
 
 #### Step 1: Parsing the R Code

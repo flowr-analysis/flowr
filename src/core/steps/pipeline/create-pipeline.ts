@@ -1,5 +1,5 @@
-import type { IPipelineStep, PipelineStepName } from '../step'
-import { PipelineStepStage } from '../step'
+import type { IPipelineStep, PipelineStepName } from '../pipeline-step'
+import { PipelineStepStage } from '../pipeline-step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import type { Pipeline } from './pipeline'
 import { jsonReplacer } from '../../../util/json'
@@ -132,7 +132,7 @@ function checkForInvalidDependency(steps: readonly IPipelineStep[], stepMap: Map
 function initializeSteps(steps: readonly IPipelineStep[], stepMap: Map<PipelineStepName, IPipelineStep>, inits: PipelineStepName[], visited: ReadonlySet<PipelineStepName>) {
 	for(const step of steps) {
 		const name = step.name
-		// if the name is already in the map we have a duplicate
+		// if the name is already in the map, we have a duplicate
 		if(stepMap.has(name)) {
 			throw new InvalidPipelineError(`1) Step name "${name}" is not unique in the pipeline`)
 		}

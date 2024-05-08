@@ -7,8 +7,8 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline'
-import type { PipelineStepName } from './steps/step'
-import { PipelineStepStage } from './steps/step'
+import type { PipelineStepName } from './steps/pipeline-step'
+import { PipelineStepStage } from './steps/pipeline-step'
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.

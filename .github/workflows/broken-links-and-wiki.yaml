@@ -26,6 +26,7 @@ jobs:
         with:
           lfs:        true
           submodules: true
+          token:      ${{ secrets.RELEASE_TOKEN }}
 
       - name: "Checkout LFS"
         run: git lfs checkout

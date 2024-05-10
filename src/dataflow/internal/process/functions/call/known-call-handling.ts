@@ -53,7 +53,7 @@ export function processKnownFunctionCall<OtherInfo>(
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data)
 
-	const finalGraph = new DataflowGraph()
+	const finalGraph = new DataflowGraph(data.completeAst.idMap)
 	const functionCallName = name.content
 	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
 

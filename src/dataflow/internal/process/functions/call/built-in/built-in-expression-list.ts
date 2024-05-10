@@ -106,7 +106,7 @@ export function processExpressionList<OtherInfo>(
 
 	const remainingRead = new Map<string, IdentifierReference[]>()
 
-	const nextGraph = new DataflowGraph()
+	const nextGraph = new DataflowGraph(data.completeAst.idMap)
 	const out = []
 	const exitPoints: ExitPoint[] = []
 

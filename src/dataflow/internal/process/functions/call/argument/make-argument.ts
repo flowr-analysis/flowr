@@ -1,5 +1,5 @@
 import type {
-	DecoratedAstMap,
+	AstIdMap,
 	ParentInformation,
 	RNode,
 	RUnnamedArgument
@@ -14,7 +14,7 @@ const voidRange = rangeFrom(-1, -1, -1, -1)
 
 export function toUnnamedArgument<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation> | undefined,
-	idMap: DecoratedAstMap<OtherInfo>
+	idMap: AstIdMap<OtherInfo>
 ): RUnnamedArgument<OtherInfo & ParentInformation> | typeof EmptyArgument {
 	if(node === undefined) {
 		return EmptyArgument
@@ -37,7 +37,7 @@ export function toUnnamedArgument<OtherInfo>(
 
 export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
-	idMap: DecoratedAstMap<OtherInfo>
+	idMap: AstIdMap<OtherInfo>
 ) {
 	return nodes.map(n => n === EmptyArgument || n?.type === RType.Argument ? n : toUnnamedArgument(n, idMap))
 }

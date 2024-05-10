@@ -1,4 +1,4 @@
-import type { NodeId } from '../../../../src'
+import type { AstIdMap, NodeId } from '../../../../src'
 import { EmptyArgument } from '../../../../src'
 import type {
 	DataflowFunctionFlowInformation,
@@ -16,8 +16,8 @@ import {
 import { deepMergeObject } from '../../../../src/util/objects'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
-export function emptyGraph() {
-	return new DataflowGraphBuilder()
+export function emptyGraph(idMap?: AstIdMap) {
+	return new DataflowGraphBuilder(idMap)
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);

@@ -1,7 +1,7 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
 import type {
-	DecoratedAstMap, fileProtocol,
+	AstIdMap, fileProtocol,
 	IdGenerator,
 	NodeId,
 	NoInfo,
@@ -213,7 +213,7 @@ export function assertDataflow(
 
 
 /** call within describeSession */
-function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
+function printIdMapping(ids: NodeId[], map: AstIdMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
 

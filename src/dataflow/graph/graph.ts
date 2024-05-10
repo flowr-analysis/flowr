@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import type { AstIdMap, NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import { EmptyArgument } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
@@ -79,9 +79,11 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
+	public readonly idMap:              AstIdMap | undefined
 
-	constructor() {
-		DataflowGraph.DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
+	constructor(idMap: AstIdMap | undefined) {
+		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()
+		this.idMap = idMap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */

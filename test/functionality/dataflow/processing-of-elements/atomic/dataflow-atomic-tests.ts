@@ -521,7 +521,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.constant('3')
 			)
 			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
-				shell, 'if (x > 5) { 1 } else { 42 }',
+				shell, 'if (x < 5) { 1 } else { 42 }',
 				emptyGraph()
 					.use('0', 'x')
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })

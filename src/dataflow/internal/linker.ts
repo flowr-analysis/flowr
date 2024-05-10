@@ -10,7 +10,7 @@ import { BuiltIn, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { expensiveTrace, log } from '../../util/log'
-import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
+import type { AstIdMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
 import { EmptyArgument, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
@@ -76,7 +76,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 }
 
 
-function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
 	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId)
 	if(linkedFunction === undefined) {
@@ -93,7 +93,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 }
 
 
-function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: DecoratedAstMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
 	functionCall: NodeId;
 	called:       DataflowGraphVertexInfo[]
 }[]) {
@@ -147,7 +147,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
  */
 export function linkFunctionCalls(
 	graph: DataflowGraph,
-	idMap: DecoratedAstMap,
+	idMap: AstIdMap,
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
 	const functionCalls = [...thisGraph.vertices(true)]

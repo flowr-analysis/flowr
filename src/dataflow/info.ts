@@ -51,13 +51,13 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	graph:             DataflowGraph
 }
 
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph(),
+		graph:             new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
 		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
 	}

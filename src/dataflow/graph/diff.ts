@@ -11,6 +11,7 @@ import { arrayEqual } from '../../util/arrays'
 import { VertexType } from './vertex'
 import type { DataflowGraphEdge } from './edge'
 import { splitEdgeTypes } from './edge'
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -63,8 +64,8 @@ export interface NamedGraph {
 }
 
 interface DataflowDiffContext extends GenericDifferenceInformation<DataflowDifferenceReport> {
-	left:  DataflowGraph
-	right: DataflowGraph
+	left:  DataflowGraph,
+	right: DataflowGraph,
 }
 
 function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffContext {
@@ -160,9 +161,8 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg !== bArg) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, empty) the argument differs: ${JSON.stringify(aArg)} vs ${JSON.stringify(bArg)}.`)
 			}
-			continue
 		} else if(isNamedArgument(aArg) && isNamedArgument(bArg)) {
-			// must have same name
+			// must have the same name
 			if(aArg.name !== bArg.name) {
 				ctx.report.addComment(`${ctx.position }In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg.name} vs ${bArg.name}.`)
 				continue
@@ -203,10 +203,20 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		if(lInfo.tag !== rInfo.tag) {
 			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id })
 		}
-		// names aren't explicitly a part of vertices, but the dataflow graph builder sets them
-		if(lInfo.name !== undefined && rInfo.name !== undefined && lInfo.name !== rInfo.name) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-			ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`, { tag: 'vertex', id })
+
+		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
+		if(lInfo.name !== undefined || rInfo.name !== undefined) {
+			if(lInfo.name === undefined) {
+				lInfo.name = recoverName(id, ctx.left.idMap)
+			} else if(rInfo.name === undefined) {
+				rInfo.name = recoverName(id, ctx.right.idMap)
+			}
+			if(lInfo.name !== rInfo.name) {
+				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`, {
+					tag: 'vertex',
+					id
+				})
+			}
 		}
 		if(!arrayEqual(lInfo.controlDependencies, rInfo.controlDependencies)) {
 			ctx.report.addComment(

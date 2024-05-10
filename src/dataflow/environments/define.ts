@@ -19,7 +19,7 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
-export function define(definition: IdentifierDefinition, superAssign: boolean, environment: REnvironmentInformation): REnvironmentInformation {
+export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation): REnvironmentInformation {
 	const name = definition.name
 	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`)
 	let newEnvironment

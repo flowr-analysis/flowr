@@ -69,20 +69,30 @@ export function processAssignment<OtherInfo>(
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>])
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
+	const { type, flavor } = target
 
-	if(target.type === RType.Symbol) {
+	if(type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe, config.quoteSource)
-	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
+		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+			...config,
+			name,
+			source,
+			target,
+			args:        getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+			rootId,
+			data,
+			information: res.information,
+		})
+	} else if(type === RType.FunctionCall && flavor === 'named') {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source])
-	} else if(target.type === RType.Access) {
+	} else if(type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source])
-	} else if(target.type === RType.String) {
+	} else if(type === RType.String) {
 		return processAssignmentToString(target, args, name, rootId, data, config, source)
 	}
 
@@ -109,12 +119,15 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 	}))
 }
 
-function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & ParentInformation>, args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, config: {
-	superAssignment?:     boolean;
-	swapSourceAndTarget?: boolean;
-	quoteSource?:         boolean;
-	makeMaybe?:           boolean;
-}, source: RNode<OtherInfo & ParentInformation>) {
+function processAssignmentToString<OtherInfo>(
+	target: RString<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	name: RSymbol<OtherInfo & ParentInformation>,
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration,
+	source: RNode<OtherInfo & ParentInformation>
+) {
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
 		type:      RType.Symbol,
 		info:      target.info,
@@ -125,31 +138,58 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	}
 
 	// treat first argument to Symbol
-	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
-	const res = processKnownFunctionCall({ name, args: mappedArgs, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe, config.quoteSource)
+	const mappedArgs = config.swapSourceAndTarget ? [args[0], {
+		...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>),
+		value: symbol
+	}] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
+	const res = processKnownFunctionCall({
+		name,
+		args:         mappedArgs,
+		rootId,
+		data,
+		reverseOrder: !config.swapSourceAndTarget
+	})
+	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+		...config,
+		name,
+		source,
+		target:      symbol,
+		args:        getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+		rootId,
+		data,
+		information: res.information
+	})
 }
 
 function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation) {
 	return sourceInfo.graph.getVertex(source.info.id)?.tag === VertexType.FunctionDefinition
 }
 
-// TODO: refactor to object and reduce amount of arguments
+export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
+	readonly name:        RSymbol<OtherInfo & ParentInformation>
+	readonly source:      RNode<OtherInfo & ParentInformation>
+	readonly args:        [DataflowInformation, DataflowInformation]
+	readonly target:      RSymbol<OtherInfo & ParentInformation>
+	readonly rootId:      NodeId
+	readonly data:        DataflowProcessorInformation<OtherInfo>
+	readonly information: DataflowInformation
+}
+
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
-function processAssignmentToSymbol<OtherInfo>(
-	superAssignment: boolean,
-	name: RSymbol<OtherInfo & ParentInformation>,
-	source: RNode<OtherInfo & ParentInformation>,
-	target: RSymbol<OtherInfo & ParentInformation>,
-	[targetArg, sourceArg]: [DataflowInformation, DataflowInformation],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	information: DataflowInformation,
-	makeMaybe: boolean | undefined,
-	quoteSource: boolean | undefined
-): DataflowInformation {
+function processAssignmentToSymbol<OtherInfo>({
+	name,
+	source,
+	args: [targetArg, sourceArg],
+	target,
+	rootId,
+	data,
+	information,
+	superAssignment,
+	makeMaybe,
+	quoteSource
+}: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
 	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data, makeMaybe ?? false)

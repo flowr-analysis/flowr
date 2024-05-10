@@ -32,7 +32,12 @@ jobs:
       - name: Update the Capabilities Wiki Page
         run: |
           npm ci
-          cp wiki/Capabilities-New.md wiki/Capabilities-Old.md 
+          # test if the file exists
+          if [ -f wiki/Capabilities.md ]; then
+              cp wiki/Capabilities.md wiki/Capabilities-Old.md
+          else
+              touch wiki/Capabilities-Old.md
+          fi
           npm run capabilities-markdown --silent > wiki/Capabilities-New.md
           # test if the file changed
           if ! cmp -s wiki/Capabilities-Old.md wiki/Capabilities-New.md; then

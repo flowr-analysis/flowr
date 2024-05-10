@@ -12,51 +12,82 @@ export interface DataflowGraphEdge {
 
 /**
  * Represents the relationship between the source and the target vertex in the dataflow graph.
+ * The actual value is represented as a bitmask so use {@link edgeTypesToNames} to get something more human-readable.
+ * Similarly, you can access {@link EdgeTypeName} to access the name counterpart.
  */
 export const enum EdgeType {
 	/** The edge determines that source reads target */
-	Reads = 'reads',
+	Reads = 1,
 	/** The edge determines that source is defined by target */
-	DefinedBy = 'defined-by',
+	DefinedBy = 2,
 	/** The edge determines that the source calls the target */
-	Calls = 'calls',
+	Calls = 4,
 	/** The source returns target on call */
-	Returns = 'returns',
+	Returns = 8,
 	/** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */
-	DefinesOnCall = 'defines-on-call',
+	DefinesOnCall = 16,
 	/** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */
-	DefinedByOnCall = 'defined-by-on-call',
+	DefinedByOnCall = 32,
 	/** Formal used as argument to a function call */
-	Argument = 'argument',
+	Argument = 64,
 	/** The edge determines that the source is a side effect that happens when the target is called */
-	SideEffectOnCall = 'side-effect-on-call',
+	SideEffectOnCall = 128,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
+	NonStandardEvaluation = 256,
+}
+
+/**
+ * See {@link EdgeType} for the basis.
+ */
+export const enum EdgeTypeName {
+	Reads                 = 'reads',
+	DefinedBy             = 'defined-by',
+	Calls                 = 'calls',
+	Returns               = 'returns',
+	DefinesOnCall         = 'defined-by-on-call',
+	DefinedByOnCall       = 'defines-on-call',
+	Argument              = 'argument',
+	SideEffectOnCall      = 'side-effect-on-call',
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
 export type EdgeTypeBits = number
 
-const edgeTypeToBitMapping: Record<EdgeType, EdgeTypeBits> = {
-	[EdgeType.Reads]:                 1 << 0,
-	[EdgeType.DefinedBy]:             1 << 1,
-	[EdgeType.Calls]:                 1 << 2,
-	[EdgeType.Returns]:               1 << 3,
-	[EdgeType.DefinesOnCall]:         1 << 4,
-	[EdgeType.DefinedByOnCall]:       1 << 5,
-	[EdgeType.Argument]:              1 << 6,
-	[EdgeType.SideEffectOnCall]:      1 << 7,
-	[EdgeType.NonStandardEvaluation]: 1 << 8,
-} as const
+const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
+	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
+	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy            ],
+	[EdgeType.Calls,                 EdgeTypeName.Calls                ],
+	[EdgeType.Returns,               EdgeTypeName.Returns              ],
+	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall        ],
+	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
+	[EdgeType.Argument,              EdgeTypeName.Argument             ],
+	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
+	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation]
+])
 
-export function edgeTypeToBit(type: EdgeType): EdgeTypeBits {
-	return edgeTypeToBitMapping[type]
+/**
+ * Only use this function to retrieve a human-readable name if you know that it is a single bitmask.
+ * Otherwise, use {@link edgeTypesToNames} which handles these cases.
+ */
+export function edgeTypeToName(type: EdgeType): string {
+	return edgeTypeToHumanReadableName.get(type) as string
 }
 
-export function bitsToEdgeTypes(bits: EdgeTypeBits): Set<EdgeType> {
-	const types = new Set<EdgeType>()
-	for(const [type, bit] of Object.entries(edgeTypeToBitMapping)) {
+export function splitEdgeTypes(types: EdgeTypeBits): EdgeType[] {
+	const split = []
+	for(const bit of edgeTypeToHumanReadableName.keys()) {
+		if((types & bit) !== 0) {
+			split.push(bit)
+		}
+	}
+	return split
+}
+
+export function edgeTypesToNames(bits: EdgeTypeBits): Set<EdgeTypeName> {
+	const types = new Set<EdgeTypeName>()
+	for(const [bit, name] of edgeTypeToHumanReadableName.entries()) {
 		if((bits & bit) !== 0) {
-			types.add(type as EdgeType)
+			types.add(name)
 		}
 	}
 	return types
@@ -73,14 +104,34 @@ export const enum TraverseEdge {
 	Always = 3
 }
 
+/**
+ * Check if the given-edge type has any of the given types.
+ * @example
+ *
+ * ```typescript
+ * hasAnyTypeOf(EdgeType.Reads, EdgeType.Reads | EdgeType.DefinedBy) // true
+ *```
+ *
+ * Counterpart of {@link edgeDoesNotIncludeType}.
+ */
+export function edgeIncludesType(type: EdgeTypeBits, types: EdgeTypeBits): boolean {
+	return (types & type) !== 0
+}
+
+/**
+ * Check if the given-edge type does not include the given type.
+ * Counterpart of {@link edgeIncludesType}.
+ */
+export function edgeDoesNotIncludeType(type: EdgeTypeBits, types: EdgeTypeBits): boolean {
+	return (types & type) === 0
+}
+
 export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
-	if((types & (edgeTypeToBit(EdgeType.Reads) | edgeTypeToBit(EdgeType.DefinedBy) | edgeTypeToBit(EdgeType.Argument) | edgeTypeToBit(EdgeType.Calls) | edgeTypeToBit(EdgeType.DefinesOnCall))) != 0) {
+	if(edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls | EdgeType.DefinesOnCall)) {
 		return TraverseEdge.Always
-	}
-	if((types & edgeTypeToBit(EdgeType.DefinedByOnCall)) != 0) {
+	} else if(edgeIncludesType(types, EdgeType.DefinedByOnCall)) {
 		return TraverseEdge.DefinedByOnCall
-	}
-	if((types & edgeTypeToBit(EdgeType.SideEffectOnCall)) != 0) {
+	} else if(edgeIncludesType(types, EdgeType.SideEffectOnCall)) {
 		return TraverseEdge.SideEffect
 	}
 	return TraverseEdge.Never

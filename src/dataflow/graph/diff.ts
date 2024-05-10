@@ -10,7 +10,7 @@ import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
 import { VertexType } from './vertex'
 import type { DataflowGraphEdge } from './edge'
-import { bitsToEdgeTypes } from './edge'
+import { splitEdgeTypes } from './edge'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -256,15 +256,15 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 }
 
 function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: DataflowDiffContext, id: NodeId, target: NodeId) {
-	const edgeTypes = bitsToEdgeTypes(edge.types)
-	const otherEdgeTypes = bitsToEdgeTypes(otherEdge.types)
-	if(edgeTypes.size !== otherEdgeTypes.size) {
+	const edgeTypes = splitEdgeTypes(edge.types)
+	const otherEdgeTypes = splitEdgeTypes(otherEdge.types)
+	if(edgeTypes.length !== otherEdgeTypes.length) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in number of edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
 			{ tag: 'edge', from: id, to: target }
 		)
 	}
-	if([...edgeTypes].some(e => !otherEdgeTypes.has(e))) {
+	if(edge.types !== otherEdge.types) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
 			{ tag: 'edge', from: id, to: target }

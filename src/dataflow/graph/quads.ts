@@ -1,7 +1,7 @@
 import type { QuadSerializationConfiguration } from '../../util/quads'
 import { graph2quads } from '../../util/quads'
 import type { DataflowGraph } from './graph'
-import { bitsToEdgeTypes } from './edge'
+import { edgeTypesToNames } from './edge'
 
 /**
  * @see cfg2quads
@@ -20,7 +20,7 @@ export function df2quads(graph: DataflowGraph, config: QuadSerializationConfigur
 			[...targets].map(([toId, info]) => ({
 				from: fromId,
 				to:   toId,
-				type: [...bitsToEdgeTypes(info.types)],
+				type: [...edgeTypesToNames(info.types)],
 			}))
 		)
 	},

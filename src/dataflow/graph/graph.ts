@@ -5,7 +5,7 @@ import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
-import { EdgeType, edgeTypeToBit } from './edge'
+import { EdgeType } from './edge'
 
 import type { DataflowInformation } from '../info'
 import type { DataflowDifferenceReport } from './diff'
@@ -231,7 +231,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		}
 
 		/* we now that we pass all required arguments */
-		const edge = { types: edgeTypeToBit(type), ...rest } as unknown as Edge
+		const edge = { types: type, ...rest } as unknown as Edge
 
 		const existingFrom = this.edgeInformation.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
@@ -245,7 +245,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			this.installEdge(type, toId, fromId, edge)
 		} else {
 			// adding the type
-			edgeInFrom.types |= edgeTypeToBit(type)
+			edgeInFrom.types |= type
 		}
 		return this
 	}
@@ -254,7 +254,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		if(type === EdgeType.DefinesOnCall) {
 			const otherEdge: Edge = {
 				...edge,
-				types: edgeTypeToBit(EdgeType.DefinedByOnCall)
+				types: EdgeType.DefinedByOnCall
 			}
 			const existingTo = this.edgeInformation.get(toId)
 			if(existingTo === undefined) {

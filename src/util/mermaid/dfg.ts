@@ -11,8 +11,9 @@ import type {
 	IdentifierReference,
 	IEnvironment,
 	EdgeType } from '../../dataflow'
-import { bitsToEdgeTypes
-	, isNamedArgument,
+import { splitEdgeTypes
+	,
+	isNamedArgument,
 	isPositionalArgument,
 	VertexType,
 	BuiltIn,
@@ -186,7 +187,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	guard(edges !== undefined, `node ${id} must be found`)
 	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
-		const edgeTypes = typeof edge.types == 'number' ? bitsToEdgeTypes(edge.types) : edge.types
+		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)

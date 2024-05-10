@@ -8,11 +8,11 @@ import type {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexUse,
 	FunctionArgument,
-	REnvironmentInformation
-} from '../../../../src/dataflow'
-import {
-	bitsToEdgeTypes
-	, isPositionalArgument,
+	REnvironmentInformation } from '../../../../src/dataflow'
+import { splitEdgeTypes
+	, edgeTypesToNames,
+	EdgeTypeName,
+	isPositionalArgument,
 	EdgeType,
 	VertexType
 } from '../../../../src/dataflow'
@@ -90,7 +90,7 @@ class DataflowBuilderPrinter {
 		const map: DefaultMap<EdgeType, NodeId[]> = new DefaultMap<EdgeType, NodeId[]>(() => [])
 		if(outgoing) {
 			for(const [target, edge] of outgoing) {
-				for(const type of bitsToEdgeTypes(edge.types)) {
+				for(const type of splitEdgeTypes(edge.types)) {
 					map.get(type).push(target)
 				}
 			}

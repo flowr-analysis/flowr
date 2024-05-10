@@ -1,5 +1,14 @@
-import type { DataflowGraph, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowMap, OutgoingEdges, REnvironmentInformation } from '../../dataflow'
-import { BuiltIn, EdgeType, edgeTypeToBit } from '../../dataflow'
+import type {
+	DataflowGraph,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo,
+	DataflowMap,
+	OutgoingEdges,
+	REnvironmentInformation
+} from '../../dataflow'
+import {
+	edgeIncludesType
+	, BuiltIn, EdgeType } from '../../dataflow'
 import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import type { NodeToSlice } from './slicer-types'
 import type { VisitingQueue } from './visiting-queue'
@@ -42,7 +51,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
-		if((outgoingEdge.types & edgeTypeToBit(EdgeType.Calls)) != 0) {
+		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 			functionCallDefs.push(target)
 		}
 	}
@@ -71,7 +80,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	let found = false
 	for(const [, edge] of currentEdges) {
-		if((edge.types & edgeTypeToBit(EdgeType.Returns)) != 0) {
+		if(edgeIncludesType(edge.types, EdgeType.Returns)) {
 			found = true
 			break
 		}
@@ -80,11 +89,11 @@ export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges,
 		return false
 	}
 	for(const [target, edge] of currentEdges) {
-		if((edge.types & edgeTypeToBit(EdgeType.Returns)) != 0) {
+		if(edgeIncludesType(edge.types, EdgeType.Returns)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if((edge.types & edgeTypeToBit(EdgeType.Reads)) != 0) {
+		} else if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if((edge.types & edgeTypeToBit(EdgeType.Argument)) != 0) {
+		} else if(edgeIncludesType(edge.types, EdgeType.Argument)) {
 			queue.potentialArguments.add(target)
 		}
 	}

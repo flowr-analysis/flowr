@@ -15,6 +15,7 @@ import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 
+// TODO: can we simplify whis?
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 

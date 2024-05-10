@@ -3,6 +3,7 @@ name: Check for Broken Links and Publish Wiki
 'on':
   push:
     paths:
+      - '.github/workflows/broken-links-and-wiki.yaml'
       - '**/*.md'
       - 'wiki/**'
   pull_request:

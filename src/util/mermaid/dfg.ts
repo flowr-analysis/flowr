@@ -10,8 +10,9 @@ import type {
 	IdentifierReference,
 	IEnvironment,
 	EdgeType } from '../../dataflow'
-import { splitEdgeTypes
+import { edgeTypeToName
 	,
+	splitEdgeTypes,
 	isNamedArgument,
 	isPositionalArgument,
 	VertexType,
@@ -174,7 +175,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)
-			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edgeTypes].join(', ')}"| ${idPrefix}${target}`)
+			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`)
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)

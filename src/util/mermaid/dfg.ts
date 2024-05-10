@@ -10,14 +10,15 @@ import type {
 	IdentifierDefinition,
 	IdentifierReference,
 	IEnvironment,
-	EdgeType
-} from '../../dataflow'
-import { isNamedArgument,
+	EdgeType } from '../../dataflow'
+import { bitsToEdgeTypes
+	, isNamedArgument,
 	isPositionalArgument,
 	VertexType,
 	BuiltIn,
 	BuiltInEnvironment,
 } from '../../dataflow'
+
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
@@ -185,15 +186,16 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	guard(edges !== undefined, `node ${id} must be found`)
 	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
-		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types)
+		const edgeTypes = typeof edge.types == 'number' ? bitsToEdgeTypes(edge.types) : edge.types
+		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)
-			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edge.types].join(', ')}"| ${idPrefix}${target}`)
+			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edgeTypes].join(', ')}"| ${idPrefix}${target}`)
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)
 			}
-			if(edge.types.has('CD')) {
+			if(edgeTypes.has('CD')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
 			if(target === BuiltIn) {

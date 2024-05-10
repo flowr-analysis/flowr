@@ -6,7 +6,7 @@
  */
 export interface DataflowGraphEdge {
 	// currently multiple edges are represented by multiple types
-	types: Set<EdgeType>
+	types: EdgeTypeBits
 }
 
 
@@ -34,6 +34,34 @@ export const enum EdgeType {
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
+export type EdgeTypeBits = number
+
+const edgeTypeToBitMapping: Record<EdgeType, EdgeTypeBits> = {
+	[EdgeType.Reads]:                 1 << 0,
+	[EdgeType.DefinedBy]:             1 << 1,
+	[EdgeType.Calls]:                 1 << 2,
+	[EdgeType.Returns]:               1 << 3,
+	[EdgeType.DefinesOnCall]:         1 << 4,
+	[EdgeType.DefinedByOnCall]:       1 << 5,
+	[EdgeType.Argument]:              1 << 6,
+	[EdgeType.SideEffectOnCall]:      1 << 7,
+	[EdgeType.NonStandardEvaluation]: 1 << 8,
+} as const
+
+export function edgeTypeToBit(type: EdgeType): EdgeTypeBits {
+	return edgeTypeToBitMapping[type]
+}
+
+export function bitsToEdgeTypes(bits: EdgeTypeBits): Set<EdgeType> {
+	const types = new Set<EdgeType>()
+	for(const [type, bit] of Object.entries(edgeTypeToBitMapping)) {
+		if((bits & bit) !== 0) {
+			types.add(type as EdgeType)
+		}
+	}
+	return types
+}
+
 export const enum TraverseEdge {
 	/** Do not traverse this edge */
 	Never = 0,
@@ -45,28 +73,15 @@ export const enum TraverseEdge {
 	Always = 3
 }
 
-const traverseEdge: Record<EdgeType, TraverseEdge> = {
-	[EdgeType.Reads]:                 TraverseEdge.Always,
-	[EdgeType.DefinedBy]:             TraverseEdge.Always,
-	[EdgeType.Argument]:              TraverseEdge.Always,
-	[EdgeType.Calls]:                 TraverseEdge.Always,
-	[EdgeType.DefinesOnCall]:         TraverseEdge.Always,
-	[EdgeType.DefinedByOnCall]:       TraverseEdge.DefinedByOnCall,
-	[EdgeType.SideEffectOnCall]:      TraverseEdge.SideEffect,
-	[EdgeType.NonStandardEvaluation]: TraverseEdge.Never,
-	[EdgeType.Returns]:               TraverseEdge.Never
-} as const
-
-export function shouldTraverseEdge(types: ReadonlySet<EdgeType>): TraverseEdge {
-	let highest = TraverseEdge.Never
-	for(const type of types) {
-		const v = traverseEdge[type]
-		if(v === TraverseEdge.Always) {
-			return v
-		} else if(v > highest) {
-			highest = v
-		}
+export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
+	if((types & (edgeTypeToBit(EdgeType.Reads) | edgeTypeToBit(EdgeType.DefinedBy) | edgeTypeToBit(EdgeType.Argument) | edgeTypeToBit(EdgeType.Calls) | edgeTypeToBit(EdgeType.DefinesOnCall))) != 0) {
+		return TraverseEdge.Always
 	}
-	return highest
+	if((types & edgeTypeToBit(EdgeType.DefinedByOnCall)) != 0) {
+		return TraverseEdge.DefinedByOnCall
+	}
+	if((types & edgeTypeToBit(EdgeType.SideEffectOnCall)) != 0) {
+		return TraverseEdge.SideEffect
+	}
+	return TraverseEdge.Never
 }
-

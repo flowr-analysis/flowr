@@ -1,12 +1,6 @@
-import type {
-	DataflowGraph,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexInfo,
-	FunctionArgument } from '../graph'
-import {
-	isNamedArgument,
-	VertexType
-} from '../graph'
+import type { DataflowGraph, DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo, FunctionArgument } from '../graph'
+import { edgeTypeToBit, isNamedArgument, VertexType } from '../graph'
+
 import type { IdentifierReference, REnvironmentInformation } from '../environments'
 import { BuiltIn, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
@@ -105,7 +99,8 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		return
 	}
 
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) => !e.types.has(EdgeType.Argument) && (e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls))).map(([target, _]) => target)
+	const readBits = edgeTypeToBit(EdgeType.Reads) | edgeTypeToBit(EdgeType.Calls)
+	const functionDefinitionReadIds = [...edges].filter(([_, e]) => (e.types & edgeTypeToBit(EdgeType.Argument)) == 0 && (e.types & readBits) != 0).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
@@ -179,13 +174,15 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 
 		const outgoingEdges = [...currentInfo[1]]
 
-		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Returns))
+		const returnEdges = outgoingEdges.filter(([_, e]) => (e.types & edgeTypeToBit(EdgeType.Returns)) != 0)
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function calls itself
 			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)))
 			continue
 		}
-		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall))
+
+		const followBits = edgeTypeToBit(EdgeType.Reads) | edgeTypeToBit(EdgeType.DefinedBy) | edgeTypeToBit(EdgeType.DefinedByOnCall)
+		const followEdges = outgoingEdges.filter(([_, e]) => (e.types & followBits) != 0)
 
 		if(currentInfo[0].subflow !== undefined) {
 			result.set(currentId, currentInfo[0])

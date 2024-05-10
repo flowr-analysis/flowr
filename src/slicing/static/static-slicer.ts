@@ -1,5 +1,5 @@
 import type { DataflowGraph } from '../../dataflow'
-import {
+import { edgeTypeToBit ,
 	BuiltIn,
 	EdgeType,
 	initializeCleanEnvironments,
@@ -79,7 +79,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		}
 
 		for(const [target, { types }] of currentEdges) {
-			if(target === BuiltIn || types.has(EdgeType.NonStandardEvaluation)) {
+			if(target === BuiltIn || (types & edgeTypeToBit(EdgeType.NonStandardEvaluation)) != 0) {
 				continue
 			}
 			const t = shouldTraverseEdge(types)

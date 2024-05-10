@@ -5,7 +5,8 @@ import { CfgVertexType, extractCFG } from '../util/cfg/cfg'
 import { visitCfg } from '../util/cfg/visitor'
 import { guard } from '../util/assert'
 import type { DataflowGraphVertexInfo, OutgoingEdges } from '../dataflow'
-import { EdgeType } from '../dataflow'
+import { edgeTypeToBit , EdgeType } from '../dataflow'
+
 import type { Handler } from './handler/handler'
 import { BinOp } from './handler/binop/binop'
 import { Domain, unifyDomains } from './domain'
@@ -42,7 +43,7 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, nodeMap: Ma
 	guard(dfgNode !== undefined, `No DFG-Node found with ID ${node}`)
 	const [_, children] = dfgNode
 	const ids = Array.from(children.entries())
-		.filter(([_, edge]) => edge.types.has(EdgeType.Reads))
+		.filter(([_, edge]) => (edge.types & edgeTypeToBit(EdgeType.Reads)) != 0)
 		.map(([id, _]) => id)
 	const domains: Domain[] = []
 	for(const id of ids) {

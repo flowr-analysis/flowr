@@ -10,10 +10,13 @@ import type {
 	FunctionArgument,
 	REnvironmentInformation
 } from '../../../../src/dataflow'
-import { isPositionalArgument,
+import {
+	bitsToEdgeTypes
+	, isPositionalArgument,
 	EdgeType,
 	VertexType
 } from '../../../../src/dataflow'
+
 import type { NodeId } from '../../../../src'
 import { EmptyArgument } from '../../../../src'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
@@ -87,7 +90,7 @@ class DataflowBuilderPrinter {
 		const map: DefaultMap<EdgeType, NodeId[]> = new DefaultMap<EdgeType, NodeId[]>(() => [])
 		if(outgoing) {
 			for(const [target, edge] of outgoing) {
-				for(const type of edge.types) {
+				for(const type of bitsToEdgeTypes(edge.types)) {
 					map.get(type).push(target)
 				}
 			}

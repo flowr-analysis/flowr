@@ -5,19 +5,13 @@ import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
-import { EdgeType } from './edge'
+import { EdgeType, edgeTypeToBit } from './edge'
+
 import type { DataflowInformation } from '../info'
 import type { DataflowDifferenceReport } from './diff'
 import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
-import type {
-	DataflowGraphVertexArgument,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo,
-	DataflowGraphVertices } from './vertex'
-import {
-	VertexType
-} from './vertex'
+import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowGraphVertices } from './vertex'
+import { VertexType } from './vertex'
 import { arrayEqual } from '../../util/arrays'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -237,7 +231,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		}
 
 		/* we now that we pass all required arguments */
-		const edge = { types: new Set([type]), ...rest } as unknown as Edge
+		const edge = { types: edgeTypeToBit(type), ...rest } as unknown as Edge
 
 		const existingFrom = this.edgeInformation.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
@@ -249,9 +243,9 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 				existingFrom.set(toId, edge)
 			}
 			this.installEdge(type, toId, fromId, edge)
-		} else if(!edgeInFrom.types.has(type)) {
+		} else {
 			// adding the type
-			edgeInFrom.types.add(type)
+			edgeInFrom.types |= edgeTypeToBit(type)
 		}
 		return this
 	}
@@ -260,7 +254,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		if(type === EdgeType.DefinesOnCall) {
 			const otherEdge: Edge = {
 				...edge,
-				types: new Set([EdgeType.DefinedByOnCall])
+				types: edgeTypeToBit(EdgeType.DefinedByOnCall)
 			}
 			const existingTo = this.edgeInformation.get(toId)
 			if(existingTo === undefined) {
@@ -310,7 +304,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 					if(get === undefined) {
 						existing.set(target, edge)
 					} else {
-						get.types = new Set([...get.types, ...edge.types])
+						get.types = get.types | edge.types
 					}
 				}
 			}

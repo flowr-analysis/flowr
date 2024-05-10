@@ -74,53 +74,6 @@
       "@eagleoutice/eslint-config-flowr"
     ],
     "rules": {
-      "import/no-restricted-paths": [
-        "error",
-        {
-          "zones": [
-            {
-              "target": "modules/benchmark",
-              "from": [
-                "modules/cli",
-                "src",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "modules/cli",
-              "from": [
-                "modules/benchmark",
-                "src",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "modules/statistics",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "src"
-              ]
-            },
-            {
-              "target": "src",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "test",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "modules/statistics"
-              ]
-            }
-          ]
-        }
-      ]
     }
   },
   "typedocOptions": {

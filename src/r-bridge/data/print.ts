@@ -40,13 +40,10 @@ function printAsMarkdown(capabilities: readonly FlowrCapability[], depth = 0, li
 
 function getPreamble(): string {
 	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC')
-	return `
-# Flowr Capabilities
-
-_This document was generated automatically from '${module.filename}' on ${currentDateAndTime}_
+	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} summarizig flowR's current capabilities_
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
-Besides we use colored bullets like this:
+Besides, we use colored bullets like this:
 
 | <!-- -->               | <!-- -->                                              |
 | ---------------------- | ----------------------------------------------------- |

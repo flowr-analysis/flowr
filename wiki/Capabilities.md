@@ -1,530 +1,246 @@
-***This wiki page is currently under construction (currently, references to the tokens are missing, and not all capabilities have been added)***
 
-Based on the collection of capabilities in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), this page collects the potentially evolving list of R's capabilities and the extent to which *flowR* supports them.
-In its current form, it is almost a verbatim copy of the corresponding appendix in my master's thesis.
-
-*flowR*'s support is divided into three categories:
-
-1. **full**: *flowR* supports the capability completely.
-2. **partial**: *flowR* supports the capability partially (explained further alongside the explanation text).
-3. **no**: *flowR* does not support the capability at all.
-
-We split the capabilities into the following sections, feel free to extend them in the future, but keep the enumeration:
-
-<!-- TOC -->
-- [Structure of an R Program](#structure-of-an-r-program)
-  - [Values](#values)
-  - [Data Types](#data-types)
-  - [Assignments and Bindings](#assignments-and-bindings)
-  - [Control Flow](#control-flow)
-  - [Vectorization](#vectorization)
-- [Environments and Scoping](#environments-and-scoping)
-  - [Libraries and Namespaces](#libraries-and-namespaces)
-- [Defining and Calling Functions](#defining-and-calling-functions)
-  - [General Functions](#general-functions)
-  - [Operators](#operators)
-  - [Pipes](#pipes)
-  - [Important Functions](#important-functions)
-- [Class Systems and Object-Oriented Programming](#class-systems-and-object-oriented-programming)
-- [Meta-Programming and Reflection](#meta-programming-and-reflection)
-  - [General](#general)
-  - [Parsing](#parsing)
-  - [Function Definitions and Calls](#function-definitions-and-calls)
-- [Miscellaneous](#miscellaneous)
-  - [Interfacing with R](#interfacing-with-r)
-  - [Roxygen](#roxygen)
-<!-- TOC -->
-
-## Structure of an R Program
-
-<!-- I use an enumerated list so that in case the numbers change there is no need to change *everything* -->
-
-<ol>
-<li> <details> <summary><b>Name</b>&emsp;(full)</summary>
-
-Usually, names are referred to as symbols and they most often represent a variable name, although they are part of a function call as well. They can be created from strings, with functions like [base::as.name](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/name) or [rlang::sym](https://www.rdocumentation.org/packages/rlang/versions/1.1.1/topics/sym) from the [rlang](https://www.rdocumentation.org/packages/rlang/versions/1.1.1) package (see [Section 2.1.3.1](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Symbol-objects) of the R language definition).
-The definition of what exactly
-can be part of a name can be found in [Section 10.3.2](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Identifiers) of the language definition, allowing an identifier to be "a sequence of letters, digits, the
-period, and the underscore" with the restriction that it cannot start with a
-digit or with a period followed by a digit and the precise definition being
-dependent on the current locale.
-
-It should be noted, however, that besides the usual identifiers, R does
-allow the use of backticks and strings to create names that do not follow
-the rules. Hence, `'2' <- 42` is valid R code and assigns the value&nbsp;`42` to
-the name&nbsp;`"2"`. This is no different from&nbsp;`"2" <- 42` (although the tokens
-are different, with `SYMBOL` for the first, and `STR_CONST` for the second example).
-However, when trying to access the value bound to the name,
-one can use backticks but neither double nor single quotes as they evaluate
-to the corresponding string.
-Yet, there are reflective functions like get
-which allow to use strings.
-
-Besides these rules, [Section 10.3.3](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Reserved-words) of the R language definition defines
-a set of reserved words that can not be used as object names. Nevertheless,
-they still can be assigned (although some require the use of backticks).
-With this, `... <- 3` and `` `if` <- 42 `` are valid. The values can be queried
-with `get("...")` and `get("if")`, respectively.
-
-*flowR* supports all of these variants. Most are already handled by the used
-R parser, with the normalization allowing assignments to strings, and the
-dataflow analysis handling the use of backticks. Querying a value with a
-function like get, however, is currently not supported.
-
-</details>
-</li>
-
-<li> <details> <summary><b>Expression</b>&emsp;(full)</summary>
-
-   Within [Section 2.1.4](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Expression-objects), the language definition specifies an expression
-  to consist of one or more statements, with the term "statement" explicitly
-  referring to any "syntactically correct collection of tokens". This means,
-  that R uses the term "expression" to refer to unevaluated but parsed
-  R code. The explicit evaluation of an expression can be triggered with the
-  [base::eval](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval) function, although the evaluation of an expression is usually done
-  implicitly by the interpreter, only stopped by functions like [base::quote](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/substitute) or [base::expression](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/expression). An expression (`expr`<sup>T63</sup> ) may contain multiple other expressions
-  and is often referred to as an expression list (`exprlist`<sup>T65</sup>) in that case.
-  Usually,&nbsp;R uses newlines to separate expressions.
-
-  From a syntactical perspective, the handling of expressions is completely
-  the responsibility of the R parser. However, the normalization adds a set
-  of semantic constraints regarding our understanding of what exactly is
-  allowed in R. Hence, *flowR*’s support is limited to this understanding.
-
-</details>
-</li>
-
-
-<li> <details> <summary><b>Call</b>&emsp;(full)</summary>
-
-A call refers not just to the *call* of a conventional *function* but also the
-call of operators and even to structures like *if*, *for*, *while*, and *repeat* loops. While the exact notion of what a call refers to is
-of lesser interest, it is usually used for the "call"-mode.
-
-Within this thesis, we use the term "call" to refer to explicit *function calls*, as *flowR* handles structures like a for loop as language constructs and not  as functions.
-</details>
-</li>
-
-</ol>
-
-These three basic objects alone do not reveal much about the details of an R&nbsp;program. See the [Tokens](https://github.com/Code-Inspect/flowr/wiki/Tokens) wiki page for an overview of all tokens that can be produced by the R&nbsp;interpreter.
-
-<ol start="4">
-
-<li> <details> <summary><b>Grouping</b>&emsp;(full)</summary>
-
-
-Similar to several other languages like Java or TeX,&nbsp;R allows grouping
-expressions with the help of `{`<sup>T61</sup> and `}`<sup>T62</sup>. However, differing from those
-languages, these groups do not introduce a new *scope*.
-
-Within an expression, the tokens `(`<sup>T57</sup>
-and `)`<sup>T58</sup>
-can be used for grouping as well, only excluding the context of *function calls* and *function definitions*
-in which they are used to denote the arguments and parameters respectively. Just like in mathematics and most programming languages, `(`<sup>T57</sup> and
-`)`<sup>T58</sup> can be used to manipulate the evaluation order.
-
-Since the R&nbsp;parser does only handle the precedence change of `(`<sup>T57</sup> and `)`<sup>T58</sup>
-and the grouping with `{`<sup>T61</sup> and `}`<sup>T62</sup>, the normalization has to deal with the use of delimiters within function arguments, parameters, and expressions.
-
-</details></li>
-
-<li> <details> <summary><b>Separators</b>&emsp;(full)</summary>
-
-Separators help R to distinguish between otherwise ambiguous expressions
-like `a <- 1` and `a < -1`. They are partially defined by [Section 10.3.5](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Separators),
-with more separator tokens on the [Tokens](https://github.com/Code-Inspect/flowr/wiki/Tokens#tokens-used-to-delimit-parts-of-expressions) wiki page. The most common
-separator is the usage of whitespace which is automatically handled by the [base::parse](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/parse) function. Although R allows to separate expressions with a `;`<sup>T60</sup>
-,
-this is [discouraged](https://style.tidyverse.org/syntax.html#semicolons), and not handled by the R&nbsp;parser.
-
-Nevertheless, the normalization of *flowR* does handle the use of semicolons, as well as `,`<sup>T59</sup>, in combination with arguments and parameters.
-</details></li>
-
-</ol>
-
-### Values
-
-<ol start="6">
-
-<li> <details> <summary><b>Number</b>&emsp;(partial)</summary>
-
-R separates three different types of numbers: integer, complex, and
-"numeric", which corresponds to the intuitive understanding of a double.
-`2`, `4e2`, and `-3.1` are all numeric constants in&nbsp;R [(Section 3.1.1)](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Constants).
-
-Currently, this capability is ignored in the dataflow analysis of *flowR*, but
-it is fully supported by the normalization step.
-
-</details></li>
-
-<li> <details> <summary><b>Integer</b>&emsp;(partial)</summary>
-
-Numbers which are suffixed by an `L` to indicate, that they are a constant
-integer.
-
-Similar to numbers, we ignore this capability in the dataflow analysis of
-*flowR* but support it with the normalization step.
-</details></li>
-
-<li> <details> <summary><b>Complex</b>&emsp;(partial)</summary>
-
-Using the suffix `i`, R allows to specify complex numbers like `3i`.
-
-Similar to the other numbers, we ignore this capability in the dataflow
-analysis of *flowR* but support it with the normalization step.
-</details></li>
-
-<li> <details> <summary><b>Float Hexadecimal Numbers</b>&emsp;(partial)</summary>
-
-As a special way of specifying numbers,&nbsp;R allows for the ["C99-style"](https://gcc.gnu.org/onlinedocs/gcc/Hex-Floats.html) of
-hexadecimal floating-point constants [(Section 10.3.1)](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Literal-constants).
-
-Similar to numbers, we ignore this capability in the dataflow analysis of
-*flowR* but support it with the normalization step.
-</details></li>
-
-<li> <details> <summary><b>Logical</b>&emsp;(partial)</summary>
-
-The "logical" represents the boolean type of&nbsp;R, expressed by `TRUE` and
-`FALSE` (which are also accessible by the aliases&nbsp;`T` and&nbsp;`F`). Similar to other
-languages, non-empty and non-zero values are considered "truthy" (i.e.,&nbsp;`!1`
-evaluates to `FALSE`).
-
-While we have limited support for `if(TRUE)` and `if(FALSE)` in the dataflow
-analysis, and fully support logicals in the normalization, there is no special
-behavior for logical values in *flowR*.
-</details></li>
-
-<li> <details> <summary><b>String</b>&emsp;(partial)</summary>
-
-Although strings are vectors, they have a length of one as defined in
-[Section 2.1.1](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Vector-objects) of the&nbsp;R language definition.
-Strings can be created using either single or double quotes.
-
-Similar to numbers, we ignore this capability in the dataflow analysis of
-*flowR* but support it in our normalization.
-</details></li>
-
-<li> <details> <summary><b>Vector</b>&emsp;(no)</summary>
-
-Vectors are essentially arrays with a dynamic length, defined in [Section 2.1.1](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Vector-objects) of the&nbsp;R language definition.
-
-However, without any type inference in the current implementation of *flowR*, we do not have to do anything special to support them during any of the steps of our analysis.
-</details></li>
-
-<li> <details> <summary><b>List</b>&emsp;(no)</summary>
-
-Defined in [Section 21.2](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#List-objects) of the&nbsp;R
-language definition, lists are a special form of vectors, "generic vectors", that allow each element to have a different
-type. Furthermore, the individual elements of a list can be named `l <- list(a=1,b=2)` and consequently accessed by named access
-as `l$a`. An old and deprecated variant of lists are pairlists, defined in [Section 2.1.11](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Pairlist-objects) of the&nbsp;R language definition.
-
-Similar to vectors, there is currently no special support for lists.
-</details></li>
-
-<li> <details> <summary><b>Matrix</b>&emsp;(no)</summary>
-
-Matrices are essentially multidimensional vectors (or vectors are matrices with only one column). For example,
-the expression `m <- matrix(1:4, nrow=2, ncol=2)`
-creates the matrix $`m =\left(\begin{smallmatrix}
-1 & 3 \\
-2 & 4
-\end{smallmatrix}\right)`$ as a vector of vectors using the matrix function [(Section 3.4.2)](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Indexing-matrices-and-arrays).
-
-As with lists, there is currently no special support for matrices implemented in *flowR*.
-</details></li>
-
-<li> <details> <summary><b>Data Frame</b>&emsp;(no)</summary>
-
-A data frame is a list of elements (vectors, matrices, or factors) all
-with the same length, and probably best described as a table structure [(Section 2.3.2)](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Data-frame-objects).
-
-As with vectors and lists, there is currently no special support for data frames, nor is it necessary (without, e.g., abstract interpretation).
-</details></li>
-
-<li> <details> <summary><b>Factor</b>&emsp;(no)</summary>
-
-Factors are a special form of an ordered or unordered "enum" - items that
-can only have a finite number of values. Depending on the requirements, they can be represented as a vector.
-
-As with vectors and data frames we handle factors as any other value.
-</details></li>
-
-<li> <details> <summary><b>NULL</b>&emsp;(partial)</summary>
-
-`NULL` is a special and unique object used to specifically mark the absence
-of an object [(Section 2.1.6)](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#NULL-object).
-
-Just like numbers we currently do not treat `NULL` in any special way, although we prevent assignments and references during the dataflow
-analysis.
-</details></li>
-
-
-<li> <details> <summary><b>NA</b>&emsp;(partial)</summary>
-
-`NA` is a special value that indicates that a value is "present" but unknown,
-as defined in [Section 3.3.4](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Elementary-arithmetic-operations) in the&nbsp;R language definition.
-
-As long as we do not support abstract interpretation or values during
-the dataflow analysis, there is no need to treat `NA` in any
-special way (although we prevent assignments and references, similar to
-our handling of `NULL`).
-</details></li>
-
-</ol>
-
-### Data Types
-
-R is dynamically typed and assigns a type to each R object, which can be
-queried at runtime with the `typeof` function. The list of existing types is
-documented at the beginning of [Section 2](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Objects).
-These types include symbols, primitive types like characters, booleans (logical values), integers,
-doubles, complex numbers, and more. Since the intricate details of these
-types (like their storage mode) are of no interest for *flowR* in its current
-form — without abstract interpretation and no type inference — we do
-not go into detail here.
-
-<ol start="19">
-
-<li> <details> <summary><b>Single Bracket Access</b>&emsp;(partial)</summary>
-
-Using `[` to access a list returns a list of selected elements, as it allows
-to index the list by a vector as well, as defined in [Section 3.4.1](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Indexing-by-vectors) of the&nbsp;R language definition.
-For example, with `v <- c(1,2,3)`, the access with `v[c(TRUE,FALSE,TRUE)]` returns the vector `c(1,3)`.
-Furthermore, it is possible to access multidimensional structures like `x[i, j]`, and to use
-an "empty" vector for indexing, which returns the whole vector, but
-without its attributes except for "names", "dim", and "dimnames".
-As an example, `v[] <- 1` sets all elements of `v` to `1`, and `m[1,]` returns the first row of a matrix `m` (indexing starts at `1`).
-
-Currently, *flowR* does not differentiate between the elements of a vector or a list. Therefore, it considers every access as a potential access to all elements.
-
-</details></li>
-
-<li> <details> <summary><b>Double Bracket Access</b>&emsp;(partial)</summary>
-
-While rarely used for a vector or matrix, `[[` is common when only a single element of a list is of interest. In that way, it is similar to the array access in Java or C++. Like the single bracket variant, it can be used to
-access a single element in multidimensional data structures like a matrix with `m[[1,2]]`.
-
-Again, *flowR* does not differentiate between the individual elements of objects and therefore treats every access as potentially accessing all elements.
-
-</details></li>
-
-<li> <details> <summary><b>Dollar Access</b>&emsp;(partial)</summary>
-
-The "dollar" or "named" access with `$` allows to access named lists like
-`l <- list(a=1,b=2)`. While either the usage of a string as in `l$"a"` or a
-symbol as in `l$a` is possible, both behave the same, using the name `"a"` (i.e.,
-the symbol is not resolved). In general, the index is not computable when
-using name-based access, as defined in [Section 3.4](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Indexing) of the&nbsp;R language definition.
-This allows to group related functions, for example, as:
-
-```R
-l <- list(a=\() 3, b=\() 4)
-```
-
-Then, for example, the first lambda function can be called as `l$a()`. While
-*flowR* realizes, that an element of `l` is called, it does not properly identify
-the called element, handling the access similar to single and double bracket
-access.
-</details></li>
-
-<li> <details> <summary><b>Slotted Access</b>&emsp;(partial)</summary>
-
-The access with `@`, the "[slotOp](https://rdrr.io/r/base/slotOp.html)", allows to access contents of a `S4` class
-structure. In a way, this is just a glorified named list that is linked to a
-class:
-
-```R
-setClass("Pengu", slots=list(name="character", age="numeric"))
-p <- new("Pengu", name="Tux", age=42)
-```
-
-With this, we define a new class named "Pengu", with two slots: "name"
-of type character and "age" of type numeric. The next line creates the
-42-year-old penguin named "Tux". Now, we can access its name as `p@name`
-and its age as `p@age`.
-
-Currently, *flowR* has no concept of these classes and hence no special
-support for OOP-principles. Therefore, it treats `p@name` as a potential
-access to all elements of `p`.
-</details></li>
-
-<li> <details> <summary><b>Vector-based Index</b>&emsp;(partial)</summary>
-
-As described alongside the single bracket access R19 and defined in [Section 3.4.1](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Indexing-by-vectors) of the&nbsp;R language definition, a vector like `v <- c(3,4,5)`,
-can be accessed as `v[c(1,3)]`, returning the first and third element of `v`.
-
-Similar to all the other ways of access, *flowR* treats this as possibly accessing
-all elements of `v`.
-</details></li>
-
-<li> <details> <summary><b>Arguments In Access</b>&emsp;(partial)</summary>
-
-Given a data frame, the corresponding access operators like the single
-bracket access, are modified, so they accept arguments. This way, `d$name`
-is equivalent `d[["name", exact=FALSE]]`.
-
-While explained at length in the [Extract topic](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Extract) of the&nbsp;R documentation, the
-details are not relevant for the current implementation of *flowR*.
-</details></li>
-
-<li> <details> <summary><b>Mode</b>&emsp;(partial)</summary>
-
-R separates the type of an object, from its mode (the “basic structure” of
-the object), and its `storage.mode`, which can be queried by [mode](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/mode).
-
-However, this is currently of no interest to *flowR*, as it ignores typing
-information.
-</details></li>
-</ol>
-
-### Assignments and Bindings
-
-<ol start="26">
-
-<li> <details> <summary><b>Local Left Assignment</b>&emsp;(full)</summary>
-
-Identified by an expression consisting of the tokens `expr`, `LEFT_ASSIGN`, `expr` with the `<-` lexeme, the local left assignment is the ["recommended"](https://style.tidyverse.org/syntax.html#assignment-1) way of binding a name to a value in R (although the topic of if `=` is better than `<-` is heavily discussed).
-It binds its *RHS* expression to its *LHS* which is expected to be a name within the current environment.
-
-Furthermore, the local left assignment returns its *RHS* but wrapped with
-the [invisible](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/invisible) function, which prevents the result from being printed
-automatically within the R interpreter. This allows nested assignments like
-`x <- y <- 1` to work as expected, binding both, `x` and `y` to the value `1`.
-
-*flowR* offers full support for this assignment but does currently ignore
-potential re-definitions of the `<-` operator.
-
-</details></li>
-
-<li> <details> <summary><b>Local Right Assignment</b>&emsp;(full)</summary>
-
-Similar to local left assignment, but with the role of the left-hand and the
-right-hand side swapped. In `3 -> x`, the name `x` is bound to the value `3`.
-Likewise, it returns its *LHS* wrapped with [invisible](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/invisible).
-
-Similar to the local left assignment, *flowR* offers full support for this assignment but ignores potential re-definitions.
-
-</details></li>
-
-<li> <details> <summary><b>Local Equal Assignment</b>&emsp;(full)</summary>
-
-On the top level or within a group, using `=` binds an expression to a
-name. The assignment `x = 3` works like the local left assignment. However,
-within arguments and parameter the behavior changes, alongside the
-corresponding change in the token type from `EQ_ASSIGN` to `EQ_SUB`
-and `EQ_FORMALS`.
-For another important differentiation when used in arguments, we recommend Section&nbsp;8.2.26 of the great [The R Inferno](https://www.burns-stat.com/pages/Tutor/R_inferno.pdf) by Burns.
-
-Besides using `=`, there is the older variant of the local equal assignment
-using an additional colon: `:=`. While (from [lintr](https://github.com/r-lib/lintr/blob/3d9e6d78efe7fc41d8b545a845a984a0821cfbbe/R/assignment_linter.R#L95-L96))
-> it’s [`:=`] extremely uncommon as a normal assignment operator
-
-the operator is usually overloaded (see the [op-colon-equals](https://www.rdocumentation.org/packages/rlang/versions/0.0.0.9000/topics/op-colon-equals) topic of [rlang](https://cran.r-project.org/package=rlang)).
-
-Again, *flowR* offers full support for this assignment but ignores potential
-re-definitions.
-</details></li>
-
-<li> <details> <summary><b>Global Left Assignment</b>&emsp;(partial)</summary>
-
-The global left assignment works as the local left assignment but does not
-bind the name in the currently active environment. Instead, it searches for
-the name in the parent environment (see Wickham's "Advanced R", [Section 7.2.4](https://adv-r.hadley.nz/environments.html#super-assignment--) and [Section 7.4.1](https://adv-r.hadley.nz/environments.html#search-path)).
-
-While *flowR* offers support for the global left assignment we can not be
-sure that it handles it correctly in every case, as we can not definitely
-determine the lowest environment that holds the definition of a name (as
-this may be dependent on the dynamic call stack).
-</details></li>
-
-<li> <details> <summary><b>Global Right Assignment</b>&emsp;(partial)</summary>
-
-Just like the local right assignment is similar to the local left assignment,
-the global right assignment is similar to its global left counterpart. So
-`3 ->> x` globally binds the name&nbsp;`x` to the value&nbsp;`3`.
-
-*flowR* supports the global right assignment the same way as the global left
-assignment.
-</details></li>
-
-<li> <details> <summary><b>Return Value Of Assignments</b>&emsp;(partial)</summary>
-
-Every assignment [invisibly](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/invisible) returns its source. Hence, `a <- 3` returns `3`,
-and `5 ->> b` returns `5`.
-
-*flowR* supports this behavior, by keeping the ingoing references in the processing of assignments. However, it does not mark the value as "invisible".
-</details></li>
-
-<li> <details> <summary><b>Special Assignment</b>&emsp;(partial)</summary>
-
-For all of the assignments,&nbsp;R has special variants, when combined with the
-access operators. For example, there is "`[<-`" (explained alongside [Extract](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Extract) topic of the base package), when assigning the single value of a vector as in `x[1] <- 3`.
-
-The current implementation of *flowR* does not offer special support for
-these assignments, but treats them like the assignment without the access
-operator (e.g., it treats "`[<-`" just like "`<-`"). Nevertheless, the processor
-for the `RAccess` node, still causes the effect of the assignment
-to be labeled as "maybe" so that the definition is treated as a potential
-redefinition of every cell in the vector or list.
-</details></li>
-
-<li> <details> <summary><b>Range Assignments</b>&emsp;(partial)</summary>
-
-As already explained alongside the usage of vectors for indexing,&nbsp;R allows
-an assignment like `v[1:3] <- 4:6` which causes the first three elements of the vector to be&nbsp;`4`,&nbsp;`5`, and&nbsp;`6` respectively.
-
-As with the special assignments, *flowR* does not offer special support for
-this kind of assignment.
-</details></li>
-
-<li> <details> <summary><b>Assign Functions</b>&emsp;(no)</summary>
-
-Besides the assignment operators like the local left assignment, R offers
-various functions like [assign](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/assign) and [rbind](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/cbind) that can be used to assign values to names.
-
-Currently, all of them are not supported by *flowR*.
-</details></li>
-
-<li> <details open> <summary><b>Locked Assignments</b>&emsp;(no)</summary>
-
-R allows to lock bindings so that they can no longer be changed. For example, after calling [lockBinding](https://stat.ethz.ch/R-manual/R-devel/library/base/html/bindenv.html) with `lockBinding('T', environment())`, subsequent assignments to "`T`" cause an error.
-
-However, we ignore this in our current implementation of *flowR*.
-</details></li>
-</ol>
-
-### Control Flow
-
-### Vectorization
-
-## Environments and Scoping
-
-### Libraries and Namespaces
-
-## Defining and Calling Functions
-
-### General Functions
-
-### Operators
-
-### Pipes
-
-### Important Functions
-
-## Class Systems and Object-Oriented Programming
-
-## Meta-Programming and Reflection
-
-### General
-
-### Parsing
-
-### Function Definitions and Calls
-
-## Miscellaneous
-
-### Interfacing with R
-
-### Roxygen
+# Flowr Capabilities
+
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-05-10, 08:57:58 UTC_
+
+The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
+Besides we use colored bullets like this:
+
+| <!-- -->               | <!-- -->                                              |
+| ---------------------- | ----------------------------------------------------- |
+| :green_square:         | _flowR_ is capable of handling this feature fully     |
+| :large_orange_diamond: | _flowR_ is capable of handling this feature partially |
+| :red_circle:           | _flowR_ is not capable of handling this feature       |
+
+:cloud: This could be a feature diagram... :cloud:
+
+ 1. **Names and Identifiers** (<a id='names-and-identifiers'>`names-and-identifiers`</a>)
+     1. **Form** (<a id='form'>`form`</a>)
+         1. **Normal** (<a id='name-normal'>`name-normal`</a>)\
+        :green_square: _Recognize constructs like `a`, `plot`, ..._
+         2. **Quoted** (<a id='name-quoted'>`name-quoted`</a>)\
+        :green_square: _Recognize `"a"`, `'plot'`, ..._
+         3. **Escaped** (<a id='name-escaped'>`name-escaped`</a>)\
+        :green_square: _Recognize `` `a` ``, `` `plot` ``, ..._
+     2. **Resolution** (<a id='resolution'>`resolution`</a>)
+         1. **Global Scope** (<a id='global-scope'>`global-scope`</a>)\
+        :green_square: _For example, tracking a big table of current identifier bindings_
+         2. **Lexicographic Scope** (<a id='lexicographic-scope'>`lexicographic-scope`</a>)\
+        :green_square: _For example, support function definition scopes_
+         3. **Closures** (<a id='closures'>`closures`</a>)\
+        :large_orange_diamond: _Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.
+         4. **Dynamic Environment Resolution** (<a id='dynamic-environment-resolution'>`dynamic-environment-resolution`</a>)\
+        :red_circle: _For example, using `new.env` and friends_
+         5. **Environment Sharing** (<a id='environment-sharing'>`environment-sharing`</a>)\
+        :red_circle: _Handling side-effects by environments which are not copied when modified_
+         6. **Search Path** (<a id='search-path'>`search-path`</a>)\
+        :red_circle: _Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there.
+         7. **Namespaces** (<a id='namespaces'>`namespaces`</a>)\
+        :red_circle: _Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_
+         8. **Accessing Exported Names** (<a id='accessing-exported-names'>`accessing-exported-names`</a>)\
+        :large_orange_diamond: _Resolving calls with `::` to their origin._ Accessing external files is allowed, although the name of packages etc. is not resolved correctly.
+         9. **Accessing Internal Names** (<a id='accessing-internal-names'>`accessing-internal-names`</a>)\
+        :red_circle: _Similar to `::` but for internal names._
+        10. **Library Loading** (<a id='library-loading'>`library-loading`</a>)\
+        :red_circle: _Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_
+ 2. **Expressions** (<a id='expressions'>`expressions`</a>)
+     1. **Function Calls** (<a id='function-calls'>`function-calls`</a>)
+         1. **Grouping** (<a id='grouping'>`grouping`</a>)\
+        :green_square: _Recognize groups done with `(`, `{`, ... (more precisely, their default mapping to the primitive implementations)._
+         2. **Normal Call** (<a id='call-normal'>`call-normal`</a>)\
+        :green_square: _Recognize and resolve calls like `f(x)`, `foo::bar(x, y)`, ..._
+             1. **Unnamed Arguments** (<a id='unnamed-arguments'>`unnamed-arguments`</a>)\
+          :green_square: _Recognize and resolve calls like `f(3)`, `foo::bar(3, c(1,2))`, ..._
+             2. **Empty Arguments** (<a id='empty-arguments'>`empty-arguments`</a>)\
+          :green_square: _Essentially a special form of an unnamed argument as in `foo::bar(3, ,42)`, ..._
+             3. **Named Arguments** (<a id='named-arguments'>`named-arguments`</a>)\
+          :green_square: _Recognize and resolve calls like `f(x = 3)`, `foo::bar(x = 3, y = 4)`, ..._
+             4. **String Arguments** (<a id='string-arguments'>`string-arguments`</a>)\
+          :green_square: _Recognize and resolve calls like `f('x' = 3)`, `foo::bar('x' = 3, "y" = 4)`, ..._
+             5. **Resolve Arguments** (<a id='resolve-arguments'>`resolve-arguments`</a>)\
+          :large_orange_diamond: _Correctly bind arguments (including [`pmatch`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/pmatch))._ Currently, we do not have a correct implementation for `pmatch`. Furthermore, more tests would be nice.
+             6. **Side-Effects in Argument** (<a id='side-effects-in-argument'>`side-effects-in-argument`</a>)\
+          :large_orange_diamond: _Handle side-effects of arguments (e.g., `f(x <- 3)`, `f(x = y <- 3)`, ...)._ We have not enough tests to be sure
+             7. **Side-Effects in Function Call** (<a id='side-effects-in-function-call'>`side-effects-in-function-call`</a>)\
+          :large_orange_diamond: _Handle side-effects of function calls (e.g., `setXTo(3)`, ...) for example achieved with the super assignment._ We need more tests and handlings. Furthermore, we do not detect side effects with external files, network, logging, etc.
+         3. **Anonymous Calls** (<a id='call-anonymous'>`call-anonymous`</a>)\
+        :green_square: _Recognize and resolve calls like `(function(x) x)(3)`, `factory(0)()`, ..._
+         4. **Infix Calls** (<a id='infix-calls'>`infix-calls`</a>)\
+        :green_square: _Recognize and resolve calls like `x + y`, `x %>% f(y)`, ..._
+         5. **Redefinition of Built-In Functions/primitives** (<a id='redefinition-of-built-in-functions-primitives'>`redefinition-of-built-in-functions-primitives`</a>)\
+        :large_orange_diamond: _Handle cases like `print <- function(x) x`, `` `for` <- function(a,b,c) a``, ..._ Currently, we can not handle all of them there are no tests. Still wip as part of desugaring
+         6. **Index Access** (<a id='index-access'>`index-access`</a>)
+             1. **Single Bracket Access** (<a id='single-bracket-access'>`single-bracket-access`</a>)\
+          :green_square: _Detect calls like `x[i]`, `x[i, ,b]`, `x[3][y]`, ... This does not include the real separation of cells, which is handled extra._
+             2. **Double Bracket Access** (<a id='double-bracket-access'>`double-bracket-access`</a>)\
+          :green_square: _Detect calls like `x[[i]]`, `x[[i, b]]`, ... Similar to single bracket._
+             3. **Dollar Access** (<a id='dollar-access'>`dollar-access`</a>)\
+          :green_square: _Detect calls like `x$y`, `x$"y"`, `x$y$z`, ..._
+             4. **Slot Access** (<a id='slot-access'>`slot-access`</a>)\
+          :green_square: _Detect calls like `x@y`, `x@y@z`, ..._
+             5. **Access with Argument-Names** (<a id='access-with-argument-names'>`access-with-argument-names`</a>)\
+          :green_square: _Detect calls like `x[i = 3]`, `x[[i=]]`, ..._
+             6. **Access with Empty** (<a id='access-with-empty'>`access-with-empty`</a>)\
+          :green_square: _Detect calls like `x[]`, `x[2,,42]`, ..._
+             7. **Subsetting** (<a id='subsetting'>`subsetting`</a>)\
+          :green_square: _Detect calls like `x[i > 3]`, `x[c(1,3)]`, ..._
+         7. **Operators** (<a id='operators'>`operators`</a>)
+             1. **Unary Operator** (<a id='unary-operator'>`unary-operator`</a>)\
+          :green_square: _Recognize and resolve calls like `+3`, `-3`, ..._
+             2. **Binary Operator** (<a id='binary-operator'>`binary-operator`</a>)\
+          :green_square: _Recognize and resolve calls like `3 + 4`, `3 * 4`, ..._
+                 1. **Special Operator** (<a id='special-operator'>`special-operator`</a>)\
+            :green_square: _Recognize and resolve calls like `3 %in% 4`, `3 %*% 4`, ..._
+                 2. **Model Formula** (<a id='model-formula'>`model-formula`</a>)\
+            :large_orange_diamond: _Recognize and resolve calls like `y ~ x`, `y ~ x + z`, ... including their implicit redefinitions of some functions._ Currently, we do not handle their redefinition and only treat model formulas as normal binary operators
+                 3. **Assignments and Bindings** (<a id='assignments-and-bindings'>`assignments-and-bindings`</a>)
+                     1. **Local Left Assignment** (<a id='local-left-assignment'>`local-left-assignment`</a>)\
+              :green_square: _Handle `x <- 3`, `x$y <- 3`, ..._
+                     2. **Local Right Assignment** (<a id='local-right-assignment'>`local-right-assignment`</a>)\
+              :green_square: _Handle `3 -> x`, `3 -> x$y`, ..._
+                     3. **Local Equal Assignment** (<a id='local-equal-assignment'>`local-equal-assignment`</a>)\
+              :green_square: _Handle `x = 3`, `x$y := 3`, ..._
+                     4. **Super Left Assignment** (<a id='super-left-assignment'>`super-left-assignment`</a>)\
+              :green_square: _Handle `x <<- 42`, `x$y <<- 42`, ..._
+                     5. **Super Right Assignment** (<a id='super-right-assignment'>`super-right-assignment`</a>)\
+              :green_square: _Handle `42 ->> x`, `42 ->> x$y`, ..._
+                     6. **Return Value of Assignments** (<a id='return-value-of-assignments'>`return-value-of-assignments`</a>)\
+              :green_square: _Handle `x <- 3` returning `3`, e.g., in `x <- y <- 3`_
+                     7. **Assignment Functions** (<a id='assignment-functions'>`assignment-functions`</a>)\
+              :large_orange_diamond: _Handle `assign(x, 3)`, `delayedAssign(x, 3)`, ..._ Currently we can not handle all of them and tests are rare.
+                     8. **Range Assignment** (<a id='range-assignment'>`range-assignment`</a>)\
+              :green_square: _Handle `x[1:3] <- 3`, `x$y[1:3] <- 3`, ..._
+                     9. **Replacement Functions** (<a id='replacement-functions'>`replacement-functions`</a>)\
+              :large_orange_diamond: _Handle `x[i] <- 3`, `x$y <- 3`, ... as `` `[<-`(x, 3) ``, ..._ Currently work in progress as part of the desugaring but still untested.
+                    10. **Locked Bindings** (<a id='locked-bindings'>`locked-bindings`</a>)\
+              :red_circle: _Handle `lockBinding(x, 3)`, ..._
+         8. **Control-Flow** (<a id='control-flow'>`control-flow`</a>)
+             1. **if** (<a id='if'>`if`</a>)\
+          :green_square: _Handle `if (x) y else z`, `if (x) y`, ..._
+             2. **for loop** (<a id='for-loop'>`for-loop`</a>)\
+          :green_square: _Handle `for (i in 1:3) print(i)`, ..._
+             3. **while loop** (<a id='while-loop'>`while-loop`</a>)\
+          :green_square: _Handle `while (x) b`, ..._
+             4. **repeat loop** (<a id='repeat-loop'>`repeat-loop`</a>)\
+          :green_square: _Handle `repeat {b; if (x) break}`, ..._
+             5. **break** (<a id='break'>`break`</a>)\
+          :green_square: _Handle `break` (including `break()`) ..._
+             6. **next** (<a id='next'>`next`</a>)\
+          :green_square: _Handle `next` (including `next()`) ..._
+             7. **switch** (<a id='switch'>`switch`</a>)\
+          :green_square: _Handle `switch(3, "a", "b", "c")`, ..._
+             8. **return** (<a id='return'>`return`</a>)\
+          :green_square: _Handle `return(3)`, ... in function definitions_
+             9. **exceptions** (<a id='exceptions'>`exceptions`</a>)\
+          :red_circle: _Handle `try`, `stop`, ..._
+         9. **Function Definitions** (<a id='function-definitions'>`function-definitions`</a>)
+             1. **Normal** (<a id='normal-definition'>`normal-definition`</a>)\
+          :green_square: _Handle `function() 3`, ..._
+             2. **Formals** (<a id='formals'>`formals`</a>)
+                 1. **Named** (<a id='formals-named'>`formals-named`</a>)\
+            :green_square: _Handle `function(x) x`, ..._
+                 2. **Default** (<a id='formals-default'>`formals-default`</a>)\
+            :green_square: _Handle `function(x = 3) x`, ..._
+                 3. **Dot-Dot-Dot** (<a id='formals-dot-dot-dot'>`formals-dot-dot-dot`</a>)\
+            :green_square: _Handle `function(...) 3`, ..._
+                 4. **Promises** (<a id='formals-promises'>`formals-promises`</a>)\
+            :large_orange_diamond: _Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ We _try_ to identify promises correctly but this is really rudimentary.
+             3. **Implicit Return** (<a id='implicit-return'>`implicit-return`</a>)\
+          :green_square: _Handle the return of `function() 3`, ..._
+             4. **Lambda Syntax** (<a id='lambda-syntax'>`lambda-syntax`</a>)\
+          :green_square: _Support `\(x) x`, ..._
+        10. **Important Built-Ins** (<a id='important-built-ins'>`important-built-ins`</a>)
+             1. **Non-Strict Logical Operators** (<a id='non-strict-logical-operators'>`non-strict-logical-operators`</a>)\
+          :green_square: _Handle `&&`, `||`, ..._
+             2. **Pipe and Pipe-Bind** (<a id='built-in-pipe-and-pipe-bind'>`built-in-pipe-and-pipe-bind`</a>)\
+          :large_orange_diamond: _Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.
+             3. **Sequencing** (<a id='built-in-sequencing'>`built-in-sequencing`</a>)\
+          :red_circle: _Handle `:`, `seq`, ... as they are used often._
+             4. **Internal and Primitive Functions** (<a id='built-in-internal-and-primitive-functions'>`built-in-internal-and-primitive-functions`</a>)\
+          :red_circle: _Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.
+             5. **Options** (<a id='built-in-options'>`built-in-options`</a>)\
+          :red_circle: _Handle `options`, `getOption`, ..._ Currently, we do not support the function at all.
+             6. **Help** (<a id='built-in-help'>`built-in-help`</a>)\
+          :large_orange_diamond: _Handle `help`, `?`, ..._ We do not support the function in a sensible way but just ignore it (although this does not happen resolved).
+             7. **Reflection / "Computing on the Language"** (<a id='reflection-"computing-on-the-language"'>`reflection-"computing-on-the-language"`</a>)
+                 1. **Get Function Structure** (<a id='get-function-structure'>`get-function-structure`</a>)\
+            :red_circle: _Handle `body`, `formals`, `environment` to access the respective parts of a function._ We do not support the functions at all.
+                 2. **Modify Function Structure** (<a id='modify-function-structure'>`modify-function-structure`</a>)\
+            :red_circle: _Handle `body<-`, `formals<-`, `environment<-` to modify the respective parts of a function._ We do not support the functions at all.
+                 3. **Quoting** (<a id='built-in-quoting'>`built-in-quoting`</a>)\
+            :large_orange_diamond: _Handle `quote`, `substitute`, `bquote`, ..._ We partially ignore some of them but most likely not all.
+                 4. **Evaluation** (<a id='built-in-evaluation'>`built-in-evaluation`</a>)\
+            :red_circle: _Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.
+                 5. **Parsing** (<a id='built-in-parsing'>`built-in-parsing`</a>)\
+            :red_circle: _Handle `parse`, `deparse`, ..._ We handle them as unknown function calls, but not specifically besides that.
+     2. **Literal Values** (<a id='literal-values'>`literal-values`</a>)
+         1. **Numbers** (<a id='numbers'>`numbers`</a>)\
+        :green_square: _Recognize numbers like `3`, `3.14`, `NA`, float-hex, ..._
+         2. **Strings** (<a id='strings'>`strings`</a>)\
+        :green_square: _Recognize strings like `"a"`, `'b'`, ..._
+             1. **Raw Strings** (<a id='raw-strings'>`raw-strings`</a>)\
+          :green_square: _Recognize raw strings like `r"(a)"`, ..._
+         3. **Logical** (<a id='logical'>`logical`</a>)\
+        :green_square: _Recognize the logicals `TRUE` and `FALSE`, ..._
+         4. **NULL** (<a id='null'>`null`</a>)\
+        :green_square: _Recognize `NULL`_
+         5. **Inf and NaN** (<a id='inf-and-nan'>`inf-and-nan`</a>)\
+        :green_square: _Recognize `Inf` and `NaN`_
+ 3. **Non-Standard Evaluations/Semantics** (<a id='non-standard-evaluations-semantics'>`non-standard-evaluations-semantics`</a>)
+     1. **Recycling** (<a id='recycling'>`recycling`</a>)\
+      :red_circle: _Handle recycling of vectors as explained in [Advanced R](https://adv-r.hadley.nz/vectors-chap.html)._ We do not support recycling.
+     2. **Vectorized Operator or Functions** (<a id='vectorized-operator-or-functions'>`vectorized-operator-or-functions`</a>)\
+      :red_circle: _Handle vectorized operations as explained in [Advanced R](https://adv-r.hadley.nz/perf-improve.html?q=vectorised#vectorise)._ We do not support vectorized operations.
+     3. **Hooks** (<a id='hooks'>`hooks`</a>)\
+      :red_circle: _Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.
+     4. **Precedence** (<a id='precedence'>`precedence`</a>)\
+      :green_square: _Handle the precedence of operators as explained in the [Documentation](https://rdrr.io/r/base/Syntax.html)._ We handle the precedence of operators (implicitly with the parser).
+     5. **Attributes** (<a id='attributes'>`attributes`</a>)
+         1. **User-Defined** (<a id='user-defined'>`user-defined`</a>)\
+        :red_circle: _Handle [attributes](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Attributes) like `attr`, `attributes`, ..._ We do not support attributes.
+         2. **Built-In** (<a id='built-in'>`built-in`</a>)\
+        :red_circle: _Handle built-in attributes like `dim`, ..._ We do not support them.
+ 4. **Types** (<a id='types'>`types`</a>)
+     1. **Primitive** (<a id='types-primitive'>`types-primitive`</a>)\
+      :red_circle: _Recognize and resolve primitive types like `numeric`, `character`, ..._ We do not support typing currently.
+     2. **Non-Primitive** (<a id='types-non-primitive'>`types-non-primitive`</a>)\
+      :red_circle: _Recognize and resolve non-primitive/composite types._ We do not support typing currently.
+     3. **Inference** (<a id='types-inference'>`types-inference`</a>)\
+      :red_circle: _Infer types from the code._ We do not support typing currently.
+     4. **Coercion** (<a id='types-coercion'>`types-coercion`</a>)\
+      :red_circle: _Handle coercion of types._ We do not support typing currently.
+     5. **Object-Oriented Programming** (<a id='object-oriented-programming'>`object-oriented-programming`</a>)
+         1. **S3** (<a id='oop-s3'>`oop-s3`</a>)\
+        :red_circle: _Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."\
+        _https://adv-r.hadley.nz/s3.html_
+         2. **S4** (<a id='oop-s4'>`oop-s4`</a>)\
+        :red_circle: _Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."\
+        _https://adv-r.hadley.nz/s4.html_
+         3. **R6** (<a id='oop-r6'>`oop-r6`</a>)\
+        :red_circle: _Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."\
+        _https://adv-r.hadley.nz/r6.html_
+         4. **R7/S7** (<a id='r7-s7'>`r7-s7`</a>)\
+        :red_circle: _Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."\
+        _https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/, https://cran.r-project.org/web/packages/S7/index.html_
+ 5. **Structure** (<a id='structure'>`structure`</a>)
+     1. **Comments** (<a id='comments'>`comments`</a>)\
+      :green_square: _Recognize comments like `# this is a comment`, ... and line-directives_
+     2. **Semicolons** (<a id='semicolons'>`semicolons`</a>)\
+      :green_square: _Recognize and resolve semicolons like `a; b; c`, ..._
+     3. **Newlines** (<a id='newlines'>`newlines`</a>)\
+      :green_square: _Recognize and resolve newlines like `a
+b
+c`, ..._
+ 6. **System, I/O, FFI, and Other Files** (<a id='system-i-o-ffi-and-other-files'>`system-i-o-ffi-and-other-files`</a>)
+     1. **Sourcing External Files** (<a id='sourcing-external-files'>`sourcing-external-files`</a>)\
+      :large_orange_diamond: _Handle `source`, `sys.source`, ..._ We are currently working on supporting the inclusion of external files. Currently we can handle `source`.
+     2. **Handling Binary Riles** (<a id='handling-binary-riles'>`handling-binary-riles`</a>)\
+      :red_circle: _Handle files dumped with, e.g., [`save`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/save), ... due to their frequent usage._ We do not support binary files.
+     3. **I/O** (<a id='i-o'>`i-o`</a>)\
+      :red_circle: _Handle `read.csv`, `write.csv`, ..._ We do not support I/O for the time being but treat them as unknown function calls.
+     4. **Foreign Function Interface** (<a id='foreign-function-interface'>`foreign-function-interface`</a>)\
+      :red_circle: _Handle `.Fortran`, `C`,..._ We do not support FFI but treat them as unknown function calls.
+     5. **System Calls** (<a id='system-calls'>`system-calls`</a>)\
+      :red_circle: _Handle [`system`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/system), `system.*`, ..._ We do not support system calls but treat them as unknown function calls.
+ 7. **Pre-Processors/external Tooling** (<a id='pre-processors-external-tooling'>`pre-processors-external-tooling`</a>)\
+    :red_circle: _Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)

@@ -1,4 +1,4 @@
-***This wiki page is currently under construction (currently, references to the capabilities are missing)***
+***This wiki page is currently under construction and not linked to the [capabilities](https://github.com/Code-Inspect/flowr/wiki/Capabilities)***
 
 Based on the collection of tokens that we know can be emitted by R, this page is almost a verbatim copy of the corresponding section of the appendix in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
 

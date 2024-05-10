@@ -15,7 +15,7 @@ import type { DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'
 import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
-export interface NormalizeRequiredInput extends ParseRequiredInput {
+export interface NormalizeRequiredInput {
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
 	readonly getId?: IdGenerator<NoInfo>
 }

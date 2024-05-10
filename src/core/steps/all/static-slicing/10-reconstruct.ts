@@ -5,10 +5,9 @@ import type { AutoSelectPredicate } from '../../../../slicing'
 import { reconstructToCode } from '../../../../slicing'
 import type { DeepReadonly } from 'ts-essentials'
 import type { NormalizedAst } from '../../../../r-bridge'
-import type { SliceRequiredInput } from './00-slice'
 import type { SliceResult } from '../../../../slicing/static/slicer-types'
 
-export interface ReconstructRequiredInput extends SliceRequiredInput {
+export interface ReconstructRequiredInput {
 	autoSelectIf?: AutoSelectPredicate
 }
 

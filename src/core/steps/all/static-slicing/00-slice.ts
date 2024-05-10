@@ -4,11 +4,10 @@ import { PipelineStepStage } from '../../pipeline-step'
 import type { SlicingCriteria } from '../../../../slicing'
 import { staticSlicing } from '../../../../slicing'
 import type { DeepReadonly } from 'ts-essentials'
-import type { NormalizeRequiredInput } from '../core/10-normalize'
 import type { DataflowInformation } from '../../../../dataflow/info'
 import type { NormalizedAst } from '../../../../r-bridge'
 
-export interface SliceRequiredInput extends NormalizeRequiredInput {
+export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
 	readonly criterion:  SlicingCriteria,
 	/** How many re-visits of the same node are ok? */

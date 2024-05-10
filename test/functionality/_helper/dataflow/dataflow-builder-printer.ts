@@ -9,14 +9,12 @@ import type {
 	DataflowGraphVertexUse,
 	FunctionArgument,
 	REnvironmentInformation } from '../../../../src/dataflow'
-import { splitEdgeTypes
-	, edgeTypesToNames,
-	EdgeTypeName,
+import {
+	splitEdgeTypes,
 	isPositionalArgument,
 	EdgeType,
 	VertexType
 } from '../../../../src/dataflow'
-
 import type { NodeId } from '../../../../src'
 import { EmptyArgument } from '../../../../src'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'

@@ -64,8 +64,8 @@ export interface NamedGraph {
 }
 
 interface DataflowDiffContext extends GenericDifferenceInformation<DataflowDifferenceReport> {
-	left:  DataflowGraph,
-	right: DataflowGraph,
+	left:  DataflowGraph
+	right: DataflowGraph
 }
 
 function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffContext {

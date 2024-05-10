@@ -19,7 +19,7 @@ import { processReplacementFunction } from '../internal/process/functions/call/b
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote'
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition'
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list'
-import {processGet} from "../internal/process/functions/call/built-in/built-in-get";
+import { processGet } from '../internal/process/functions/call/built-in/built-in-get'
 
 export const BuiltIn = 'built-in'
 

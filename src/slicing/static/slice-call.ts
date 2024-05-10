@@ -1,14 +1,12 @@
-import {
-	BuiltIn,
-	EdgeType
-} from '../../dataflow'
 import type {
-	DataflowGraph,
-	DataflowGraphVertexInfo,
-	REnvironmentInformation,
-	DataflowGraphVertexFunctionDefinition
-	, OutgoingEdges
-	, DataflowMap } from '../../dataflow'
+	DataflowGraph, DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	OutgoingEdges,
+	REnvironmentInformation
+} from '../../dataflow'
+import {
+	edgeIncludesType
+	, BuiltIn, EdgeType } from '../../dataflow'
 import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import type { NodeToSlice } from './slicer-types'
 import type { VisitingQueue } from './visiting-queue'
@@ -16,9 +14,8 @@ import { guard } from '../../util/assert'
 import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
-function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
+function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 
 	if(baseEnvironment.level !== callerEnvironment.level) {
@@ -34,7 +31,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue, idMap: DataflowMap): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -46,12 +43,12 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const name = recoverName(callerInfo.id, idMap)
+	const name = callerInfo.name
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`)
 	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
-		if(outgoingEdge.types.has(EdgeType.Calls)) {
+		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 			functionCallDefs.push(target)
 		}
 	}
@@ -80,7 +77,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	let found = false
 	for(const [, edge] of currentEdges) {
-		if(edge.types.has(EdgeType.Returns)) {
+		if(edgeIncludesType(edge.types, EdgeType.Returns)) {
 			found = true
 			break
 		}
@@ -89,11 +86,11 @@ export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges,
 		return false
 	}
 	for(const [target, edge] of currentEdges) {
-		if(edge.types.has(EdgeType.Returns)) {
+		if(edgeIncludesType(edge.types, EdgeType.Returns)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if(edge.types.has(EdgeType.Reads)) {
+		} else if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-		} else if(edge.types.has(EdgeType.Argument)) {
+		} else if(edgeIncludesType(edge.types, EdgeType.Argument)) {
 			queue.potentialArguments.add(target)
 		}
 	}

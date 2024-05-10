@@ -9,7 +9,7 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		in:                [{ nodeId: value.info.id, name: undefined, controlDependencies: data.controlDependencies }],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph().addVertex({
+		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag:                 VertexType.Value,
 			id:                  value.info.id,
 			value:               value.lexeme,

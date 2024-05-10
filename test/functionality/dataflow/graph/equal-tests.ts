@@ -8,7 +8,7 @@ function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, tex
 		cmp(a.equals(b))
 	} catch(e) {
 		// only calculate the dataflow graphs if it fails
-		const diff = diffGraphsToMermaidUrl({ label: 'left', graph: a }, { label: 'right', graph: b }, undefined, '')
+		const diff = diffGraphsToMermaidUrl({ label: 'left', graph: a }, { label: 'right', graph: b }, '')
 		console.error(text + '; diff:\n', diff)
 		throw e
 	}

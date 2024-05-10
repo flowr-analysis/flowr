@@ -110,8 +110,8 @@ export interface ParentInformation extends ParentContextInfo {
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
-export type DecoratedAstMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
+export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**
  * Contains the normalized AST as a doubly linked tree
@@ -119,7 +119,7 @@ interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGene
  */
 export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
-	idMap: DecoratedAstMap<OtherInfo>
+	idMap: AstIdMap<OtherInfo>
 	/** The root of the AST with parent information */
 	ast:   Node
 }
@@ -135,7 +135,7 @@ export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<Other
  * @returns A decorated AST based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): NormalizedAst<OtherInfo & ParentInformation> {
-	const idMap: DecoratedAstMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
+	const idMap: AstIdMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
 	const info: FoldInfo<OtherInfo> = { idMap, getId }
 
 	/* Please note, that all fold processors do not re-create copies in higher-folding steps so that the idMap stays intact. */

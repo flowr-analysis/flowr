@@ -13,12 +13,12 @@ export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data)
 
-	const finalGraph = new DataflowGraph()
+	const finalGraph = new DataflowGraph(data.completeAst.idMap)
 	const functionRootId = functionCall.info.id
 	const calledRootId = functionCall.calledFunction.info.id
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
-	// we know, that it calls the toplevel:
+	// we know that it calls the toplevel:
 	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Calls })
 	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Reads })
 	// keep the defined function
@@ -40,6 +40,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		tag:                 VertexType.FunctionCall,
 		id:                  functionRootId,
 		environment:         data.environment,
+		name:                functionCallName,
 		/* can never be a direct built-in-call */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,

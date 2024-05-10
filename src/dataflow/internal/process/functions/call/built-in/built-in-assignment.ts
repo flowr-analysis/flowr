@@ -15,6 +15,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import type { IdentifierDefinition, IdentifierReference } from '../../../../../index'
 import { dataflowLogger, EdgeType, VertexType } from '../../../../../index'
+
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
@@ -216,12 +217,9 @@ function processAssignmentToSymbol<OtherInfo>({
 		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 		const out = information.graph.outgoingEdges(write.nodeId)
 		for(const [id,edge] of (out?? [])) {
-			if(edge.types.has(EdgeType.Reads)) {
-				if(edge.types.size === 1) {
-					out?.delete(id)
-				} else {
-					edge.types.delete(EdgeType.Reads)
-				}
+			edge.types &= ~EdgeType.Reads
+			if(edge.types == 0) {
+				out?.delete(id)
 			}
 		}
 	}
@@ -240,4 +238,3 @@ function processAssignmentToSymbol<OtherInfo>({
 		out:               writeTargets
 	}
 }
-

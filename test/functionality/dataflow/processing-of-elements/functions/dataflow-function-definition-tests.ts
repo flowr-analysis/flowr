@@ -11,7 +11,7 @@ describe('Function Definition', withShell(shell => {
 			.use('2', 'x', undefined, false)
 			.argument('3', '2')
 			.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
-			.defineFunction('4', '4', ['3'], {
+			.defineFunction('4', ['3'], {
 				out:               [],
 				in:                [{ nodeId: '2', name: 'x', controlDependencies: [] }],
 				unknownReferences: [],
@@ -27,7 +27,7 @@ describe('Function Definition', withShell(shell => {
 			.argument('5', '4')
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 			.defineVariable('0', 'x', { definedBy: [] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -44,7 +44,7 @@ describe('Function Definition', withShell(shell => {
 			.argument('8', '7')
 			.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 			.defineVariable('0', 'x', { definedBy: [] }, false)
-			.defineFunction('9', '9', ['8'], {
+			.defineFunction('9', ['8'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -64,7 +64,7 @@ describe('Function Definition', withShell(shell => {
 				.argument('8', '7')
 				.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
 				.defineVariable('0', 'x', { definedBy: [] }, false)
-				.defineFunction('10', '10', ['9'], {
+				.defineFunction('10', ['9'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -82,7 +82,7 @@ describe('Function Definition', withShell(shell => {
 
 		assertDataflow(label('read of one parameter', ['formals-named', 'implicit-return', 'name-normal']), shell, 'function(x,y,z) y',
 			emptyGraph()
-				.defineFunction('8', '8', ['6'], {
+				.defineFunction('8', ['6'], {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
@@ -106,7 +106,7 @@ describe('Function Definition', withShell(shell => {
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-			.defineFunction('7', '7', ['6'], {
+			.defineFunction('7', ['6'], {
 				out:               [],
 				in:                [{ nodeId: '5', name: 'x', controlDependencies: [] }],
 				unknownReferences: [],
@@ -121,7 +121,7 @@ describe('Function Definition', withShell(shell => {
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('3', undefined, false)
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -136,7 +136,7 @@ describe('Function Definition', withShell(shell => {
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('3', undefined, false)
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -152,7 +152,7 @@ describe('Function Definition', withShell(shell => {
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('2', undefined, false)
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -167,7 +167,7 @@ describe('Function Definition', withShell(shell => {
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('3', undefined, false)
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -182,7 +182,7 @@ describe('Function Definition', withShell(shell => {
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.constant('2', undefined, false)
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -203,7 +203,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('6', undefined, false)
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
-			.defineFunction('10', '10', ['9'], {
+			.defineFunction('10', ['9'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -224,7 +224,7 @@ describe('Function Definition', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
-			.defineFunction('10', '10', ['9'], {
+			.defineFunction('10', ['9'], {
 				out:               [],
 				in:                [{ nodeId: '6', name: 'x', controlDependencies: [] }],
 				unknownReferences: [],
@@ -245,7 +245,7 @@ describe('Function Definition', withShell(shell => {
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('3', 'x', { definedBy: [] }, false)
-			.defineFunction('9', '9', ['8'], {
+			.defineFunction('9', ['8'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -262,7 +262,7 @@ describe('Function Definition', withShell(shell => {
 			.argument('5', '4')
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('...', '0', '1') }, false)
 			.defineVariable('0', '...', { definedBy: [] }, false)
-			.defineFunction('6', '6', ['5'], {
+			.defineFunction('6', ['5'], {
 				out:               [],
 				in:                [{ nodeId: '4', name: '..11', controlDependencies: [] }],
 				unknownReferences: [],
@@ -282,7 +282,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('0', 'a', { definedBy: ['1'] }, false)
 			.constant('1', undefined, false)
 			.defineVariable('3', 'b', { definedBy: ['4'] }, false)
-			.defineFunction('10', '10', ['9'], {
+			.defineFunction('10', ['9'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -312,7 +312,7 @@ describe('Function Definition', withShell(shell => {
 			.constant('13', undefined, false)
 			.defineVariable('12', 'b', { definedBy: ['13', '14'] }, false)
 			.constant('16', undefined, false)
-			.defineFunction('19', '19', ['18'], {
+			.defineFunction('19', ['18'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -331,7 +331,7 @@ describe('Function Definition', withShell(shell => {
 			.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '0', '1').defineParameter('...', '2', '3') }, false)
 			.defineVariable('0', 'a', { definedBy: [] }, false)
 			.defineVariable('2', '...', { definedBy: [] }, false)
-			.defineFunction('11', '11', ['10'], {
+			.defineFunction('11', ['10'], {
 				out:               [],
 				in:                [{ nodeId: '9', name: 'foo', controlDependencies: [] }],
 				unknownReferences: [],
@@ -365,7 +365,7 @@ describe('Function Definition', withShell(shell => {
 			.call('21', '<-', [argumentInCall('19'), argumentInCall('20')], { returns: ['19'], reads: [BuiltIn], controlDependency: [], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.call('23', '{', [argumentInCall('8'), argumentInCall('11'), argumentInCall('18'), argumentInCall('21'), argumentInCall('22')], { returns: ['22'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11').defineVariable('y', '19', '21', []) }, false)
 			.returns('23', '16')
-			.defineFunction('7', '7', ['6'], {
+			.defineFunction('7', ['6'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -378,7 +378,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
 			.constant('20', undefined, false)
 			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependency: [] }, false)
-			.defineFunction('24', '24', ['23'], {
+			.defineFunction('24', ['23'], {
 				out:               [],
 				in:                [{ nodeId: '12', name: 'z', controlDependencies: [] }],
 				unknownReferences: [],
@@ -393,7 +393,7 @@ describe('Function Definition', withShell(shell => {
 			.use('2', 'x', undefined, false)
 			.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn] })
-			.defineFunction('4', '4', ['3'], {
+			.defineFunction('4', ['3'], {
 				out:               [],
 				in:                [{ nodeId: '2', name: 'x', controlDependencies: [] }],
 				unknownReferences: [],
@@ -421,7 +421,7 @@ describe('Function Definition', withShell(shell => {
 			.call('20', '<-', [argumentInCall('18'), argumentInCall('19')], { returns: ['18'], reads: [BuiltIn], environment: defaultEnv().defineFunction('a', '0', '17') })
 			.defineVariable('4', 'x', { definedBy: [] }, false)
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }, false)
-			.defineFunction('12', '12', ['11'], {
+			.defineFunction('12', ['11'], {
 				out:               [],
 				in:                [{ nodeId: '9', name: 'b', controlDependencies: [] }],
 				unknownReferences: [],
@@ -430,7 +430,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().pushEnv().defineVariable('x', '8', '10')
 			}, { environment: defaultEnv().pushEnv() }, false)
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
-			.defineFunction('16', '16', ['15'], {
+			.defineFunction('16', ['15'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],

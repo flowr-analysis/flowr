@@ -11,29 +11,30 @@ import { label } from '../../../_helper/label'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
-		assertDataflow(label('Calling function a', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']), shell, 'i <- 4; a <- function(x) { x }\na(i)',  emptyGraph()
-			.use('8', 'x', undefined, false)
-			.reads('8', '4')
-			.use('13', 'i', undefined)
-			.reads('13', '0')
-			.definesOnCall('13', '4')
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
-			.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '4', '5') }, false)
-			.call('11', '<-', [argumentInCall('3'), argumentInCall('10')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('i', '0', '2') })
-			.call('15', 'a', [argumentInCall('13')], { returns: ['9'], reads: ['3'], environment: defaultEnv().defineVariable('i', '0', '2').defineFunction('a', '3', '11') })
-			.calls('15', '10')
-			.constant('1')
-			.defineVariable('0', 'i', { definedBy: ['1', '2'] })
-			.defineVariable('4', 'x', { definedBy: [] }, false)
-			.defineFunction('10', '10', ['9'], {
-				out:               [],
-				in:                [],
-				unknownReferences: [],
-				entryPoint:        '9',
-				graph:             new Set(['4', '8', '9']),
-				environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
-			})
-			.defineVariable('3', 'a', { definedBy: ['10', '11'] })
+		assertDataflow(label('Calling function a', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']),
+			shell, 'i <- 4; a <- function(x) { x }\na(i)',  emptyGraph()
+				.use('8', 'x', undefined, false)
+				.reads('8', '4')
+				.use('13', 'i', undefined)
+				.reads('13', '0')
+				.definesOnCall('13', '4')
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '4', '5') }, false)
+				.call('11', '<-', [argumentInCall('3'), argumentInCall('10')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('i', '0', '2') })
+				.call('15', 'a', [argumentInCall('13')], { returns: ['9'], reads: ['3'], environment: defaultEnv().defineVariable('i', '0', '2').defineFunction('a', '3', '11') })
+				.calls('15', '10')
+				.constant('1')
+				.defineVariable('0', 'i', { definedBy: ['1', '2'] })
+				.defineVariable('4', 'x', { definedBy: [] }, false)
+				.defineFunction('10', ['9'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '9',
+					graph:             new Set(['4', '8', '9']),
+					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
+				})
+				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 		)
 
 		assertDataflow(label('Calling function a with an indirection', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
@@ -54,7 +55,7 @@ describe('Function Call', withShell(shell => {
 				.constant('1')
 				.defineVariable('0', 'i', { definedBy: ['1', '2'] })
 				.defineVariable('4', 'x', { definedBy: [] }, false)
-				.defineFunction('10', '10', ['9'], {
+				.defineFunction('10', ['9'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
@@ -88,7 +89,7 @@ a(i)`,  emptyGraph()
 			.constant('12', undefined, false)
 			.defineVariable('11', 'x', { definedBy: ['12', '13'] }, false)
 			.constant('14', undefined, false)
-			.defineFunction('16', '16', ['15'], {
+			.defineFunction('16', ['15'], {
 				out:               [],
 				in:                [{ nodeId: '14', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
@@ -112,7 +113,7 @@ a(i)`,  emptyGraph()
 			.calls('14', ['11', '10'])
 			.defineVariable('2', 'x', { definedBy: [] }, false)
 			.constant('7', undefined, false)
-			.defineFunction('10', '10', ['9'], {
+			.defineFunction('10', ['9'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -141,7 +142,7 @@ a()()`,  emptyGraph()
 			.call('13', `${UnnamedFunctionCallPrefix}13`, [], { returns: ['6'], reads: ['12'], environment: defaultEnv().defineFunction('a', '0', '10') })
 			.calls('13', ['12', '7'])
 			.constant('5', undefined, false)
-			.defineFunction('7', '7', ['6'], {
+			.defineFunction('7', ['6'], {
 				out:               [],
 				in:                [{ nodeId: '5', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
@@ -149,7 +150,7 @@ a()()`,  emptyGraph()
 				graph:             new Set(['5', '6']),
 				environment:       defaultEnv().pushEnv().pushEnv()
 			}, { environment: defaultEnv().pushEnv() }, false)
-			.defineFunction('9', '9', ['8'], {
+			.defineFunction('9', ['8'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
@@ -176,7 +177,7 @@ a()()`,  emptyGraph()
 			.call('4', '{', [argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('7', 'f', [argumentInCall('5')], { returns: [], reads: [] })
 			.constant('3', undefined, false)
-			.defineFunction('5', '5', ['4'], {
+			.defineFunction('5', ['4'], {
 				out:               [],
 				in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
 				unknownReferences: [],
@@ -209,7 +210,7 @@ a()()`,  emptyGraph()
 			.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [BuiltIn], environment: defaultEnv().defineFunction('a', '0', '6') })
 			.call('11', 'a', [], { returns: ['4'], reads: ['0', '7'], environment: defaultEnv().defineFunction('a', '0', '6').defineVariable('y', '7', '9') })
 			.calls('11', '5')
-			.defineFunction('5', '5', ['4'], {
+			.defineFunction('5', ['4'], {
 				out:               [],
 				in:                [{ nodeId: '3', name: 'y', controlDependencies: [] }],
 				unknownReferences: [],
@@ -235,7 +236,7 @@ a(,3)`,  emptyGraph()
 			.defineVariable('1', 'x', { definedBy: ['2'] }, false)
 			.constant('2', undefined, false)
 			.defineVariable('4', 'y', { definedBy: [] }, false)
-			.defineFunction('10', '10', ['9'], {
+			.defineFunction('10' , ['9'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],

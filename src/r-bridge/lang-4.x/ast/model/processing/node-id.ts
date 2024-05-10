@@ -1,4 +1,4 @@
-import type { DataflowMap } from '../../../../../dataflow'
+import type { AstIdMap } from './decorate'
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
@@ -13,6 +13,6 @@ export function normalizeIdToNumberIfPossible(id: NodeId): NodeId {
 	return id
 }
 
-export function recoverName(id: NodeId, idMap?: DataflowMap): string | undefined {
+export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
 	return idMap?.get(id)?.lexeme
 }

@@ -1,4 +1,4 @@
-import type { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent } from '../../r-bridge'
+import type { NormalizedAst, AstIdMap, NodeId, NoInfo, ParentInformation, RNodeWithParent } from '../../r-bridge'
 import { RType } from '../../r-bridge'
 import { slicerLogger } from '../static'
 import type { SourcePosition } from '../../util/range'
@@ -41,7 +41,7 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicin
 
 
 
-function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdMap<OtherInfo>): NodeId | undefined {
 	let candidate: RNodeWithParent<OtherInfo> | undefined
 	for(const [id, nodeInfo] of dataflowIdMap.entries()) {
 		if(nodeInfo.location === undefined || nodeInfo.location[0] !== location[0] || nodeInfo.location[1] !== location[1]) {
@@ -63,7 +63,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 	return id
 }
 
-function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: AstIdMap<OtherInfo>): NodeId | undefined {
 	let candidate: RNodeWithParent<OtherInfo> | undefined
 
 	for(const [id, nodeInfo] of dataflowIdMap.entries()) {

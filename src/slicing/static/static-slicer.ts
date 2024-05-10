@@ -1,5 +1,6 @@
 import type { DataflowGraph } from '../../dataflow'
 import {
+	edgeIncludesType ,
 	BuiltIn,
 	EdgeType,
 	initializeCleanEnvironments,
@@ -69,7 +70,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue, ast.idMap)
+				sliceForCall(current, currentVertex, graph, queue)
 			}
 
 			const ret = handleReturns(queue, currentEdges, baseEnvFingerprint, baseEnvironment)
@@ -79,7 +80,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		}
 
 		for(const [target, { types }] of currentEdges) {
-			if(target === BuiltIn || types.has(EdgeType.NonStandardEvaluation)) {
+			if(target === BuiltIn || edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 				continue
 			}
 			const t = shouldTraverseEdge(types)

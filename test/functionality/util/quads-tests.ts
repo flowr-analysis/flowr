@@ -64,6 +64,7 @@ describe('Quads', withShell(shell => {
 <${idPrefix}2> <${domain}environment> <${idPrefix}5> <${context}> .
 <${idPrefix}5> <${domain}current> <${idPrefix}6> <${context}> .
 <${idPrefix}5> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}name> "foo" <${context}> .
 <${idPrefix}2> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
 <${idPrefix}2> <${domain}args> <${idPrefix}7> <${context}> .
 <${idPrefix}7> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .

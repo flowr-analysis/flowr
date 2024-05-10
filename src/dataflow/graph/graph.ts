@@ -1,29 +1,17 @@
 import { guard } from '../../util/assert'
-import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import type { AstIdMap, NodeId } from '../../r-bridge'
 import { EmptyArgument } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
-import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
+
 import type { DataflowInformation } from '../info'
 import type { DataflowDifferenceReport } from './diff'
 import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
-import type {
-	DataflowGraphVertexArgument,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo,
-	DataflowGraphVertices } from './vertex'
-import {
-	VertexType
-} from './vertex'
+import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowGraphVertices } from './vertex'
+import { VertexType } from './vertex'
 import { arrayEqual } from '../../util/arrays'
-
-/** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
-export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-
-
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
@@ -85,9 +73,11 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
+	public readonly idMap:              AstIdMap | undefined
 
-	constructor() {
-		DataflowGraph.DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
+	constructor(idMap: AstIdMap | undefined) {
+		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()
+		this.idMap = idMap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
@@ -237,7 +227,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		}
 
 		/* we now that we pass all required arguments */
-		const edge = { types: new Set([type]), ...rest } as unknown as Edge
+		const edge = { types: type, ...rest } as unknown as Edge
 
 		const existingFrom = this.edgeInformation.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
@@ -249,9 +239,9 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 				existingFrom.set(toId, edge)
 			}
 			this.installEdge(type, toId, fromId, edge)
-		} else if(!edgeInFrom.types.has(type)) {
+		} else {
 			// adding the type
-			edgeInFrom.types.add(type)
+			edgeInFrom.types |= type
 		}
 		return this
 	}
@@ -260,7 +250,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		if(type === EdgeType.DefinesOnCall) {
 			const otherEdge: Edge = {
 				...edge,
-				types: new Set([EdgeType.DefinedByOnCall])
+				types: EdgeType.DefinedByOnCall
 			}
 			const existingTo = this.edgeInformation.get(toId)
 			if(existingTo === undefined) {
@@ -310,7 +300,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 					if(get === undefined) {
 						existing.set(target, edge)
 					} else {
-						get.types = new Set([...get.types, ...edge.types])
+						get.types = get.types | edge.types
 					}
 				}
 			}

@@ -25,7 +25,7 @@ export function processFunctionArgument<OtherInfo>(
 	const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data)
 	const value = argument.value === undefined ? undefined : processDataflowFor(argument.value, data)
 	// we do not keep the graph of the name, as this is no node that should ever exist
-	const graph = value?.graph ?? new DataflowGraph()
+	const graph = value?.graph ?? new DataflowGraph(data.completeAst.idMap)
 
 	const argumentName = argument.name?.content
 	let entryPoint = value?.entryPoint

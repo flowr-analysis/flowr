@@ -58,11 +58,18 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
-	readonly tag:          VertexType.FunctionCall
-	args:                  FunctionArgument[]
+	readonly tag:         VertexType.FunctionCall
+	/**
+	 * Effective name of the function call,
+	 * Please be aware that this name can differ from the lexeme.
+	 * For example, if the function is a replacement function, in this case, the actually called fn will
+	 * have the compound name (e.g., `[<-`).
+	 */
+	readonly name:        string
+	args:                 FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
-	onlyBuiltin:           boolean
-	readonly environment?: REnvironmentInformation
+	onlyBuiltin:          boolean
+	readonly environment: REnvironmentInformation
 }
 
 /**

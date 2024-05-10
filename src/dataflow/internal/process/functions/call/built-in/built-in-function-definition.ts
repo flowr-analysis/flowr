@@ -45,7 +45,7 @@ export function processFunctionDefinition<OtherInfo>(
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
 	data = prepareFunctionEnvironment(data)
 
-	const subgraph = new DataflowGraph()
+	const subgraph = new DataflowGraph(data.completeAst.idMap)
 
 	let readInParameters: IdentifierReference[] = []
 	for(const param of parameters) {
@@ -98,7 +98,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const exitPoints = body.exitPoints
 	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, name)
 
-	const graph = new DataflowGraph().mergeWith(subgraph, false)
+	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false)
 	graph.addVertex({
 		tag:                 VertexType.FunctionDefinition,
 		id:                  name.info.id,

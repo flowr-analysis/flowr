@@ -2,17 +2,15 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
-	FunctionArgument } from '../graph'
-import {
-	isNamedArgument,
-	VertexType
+	FunctionArgument
 } from '../graph'
+import { edgeDoesNotIncludeType, edgeIncludesType, isNamedArgument, VertexType } from '../graph'
 import type { IdentifierReference, REnvironmentInformation } from '../environments'
 import { BuiltIn, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { expensiveTrace, log } from '../../util/log'
-import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
+import type { AstIdMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
 import { EmptyArgument, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
@@ -78,7 +76,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 }
 
 
-function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
 	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId)
 	if(linkedFunction === undefined) {
@@ -95,7 +93,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 }
 
 
-function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: DecoratedAstMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
 	functionCall: NodeId;
 	called:       DataflowGraphVertexInfo[]
 }[]) {
@@ -105,7 +103,11 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		return
 	}
 
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) => !e.types.has(EdgeType.Argument) && (e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls))).map(([target, _]) => target)
+	const readBits = EdgeType.Reads | EdgeType.Calls
+	const functionDefinitionReadIds = [...edges].filter(([_, e]) =>
+		edgeDoesNotIncludeType(e.types, EdgeType.Argument)
+		&& edgeIncludesType(e.types, readBits)
+	).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
@@ -145,7 +147,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
  */
 export function linkFunctionCalls(
 	graph: DataflowGraph,
-	idMap: DecoratedAstMap,
+	idMap: AstIdMap,
 	thisGraph: DataflowGraph
 ): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
 	const functionCalls = [...thisGraph.vertices(true)]
@@ -179,13 +181,15 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 
 		const outgoingEdges = [...currentInfo[1]]
 
-		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Returns))
+		const returnEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns))
 		if(returnEdges.length > 0) {
-			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function calls itself
+			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
 			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)))
 			continue
 		}
-		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall))
+
+		const followBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall
+		const followEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, followBits))
 
 		if(currentInfo[0].subflow !== undefined) {
 			result.set(currentId, currentInfo[0])

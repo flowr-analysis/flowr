@@ -70,7 +70,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue, ast.idMap)
+				sliceForCall(current, currentVertex, graph, queue)
 			}
 
 			const ret = handleReturns(queue, currentEdges, baseEnvFingerprint, baseEnvironment)

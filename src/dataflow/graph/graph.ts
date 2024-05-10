@@ -1,9 +1,8 @@
 import { guard } from '../../util/assert'
-import type { AstIdMap, NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import type { AstIdMap, NodeId } from '../../r-bridge'
 import { EmptyArgument } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
-import type { BiMap } from '../../util/bimap'
 import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
 
@@ -13,11 +12,6 @@ import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
 import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowGraphVertices } from './vertex'
 import { VertexType } from './vertex'
 import { arrayEqual } from '../../util/arrays'
-
-/** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
-export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-
-
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 

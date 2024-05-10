@@ -206,13 +206,11 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			if(lInfo.name === undefined) {
-				lInfo.name = recoverName(id, ctx.left.idMap)
-			} else if(rInfo.name === undefined) {
-				rInfo.name = recoverName(id, ctx.right.idMap)
-			}
-			if(lInfo.name !== rInfo.name) {
-				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`, {
+			const lname = lInfo.name ?? recoverName(id, ctx.left.idMap) ?? '??'
+			const rname = rInfo.name ?? recoverName(id, ctx.right.idMap) ?? '??'
+			if(lname !== rname) {
+				// eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
+				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lname} vs ${ctx.rightname}: ${rname}`, {
 					tag: 'vertex',
 					id
 				})

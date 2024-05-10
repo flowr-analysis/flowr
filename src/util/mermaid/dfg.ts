@@ -5,7 +5,6 @@ import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraph,
 	DataflowGraphVertexInfo,
-	DataflowMap,
 	FunctionArgument,
 	IdentifierDefinition,
 	IdentifierReference,
@@ -49,18 +48,7 @@ export function formatRange(range: SourceRange | undefined): string {
 	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`
 }
 
-function createArtificialExitPoints(exitPoints: readonly NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {
-	for(const exitPoint of exitPoints) {
-		if(!mermaid.rootGraph.hasVertex(exitPoint, true)) {
-			const node = dataflowIdMap.get(exitPoint)
-			guard(node !== undefined, 'exit point not found')
-			mermaid.nodeLines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap.get(exitPoint)?.location)}"}}`)
-		}
-		mermaid.nodeLines.push(`    style ${idPrefix}${exitPoint} stroke-width:6.5px;`)
-	}
-}
-
-function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
 		return
 	}
@@ -69,7 +57,6 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 	const subgraph = graphToMermaidGraph(subflow.graph, {
 		graph:               mermaid.rootGraph,
 		rootGraph:           mermaid.rootGraph,
-		dataflowIdMap,
 		idPrefix,
 		includeEnvironments: mermaid.includeEnvironments,
 		mark:                mermaid.mark,
@@ -84,10 +71,6 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 				mermaid.nodeLines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
 			}
 		}
-	}
-
-	if(dataflowIdMap !== undefined) {
-		createArtificialExitPoints(exitPoints, mermaid, dataflowIdMap, idPrefix)
 	}
 
 	mermaid.nodeLines.push('end')
@@ -160,7 +143,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines
 }
 
-function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: ReadonlySet<NodeId> | undefined): void {
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall
 	const { open, close } = mermaidNodeBrackets(info.tag)
 
@@ -172,11 +155,11 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		}
 	}
 
-	const node = dataflowIdMap?.get(info.id)
+	const node = mermaid.rootGraph.idMap?.get(info.id)
 	const escapedName = escapeMarkdown(node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??')
 
 	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(mermaid.rootGraph.idMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {
@@ -205,13 +188,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		}
 	}
 	if(info.tag === 'function-definition') {
-		subflowToMermaid(id, info.exitPoints, info.subflow, dataflowIdMap, mermaid, idPrefix)
+		subflowToMermaid(id, info.exitPoints, info.subflow, mermaid, idPrefix)
 	}
 }
 
 interface MermaidGraphConfiguration {
 	graph:                DataflowGraph,
-	dataflowIdMap:        DataflowMap | undefined,
 	prefix?:              string | null,
 	idPrefix?:            string,
 	includeEnvironments?: boolean,
@@ -224,13 +206,13 @@ interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ graph, dataflowIdMap, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>() }: MermaidGraphConfiguration
+	{ graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>() }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments }
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			vertexToMermaid(info, mermaid, id, idPrefix, dataflowIdMap, mark)
+			vertexToMermaid(info, mermaid, id, idPrefix, mark)
 		}
 	}
 	if(mermaid.hasBuiltIn) {
@@ -248,12 +230,11 @@ export function graphToMermaid(config: MermaidGraphConfiguration): { string: str
  * Converts a dataflow graph to a mermaid url that visualizes the graph.
  *
  * @param graph         - The graph to convert
- * @param dataflowIdMap - ID map to use to get access to the graph id mappings
  * @param includeEnvironments - Whether to include the environments in the mermaid graph code
- * @param mark          - Special nodes to mark (e.g. those included in the slice)
+ * @param mark          - Special nodes to mark (e.g., those included in the slice)
  */
-export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>): string {
-	return mermaidCodeToUrl(graphToMermaid({ graph, dataflowIdMap, includeEnvironments, mark }).string)
+export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>): string {
+	return mermaidCodeToUrl(graphToMermaid({ graph, includeEnvironments, mark }).string)
 }
 
 export interface LabeledDiffGraph {
@@ -263,14 +244,14 @@ export interface LabeledDiffGraph {
 }
 
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */
-export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap | undefined, prefix: string): string {
+export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	// we add the prefix ourselves
-	const { string: leftGraph, mermaid } = graphToMermaid({ graph: left.graph, dataflowIdMap, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark })
-	const { string: rightGraph } = graphToMermaid({ graph: right.graph, dataflowIdMap, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges })
+	const { string: leftGraph, mermaid } = graphToMermaid({ graph: left.graph, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark })
+	const { string: rightGraph } = graphToMermaid({ graph: right.graph, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges })
 
 	return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
 }
 
-export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap | undefined, prefix: string): string {
-	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
+export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
+	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, prefix))
 }

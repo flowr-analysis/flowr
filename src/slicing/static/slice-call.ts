@@ -1,8 +1,6 @@
 import type {
-	DataflowGraph,
+	DataflowGraph, DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo,
-	DataflowMap,
 	OutgoingEdges,
 	REnvironmentInformation
 } from '../../dataflow'
@@ -16,9 +14,8 @@ import { guard } from '../../util/assert'
 import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
-function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
+function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 
 	if(baseEnvironment.level !== callerEnvironment.level) {
@@ -34,7 +31,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue, idMap: DataflowMap): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -46,7 +43,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const name = recoverName(callerInfo.id, idMap)
+	const name = callerInfo.name
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`)
 	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 

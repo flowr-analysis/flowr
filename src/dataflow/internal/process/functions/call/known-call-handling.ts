@@ -71,6 +71,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		tag:                 VertexType.FunctionCall,
 		id:                  rootId,
 		environment:         data.environment,
+		name:                functionCallName,
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,

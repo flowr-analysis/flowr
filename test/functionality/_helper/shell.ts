@@ -200,7 +200,6 @@ export function assertDataflow(
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
-				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
 			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
@@ -258,7 +257,7 @@ export function assertSliced(name: string | TestLabel, shell: RShell, input: str
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,
-				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, true, result.slice.result)}`
+				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			)
 		} catch(e) {
 			console.error(normalizedAstToMermaidUrl(result.normalize.ast))

@@ -6,7 +6,8 @@ import type {
 	FunctionArgument,
 	REnvironmentInformation
 } from '../../../../src/dataflow'
-import {
+import { initializeCleanEnvironments
+	,
 	BuiltIn,
 	DataflowGraph,
 	EdgeType,
@@ -32,21 +33,19 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **vertex** for a **function definition** (V1).
 	 *
 	 * @param id - AST node ID
-	 * @param name - AST node text
 	 * @param subflow - Subflow data graph for the defined function.
 	 * @param exitPoints - Node IDs for exit point vertices.
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineFunction(id: NodeId, name: string,
+	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
 			id:      normalizeIdToNumberIfPossible(id),
-			name,
 			subflow: {
 				...subflow,
 				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),
@@ -86,7 +85,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
 			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependency: undefined }),
-			environment:         info?.environment,
+			environment:         info?.environment ?? initializeCleanEnvironments(),
 			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
 			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
 		}, asRoot)

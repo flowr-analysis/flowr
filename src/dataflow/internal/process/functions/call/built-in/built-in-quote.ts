@@ -15,7 +15,7 @@ export function processQuote<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config?: { quoteArgumentsWithIndex?: Set<number> }
+	config?: { quoteArgumentsWithIndex?: number }
 ): DataflowInformation {
 	const { information, processedArguments, fnRef  } = processKnownFunctionCall({ name, args, rootId, data })
 
@@ -25,7 +25,7 @@ export function processQuote<OtherInfo>(
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i]
-		if(processedArg && !config?.quoteArgumentsWithIndex?.has(i)) {
+		if(processedArg && i !== config?.quoteArgumentsWithIndex) {
 			inRefs.push(...processedArg.in)
 			outRefs.push(...processedArg.out)
 			unknownRefs.push(...processedArg.unknownReferences)

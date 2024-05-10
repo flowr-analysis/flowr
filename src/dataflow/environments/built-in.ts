@@ -19,6 +19,7 @@ import { processReplacementFunction } from '../internal/process/functions/call/b
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote'
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition'
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list'
+import {processGet} from "../internal/process/functions/call/built-in/built-in-get";
 
 export const BuiltIn = 'built-in'
 
@@ -153,16 +154,18 @@ registerBuiltInFunctions(processSourceCall,         {},                         
 registerBuiltInFunctions(processAccess,             { treatIndicesAsString: false },                      '[', '[[')
 registerBuiltInFunctions(processAccess,             { treatIndicesAsString: true },                       '$', '@')
 registerBuiltInFunctions(processIfThenElse,         {},                                                   'if')
-registerBuiltInFunctions(processAssignment,         {},                                                   '<-', ':=', '=', 'assign', 'delayedAssign')
+registerBuiltInFunctions(processGet,                {},                                                   'get')
+registerBuiltInFunctions(processAssignment,         {},                                                   '<-', ':=', '=', 'assign')
+registerBuiltInFunctions(processAssignment,         { quoteSource: true },                                'delayedAssign')
 registerBuiltInFunctions(processAssignment,         { superAssignment: true },                            '<<-')
 registerBuiltInFunctions(processAssignment,         { swapSourceAndTarget: true },                        '->')
 registerBuiltInFunctions(processAssignment,         { superAssignment: true, swapSourceAndTarget: true }, '->>')
 registerBuiltInFunctions(processSpecialBinOp,       { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,               {},                                                   '|>')
 registerBuiltInFunctions(processFunctionDefinition, {},                                                   'function', '\\')
-registerBuiltInFunctions(processQuote,            { quoteArgumentsWithIndex: new Set([0]) },       'quote', 'substitute', 'bquote')
-registerBuiltInFunctions(processForLoop,          {},                                                     'for')
-registerBuiltInFunctions(processRepeatLoop,       {},                                                     'repeat')
-registerBuiltInFunctions(processWhileLoop,        {},                                                     'while')
+registerBuiltInFunctions(processQuote,              { quoteArgumentsWithIndex: 0 },                       'quote', 'substitute', 'bquote')
+registerBuiltInFunctions(processForLoop,            {},                                                   'for')
+registerBuiltInFunctions(processRepeatLoop,         {},                                                   'repeat')
+registerBuiltInFunctions(processWhileLoop,          {},                                                   'while')
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

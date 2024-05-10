@@ -435,6 +435,22 @@ cat(4 %a% 5)`)
 		assertSliced(label('quote does not reference variables', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]),
 			shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)')
 	})
+	describe('Assignment and Reflection Functions', () => {
+		describe('Assign', () => {
+			assertSliced(label('using assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'assign("x", 42)\nx', ['2@x'],
+				'assign("x", 42)\nx')
+		})
+		describe('DelayedAssign', () => {
+			assertSliced(label('using delayed-assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'delayedAssign("x", 42)\nx', ['2@x'],
+				'delayedAssign("x", 42)\nx')
+			assertSliced(label('using delayed-assign should break reference', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'x <- 4\ndelayedAssign("y", x)\nx <- 5;\ny', ['4@y'],
+				'delayedAssign("y", x)\ny') // note: `x <- 5` should be part of the slice!
+		})
+		// TODO: delayed, TODO: get
+	})
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']),
 			shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x')

@@ -46,6 +46,7 @@ export interface AssignmentConfiguration {
 	readonly swapSourceAndTarget?: boolean
 	/* Make maybe if assigned to symbol */
 	readonly makeMaybe?:           boolean
+	readonly quoteSource?:         boolean
 }
 
 /**
@@ -71,7 +72,7 @@ export function processAssignment<OtherInfo>(
 
 	if(target.type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe)
+		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe, config.quoteSource)
 	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
@@ -110,7 +111,9 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 
 function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & ParentInformation>, args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, config: {
 	superAssignment?:     boolean;
-	swapSourceAndTarget?: boolean
+	swapSourceAndTarget?: boolean;
+	quoteSource?:         boolean;
+	makeMaybe?:           boolean;
 }, source: RNode<OtherInfo & ParentInformation>) {
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
 		type:      RType.Symbol,
@@ -124,13 +127,14 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	// treat first argument to Symbol
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], { ...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]]
 	const res = processKnownFunctionCall({ name, args: mappedArgs, rootId, data, reverseOrder: !config.swapSourceAndTarget })
-	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
+	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information, config.makeMaybe, config.quoteSource)
 }
 
 function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation) {
 	return sourceInfo.graph.getVertex(source.info.id)?.tag === VertexType.FunctionDefinition
 }
 
+// TODO: refactor to object and reduce amount of arguments
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
@@ -143,7 +147,8 @@ function processAssignmentToSymbol<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation,
-	makeMaybe?: boolean
+	makeMaybe: boolean | undefined,
+	quoteSource: boolean | undefined
 ): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
@@ -180,6 +185,10 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	information.graph.addEdge(name.info.id, targetArg.entryPoint, { type: EdgeType.Returns })
+
+	if(quoteSource) {
+		information.graph.addEdge(name.info.id, source.info.id, { type: EdgeType.NonStandardEvaluation })
+	}
 
 	return {
 		...information,

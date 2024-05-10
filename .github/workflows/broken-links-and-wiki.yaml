@@ -43,6 +43,8 @@ jobs:
           if ! cmp -s wiki/Capabilities-Old.md wiki/Capabilities-New.md; then
               echo "Capabilities changed!"
               echo "CHANGED=true" >> $GITHUB_ENV
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
               git add -f wiki/Capabilities-New.md
               git commit -m "[skip ci] doc: update capabilities"
           else

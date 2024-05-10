@@ -449,7 +449,11 @@ cat(4 %a% 5)`)
 				shell, 'x <- 4\ndelayedAssign("y", x)\nx <- 5;\ny', ['4@y'],
 				'delayedAssign("y", x)\ny') // note: `x <- 5` should be part of the slice!
 		})
-		// TODO: delayed, TODO: get
+		describe('Get', () => {
+			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope']),
+				shell, 'x <- 42\ny <- get("x")', ['2@y'],
+				'x <- 42\ny <- get("x")')
+		})
 	})
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']),

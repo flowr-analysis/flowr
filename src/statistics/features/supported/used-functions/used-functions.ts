@@ -1,5 +1,4 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
-import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
@@ -8,11 +7,13 @@ import {
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
-import type { RNodeWithParent } from '../../../../r-bridge'
-import { RType , visitAst } from '../../../../r-bridge'
-import { edgeIncludesType, EdgeType } from '../../../../dataflow'
 import { getRangeStart } from '../../../../util/range'
 import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
+import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { appendStatisticsFile } from '../../../output/statistics-file'
+import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,

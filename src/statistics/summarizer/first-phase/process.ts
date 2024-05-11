@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
-import type { StatisticsOutputFormat } from '../..'
 import { guard } from '../../../util/assert'
+import type { StatisticsOutputFormat } from '../../output/statistics-file'
 
 export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()

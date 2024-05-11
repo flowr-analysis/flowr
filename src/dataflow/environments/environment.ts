@@ -4,11 +4,11 @@
  *
  * @module
  */
-import type { DataflowGraph } from '../'
-import { resolveByName } from './resolve-by-name'
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
 import { BuiltInMemory } from './built-in'
-import type { NodeId } from '../../r-bridge'
+import type { DataflowGraph } from '../graph/graph'
+import { resolveByName } from './resolve-by-name'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference {

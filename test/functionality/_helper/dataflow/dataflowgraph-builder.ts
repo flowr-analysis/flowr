@@ -1,21 +1,20 @@
-import type { AstIdMap, NodeId } from '../../../../src'
-import { EmptyArgument } from '../../../../src'
+import { deepMergeObject } from '../../../../src/util/objects'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
 import type {
 	DataflowFunctionFlowInformation,
-	DataflowGraphVertexUse,
-	FunctionArgument,
-	REnvironmentInformation
-} from '../../../../src/dataflow'
-import { initializeCleanEnvironments
-	,
-	BuiltIn,
-	DataflowGraph,
-	EdgeType,
-	isPositionalArgument,
-	VertexType
-} from '../../../../src/dataflow'
-import { deepMergeObject } from '../../../../src/util/objects'
-import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+	FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import {
+	isPositionalArgument
+	, DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
+import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
+import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'
+import { VertexType } from '../../../../src/dataflow/graph/vertex'
+import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
+import { EdgeType } from '../../../../src/dataflow/graph/edge'
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap)

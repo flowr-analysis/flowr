@@ -5,7 +5,6 @@
 import type { UltimateSlicerStats } from './data'
 import fs from 'fs'
 import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
-import { ultimateStats2String } from '../stats'
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
 import path from 'path'
@@ -13,6 +12,7 @@ import type { CommonSummarizerConfiguration } from '../../util/summarizer'
 import { Summarizer } from '../../util/summarizer'
 import { readLineByLine, readLineByLineSync } from '../../util/files'
 import { jsonReplacer } from '../../util/json'
+import { ultimateStats2String } from '../stats/print'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**

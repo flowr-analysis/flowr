@@ -1,9 +1,7 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
 import type { DataflowProcessorInformation } from '../processor'
 import { ExitPointType } from '../info'
 import type { DataflowInformation  } from '../info'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
-import { EdgeType } from '../graph'
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else'
@@ -20,6 +18,11 @@ import { processQuote } from '../internal/process/functions/call/built-in/built-
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition'
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list'
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get'
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { EdgeType } from '../graph/edge'
 
 export const BuiltIn = 'built-in'
 

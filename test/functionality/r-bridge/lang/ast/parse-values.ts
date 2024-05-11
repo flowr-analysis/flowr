@@ -2,12 +2,13 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { RNumberPool, RStringPool, RSymbolPool } from '../../../_helper/provider'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { retrieveParseDataFromRCode, RType } from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { prepareParsedData } from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format'
 import { label } from '../../../_helper/label'
+import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retriever'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
 chai.use(chaiAsPromised)
 
 describe('CSV parsing', withShell(shell => {

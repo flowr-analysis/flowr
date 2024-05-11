@@ -1,8 +1,15 @@
-import type { NormalizedAst, AstIdMap, NodeId, NoInfo, ParentInformation, RNodeWithParent } from '../../r-bridge'
-import { RType } from '../../r-bridge'
-import { slicerLogger } from '../static'
 import type { SourcePosition } from '../../util/range'
 import { expensiveTrace } from '../../util/log'
+import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type {
+	AstIdMap,
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { slicerLogger } from '../static/static-slicer'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
 export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`

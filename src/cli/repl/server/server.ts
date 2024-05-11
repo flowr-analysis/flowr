@@ -7,7 +7,7 @@ import type { FlowrErrorMessage } from './messages/error'
 import type { Server, Socket } from './net'
 import { NetServer } from './net'
 import { FlowrLogger } from '../../../util/log'
-import type { RShell } from '../../../r-bridge'
+import type { RShell } from '../../../r-bridge/shell'
 
 // we detach from the main logger so that it can have its own switch
 export const serverLog = new FlowrLogger({ name: 'server' })

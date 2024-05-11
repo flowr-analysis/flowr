@@ -1,10 +1,11 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
-import type { RComment, RLineDirective } from '../../../../model'
-import { RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
+import { RType } from '../../../../model/type'
+import type { RLineDirective } from '../../../../model/nodes/r-line-directive'
+import type { RComment } from '../../../../model/nodes/r-comment'
 
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/

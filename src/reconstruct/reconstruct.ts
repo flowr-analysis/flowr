@@ -4,34 +4,32 @@
  * @module
  */
 
-import type {
-	NormalizedAst,
-	NodeId,
-	ParentInformation,
-	RAccess,
-	RArgument,
-	RBinaryOp,
-	RExpressionList,
-	RForLoop,
-	RFunctionCall,
-	RFunctionDefinition,
-	RIfThenElse,
-	RNode,
-	RNodeWithParent,
-	RParameter,
-	RRepeatLoop,
-	RWhileLoop,
-	RPipe,
-	StatefulFoldFunctions
-} from '../r-bridge'
-import {
-	RType,
-	foldAstStateful
-	, EmptyArgument
-} from '../r-bridge'
 import { expensiveTrace, log, LogLevel } from '../util/log'
 import { guard } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
+import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
+import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop'
+import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop'
+import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else'
+import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop'
+import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
+import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access'
+import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition'
+import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
+import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {

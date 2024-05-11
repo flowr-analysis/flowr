@@ -1,11 +1,12 @@
 /**
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
-import type { RNodeWithParent } from '../../r-bridge'
-import { RType , RFalse, RTrue } from '../../r-bridge'
 import { bigint2number } from '../../util/numbers'
 import type { SummarizedMeasurement } from '../../util/summarizer'
 import { summarizeMeasurement } from '../../util/summarizer'
+import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
+import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)

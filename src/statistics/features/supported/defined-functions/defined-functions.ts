@@ -1,14 +1,16 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
-import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
 import type { MergeableRecord } from '../../../../util/objects'
 import type { SourcePosition } from '../../../../util/range'
 import { getRangeStart } from '../../../../util/range'
-import type { ParentInformation, RFunctionDefinition, RNodeWithParent } from '../../../../r-bridge'
-import { RType, visitAst } from '../../../../r-bridge'
-import { edgeIncludesType, EdgeType } from '../../../../dataflow'
 import { guard, isNotUndefined } from '../../../../util/assert'
+import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition'
+import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */

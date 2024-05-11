@@ -1,7 +1,7 @@
-import type { DataflowGraph } from '../../../../src/dataflow'
-import { diffGraphsToMermaidUrl } from '../../../../src/dataflow'
 import { assert } from 'chai'
 import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder'
+import type { DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {
 	try {

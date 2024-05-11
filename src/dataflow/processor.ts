@@ -1,9 +1,16 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { NodeId, NormalizedAst, ParentInformation, RNode, RNodeWithParent, RParseRequest } from '../r-bridge'
-import type { REnvironmentInformation } from './environments'
 import type { DataflowInformation } from './info'
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { REnvironmentInformation } from './environments/environment'
+import type { RParseRequest } from '../r-bridge/retriever'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**

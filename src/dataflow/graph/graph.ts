@@ -1,8 +1,4 @@
 import { guard } from '../../util/assert'
-import type { AstIdMap, NodeId } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
-import type { IdentifierDefinition, IdentifierReference, REnvironmentInformation } from '../environments'
-import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
 
@@ -12,6 +8,13 @@ import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
 import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowGraphVertices } from './vertex'
 import { VertexType } from './vertex'
 import { arrayEqual } from '../../util/arrays'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { REnvironmentInformation } from '../environments/environment'
+import { initializeCleanEnvironments } from '../environments/environment'
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { cloneEnvironmentInformation } from '../environments/clone'
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 

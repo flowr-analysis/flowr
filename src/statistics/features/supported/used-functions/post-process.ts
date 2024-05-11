@@ -7,7 +7,6 @@ import {
 } from '../../common-syntax-probability'
 import type { FeatureStatisticsWithMeta } from '../../feature'
 import path from 'path'
-import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'fs'
 import type { FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { AllCallsFileBase } from './used-functions'
@@ -18,6 +17,7 @@ import type { MergeableRecord } from '../../../../util/objects'
 import { readLineByLineSync } from '../../../../util/files'
 import { date2string } from '../../../../util/time'
 import { bigint2number } from '../../../../util/numbers'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase, this should be a map using an array to collect

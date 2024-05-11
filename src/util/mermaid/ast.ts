@@ -1,6 +1,7 @@
-import type { RNodeWithParent } from '../../r-bridge'
-import { RoleInParent, visitAst } from '../../r-bridge'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
+import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'

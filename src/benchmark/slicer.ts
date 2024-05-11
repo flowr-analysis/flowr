@@ -6,36 +6,32 @@
 
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
+import fs from 'fs'
+import { log, LogLevel } from '../util/log'
+import type { MergeableRecord } from '../util/objects'
+import type { DataflowInformation } from '../dataflow/info'
+import type { SliceResult } from '../slicing/static/slicer-types'
+import type { ReconstructionResult } from '../reconstruct/reconstruct'
+import { PipelineExecutor } from '../core/pipeline-executor'
+import { guard } from '../util/assert'
+import { withoutWhitespace } from '../util/strings'
 import type {
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats
-} from './stats'
-import fs from 'fs'
-import { log, LogLevel } from '../util/log'
-import type { MergeableRecord } from '../util/objects'
-import type {
-	NormalizedAst,
-	RParseRequestFromFile,
-	RParseRequestFromText
-} from '../r-bridge'
-import {
-	collectAllIds
-	,
-	retrieveNumberOfRTokensOfLastParse
-	, RShell } from '../r-bridge'
-import type { DataflowInformation } from '../dataflow/info'
-import type { SliceResult } from '../slicing/static/slicer-types'
-import type { ReconstructionResult } from '../reconstruct/reconstruct'
-import type { SlicingCriteria, SlicingCriteriaFilter } from '../slicing'
-import { collectAllSlicingCriteria } from '../slicing'
-import { PipelineExecutor } from '../core/pipeline-executor'
-import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline'
-import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline'
-import { guard } from '../util/assert'
-import { withoutWhitespace } from '../util/strings'
+} from './stats/stats'
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { SlicingCriteria } from '../slicing/criterion/parse'
+import { RShell } from '../r-bridge/shell'
+import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever'
+import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect'
+import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline'
+import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
+import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 

@@ -1,15 +1,12 @@
-import type { NodeId } from '../../../../src'
-import type { FunctionArgument, IdentifierDefinition, REnvironmentInformation, Environment } from '../../../../src/dataflow'
-import {
-	initializeCleanEnvironments
-} from '../../../../src/dataflow'
-import {
-	appendEnvironment,
-	define,
-	popLocalEnvironment,
-	pushLocalEnvironment
-} from '../../../../src/dataflow/environments'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier'
+import type { FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import type { REnvironmentInformation , Environment } from '../../../../src/dataflow/environments/environment'
+import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
+import { define } from '../../../../src/dataflow/environments/define'
+import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping'
+import { appendEnvironment } from '../../../../src/dataflow/environments/append'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined }

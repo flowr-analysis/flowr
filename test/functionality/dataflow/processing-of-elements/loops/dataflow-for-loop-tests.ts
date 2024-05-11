@@ -1,9 +1,10 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { BuiltIn } from '../../../../../src/dataflow'
-import { EmptyArgument, OperatorDatabase } from '../../../../../src'
 import { label } from '../../../_helper/label'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('for', withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),

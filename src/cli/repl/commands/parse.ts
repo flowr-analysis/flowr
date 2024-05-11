@@ -1,12 +1,19 @@
 import type { ReplCommand } from './main'
-import type { XmlBasedJson } from '../../../r-bridge'
-import { fileProtocol, removeRQuotes, requestFromInput , getTokenType , attributesKey, contentKey, objectWithArrUnwrap , extractLocation , childrenKey , getKeysGuarded, RawRType } from '../../../r-bridge'
 import type { OutputFormatter } from '../../../util/ansi'
 import { FontStyles } from '../../../util/ansi'
 import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
-import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline'
+import type { XmlBasedJson } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { attributesKey, contentKey , childrenKey , getKeysGuarded } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { RawRType } from '../../../r-bridge/lang-4.x/ast/model/type'
+import {
+	extractLocation,
+	getTokenType,
+	objectWithArrUnwrap
+} from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
+import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 

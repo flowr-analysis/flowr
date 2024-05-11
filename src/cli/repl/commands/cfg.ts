@@ -1,10 +1,10 @@
 import type { ReplCommand } from './main'
-import type { RShell } from '../../../r-bridge'
-import { fileProtocol, requestFromInput } from '../../../r-bridge'
 import { PipelineExecutor } from '../../../core/pipeline-executor'
-import { DEFAULT_NORMALIZE_PIPELINE } from '../../../core/steps/pipeline'
 import { extractCFG } from '../../../util/cfg/cfg'
-import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid'
+import type { RShell } from '../../../r-bridge/shell'
+import { DEFAULT_NORMALIZE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever'
+import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg'
 
 async function controlflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {

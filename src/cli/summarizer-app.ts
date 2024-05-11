@@ -6,12 +6,12 @@
  * @module
  */
 
-import { processCommandLineArgs } from './common'
 import { BenchmarkSummarizer } from '../benchmark/summarizer/summarizer'
 import { StatisticsSummarizer } from '../statistics/summarizer/summarizer'
-import { allFeatureNames } from '../statistics'
 import { detectSummarizationType } from '../statistics/summarizer/auto-detect'
 import { SummarizerType } from '../util/summarizer'
+import { processCommandLineArgs } from './common/script'
+import { allFeatureNames } from '../statistics/features/feature'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean

@@ -4,25 +4,26 @@
  * If started with arguments, it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
-import { repl, replProcessAnswer, waitOnScript } from './repl'
-import type { ScriptInformation } from './common'
-import { scripts } from './common'
 import type { DeepReadonly } from 'ts-essentials'
-import { printVersionInformation, retrieveVersionInformation } from './repl/commands/version'
 import { FlowRServer } from './repl/server/server'
-import { standardReplOutput } from './repl/commands'
 import type { Server } from './repl/server/net'
 import { NetServer, WebSocketServerWrapper } from './repl/server/net'
 import { flowrVersion } from '../util/version'
 import type { OptionDefinition } from 'command-line-usage'
 import { log, LogLevel } from '../util/log'
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi'
-import type { RShellOptions } from '../r-bridge'
-import { RShell, RShellReviveOptions } from '../r-bridge'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage from 'command-line-usage'
 import { defaultConfigFile, setConfigFile } from '../config'
 import { guard } from '../util/assert'
+import { printVersionInformation, retrieveVersionInformation } from './repl/commands/version'
+import type { ScriptInformation } from './common/scripts-info'
+import { scripts } from './common/scripts-info'
+import type { RShellOptions } from '../r-bridge/shell'
+import { RShell, RShellReviveOptions } from '../r-bridge/shell'
+import { waitOnScript } from './repl/execute'
+import { standardReplOutput } from './repl/commands/main'
+import { repl, replProcessAnswer } from './repl/core'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')
 // this is automatically replaced with the current version by release-it

@@ -1,11 +1,15 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { removeRQuotes , RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { wrapArgumentsUnnamed } from '../argument/make-argument'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import { removeRQuotes } from '../../../../../../r-bridge/retriever'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 
 export function processGet<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

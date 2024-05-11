@@ -1,11 +1,11 @@
 import fs from 'fs'
-import { processCommandLineArgs } from './common'
 import path from 'path'
 import { guard } from '../util/assert'
-import type { RParseRequestFromFile } from '../r-bridge'
 import { allRFilesFrom } from '../util/files'
 import { log } from '../util/log'
 import { LimitedThreadPool } from '../util/parallel'
+import { processCommandLineArgs } from './common/script'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean

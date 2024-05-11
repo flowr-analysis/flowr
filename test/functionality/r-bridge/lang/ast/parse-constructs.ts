@@ -2,10 +2,12 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import type { RExpressionList, RNode } from '../../../../../src'
-import { ensureExpressionList, RType } from '../../../../../src'
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get'
+import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import type { RExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
+import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
 
 interface IfThenSpacing {
 	str:          string

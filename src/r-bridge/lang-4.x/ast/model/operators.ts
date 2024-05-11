@@ -1,6 +1,6 @@
 import type { MergeableRecord } from '../../../../util/objects'
 import { RawRType } from './type'
-import type { SupportedFlowrCapabilityId } from '../../../data'
+import type { SupportedFlowrCapabilityId } from '../../../data/get'
 
 /**
  * Just a type-alias so that type declarations become more readable.

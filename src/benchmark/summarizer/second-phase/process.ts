@@ -1,11 +1,17 @@
 import type { Reduction, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
-import type { SlicerStatsDataflow, SlicerStatsInput } from '../../stats'
-import { PerSliceMeasurements, CommonSlicerMeasurements } from '../../stats'
 import { summarizeReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
 import { DefaultMap } from '../../../util/defaultmap'
 import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
 import { guard } from '../../../util/assert'
+import type {
+	SlicerStatsDataflow,
+	SlicerStatsInput
+} from '../../stats/stats'
+import {
+	CommonSlicerMeasurements,
+	PerSliceMeasurements
+} from '../../stats/stats'
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])

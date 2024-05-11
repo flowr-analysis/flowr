@@ -1,11 +1,11 @@
 import fs from 'fs'
-import { processCommandLineArgs } from './common'
 import { log } from '../util/log'
 import { guard } from '../util/assert'
-import type { RParseRequestFromFile } from '../r-bridge'
-import { BenchmarkSlicer } from '../benchmark'
-import { DefaultAllVariablesFilter } from '../slicing'
 import { jsonReplacer } from '../util/json'
+import { processCommandLineArgs } from './common/script'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
+import { BenchmarkSlicer } from '../benchmark/slicer'
+import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables'
 
 
 export interface SingleBenchmarkCliOptions {

@@ -1,14 +1,13 @@
 import { guard } from '../util/assert'
+import type { PipelineStepName } from './steps/pipeline-step'
+import { PipelineStepStage } from './steps/pipeline-step'
 import type {
 	Pipeline,
 	PipelineInput,
-	PipelineOutput,
-	PipelinePerRequestInput,
+	PipelineOutput, PipelinePerRequestInput,
 	PipelineStepNames,
 	PipelineStepOutputWithName
-} from './steps/pipeline'
-import type { PipelineStepName } from './steps/pipeline-step'
-import { PipelineStepStage } from './steps/pipeline-step'
+} from './steps/pipeline/pipeline'
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -144,7 +143,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public getResults(intermediate?:false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
-	public getResults(intermediate: boolean): PipelineOutput<P> | Partial<PipelineOutput<P>>
+	public getResults(intermediate: boolean): PipelineOutput<P>
 	/**
 	 * Returns the results of the pipeline.
 	 *
@@ -152,7 +151,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
 	 * 		 completed, although the typing system then can not guarantee which of the steps have already happened.
 	 */
-	public getResults(intermediate = false): PipelineOutput<P> | Partial<PipelineOutput<P>> {
+	public getResults(intermediate = false): PipelineOutput<P>   {
 		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.')
 		return this.output
 	}
@@ -206,7 +205,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	/**
 	 * This only makes sense if you have already run a request and want to re-use the per-file results for a new one.
-	 * (or if for whatever reason you did not pass information for the pipeline with the constructor).
+	 * (or if for whatever reason, you did not pass information for the pipeline with the constructor).
 	 *
 	 * @param newRequestData - Data for the new request
 	 */
@@ -226,7 +225,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>
 	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
-	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>>
+	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P>  >
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToRequestStage} if necessary.
 	 * @param canSwitchStage - If true, automatically switch to the request stage if necessary

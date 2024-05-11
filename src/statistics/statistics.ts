@@ -1,16 +1,17 @@
-import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
-import { ALL_FEATURES, allFeatureNames } from './features'
 import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
-import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText, RShell } from '../r-bridge'
-import { ts2r } from '../r-bridge'
-import type { PipelineOutput } from '../core/steps/pipeline'
-import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline'
 import { log } from '../util/log'
 import { jsonReplacer, jsonRetriever } from '../util/json'
 import { PipelineExecutor } from '../core/pipeline-executor'
+import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines'
+import type { RShell } from '../r-bridge/shell'
+import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features/feature'
+import { ALL_FEATURES , allFeatureNames } from './features/feature'
+import { ts2r } from '../r-bridge/lang-4.x/convert-values'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files

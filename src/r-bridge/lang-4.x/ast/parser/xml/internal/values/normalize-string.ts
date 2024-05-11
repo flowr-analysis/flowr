@@ -1,10 +1,10 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
-import type { RString } from '../../../../model'
-import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import { string2ts } from '../../../../../convert-values'
+import type { RString } from '../../../../model/nodes/r-string'
+import { RType } from '../../../../model/type'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).

@@ -1,21 +1,17 @@
-import type {
-	SlicingCriteriaFilter,
-	SlicingCriteria
-} from '../../../../src/slicing'
-import {
-	collectAllSlicingCriteria,
-	DefaultAllVariablesFilter,
-	convertAllSlicingCriteriaToIds
-} from '../../../../src/slicing'
-import type { RShell } from '../../../../src/r-bridge'
-import { OperatorDatabase , decorateAst } from '../../../../src/r-bridge'
-
 import { retrieveNormalizedAst, withShell } from '../../_helper/shell'
 import { assert } from 'chai'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { TestLabel } from '../../_helper/label'
 import { label , decorateLabelContext } from '../../_helper/label'
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
+import type { RShell } from '../../../../src/r-bridge/shell'
+import { decorateAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { SlicingCriteriaFilter } from '../../../../src/slicing/criterion/collect-all'
+import { collectAllSlicingCriteria } from '../../../../src/slicing/criterion/collect-all'
+import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse'
+import { convertAllSlicingCriteriaToIds } from '../../../../src/slicing/criterion/parse'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
+import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { DefaultAllVariablesFilter } from '../../../../src/slicing/criterion/filters/all-variables'
 
 
 function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {

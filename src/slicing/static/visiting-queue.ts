@@ -1,9 +1,9 @@
 import type { Fingerprint } from './fingerprint'
 import { fingerprint } from './fingerprint'
-import type { NodeId } from '../../r-bridge'
 import type { NodeToSlice, SliceResult } from './slicer-types'
-import type { REnvironmentInformation } from '../../dataflow'
 import { slicerLogger } from './static-slicer'
+import type { REnvironmentInformation } from '../../dataflow/environments/environment'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export class VisitingQueue {
 	private readonly threshold: number

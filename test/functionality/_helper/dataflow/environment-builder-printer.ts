@@ -1,7 +1,8 @@
-import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from '../../../../src/dataflow'
-import { BuiltInEnvironment } from '../../../../src/dataflow'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { wrap } from './printer'
+import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
+import { BuiltInEnvironment } from '../../../../src/dataflow/environments/environment'
+import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier'
 
 export class EnvironmentBuilderPrinter {
 	private env:   REnvironmentInformation

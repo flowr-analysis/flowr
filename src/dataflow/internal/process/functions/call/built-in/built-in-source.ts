@@ -1,24 +1,27 @@
-import type {
-	IdGenerator, NodeId,
-	NoInfo,
-	NormalizedAst,
-	ParentInformation, RFunctionArgument,
-	RParseRequest,
-	RParseRequestProvider,
-	RSymbol
-} from '../../../../../../r-bridge'
-import {
-	EmptyArgument
-	, requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, retrieveParseDataFromRCode,
-	removeRQuotes } from '../../../../../../r-bridge'
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger } from '../../../../../index'
-import { overwriteEnvironment } from '../../../../../environments'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
+import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever'
+import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
+import type {
+	IdGenerator,
+	NormalizedAst,
+	ParentInformation
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import {
+	sourcedDeterministicCountingIdGenerator
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 
 let sourceProvider = requestProviderFromFile()
 

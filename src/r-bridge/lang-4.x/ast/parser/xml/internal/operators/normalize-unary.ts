@@ -1,16 +1,14 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type {
-	RNode, RUnaryOp } from '../../../../model'
-import {
-	RType,
-	UnaryOperatorsInRAst
-} from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeSingleNode } from '../structure'
 import { retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import { expensiveTrace } from '../../../../../../../util/log'
+import { UnaryOperatorsInRAst } from '../../../../model/operators'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import { RType } from '../../../../model/type'
+import type { RNode } from '../../../../model/model'
+import type { RUnaryOp } from '../../../../model/nodes/r-unary-op'
 
 
 /**

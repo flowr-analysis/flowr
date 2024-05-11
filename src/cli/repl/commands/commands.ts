@@ -1,5 +1,4 @@
 import { quitCommand } from './quit'
-import { scripts } from '../../common'
 import { stdioCaptureProcessor, waitOnScript } from '../execute'
 import type { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
@@ -13,6 +12,7 @@ import type { OutputFormatter } from '../../../util/ansi'
 import { italic , bold } from '../../../util/ansi'
 import { splitAtEscapeSensitive } from '../../../util/args'
 import { guard } from '../../../util/assert'
+import { scripts } from '../../common/scripts-info'
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter): string {
 	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`

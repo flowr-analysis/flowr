@@ -4,13 +4,12 @@
  * @module
  */
 import type { MergeableRecord } from '../../util/objects'
-import type {
-	NodeId,
-	RNodeWithParent
-} from '../../r-bridge'
+
 import type { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
 import { getUniqueCombinationsOfSize } from '../../util/arrays'
+import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 /**
  * Defines the filter for collecting all possible slicing criteria.

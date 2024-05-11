@@ -2,12 +2,13 @@ import type { DataflowInformation } from '../../../info'
 import { ExitPointType } from '../../../info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
-import type { IdentifierDefinition } from '../../../environments'
-import { define } from '../../../environments'
-import type { ParentInformation, RParameter } from '../../../../r-bridge'
-import { RType } from '../../../../r-bridge'
 import { log } from '../../../../util/log'
-import { EdgeType } from '../../../graph'
+import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
+import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { IdentifierDefinition } from '../../../environments/identifier'
+import { define } from '../../../environments/define'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { EdgeType } from '../../../graph/edge'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data)

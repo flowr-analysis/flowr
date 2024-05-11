@@ -1,7 +1,7 @@
-import type { REnvironmentInformation } from '../../dataflow'
-import { BuiltInEnvironment } from '../../dataflow'
 import objectHash from 'object-hash'
-import type { NodeId } from '../../r-bridge'
+import type { REnvironmentInformation } from '../../dataflow/environments/environment'
+import { BuiltInEnvironment } from '../../dataflow/environments/environment'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export type Fingerprint = string
 

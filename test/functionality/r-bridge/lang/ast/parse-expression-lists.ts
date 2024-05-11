@@ -1,8 +1,8 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
 
 describe('Parse expression lists', withShell(shell => {
 	describe('Expression lists with newlines and braces', () => {

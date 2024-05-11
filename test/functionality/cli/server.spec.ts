@@ -13,11 +13,11 @@ import type {
 	FileAnalysisResponseMessageJson
 } from '../../../src/cli/repl/server/messages/analysis'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline'
-import type { AstIdMap, ParentInformation } from '../../../src'
-import { requestFromInput } from '../../../src'
 import { jsonReplacer } from '../../../src/util/json'
 import { extractCFG } from '../../../src/util/cfg/cfg'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import type { AstIdMap, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
 
 describe('flowr', () => {
 	describe('Server', withShell(shell => {

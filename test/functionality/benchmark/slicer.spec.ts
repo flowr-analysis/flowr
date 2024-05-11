@@ -1,6 +1,8 @@
 import { assert } from 'chai'
-import { BenchmarkSlicer, CommonSlicerMeasurements, PerSliceMeasurements, stats2string } from '../../../src/benchmark'
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process'
+import { BenchmarkSlicer } from '../../../src/benchmark/slicer'
+import { stats2string } from '../../../src/benchmark/stats/print'
+import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats'
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish()

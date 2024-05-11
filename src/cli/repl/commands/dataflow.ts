@@ -1,9 +1,9 @@
 import type { ReplCommand } from './main'
-import type { RShell } from '../../../r-bridge'
-import { fileProtocol, requestFromInput } from '../../../r-bridge'
 import { PipelineExecutor } from '../../../core/pipeline-executor'
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline'
-import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import type { RShell } from '../../../r-bridge/shell'
+import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever'
+import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg'
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

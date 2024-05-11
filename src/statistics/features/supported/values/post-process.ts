@@ -2,7 +2,6 @@ import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { ValueInfo } from './values'
 import fs from 'fs'
 import path from 'path'
-import type { StatisticsOutputFormat } from '../../../output'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -20,6 +19,7 @@ import {
 import { date2string } from '../../../../util/time'
 import { readLineByLineSync } from '../../../../util/files'
 import { array2bag } from '../../../../util/arrays'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 // values contains - and + values
 

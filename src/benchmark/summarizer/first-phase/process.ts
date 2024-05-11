@@ -1,21 +1,24 @@
 import * as tmp from 'tmp'
 import type { Reduction, SliceSizeCollection, SummarizedSlicerStats } from '../data'
+
+import fs from 'fs'
+import { DefaultMap } from '../../../util/defaultmap'
+import { log } from '../../../util/log'
+import { withoutWhitespace } from '../../../util/strings'
+import type { SummarizedMeasurement } from '../../../util/summarizer'
+import { summarizeMeasurement } from '../../../util/summarizer'
+import { isNotUndefined } from '../../../util/assert'
 import type {
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../stats'
-import fs from 'fs'
-import type { SlicingCriteria } from '../../../slicing'
-import { DefaultMap } from '../../../util/defaultmap'
-import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../r-bridge'
-import { log } from '../../../util/log'
-import { withoutWhitespace } from '../../../util/strings'
-import type { SummarizedMeasurement } from '../../../util/summarizer'
-import { summarizeMeasurement } from '../../../util/summarizer'
-import { isNotUndefined } from '../../../util/assert'
+} from '../../stats/stats'
+import type { SlicingCriteria } from '../../../slicing/criterion/parse'
+import { RShell } from '../../../r-bridge/shell'
+import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever'
+import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined

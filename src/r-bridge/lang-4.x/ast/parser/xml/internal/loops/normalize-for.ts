@@ -1,14 +1,18 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { XmlParseError, childrenKey, getKeyGuarded } from '../../input-format'
-import { RType, RawRType } from '../../../../model'
-import type { RComment, RForLoop, RNode, RSymbol } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeExpressions, splitComments, normalizeSingleNode } from '../structure'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
-import { tryNormalizeSymbol } from '../values'
-import { normalizeComment } from '../other'
+import type { RForLoop } from '../../../../model/nodes/r-for-loop'
+import { RawRType, RType } from '../../../../model/type'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import { normalizeExpressions, splitComments } from '../structure/normalize-expressions'
+import { tryNormalizeSymbol } from '../values/normalize-symbol'
+import { normalizeComment } from '../other/normalize-comment'
+import type { RNode } from '../../../../model/model'
+import type { RSymbol } from '../../../../model/nodes/r-symbol'
+import type { RComment } from '../../../../model/nodes/r-comment'
 
 
 export function tryNormalizeFor(

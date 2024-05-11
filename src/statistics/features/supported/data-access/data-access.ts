@@ -1,16 +1,19 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
-import { appendStatisticsFile } from '../../../output'
 import type { CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
-import type { NodeId, RNodeWithParent } from '../../../../r-bridge'
-import { RoleInParent, rolesOfParents, RType , visitAst } from '../../../../r-bridge'
 import { assertUnreachable, guard } from '../../../../util/assert'
 import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
+import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RoleInParent, rolesOfParents } from '../../../../r-bridge/lang-4.x/ast/model/processing/role'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 const initialDataAccessInfo = {
 	// for the nth argument, how many of them are constant, etc.

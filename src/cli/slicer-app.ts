@@ -1,14 +1,16 @@
 import fs from 'fs'
-import { processCommandLineArgs } from './common'
-import { BenchmarkSlicer, stats2string } from '../benchmark'
-import type { ReconstructionResult, SingleSlicingCriterion, SlicingCriteria } from '../slicing'
-import type { NodeId } from '../r-bridge'
 import { guard } from '../util/assert'
 import type { SliceResult } from '../slicing/static/slicer-types'
 import { log } from '../util/log'
 import { summarizeSlicerStats } from '../benchmark/summarizer/first-phase/process'
 import { sliceDiffAnsi } from '../core/print/slice-diff-ansi'
 import { jsonReplacer } from '../util/json'
+import { processCommandLineArgs } from './common/script'
+import { BenchmarkSlicer } from '../benchmark/slicer'
+import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse'
+import type { ReconstructionResult } from '../reconstruct/reconstruct'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { stats2string } from '../benchmark/stats/print'
 
 export interface SlicerCliOptions {
 	verbose:         boolean

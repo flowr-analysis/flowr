@@ -1,8 +1,8 @@
 import fs, { promises as fsPromise } from 'fs'
-import type { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
 import LineByLine from 'n-readlines'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
 
 /**
  * Represents a table, identified by a header and a list of rows.

@@ -1,10 +1,11 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
-import { appendStatisticsFile } from '../../../output'
 import { postProcess } from './post-process'
-import type { NodeId } from '../../../../r-bridge'
-import { isSpecialSymbol, RType, visitAst } from '../../../../r-bridge'
 import { getRangeStart } from '../../../../util/range'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 
 const initialVariableInfo = {
@@ -24,10 +25,6 @@ export type DefinedVariableInformation = [
 ]
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
-
-	// same-def-def edges are bidirectional, we want to avoid counting them twice!
-	const redefinedBlocker = new Set<NodeId>()
-
 	visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.Symbol || isSpecialSymbol(node)) {
@@ -46,7 +43,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 				return
 			}
 
-			const [dfNode, edges] = mayNode
+			const [dfNode] = mayNode
 			if(dfNode.tag === 'variable-definition') {
 				info.numberOfDefinitions++
 				const lexeme = node.info.fullLexeme ?? node.lexeme

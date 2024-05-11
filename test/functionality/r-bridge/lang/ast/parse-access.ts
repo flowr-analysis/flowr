@@ -1,8 +1,10 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { EmptyArgument, OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {

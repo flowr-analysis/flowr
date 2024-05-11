@@ -1,12 +1,14 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RArgument, RNode, RSymbol } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../normalize-meta'
-import type { RDelimiter } from '../../../../model/nodes/info'
-import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
+import type { RArgument } from '../../../../model/nodes/r-argument'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import type { RNode } from '../../../../model/model'
+import type { RSymbol } from '../../../../model/nodes/r-symbol'
+import { RawRType, RType } from '../../../../model/type'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
 
 
 /**

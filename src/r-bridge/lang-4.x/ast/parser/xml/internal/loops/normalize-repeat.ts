@@ -1,11 +1,11 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RRepeatLoop } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
+import { RawRType, RType } from '../../../../model/type'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import type { RRepeatLoop } from '../../../../model/nodes/r-repeat-loop'
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.

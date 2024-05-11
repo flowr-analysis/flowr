@@ -8,8 +8,9 @@ import {
 	dataflowGraphToQuads
 } from '../../../print/dataflow-printer'
 import type { DeepReadonly } from 'ts-essentials'
-import type { NormalizedAst, RParseRequest } from '../../../../r-bridge'
-import { produceDataFlowGraph } from '../../../../dataflow'
+import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RParseRequest } from '../../../../r-bridge/retriever'
+import { produceDataFlowGraph } from '../../../../dataflow/extractor'
 
 const staticDataflowCommon = {
 	name:        'dataflow',

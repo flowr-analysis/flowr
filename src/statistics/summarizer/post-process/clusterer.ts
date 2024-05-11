@@ -5,11 +5,11 @@
  * @module
  */
 import LineByLine from 'n-readlines'
-import type { StatisticsOutputFormat } from '../../'
 import { DefaultMap } from '../../../util/defaultmap'
-import type { NodeId } from '../../../r-bridge'
-import { deterministicCountingIdGenerator } from '../../../r-bridge'
 import type { MergeableRecord } from '../../../util/objects'
+import { deterministicCountingIdGenerator } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { StatisticsOutputFormat } from '../../output/statistics-file'
 
 export type ContextsWithCount = DefaultMap<NodeId, number>
 export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>

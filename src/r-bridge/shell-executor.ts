@@ -2,11 +2,11 @@ import type { RShellExecutionOptions } from './shell'
 import { DEFAULT_R_SHELL_OPTIONS } from './shell'
 import { deepMergeObject } from '../util/objects'
 import { spawnSync } from 'child_process'
-import { ts2r } from './lang-4.x'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { expensiveTrace, log } from '../util/log'
 import { initCommand } from './init'
+import { ts2r } from './lang-4.x/convert-values'
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' })
 

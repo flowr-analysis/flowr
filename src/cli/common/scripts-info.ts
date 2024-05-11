@@ -11,8 +11,8 @@ import {
 	slicerOptions, statisticHelperOptions, statisticOptions,
 	summarizerOptions
 } from './options'
-import { asOptionName } from '../repl/commands'
 import type { MergeableRecord } from '../../util/objects'
+import { asOptionName } from '../repl/commands/commands'
 
 
 interface BaseScriptInformation extends MergeableRecord {

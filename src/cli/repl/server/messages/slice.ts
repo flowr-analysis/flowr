@@ -1,7 +1,8 @@
 import type { IdMessageBase, MessageDefinition } from './messages'
 import * as Joi from 'joi'
-import type { SlicingCriteria } from '../../../../slicing'
-import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE, PipelineOutput } from '../../../../core/steps/pipeline'
+import type { SlicingCriteria } from '../../../../slicing/criterion/parse'
+import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline'
+import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines'
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.

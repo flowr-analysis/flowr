@@ -9,11 +9,12 @@ import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
-import { EmptyArgument, OperatorDatabase } from '../../../../../src'
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
-import type { FunctionArgument } from '../../../../../src/dataflow'
 import { startAndEndsWith } from '../../../../../src/util/strings'
-import { BuiltIn } from '../../../../../src/dataflow'
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {

@@ -1,8 +1,8 @@
 import type { ReplCommand, ReplOutput } from './main'
 import { CLI_VERSION } from '../../flowr'
-import { RShell } from '../../../r-bridge'
 import { flowrVersion } from '../../../util/version'
 import { guard } from '../../../util/assert'
+import { RShell } from '../../../r-bridge/shell'
 
 type Version = `${number}.${number}.${number}`
 

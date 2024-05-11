@@ -1,32 +1,37 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import type {
-	AstIdMap, fileProtocol,
-	IdGenerator,
-	NodeId,
-	NoInfo,
-	RExpressionList,
-	RNode,
-	RNodeWithParent,
-	SlicingCriteria } from '../../../src'
-import {
-	deterministicCountingIdGenerator, requestFromInput,
-	RShell
-} from '../../../src'
 import { assert } from 'chai'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { guard } from '../../../src/util/assert'
-import { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
-import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
-import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
-import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid'
+import { RShell } from '../../../src/r-bridge/shell'
+import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
+import type { fileProtocol } from '../../../src/r-bridge/retriever'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import type {
+	AstIdMap, IdGenerator,
+	RNodeWithParent
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import {
+	deterministicCountingIdGenerator
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import {
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE
+} from '../../../src/core/steps/pipeline/default-pipelines'
+import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
+import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff'
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
+import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
+import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
+import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

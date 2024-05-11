@@ -2,9 +2,11 @@ import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
-import type { ParentInformation, RExpressionList, RNodeWithParent } from '../../../../r-bridge'
-import { RType, visitAst } from '../../../../r-bridge'
 import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
+import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import type { RExpressionList } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
 
 const initialControlflowInfo = {
 	ifThen:           emptyCommonSyntaxTypeCounts(),

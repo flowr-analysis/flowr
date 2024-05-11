@@ -1,12 +1,18 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
 import { ExitPointType } from '../../../../info'
-import { DataflowGraph, EdgeType, VertexType } from '../../../../graph'
-import type { IdentifierReference } from '../../../../index'
-import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
+import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model'
+import type { IdentifierReference } from '../../../../environments/identifier'
+import { DataflowGraph } from '../../../../graph/graph'
+import { EdgeType } from '../../../../graph/edge'
+import { dataflowLogger } from '../../../../logger'
+import { VertexType } from '../../../../graph/vertex'
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> {
 	readonly name:          RSymbol<OtherInfo & ParentInformation>

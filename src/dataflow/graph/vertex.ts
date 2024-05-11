@@ -1,7 +1,7 @@
 import type { MergeableRecord } from '../../util/objects'
-import type { NodeId } from '../../r-bridge'
-import type { REnvironmentInformation } from '../environments'
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { REnvironmentInformation } from '../environments/environment'
 
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 

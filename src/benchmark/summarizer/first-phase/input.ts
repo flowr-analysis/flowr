@@ -2,13 +2,13 @@ import type { SummarizedSlicerStats } from '../data'
 import fs from 'fs'
 import { processNextSummary, summarizeAllSummarizedStats } from '../second-phase/process'
 import { summarizeSlicerStats } from './process'
-import type { CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats'
-import { stats2string } from '../../stats'
 import { guard } from '../../../util/assert'
-import type { SlicingCriteria } from '../../../slicing'
 import { escape } from '../../../util/ansi'
 import { jsonReplacer } from '../../../util/json'
 import { readLineByLineSync } from '../../../util/files'
+import type { CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats'
+import type { SlicingCriteria } from '../../../slicing/criterion/parse'
+import { stats2string } from '../../stats/print'
 
 interface BenchmarkData {
 	filename:  string,

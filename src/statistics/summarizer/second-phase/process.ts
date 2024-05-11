@@ -1,12 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import type {
-	FeatureStatistics, FeatureStatisticsWithMeta,
-	MetaStatistics
-} from '../../'
-import {
-	ALL_FEATURES
-} from '../../'
 import type { StatisticsSummarizerConfiguration } from '../summarizer'
 import { date2string } from '../../../util/time'
 import type {
@@ -19,6 +12,9 @@ import {
 import { sum } from '../../../util/arrays'
 import { readLineByLineSync } from '../../../util/files'
 import { guard } from '../../../util/assert'
+import type { FeatureStatistics, FeatureStatisticsWithMeta } from '../../features/feature'
+import { ALL_FEATURES } from '../../features/feature'
+import type { MetaStatistics } from '../../meta-statistics'
 
 function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
 	for(const featureName of config.featuresToUse) {

@@ -1,9 +1,10 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 import { AssignmentOperators } from '../../../_helper/provider'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
 
 describe('Parse simple assignments',
 	withShell(shell => {

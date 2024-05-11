@@ -1,7 +1,6 @@
 import { list } from 'tar'
 import fs from 'fs'
 import path from 'path'
-import type { FeatureSelection } from '../features'
 import { FileMigrator } from './first-phase/process'
 import { postProcessFeatureFolder } from './second-phase/process'
 import type { CommonSummarizerConfiguration } from '../../util/summarizer'
@@ -9,6 +8,7 @@ import { Summarizer } from '../../util/summarizer'
 import { longestCommonPrefix } from '../../util/strings'
 import { getAllFiles } from '../../util/files'
 import { date2string } from '../../util/time'
+import type { FeatureSelection } from '../features/feature'
 
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**

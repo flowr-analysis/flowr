@@ -1,6 +1,5 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
 import path from 'path'
-import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'fs'
 import type {
 	FunctionDefinitionInfo,
@@ -19,6 +18,7 @@ import type { MergeableRecord } from '../../../../util/objects'
 import { readLineByLineSync } from '../../../../util/files'
 import { date2string } from '../../../../util/time'
 import { array2bag } from '../../../../util/arrays'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,

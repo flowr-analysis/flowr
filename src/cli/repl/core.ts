@@ -4,17 +4,19 @@
  * @module
  */
 import { prompt } from './prompt'
-import type { ReplOutput } from './commands'
-import { getCommand, getCommandNames, standardReplOutput } from './commands'
 import * as readline from 'readline'
 import { executeRShellCommand } from './commands/execute'
 import os from 'os'
 import path from 'path'
 import fs from 'fs'
-import { getValidOptionsForCompletion, scripts } from '../common'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { bold } from '../../util/ansi'
-import { fileProtocol, RShell, RShellReviveOptions } from '../../r-bridge'
+import { getCommand, getCommandNames } from './commands/commands'
+import { getValidOptionsForCompletion, scripts } from '../common/scripts-info'
+import { fileProtocol } from '../../r-bridge/retriever'
+import type { ReplOutput } from './commands/main'
+import { standardReplOutput } from './commands/main'
+import { RShell, RShellReviveOptions } from '../../r-bridge/shell'
 
 let _replCompleterKeywords: string[] | undefined = undefined
 function replCompleterKeywords() {

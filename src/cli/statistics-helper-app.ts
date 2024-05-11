@@ -1,11 +1,7 @@
-import { processCommandLineArgs } from './common'
 import fs from 'fs'
 import { retrieveArchiveName } from './common/features'
 import { log } from '../util/log'
 import { setFormatter, voidFormatter } from '../util/ansi'
-import type { FeatureKey } from '../statistics'
-import { statisticsFileProvider , extractUsageStatistics, staticRequests , initFileProvider } from '../statistics'
-import { RShell } from '../r-bridge'
 import { create } from 'tar'
 import { extractCFG } from '../util/cfg/cfg'
 import { printStepResult, StepOutputFormat } from '../core/print/print'
@@ -15,6 +11,11 @@ import { STATIC_DATAFLOW } from '../core/steps/all/core/20-dataflow'
 import { jsonReplacer } from '../util/json'
 import { date2string } from '../util/time'
 import { guard } from '../util/assert'
+import { processCommandLineArgs } from './common/script'
+import type { FeatureKey } from '../statistics/features/feature'
+import { RShell } from '../r-bridge/shell'
+import { initFileProvider, statisticsFileProvider } from '../statistics/output/statistics-file'
+import { extractUsageStatistics, staticRequests } from '../statistics/statistics'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 

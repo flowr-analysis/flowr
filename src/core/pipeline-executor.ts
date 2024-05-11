@@ -16,8 +16,8 @@ import type {
  *
  * Those steps are split into two phases or "stages" (which is the name that we will use in the following), represented
  * by the {@link PipelineStepStage} type. These allow us to separate things that have to be done
- * once per-file, e.g., actually parsing the AST, from those, that we need to repeat 'once per request' (whatever this
- * request may be). In other words, what can be cached between operations and what can not.
+ * once per-file, e.g., actually parsing the AST, from those that we need to repeat 'once per request' (whatever this
+ * request may be). In other words, what can be cached between operations and what cannot.
  *
  * Furthermore, this executor follows an iterable fashion to be *as flexible as possible*
  * (e.g., to be instrumented with measurements). So, you can use the pipeline executor like this:
@@ -46,7 +46,7 @@ import type {
  * const result = await stepper.allRemainingSteps()
  * ```
  *
- * As the name suggest, you can combine this name with previous calls to {@link nextStep} to only execute the remaining
+ * As the name suggests, you can combine this name with previous calls to {@link nextStep} to only execute the remaining
  * steps in case, for whatever reason you only want to instrument some steps.
  *
  * By default, the {@link PipelineExecutor} does not offer an automatic way to repeat requests (mostly to prevent accidental errors).

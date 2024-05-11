@@ -11,6 +11,11 @@ export interface AINode {
 	readonly astNode:      RNodeWithParent<ParentInformation>
 }
 
+export const enum RegisterBehavior {
+	Overwrite,
+	Ignore,
+	Fail
+}
 
 export class AINodeStore extends Map<NodeId, AINode> {
 	constructor(content: AINode[] | AINode | undefined = undefined) {
@@ -25,9 +30,21 @@ export class AINodeStore extends Map<NodeId, AINode> {
 		}
 	}
 
-	register(node: AINode, overwrite = false): void {
-		guard(!this.has(node.nodeId) || overwrite, `Node with ID ${node.nodeId} already exists in the store`)
-		this.set(node.nodeId, node)
+	register(node: AINode, behavior: RegisterBehavior = RegisterBehavior.Fail): void {
+		if(this.has(node.nodeId)) {
+			switch(behavior) {
+				case RegisterBehavior.Overwrite:
+					this.set(node.nodeId, node)
+					break
+				case RegisterBehavior.Ignore:
+					break
+				case RegisterBehavior.Fail:
+					return guard(false, `Node with ID ${node.nodeId} already exists in the store`)
+				default: assertUnreachable(behavior)
+			}
+		} else {
+			this.set(node.nodeId, node)
+		}
 	}
 }
 
@@ -39,7 +56,7 @@ export function mergeDomainStores(...stores: AINodeStore[]): AINodeStore {
 				const existing = result.get(id)
 				guard(existing !== undefined, `Domain for ID ${id} is missing`)
 				const unified = unifyDomains([existing.domain, node.domain])
-				result.register({...node, domain: unified}, true)
+				result.register({...node, domain: unified}, RegisterBehavior.Overwrite)
 			} else {
 				result.register(node)
 			}

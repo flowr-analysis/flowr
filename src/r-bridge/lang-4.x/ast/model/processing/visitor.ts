@@ -97,7 +97,7 @@ class NodeVisitor<OtherInfo = NoInfo> {
 
 	visit(nodes: RNode<OtherInfo> | readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
 		if(Array.isArray(nodes)) {
-			const n = nodes
+			const n = nodes as readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[]
 			for(const node of n) {
 				if(node && node !== EmptyArgument) {
 					this.visitSingle(node)

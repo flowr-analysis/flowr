@@ -14,7 +14,7 @@ import { dataflowLogger } from '../../../../../logger'
 import { VertexType } from '../../../../../graph/vertex'
 import { getReferenceOfArgument } from '../../../../../graph/graph'
 import { EdgeType } from '../../../../../graph/edge'
-import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
+import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg'
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

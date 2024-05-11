@@ -20,7 +20,6 @@ import { RawRType, RType } from '../../../../model/type'
 import type { RComment } from '../../../../model/nodes/r-comment'
 import { normalizeComment } from '../other/normalize-comment'
 import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
-import { getRangeEnd, getRangeStart } from '../../../../../../../util/range'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined

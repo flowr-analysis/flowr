@@ -8,7 +8,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
 
 describe('Parse simple assignments',
 	withShell(shell => {
-		describe('Constant Assignments', () => {
+		describe('Constant assignments', () => {
 			for(const op of AssignmentOperators) {
 				const opOffset = op.length - 1
 				const data = OperatorDatabase[op]

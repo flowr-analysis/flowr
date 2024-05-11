@@ -140,7 +140,7 @@ y <- 4
 f()`)
 
 		assertSliced(label('Named argument collides with variable', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'named-arguments', 'newlines']), shell, 'x <- 100\nlist(123, x = 200, 234)\nprint(x)',
-			['3@x'], 'x <- 100\nprint(x)')
+			['3@x'], 'x <- 100\nx')
 	})
 	describe('Functions with nested definitions', () => {
 		describe('Simple Function pass with return', () => {
@@ -188,7 +188,7 @@ x <- (function() {
  })()
 cat(x)
     `, ['7@x'], `x <- (function() { 3 })()
-cat(x)`)
+x`)
 	})
 	describe('Higher-order Functions', () => {
 		const code = `a <- function() { x <- 3; i }
@@ -230,12 +230,12 @@ f()
 cat(x)
     `, ['4@x'], `f <- function() x <<- 3
 f()
-cat(x)`)
+x`)
 
 		assertSliced(label('Unimportant Side-Effect', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', ...OperatorDatabase['<<-'].capabilities, 'normal-definition', 'implicit-return', 'side-effects-in-function-call', 'call-normal', 'unnamed-arguments', 'newlines']), shell, `f <- function() { y <<- 3 }
 f()
 cat(x)
-    `, ['3@x'], 'cat(x)')
+    `, ['3@x'], 'x')
 		assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
@@ -312,7 +312,7 @@ a()
 cat(x)`
 		const localCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
 		assertSliced(label('Local redefinition has no effect', localCaps), shell, localCode, ['5@x'], `x <- 3
-cat(x)`)
+x`)
 		assertSliced(label('Local redefinition must be kept as part of call', localCaps), shell, localCode, ['4@a'], `a <- function() {
         x = x + 5
         cat(x)
@@ -323,29 +323,29 @@ a()`)
 a <- function() { x <<- x + 5; cat(x) }
 x <- 3
 a()
-cat(x)`
+x`
 		assertSliced(label('But the global redefinition remains', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'implicit-return', 'side-effects-in-function-call', 'return-value-of-assignments', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCode, ['5@x'], `a <- function() x <<- x + 5
 x <- 3
 a()
-cat(x)`)
+x`)
 		const globalCodeWithoutLocal = `
 a <- function() { x <<- 5; cat(x) }
 x <- 3
 a()
-cat(x)`
+x`
 		assertSliced(label('The local assignment is only needed if the global reads', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'function-definitions', ...OperatorDatabase['<<-'].capabilities, 'numbers', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCodeWithoutLocal, ['5@x'], `a <- function() x <<- 5
 a()
-cat(x)`)
+x`)
 
 		assertSliced(label('Must work with nested globals', ['name-normal', 'resolve-arguments', 'lexicographic-scope', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'side-effects-in-function-call', 'return-value-of-assignments', 'newlines', 'numbers', 'call-normal', 'unnamed-arguments', 'precedence']),
 			shell, `a <- function() { function(b) x <<- b }
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() { function(b) x <<- b }
+x`, ['5@x'], `a <- function() { function(b) x <<- b }
 y <- 5
 a()(y)
-cat(x)`)
+x`)
 
 		assertSliced(label('Must work with nested globals and known assignments not-happening', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'if', 'logical', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments', 'resolve-arguments', 'implicit-return', 'newlines', 'call-normal', 'unnamed-arguments']),
 			shell, `a <- function() { function(b) { if(FALSE) { x <<- b } } }
@@ -353,7 +353,7 @@ y <- 5
 x <- 2
 a()(y)
 cat(x)`, ['5@x'], `x <- 2
-cat(x)`)
+x`)
 
 		assertSliced(label('Must work with nested globals and maybe assignments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'if', 'call-normal', ...OperatorDatabase['>'].capabilities, 'numbers', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments', 'resolve-arguments', 'lexicographic-scope', 'newlines', 'unnamed-arguments', 'closures']),
 			shell, `a <- function() { function(b) { if(runif() > .5) { x <<- b } } }
@@ -364,7 +364,7 @@ cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) { x <<- b } }
 y <- 5
 x <- 2
 a()(y)
-cat(x)`)
+x`)
 	})
 	describe('Using strings for definitions', () => {
 		const code = `
@@ -402,9 +402,9 @@ cat(4 %b% 5)
       `
 		const caps: SupportedFlowrCapabilityId[] = ['name-escaped', 'resolve-arguments', 'name-quoted', 'infix-calls', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments', 'special-operator']
 		assertSliced(label('Must link with backticks', caps), shell, code, ['8:7'], `\`%a%\` <- function(x, y) { x + y }
-cat(3 %a% 4)`)
+3 %a% 4`)
 		assertSliced(label('Must link with backticks', caps), shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
-cat(4 %b% 5)`)
+4 %b% 5`)
 		assertSliced(label('Must work with assigned custom pipes too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'infix-calls', 'numbers', 'special-operator', 'precedence']),
 			shell, 'a <- b %>% c %>% d', ['1@a'], 'a <- b %>% c %>% d')
 	})
@@ -480,7 +480,9 @@ cat(4 %a% 5)`)
 			assertSliced(label('Require complete pipe', caps),
 				shell, code, ['1@x'], 'x <- fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% filter(Y > 5)')
 			assertSliced(label('Slice for variable in filter', caps),
-				shell, code, ['2@X'], '')
+				shell, code, ['2@X'], 'X')
+			assertSliced(label('Slice for variable in last filter', caps),
+				shell, code, ['12@Y'], 'Y')
 		})
 	})
 }))

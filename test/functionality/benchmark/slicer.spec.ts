@@ -100,10 +100,10 @@ cat(d)`
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
 				lines:                   { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
-				characters:              { min: 17, max: 46, median: 24, mean: 29,                 std: 12.355835328567093, total: 87 },
-				nonWhitespaceCharacters: { min: 14, max: 32, median: 18, mean: 21.333333333333332, std: 7.71722460186015,   total: 64 },
-				tokens:                  { min: 13, max: 40, median: 19, mean: 24,                 std: 11.575836902790225, total: 72 },
-				normalizedTokens:        { min: 8,  max: 22, median: 11, mean: (8+11+22)/3,        std: 6.018490028422596,  total: 41 },
+				characters:              { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
+				nonWhitespaceCharacters: { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
+				tokens:                  { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
+				normalizedTokens:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
 				dataflowNodes:           { min: 3,  max: 14, median: 6,  mean: (3+6+14)/3,         std: 4.642796092394707,  total: 23 },
 				autoSelected:            { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
 			}, statInfo)

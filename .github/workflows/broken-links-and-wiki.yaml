@@ -41,8 +41,8 @@ jobs:
               touch wiki/Capabilities-Old.md
           fi
           npm run capabilities-markdown --silent > wiki/Capabilities.md
-          # test if the file changed
-          if ! cmp -s wiki/Capabilities-Old.md wiki/Capabilities.md; then
+          # test if the file changed, but ignore the first line which contains the time stamp
+          if ! diff -q <(tail -n +2 wiki/Capabilities.md) <(tail -n +2 wiki/Capabilities-Old.md); then
               echo "Capabilities changed!"
               echo "CHANGED=true" >> $GITHUB_ENV
               git config --local user.email "action@github.com"

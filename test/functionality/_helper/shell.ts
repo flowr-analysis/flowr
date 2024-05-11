@@ -265,8 +265,8 @@ export function assertSliced(name: string | TestLabel, shell: RShell, input: str
 				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			)
 		} catch(e) {
-			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
 			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`)
+			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
 			throw e
 		}
 	})

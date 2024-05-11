@@ -129,13 +129,20 @@ describe('Constant Parsing',
 			describe('comments', () => {
 				assertAst(label('simple line comment', ['comments']),
 					shell, '# Hello World',
-					exprList({
-						type:     RType.Comment,
-						location: rangeFrom(1, 1, 1, 13),
-						lexeme:   '# Hello World',
-						content:  ' Hello World',
-						info:     {}
-					})
+					{
+						...exprList(),
+						info: {
+							additionalTokens: [
+								{
+									type:     RType.Comment,
+									location: rangeFrom(1, 1, 1, 13),
+									lexeme:   '# Hello World',
+									content:  ' Hello World',
+									info:     {}
+								}
+							]
+						}
+					}
 				)
 			})
 		})

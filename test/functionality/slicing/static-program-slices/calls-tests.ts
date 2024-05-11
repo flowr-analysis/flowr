@@ -461,4 +461,26 @@ cat(4 %a% 5)`)
 		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]),
 			shell, 'x <- switch("a", a=1, b=2, c=3)', ['1@x'], 'x <- switch("a", a=1, b=2, c=3)')
 	})
+	describe('Failures in Practice', () => {
+		/* adapted from a complex pipe in practice */
+		describe('Nested Pipes', () => {
+			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator', 'strings', ...OperatorDatabase['=='].capabilities]
+			const code =`x <- fun %>%
+				filter(X == "green") %>%
+				dplyr::select(X, Y) %>%
+				mutate(Z = 5) %>%
+				distinct() %>%
+				group_by(X) %>%
+				# i am commento!
+				summarize(Y = mean(Y)) %>%
+				left_join(., ., by = "X") %>%
+				ungroup() %>%
+				mutate(Y = Y + 1) %>%
+				filter(Y > 5)`
+			assertSliced(label('Require complete pipe', caps),
+				shell, code, ['1@x'], 'x <- fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% filter(Y > 5)')
+			assertSliced(label('Slice for variable in filter', caps),
+				shell, code, ['2@X'], '')
+		})
+	})
 }))

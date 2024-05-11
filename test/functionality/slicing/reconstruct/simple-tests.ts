@@ -103,7 +103,7 @@ a <- foo({
     c <- 3
     })`)
 
-		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']
+		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator']
 		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 2, 'x')

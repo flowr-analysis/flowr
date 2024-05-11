@@ -5,8 +5,8 @@ import {DataflowInformation} from '../../../dataflow/internal/info'
 export class ExprList extends Handler {
 	private exprList: AINodeStore = new AINodeStore()
 
-	constructor(readonly dfg: DataflowInformation) {
-		super(dfg, 'ExprList')
+	constructor(readonly dfg: DataflowInformation, readonly domains: AINodeStore) {
+		super(dfg, domains, 'ExprList')
 	}
 
 	exit(): AINodeStore {

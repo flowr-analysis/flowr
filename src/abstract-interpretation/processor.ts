@@ -11,6 +11,7 @@ import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 import {ExprList} from './handler/exprlist/exprlist'
 import {AINodeStore, mergeDomainStores} from './ainode'
+import {Nop} from './handler/nop/nop'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
 
@@ -51,49 +52,39 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
-	const operationStack = new Stack<{ handler: Handler, domains: AINodeStore }>()
-	let domainStore = new AINodeStore()
+	const operationStack = new Stack<Handler>()
+	operationStack.push(new Nop(dfg, new AINodeStore())).enter()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
+		const top = operationStack.peek()
+		guard(top !== undefined, 'No operation on the stack')
 		if(astNode?.type === RType.BinaryOp) {
-			operationStack.push({
-				domains: domainStore,
-				handler: new BinOp(dfg, astNode)
-			}).handler.enter()
+			operationStack.push(new BinOp(dfg, top.domains, astNode)).enter()
 		} else if(astNode?.type === RType.IfThenElse) {
-			operationStack.push({
-				domains: domainStore,
-				handler: new Conditional(dfg, astNode)
-			}).handler.enter()
+			operationStack.push(new Conditional(dfg, top.domains, astNode)).enter()
 		} else if(astNode?.type === RType.ExpressionList) {
-			operationStack.push({
-				domains: domainStore,
-				handler: new ExprList(dfg)
-			}).handler.enter()
+			operationStack.push(new ExprList(dfg, top.domains)).enter()
 		} else if(astNode?.type === RType.Symbol) {
-			operationStack.peek()?.handler.next(new AINodeStore({
+			top.next(new AINodeStore({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
-				domain:       getDomainOfDfgChild(node.id, dfg, domainStore),
+				domain:       getDomainOfDfgChild(node.id, dfg, top.domains),
 				astNode:      astNode,
 			}))
-		} else if(astNode?.type === RType.Number){
-			const num = astNode.content.num
-			operationStack.peek()?.handler.next(new AINodeStore({
+		} else if(astNode?.type === RType.Number) {
+			top.next(new AINodeStore({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
-				domain:       Domain.fromScalar(num),
+				domain:       Domain.fromScalar(astNode.content.num),
 				astNode:      astNode,
 			}))
 		} else if(node.type === CfgVertexType.EndMarker) {
-			const operation = operationStack.pop()
-			if(operation === undefined) {
-				return
-			}
-			const operationResult = operation.handler.exit()
-			domainStore = mergeDomainStores(domainStore, operationResult)
-			// TODO: use the result from next as a base for the next operation
-			operationStack.peek()?.handler.next(operationResult)
+			const operationResult = operationStack.pop()?.exit()
+			guard(operationResult !== undefined, 'No operation result')
+			const newTop = operationStack.peek()
+			guard(newTop !== undefined, 'No operation on the stack')
+			newTop.domains = mergeDomainStores(newTop.domains, operationResult)
+			newTop.next(operationResult)
 		} else {
 			aiLogger.warn(`Unknown node type ${node.type}`)
 		}

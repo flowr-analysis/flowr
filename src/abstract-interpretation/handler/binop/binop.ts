@@ -14,8 +14,12 @@ export class BinOp extends Handler {
 	lhs: AINode | undefined
 	rhs: AINode | undefined
 
-	constructor(readonly dfg: DataflowInformation, readonly node: RBinaryOp<ParentInformation>) {
-		super(dfg, `Bin Op (${node.flavor})`)
+	constructor(
+		readonly dfg: DataflowInformation,
+		readonly domains: AINodeStore,
+		readonly node: RBinaryOp<ParentInformation>
+	) {
+		super(dfg, domains, `Bin Op (${node.flavor})`)
 	}
 
 	exit(): AINodeStore {

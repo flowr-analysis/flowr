@@ -1,9 +1,9 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
-import type { RComment } from '../../../../model'
-import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
+import { RType } from '../../../../model/type'
+import type { RComment } from '../../../../model/nodes/r-comment'
 
 /**
  * Normalize the given object as an R comment.

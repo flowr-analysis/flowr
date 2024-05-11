@@ -1,10 +1,12 @@
-import { EmptyArgument, OperatorDatabase, requestProviderFromFile, requestProviderFromText } from '../../../../../src'
-import { BuiltIn } from '../../../../../src/dataflow'
 import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { label } from '../../../_helper/label'
+import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests

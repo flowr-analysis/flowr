@@ -2,10 +2,11 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { parseToQuads } from '../../../print/parse-printer'
 import type { IPipelineStep } from '../../pipeline-step'
 import { PipelineStepStage } from '../../pipeline-step'
-import type { RParseRequest, RShell } from '../../../../r-bridge'
 import type { DeepReadonly } from 'ts-essentials'
 import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
-import { retrieveParseDataFromRCode } from '../../../../r-bridge'
+import type { RShell } from '../../../../r-bridge/shell'
+import type { RParseRequest } from '../../../../r-bridge/retriever'
+import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} or {@link RShellExecutor} connection to be used to obtain the original parses AST of the R code */

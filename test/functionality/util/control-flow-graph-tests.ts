@@ -10,13 +10,15 @@ import {
 	equalCfg,
 	extractCFG
 } from '../../../src/util/cfg/cfg'
-import type { NodeId } from '../../../src'
-import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
-import { cfgToMermaidUrl } from '../../../src/util/mermaid'
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg'
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type'
+import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values'
 
 function normAllIds(ids: NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible)

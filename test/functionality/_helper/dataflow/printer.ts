@@ -1,10 +1,10 @@
-import type { NodeId } from '../../../../src'
-import { EmptyArgument } from '../../../../src'
-import type { IdentifierReference } from '../../../../src/dataflow'
-import { BuiltIn } from '../../../../src/dataflow'
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
+import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
+import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier'
 
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {

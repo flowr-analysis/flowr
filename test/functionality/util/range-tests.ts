@@ -9,7 +9,7 @@ import {
 	rangeStartsCompletelyBefore
 } from '../../../src/util/range'
 import { allPermutations } from '../../../src/util/arrays'
-import { formatRange } from '../../../src/dataflow'
+import { formatRange } from '../../../src/util/mermaid/dfg'
 
 describe('Range', () => {
 	describe('rangeFrom', () => {

@@ -1,10 +1,13 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
-import type { NoInfo, RLogical, RNumber, RSymbol } from '../../../../model'
-import { RType } from '../../../../model'
 import type { RNa } from '../../../../../convert-values'
 import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values'
 import { retrieveMetaStructure } from '../../normalize-meta'
+import type { RNumber } from '../../../../model/nodes/r-number'
+import type { RLogical } from '../../../../model/nodes/r-logical'
+import type { RSymbol } from '../../../../model/nodes/r-symbol'
+import type { NoInfo } from '../../../../model/model'
+import { RType } from '../../../../model/type'
 
 
 /**

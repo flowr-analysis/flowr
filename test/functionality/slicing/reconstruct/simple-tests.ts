@@ -1,8 +1,8 @@
 import { assertReconstructed, withShell } from '../../_helper/shell'
-import type { NodeId } from '../../../../src'
-import { OperatorDatabase } from '../../../../src'
 import { label } from '../../_helper/label'
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
+import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {

@@ -2,25 +2,23 @@
  * The builder printer takes a dataflow graph and produces a string-code representation of what a builder would look like to create the graph.
  * The goal is to create syntactically correct TypeScript code in a best-effort approach.
  */
-import type {
-	DataflowGraph,
-	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse,
-	FunctionArgument,
-	REnvironmentInformation } from '../../../../src/dataflow'
-import {
-	splitEdgeTypes,
-	isPositionalArgument,
-	EdgeType,
-	VertexType
-} from '../../../../src/dataflow'
-import type { NodeId } from '../../../../src'
-import { EmptyArgument } from '../../../../src'
+
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { DefaultMap } from '../../../../src/util/defaultmap'
 import { EnvironmentBuilderPrinter } from './environment-builder-printer'
 import { wrap, wrapReference } from './printer'
+import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge'
+import type { DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import { isPositionalArgument } from '../../../../src/dataflow/graph/graph'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type {
+	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo,
+	DataflowGraphVertexUse
+} from '../../../../src/dataflow/graph/vertex'
+import { VertexType } from '../../../../src/dataflow/graph/vertex'
+import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */

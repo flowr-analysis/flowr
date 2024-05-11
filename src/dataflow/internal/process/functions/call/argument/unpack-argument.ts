@@ -1,6 +1,7 @@
-import type { RFunctionArgument, RNode } from '../../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../../r-bridge'
 import { log } from '../../../../../../util/log'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 
 export function unpackArgument<OtherInfo>(arg: RFunctionArgument<OtherInfo>): RNode<OtherInfo> | undefined {
 	if(arg === EmptyArgument) {

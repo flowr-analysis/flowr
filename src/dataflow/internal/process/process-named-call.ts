@@ -1,9 +1,11 @@
-import type { Base, EmptyArgument, Location, ParentInformation, RNode } from '../../../r-bridge'
-import { RType } from '../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../processor'
 import type { DataflowInformation } from '../../info'
 import { processNamedCall } from './functions/call/named-call-handling'
 import { wrapArgumentsUnnamed } from './functions/call/argument/make-argument'
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type'
+import type { Base, RNode, Location } from '../../../r-bridge/lang-4.x/ast/model/model'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 export function processAsNamedCall<OtherInfo>(
 	functionName: RNode<OtherInfo & ParentInformation> & Base<OtherInfo> & Location,

@@ -1,9 +1,13 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
-import type { RNodeWithParent, NodeId } from '../../../src'
-import { RType, decorateAst, collectAllIds, RoleInParent } from '../../../src'
 import { assert } from 'chai'
+import type { RNodeWithParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type'
+import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role'
+import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect'
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
 describe('Assign unique Ids and Parents', withShell((shell) => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {

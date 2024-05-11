@@ -5,9 +5,10 @@ import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environmen
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
-import { EmptyArgument, OperatorDatabase } from '../../../../../src'
-import { BuiltIn } from '../../../../../src/dataflow'
 import { label } from '../../../_helper/label'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {

@@ -1,9 +1,9 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { BuiltIn } from '../../../../../src/dataflow'
 import { label } from '../../../_helper/label'
-import { OperatorDatabase } from '../../../../../src'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {

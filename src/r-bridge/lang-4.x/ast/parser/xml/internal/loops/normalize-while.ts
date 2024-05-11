@@ -1,11 +1,11 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
-import type { RWhileLoop } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
+import { RawRType, RType } from '../../../../model/type'
+import type { RWhileLoop } from '../../../../model/nodes/r-while-loop'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
 
 export function tryNormalizeWhile(
 	data: NormalizerData,

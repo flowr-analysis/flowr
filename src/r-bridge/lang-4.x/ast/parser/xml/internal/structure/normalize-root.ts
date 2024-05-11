@@ -1,13 +1,14 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
-import type { RExpressionList, RNode } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
 import { assureTokenType } from '../../normalize-meta'
-import type { RDelimiter } from '../../../../model/nodes/info'
 import { normalizeExpressions } from './normalize-expressions'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
+import { RawRType, RType } from '../../../../model/type'
+import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
+import type { RNode } from '../../../../model/model'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
 
 
 export function normalizeRootObjToAst(

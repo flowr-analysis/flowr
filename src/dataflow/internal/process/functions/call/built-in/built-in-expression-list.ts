@@ -2,20 +2,29 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { ExitPoint, DataflowInformation } from '../../../../../info'
-import { addNonDefaultExitPoints , alwaysExits , ExitPointType } from '../../../../../info'
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
+import type { DataflowInformation, ExitPoint } from '../../../../../info'
+import { addNonDefaultExitPoints, alwaysExits, ExitPointType } from '../../../../../info'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
-import type { IdentifierReference, IEnvironment, REnvironmentInformation } from '../../../../../environments'
-import { BuiltIn , makeAllMaybe, overwriteEnvironment, popLocalEnvironment, resolveByName } from '../../../../../environments'
 import { linkFunctionCalls } from '../../../../linker'
-import type { DataflowGraphVertexInfo } from '../../../../../graph'
-import { DataflowGraph } from '../../../../../graph'
-import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard, isNotUndefined } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
 import { patchFunctionCall } from '../common'
+import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment'
+import { makeAllMaybe } from '../../../../../environments/environment'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { DataflowGraph } from '../../../../../graph/graph'
+import type { IdentifierReference } from '../../../../../environments/identifier'
+import { resolveByName } from '../../../../../environments/resolve-by-name'
+import { EdgeType } from '../../../../../graph/edge'
+import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex'
+import { popLocalEnvironment } from '../../../../../environments/scoping'
+import { BuiltIn } from '../../../../../environments/built-in'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { dataflowLogger } from '../../../../../logger'
 
 
 const dotDotDotAccess = /\.\.\d+/

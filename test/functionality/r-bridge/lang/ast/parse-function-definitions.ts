@@ -1,8 +1,9 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal, parameter } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
 
 describe('Parse function definitions', withShell(shell => {
 	describe('without parameters', () => {

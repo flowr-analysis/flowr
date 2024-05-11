@@ -1,11 +1,11 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RSymbol } from '../../../../model'
-import { RType, isSymbol } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { startAndEndsWith } from '../../../../../../../util/strings'
+import type { RSymbol } from '../../../../model/nodes/r-symbol'
+import { isSymbol, RType } from '../../../../model/type'
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).

@@ -1,24 +1,22 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
-import type {
-	RArgument,
-	RBreak,
-	RFunctionCall,
-	RNamedFunctionCall,
-	RNext,
-	RNode,
-	RUnnamedFunctionCall
-} from '../../../../model'
-import { RawRType, RType, EmptyArgument } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { guard } from '../../../../../../../util/assert'
 import { tryToNormalizeArgument } from './normalize-argument'
 import type { SourceRange } from '../../../../../../../util/range'
-import { normalizeExpression } from '../expression'
-import { normalizeString, tryNormalizeSymbol } from '../values'
+import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../../../../model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../model/nodes/r-function-call'
+import type { RNext } from '../../../../model/nodes/r-next'
+import type { RBreak } from '../../../../model/nodes/r-break'
+import { RawRType, RType } from '../../../../model/type'
+import type { RArgument } from '../../../../model/nodes/r-argument'
+import { normalizeExpression } from '../expression/normalize-expression'
+import { normalizeString } from '../values/normalize-string'
+import type { RNode } from '../../../../model/model'
+import { tryNormalizeSymbol } from '../values/normalize-symbol'
 
 /**
  * Tries to parse the given data as a function call.
@@ -142,7 +140,7 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: NamedXmlBas
 		functionName = tryNormalizeSymbol(data, symbolContent)
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-	guard((functionName as RNode).type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
+	guard((functionName).type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 
 	const parsedArguments = parseArguments(mappedWithName, data)
 

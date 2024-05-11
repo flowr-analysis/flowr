@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
-import { OperatorDatabase } from '../../../../src'
+import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {

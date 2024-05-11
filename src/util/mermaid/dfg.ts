@@ -1,27 +1,26 @@
-import type { NodeId } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
 import type { SourceRange } from '../range'
-import type {
-	DataflowFunctionFlowInformation,
-	DataflowGraph,
-	DataflowGraphVertexInfo,
-	FunctionArgument,
-	IdentifierDefinition,
-	IdentifierReference,
-	IEnvironment,
-	EdgeType } from '../../dataflow'
-import { edgeTypeToName
-	,
-	splitEdgeTypes,
-	isNamedArgument,
-	isPositionalArgument,
-	VertexType,
-	BuiltIn,
-	BuiltInEnvironment,
-} from '../../dataflow'
+
 
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
+import type {
+	DataflowFunctionFlowInformation,
+	DataflowGraph,
+	FunctionArgument } from '../../dataflow/graph/graph'
+import { isNamedArgument
+	,
+	isPositionalArgument
+} from '../../dataflow/graph/graph'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { EdgeType } from '../../dataflow/graph/edge'
+import { edgeTypeToName , splitEdgeTypes } from '../../dataflow/graph/edge'
+import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex'
+import { VertexType } from '../../dataflow/graph/vertex'
+import type { IEnvironment } from '../../dataflow/environments/environment'
+import { BuiltInEnvironment } from '../../dataflow/environments/environment'
+import { BuiltIn } from '../../dataflow/environments/built-in'
 
 
 type MarkVertex = NodeId

@@ -1,13 +1,14 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RFunctionDefinition, RParameter } from '../../../../model'
-import { RType , RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryNormalizeParameter } from './normalize-parameter'
-import { normalizeExpressions } from '../structure'
+import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition'
+import { RawRType, RType } from '../../../../model/type'
+import type { RParameter } from '../../../../model/nodes/r-parameter'
+import { normalizeExpressions } from '../structure/normalize-expressions'
 
 /**
  * Tries to parse the given data as a function definition.

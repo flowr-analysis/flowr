@@ -1,4 +1,4 @@
-import { ts2r } from './lang-4.x'
+import { ts2r } from './lang-4.x/convert-values'
 
 export const ErrorMarker = 'err'
 

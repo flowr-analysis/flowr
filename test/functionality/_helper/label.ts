@@ -7,9 +7,9 @@
 
 
 import { DefaultMap } from '../../../src/util/defaultmap'
-import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data'
-import { getAllCapabilities } from '../../../src/r-bridge/data'
 import type { MergeableRecord } from '../../../src/util/objects'
+import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get'
+import { getAllCapabilities } from '../../../src/r-bridge/data/get'
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => [])

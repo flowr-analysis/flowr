@@ -12,18 +12,25 @@
     "url": "https://github.com/Code-Inspect/flowr/issues"
   },
   "scripts": {
+    "main": "npm run build && node dist/src/cli/flowr.js",
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
-    "release": "release-it --ci",
+    "release": "npx release-it --ci",
+    "stats": "ts-node src/cli/statistics-app.ts",
+    "stats-helper": "ts-node src/cli/statistics-helper-app.ts",
+    "slicer": "ts-node src/cli/slicer-app.ts",
+    "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
+    "benchmark": "npm run build && node dist/src/cli/benchmark-app.js",
+    "summarizer": "ts-node src/cli/summarizer-app.ts",
+    "export-quads": "ts-node src/cli/export-quads-app.ts",
     "capabilities-markdown": "ts-node src/r-bridge/data/print.ts",
     "build": "tsc --project .",
-    "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",
-    "lint": "npm run license-compat -- --summary && eslint src/ test/",
+    "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
+    "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
-    "test-full": "npm run test -- --test-installation",
-    "install-submodules":"cd modules/benchmark && npm ci && cd ../cli && npm ci && cd ../statistics && npm ci && cd ../.."
+    "test-full": "npm run test -- --test-installation"
   },
   "keywords": [
     "static code analysis",
@@ -53,7 +60,9 @@
     "extension": [
       ".ts"
     ],
-    "include": "src/**/*.ts",
+    "include": [
+      "src/**/*.ts"
+    ],
     "reporter": [
       "text",
       "lcov",
@@ -73,55 +82,7 @@
     "extends": [
       "@eagleoutice/eslint-config-flowr"
     ],
-    "rules": {
-      "import/no-restricted-paths": [
-        "error",
-        {
-          "zones": [
-            {
-              "target": "modules/benchmark",
-              "from": [
-                "modules/cli",
-                "src",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "modules/cli",
-              "from": [
-                "modules/benchmark",
-                "src",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "modules/statistics",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "src"
-              ]
-            },
-            {
-              "target": "src",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "modules/statistics"
-              ]
-            },
-            {
-              "target": "test",
-              "from": [
-                "modules/benchmark",
-                "modules/cli",
-                "modules/statistics"
-              ]
-            }
-          ]
-        }
-      ]
-    }
+    "rules": {}
   },
   "typedocOptions": {
     "includeVersion": true,
@@ -218,25 +179,31 @@
     }
   },
   "devDependencies": {
-    "@commitlint/cli": "^18.4.3",
-    "@commitlint/config-angular": "^18.4.3",
-    "@eagleoutice/eslint-config-flowr": "^1.0.7",
-    "@stylistic/eslint-plugin": "^1.6.2",
-    "@stylistic/eslint-plugin-plus": "^1.6.2",
-    "@stylistic/eslint-plugin-ts": "^1.6.2",
-    "@types/chai": "^4.3.11",
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-angular": "^19.3.0",
+    "@eagleoutice/eslint-config-flowr": "^1.0.8",
+    "@j-ulrich/release-it-regex-bumper": "^5.1.0",
+    "@stylistic/eslint-plugin": "^2.1.0",
+    "@stylistic/eslint-plugin-plus": "^2.1.0",
+    "@stylistic/eslint-plugin-ts": "^2.1.0",
+    "@types/chai": "^4.3.16",
     "@types/chai-as-promised": "^7.1.8",
+    "@types/command-line-args": "^5.2.3",
+    "@types/command-line-usage": "^5.0.4",
     "@types/mocha": "^10.0.6",
+    "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.16.4",
     "@types/object-hash": "^3.0.6",
     "@types/semver": "^7.5.6",
+    "@types/tmp": "^0.2.6",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
-    "chai": "^4.3.10",
+    "chai": "^4.3.16",
     "chai-as-promised": "^7.1.1",
-    "eslint": "^8.55.0",
-    "eslint-plugin-check-file": "^2.6.2",
-    "eslint-plugin-import": "^2.29.0",
-    "eslint-plugin-n": "^16.3.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-check-file": "^2.8.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-n": "^17.6.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-tsdoc": "^0.2.17",
     "license-checker": "^25.0.1",
@@ -245,19 +212,27 @@
     "nyc": "^15.1.0",
     "release-it": "^17.0.1",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.25.4",
-    "typedoc-plugin-missing-exports": "^2.1.0",
+    "typedoc": "^0.25.13",
+    "typedoc-plugin-missing-exports": "^2.2.0",
     "typedoc-theme-hierarchy": "^4.1.2",
-    "typedoc-umlclass": "^0.8.0",
-    "typescript": "^5.3.3",
-    "@j-ulrich/release-it-regex-bumper": "^5.1.0"
+    "typedoc-umlclass": "^0.9.0",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.10",
+    "command-line-args": "^5.2.1",
+    "command-line-usage": "^7.0.1",
+    "joi": "^17.13.1",
+    "n-readlines": "^1.0.1",
     "n3": "^1.17.2",
     "object-hash": "^3.0.0",
     "rotating-file-stream": "^3.1.1",
     "semver": "^7.5.4",
+    "tar": "^7.1.0",
+    "tmp": "^0.2.3",
     "ts-essentials": "^9.4.1",
-    "tslog": "^4.9.2"
+    "tslog": "^4.9.2",
+    "ws": "^8.17.0",
+    "xpath-ts2": "^1.4.2"
   }
 }

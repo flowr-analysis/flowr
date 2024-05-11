@@ -40,7 +40,7 @@ export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep
  * In other words, information that you may want to change for another request (e.g., another slice) with the same file.
  */
 export type PipelinePerRequestInput<P extends Pipeline> = {
-	[K in PipelineStepNames<P>]: PipelineStep<P>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
+	[K in PipelineStepNames<P>]: PipelineStepWithName<P, K>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
 }[PipelineStepNames<P>]
 
 export type PipelineOutput<P extends Pipeline> = {

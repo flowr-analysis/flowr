@@ -1,7 +1,8 @@
-import { DataflowGraph } from './graph'
-import type { REnvironmentInformation, IdentifierReference } from './environments'
 import type { DataflowProcessorInformation } from './processor'
-import type { NodeId } from '../r-bridge'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierReference } from './environments/identifier'
+import type { REnvironmentInformation } from './environments/environment'
+import { DataflowGraph } from './graph/graph'
 
 export const enum ExitPointType {
 	Default = 0,

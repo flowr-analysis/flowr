@@ -1,7 +1,3 @@
-import type { IdentifierReference } from '../environments'
-import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments'
-import type { NodeId } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges } from './graph'
 import { isNamedArgument } from './graph'
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff'
@@ -10,8 +6,12 @@ import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
 import { VertexType } from './vertex'
 import type { DataflowGraphEdge } from './edge'
-import { splitEdgeTypes } from './edge'
+import { edgeTypesToNames , splitEdgeTypes } from './edge'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierReference } from '../environments/identifier'
+import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -274,7 +274,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Da
 	}
 	if(edge.types !== otherEdge.types) {
 		ctx.report.addComment(
-			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
+			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypesToNames(edge.types)])} vs ${JSON.stringify([...edgeTypesToNames(otherEdge.types)])}`,
 			{ tag: 'edge', from: id, to: target }
 		)
 	}

@@ -1,7 +1,3 @@
-import type {
-	IdGenerator,
-	NoInfo
-} from '../../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import {
 	normalizedAstToJson,
@@ -12,10 +8,11 @@ import {
 import type { IPipelineStep } from '../../pipeline-step'
 import { PipelineStepStage } from '../../pipeline-step'
 import type { DeepReadonly } from 'ts-essentials'
-import type { ParseRequiredInput } from './00-parse'
 import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import type { IdGenerator } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NoInfo } from '../../../../r-bridge/lang-4.x/ast/model/model'
 
-export interface NormalizeRequiredInput extends ParseRequiredInput {
+export interface NormalizeRequiredInput {
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
 	readonly getId?: IdGenerator<NoInfo>
 }

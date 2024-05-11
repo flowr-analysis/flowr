@@ -1,25 +1,26 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { filterOutLoopExitPoints, alwaysExits } from '../../../../../info'
 import {
-	appendEnvironment,
-	define,
-	initializeCleanEnvironments,
-	makeAllMaybe,
-	overwriteEnvironment
-} from '../../../../../environments'
-import {
 	linkCircularRedefinitionsWithinALoop,
 	produceNameSharedIdMap
 } from '../../../../linker'
-import { EdgeType } from '../../../../../graph'
-import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { patchFunctionCall } from '../common'
 import { unpackArgument } from '../argument/unpack-argument'
+import { dataflowLogger } from '../../../../../logger'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import { define } from '../../../../../environments/define'
+import { appendEnvironment } from '../../../../../environments/append'
+import { initializeCleanEnvironments, makeAllMaybe } from '../../../../../environments/environment'
+import { EdgeType } from '../../../../../graph/edge'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { pushLocalEnvironment } from '../../../../../environments/scoping'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,7 +57,11 @@ export function processForLoop<OtherInfo>(
 	}
 	data = { ...data, environment: headEnvironments }
 	/* process the body without any environment first, to retrieve all open references */
-	const body = processDataflowFor(bodyArg, { ...data, environment: initializeCleanEnvironments() })
+	let environment = initializeCleanEnvironments()
+	while(headEnvironments.level > environment.level) {
+		environment = pushLocalEnvironment(environment)
+	}
+	const body = processDataflowFor(bodyArg, { ...data, environment })
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 	const outEnvironment = appendEnvironment(headEnvironments, body.environment)

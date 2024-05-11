@@ -37,14 +37,14 @@ echo "done."
 FILES_DIR="$(pwd)/files/"
 
 ## run the benchmark script for each file
-CMD=(npm run benchmark --prefix ../../../modules/cli -- --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" "${FILES_DIR}")
+CMD=(npm run benchmark -- --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${RAW_OUTPUT})."
 echo "  * Summarizing results to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX}..."
 
-CMD=(npm run summarizer --prefix ../../../modules/cli -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}" --graph)
+CMD=(npm run summarizer -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}" --graph)
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX})."

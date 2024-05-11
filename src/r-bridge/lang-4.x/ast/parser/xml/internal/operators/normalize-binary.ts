@@ -1,21 +1,18 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
-import type {
-	RBinaryOp, RFunctionCall,
-	RNode, RPipe
-} from '../../../../model'
-import {
-	RType,
-	OperatorsInRAst,
-	RawRType
-} from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
-import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { startAndEndsWith } from '../../../../../../../util/strings'
+import type { RNode } from '../../../../model/model'
+import { RawRType, RType } from '../../../../model/type'
+import { OperatorsInRAst } from '../../../../model/operators'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import type { RFunctionCall } from '../../../../model/nodes/r-function-call'
+import type { RBinaryOp } from '../../../../model/nodes/r-binary-op'
+import type { RPipe } from '../../../../model/nodes/r-pipe'
 
 
 /**

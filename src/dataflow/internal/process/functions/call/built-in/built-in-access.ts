@@ -1,12 +1,17 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments'
-import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
 import type { ProcessKnownFunctionCallResult } from '../known-call-handling'
 import { processKnownFunctionCall } from '../known-call-handling'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
+import { EdgeType } from '../../../../../graph/edge'
+import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment'
 
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

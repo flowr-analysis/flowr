@@ -1,6 +1,4 @@
 import { type RShell } from './shell'
-import type { NormalizedAst } from './lang-4.x'
-import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import type { AsyncOrSync } from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -8,6 +6,8 @@ import { RShellExecutor } from './shell-executor'
 import objectHash from 'object-hash'
 import { normalize } from './lang-4.x/ast/parser/json/parser'
 import { ErrorMarker } from './init'
+import { ts2r } from './lang-4.x/convert-values'
+import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate'
 
 export const fileProtocol = 'file://'
 

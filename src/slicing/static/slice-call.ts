@@ -1,19 +1,20 @@
-import type {
-	DataflowGraph, DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	OutgoingEdges,
-	REnvironmentInformation
-} from '../../dataflow'
-import {
-	edgeIncludesType
-	, BuiltIn, EdgeType } from '../../dataflow'
-import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import type { NodeToSlice } from './slicer-types'
 import type { VisitingQueue } from './visiting-queue'
 import { guard } from '../../util/assert'
 import type { Fingerprint } from './fingerprint'
 import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
+import type {
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition
+} from '../../dataflow/graph/vertex'
+import type { REnvironmentInformation } from '../../dataflow/environments/environment'
+import { pushLocalEnvironment } from '../../dataflow/environments/scoping'
+import { overwriteEnvironment } from '../../dataflow/environments/overwrite'
+import type { DataflowGraph, OutgoingEdges } from '../../dataflow/graph/graph'
+import { BuiltIn } from '../../dataflow/environments/built-in'
+import { resolveByName } from '../../dataflow/environments/resolve-by-name'
+import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment

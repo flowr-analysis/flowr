@@ -1,10 +1,11 @@
 import { retrieveNormalizedAst, withShell } from '../_helper/shell'
-import { decorateAst, requestFromInput } from '../../../src'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline'
+import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
 
 describe('Quads', withShell(shell => {
 	const context = 'test'

@@ -1,6 +1,10 @@
-import { BuiltInEnvironment, Environment, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { expect } from 'chai'
 import { label } from '../../_helper/label'
+import {
+	BuiltInEnvironment,
+	Environment,
+	initializeCleanEnvironments
+} from '../../../../src/dataflow/environments/environment'
 
 describe('Initialization', () => {
 	it(label('Clean creation should have no info but the default information', ['global-scope'], ['other']), () => {

@@ -1,16 +1,13 @@
-import type {
-	FoldFunctions,
-	ParentInformation,
-	RFunctionCall, RNodeWithParent, RSymbol
-} from '../../../r-bridge'
-import {
-	EmptyArgument
-	,
-	foldAst, isSpecialSymbol
-} from '../../../r-bridge'
 import type { SlicingCriteriaFilter } from '../collect-all'
 import { isNotNull } from '../../../util/assert'
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { FoldFunctions } from '../../../r-bridge/lang-4.x/ast/model/processing/fold'
+import { foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold'
+import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { isSpecialSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,

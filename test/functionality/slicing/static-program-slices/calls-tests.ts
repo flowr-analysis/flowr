@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
-import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data'
-import { OperatorDatabase } from '../../../../src'
+import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
@@ -111,10 +111,8 @@ f <- function(some_variable="hello") {
   result <- some::other(some_variable=some_variable)
   result
 }
-    `, ['4@result'], `function(some_variable="hello") {
-    result <- some::other(some_variable=some_variable)
-    result
-}`)
+    `, ['4@result'], `result <- some::other(some_variable=some_variable)
+result`)
 
 
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
@@ -276,7 +274,7 @@ b <- f()`)
 		const code = `x <- (function() {
   g <- function() { y }
   y <- 5
-  if(z) 
+  if(z)
   	return(g)
   y <- 3
   g

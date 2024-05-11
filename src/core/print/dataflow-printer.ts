@@ -2,7 +2,7 @@ import { jsonReplacer } from '../../util/json'
 import type { DataflowInformation } from '../../dataflow/info'
 import type { QuadSerializationConfiguration } from '../../util/quads'
 import { df2quads } from '../../dataflow/graph/quads'
-import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid'
+import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid/dfg'
 
 
 function mayObjectJson(d: unknown): string {

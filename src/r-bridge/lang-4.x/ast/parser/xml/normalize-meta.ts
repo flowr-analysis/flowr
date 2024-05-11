@@ -1,10 +1,12 @@
 import type { SourceRange } from '../../../../../util/range'
 import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../util/range'
-import type { RawRType, RExpressionList, RNode } from '../../model'
-import { RType } from '../../model'
 import { guard } from '../../../../../util/assert'
 import type { NamedXmlBasedJson, XmlBasedJson } from './input-format'
 import { XmlParseError, attributesKey, contentKey, nameKey } from './input-format'
+import type { RawRType } from '../../model/type'
+import { RType } from '../../model/type'
+import type { RExpressionList } from '../../model/nodes/r-expression-list'
+import type { RNode } from '../../model/model'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper

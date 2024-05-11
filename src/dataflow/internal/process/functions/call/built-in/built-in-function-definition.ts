@@ -1,29 +1,27 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation, ExitPoint } from '../../../../../info'
 import { ExitPointType } from '../../../../../info'
 import { linkInputs } from '../../../../linker'
-import {
-	type DataflowFunctionFlowInformation,
-	DataflowGraph,
-	dataflowLogger,
-	EdgeType,
-	type IdentifierReference,
-	initializeCleanEnvironments,
-	type REnvironmentInformation,
-	VertexType
-} from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
-import {
-	overwriteEnvironment,
-	popLocalEnvironment,
-	pushLocalEnvironment,
-	resolveByName
-} from '../../../../../environments'
+import { dataflowLogger } from '../../../../../logger'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph'
+import { DataflowGraph } from '../../../../../graph/graph'
+import type { IdentifierReference } from '../../../../../environments/identifier'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import { VertexType } from '../../../../../graph/vertex'
+import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping'
+import type { REnvironmentInformation } from '../../../../../environments/environment'
+import { initializeCleanEnvironments } from '../../../../../environments/environment'
+import { resolveByName } from '../../../../../environments/resolve-by-name'
+import { EdgeType } from '../../../../../graph/edge'
 
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

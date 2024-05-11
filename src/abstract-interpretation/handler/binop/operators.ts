@@ -1,7 +1,7 @@
 import {guard} from '../../../util/assert'
 import {BinOpOperators} from './binop'
-import {NarrowKind, addDomains, narrowDomain, subtractDomains} from '../../domain'
-import { AINodeStore } from '../../ainode'
+import {addDomains, narrowDomain, NarrowKind, subtractDomains} from '../../domain'
+import {AINodeStore} from '../../ainode'
 
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {

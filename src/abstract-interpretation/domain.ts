@@ -223,7 +223,6 @@ interface IntervalOverlap {
 
 function flipInclusiveness(intervalBound: IntervalBound): IntervalBound {
 	return {value: intervalBound.value, inclusive: !intervalBound.inclusive}
-
 }
 
 export function overlapIntervals(interval1: Interval, interval2: Interval): IntervalOverlap {

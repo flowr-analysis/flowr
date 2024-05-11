@@ -1,6 +1,6 @@
-import { NodeId, ParentInformation, RNodeWithParent } from '../r-bridge'
-import { assertUnreachable, guard } from '../util/assert'
-import { Domain, unifyDomains } from './domain'
+import {NodeId, ParentInformation, RNodeWithParent} from '../r-bridge'
+import {assertUnreachable, guard} from '../util/assert'
+import {Domain, unifyDomains} from './domain'
 
 export interface AINode {
 	// The ID of the node that logically holds the domain (e.g. the lhs of an assignment)

@@ -90,7 +90,7 @@ cat(d)`
 			}, statInfo)
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
-				numberOfEdges:               37,
+				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0
 			}, statInfo)

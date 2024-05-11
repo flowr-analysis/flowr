@@ -23,6 +23,7 @@ import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { EdgeType } from '../graph/edge'
+import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library'
 
 export const BuiltIn = 'built-in'
 
@@ -158,6 +159,7 @@ registerBuiltInFunctions(['[', '[['],                        processAccess,     
 registerBuiltInFunctions(['$', '@'],                         processAccess,             { treatIndicesAsString: true },                                              )
 registerBuiltInFunctions(['if'],                             processIfThenElse,         {},                                                                          )
 registerBuiltInFunctions(['get'],                            processGet,                {},                                                                          )
+registerBuiltInFunctions(['library'],                        processLibrary,            {},                                                                          )
 registerBuiltInFunctions(['<-', '='],                        processAssignment,         { canBeReplacement: true },                                                  )
 registerBuiltInFunctions([':=', 'assign'],                   processAssignment,         {},                                                                          )
 registerBuiltInFunctions(['delayedAssign'],                  processAssignment,         { quoteSource: true },                                                       )

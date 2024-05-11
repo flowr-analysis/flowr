@@ -14,6 +14,7 @@ import { dataflowLogger } from '../../../../../logger'
 import { VertexType } from '../../../../../graph/vertex'
 import { getReferenceOfArgument } from '../../../../../graph/graph'
 import { EdgeType } from '../../../../../graph/edge'
+import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -42,8 +43,10 @@ export function processReplacementFunction<OtherInfo>(
 		functionRootId: rootId,
 		finalGraph:     res.graph,
 	})
-	const fn = res.graph.getVertex(rootId)
-	guard(fn?.tag === VertexType.FunctionCall && fn.args.length === 2, () => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)})`)
+	const fn = res.graph.getVertex(rootId, true)
+	guard(fn?.tag === VertexType.FunctionCall && fn.args.length === 2,
+		() => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)}) ${graphToMermaidUrl(res.graph)}`
+	)
 	fn.args = [fn.args[0], ...callArgs, fn.args[1]]
 
 

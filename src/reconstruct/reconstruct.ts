@@ -205,10 +205,14 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			return otherwise
 		}
 	} else {
+		const thenRemainder = indentBy(then.splice(1), 1)
+		if(thenRemainder.length > 0) {
+			thenRemainder[thenRemainder.length - 1].line += ' else '
+		}
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0 },
+			{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line} ${then.length === 1 ? 'else' : ''}`, indent: 0 },
 			...indentBy(then.splice(1), 1),
-			{ line: `else ${otherwise[1].line}`, indent: 0 },
+			{ line: `${otherwise[0].line}`, indent: 0 },
 			...indentBy(otherwise.splice(1), 1)
 		]
 	}
@@ -274,7 +278,10 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 }
 
 
-function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code): Code {
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: unknown, configuration: ReconstructionConfiguration): Code {
+	if(!isSelected(configuration, parameter)) {
+		return []
+	}
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {

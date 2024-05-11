@@ -57,12 +57,6 @@ jobs:
 
       - name: Install Node Dependencies
         run: npm ci
-      - name: Install Submodule Node Dependencies
-        if: ${{ inputs.submodule-deps }}
-        run: |
-          cd modules/benchmark && npm ci && cd ../..
-          cd modules/cli && npm ci && cd ../..
-          cd modules/statistics && npm ci && cd ../..
 
       - name: Install Graphviz for Documentation
         # we expect this to only work on Linux/Ubuntu

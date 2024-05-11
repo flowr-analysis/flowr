@@ -20,6 +20,7 @@ import { appendEnvironment } from '../../../../../environments/append'
 import { initializeCleanEnvironments, makeAllMaybe } from '../../../../../environments/environment'
 import { EdgeType } from '../../../../../graph/edge'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { pushLocalEnvironment } from '../../../../../environments/scoping';
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,7 +57,11 @@ export function processForLoop<OtherInfo>(
 	}
 	data = { ...data, environment: headEnvironments }
 	/* process the body without any environment first, to retrieve all open references */
-	const body = processDataflowFor(bodyArg, { ...data, environment: initializeCleanEnvironments() })
+	let environment = initializeCleanEnvironments()
+	while(headEnvironments.level > environment.level) {
+		environment = pushLocalEnvironment(environment)
+	}
+	const body = processDataflowFor(bodyArg, { ...data, environment })
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 	const outEnvironment = appendEnvironment(headEnvironments, body.environment)

@@ -2,16 +2,16 @@ This page focuses on the features presented by *flowR* and how to use them.
 If you have never used *flowR* before, please refer to the [setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page first, for instructions on how to install *flowR*.
 
 <!-- TOC -->
-  * [*flowR*'s Modules](#flowrs-modules)
-  * [Using *flowR*](#using-flowr)
-    * [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
-    * [The Server](#the-server)
-  * [Calling the Scripts Directly](#calling-the-scripts-directly)
-    * [Generate Static Slices](#generate-static-slices)
-    * [Benchmark the Slicer](#benchmark-the-slicer)
-      * [Summarizing the Benchmark Results](#summarizing-the-benchmark-results)
-    * [Generate Usage Statistics of R Code](#generate-usage-statistics-of-r-code)
-    * [Export RDF N-Quads](#export-rdf-n-quads)
+- [*flowR*'s Modules](#flowrs-modules)
+- [Using *flowR*](#using-flowr)
+  - [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
+  - [The Server](#the-server)
+- [Calling the Scripts Directly](#calling-the-scripts-directly)
+  - [Generate Static Slices](#generate-static-slices)
+  - [Benchmark the Slicer](#benchmark-the-slicer)
+    - [Summarizing the Benchmark Results](#summarizing-the-benchmark-results)
+  - [Generate Usage Statistics of R Code](#generate-usage-statistics-of-r-code)
+  - [Export RDF N-Quads](#export-rdf-n-quads)
 <!-- TOC -->
 
 ## *flowR*'s Modules
@@ -57,7 +57,7 @@ Its subcomponents (like the custom [R bridge](https://github.com/Code-Inspect/fl
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
-The [statistics](https://github.com/Code-Inspect/flowr-statistics/tree/main/src) module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [`statistics`](#generate-usage-statistics-of-r-code) script.
+The statistics module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [`statistics`](#generate-usage-statistics-of-r-code) script.
 
 The [core](https://github.com/Code-Inspect/flowr/tree/main/src/core) module contains *flowR*'s read-eval-print loop (REPL) and *flowR*'s server. Furthermore, it contains the root definitions of how *flowR* slices (see the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information).
 
@@ -222,7 +222,7 @@ npm run stats -- --help
 
 ### Export RDF N-Quads
 
-If you know what the RDF N-Quads refer to, then you are good to go! If not, you do not have to worry - you probably do not need them (they are for a graph search that is based on *flowR*). 
+If you know what the RDF N-Quads refer to, then you are good to go! If not, you do not have to worry - you probably do not need them (they are for a graph search that is based on *flowR*).
 
 For more information, run the following from the `cli` directory:
 

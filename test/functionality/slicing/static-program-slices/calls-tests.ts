@@ -111,10 +111,8 @@ f <- function(some_variable="hello") {
   result <- some::other(some_variable=some_variable)
   result
 }
-    `, ['4@result'], `function(some_variable="hello") {
-    result <- some::other(some_variable=some_variable)
-    result
-}`)
+    `, ['4@result'], `result <- some::other(some_variable=some_variable)
+result`)
 
 
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
@@ -276,7 +274,7 @@ b <- f()`)
 		const code = `x <- (function() {
   g <- function() { y }
   y <- 5
-  if(z) 
+  if(z)
   	return(g)
   y <- 3
   g

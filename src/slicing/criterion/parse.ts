@@ -1,7 +1,7 @@
 import type { SourcePosition } from '../../util/range'
 import { expensiveTrace } from '../../util/log'
 import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { normalizeIdToNumberIfPossible, type NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type {
 	AstIdMap,
 	NormalizedAst,
@@ -37,7 +37,7 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicin
 		const [line, name] = criterion.split(/@(.*)/s) // only split at first occurrence
 		resolved = conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
 	} else if(criterion.startsWith('$')) {
-		resolved = criterion.substring(1) as NodeId
+		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId
 	}
 
 	if(resolved === undefined) {

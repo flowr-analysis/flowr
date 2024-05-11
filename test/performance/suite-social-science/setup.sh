@@ -13,7 +13,7 @@ for i in "${!USE[@]}"; do
   USE[$i]="SocialScience/${USE[$i]}"
 done
 
-unzip files/tmp.zip "${USE[@]}" -d files/
+unzip -o files/tmp.zip "${USE[@]}" -d files/
 
 
 rm files/tmp.zip

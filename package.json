@@ -219,6 +219,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.8.10",
     "command-line-args": "^5.2.1",
     "command-line-usage": "^7.0.1",
     "joi": "^17.13.1",

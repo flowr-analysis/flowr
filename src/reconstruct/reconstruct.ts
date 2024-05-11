@@ -211,7 +211,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			return otherwise
 		}
 	} else {
-		const thenRemainder = indentBy(then.splice(1), 1)
+		const thenRemainder = indentBy(then.slice(1), 1)
 		if(thenRemainder.length > 0) {
 			if(!thenRemainder[thenRemainder.length - 1].line.trim().endsWith('else')) {
 				thenRemainder[thenRemainder.length - 1].line += ' else '

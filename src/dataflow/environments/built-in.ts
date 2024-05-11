@@ -165,7 +165,7 @@ registerBuiltInFunctions(['<<-'],                            processAssignment, 
 registerBuiltInFunctions(['->'],                             processAssignment,         { swapSourceAndTarget: true, canBeReplacement: true },                       )
 registerBuiltInFunctions(['->>'],                            processAssignment,         { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true } )
 registerBuiltInFunctions(['&&', '||', '&', '|'],             processSpecialBinOp,       { lazy: true }                                                               )
-registerBuiltInFunctions(['|>'],                             processPipe,               {},                                                                          )
+registerBuiltInFunctions(['|>', '%>%'],                      processPipe,               {},                                                                          )
 registerBuiltInFunctions(['function', '\\'],                 processFunctionDefinition, {},                                                                          )
 registerBuiltInFunctions(['quote', 'substitute', 'bquote'],  processQuote,              { quoteArgumentsWithIndex: 0 },                                              )
 registerBuiltInFunctions(['for'],                            processForLoop,            {},                                                                          )

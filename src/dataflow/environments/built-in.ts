@@ -82,9 +82,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 }
 
 export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
+	names: readonly Identifier[],
 	processor: Proc,
-	config: Config,
-	...names: readonly Identifier[]
+	config: Config
 ): void {
 	for(const name of names) {
 		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
@@ -123,7 +123,7 @@ export function registerReplacementFunctions(
 
 
 function registerSimpleFunctions(...names: readonly Identifier[]): void {
-	registerBuiltInFunctions(defaultBuiltInProcessor, { readAllArguments: true }, ...names)
+	registerBuiltInFunctions(names, defaultBuiltInProcessor, { readAllArguments: true })
 }
 
 function registerBuiltInConstant<T>(name: Identifier, value: T): void {
@@ -147,29 +147,29 @@ registerBuiltInConstant('T', true)
 registerBuiltInConstant('FALSE', false)
 registerBuiltInConstant('F', false)
 registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':', 'list')
-registerBuiltInFunctions(defaultBuiltInProcessor,   {},                                                   'cat', 'switch') /* returns null */
-registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0 },                            'print', '(')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }, 'return')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: ExitPointType.Break },                         'break')
-registerBuiltInFunctions(defaultBuiltInProcessor,   { cfg: ExitPointType.Next },                          'next')
-registerBuiltInFunctions(processExpressionList,     {},                                                   '{')
-registerBuiltInFunctions(processSourceCall,         {},                                                   'source')
-registerBuiltInFunctions(processAccess,             { treatIndicesAsString: false },                      '[', '[[')
-registerBuiltInFunctions(processAccess,             { treatIndicesAsString: true },                       '$', '@')
-registerBuiltInFunctions(processIfThenElse,         {},                                                   'if')
-registerBuiltInFunctions(processGet,                {},                                                   'get')
-registerBuiltInFunctions(processAssignment,         { canBeReplacement: true },                           '<-')
-registerBuiltInFunctions(processAssignment,         {},                                                   ':=', '=', 'assign')
-registerBuiltInFunctions(processAssignment,         { quoteSource: true },                                'delayedAssign')
-registerBuiltInFunctions(processAssignment,         { superAssignment: true },                            '<<-')
-registerBuiltInFunctions(processAssignment,         { swapSourceAndTarget: true },                        '->')
-registerBuiltInFunctions(processAssignment,         { superAssignment: true, swapSourceAndTarget: true }, '->>')
-registerBuiltInFunctions(processSpecialBinOp,       { lazy: true },                                       '&&', '||', '&', '|')
-registerBuiltInFunctions(processPipe,               {},                                                   '|>')
-registerBuiltInFunctions(processFunctionDefinition, {},                                                   'function', '\\')
-registerBuiltInFunctions(processQuote,              { quoteArgumentsWithIndex: 0 },                       'quote', 'substitute', 'bquote')
-registerBuiltInFunctions(processForLoop,            {},                                                   'for')
-registerBuiltInFunctions(processRepeatLoop,         {},                                                   'repeat')
-registerBuiltInFunctions(processWhileLoop,          {},                                                   'while')
+registerBuiltInFunctions(['cat', 'switch'],                  defaultBuiltInProcessor,   {}) /* returns null */
+registerBuiltInFunctions(['print', '('],                     defaultBuiltInProcessor,   { returnsNthArgument: 0 },                                                   )
+registerBuiltInFunctions(['return'],                         defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return },                        )
+registerBuiltInFunctions(['break'],                          defaultBuiltInProcessor,   { cfg: ExitPointType.Break },                                                )
+registerBuiltInFunctions(['next'],                           defaultBuiltInProcessor,   { cfg: ExitPointType.Next },                                                 )
+registerBuiltInFunctions(['{'],                              processExpressionList,     {},                                                                          )
+registerBuiltInFunctions(['source'],                         processSourceCall,         {},                                                                          )
+registerBuiltInFunctions(['[', '[['],                        processAccess,             { treatIndicesAsString: false },                                             )
+registerBuiltInFunctions(['$', '@'],                         processAccess,             { treatIndicesAsString: true },                                              )
+registerBuiltInFunctions(['if'],                             processIfThenElse,         {},                                                                          )
+registerBuiltInFunctions(['get'],                            processGet,                {},                                                                          )
+registerBuiltInFunctions(['<-', '='],                        processAssignment,         { canBeReplacement: true },                                                  )
+registerBuiltInFunctions([':=', 'assign'],                   processAssignment,         {},                                                                          )
+registerBuiltInFunctions(['delayedAssign'],                  processAssignment,         { quoteSource: true },                                                       )
+registerBuiltInFunctions(['<<-'],                            processAssignment,         { superAssignment: true, canBeReplacement: true },                           )
+registerBuiltInFunctions(['->'],                             processAssignment,         { swapSourceAndTarget: true, canBeReplacement: true },                       )
+registerBuiltInFunctions(['->>'],                            processAssignment,         { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true } )
+registerBuiltInFunctions(['&&', '||', '&', '|'],             processSpecialBinOp,       { lazy: true }                                                               )
+registerBuiltInFunctions(['|>'],                             processPipe,               {},                                                                          )
+registerBuiltInFunctions(['function', '\\'],                 processFunctionDefinition, {},                                                                          )
+registerBuiltInFunctions(['quote', 'substitute', 'bquote'],  processQuote,              { quoteArgumentsWithIndex: 0 },                                              )
+registerBuiltInFunctions(['for'],                            processForLoop,            {},                                                                          )
+registerBuiltInFunctions(['repeat'],                         processRepeatLoop,         {},                                                                          )
+registerBuiltInFunctions(['while'],                          processWhileLoop,          {},                                                                          )
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

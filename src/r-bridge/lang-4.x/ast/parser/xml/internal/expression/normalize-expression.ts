@@ -51,7 +51,7 @@ export function normalizeExpression(data: NormalizerData, obj: XmlBasedJson): RN
 
 	const children = normalizeExpressions(childData, childrenSource)
 
-	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
+	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter || x.type === RType.Comment)
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode

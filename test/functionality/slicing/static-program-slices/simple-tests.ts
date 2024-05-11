@@ -26,7 +26,7 @@ for(i in 1:10) {
   x <- x * 2
 }
 cat(x)
-    `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\ncat(x)')
+    `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\nx')
 		assertSliced(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
@@ -34,7 +34,7 @@ while(i > 3) {
   x <- x * 2
 }
 cat(x)
-    `, ['6@x'], 'x <- 1\nwhile(i > 3) x <- x * 2\ncat(x)')
+    `, ['6@x'], 'x <- 1\nwhile(i > 3) x <- x * 2\nx')
 
 		assertSliced(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
@@ -45,7 +45,7 @@ if(i > 3) {
 cat(x)
     `, ['6@x'], `x <- 1
 if(i > 3) { x <- x * 2 }
-cat(x)`)
+x`)
 
 		assertSliced(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
@@ -58,7 +58,7 @@ cat(x)
     `, ['7@x'], `x <- 1
 i <- 3
 if(i > 3) { x <- x * 2 }
-cat(x)`)
+x`)
 	})
 	describe('Access', () => {
 		assertSliced(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
@@ -84,10 +84,10 @@ cat(a)
 					shell, code, ['6@a'], `a <- list(1,2)
 a[[1]] = 2
 a[[2]] = 3
-cat(a)`)
+a`)
 				assertSliced(label('Full redefinitions still apply', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 					shell, code, ['8@a'], `a <- list(3,4)
-cat(a)`)
+a`)
 			})
 			describe('$', () => {
 				const codeB = `
@@ -103,10 +103,10 @@ cat(a)
 					shell, codeB, ['6@a'], `a <- list(a=1,b=2)
 a$a = 2
 a$b = 3
-cat(a)`)
+a`)
 				assertSliced(label('Full redefinitions still apply', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
 					shell, codeB, ['8@a'], `a <- list(a=3,b=4)
-cat(a)`)
+a`)
 			})
 		})
 	})
@@ -170,7 +170,7 @@ for(i in 1:(N-1)) product <- product * i`
 w <- 7
 N <- 10
 for(i in 1:(N-1)) sum <- sum + i + w
-cat("Sum:", sum, "\\n")`
+sum`
 		)
 
 		assertSliced(label('Product in call', capabilities),
@@ -178,7 +178,7 @@ cat("Sum:", sum, "\\n")`
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i
-cat("Product:", product, "\\n")`
+product`
 		)
 
 		assertSliced(label('Top by name', capabilities),

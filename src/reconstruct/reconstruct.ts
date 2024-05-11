@@ -112,15 +112,21 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	}
 }
 
-function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code): Code {
+function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
 	if(lhs.length === 0 && rhs.length === 0) {
-		return []
-	}
-	if(lhs.length === 0) { // if we have no lhs, only return rhs
+		if(isSelected(config, n)) {
+			return plain(getLexeme(n))
+		} else {
+			return []
+		}
+	} else if(lhs.length === 0) { // if we have no lhs, only return rhs
 		return rhs
-	}
-	if(rhs.length === 0) { // if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n))
+	} else if(rhs.length === 0) {
+		if(isSelected(config, n)) {
+			return plain(getLexeme(n))
+		} else {
+			return lhs
+		}
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
@@ -205,7 +211,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			return otherwise
 		}
 	} else {
-		const thenRemainder = indentBy(then.splice(1), 1)
+		const thenRemainder = indentBy(then.slice(1), 1)
 		if(thenRemainder.length > 0) {
 			if(!thenRemainder[thenRemainder.length - 1].line.trim().endsWith('else')) {
 				thenRemainder[thenRemainder.length - 1].line += ' else '
@@ -344,10 +350,20 @@ function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)
 }
 
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
+	const selected = isSelected(configuration, call)
+	if(!selected) {
+		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[]
+		if(f.length === 0) {
+			return []
+		} else if(f.length === 1) {
+			return f[0]
+		}
+	}
+
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}
-	if(call.flavor === 'named' && isSelected(configuration, call)) {
+	if(call.flavor === 'named' && selected) {
 		return plain(getLexeme(call))
 	}
 	const filteredArgs = args.filter(a => a !== undefined && a.length > 0)

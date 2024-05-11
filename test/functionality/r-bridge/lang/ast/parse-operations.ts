@@ -59,23 +59,26 @@ describe('Parse simple operations', withShell(shell => {
 
 		describe('Intermixed with comments', () => {
 			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines', ...OperatorDatabase['+'].capabilities]),
-				shell, '1 + # comment\n2', exprList({ // hoist children
+				shell, '1 + # comment\n2', { // hoist children
 					type:     RType.ExpressionList,
-					location: rangeFrom(1, 1, 2, 1),
+					location: undefined,
 					grouping: undefined,
 					info:     {},
-					lexeme:   '1 + # comment\n2',
+					lexeme:   undefined,
 					children: [
 						{
-							type:     RType.Comment,
-							content:  ' comment',
-							lexeme:   '# comment',
-							location: rangeFrom(1, 5, 1, 13),
-							info:     {}
-						},
-						{
-							type:     RType.BinaryOp,
-							info:     {},
+							type: RType.BinaryOp,
+							info: {
+								additionalTokens: [
+									{
+										type:     RType.Comment,
+										content:  ' comment',
+										lexeme:   '# comment',
+										location: rangeFrom(1, 5, 1, 13),
+										info:     {}
+									}
+								]
+							},
 							lexeme:   '+',
 							operator: '+',
 							location: rangeFrom(1, 3, 1, 3),
@@ -95,7 +98,7 @@ describe('Parse simple operations', withShell(shell => {
 							}
 						}
 					]
-				}), {
+				}, {
 					ignoreAdditionalTokens: false
 				}
 			)

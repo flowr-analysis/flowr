@@ -46,7 +46,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 			if(c.flavor === 'named') {
 				return c.functionName.content === 'library' ? args.slice(1) : args
 			} else {
-				return [...a, ...args]
+				return [...a.filter(x => x !== EmptyArgument), ...args]
 			}
 		},
 		foldArgument:  (_: unknown, _a: unknown, b: NodeId[] | undefined) => b ?? [],

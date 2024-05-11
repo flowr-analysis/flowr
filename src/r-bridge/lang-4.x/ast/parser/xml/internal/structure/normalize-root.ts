@@ -28,7 +28,7 @@ export function normalizeRootObjToAst(
 		log.debug('no children found, assume empty input')
 	}
 
-	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter)
+	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter || x.type === RType.Comment)
 
 	return {
 		type:     RType.ExpressionList,

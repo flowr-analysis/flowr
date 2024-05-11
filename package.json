@@ -188,6 +188,8 @@
     "@stylistic/eslint-plugin-ts": "^1.6.2",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.8",
+    "@types/command-line-args": "^5.2.3",
+    "@types/command-line-usage": "^5.0.4",
     "@types/mocha": "^10.0.6",
     "@types/n-readlines": "^1.0.6",
     "@types/n3": "^1.16.4",
@@ -217,6 +219,8 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "command-line-args": "^5.2.1",
+    "command-line-usage": "^7.0.1",
     "joi": "^17.13.1",
     "n-readlines": "^1.0.1",
     "n3": "^1.17.2",

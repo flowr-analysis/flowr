@@ -16,7 +16,6 @@ import commandLineArgs from 'command-line-args'
 import commandLineUsage from 'command-line-usage'
 import { defaultConfigFile, setConfigFile } from '../config'
 import { guard } from '../util/assert'
-import { printVersionInformation, retrieveVersionInformation } from './repl/commands/version'
 import type { ScriptInformation } from './common/scripts-info'
 import { scripts } from './common/scripts-info'
 import type { RShellOptions } from '../r-bridge/shell'
@@ -24,10 +23,10 @@ import { RShell, RShellReviveOptions } from '../r-bridge/shell'
 import { waitOnScript } from './repl/execute'
 import { standardReplOutput } from './repl/commands/main'
 import { repl, replProcessAnswer } from './repl/core'
+import { printVersionInformation } from './repl/commands/version'
+import { printVersionRepl } from './repl/print-version'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')
-// this is automatically replaced with the current version by release-it
-export const CLI_VERSION = '0.0.3'
 
 export const toolName = 'flowr'
 
@@ -61,7 +60,7 @@ export interface FlowrCliOptions {
 
 export const optionHelp = [
 	{
-		header:  `flowR (version ${flowrVersion().toString()}, cli version ${CLI_VERSION})`,
+		header:  `flowR (version ${flowrVersion().toString()})`,
 		content: 'A static dataflow analyzer and program slicer for R programs'
 	},
 	{
@@ -125,7 +124,9 @@ async function mainRepl() {
 	}
 
 	if(options.version) {
-		await printVersionInformation(standardReplOutput)
+		const shell = new RShell()
+		process.on('exit', () => shell.close())
+		await printVersionInformation(standardReplOutput, shell)
 		process.exit(0)
 	}
 
@@ -146,8 +147,7 @@ async function mainRepl() {
 	if(options.execute) {
 		await replProcessAnswer(standardReplOutput, options.execute, shell)
 	} else {
-		const version = await retrieveVersionInformation(shell)
-		console.log(`flowR repl ${version.cli} using flowR ${version.flowr}, R ${version.r}`)
+		await printVersionRepl(shell)
 		await repl(shell)
 	}
 	process.exit(0)

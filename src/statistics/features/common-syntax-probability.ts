@@ -7,6 +7,8 @@ import { summarizeMeasurement } from '../../util/summarizer'
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values'
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -65,7 +67,7 @@ function incrementEntry<T extends string | number | symbol>(map: Record<T, bigin
 /**
  * Updates the given counts based on the type of the given node.
  */
-export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: RNodeWithParent[]): CommonSyntaxTypeCounts {
+export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: (RNode| RArgument)[]): CommonSyntaxTypeCounts {
 	current.total++
 	if(nodes.length === 0) {
 		current.empty++
@@ -75,7 +77,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 		return current
 	}
 
-	let node = nodes[0]
+	let node: RNode | RArgument  = nodes[0]
 	if(node.type === RType.Argument) {
 		if(node.name !== undefined) {
 			current.withArgument++

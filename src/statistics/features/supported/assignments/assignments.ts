@@ -5,6 +5,7 @@ import { postProcess } from './post-process'
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { AssignmentOperators } from '../../../../../test/functionality/_helper/provider'
 
 
 const initialAssignmentInfo = {
@@ -24,7 +25,7 @@ function visitAssignment(info: AssignmentInfo, input: FeatureProcessorInput): vo
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
-			if(node.type !== RType.BinaryOp || node.flavor !== 'assignment') {
+			if(node.type !== RType.BinaryOp || !AssignmentOperators.includes(node.operator)) {
 				return
 			}
 

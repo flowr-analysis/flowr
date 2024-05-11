@@ -7,13 +7,14 @@ import {
 } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
 import { assertUnreachable, guard } from '../../../../util/assert'
-import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
-import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { RoleInParent, rolesOfParents } from '../../../../r-bridge/lang-4.x/ast/model/processing/role'
 import { appendStatisticsFile } from '../../../output/statistics-file'
+import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 const initialDataAccessInfo = {
 	// for the nth argument, how many of them are constant, etc.
@@ -36,7 +37,7 @@ const initialDataAccessInfo = {
 
 export type DataAccessInfo = Writable<typeof initialDataAccessInfo>
 
-function classifyArguments(args: (RNodeWithParent | null | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+function classifyArguments(args: readonly (RArgument<ParentInformation> | typeof EmptyArgument | null | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
 	if(args.length === 0) {
 		(existing[0] as unknown as number)++
 		return
@@ -44,7 +45,7 @@ function classifyArguments(args: (RNodeWithParent | null | undefined)[], existin
 
 	let i = 1
 	for(const arg of args) {
-		if(arg === null || arg === undefined) {
+		if(arg === null || arg === undefined || arg === EmptyArgument) {
 			(existing[0] as unknown as number)++
 			continue
 		}
@@ -100,8 +101,8 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			switch(op) {
 				case '@': info.bySlot++;         return
 				case '$': info.byName++;         return
-				case '[':  classifyArguments(node.access.map(unpackArgument), info.singleBracket); break
-				case '[[': classifyArguments(node.access.map(unpackArgument), info.doubleBracket); break
+				case '[':  classifyArguments(node.access, info.singleBracket); break
+				case '[[': classifyArguments(node.access, info.doubleBracket); break
 				default: assertUnreachable(op)
 			}
 

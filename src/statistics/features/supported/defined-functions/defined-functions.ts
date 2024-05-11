@@ -11,6 +11,7 @@ import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { appendStatisticsFile } from '../../../output/statistics-file'
+import { VertexType } from '../../../../dataflow/graph/vertex'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
@@ -34,8 +35,8 @@ export interface SingleFunctionDefinitionInformation extends MergeableRecord {
 	/** locations of all direct call sites */
 	callsites:          SourcePosition[],
 	numberOfParameters: number,
-	// for each return site, classifies if it is implicit or explicit (i.e., with return)
-	returns:            { explicit: boolean, location: SourcePosition }[],
+	// for each return site, currently unable to classify if it is implicit or explicit (i.e., with return)
+	returns:            { location: SourcePosition }[],
 	length:   {
 		lines:                   number,
 		characters:              number,
@@ -82,13 +83,12 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 				return
 			}
 			const [fnDefinition] = dfNode
-			guard(fnDefinition.tag === 'function-definition', () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`)
+			guard(fnDefinition.tag === VertexType.FunctionDefinition, () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`)
 
 			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
 				.map(([vertex]) => {
-					const l = input.normalizedRAst.idMap.get(vertex.id)?.location
+					const l = graph.idMap?.get(vertex.id)?.location
 					return {
-						explicit: vertex.tag === 'function-call' && vertex.name === 'return',
 						location: l ? getRangeStart(l) : [-1, -1] satisfies SourcePosition
 					}
 				})

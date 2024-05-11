@@ -54,8 +54,8 @@ function getFnDefCsv(idx: number | string, info: FunctionDefinitionSummaryInform
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.lines.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.chars.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.nonWhitespaceChars.flat()))}`
-		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.explicit.flat()))}`
-		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.implicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement([0]))}` /* this has to be changed once we have explicit returns again */
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement([0]))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyExplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyImplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.exitPointsLinePercentageInDef.flat(2)))}`
@@ -94,8 +94,6 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 		mergedSuperDefinitions.length.lines.push(...info.length.lines)
 		mergedSuperDefinitions.length.chars.push(...info.length.chars)
 		mergedSuperDefinitions.length.nonWhitespaceChars.push(...info.length.nonWhitespaceChars)
-		mergedSuperDefinitions.returns.explicit.push(...info.returns.explicit)
-		mergedSuperDefinitions.returns.implicit.push(...info.returns.implicit)
 		mergedSuperDefinitions.returns.onlyExplicit.push(...info.returns.onlyExplicit)
 		mergedSuperDefinitions.returns.onlyImplicit.push(...info.returns.onlyImplicit)
 		mergedSuperDefinitions.exitPointsLinePercentageInDef.push(...info.exitPointsLinePercentageInDef)
@@ -209,11 +207,6 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 		forFile.length.lines.push(length.lines)
 		forFile.length.chars.push(length.characters)
 		forFile.length.nonWhitespaceChars.push(length.nonWhitespaceCharacters)
-		const explicits = returns.filter(r => r.explicit)
-		forFile.returns.explicit.push(explicits.length)
-		forFile.returns.implicit.push(returns.length - explicits.length)
-		forFile.returns.onlyExplicit.push(explicits.length === returns.length ? 1 : 0)
-		forFile.returns.onlyImplicit.push(explicits.length === 0 ? 1 : 0)
 		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l/length.lines))
 
 		forFile.callsites.push(callsites.length)

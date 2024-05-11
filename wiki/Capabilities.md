@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-05-10, 09:16:24 UTC summarizig flowR's current capabilities_
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-05-11, 12:41:27 UTC summarizig flowR's current capabilities_
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:

@@ -34,4 +34,4 @@ COPY --from=builder /app/dist /app/dist
 
 RUN rm -rf /app/**/tsconfig.tsbuildinfo
 
-ENTRYPOINT ["node", "/app/dist/flowr.js"]
+ENTRYPOINT ["node", "/app/dist/cli/flowr.js"]

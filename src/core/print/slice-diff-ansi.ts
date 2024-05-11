@@ -27,7 +27,7 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary
 }
 
-export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, criteriaIds: Set<NodeId>, originalCode: string) {
+export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))
 		.map(([id, { location }]) => ({ selected: criteriaIds.has(id), location: location as SourceRange }) as const)

@@ -11,7 +11,6 @@ import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 import {ExprList} from './handler/exprlist/exprlist'
 import {AINodeStore} from './ainode'
-import {Nop} from './handler/nop/nop'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
 
@@ -53,7 +52,7 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
 	const operationStack = new Stack<Handler>()
-	operationStack.push(new Nop(dfg, AINodeStore.empty())).enter()
+	operationStack.push(new ExprList(dfg, AINodeStore.empty())).enter()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		const top = operationStack.peek()

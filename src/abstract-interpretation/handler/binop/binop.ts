@@ -1,6 +1,5 @@
 import {Handler} from '../handler'
-import {aiLogger} from '../../processor'
-import {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
+import {BinaryOperatorFlavor, NodeId, ParentInformation, RBinaryOp} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
 import {operators} from './operators'
 import {AINode, AINodeStore} from '../../ainode'
@@ -11,34 +10,34 @@ export type BinOpOperators = {
 }
 
 export class BinOp extends Handler {
-	lhs: AINode | undefined
-	rhs: AINode | undefined
+	lhs: NodeId | undefined
+	rhs: NodeId | undefined
 
 	constructor(
-		readonly dfg: DataflowInformation,
-		readonly domains: AINodeStore,
-		readonly node: RBinaryOp<ParentInformation>
+		dfg: DataflowInformation,
+		domains: AINodeStore,
+		private readonly node: RBinaryOp<ParentInformation>
 	) {
 		super(dfg, domains, `Bin Op (${node.flavor})`)
 	}
 
 	exit(): AINodeStore {
-		aiLogger.trace(`Exited ${this.name}`)
-		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
-		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
-		return operators[this.node.flavor](this.lhs, this.rhs, this.node)
+		const lhs = this.domains.get(this.lhs)
+		const rhs = this.domains.get(this.rhs)
+		guard(lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
+		guard(rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
+		this.domains.updateWith(operators[this.node.flavor](lhs, rhs, this.node))
+		return super.exit()
 	}
 
-	next(aiNodes: AINodeStore): AINodeStore {
-		aiLogger.trace(`${this.name} received`)
-		guard(aiNodes.size === 1, 'Welp, next received more than one AINodes')
-		const node = aiNodes.values().next().value as AINode
+	next(aiNodes: AINodeStore): void {
+		super.next(aiNodes)
 		if(this.lhs === undefined) {
-			return new AINodeStore(this.lhs = node)
+			this.lhs = this.node.lhs.info.id
+		} else if(this.rhs === undefined) {
+			this.rhs = this.node.rhs.info.id
+		} else {
+			guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
 		}
-		if(this.rhs === undefined) {
-			return new AINodeStore(this.rhs = node)
-		}
-		guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
 	}
 }

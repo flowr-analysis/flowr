@@ -12,9 +12,9 @@ export class Conditional extends Handler {
 	else:      AINodeStore | undefined
 
 	constructor(
-		readonly dfg: DataflowInformation,
-		readonly domains: AINodeStore,
-		readonly node: RIfThenElse<ParentInformation>
+		dfg: DataflowInformation,
+		domains: AINodeStore,
+		private readonly node: RIfThenElse<ParentInformation>
 	) {
 		super(dfg, domains, 'IfThenElse')
 	}
@@ -24,11 +24,11 @@ export class Conditional extends Handler {
 		guard(this.condition !== undefined, `No condition found for conditional ${this.node.info.id}`)
 		guard(this.then !== undefined, `No then-branch found for conditional ${this.node.info.id}`)
 
-		const result = new AINodeStore()
-		for(const [_, thenNode] of this.then) {
+		const result = AINodeStore.empty()
+		for(const thenNode of this.then) {
 			result.register(thenNode)
 		}
-		for(const [_, elseNode] of this.else ?? []) {
+		for(const elseNode of this.else ?? []) {
 			result.register(elseNode)
 		}
 
@@ -39,7 +39,7 @@ export class Conditional extends Handler {
 		aiLogger.trace(`${this.name} received`)
 		if(this.condition === undefined) {
 			this.condition = aiNodes
-			for(const [_, node] of aiNodes) {
+			for(const node of aiNodes) {
 				const children = getDfgChildrenOfType(node.nodeId, this.dfg, EdgeType.Reads)
 				for(const child of children ?? []) {
 					this.domains.register({
@@ -57,15 +57,3 @@ export class Conditional extends Handler {
 		}
 	}
 }
-
-/* const result = new AINodeStore()
-for(const [_, conditionNode] of this.condition) {
-	console.log(`cond: ${conditionNode.astNode.lexeme}`)
-	for(const [_, thenNode] of this.then) {
-		const intersection = intersectDomains(conditionNode.domain, thenNode.domain)
-	}
-	for(const [_, elseNode] of this.else ?? []) {
-		console.log(`else: ${elseNode.astNode.lexeme}`)
-	}
-}
-return result */

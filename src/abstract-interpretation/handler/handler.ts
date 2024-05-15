@@ -5,7 +5,7 @@ import {aiLogger} from '../processor'
 export abstract class Handler {
 	protected constructor(
 		protected readonly dfg: DataflowInformation,
-		public domains: AINodeStore,
+		private _domains: AINodeStore,
 		public readonly name: string
 	) { }
 
@@ -13,9 +13,16 @@ export abstract class Handler {
 		aiLogger.trace(`Entered ${this.name}`)
 	}
 
-	abstract exit(): AINodeStore
+	exit(): AINodeStore {
+		return this.domains.top
+	}
 
 	next(aiNodes: AINodeStore): void {
 		aiLogger.trace(`${this.name} received`)
+		this.domains.updateWith(aiNodes)
+	}
+
+	get domains(): AINodeStore {
+		return this._domains
 	}
 }

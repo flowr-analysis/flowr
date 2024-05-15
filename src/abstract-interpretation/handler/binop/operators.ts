@@ -5,7 +5,7 @@ import {AINodeStore} from '../../ainode'
 
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {
-		return new AINodeStore({
+		return AINodeStore.from({
 			nodeId:       lhs.nodeId,
 			expressionId: node.info.id,
 			domain:       rhs.domain,
@@ -15,14 +15,14 @@ export const operators: BinOpOperators = {
 	'arithmetic': (lhs, rhs, node) => {
 		switch(node.operator) {
 			case '+':
-				return new AINodeStore({
+				return AINodeStore.from({
 					nodeId:       node.info.id,
 					expressionId: node.info.id,
 					domain:       addDomains(lhs.domain, rhs.domain),
 					astNode:      node,
 				})
 			case '-':
-				return new AINodeStore({
+				return AINodeStore.from({
 					nodeId:       node.info.id,
 					expressionId: node.info.id,
 					domain:       subtractDomains(lhs.domain, rhs.domain),
@@ -47,7 +47,9 @@ export const operators: BinOpOperators = {
 			case '>=': narrowKind = NarrowKind.Greater | NarrowKind.Equal; break
 			default: guard(false, `Unknown binary operator ${node.operator}`)
 		}
-		return new AINodeStore([{
+		// FIXME: We should not set the domain of the operands!
+		//        But if we would only set the domain of the whole expression, we could only narrow one operand.
+		return AINodeStore.from([{
 			nodeId:       lhs.nodeId,
 			expressionId: node.info.id,
 			domain:       narrowDomain(lhs.domain, rhs.domain, narrowKind),

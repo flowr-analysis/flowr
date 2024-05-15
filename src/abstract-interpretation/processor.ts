@@ -10,7 +10,7 @@ import {Conditional} from './handler/conditional/conditional'
 import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 import {ExprList} from './handler/exprlist/exprlist'
-import {AINodeStore, mergeDomainStores} from './ainode'
+import {AINodeStore} from './ainode'
 import {Nop} from './handler/nop/nop'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
@@ -53,26 +53,26 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
 	const operationStack = new Stack<Handler>()
-	operationStack.push(new Nop(dfg, new AINodeStore())).enter()
+	operationStack.push(new Nop(dfg, AINodeStore.empty())).enter()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		const top = operationStack.peek()
 		guard(top !== undefined, 'No operation on the stack')
 		if(astNode?.type === RType.BinaryOp) {
-			operationStack.push(new BinOp(dfg, top.domains, astNode)).enter()
+			operationStack.push(new BinOp(dfg, AINodeStore.withParent(top.domains), astNode)).enter()
 		} else if(astNode?.type === RType.IfThenElse) {
-			operationStack.push(new Conditional(dfg, top.domains, astNode)).enter()
+			operationStack.push(new Conditional(dfg, AINodeStore.withParent(top.domains), astNode)).enter()
 		} else if(astNode?.type === RType.ExpressionList) {
-			operationStack.push(new ExprList(dfg, top.domains)).enter()
+			operationStack.push(new ExprList(dfg, AINodeStore.withParent(top.domains))).enter()
 		} else if(astNode?.type === RType.Symbol) {
-			top.next(new AINodeStore({
+			top.next(AINodeStore.from({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
 				domain:       getDomainOfDfgChild(node.id, dfg, top.domains),
 				astNode:      astNode,
 			}))
 		} else if(astNode?.type === RType.Number) {
-			top.next(new AINodeStore({
+			top.next(AINodeStore.from({
 				nodeId:       astNode.info.id,
 				expressionId: astNode.info.id,
 				domain:       Domain.fromScalar(astNode.content.num),
@@ -83,7 +83,6 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			guard(operationResult !== undefined, 'No operation result')
 			const newTop = operationStack.peek()
 			guard(newTop !== undefined, 'No operation on the stack')
-			newTop.domains = mergeDomainStores(newTop.domains, operationResult)
 			newTop.next(operationResult)
 		} else {
 			aiLogger.warn(`Unknown node type ${node.type}`)

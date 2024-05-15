@@ -14,53 +14,107 @@ export interface AINode {
 export const enum RegisterBehavior {
 	Overwrite,
 	Ignore,
-	Fail
+	Fail,
+	Merge
 }
 
-export class AINodeStore extends Map<NodeId, AINode> {
-	constructor(content: AINode[] | AINode | undefined = undefined) {
+export class AINodeStore implements Iterable<AINode> {
+	private readonly map: Map<NodeId, AINode>
+
+	private constructor(content: AINode[] | AINode | undefined = undefined, private readonly parent: AINodeStore | undefined = undefined) {
 		if(Array.isArray(content)) {
-			super(content.map(node => [node.nodeId, node]))
+			this.map = new Map(content.map(node => [node.nodeId, node]))
 		} else if(content !== undefined) {
-			super([[content.nodeId, content]])
+			this.map = new Map([[content.nodeId, content]])
 		} else if(content === undefined) {
-			super()
+			this.map = new Map()
 		} else {
 			assertUnreachable(content)
 		}
 	}
 
+	static empty(): AINodeStore {
+		return new AINodeStore()
+	}
+
+	static from(content: AINode[] | AINode): AINodeStore {
+		return new AINodeStore(content)
+	}
+
+	static withParent(parent: AINodeStore): AINodeStore {
+		return new AINodeStore(undefined, parent)
+	}
+
+	has(id: NodeId): boolean {
+		return this.map.has(id) || (this.parent?.has(id) ?? false)
+	}
+
+	get(id: NodeId | undefined): AINode | undefined {
+		if(id === undefined) {
+			return undefined
+		}
+		return this.map.get(id) ?? this.parent?.get(id)
+	}
+
+	get size(): number {
+		return this.map.size + (this.parent?.size ?? 0)
+	}
+
+	get top(): AINodeStore {
+		return new AINodeStore(Array.from(this.map.values()), undefined)
+	}
+
 	register(node: AINode, behavior: RegisterBehavior = RegisterBehavior.Fail): void {
-		if(this.has(node.nodeId)) {
+		const existing = this.get(node.nodeId)
+		if(existing !== undefined) {
 			switch(behavior) {
 				case RegisterBehavior.Overwrite:
-					this.set(node.nodeId, node)
+					// Even if a parent contains the node, we will set it in the top store, so
+					// outer scopes are not affected by inner scopes
+					this.map.set(node.nodeId, node)
 					break
 				case RegisterBehavior.Ignore:
 					break
 				case RegisterBehavior.Fail:
-					return guard(false, `Node with ID ${node.nodeId} already exists in the store`)
+					return guard(existing === node, `Node with ID ${node.nodeId} already exists in the store`)
+				case RegisterBehavior.Merge: {
+					const existing = this.map.get(node.nodeId)
+					guard(existing !== undefined, `Node with ID ${node.nodeId} should exist`)
+					this.register({...node, domain: unifyDomains([existing.domain, node.domain])}, RegisterBehavior.Overwrite)
+					break
+				}
 				default: assertUnreachable(behavior)
 			}
 		} else {
-			this.set(node.nodeId, node)
+			this.map.set(node.nodeId, node)
+		}
+	}
+
+	[Symbol.iterator](): Iterator<AINode> {
+		return composeIterators(this.map.values(), this.parent?.[Symbol.iterator]())
+	}
+
+	updateWith(domains: AINodeStore): void {
+		for(const node of domains) {
+			this.register(node, RegisterBehavior.Overwrite)
 		}
 	}
 }
 
-export function mergeDomainStores(...stores: AINodeStore[]): AINodeStore {
-	const result = new AINodeStore()
-	for(const store of stores) {
-		for(const [id, node] of store) {
-			if(result.has(id)) {
-				const existing = result.get(id)
-				guard(existing !== undefined, `Domain for ID ${id} is missing`)
-				const unified = unifyDomains([existing.domain, node.domain])
-				result.register({...node, domain: unified}, RegisterBehavior.Overwrite)
-			} else {
-				result.register(node)
-			}
-		}
+function* composeIterators<T>(first: Iterator<T>, second: Iterator<T> | undefined): Iterator<T> {
+	let result = first.next()
+	while(!result.done) {
+		yield result.value
+		result = first.next()
 	}
-	return result
+
+	if(second === undefined) {
+		return
+	}
+
+	result = second.next()
+	while(!result.done) {
+		yield result.value
+		result = second.next()
+	}
 }

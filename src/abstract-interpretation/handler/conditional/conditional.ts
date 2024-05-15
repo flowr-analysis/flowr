@@ -10,6 +10,8 @@ export class Conditional extends Handler {
 	condition: AINodeStore | undefined
 	then:      AINodeStore | undefined
 	else:      AINodeStore | undefined
+	thenDomains = AINodeStore.empty()
+	elseDomains = AINodeStore.empty()
 
 	constructor(
 		dfg: DataflowInformation,
@@ -40,16 +42,26 @@ export class Conditional extends Handler {
 		if(this.condition === undefined) {
 			this.condition = aiNodes
 			for(const node of aiNodes) {
-				const children = getDfgChildrenOfType(node.nodeId, this.dfg, EdgeType.Reads)
-				for(const child of children ?? []) {
-					this.domains.register({
-						...node,
-						nodeId: child
-					}, RegisterBehavior.Overwrite)
+				const isElseNode = node.nodeId.endsWith('-else')
+				const cleanedId = isElseNode ? node.nodeId.slice(0, -5) : node.nodeId
+				for(const child of getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads) ?? []) {
+					if(isElseNode) {
+						this.elseDomains.register({
+							...node,
+							nodeId: child
+						}, RegisterBehavior.Overwrite)
+					} else {
+						this.thenDomains.register({
+							...node,
+							nodeId: child
+						}, RegisterBehavior.Overwrite)
+					}
 				}
 			}
+			this.domains.updateWith(this.thenDomains)
 		} else if(this.then === undefined) {
 			this.then = aiNodes
+			this.domains.updateWith(this.elseDomains)
 		} else if(this.else === undefined) {
 			this.else = aiNodes
 		} else {

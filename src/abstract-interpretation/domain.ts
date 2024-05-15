@@ -10,6 +10,13 @@ export class Interval {
 		guard(min.value <= max.value, () => `The interval ${this.toString()} has a minimum that is greater than its maximum`)
 	}
 
+	static top(): Interval {
+		return new Interval(
+			{value: Number.NEGATIVE_INFINITY, inclusive: false},
+			{value: Number.POSITIVE_INFINITY, inclusive: false}
+		)
+	}
+
 	toString(): string {
 		if(this.isBottom()) {
 			return '∅'
@@ -29,6 +36,11 @@ export class Interval {
 	isSingleton(): boolean {
 		return this.min.value === this.max.value && this.min.inclusive && this.max.inclusive
 	}
+
+	// An interval is considered top if it's of the form (-∞, ∞)
+	isTop(): boolean {
+		return this.min.value === Number.NEGATIVE_INFINITY && this.max.value === Number.POSITIVE_INFINITY
+	}
 }
 
 export class Domain {
@@ -40,6 +52,10 @@ export class Domain {
 
 	static bottom(): Domain {
 		return new Domain()
+	}
+
+	static top(): Domain {
+		return new Domain([Interval.top()])
 	}
 
 	static fromIntervals(intervals: Interval[] | Set<Interval>): Domain {
@@ -55,6 +71,10 @@ export class Domain {
 
 	isBottom(): boolean {
 		return this.intervals.size === 0
+	}
+
+	isTop(): boolean {
+		return this.intervals.size === 1 && Array.from(this.intervals)[0].isTop()
 	}
 
 	get intervals(): Set<Interval> {
@@ -75,6 +95,8 @@ export class Domain {
 	toString(): string {
 		if(this.isBottom()) {
 			return '⊥'
+		} else if(this.isTop()) {
+			return '⊤'
 		} else {
 			return `{${Array.from(this.intervals).join(', ')}}`
 		}

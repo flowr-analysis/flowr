@@ -11,7 +11,7 @@ export class Interval {
 	}
 
 	toString(): string {
-		if(this.isEmpty()) {
+		if(this.isBottom()) {
 			return '∅'
 		}
 		if(this.isSingleton()) {
@@ -21,7 +21,7 @@ export class Interval {
 	}
 
 	// An interval is considered empty if it's of the form [T, T) or (T, T]
-	isEmpty(): boolean {
+	isBottom(): boolean {
 		return this.min.value === this.max.value && !(this.min.inclusive && this.max.inclusive)
 	}
 
@@ -35,7 +35,7 @@ export class Domain {
 	private readonly _intervals: Set<Interval>
 
 	private constructor(intervals: Interval[] = []) {
-		this._intervals = new Set(unifyOverlappingIntervals(intervals).filter(interval => !interval.isEmpty()))
+		this._intervals = new Set(unifyOverlappingIntervals(intervals).filter(interval => !interval.isBottom()))
 	}
 
 	static bottom(): Domain {

@@ -13,6 +13,7 @@ import { italic , bold } from '../../../util/ansi'
 import { splitAtEscapeSensitive } from '../../../util/args'
 import { guard } from '../../../util/assert'
 import { scripts } from '../../common/scripts-info'
+import fs from 'fs'
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter): string {
 	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`
@@ -70,6 +71,15 @@ const _commands: Record<string, ReplCommand> = {
 }
 let commandsInitialized = false
 
+function hasModule(path: string): boolean {
+	try {
+		require.resolve(path)
+		return true
+	} catch(e) {
+		return false
+	}
+}
+
 function commands() {
 	if(commandsInitialized) {
 		return _commands
@@ -83,8 +93,17 @@ function commands() {
 				script:       true,
 				usageExample: `:${script} --help`,
 				fn:           async(output, _s, remainingLine) => {
+					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
+					let path = `${__dirname}/${target}`
+					if(!hasModule(path)) {
+						path = `${__dirname}/../../${target}`
+						if(!hasModule(path)) {
+							output.stderr(`Could not find the target script ${target} in the current directory or two directories up.`)
+							return
+						}
+					}
 					await waitOnScript(
-						`${__dirname}/../../${target}`,
+						path,
 						splitAtEscapeSensitive(remainingLine),
 						stdio => stdioCaptureProcessor(stdio, msg => output.stdout(msg), msg => output.stderr(msg))
 					)

@@ -1,7 +1,7 @@
 import {guard} from '../../../util/assert'
 import {BinOpOperators} from './binop'
 import {addDomains, narrowDomain, NarrowKind, subtractDomains} from '../../domain'
-import {AINodeStore} from '../../ainode'
+import {AINode, AINodeStore} from '../../ainode'
 
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {
@@ -47,18 +47,23 @@ export const operators: BinOpOperators = {
 			case '>=': narrowKind = NarrowKind.Greater | NarrowKind.Equal; break
 			default: guard(false, `Unknown binary operator ${node.operator}`)
 		}
+		const calculateDomains = (lhs: AINode, rhs: AINode, narrowKind: NarrowKind, idSuffix = ''): AINode[] => {
+			return [{
+				nodeId:       lhs.nodeId + idSuffix,
+				expressionId: node.info.id,
+				domain:       narrowDomain(lhs.domain, rhs.domain, narrowKind),
+				astNode:      node,
+			}, {
+				nodeId:       rhs.nodeId + idSuffix,
+				expressionId: node.info.id,
+				domain:       narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b110 /* flip < and > but leave = */),
+				astNode:      node,
+			}]
+		}
 		// FIXME: We should not set the domain of the operands!
 		//        But if we would only set the domain of the whole expression, we could only narrow one operand.
-		return AINodeStore.from([{
-			nodeId:       lhs.nodeId,
-			expressionId: node.info.id,
-			domain:       narrowDomain(lhs.domain, rhs.domain, narrowKind),
-			astNode:      node,
-		}, {
-			nodeId:       rhs.nodeId,
-			expressionId: node.info.id,
-			domain:       narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b110 /* flip < and > but leave = */),
-			astNode:      node,
-		}])
+		const thenDomains = calculateDomains(lhs, rhs, narrowKind)
+		const elseDomains = calculateDomains(lhs, rhs, narrowKind ^ 0b111 /* flip everything */, '-else')
+		return AINodeStore.from(thenDomains.concat(elseDomains))
 	}
 }

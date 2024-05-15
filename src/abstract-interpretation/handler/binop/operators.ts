@@ -1,6 +1,6 @@
 import {guard} from '../../../util/assert'
 import {BinOpOperators} from './binop'
-import {addDomains, narrowDomain, NarrowKind, subtractDomains} from '../../domain'
+import {addDomains, Domain, narrowDomain, NarrowKind, subtractDomains} from '../../domain'
 import {AINode, AINodeStore} from '../../ainode'
 
 export const operators: BinOpOperators = {
@@ -48,15 +48,23 @@ export const operators: BinOpOperators = {
 			default: guard(false, `Unknown binary operator ${node.operator}`)
 		}
 		const calculateDomains = (lhs: AINode, rhs: AINode, narrowKind: NarrowKind, idSuffix = ''): AINode[] => {
+			const lhsNarrowed = narrowDomain(lhs.domain, rhs.domain, narrowKind)
+			const rhsNarrowed = narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b111 /* flip everything */)
 			return [{
+				nodeId:       node.info.id + idSuffix,
+				expressionId: node.info.id,
+				domain:       lhsNarrowed.isBottom() && rhsNarrowed.isBottom() ? Domain.bottom() : Domain.top(),
+				astNode:      node,
+			},
+			{
 				nodeId:       lhs.nodeId + idSuffix,
 				expressionId: node.info.id,
-				domain:       narrowDomain(lhs.domain, rhs.domain, narrowKind),
+				domain:       lhsNarrowed,
 				astNode:      node,
 			}, {
 				nodeId:       rhs.nodeId + idSuffix,
 				expressionId: node.info.id,
-				domain:       narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b110 /* flip < and > but leave = */),
+				domain:       rhsNarrowed,
 				astNode:      node,
 			}]
 		}

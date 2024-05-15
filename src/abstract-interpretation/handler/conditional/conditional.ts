@@ -27,6 +27,9 @@ export class Conditional extends Handler {
 		guard(this.then !== undefined, `No then-branch found for conditional ${this.node.info.id}`)
 
 		const result = AINodeStore.empty()
+		for(const conditionNode of this.condition) {
+			result.register(conditionNode)
+		}
 		for(const thenNode of this.then) {
 			result.register(thenNode)
 		}
@@ -61,9 +64,21 @@ export class Conditional extends Handler {
 			this.domains.updateWith(this.thenDomains)
 		} else if(this.then === undefined) {
 			this.then = aiNodes
+			const conditionDomain = this.thenDomains.get(this.node.condition.info.id)?.domain
+			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
+			if(conditionDomain.isBottom()) {
+				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
+				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			}
 			this.domains.updateWith(this.elseDomains)
 		} else if(this.else === undefined) {
 			this.else = aiNodes
+			const conditionDomain = this.thenDomains.get(this.node.condition.info.id)?.domain
+			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
+			if(conditionDomain.isBottom()) {
+				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
+				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			}
 		} else {
 			guard(false, `Conditional ${this.node.info.id} already has condition, then and else`)
 		}

@@ -13,7 +13,6 @@ import { italic , bold } from '../../../util/ansi'
 import { splitAtEscapeSensitive } from '../../../util/args'
 import { guard } from '../../../util/assert'
 import { scripts } from '../../common/scripts-info'
-import fs from 'fs'
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter): string {
 	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`

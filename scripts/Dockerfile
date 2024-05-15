@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:21.4-alpine3.19 AS builder
+FROM node:22.1-alpine3.19 AS builder
 
 WORKDIR /app
 
@@ -13,13 +13,13 @@ COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 RUN npm ci && npm run build
 
 
-FROM node:21.4-alpine3.19 AS flowR
+FROM node:22.1-alpine3.19 AS flowR
 
 LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
 
 WORKDIR /app
 
-RUN apk add --no-cache R
+RUN apk add --no-cache --update R
 
 COPY ./scripts/demo.R LICENSE /app/
 
@@ -32,6 +32,6 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist /app/dist
 
-RUN rm -rf /app/**/tsconfig.tsbuildinfo
+RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts
 
 ENTRYPOINT ["node", "/app/dist/cli/flowr.js"]

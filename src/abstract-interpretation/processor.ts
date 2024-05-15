@@ -38,15 +38,12 @@ export function getDfgChildrenOfType(node: NodeId, dfg: DataflowInformation, ...
 }
 
 function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore: AINodeStore): Domain {
-	const ids = getDfgChildrenOfType(node, dfg, EdgeType.Reads)
-	guard(ids !== undefined, `No DFG-Node found with ID ${node}`)
-	const domains: Domain[] = []
-	for(const id of ids) {
-		const domain = domainStore.get(id)?.domain
-		guard(domain !== undefined, `No domain found for ID ${id}`)
-		domains.push(domain)
-	}
-	return unifyDomains(domains)
+	guard(dfg.graph.hasNode(node, true), `No DFG-Node found with ID ${node}`)
+	const domains = getDfgChildrenOfType(node, dfg, EdgeType.Reads)
+		?.map(id => domainStore.get(id)?.domain)
+		.filter(domain => domain !== undefined)
+		.map(domain => domain as Domain)
+	return unifyDomains(domains ?? [])
 }
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {

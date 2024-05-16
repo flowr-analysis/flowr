@@ -3,9 +3,9 @@ import {assertUnreachable, guard} from '../util/assert'
 import {Domain, unifyDomains} from './domain'
 
 export interface AINode {
-	// The ID of the node that logically holds the domain (e.g. the lhs of an assignment)
+	/** The ID of the node that logically holds the domain (e.g. the lhs of an assignment) */
 	readonly nodeId:       NodeId
-	// The ID of the whole expression that the domain was calculated from (e.g. the whole assignment expression)
+	/** The ID of the whole expression that the domain was calculated from (e.g. the whole assignment expression) */
 	readonly expressionId: NodeId
 	readonly domain:       Domain
 	readonly astNode:      RNodeWithParent<ParentInformation>

@@ -47,17 +47,26 @@ export class Conditional extends Handler {
 			for(const node of aiNodes) {
 				const isElseNode = node.nodeId.endsWith('-else')
 				const cleanedId = isElseNode ? node.nodeId.slice(0, -5) : node.nodeId
-				for(const child of getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads) ?? []) {
+				const dfChildren = getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads)
+				if(dfChildren === undefined) {
 					if(isElseNode) {
-						this.elseDomains.register({
-							...node,
-							nodeId: child
-						}, RegisterBehavior.Overwrite)
+						this.elseDomains.register(node, RegisterBehavior.Overwrite)
 					} else {
-						this.thenDomains.register({
-							...node,
-							nodeId: child
-						}, RegisterBehavior.Overwrite)
+						this.thenDomains.register(node, RegisterBehavior.Overwrite)
+					}
+				} else {
+					for(const child of dfChildren) {
+						if(isElseNode) {
+							this.elseDomains.register({
+								...node,
+								nodeId: child
+							}, RegisterBehavior.Overwrite)
+						} else {
+							this.thenDomains.register({
+								...node,
+								nodeId: child
+							}, RegisterBehavior.Overwrite)
+						}
 					}
 				}
 			}
@@ -73,7 +82,7 @@ export class Conditional extends Handler {
 			this.domains.updateWith(this.elseDomains)
 		} else if(this.else === undefined) {
 			this.else = aiNodes
-			const conditionDomain = this.thenDomains.get(this.node.condition.info.id)?.domain
+			const conditionDomain = this.elseDomains.get(this.node.condition.info.id)?.domain
 			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
 			if(conditionDomain.isBottom()) {
 				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?

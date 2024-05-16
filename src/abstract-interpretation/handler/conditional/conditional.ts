@@ -50,7 +50,7 @@ export class Conditional extends Handler {
 				const dfChildren = getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads)
 				if(dfChildren === undefined) {
 					if(isElseNode) {
-						this.elseDomains.register(node, RegisterBehavior.Overwrite)
+						this.elseDomains.register({...node, nodeId: cleanedId}, RegisterBehavior.Overwrite)
 					} else {
 						this.thenDomains.register(node, RegisterBehavior.Overwrite)
 					}

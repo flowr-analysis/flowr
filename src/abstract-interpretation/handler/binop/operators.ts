@@ -68,8 +68,6 @@ export const operators: BinOpOperators = {
 				astNode:      node,
 			}]
 		}
-		// FIXME: We should not set the domain of the operands!
-		//        But if we would only set the domain of the whole expression, we could only narrow one operand.
 		const thenDomains = calculateDomains(lhs, rhs, narrowKind)
 		const elseDomains = calculateDomains(lhs, rhs, narrowKind ^ 0b111 /* flip everything */, '-else')
 		return AINodeStore.from(thenDomains.concat(elseDomains))

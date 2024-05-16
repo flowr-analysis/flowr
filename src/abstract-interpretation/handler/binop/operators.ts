@@ -49,7 +49,7 @@ export const operators: BinOpOperators = {
 		}
 		const calculateDomains = (lhs: AINode, rhs: AINode, narrowKind: NarrowKind, idSuffix = ''): AINode[] => {
 			const lhsNarrowed = narrowDomain(lhs.domain, rhs.domain, narrowKind)
-			const rhsNarrowed = narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b111 /* flip everything */)
+			const rhsNarrowed = narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b110 /* flip < and > but not = */)
 			return [{
 				nodeId:       node.info.id + idSuffix,
 				expressionId: node.info.id,

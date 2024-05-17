@@ -146,7 +146,7 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0
 		let commentChars = 0
 		let commentCharsNoWhitespace = 0
-		visitAst(this.normalizedAst.ast, t => {
+		visitAst(this.normalizedAst.ast, undefined, t => {
 			nodes++
 			if(t.type == RType.Comment) {
 				commentChars += t.lexeme.length

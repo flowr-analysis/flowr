@@ -138,7 +138,7 @@ export async function summarizeSlicerStats(
 			let numberOfNormalizedTokensNoComments = 0
 			let commentChars = 0
 			let commentCharsNoWhitespace = 0
-			visitAst(reParsed.ast, t => {
+			visitAst(reParsed.ast, undefined, t => {
 				numberOfNormalizedTokens++
 				if(t.type == RType.Comment) {
 					commentChars += t.lexeme.length

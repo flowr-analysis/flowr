@@ -44,6 +44,8 @@ export interface SummarizedPerSliceStats {
 	sliceCriteriaSizes: SummarizedMeasurement
 	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
 	reduction:          Reduction<SummarizedMeasurement>
+	/** reduction, but without taking into account comments and empty lines */
+	reductionNoFluff:   Reduction<SummarizedMeasurement>
 	failedToRepParse:   number
 	timesHitThreshold:  number
 	sliceSize: {
@@ -61,6 +63,8 @@ export interface UltimateSlicerStats {
 	/** sum */
 	timesHitThreshold:    number
 	reduction:            Reduction<SummarizedMeasurement>
+	/** reduction, but without taking into account comments and empty lines */
+	reductionNoFluff:     Reduction<SummarizedMeasurement>
 	input:                SlicerStatsInput<SummarizedMeasurement>
 	dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
 }

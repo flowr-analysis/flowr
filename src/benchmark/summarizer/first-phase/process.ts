@@ -51,7 +51,8 @@ function safeDivPercentage(a: number, b: number): number | undefined {
 
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
 	[k in keyof SliceSizeCollection]: number
-}): Reduction<number | undefined> {
+}, ignoreFluff: boolean): Reduction<number | undefined> {
+	// TODO actually ignore fluff if the bool above is true
 	return {
 		numberOfLines:                   safeDivPercentage(perSlice.lines, input.numberOfLines),
 		numberOfLinesNoAutoSelection:    safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
@@ -78,6 +79,7 @@ export async function summarizeSlicerStats(
 	const reParseShellSession = new RShell()
 
 	const reductions: Reduction<number | undefined>[] = []
+	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
 	let failedOutputs = 0
 
@@ -124,7 +126,7 @@ export async function summarizeSlicerStats(
 			const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
 			sliceSize.tokens.push(numberOfRTokens)
 
-			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, {
+			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
 				lines:                   lines,
 				characters:              output.length,
 				nonWhitespaceCharacters: nonWhitespace,
@@ -132,7 +134,9 @@ export async function summarizeSlicerStats(
 				tokens:                  numberOfRTokens,
 				normalizedTokens:        numberOfNormalizedTokens,
 				dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
-			}))
+			}
+			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false))
+			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
 			console.error(`      Code: ${output}\n`)
@@ -158,16 +162,9 @@ export async function summarizeSlicerStats(
 			measurements:       summarized,
 			failedToRepParse:   failedOutputs,
 			timesHitThreshold,
-			reduction:          {
-				numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
-				numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
-				numberOfCharacters:              summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
-				numberOfNonWhitespaceCharacters: summarizeMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters).filter(isNotUndefined)),
-				numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
-				numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
-				numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
-			},
-			sliceSize: {
+			reduction:          summarizeReductions(reductions),
+			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
+			sliceSize:          {
 				lines:                   summarizeMeasurement(sliceSize.lines),
 				characters:              summarizeMeasurement(sliceSize.characters),
 				nonWhitespaceCharacters: summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
@@ -192,7 +189,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total }
 }
 
-export function summarizeReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
+export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
 		numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
@@ -201,5 +198,17 @@ export function summarizeReductions(reductions: Reduction<SummarizedMeasurement>
 		numberOfLinesNoAutoSelection:    summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
 		numberOfNormalizedTokens:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
 		numberOfRTokens:                 summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens))
+	}
+}
+
+function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduction<SummarizedMeasurement> {
+	return {
+		numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
+		numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
+		numberOfCharacters:              summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
+		numberOfNonWhitespaceCharacters: summarizeMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters).filter(isNotUndefined)),
+		numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
+		numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
+		numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
 	}
 }

@@ -1,5 +1,5 @@
 import type { Reduction, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
-import { summarizeReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
+import { summarizeSummarizedReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
 import { DefaultMap } from '../../../util/defaultmap'
 import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
@@ -17,6 +17,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
 	const reductions: Reduction<SummarizedMeasurement>[] = []
+	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = []
 	const inputs: SlicerStatsInput[] = []
 	const dataflows: SlicerStatsDataflow[] = []
 	let failedToRepParse = 0
@@ -31,6 +32,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			perSliceMeasurements.get(k).push(v)
 		}
 		reductions.push(stat.perSliceMeasurements.reduction)
+		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff)
 		inputs.push(stat.input)
 		dataflows.push(stat.dataflow)
 		failedToRepParse += stat.perSliceMeasurements.failedToRepParse
@@ -49,8 +51,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		),
 		failedToRepParse,
 		timesHitThreshold,
-		reduction: summarizeReductions(reductions),
-		input:     {
+		reduction:        summarizeSummarizedReductions(reductions),
+		reductionNoFluff: summarizeSummarizedReductions(reductionsNoFluff),
+		input:            {
 			numberOfLines:                   summarizeMeasurement(inputs.map(i => i.numberOfLines)),
 			numberOfCharacters:              summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
 			numberOfNonWhitespaceCharacters: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
@@ -77,7 +80,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		// average out / summarize other measurements
 		commonMeasurements:   new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
 		perSliceMeasurements: new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
-		reduction:            summarizeReductions(stats.map(s => s.reduction)),
+		reduction:            summarizeSummarizedReductions(stats.map(s => s.reduction)),
+		reductionNoFluff:     summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
 		input:                {
 			numberOfLines:                   summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
 			numberOfCharacters:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
@@ -113,6 +117,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 				sliceCriteriaSizes: got.summarize.perSliceMeasurements.sliceCriteriaSizes,
 				measurements:       new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
 				reduction:          got.summarize.perSliceMeasurements.reduction,
+				reductionNoFluff:   got.summarize.perSliceMeasurements.reductionNoFluff,
 				timesHitThreshold:  got.summarize.perSliceMeasurements.timesHitThreshold,
 				failedToRepParse:   got.summarize.perSliceMeasurements.failedToRepParse,
 				sliceSize:          got.summarize.perSliceMeasurements.sliceSize
@@ -133,6 +138,7 @@ export function processNextUltimateSummary(line: Buffer, allSummarized: Ultimate
 			failedToRepParse:     got.summarize.failedToRepParse,
 			timesHitThreshold:    got.summarize.timesHitThreshold,
 			reduction:            got.summarize.reduction,
+			reductionNoFluff:     got.summarize.reductionNoFluff,
 			input:                got.summarize.input,
 			dataflow:             got.summarize.dataflow,
 		}

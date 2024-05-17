@@ -3,7 +3,7 @@
  * @module
  */
 import type { ElapsedTime, PerSliceMeasurements } from './stats'
-import type { SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
+import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 import { guard } from '../../util/assert'
 import type { SummarizedMeasurement } from '../../util/summarizer'
 
@@ -142,14 +142,8 @@ Slice summary for:
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
   Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
   Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
-  Reductions (reduced by x%):   
-    Number of lines:                     ${formatSummarizedMeasure(stats.reduction.numberOfLines, asPercentage)}
-    Number of lines no auto:             ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection, asPercentage)}
-    Number of characters:                ${formatSummarizedMeasure(stats.reduction.numberOfCharacters, asPercentage)}
-    Number of non whitespace characters: ${formatSummarizedMeasure(stats.reduction.numberOfNonWhitespaceCharacters, asPercentage)}
-    Number of R tokens:                  ${formatSummarizedMeasure(stats.reduction.numberOfRTokens, asPercentage)}
-    Normalized R tokens:                 ${formatSummarizedMeasure(stats.reduction.numberOfNormalizedTokens, asPercentage)}
-    Number of dataflow nodes:            ${formatSummarizedMeasure(stats.reduction.numberOfDataflowNodes, asPercentage)}
+${reduction2String('Reductions', stats.reduction)}
+${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}
 
 Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
@@ -166,4 +160,16 @@ Dataflow:
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
+}
+
+function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {
+	return `
+  ${title} (reduced by x%):   
+    Number of lines:                     ${formatSummarizedMeasure(reduction.numberOfLines, asPercentage)}
+    Number of lines no auto:             ${formatSummarizedMeasure(reduction.numberOfLinesNoAutoSelection, asPercentage)}
+    Number of characters:                ${formatSummarizedMeasure(reduction.numberOfCharacters, asPercentage)}
+    Number of non whitespace characters: ${formatSummarizedMeasure(reduction.numberOfNonWhitespaceCharacters, asPercentage)}
+    Number of R tokens:                  ${formatSummarizedMeasure(reduction.numberOfRTokens, asPercentage)}
+    Normalized R tokens:                 ${formatSummarizedMeasure(reduction.numberOfNormalizedTokens, asPercentage)}
+    Number of dataflow nodes:            ${formatSummarizedMeasure(reduction.numberOfDataflowNodes, asPercentage)}`
 }

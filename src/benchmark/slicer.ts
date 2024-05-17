@@ -140,12 +140,14 @@ export class BenchmarkSlicer {
 			}
 		}
 
+		const split = loadedContent.split('\n')
 		this.stats = {
 			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
-				numberOfLines:                   loadedContent.split('\n').length,
+				numberOfLines:                   split.length,
+				numberOfNonEmptyLines:           split.filter(l => l.trim().length > 0).length,
 				numberOfCharacters:              loadedContent.length,
 				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
 				numberOfRTokens:                 numberOfRTokens,

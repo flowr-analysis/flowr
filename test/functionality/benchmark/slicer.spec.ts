@@ -27,6 +27,7 @@ describe('Benchmark Slicer', () => {
 
 			assert.deepStrictEqual(stats.input, {
 				numberOfLines:                   1,
+				numberOfNonEmptyLines:           1,
 				numberOfCharacters:              6,
 				numberOfNonWhitespaceCharacters: 4,
 				numberOfRTokens:                 6,
@@ -49,6 +50,7 @@ describe('Benchmark Slicer', () => {
 				dataflowNodes:           { min: 3, max: 3, median: 3, mean: 3, std: 0, total: 3 },
 				tokens:                  { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
 				lines:                   { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
+				nonEmptyLines:           { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
 				autoSelected:            { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
 			}, `sliced only once ${statInfo}`)
 
@@ -82,6 +84,7 @@ cat(d)`
 
 			assert.deepStrictEqual(stats.input, {
 				numberOfLines:                   7,
+				numberOfNonEmptyLines:           7,
 				numberOfCharacters:              63,
 				numberOfNonWhitespaceCharacters: 44,
 				// checked manually
@@ -100,6 +103,7 @@ cat(d)`
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
 				lines:                   { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
+				nonEmptyLines:           { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
 				characters:              { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
 				nonWhitespaceCharacters: { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
 				tokens:                  { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },

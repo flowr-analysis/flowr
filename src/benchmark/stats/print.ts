@@ -100,6 +100,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
   Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
     Number of lines:                     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
+    Number of non-empty lines:           ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonEmptyLines)}
     Number of characters:                ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.characters)}
     Number of non whitespace characters: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonWhitespaceCharacters)}
     Number of auto selected:             ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.autoSelected)}
@@ -115,6 +116,7 @@ Total:                        ${print(stats.commonMeasurements, 'total')}
 
 Input:
   Number of lines:                     ${pad(stats.input.numberOfLines)}
+  Number of non empty lines:           ${pad(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${pad(stats.input.numberOfCharacters)}
   Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
   Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
@@ -150,6 +152,7 @@ Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurem
 
 Input:
   Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
+  Number of non empty lines:           ${formatSummarizedMeasure(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
   Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
   Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}

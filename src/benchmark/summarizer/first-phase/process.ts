@@ -52,10 +52,11 @@ function safeDivPercentage(a: number, b: number): number | undefined {
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
 	[k in keyof SliceSizeCollection]: number
 }, ignoreFluff: boolean): Reduction<number | undefined> {
-	// TODO actually ignore fluff if the bool above is true
+	const perSliceLines = ignoreFluff ? perSlice.nonEmptyLines : perSlice.lines
+	const inputLines = ignoreFluff ? input.numberOfNonEmptyLines : input.numberOfLines
 	return {
-		numberOfLines:                   safeDivPercentage(perSlice.lines, input.numberOfLines),
-		numberOfLinesNoAutoSelection:    safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
+		numberOfLines:                   safeDivPercentage(perSliceLines, inputLines),
+		numberOfLinesNoAutoSelection:    safeDivPercentage(perSliceLines - perSlice.autoSelected, inputLines),
 		numberOfCharacters:              safeDivPercentage(perSlice.characters, input.numberOfCharacters),
 		numberOfNonWhitespaceCharacters: safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
 		numberOfRTokens:                 safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
@@ -85,6 +86,7 @@ export async function summarizeSlicerStats(
 
 	const sliceSize: SliceSizeCollection = {
 		lines:                   [],
+		nonEmptyLines:           [],
 		autoSelected:            [],
 		characters:              [],
 		nonWhitespaceCharacters: [],
@@ -103,8 +105,11 @@ export async function summarizeSlicerStats(
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0
 		const { code: output, autoSelected } = perSliceStat.reconstructedCode
 		sliceSize.autoSelected.push(autoSelected)
-		const lines = output.split('\n').length
+		const split = output.split('\n')
+		const lines = split.length
+		const nonEmptyLines = split.filter(l => l.trim().length > 0).length
 		sliceSize.lines.push(lines)
+		sliceSize.nonEmptyLines.push(nonEmptyLines)
 		sliceSize.characters.push(output.length)
 		const nonWhitespace = withoutWhitespace(output).length
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace)
@@ -128,6 +133,7 @@ export async function summarizeSlicerStats(
 
 			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
 				lines:                   lines,
+				nonEmptyLines:           nonEmptyLines,
 				characters:              output.length,
 				nonWhitespaceCharacters: nonWhitespace,
 				autoSelected:            autoSelected,
@@ -166,6 +172,7 @@ export async function summarizeSlicerStats(
 			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
 			sliceSize:          {
 				lines:                   summarizeMeasurement(sliceSize.lines),
+				nonEmptyLines:           summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:              summarizeMeasurement(sliceSize.characters),
 				nonWhitespaceCharacters: summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
 				autoSelected:            summarizeMeasurement(sliceSize.autoSelected),

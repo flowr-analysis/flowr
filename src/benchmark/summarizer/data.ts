@@ -10,6 +10,7 @@ import type {
 
 export interface SliceSizeCollection {
 	lines:                   number[]
+	nonEmptyLines:           number[]
 	characters:              number[]
 	nonWhitespaceCharacters: number[]
 	/** like library statements during reconstruction */

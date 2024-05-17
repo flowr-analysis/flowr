@@ -55,6 +55,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		reductionNoFluff: summarizeSummarizedReductions(reductionsNoFluff),
 		input:            {
 			numberOfLines:                   summarizeMeasurement(inputs.map(i => i.numberOfLines)),
+			numberOfNonEmptyLines:           summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
 			numberOfCharacters:              summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
 			numberOfNonWhitespaceCharacters: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
 			numberOfRTokens:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
@@ -84,6 +85,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		reductionNoFluff:     summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
 		input:                {
 			numberOfLines:                   summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
+			numberOfNonEmptyLines:           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
 			numberOfCharacters:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
 			numberOfNonWhitespaceCharacters: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
 			numberOfRTokens:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),

@@ -120,7 +120,9 @@ Input:
   Number of lines:                     ${pad(stats.input.numberOfLines)}
   Number of non empty lines:           ${pad(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${pad(stats.input.numberOfCharacters)}
+  Number of characters (w/o comments): ${pad(stats.input.numberOfCharactersNoComments)}
   Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${pad(stats.input.numberOfNonWhitespaceCharactersNoComments)}
   Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
   Number of tokens (w/o comments):     ${pad(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${pad(stats.input.numberOfNormalizedTokens)}
@@ -158,7 +160,9 @@ Input:
   Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
   Number of non empty lines:           ${formatSummarizedMeasure(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
+  Number of characters (w/o comments): ${formatSummarizedMeasure(stats.input.numberOfCharactersNoComments)}
   Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharactersNoComments)}
   Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
   Number of tokens (w/o comments):     ${formatSummarizedMeasure(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}

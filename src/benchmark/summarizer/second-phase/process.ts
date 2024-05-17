@@ -54,14 +54,16 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		reduction:        summarizeSummarizedReductions(reductions),
 		reductionNoFluff: summarizeSummarizedReductions(reductionsNoFluff),
 		input:            {
-			numberOfLines:                      summarizeMeasurement(inputs.map(i => i.numberOfLines)),
-			numberOfNonEmptyLines:              summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
-			numberOfCharacters:                 summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
-			numberOfNonWhitespaceCharacters:    summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
-			numberOfRTokens:                    summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
-			numberOfRTokensNoComments:          summarizeMeasurement(inputs.map(i => i.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:           summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments: summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokensNoComments))
+			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
+			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
+			numberOfCharacters:                        summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
+			numberOfCharactersNoComments:              summarizeMeasurement(inputs.map(i => i.numberOfCharactersNoComments)),
+			numberOfNonWhitespaceCharacters:           summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
+			numberOfNonWhitespaceCharactersNoComments: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharactersNoComments)),
+			numberOfRTokens:                           summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
+			numberOfRTokensNoComments:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokensNoComments)),
+			numberOfNormalizedTokens:                  summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens)),
+			numberOfNormalizedTokensNoComments:        summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokensNoComments))
 		},
 		dataflow: {
 			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
@@ -86,14 +88,16 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		reduction:            summarizeSummarizedReductions(stats.map(s => s.reduction)),
 		reductionNoFluff:     summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
 		input:                {
-			numberOfLines:                      summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
-			numberOfNonEmptyLines:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
-			numberOfCharacters:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
-			numberOfNonWhitespaceCharacters:    summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
-			numberOfRTokens:                    summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),
-			numberOfRTokensNoComments:          summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokensNoComments)),
-			numberOfNormalizedTokens:           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokens)),
-			numberOfNormalizedTokensNoComments: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokensNoComments))
+			numberOfLines:                             summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
+			numberOfNonEmptyLines:                     summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
+			numberOfCharacters:                        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
+			numberOfCharactersNoComments:              summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharactersNoComments)),
+			numberOfNonWhitespaceCharacters:           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharacters)),
+			numberOfNonWhitespaceCharactersNoComments: summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonWhitespaceCharactersNoComments)),
+			numberOfRTokens:                           summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokens)),
+			numberOfRTokensNoComments:                 summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfRTokensNoComments)),
+			numberOfNormalizedTokens:                  summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokens)),
+			numberOfNormalizedTokensNoComments:        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNormalizedTokensNoComments))
 		},
 		dataflow: {
 			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),

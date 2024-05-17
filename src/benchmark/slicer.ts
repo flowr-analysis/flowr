@@ -28,11 +28,11 @@ import { RShell } from '../r-bridge/shell'
 import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines'
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever'
-import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect'
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline'
 import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -142,20 +142,38 @@ export class BenchmarkSlicer {
 			}
 		}
 
+		let nodes = 0
+		let nodesNoComments = 0
+		let commentChars = 0
+		let commentCharsNoWhitespace = 0
+		visitAst(this.normalizedAst.ast, t => {
+			nodes++
+			if(t.type == RType.Comment) {
+				commentChars += t.lexeme.length
+				commentCharsNoWhitespace += withoutWhitespace(t.lexeme).length
+			} else {
+				nodesNoComments++
+			}
+			return false
+		})
+
 		const split = loadedContent.split('\n')
+		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
 			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
-				numberOfLines:                      split.length,
-				numberOfNonEmptyLines:              split.filter(l => l.trim().length > 0).length,
-				numberOfCharacters:                 loadedContent.length,
-				numberOfNonWhitespaceCharacters:    withoutWhitespace(loadedContent).length,
-				numberOfRTokens:                    numberOfRTokens,
-				numberOfRTokensNoComments:          numberOfRTokensNoComments,
-				numberOfNormalizedTokens:           [...collectAllIds(this.normalizedAst.ast)].length,
-				numberOfNormalizedTokensNoComments: [...collectAllIds(this.normalizedAst.ast, undefined, n => n.type != RType.Comment)].length
+				numberOfLines:                             split.length,
+				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
+				numberOfCharacters:                        loadedContent.length,
+				numberOfCharactersNoComments:              loadedContent.length - commentChars,
+				numberOfNonWhitespaceCharacters:           nonWhitespace,
+				numberOfNonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				numberOfRTokens:                           numberOfRTokens,
+				numberOfRTokensNoComments:                 numberOfRTokensNoComments,
+				numberOfNormalizedTokens:                  nodes,
+				numberOfNormalizedTokensNoComments:        nodesNoComments
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,

@@ -9,17 +9,19 @@ import type {
 
 
 export interface SliceSizeCollection {
-	lines:                      number[]
-	nonEmptyLines:              number[]
-	characters:                 number[]
-	nonWhitespaceCharacters:    number[]
+	lines:                             number[]
+	nonEmptyLines:                     number[]
+	characters:                        number[]
+	charactersNoComments:              number[]
+	nonWhitespaceCharacters:           number[]
+	nonWhitespaceCharactersNoComments: number[]
 	/** like library statements during reconstruction */
-	autoSelected:               number[]
-	dataflowNodes:              number[]
-	tokens:                     number[]
-	tokensNoComments:           number[]
-	normalizedTokens:           number[]
-	normalizedTokensNoComments: number[]
+	autoSelected:                      number[]
+	dataflowNodes:                     number[]
+	tokens:                            number[]
+	tokensNoComments:                  number[]
+	normalizedTokens:                  number[]
+	normalizedTokensNoComments:        number[]
 }
 
 /**

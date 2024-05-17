@@ -56,11 +56,15 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 	const perSliceLines = ignoreFluff ? perSlice.nonEmptyLines : perSlice.lines
 	const inputLines = ignoreFluff ? input.numberOfNonEmptyLines : input.numberOfLines
 	return {
-		numberOfLines:                   safeDivPercentage(perSliceLines, inputLines),
-		numberOfLinesNoAutoSelection:    safeDivPercentage(perSliceLines - perSlice.autoSelected, inputLines),
-		numberOfCharacters:              safeDivPercentage(perSlice.characters, input.numberOfCharacters),
-		numberOfNonWhitespaceCharacters: safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
-		numberOfRTokens:                 ignoreFluff ?
+		numberOfLines:                safeDivPercentage(perSliceLines, inputLines),
+		numberOfLinesNoAutoSelection: safeDivPercentage(perSliceLines - perSlice.autoSelected, inputLines),
+		numberOfCharacters:           ignoreFluff ?
+			safeDivPercentage(perSlice.charactersNoComments, input.numberOfCharactersNoComments) :
+			safeDivPercentage(perSlice.characters, input.numberOfCharacters),
+		numberOfNonWhitespaceCharacters: ignoreFluff ?
+			safeDivPercentage(perSlice.nonWhitespaceCharactersNoComments, input.numberOfNonWhitespaceCharactersNoComments) :
+			safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
+		numberOfRTokens: ignoreFluff ?
 			safeDivPercentage(perSlice.tokensNoComments, input.numberOfRTokensNoComments) :
 			safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
 		numberOfNormalizedTokens: ignoreFluff ?
@@ -90,16 +94,18 @@ export async function summarizeSlicerStats(
 	let failedOutputs = 0
 
 	const sliceSize: SliceSizeCollection = {
-		lines:                      [],
-		nonEmptyLines:              [],
-		autoSelected:               [],
-		characters:                 [],
-		nonWhitespaceCharacters:    [],
-		tokens:                     [],
-		tokensNoComments:           [],
-		normalizedTokens:           [],
-		normalizedTokensNoComments: [],
-		dataflowNodes:              []
+		lines:                             [],
+		nonEmptyLines:                     [],
+		autoSelected:                      [],
+		characters:                        [],
+		charactersNoComments:              [],
+		nonWhitespaceCharacters:           [],
+		nonWhitespaceCharactersNoComments: [],
+		tokens:                            [],
+		tokensNoComments:                  [],
+		normalizedTokens:                  [],
+		normalizedTokensNoComments:        [],
+		dataflowNodes:                     []
 	}
 
 	let timesHitThreshold = 0
@@ -130,15 +136,22 @@ export async function summarizeSlicerStats(
 			)
 			let numberOfNormalizedTokens = 0
 			let numberOfNormalizedTokensNoComments = 0
+			let commentChars = 0
+			let commentCharsNoWhitespace = 0
 			visitAst(reParsed.ast, t => {
 				numberOfNormalizedTokens++
-				if(t.type != RType.Comment) {
+				if(t.type == RType.Comment) {
+					commentChars += t.lexeme.length
+					commentCharsNoWhitespace += withoutWhitespace(t.lexeme).length
+				} else {
 					numberOfNormalizedTokensNoComments++
 				}
 				return false
 			})
 			sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
 			sliceSize.normalizedTokensNoComments.push(numberOfNormalizedTokensNoComments)
+			sliceSize.charactersNoComments.push(output.length - commentChars)
+			sliceSize.nonWhitespaceCharactersNoComments.push(nonWhitespace - commentCharsNoWhitespace)
 
 			const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
 			sliceSize.tokens.push(numberOfRTokens)
@@ -146,16 +159,18 @@ export async function summarizeSlicerStats(
 			sliceSize.tokensNoComments.push(numberOfRTokensNoComments)
 
 			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
-				lines:                      lines,
-				nonEmptyLines:              nonEmptyLines,
-				characters:                 output.length,
-				nonWhitespaceCharacters:    nonWhitespace,
-				autoSelected:               autoSelected,
-				tokens:                     numberOfRTokens,
-				tokensNoComments:           numberOfRTokensNoComments,
-				normalizedTokens:           numberOfNormalizedTokens,
-				normalizedTokensNoComments: numberOfNormalizedTokensNoComments,
-				dataflowNodes:              perSliceStat.numberOfDataflowNodesSliced
+				lines:                             lines,
+				nonEmptyLines:                     nonEmptyLines,
+				characters:                        output.length,
+				charactersNoComments:              output.length - commentChars,
+				nonWhitespaceCharacters:           nonWhitespace,
+				nonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				autoSelected:                      autoSelected,
+				tokens:                            numberOfRTokens,
+				tokensNoComments:                  numberOfRTokensNoComments,
+				normalizedTokens:                  numberOfNormalizedTokens,
+				normalizedTokensNoComments:        numberOfNormalizedTokensNoComments,
+				dataflowNodes:                     perSliceStat.numberOfDataflowNodesSliced
 			}
 			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false))
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
@@ -187,16 +202,18 @@ export async function summarizeSlicerStats(
 			reduction:          summarizeReductions(reductions),
 			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
 			sliceSize:          {
-				lines:                      summarizeMeasurement(sliceSize.lines),
-				nonEmptyLines:              summarizeMeasurement(sliceSize.nonEmptyLines),
-				characters:                 summarizeMeasurement(sliceSize.characters),
-				nonWhitespaceCharacters:    summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
-				autoSelected:               summarizeMeasurement(sliceSize.autoSelected),
-				tokens:                     summarizeMeasurement(sliceSize.tokens),
-				tokensNoComments:           summarizeMeasurement(sliceSize.tokensNoComments),
-				normalizedTokens:           summarizeMeasurement(sliceSize.normalizedTokens),
-				normalizedTokensNoComments: summarizeMeasurement(sliceSize.normalizedTokensNoComments),
-				dataflowNodes:              summarizeMeasurement(sliceSize.dataflowNodes)
+				lines:                             summarizeMeasurement(sliceSize.lines),
+				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
+				characters:                        summarizeMeasurement(sliceSize.characters),
+				charactersNoComments:              summarizeMeasurement(sliceSize.charactersNoComments),
+				nonWhitespaceCharacters:           summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
+				nonWhitespaceCharactersNoComments: summarizeMeasurement(sliceSize.nonWhitespaceCharactersNoComments),
+				autoSelected:                      summarizeMeasurement(sliceSize.autoSelected),
+				tokens:                            summarizeMeasurement(sliceSize.tokens),
+				tokensNoComments:                  summarizeMeasurement(sliceSize.tokensNoComments),
+				normalizedTokens:                  summarizeMeasurement(sliceSize.normalizedTokens),
+				normalizedTokensNoComments:        summarizeMeasurement(sliceSize.normalizedTokensNoComments),
+				dataflowNodes:                     summarizeMeasurement(sliceSize.dataflowNodes)
 			}
 		}
 	}

@@ -26,14 +26,16 @@ describe('Benchmark Slicer', () => {
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
 			assert.deepStrictEqual(stats.input, {
-				numberOfLines:                      1,
-				numberOfNonEmptyLines:              1,
-				numberOfCharacters:                 6,
-				numberOfNonWhitespaceCharacters:    4,
-				numberOfRTokens:                    6,
-				numberOfRTokensNoComments:          6,
-				numberOfNormalizedTokens:           4,  // root expression list, assignment, lhs, rhs
-				numberOfNormalizedTokensNoComments: 4
+				numberOfLines:                             1,
+				numberOfNonEmptyLines:                     1,
+				numberOfCharacters:                        6,
+				numberOfCharactersNoComments:              6,
+				numberOfNonWhitespaceCharacters:           4,
+				numberOfNonWhitespaceCharactersNoComments: 4,
+				numberOfRTokens:                           6,
+				numberOfRTokensNoComments:                 6,
+				numberOfNormalizedTokens:                  4,  // root expression list, assignment, lhs, rhs
+				numberOfNormalizedTokensNoComments:        4
 			}, statInfo)
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
@@ -46,16 +48,18 @@ describe('Benchmark Slicer', () => {
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
-				normalizedTokens:           { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
-				normalizedTokensNoComments: { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
-				characters:                 { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
-				nonWhitespaceCharacters:    { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
-				dataflowNodes:              { min: 3, max: 3, median: 3, mean: 3, std: 0, total: 3 },
-				tokens:                     { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
-				tokensNoComments:           { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
-				lines:                      { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
-				nonEmptyLines:              { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
-				autoSelected:               { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
+				normalizedTokens:                  { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
+				normalizedTokensNoComments:        { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
+				characters:                        { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
+				charactersNoComments:              { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
+				nonWhitespaceCharacters:           { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
+				nonWhitespaceCharactersNoComments: { min: 4, max: 4, median: 4, mean: 4, std: 0, total: 4 },
+				dataflowNodes:                     { min: 3, max: 3, median: 3, mean: 3, std: 0, total: 3 },
+				tokens:                            { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
+				tokensNoComments:                  { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
+				lines:                             { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
+				nonEmptyLines:                     { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
+				autoSelected:                      { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
 			}, `sliced only once ${statInfo}`)
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {
@@ -87,15 +91,17 @@ cat(d)`
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
 			assert.deepStrictEqual(stats.input, {
-				numberOfLines:                      7,
-				numberOfNonEmptyLines:              7,
-				numberOfCharacters:                 63,
-				numberOfNonWhitespaceCharacters:    44,
+				numberOfLines:                             7,
+				numberOfNonEmptyLines:                     7,
+				numberOfCharacters:                        63,
+				numberOfCharactersNoComments:              63,
+				numberOfNonWhitespaceCharacters:           44,
+				numberOfNonWhitespaceCharactersNoComments: 44,
 				// checked manually
-				numberOfRTokens:                    56,
-				numberOfRTokensNoComments:          56,
-				numberOfNormalizedTokens:           31,
-				numberOfNormalizedTokensNoComments: 31
+				numberOfRTokens:                           56,
+				numberOfRTokensNoComments:                 56,
+				numberOfNormalizedTokens:                  31,
+				numberOfNormalizedTokensNoComments:        31
 			}, statInfo)
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
@@ -108,16 +114,18 @@ cat(d)`
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
-				lines:                      { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
-				nonEmptyLines:              { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
-				characters:                 { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
-				nonWhitespaceCharacters:    { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
-				tokens:                     { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
-				tokensNoComments:           { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
-				normalizedTokens:           { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
-				normalizedTokensNoComments: { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
-				dataflowNodes:              { min: 3,  max: 14, median: 6,  mean: (3+6+14)/3,         std: 4.642796092394707,  total: 23 },
-				autoSelected:               { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
+				lines:                             { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
+				nonEmptyLines:                     { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
+				characters:                        { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
+				charactersNoComments:              { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
+				nonWhitespaceCharacters:           { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
+				nonWhitespaceCharactersNoComments: { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
+				tokens:                            { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
+				tokensNoComments:                  { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
+				normalizedTokens:                  { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
+				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
+				dataflowNodes:                     { min: 3,  max: 14, median: 6,  mean: (3+6+14)/3,         std: 4.642796092394707,  total: 23 },
+				autoSelected:                      { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
 			}, statInfo)
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {

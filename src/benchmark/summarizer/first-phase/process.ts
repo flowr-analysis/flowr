@@ -19,6 +19,7 @@ import type { SlicingCriteria } from '../../../slicing/criterion/parse'
 import { RShell } from '../../../r-bridge/shell'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever'
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type'
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined
@@ -59,9 +60,13 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 		numberOfLinesNoAutoSelection:    safeDivPercentage(perSliceLines - perSlice.autoSelected, inputLines),
 		numberOfCharacters:              safeDivPercentage(perSlice.characters, input.numberOfCharacters),
 		numberOfNonWhitespaceCharacters: safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
-		numberOfRTokens:                 safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
-		numberOfNormalizedTokens:        safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
-		numberOfDataflowNodes:           safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
+		numberOfRTokens:                 ignoreFluff ?
+			safeDivPercentage(perSlice.tokensNoComments, input.numberOfRTokensNoComments) :
+			safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
+		numberOfNormalizedTokens: ignoreFluff ?
+			safeDivPercentage(perSlice.normalizedTokensNoComments, input.numberOfNormalizedTokensNoComments) :
+			safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+		numberOfDataflowNodes: safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
 	}
 }
 
@@ -85,14 +90,16 @@ export async function summarizeSlicerStats(
 	let failedOutputs = 0
 
 	const sliceSize: SliceSizeCollection = {
-		lines:                   [],
-		nonEmptyLines:           [],
-		autoSelected:            [],
-		characters:              [],
-		nonWhitespaceCharacters: [],
-		tokens:                  [],
-		normalizedTokens:        [],
-		dataflowNodes:           []
+		lines:                      [],
+		nonEmptyLines:              [],
+		autoSelected:               [],
+		characters:                 [],
+		nonWhitespaceCharacters:    [],
+		tokens:                     [],
+		tokensNoComments:           [],
+		normalizedTokens:           [],
+		normalizedTokensNoComments: [],
+		dataflowNodes:              []
 	}
 
 	let timesHitThreshold = 0
@@ -122,24 +129,33 @@ export async function summarizeSlicerStats(
 				reParseShellSession
 			)
 			let numberOfNormalizedTokens = 0
-			visitAst(reParsed.ast, _ => {
+			let numberOfNormalizedTokensNoComments = 0
+			visitAst(reParsed.ast, t => {
 				numberOfNormalizedTokens++
+				if(t.type != RType.Comment) {
+					numberOfNormalizedTokensNoComments++
+				}
 				return false
 			})
 			sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
+			sliceSize.normalizedTokensNoComments.push(numberOfNormalizedTokensNoComments)
 
 			const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
 			sliceSize.tokens.push(numberOfRTokens)
+			const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(reParseShellSession, true)
+			sliceSize.tokensNoComments.push(numberOfRTokensNoComments)
 
 			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
-				lines:                   lines,
-				nonEmptyLines:           nonEmptyLines,
-				characters:              output.length,
-				nonWhitespaceCharacters: nonWhitespace,
-				autoSelected:            autoSelected,
-				tokens:                  numberOfRTokens,
-				normalizedTokens:        numberOfNormalizedTokens,
-				dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
+				lines:                      lines,
+				nonEmptyLines:              nonEmptyLines,
+				characters:                 output.length,
+				nonWhitespaceCharacters:    nonWhitespace,
+				autoSelected:               autoSelected,
+				tokens:                     numberOfRTokens,
+				tokensNoComments:           numberOfRTokensNoComments,
+				normalizedTokens:           numberOfNormalizedTokens,
+				normalizedTokensNoComments: numberOfNormalizedTokensNoComments,
+				dataflowNodes:              perSliceStat.numberOfDataflowNodesSliced
 			}
 			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false))
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
@@ -171,14 +187,16 @@ export async function summarizeSlicerStats(
 			reduction:          summarizeReductions(reductions),
 			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
 			sliceSize:          {
-				lines:                   summarizeMeasurement(sliceSize.lines),
-				nonEmptyLines:           summarizeMeasurement(sliceSize.nonEmptyLines),
-				characters:              summarizeMeasurement(sliceSize.characters),
-				nonWhitespaceCharacters: summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
-				autoSelected:            summarizeMeasurement(sliceSize.autoSelected),
-				tokens:                  summarizeMeasurement(sliceSize.tokens),
-				normalizedTokens:        summarizeMeasurement(sliceSize.normalizedTokens),
-				dataflowNodes:           summarizeMeasurement(sliceSize.dataflowNodes)
+				lines:                      summarizeMeasurement(sliceSize.lines),
+				nonEmptyLines:              summarizeMeasurement(sliceSize.nonEmptyLines),
+				characters:                 summarizeMeasurement(sliceSize.characters),
+				nonWhitespaceCharacters:    summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
+				autoSelected:               summarizeMeasurement(sliceSize.autoSelected),
+				tokens:                     summarizeMeasurement(sliceSize.tokens),
+				tokensNoComments:           summarizeMeasurement(sliceSize.tokensNoComments),
+				normalizedTokens:           summarizeMeasurement(sliceSize.normalizedTokens),
+				normalizedTokensNoComments: summarizeMeasurement(sliceSize.normalizedTokensNoComments),
+				dataflowNodes:              summarizeMeasurement(sliceSize.dataflowNodes)
 			}
 		}
 	}

@@ -32,6 +32,7 @@ import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect'
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline'
 import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -120,6 +121,7 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
 		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell)
+		const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.shell, true)
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization')
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization')
@@ -146,12 +148,14 @@ export class BenchmarkSlicer {
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
-				numberOfLines:                   split.length,
-				numberOfNonEmptyLines:           split.filter(l => l.trim().length > 0).length,
-				numberOfCharacters:              loadedContent.length,
-				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
-				numberOfRTokens:                 numberOfRTokens,
-				numberOfNormalizedTokens:        [...collectAllIds(this.normalizedAst.ast)].length
+				numberOfLines:                      split.length,
+				numberOfNonEmptyLines:              split.filter(l => l.trim().length > 0).length,
+				numberOfCharacters:                 loadedContent.length,
+				numberOfNonWhitespaceCharacters:    withoutWhitespace(loadedContent).length,
+				numberOfRTokens:                    numberOfRTokens,
+				numberOfRTokensNoComments:          numberOfRTokensNoComments,
+				numberOfNormalizedTokens:           [...collectAllIds(this.normalizedAst.ast)].length,
+				numberOfNormalizedTokensNoComments: [...collectAllIds(this.normalizedAst.ast, undefined, n => n.type != RType.Comment)].length
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,

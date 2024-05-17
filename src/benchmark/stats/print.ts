@@ -105,7 +105,9 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
     Number of non whitespace characters: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonWhitespaceCharacters)}
     Number of auto selected:             ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.autoSelected)}
     Number of R tokens:                  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokens)}
+    Number of R tokens (w/o comments):   ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokensNoComments)}
     Normalized R tokens:                 ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
+    Normalized R tokens (w/o comments):  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokensNoComments)}
     Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
 `
 	}
@@ -120,7 +122,9 @@ Input:
   Number of characters:                ${pad(stats.input.numberOfCharacters)}
   Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
   Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${pad(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${pad(stats.input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${pad(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
   Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
@@ -156,7 +160,9 @@ Input:
   Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
   Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
   Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${formatSummarizedMeasure(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
   Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}

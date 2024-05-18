@@ -16,7 +16,7 @@ export interface SliceSizeCollection {
 	nonWhitespaceCharacters:           number[]
 	nonWhitespaceCharactersNoComments: number[]
 	/** like library statements during reconstruction */
-	autoSelected:                      number[]
+	linesWithAutoSelected:             number[]
 	dataflowNodes:                     number[]
 	tokens:                            number[]
 	tokensNoComments:                  number[]

@@ -59,7 +59,7 @@ describe('Benchmark Slicer', () => {
 				tokensNoComments:                  { min: 6, max: 6, median: 6, mean: 6, std: 0, total: 6 },
 				lines:                             { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
 				nonEmptyLines:                     { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
-				autoSelected:                      { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
+				linesWithAutoSelected:             { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
 			}, `sliced only once ${statInfo}`)
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {
@@ -125,7 +125,7 @@ cat(d)`
 				normalizedTokens:                  { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
 				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
 				dataflowNodes:                     { min: 3,  max: 14, median: 6,  mean: (3+6+14)/3,         std: 4.642796092394707,  total: 23 },
-				autoSelected:                      { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
+				linesWithAutoSelected:             { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
 			}, statInfo)
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {

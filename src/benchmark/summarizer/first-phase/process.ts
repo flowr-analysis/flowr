@@ -57,7 +57,7 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 	const inputLines = ignoreFluff ? input.numberOfNonEmptyLines : input.numberOfLines
 	return {
 		numberOfLines:                safeDivPercentage(perSliceLines, inputLines),
-		numberOfLinesNoAutoSelection: safeDivPercentage(perSliceLines - perSlice.autoSelected, inputLines),
+		numberOfLinesNoAutoSelection: safeDivPercentage(perSliceLines - perSlice.linesWithAutoSelected, inputLines),
 		numberOfCharacters:           ignoreFluff ?
 			safeDivPercentage(perSlice.charactersNoComments, input.numberOfCharactersNoComments) :
 			safeDivPercentage(perSlice.characters, input.numberOfCharacters),
@@ -96,7 +96,7 @@ export async function summarizeSlicerStats(
 	const sliceSize: SliceSizeCollection = {
 		lines:                             [],
 		nonEmptyLines:                     [],
-		autoSelected:                      [],
+		linesWithAutoSelected:             [],
 		characters:                        [],
 		charactersNoComments:              [],
 		nonWhitespaceCharacters:           [],
@@ -116,8 +116,8 @@ export async function summarizeSlicerStats(
 		}
 		sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0
-		const { code: output, autoSelected } = perSliceStat.reconstructedCode
-		sliceSize.autoSelected.push(autoSelected)
+		const { code: output, linesWithAutoSelected } = perSliceStat.reconstructedCode
+		sliceSize.linesWithAutoSelected.push(linesWithAutoSelected)
 		const split = output.split('\n')
 		const lines = split.length
 		const nonEmptyLines = split.filter(l => l.trim().length > 0).length
@@ -167,7 +167,7 @@ export async function summarizeSlicerStats(
 				charactersNoComments:              output.length - commentChars,
 				nonWhitespaceCharacters:           nonWhitespace,
 				nonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
-				autoSelected:                      autoSelected,
+				linesWithAutoSelected:             linesWithAutoSelected,
 				tokens:                            numberOfRTokens,
 				tokensNoComments:                  numberOfRTokensNoComments,
 				normalizedTokens:                  numberOfNormalizedTokens,
@@ -210,7 +210,7 @@ export async function summarizeSlicerStats(
 				charactersNoComments:              summarizeMeasurement(sliceSize.charactersNoComments),
 				nonWhitespaceCharacters:           summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
 				nonWhitespaceCharactersNoComments: summarizeMeasurement(sliceSize.nonWhitespaceCharactersNoComments),
-				autoSelected:                      summarizeMeasurement(sliceSize.autoSelected),
+				linesWithAutoSelected:             summarizeMeasurement(sliceSize.linesWithAutoSelected),
 				tokens:                            summarizeMeasurement(sliceSize.tokens),
 				tokensNoComments:                  summarizeMeasurement(sliceSize.tokensNoComments),
 				normalizedTokens:                  summarizeMeasurement(sliceSize.normalizedTokens),

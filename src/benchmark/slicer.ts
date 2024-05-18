@@ -206,8 +206,8 @@ export class BenchmarkSlicer {
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
 			reconstructedCode:           {
-				code:         '',
-				autoSelected: 0
+				code:                  '',
+				linesWithAutoSelected: 0
 			}
 		}
 		this.perSliceMeasurements.set(slicingCriteria, stats)

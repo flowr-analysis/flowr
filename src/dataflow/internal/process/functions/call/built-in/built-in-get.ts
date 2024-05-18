@@ -10,6 +10,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger'
 import { removeRQuotes } from '../../../../../../r-bridge/retriever'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
+import { EdgeType } from '../../../../../graph/edge'
 
 export function processGet<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -36,12 +37,18 @@ export function processGet<OtherInfo>(
 		namespace: undefined
 	}
 
-	const { information } = processKnownFunctionCall({
+	const { information, processedArguments } = processKnownFunctionCall({
 		name,
 		args: wrapArgumentsUnnamed([treatTargetAsSymbol], data.completeAst.idMap),
 		rootId,
 		data
 	})
+
+	const firstArg = processedArguments[0]
+	if(firstArg) {
+		// get 'reads' its first argument
+		information.graph.addEdge(rootId, firstArg.entryPoint, { type: EdgeType.Reads })
+	}
 
 	return information
 }

@@ -263,7 +263,8 @@ export class RShell {
    */
 	public clearEnvironment(): void {
 		this.log.debug('clearing environment')
-		this._sendCommand('rm(list=ls())')
+		// run rm(list=ls()) but ignore 'flowr_get_ast', which is the compile command installed
+		this._sendCommand('rm(list=setdiff(ls(), "flowr_get_ast"))')
 	}
 
 	/**

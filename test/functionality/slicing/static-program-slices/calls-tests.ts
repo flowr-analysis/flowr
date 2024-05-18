@@ -451,6 +451,12 @@ cat(4 %a% 5)`)
 			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope']),
 				shell, 'x <- 42\ny <- get("x")', ['2@y'],
 				'x <- 42\ny <- get("x")')
+			assertSliced(label('get-access a function call', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'function-definitions', 'call-normal']),
+				shell, `a <- function() 1
+b <- get("a")
+res <- b()`, ['3@res'], `a <- function() 1
+b <- get("a")
+res <- b()`)
 		})
 	})
 	describe('Redefine built-ins', () => {

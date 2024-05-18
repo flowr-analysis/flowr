@@ -460,17 +460,17 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
 }
 
 export interface ReconstructionResult {
-	code:         string
-	/** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
-	autoSelected: number
+	code:                  string
+	/** number of lines that contain nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
+	linesWithAutoSelected: number
 }
 
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
+function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number) {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
 		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
+		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), linesWithAutoSelected }
 	} else {
-		return { code: prettyPrintCodeToString(result), autoSelected }
+		return { code: prettyPrintCodeToString(result), linesWithAutoSelected }
 	}
 }
 
@@ -481,19 +481,21 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
  * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
  * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
  *
- * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
+ * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}
 
-	// we use a wrapper to count the number of times the autoSelectIf predicate triggered
-	let autoSelected = 0
+	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
+	const linesWithAutoSelected = new Set<number>()
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node)
-		if(result) {
-			autoSelected++
+		if(result && node.location) {
+			for(let i = node.location[0]; i <= node.location[2]; i++){
+				linesWithAutoSelected.add(i)
+			}
 		}
 		return result
 	}
@@ -503,5 +505,5 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 
 	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`)
 
-	return removeOuterExpressionListIfApplicable(result, autoSelected)
+	return removeOuterExpressionListIfApplicable(result, linesWithAutoSelected.size)
 }

@@ -3,7 +3,7 @@
  * @module
  */
 import type { ElapsedTime, PerSliceMeasurements } from './stats'
-import type { SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
+import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 import { guard } from '../../util/assert'
 import type { SummarizedMeasurement } from '../../util/summarizer'
 
@@ -54,6 +54,7 @@ function asPercentage(num: number): string {
 	if(isNaN(num)) {
 		return '??%'
 	}
+	guard(num >= 0 && num <= 1, `Percentage ${num} should be between 0 and 1`)
 	return pad(`${roundTo(num * 100, 3)}%`)
 }
 
@@ -100,11 +101,14 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
   Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
     Number of lines:                     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
+    Number of non-empty lines:           ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonEmptyLines)}
     Number of characters:                ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.characters)}
     Number of non whitespace characters: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonWhitespaceCharacters)}
-    Number of auto selected:             ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.autoSelected)}
+    Number of auto selected lines:       ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.linesWithAutoSelected)}
     Number of R tokens:                  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokens)}
+    Number of R tokens (w/o comments):   ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokensNoComments)}
     Normalized R tokens:                 ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
+    Normalized R tokens (w/o comments):  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokensNoComments)}
     Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
 `
 	}
@@ -115,10 +119,15 @@ Total:                        ${print(stats.commonMeasurements, 'total')}
 
 Input:
   Number of lines:                     ${pad(stats.input.numberOfLines)}
+  Number of non empty lines:           ${pad(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${pad(stats.input.numberOfCharacters)}
+  Number of characters (w/o comments): ${pad(stats.input.numberOfCharactersNoComments)}
   Number of non whitespace characters: ${pad(stats.input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${pad(stats.input.numberOfNonWhitespaceCharactersNoComments)}
   Number of tokens:                    ${pad(stats.input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${pad(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${pad(stats.input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${pad(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
   Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
@@ -142,28 +151,39 @@ Slice summary for:
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
   Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
   Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
-  Reductions (reduced by x%):   
-    Number of lines:                     ${formatSummarizedMeasure(stats.reduction.numberOfLines, asPercentage)}
-    Number of lines no auto:             ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection, asPercentage)}
-    Number of characters:                ${formatSummarizedMeasure(stats.reduction.numberOfCharacters, asPercentage)}
-    Number of non whitespace characters: ${formatSummarizedMeasure(stats.reduction.numberOfNonWhitespaceCharacters, asPercentage)}
-    Number of R tokens:                  ${formatSummarizedMeasure(stats.reduction.numberOfRTokens, asPercentage)}
-    Normalized R tokens:                 ${formatSummarizedMeasure(stats.reduction.numberOfNormalizedTokens, asPercentage)}
-    Number of dataflow nodes:            ${formatSummarizedMeasure(stats.reduction.numberOfDataflowNodes, asPercentage)}
+${reduction2String('Reductions', stats.reduction)}
+${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}
 
 Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
 
 Input:
   Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
+  Number of non empty lines:           ${formatSummarizedMeasure(stats.input.numberOfNonEmptyLines)}
   Number of characters:                ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
+  Number of characters (w/o comments): ${formatSummarizedMeasure(stats.input.numberOfCharactersNoComments)}
   Number of non whitespace characters: ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharacters)}
+  Number of n. w. c. (w/o comments):   ${formatSummarizedMeasure(stats.input.numberOfNonWhitespaceCharactersNoComments)}
   Number of tokens:                    ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
+  Number of tokens (w/o comments):     ${formatSummarizedMeasure(stats.input.numberOfRTokensNoComments)}
   Normalized R tokens:                 ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}
+  Normalized R tokens (w/o comments):  ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
   Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
+}
+
+function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {
+	return `
+  ${title} (reduced by x%):   
+    Number of lines:                     ${formatSummarizedMeasure(reduction.numberOfLines, asPercentage)}
+    Number of lines no auto:             ${formatSummarizedMeasure(reduction.numberOfLinesNoAutoSelection, asPercentage)}
+    Number of characters:                ${formatSummarizedMeasure(reduction.numberOfCharacters, asPercentage)}
+    Number of non whitespace characters: ${formatSummarizedMeasure(reduction.numberOfNonWhitespaceCharacters, asPercentage)}
+    Number of R tokens:                  ${formatSummarizedMeasure(reduction.numberOfRTokens, asPercentage)}
+    Normalized R tokens:                 ${formatSummarizedMeasure(reduction.numberOfNormalizedTokens, asPercentage)}
+    Number of dataflow nodes:            ${formatSummarizedMeasure(reduction.numberOfDataflowNodes, asPercentage)}`
 }

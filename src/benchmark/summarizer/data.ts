@@ -9,14 +9,19 @@ import type {
 
 
 export interface SliceSizeCollection {
-	lines:                   number[]
-	characters:              number[]
-	nonWhitespaceCharacters: number[]
+	lines:                             number[]
+	nonEmptyLines:                     number[]
+	characters:                        number[]
+	charactersNoComments:              number[]
+	nonWhitespaceCharacters:           number[]
+	nonWhitespaceCharactersNoComments: number[]
 	/** like library statements during reconstruction */
-	autoSelected:            number[]
-	dataflowNodes:           number[]
-	tokens:                  number[]
-	normalizedTokens:        number[]
+	linesWithAutoSelected:             number[]
+	dataflowNodes:                     number[]
+	tokens:                            number[]
+	tokensNoComments:                  number[]
+	normalizedTokens:                  number[]
+	normalizedTokensNoComments:        number[]
 }
 
 /**
@@ -44,6 +49,8 @@ export interface SummarizedPerSliceStats {
 	sliceCriteriaSizes: SummarizedMeasurement
 	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
 	reduction:          Reduction<SummarizedMeasurement>
+	/** reduction, but without taking into account comments and empty lines */
+	reductionNoFluff:   Reduction<SummarizedMeasurement>
 	failedToRepParse:   number
 	timesHitThreshold:  number
 	sliceSize: {
@@ -61,6 +68,8 @@ export interface UltimateSlicerStats {
 	/** sum */
 	timesHitThreshold:    number
 	reduction:            Reduction<SummarizedMeasurement>
+	/** reduction, but without taking into account comments and empty lines */
+	reductionNoFluff:     Reduction<SummarizedMeasurement>
 	input:                SlicerStatsInput<SummarizedMeasurement>
 	dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
 }

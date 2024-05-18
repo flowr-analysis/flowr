@@ -159,27 +159,34 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 }
 
+function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty: string): Code {
+	if(body.length === 0) {
+		return [{ line: `${header.line}${onEmpty}`, indent: header.indent }]
+	} else if(body.length === 1) {
+		return [
+			{ line: `${header.line} ${body[0].line}`, indent: header.indent }
+		]
+	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+		return [
+			{ line: `${header.line} {`, indent: header.indent },
+			...body.slice(1, body.length - 1),
+			{ line: '}', indent: header.indent }
+		]
+	} else {
+		return [
+			header,
+			...indentBy(body, 1)
+		]
+	}
+}
+
+
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	const sel = isSelected(configuration, loop)
 	if(!sel) {
 		return body
-	} else if(body.length <= 1) {
-		// 'inline'
-		return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-		// 'block'
-		return [
-			{ line: 'repeat {', indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		]
-	} else {
-		// unknown
-		return [
-			{ line: 'repeat', indent: 0 },
-			...indentBy(body, 1)
-		]
 	}
+	return reconstructBodyWithHeader({ line: 'repeat', indent: 0 }, body, '{}')
 }
 
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, then: Code, otherwise: Code | undefined, config: ReconstructionConfiguration): Code {
@@ -194,19 +201,19 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		}
 	} else if(otherwise.length === 0) {
 		if(isSelected(config, ifThenElse)) {
-			return [
-				{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line}`, indent: 0 },
-				...indentBy(then.splice(1), 1)
-			]
+			return reconstructBodyWithHeader(
+				{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
+				then, '{}'
+			)
 		} else {
 			return then
 		}
 	} else if(then.length === 0) {
 		if(isSelected(config, ifThenElse)) {
-			return [
-				{ line: `if(${getLexeme(ifThenElse.condition)}) { } else ${otherwise[0].line}`, indent: 0 },
-				...indentBy(otherwise.splice(1), 1)
-			]
+			return reconstructBodyWithHeader(
+				{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
+				then, '{}'
+			)
 		} else {
 			return otherwise
 		}

@@ -25,8 +25,10 @@ x <- 1
 for(i in 1:10) {
   x <- x * 2
 }
-cat(x)
-    `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\nx')
+print(x)
+    `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\nx', {
+				expectedOutput: '[1] 1024'
+			})
 		assertSliced(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
@@ -54,11 +56,13 @@ i <- 3
 if(i > 3) {
     x <- x * 2
 }
-cat(x)
+print(x)
     `, ['7@x'], `x <- 1
 i <- 3
 if(i > 3) { x <- x * 2 }
-x`)
+x`, {
+				expectedOutput: '[1] 1'
+			})
 	})
 	describe('Access', () => {
 		assertSliced(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
@@ -139,7 +143,9 @@ cat("Product:", product, "\\n")
 			`sum <- 0
 w <- 7
 N <- 10
-for(i in 1:(N-1)) sum <- sum + i + w`
+for(i in 1:(N-1)) sum <- sum + i + w`, {
+				expectedOutput: 'Sum: 108\nProduct: 362880'
+			}
 		)
 
 		assertSliced(label('Sum rhs in for', capabilities),
@@ -185,7 +191,5 @@ product`
 			shell, code, ['2@sum'],
 			'sum <- 0'
 		)
-
 	})
-
 }))

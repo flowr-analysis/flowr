@@ -438,6 +438,16 @@ cat(4 %a% 5)`)
 			assertSliced(label('using assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
 				shell, 'assign("x", 42)\nx', ['2@x'],
 				'assign("x", 42)\nx')
+			assertSliced(label('function', ['name-normal', 'assignment-functions', 'strings', 'newlines', 'numbers', 'implicit-return', 'normal-definition']),
+				shell, 'assign("a", function() 1)\na()', ['2@a'], 'assign("a", function() 1)\na()')
+			assertSliced(label('conditional assign', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'if', 'lambda-syntax', 'numbers', 'call-normal', 'implicit-return', 'assignment-functions', 'strings', 'numbers']),
+				shell, `a <- \\() 2
+if(y) {
+   assign("a", function() 1)
+}
+a()`, ['5@a'], `a <- function() 2
+if(y) { assign("a", function() 1) }
+a()`)
 		})
 		describe('DelayedAssign', () => {
 			assertSliced(label('using delayed-assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
@@ -451,6 +461,8 @@ cat(4 %a% 5)`)
 			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope']),
 				shell, 'x <- 42\ny <- get("x")', ['2@y'],
 				'x <- 42\ny <- get("x")')
+			assertSliced(label('function', ['name-normal', 'strings', 'newlines', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities]),
+				shell, 'a <- function() 1\nb <- get("a")\nb()', ['3@b'], 'a <- function() 1\nb <- get("a")\nb()')
 		})
 	})
 	describe('Redefine built-ins', () => {

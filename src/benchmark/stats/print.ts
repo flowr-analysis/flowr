@@ -54,6 +54,7 @@ function asPercentage(num: number): string {
 	if(isNaN(num)) {
 		return '??%'
 	}
+	guard(num >= 0 && num <= 1, `Percentage ${num} should be between 0 and 1`)
 	return pad(`${roundTo(num * 100, 3)}%`)
 }
 

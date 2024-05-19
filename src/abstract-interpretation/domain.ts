@@ -81,13 +81,6 @@ export class Domain {
 		return this._intervals
 	}
 
-	private set intervals(intervals: Interval[]) {
-		this._intervals.clear()
-		for(const interval of intervals) {
-			this._intervals.add(interval)
-		}
-	}
-
 	toString(): string {
 		if(this.isBottom()) {
 			return '⊥'

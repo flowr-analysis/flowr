@@ -72,21 +72,19 @@ export class Conditional extends Handler {
 			}
 			this.domains.updateWith(this.thenDomains)
 		} else if(this.then === undefined) {
-			this.then = aiNodes
+			this.then = AINodeStore.empty()
 			const conditionDomain = this.thenDomains.get(this.node.condition.info.id)?.domain
 			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
-			if(conditionDomain.isBottom()) {
-				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
-				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			if(!conditionDomain.isBottom()) {
+				this.then.updateWith(aiNodes)
 			}
 			this.domains.updateWith(this.elseDomains)
 		} else if(this.else === undefined) {
-			this.else = aiNodes
+			this.else = AINodeStore.empty()
 			const conditionDomain = this.elseDomains.get(this.node.condition.info.id)?.domain
 			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
-			if(conditionDomain.isBottom()) {
-				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
-				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			if(!conditionDomain.isBottom()) {
+				this.else.updateWith(aiNodes)
 			}
 		} else {
 			guard(false, `Conditional ${this.node.info.id} already has condition, then and else`)

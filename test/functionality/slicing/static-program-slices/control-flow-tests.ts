@@ -7,8 +7,8 @@ describe('Control flow', withShell(shell => {
 	describe('Branch Coverage', () => {
 		assertSliced(label('nested if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1
-if(x) {
-  if(y) {
+if(y) {
+  if(z) {
     x <- 3
   } else {
     x <- 2
@@ -16,11 +16,12 @@ if(x) {
 } else {
   x <- 4
 }
-print(x)`, ['11@x'], `if(x) { if(y) { x <- 3 } else 
+print(x)`, ['11@x'], `if(y) { if(z) { x <- 3 } else 
     { x <- 2 } } else 
 { x <- 4 }
 x`)
 
+		// we don't expect to be smart about loops other than repeat at the moment, see https://github.com/Code-Inspect/flowr/issues/804
 		const loops: [string, SupportedFlowrCapabilityId[]][] = [
 			['repeat', ['repeat-loop']],
 			['while(TRUE)', ['while-loop', 'logical']],
@@ -34,7 +35,7 @@ ${loop} {
    x <- 2;
    break
 }
-print(x)`, ['6@x'], 'x <- 2\nx')
+print(x)`, ['6@x'], loop == 'repeat' ? 'x <- 2\nx' : `x <- 1\n${loop} x <- 2\nx`)
 				assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 					shell, `x <- 1
 ${loop} {
@@ -42,7 +43,12 @@ ${loop} {
    if(foo) 
       break
 }
-print(x)`, ['7@x'], 'x <- 2\nx')
+print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 2\nx' :`x <- 1
+${loop} {
+    x <- 2
+    if(foo) break
+}
+x`)
 				assertSliced(label('Next', [...caps]),
 					shell, `x <- 1
 ${loop} {
@@ -50,7 +56,11 @@ ${loop} {
    next;
    x <- 3;
 }
-print(x)`, ['7@x'], 'x <- 2\nx')
+print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 2\nx' : `x <- 1\n${loop} {
+    x <- 2
+    x <- 3
+}
+x`)
 			})
 		}
 	})

@@ -493,6 +493,30 @@ res <- b()`)
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']),
 			shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x')
+		assertSliced(label('redefine if', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-dot-dot-dot', 'newlines', 'unnamed-arguments']),
+			shell, `\`if\` <- function(...) 2
+if(1) 
+   x <- 3
+print(x)`, ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/)
+		assertSliced(label('named argument with redefine', ['name-escaped', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'named-arguments', 'newlines', 'numbers']),
+			shell, `x <- 2
+\`<-\` <- \`*\`
+x <- 3
+print(y = x)`, ['4@y'], 'y=x')
+		assertSliced(label('redefine in local scope', []),
+			shell, `f <- function() {
+   x <- 2
+   \`<-\` <- \`*\`
+   x <- 3
+}
+y <- f()
+print(y)`, ['7@y'], `f <- function() {
+        x <- 2
+        \`<-\` <- \`*\`
+        x <- 3
+    }
+y <- f()
+y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1] 6' })
 	})
 	describe('Switch', () => {
 		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]),

@@ -202,4 +202,45 @@ describe('Lists with if-then constructs', withShell(shell => {
 			.defineVariable('14', 'y', { definedBy: ['15', '16'] })
 		)
 	})
+	describe('Get and assign', () => {
+		assertDataflow(label('assign in condition', ['name-normal', 'lambda-syntax', 'numbers', 'if', 'newlines', 'assignment-functions', 'strings', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, `a <- \\() 2
+if(y) {
+   assign("a", function() 1)
+}
+a()`,  emptyGraph()
+				.use('5', 'y')
+				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('4', ['3', '0'])
+				.call('15', 'assign', [argumentInCall('9'), argumentInCall('13')], { returns: [], reads: [], environment: defaultEnv().defineFunction('a', '0', '4'), onlyBuiltIn: true })
+				.argument('15', ['13', '9'])
+				.call('16', '{', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], controlDependency: ['17'], environment: defaultEnv().defineFunction('a', '0', '4') })
+				.argument('16', '8')
+				.argument('17', '5')
+				.argument('17', '16')
+				.call('17', 'if', [argumentInCall('5'), argumentInCall('16'), EmptyArgument], { returns: ['16'], reads: ['5', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', '0', '4', ['17']) })
+				.call('19', 'a', [], { returns: ['1', '11'], reads: ['9', '0'], environment: defaultEnv().defineFunction('a', '9', '15', ['17']).defineFunction('a', '0', '4', ['17']) })
+				.calls('19', ['3', '13'])
+				.constant('1', undefined, false)
+				.defineFunction('3', ['1'], {
+					out:               [],
+					in:                [{ nodeId: '1', name: undefined, controlDependencies: [] }],
+					unknownReferences: [],
+					entryPoint:        '1',
+					graph:             new Set(['1']),
+					environment:       defaultEnv().pushEnv()
+				})
+				.defineVariable('0', 'a', { definedBy: ['3', '4'] })
+				.constant('11', undefined, false)
+				.defineFunction('13', ['11'], {
+					out:               [],
+					in:                [{ nodeId: '11', name: undefined, controlDependencies: [] }],
+					unknownReferences: [],
+					entryPoint:        '11',
+					graph:             new Set(['11']),
+					environment:       defaultEnv().pushEnv()
+				})
+				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependency: ['17'] })
+		)
+	})
 }))

@@ -15,6 +15,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph'
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -703,6 +704,24 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.constant('3', undefined, false)
 		)
 		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments']),
-			shell, 'a <- function() 1\nget("a")()', emptyGraph())
+			shell, 'a <- function() 1\nget("a")()', emptyGraph()
+				.call('9', `${UnnamedFunctionCallPrefix}9`, [], { returns: ['1'], reads: ['8'], environment: defaultEnv().defineFunction('a', '0', '4') })
+				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')],{ returns: ['0'], reads: [BuiltIn] })
+				.calls('9', '8')
+				.calls('9', '3')
+				.call('8', 'get', [argumentInCall('6')], { reads: ['6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', '0', '4') })
+				.defineFunction('3', ['1'], {
+					entryPoint:        '0',
+					environment:       defaultEnv().pushEnv(),
+					graph:             new Set(['1']),
+					in:                [{ nodeId: '9', name: 'get("a")', controlDependencies: [] }],
+					out:               [],
+					unknownReferences: []
+				})
+				.use('6', '"a"')
+				.defineVariable('0', 'a', { definedBy: ['4', '3'] })
+				.constant('1', undefined, false)
+				.reads('6', '0')
+		)
 	})
 }))

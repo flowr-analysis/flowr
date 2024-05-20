@@ -166,11 +166,11 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 /**
  * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
  * `a` will be defined by `b` and `b`will be a promise object bound by the first definition of b it can find.
- * This means, that this function returns `2` due to the first `b <- 1` definition.
+ * This means that this function returns `2` due to the first `b <- 1` definition.
  * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
  * as `b` can be defined by either one of them.
  * <p>
- * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
+ * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
  */
 function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first, we try to bind again within parameters - if we have it, fine

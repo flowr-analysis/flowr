@@ -28,10 +28,11 @@ import { RShell } from '../r-bridge/shell'
 import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines'
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever'
-import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect'
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline'
 import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -120,6 +121,7 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
 		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell)
+		const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.shell, true)
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization')
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization')
@@ -140,16 +142,40 @@ export class BenchmarkSlicer {
 			}
 		}
 
+		let nodes = 0
+		let nodesNoComments = 0
+		let commentChars = 0
+		let commentCharsNoWhitespace = 0
+		visitAst(this.normalizedAst.ast, t => {
+			nodes++
+			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment)
+			if(comments && comments.length > 0) {
+				const content = comments.map(c => c.lexeme ?? '').join('')
+				commentChars += content.length
+				commentCharsNoWhitespace += withoutWhitespace(content).length
+			} else {
+				nodesNoComments++
+			}
+			return false
+		})
+
+		const split = loadedContent.split('\n')
+		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
 			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
-				numberOfLines:                   loadedContent.split('\n').length,
-				numberOfCharacters:              loadedContent.length,
-				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
-				numberOfRTokens:                 numberOfRTokens,
-				numberOfNormalizedTokens:        [...collectAllIds(this.normalizedAst.ast)].length
+				numberOfLines:                             split.length,
+				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
+				numberOfCharacters:                        loadedContent.length,
+				numberOfCharactersNoComments:              loadedContent.length - commentChars,
+				numberOfNonWhitespaceCharacters:           nonWhitespace,
+				numberOfNonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				numberOfRTokens:                           numberOfRTokens,
+				numberOfRTokensNoComments:                 numberOfRTokensNoComments,
+				numberOfNormalizedTokens:                  nodes,
+				numberOfNormalizedTokensNoComments:        nodesNoComments
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
@@ -180,8 +206,8 @@ export class BenchmarkSlicer {
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
 			reconstructedCode:           {
-				code:         '',
-				autoSelected: 0
+				code:                  '',
+				linesWithAutoSelected: 0
 			}
 		}
 		this.perSliceMeasurements.set(slicingCriteria, stats)

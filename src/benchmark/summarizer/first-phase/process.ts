@@ -19,6 +19,7 @@ import type { SlicingCriteria } from '../../../slicing/criterion/parse'
 import { RShell } from '../../../r-bridge/shell'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever'
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type'
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined
@@ -51,15 +52,25 @@ function safeDivPercentage(a: number, b: number): number | undefined {
 
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
 	[k in keyof SliceSizeCollection]: number
-}): Reduction<number | undefined> {
+}, ignoreFluff: boolean): Reduction<number | undefined> {
+	const perSliceLines = ignoreFluff ? perSlice.nonEmptyLines : perSlice.lines
+	const inputLines = ignoreFluff ? input.numberOfNonEmptyLines : input.numberOfLines
 	return {
-		numberOfLines:                   safeDivPercentage(perSlice.lines, input.numberOfLines),
-		numberOfLinesNoAutoSelection:    safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
-		numberOfCharacters:              safeDivPercentage(perSlice.characters, input.numberOfCharacters),
-		numberOfNonWhitespaceCharacters: safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
-		numberOfRTokens:                 safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
-		numberOfNormalizedTokens:        safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
-		numberOfDataflowNodes:           safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
+		numberOfLines:                safeDivPercentage(perSliceLines, inputLines),
+		numberOfLinesNoAutoSelection: safeDivPercentage(perSliceLines - perSlice.linesWithAutoSelected, inputLines),
+		numberOfCharacters:           ignoreFluff ?
+			safeDivPercentage(perSlice.charactersNoComments, input.numberOfCharactersNoComments) :
+			safeDivPercentage(perSlice.characters, input.numberOfCharacters),
+		numberOfNonWhitespaceCharacters: ignoreFluff ?
+			safeDivPercentage(perSlice.nonWhitespaceCharactersNoComments, input.numberOfNonWhitespaceCharactersNoComments) :
+			safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
+		numberOfRTokens: ignoreFluff ?
+			safeDivPercentage(perSlice.tokensNoComments, input.numberOfRTokensNoComments) :
+			safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
+		numberOfNormalizedTokens: ignoreFluff ?
+			safeDivPercentage(perSlice.normalizedTokensNoComments, input.numberOfNormalizedTokensNoComments) :
+			safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+		numberOfDataflowNodes: safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
 	}
 }
 
@@ -78,17 +89,23 @@ export async function summarizeSlicerStats(
 	const reParseShellSession = new RShell()
 
 	const reductions: Reduction<number | undefined>[] = []
+	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
 	let failedOutputs = 0
 
 	const sliceSize: SliceSizeCollection = {
-		lines:                   [],
-		autoSelected:            [],
-		characters:              [],
-		nonWhitespaceCharacters: [],
-		tokens:                  [],
-		normalizedTokens:        [],
-		dataflowNodes:           []
+		lines:                             [],
+		nonEmptyLines:                     [],
+		linesWithAutoSelected:             [],
+		characters:                        [],
+		charactersNoComments:              [],
+		nonWhitespaceCharacters:           [],
+		nonWhitespaceCharactersNoComments: [],
+		tokens:                            [],
+		tokensNoComments:                  [],
+		normalizedTokens:                  [],
+		normalizedTokensNoComments:        [],
+		dataflowNodes:                     []
 	}
 
 	let timesHitThreshold = 0
@@ -99,10 +116,13 @@ export async function summarizeSlicerStats(
 		}
 		sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0
-		const { code: output, autoSelected } = perSliceStat.reconstructedCode
-		sliceSize.autoSelected.push(autoSelected)
-		const lines = output.split('\n').length
+		const { code: output, linesWithAutoSelected } = perSliceStat.reconstructedCode
+		sliceSize.linesWithAutoSelected.push(linesWithAutoSelected)
+		const split = output.split('\n')
+		const lines = split.length
+		const nonEmptyLines = split.filter(l => l.trim().length > 0).length
 		sliceSize.lines.push(lines)
+		sliceSize.nonEmptyLines.push(nonEmptyLines)
 		sliceSize.characters.push(output.length)
 		const nonWhitespace = withoutWhitespace(output).length
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace)
@@ -115,24 +135,47 @@ export async function summarizeSlicerStats(
 				reParseShellSession
 			)
 			let numberOfNormalizedTokens = 0
-			visitAst(reParsed.ast, _ => {
+			let numberOfNormalizedTokensNoComments = 0
+			let commentChars = 0
+			let commentCharsNoWhitespace = 0
+			visitAst(reParsed.ast, t => {
 				numberOfNormalizedTokens++
+				const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment)
+				if(comments && comments.length > 0) {
+					const content = comments.map(c => c.lexeme ?? '').join('')
+					commentChars += content.length
+					commentCharsNoWhitespace += withoutWhitespace(content).length
+				} else {
+					numberOfNormalizedTokensNoComments++
+				}
 				return false
 			})
 			sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
+			sliceSize.normalizedTokensNoComments.push(numberOfNormalizedTokensNoComments)
+			sliceSize.charactersNoComments.push(output.length - commentChars)
+			sliceSize.nonWhitespaceCharactersNoComments.push(nonWhitespace - commentCharsNoWhitespace)
 
 			const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
 			sliceSize.tokens.push(numberOfRTokens)
+			const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(reParseShellSession, true)
+			sliceSize.tokensNoComments.push(numberOfRTokensNoComments)
 
-			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, {
-				lines:                   lines,
-				characters:              output.length,
-				nonWhitespaceCharacters: nonWhitespace,
-				autoSelected:            autoSelected,
-				tokens:                  numberOfRTokens,
-				normalizedTokens:        numberOfNormalizedTokens,
-				dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
-			}))
+			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
+				lines:                             lines,
+				nonEmptyLines:                     nonEmptyLines,
+				characters:                        output.length,
+				charactersNoComments:              output.length - commentChars,
+				nonWhitespaceCharacters:           nonWhitespace,
+				nonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				linesWithAutoSelected:             linesWithAutoSelected,
+				tokens:                            numberOfRTokens,
+				tokensNoComments:                  numberOfRTokensNoComments,
+				normalizedTokens:                  numberOfNormalizedTokens,
+				normalizedTokensNoComments:        numberOfNormalizedTokensNoComments,
+				dataflowNodes:                     perSliceStat.numberOfDataflowNodesSliced
+			}
+			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false))
+			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
 			console.error(`      Code: ${output}\n`)
@@ -158,23 +201,21 @@ export async function summarizeSlicerStats(
 			measurements:       summarized,
 			failedToRepParse:   failedOutputs,
 			timesHitThreshold,
-			reduction:          {
-				numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
-				numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
-				numberOfCharacters:              summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
-				numberOfNonWhitespaceCharacters: summarizeMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters).filter(isNotUndefined)),
-				numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
-				numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
-				numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
-			},
-			sliceSize: {
-				lines:                   summarizeMeasurement(sliceSize.lines),
-				characters:              summarizeMeasurement(sliceSize.characters),
-				nonWhitespaceCharacters: summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
-				autoSelected:            summarizeMeasurement(sliceSize.autoSelected),
-				tokens:                  summarizeMeasurement(sliceSize.tokens),
-				normalizedTokens:        summarizeMeasurement(sliceSize.normalizedTokens),
-				dataflowNodes:           summarizeMeasurement(sliceSize.dataflowNodes)
+			reduction:          summarizeReductions(reductions),
+			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
+			sliceSize:          {
+				lines:                             summarizeMeasurement(sliceSize.lines),
+				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
+				characters:                        summarizeMeasurement(sliceSize.characters),
+				charactersNoComments:              summarizeMeasurement(sliceSize.charactersNoComments),
+				nonWhitespaceCharacters:           summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
+				nonWhitespaceCharactersNoComments: summarizeMeasurement(sliceSize.nonWhitespaceCharactersNoComments),
+				linesWithAutoSelected:             summarizeMeasurement(sliceSize.linesWithAutoSelected),
+				tokens:                            summarizeMeasurement(sliceSize.tokens),
+				tokensNoComments:                  summarizeMeasurement(sliceSize.tokensNoComments),
+				normalizedTokens:                  summarizeMeasurement(sliceSize.normalizedTokens),
+				normalizedTokensNoComments:        summarizeMeasurement(sliceSize.normalizedTokensNoComments),
+				dataflowNodes:                     summarizeMeasurement(sliceSize.dataflowNodes)
 			}
 		}
 	}
@@ -192,7 +233,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std, total }
 }
 
-export function summarizeReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
+export function summarizeSummarizedReductions(reductions: Reduction<SummarizedMeasurement>[]): Reduction<SummarizedMeasurement> {
 	return {
 		numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
 		numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
@@ -201,5 +242,17 @@ export function summarizeReductions(reductions: Reduction<SummarizedMeasurement>
 		numberOfLinesNoAutoSelection:    summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
 		numberOfNormalizedTokens:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
 		numberOfRTokens:                 summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens))
+	}
+}
+
+function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduction<SummarizedMeasurement> {
+	return {
+		numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
+		numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
+		numberOfCharacters:              summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
+		numberOfNonWhitespaceCharacters: summarizeMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters).filter(isNotUndefined)),
+		numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
+		numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
+		numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
 	}
 }

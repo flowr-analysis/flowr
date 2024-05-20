@@ -8,6 +8,7 @@ import { normalize } from './lang-4.x/ast/parser/json/parser'
 import { ErrorMarker } from './init'
 import { ts2r } from './lang-4.x/convert-values'
 import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate'
+import { RawRType } from './lang-4.x/ast/model/type'
 
 export const fileProtocol = 'file://'
 
@@ -122,8 +123,9 @@ export function removeRQuotes(str: string): string {
 /**
  * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
-export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
+export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreComments = false): Promise<number> {
+	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output'
+	const result = await shell.sendCommandWithOutput(`cat(nrow(${rows}),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
 }

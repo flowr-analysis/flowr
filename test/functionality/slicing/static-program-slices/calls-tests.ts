@@ -482,6 +482,12 @@ f()`)
 		describe('Combine get and assign', () => {
 			assertSliced(label('get in assign', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'assignment-functions', 'strings', 'unnamed-arguments', 'newlines']),
 				shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', ['3@a'], 'b <- 5\nassign("a", get("b"))\na')
+			assertSliced(label('get-access a function call', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'function-definitions', 'call-normal']),
+				shell, `a <- function() 1
+b <- get("a")
+res <- b()`, ['3@res'], `a <- function() 1
+b <- get("a")
+res <- b()`)
 		})
 	})
 	describe('Redefine built-ins', () => {
@@ -515,7 +521,7 @@ f()`)
 			assertSliced(label('Slice for variable in last filter', caps),
 				shell, code, ['12@Y'], 'Y')
 		})
-		describe('if-then-else formattings', () => {
+		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']
 			const code = `x <- 3
 {
@@ -524,10 +530,12 @@ if (x == 3)
 y <- 2 }
 else { x <- y <- 3 }
 }
-print(x)			
+print(x)	
 			`
 			assertSliced(label('Slice for initial x should return noting else', caps),
-				shell, code, ['1@x'], 'x <- 3')
+				shell, code, ['1@x'], 'x <- 3', {
+					expectedOutput: '[1] 4'
+				})
 			assertSliced(label('Slice for first condition', caps),
 				shell, code, ['3@x'], 'x <- 3\nx')
 			assertSliced(label('Slice for last x', caps),

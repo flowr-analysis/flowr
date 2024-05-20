@@ -1,5 +1,19 @@
+const replacements = {
+	'`': '#96;',
+	'[': '#91;',
+	']': '#93;',
+	'<': '#60;',
+	'>': '#62;',
+	'*': '#42;',
+	'+': '#43;',
+	'-': '#45;',
+	'"': '#34;'
+}
 export function escapeMarkdown(text: string): string {
-	return text.replaceAll(/([+*<>-])/g, '\\$1').replaceAll('"', '\'\'')
+	for(const [key, value] of Object.entries(replacements)) {
+		text = text.replaceAll(key, value)
+	}
+	return text
 }
 
 /**

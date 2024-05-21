@@ -21,7 +21,6 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import { VertexType } from '../../../../../graph/vertex'
 import { define } from '../../../../../environments/define'
 import { EdgeType } from '../../../../../graph/edge'
-import { dataflowGraphToMermaidUrl } from '../../../../../../core/print/dataflow-printer';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -42,12 +41,12 @@ function getEffectiveOrder<T>(config: {
 }
 
 export interface AssignmentConfiguration {
-	readonly superAssignment?:        boolean
-	readonly swapSourceAndTarget?:    boolean
+	readonly superAssignment?:     boolean
+	readonly swapSourceAndTarget?: boolean
 	/* Make maybe if assigned to symbol */
-	readonly makeMaybe?:              boolean
-	readonly quoteSource?:            boolean
-	readonly canBeReplacement?:       boolean
+	readonly makeMaybe?:           boolean
+	readonly quoteSource?:         boolean
+	readonly canBeReplacement?:    boolean
 }
 
 /**
@@ -150,7 +149,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget
 	})
-	
+
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 		...config,
 		name,

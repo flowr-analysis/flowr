@@ -76,7 +76,7 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
-	private _idMap:              AstIdMap | undefined
+	private _idMap:                     AstIdMap | undefined
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()

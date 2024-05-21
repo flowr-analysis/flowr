@@ -76,11 +76,11 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
-	public readonly idMap:              AstIdMap | undefined
+	private _idMap:                     AstIdMap | undefined
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()
-		this.idMap = idMap
+		this._idMap = idMap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
@@ -134,6 +134,17 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	}
 
 
+	/** Retrieves the id-map to the normalized AST attached to the dataflow graph */
+	public get idMap(): AstIdMap | undefined {
+		return this._idMap
+	}
+
+	/** Allows setting the id-map explicitly (which should only be used when, e.g., you plan to compare two dataflow graphs on the same AST-basis) */
+	public setIdMap(idMap: AstIdMap): void {
+		this._idMap = idMap
+	}
+
+
 	/**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
    * @returns the ids of all toplevel vertices in the graph together with their vertex information
@@ -165,7 +176,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	 * @param id                      - The id to check for
 	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
 	 */
-	public hasVertex(id: NodeId, includeDefinedFunctions: boolean): boolean {
+	public hasVertex(id: NodeId, includeDefinedFunctions = true): boolean {
 		return includeDefinedFunctions ? this.vertexInformation.has(id) : this.rootVertices.has(id)
 	}
 
@@ -196,9 +207,12 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			return this
 		}
 
+		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT
 		// keep a clone of the original environment
-		const environment = vertex.environment === undefined ? DataflowGraph.DEFAULT_ENVIRONMENT : cloneEnvironmentInformation(vertex.environment)
+		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
 
+		
+		
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
 			when: vertex.controlDependencies ?? 'always',
@@ -224,7 +238,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
 		const { type, ...rest } = edgeInfo
-
+		
 		if(fromId === toId) {
 			return this
 		}

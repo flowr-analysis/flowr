@@ -95,10 +95,18 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	}
 
 	for(const [id, edge] of lEdges) {
+		if(!ctx.left.hasVertex(id)) {
+			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			continue
+		}
 		diffEdges(ctx, id, edge, rEdges.get(id))
 	}
 	// just to make it both ways in case the length differs
 	for(const [id, edge] of rEdges) {
+		if(!ctx.right.hasVertex(id)) {
+			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			continue
+		}
 		if(!lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge)
 		}

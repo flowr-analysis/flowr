@@ -149,6 +149,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget
 	})
+
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 		...config,
 		name,
@@ -200,7 +201,7 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1)
-	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
@@ -223,7 +224,7 @@ function processAssignmentToSymbol<OtherInfo>({
 		}
 	}
 
-	information.graph.addEdge(name.info.id, targetArg.entryPoint, { type: EdgeType.Returns })
+	information.graph.addEdge(rootId, targetArg.entryPoint, { type: EdgeType.Returns })
 
 	if(quoteSource) {
 		information.graph.addEdge(rootId, source.info.id, { type: EdgeType.NonStandardEvaluation })

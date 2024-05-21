@@ -1,6 +1,6 @@
 import {ParentInformation, RIfThenElse} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
-import {AINodeStore, RegisterBehavior} from '../../ainode'
+import {AINode, AINodeStore, RegisterBehavior} from '../../ainode'
 import {aiLogger, getDfgChildrenOfType} from '../../processor'
 import {Handler} from '../handler'
 import {DataflowInformation} from '../../../dataflow/internal/info'
@@ -50,22 +50,16 @@ export class Conditional extends Handler {
 				const dfChildren = getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads)
 				if(dfChildren === undefined) {
 					if(isElseNode) {
-						this.elseDomains.register({...node, nodeId: cleanedId}, RegisterBehavior.Overwrite)
+						this.elseDomains.register(new AINode(node.domain, node.astNode, node.expressionId, cleanedId), RegisterBehavior.Overwrite)
 					} else {
 						this.thenDomains.register(node, RegisterBehavior.Overwrite)
 					}
 				} else {
 					for(const child of dfChildren) {
 						if(isElseNode) {
-							this.elseDomains.register({
-								...node,
-								nodeId: child
-							}, RegisterBehavior.Overwrite)
+							this.elseDomains.register(new AINode(node.domain, node.astNode, node.expressionId, child), RegisterBehavior.Overwrite)
 						} else {
-							this.thenDomains.register({
-								...node,
-								nodeId: child
-							}, RegisterBehavior.Overwrite)
+							this.thenDomains.register(new AINode(node.domain, node.astNode, node.expressionId, child), RegisterBehavior.Overwrite)
 						}
 					}
 				}

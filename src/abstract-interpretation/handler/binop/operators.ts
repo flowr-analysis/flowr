@@ -4,30 +4,15 @@ import {addDomains, Domain, narrowDomain, NarrowKind, subtractDomains} from '../
 import {AINode, AINodeStore} from '../../ainode'
 
 export const operators: BinOpOperators = {
-	'assignment': (lhs, rhs, node) => {
-		return AINodeStore.from({
-			nodeId:       lhs.nodeId,
-			expressionId: node.info.id,
-			domain:       rhs.domain,
-			astNode:      node.lhs,
-		})
+	'assignment': (_, rhs, node) => {
+		return AINodeStore.from(new AINode(rhs.domain, node.lhs, node.info.id))
 	},
 	'arithmetic': (lhs, rhs, node) => {
 		switch(node.operator) {
 			case '+':
-				return AINodeStore.from({
-					nodeId:       node.info.id,
-					expressionId: node.info.id,
-					domain:       addDomains(lhs.domain, rhs.domain),
-					astNode:      node,
-				})
+				return AINodeStore.from(new AINode(addDomains(lhs.domain, rhs.domain), node))
 			case '-':
-				return AINodeStore.from({
-					nodeId:       node.info.id,
-					expressionId: node.info.id,
-					domain:       subtractDomains(lhs.domain, rhs.domain),
-					astNode:      node,
-				})
+				return AINodeStore.from(new AINode(subtractDomains(lhs.domain, rhs.domain), node))
 			default:
 				guard(false, `Unknown binary operator ${node.operator}`)
 		}

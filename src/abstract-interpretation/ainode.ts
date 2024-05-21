@@ -2,13 +2,15 @@ import {NodeId, ParentInformation, RNodeWithParent} from '../r-bridge'
 import {assertUnreachable, guard} from '../util/assert'
 import {Domain, unifyDomains} from './domain'
 
-export interface AINode {
-	/** The ID of the node that logically holds the domain (e.g. the lhs of an assignment) */
-	readonly nodeId:       NodeId
-	/** The ID of the whole expression that the domain was calculated from (e.g. the whole assignment expression) */
-	readonly expressionId: NodeId
-	readonly domain:       Domain
-	readonly astNode:      RNodeWithParent<ParentInformation>
+export class AINode {
+	constructor(
+		public readonly domain: Domain,
+		public readonly astNode: RNodeWithParent<ParentInformation>,
+		/** The ID of the whole expression that the domain was calculated from (e.g. the whole assignment expression) */
+		public readonly expressionId: NodeId = astNode.info.id,
+		/** The ID of the node that logically holds the domain (e.g. the lhs of an assignment) */
+		public readonly nodeId: NodeId = astNode.info.id
+	) {}
 }
 
 export const enum RegisterBehavior {
@@ -80,7 +82,7 @@ export class AINodeStore implements Iterable<AINode> {
 				case RegisterBehavior.Merge: {
 					const existing = this.map.get(node.nodeId)
 					guard(existing !== undefined, `Node with ID ${node.nodeId} should exist`)
-					this.register({...node, domain: unifyDomains([existing.domain, node.domain])}, RegisterBehavior.Overwrite)
+					this.register(new AINode(unifyDomains([existing.domain, node.domain]), node.astNode, node.expressionId), RegisterBehavior.Overwrite)
 					break
 				}
 				default: assertUnreachable(behavior)

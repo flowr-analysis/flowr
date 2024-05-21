@@ -242,9 +242,10 @@ export function assertDataflow(
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
-			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
 
-			console.log(normalizedAstToMermaidUrl(info.normalize.ast))
+			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast))
+
+			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
 
 			console.error('diff:\n', diff)
 			throw e

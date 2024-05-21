@@ -235,7 +235,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
 		const { type, ...rest } = edgeInfo
-
+		
 		if(fromId === toId) {
 			return this
 		}

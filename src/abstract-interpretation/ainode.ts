@@ -11,6 +11,15 @@ export class AINode {
 		/** The ID of the node that logically holds the domain (e.g. the lhs of an assignment) */
 		public readonly nodeId: NodeId = astNode.info.id
 	) {}
+
+	static copy(node: AINode, changes: Partial<AINode>): AINode {
+		return new AINode(
+			changes.domain ?? node.domain,
+			changes.astNode ?? node.astNode,
+			changes.expressionId ?? node.expressionId,
+			changes.nodeId ?? node.nodeId
+		)
+	}
 }
 
 export const enum RegisterBehavior {
@@ -82,7 +91,7 @@ export class AINodeStore implements Iterable<AINode> {
 				case RegisterBehavior.Merge: {
 					const existing = this.map.get(node.nodeId)
 					guard(existing !== undefined, `Node with ID ${node.nodeId} should exist`)
-					this.register(new AINode(unifyDomains([existing.domain, node.domain]), node.astNode, node.expressionId), RegisterBehavior.Overwrite)
+					this.register(AINode.copy(node, {domain: unifyDomains([existing.domain, node.domain])}), RegisterBehavior.Overwrite)
 					break
 				}
 				default: assertUnreachable(behavior)

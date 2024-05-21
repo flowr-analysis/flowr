@@ -1,4 +1,4 @@
-For the latest code-coverage information, see [codecov.io](https://codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
+For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)

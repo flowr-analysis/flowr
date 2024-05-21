@@ -1,6 +1,5 @@
 sum <- 0
 product <- 1
-product <- 5
 w <- 7
 N <- 10
 

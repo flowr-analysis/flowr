@@ -76,11 +76,11 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  */
 export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
-	public readonly idMap:              AstIdMap | undefined
+	private _idMap:              AstIdMap | undefined
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()
-		this.idMap = idMap
+		this._idMap = idMap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
@@ -131,6 +131,17 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			}
 		}
 		return edges
+	}
+
+
+	/** Retrieves the id-map to the normalized AST attached to the dataflow graph */
+	public get idMap(): AstIdMap | undefined {
+		return this._idMap
+	}
+
+	/** Allows setting the id-map explicitly (which should only be used when, e.g., you plan to compare two dataflow graphs on the same AST-basis) */
+	public setIdMap(idMap: AstIdMap): void {
+		this._idMap = idMap
 	}
 
 

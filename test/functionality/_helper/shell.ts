@@ -229,6 +229,9 @@ export function assertDataflow(
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
+		// assign the same id map to the expected graph, so that resolves work as expected
+		expected.setIdMap(info.normalize.idMap)
+
 		const report: DataflowDifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
@@ -240,6 +243,8 @@ export function assertDataflow(
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
 			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
+
+			console.log(normalizedAstToMermaidUrl(info.normalize.ast))
 
 			console.error('diff:\n', diff)
 			throw e

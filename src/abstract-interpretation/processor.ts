@@ -64,6 +64,8 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			top.next(AINodeStore.from(new AINode(getDomainOfDfgChild(node.id, dfg, top.domains), astNode)))
 		} else if(astNode?.type === RType.Number) {
 			top.next(AINodeStore.from(new AINode(Domain.fromScalar(astNode.content.num), astNode)))
+		} else if(astNode?.type === RType.Logical) {
+			top.next(AINodeStore.from(new AINode(astNode.content ? Domain.top() : Domain.bottom(), astNode)))
 		} else if(node.type === CfgVertexType.EndMarker) {
 			const operationResult = operationStack.pop()?.exit()
 			guard(operationResult !== undefined, 'No operation result')

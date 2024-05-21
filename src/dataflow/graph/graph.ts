@@ -207,9 +207,12 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			return this
 		}
 
+		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT
 		// keep a clone of the original environment
-		const environment = vertex.environment === undefined ? DataflowGraph.DEFAULT_ENVIRONMENT : cloneEnvironmentInformation(vertex.environment)
+		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
 
+		
+		
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
 			when: vertex.controlDependencies ?? 'always',

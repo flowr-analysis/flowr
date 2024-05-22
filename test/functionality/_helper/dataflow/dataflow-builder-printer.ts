@@ -127,13 +127,13 @@ class DataflowBuilderPrinter {
 		if(arg === undefined || arg === EmptyArgument) {
 			return 'EmptyArgument'
 		} else if(isPositionalArgument(arg)) {
-			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg.nodeId), ', { ') ?? ''
+			const suffix = this.getControlDependencySuffix(this.controlDependenciesForArgument(arg.nodeId), ', { ') ?? ''
 			this.handleArgumentArgLinkage(fn, arg.nodeId)
 			return `argumentInCall('${arg.nodeId}'${suffix})`
 		} else {
 			this.coveredVertices.add(arg.nodeId)
 			this.handleArgumentArgLinkage(fn, arg.nodeId)
-			const suffix = this.getControlDependencySuffix(this.controlDependencyForArgument(arg.nodeId), ', ', '') ?? ''
+			const suffix = this.getControlDependencySuffix(this.controlDependenciesForArgument(arg.nodeId), ', ', '') ?? ''
 			return `argumentInCall('${arg.nodeId}', { name: '${arg.name}'${suffix} } )`
 		}
 	}
@@ -153,7 +153,7 @@ class DataflowBuilderPrinter {
 		}
 	}
 
-	private controlDependencyForArgument(id: NodeId): NodeId[] | undefined {
+	private controlDependenciesForArgument(id: NodeId): NodeId[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
 		return this.graph.getVertex(id, true)?.controlDependencies
@@ -247,7 +247,7 @@ class DataflowBuilderPrinter {
 
 	private getControlDependencySuffix(arg: NodeId[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
-			return `${prefix}controlDependency: [${arg.map(id => wrap(id)).join(', ')}]${suffix}`
+			return `${prefix}controlDependencies: [${arg.map(id => wrap(id)).join(', ')}]${suffix}`
 		}
 		return undefined
 	}

@@ -226,7 +226,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		}
 		if(!arrayEqual(lInfo.controlDependencies, rInfo.controlDependencies)) {
 			ctx.report.addComment(
-				`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
+				`Vertex ${id} differs in controlDependencies. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
 				{ tag: 'vertex', id }
 			)
 		}

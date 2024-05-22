@@ -45,7 +45,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(!arrayEqual(aVal.controlDependencies, bVal.controlDependencies)) {
-				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependencies)}`)
+				info.report.addComment(`${info.position}Different controlDependencies for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependencies)}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)

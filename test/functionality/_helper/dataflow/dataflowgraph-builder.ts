@@ -40,7 +40,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
+		info?: { environment?: REnvironmentInformation, controlDependencies?: NodeId[] },
 		asRoot: boolean = true) {
 		return this.addVertex({
 			tag:     VertexType.FunctionDefinition,
@@ -54,7 +54,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), controlDependencies: o.controlDependencies?.map(normalizeIdToNumberIfPossible) }))
 			} as DataflowFunctionFlowInformation,
 			exitPoints:          exitPoints.map(normalizeIdToNumberIfPossible),
-			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
+			controlDependencies: info?.controlDependencies?.map(normalizeIdToNumberIfPossible),
 			environment:         info?.environment
 		}, asRoot)
 	}
@@ -71,11 +71,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
-			returns?:           readonly NodeId[],
-			reads?:             readonly NodeId[],
-			onlyBuiltIn?:       boolean,
-			environment?:       REnvironmentInformation,
-			controlDependency?: NodeId[]
+			returns?:             readonly NodeId[],
+			reads?:               readonly NodeId[],
+			onlyBuiltIn?:         boolean,
+			environment?:         REnvironmentInformation,
+			controlDependencies?: NodeId[]
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
@@ -83,9 +83,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			tag:                 VertexType.FunctionCall,
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
-			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependency: undefined }),
+			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
 			environment:         info?.environment ?? initializeCleanEnvironments(),
-			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
+			controlDependencies: info?.controlDependencies?.map(normalizeIdToNumberIfPossible),
 			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
 		}, asRoot)
 		this.addArgumentLinks(id, args)
@@ -131,12 +131,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name: string,
-		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		info?: { controlDependencies?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertex({
 			tag:                 VertexType.VariableDefinition,
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
-			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
+			controlDependencies: info?.controlDependencies?.map(normalizeIdToNumberIfPossible),
 		}, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -177,11 +177,11 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
+	public constant(id: NodeId, options?: { controlDependencies?: NodeId[] }, asRoot: boolean = true) {
 		return this.addVertex({
 			tag:                 VertexType.Value,
 			id:                  normalizeIdToNumberIfPossible(id),
-			controlDependencies: options?.controlDependency?.map(normalizeIdToNumberIfPossible),
+			controlDependencies: options?.controlDependencies?.map(normalizeIdToNumberIfPossible),
 			environment:         undefined
 		}, asRoot)
 	}

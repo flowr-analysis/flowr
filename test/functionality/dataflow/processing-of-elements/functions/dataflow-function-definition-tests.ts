@@ -368,9 +368,9 @@ describe('Function Definition', withShell(shell => {
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.call('8', '<-', [argumentInCall('2'), argumentInCall('7')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8') }, false)
-			.call('16', 'return', [argumentInCall('14')], { returns: ['14'], reads: [BuiltIn], controlDependency: ['18'], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
+			.call('16', 'return', [argumentInCall('14')], { returns: ['14'], reads: [BuiltIn], controlDependencies: ['18'], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.call('18', 'if', [argumentInCall('12'), argumentInCall('16'), EmptyArgument], { returns: ['16'], reads: ['12', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
-			.call('21', '<-', [argumentInCall('19'), argumentInCall('20')], { returns: ['19'], reads: [BuiltIn], controlDependency: [], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
+			.call('21', '<-', [argumentInCall('19'), argumentInCall('20')], { returns: ['19'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11') }, false)
 			.call('23', '{', [argumentInCall('8'), argumentInCall('11'), argumentInCall('18'), argumentInCall('21'), argumentInCall('22')], { returns: ['22'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineFunction('g', '2', '8').defineVariable('y', '9', '11').defineVariable('y', '19', '21', []) }, false)
 			.returns('23', '16')
 			.defineFunction('7', ['6'], {
@@ -385,7 +385,7 @@ describe('Function Definition', withShell(shell => {
 			.constant('10', undefined, false)
 			.defineVariable('9', 'y', { definedBy: ['10', '11'] }, false)
 			.constant('20', undefined, false)
-			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependency: [] }, false)
+			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [] }, false)
 			.defineFunction('24', ['23'], {
 				out:               [],
 				in:                [{ nodeId: '12', name: 'z', controlDependencies: [] }],

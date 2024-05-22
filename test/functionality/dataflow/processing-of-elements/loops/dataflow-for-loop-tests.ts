@@ -149,4 +149,8 @@ x`, emptyGraph()
 		.constant('8', { controlDependency: ['11'] })
 		.defineVariable('7', 'i', { definedBy: ['8', '9'], controlDependency: [] })
 	)
+
+	describe('Branch coverage', () => {
+		
+	})
 }))

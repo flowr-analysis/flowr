@@ -692,7 +692,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.call('9', 'a', [], { returns: ['3'], reads: ['1'], environment: defaultEnv().defineFunction('a', '1', '7') })
 				.calls('9', '5')
 				.defineVariable('1', '"a"', { definedBy: ['7', '5'] })
-				.call('7', 'assign', [argumentInCall('1'), argumentInCall('5')], { onlyBuiltIn: true })
+				.call('7', 'assign', [argumentInCall('1'), argumentInCall('5')], { returns: ['1'], onlyBuiltIn: true, reads: [BuiltIn] })
 				.defineFunction('5', ['3'], {
 					entryPoint:        '5',
 					environment:       defaultEnv().pushEnv(),

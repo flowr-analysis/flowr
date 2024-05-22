@@ -201,6 +201,57 @@ describe('Lists with if-then constructs', withShell(shell => {
 			.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependency: ['13'] })
 			.defineVariable('14', 'y', { definedBy: ['15', '16'] })
 		)
+		assertDataflow(label('nested if else', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
+			shell, `x <- 1
+if(y) {
+  if(z) {
+    x <- 3
+  } else {
+    x <- 2
+  }
+} else {
+  x <- 4
+}
+print(x)`,  emptyGraph()
+				.use('3', 'y')
+				.use('6', 'z', { controlDependencies: ['27'] })
+				.use('29', 'x')
+				.reads('29', ['9', '15', '23'])
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('2', ['1', '0'])
+				.call('11', '<-', [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [BuiltIn], controlDependency: ['19', '27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('11', ['10', '9'])
+				.argument('12', '11')
+				.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [BuiltIn], controlDependency: ['19', '27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('17', '<-', [argumentInCall('15'), argumentInCall('16')], { returns: ['15'], reads: [BuiltIn], controlDependency: ['19', '27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('17', ['16', '15'])
+				.argument('18', '17')
+				.call('18', '{', [argumentInCall('17')], { returns: ['17'], reads: [BuiltIn], controlDependency: ['19', '27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('19', '6')
+				.argument('19', '12')
+				.argument('19', '18')
+				.call('19', 'if', [argumentInCall('6'), argumentInCall('12'), argumentInCall('18')], { returns: ['12', '18'], reads: ['6', BuiltIn], onlyBuiltIn: true, controlDependency: ['27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('20', '19')
+				.call('20', '{', [argumentInCall('19')], { returns: ['19'], reads: [BuiltIn], controlDependency: ['27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('25','<-', [argumentInCall('23'), argumentInCall('24')], { returns: ['23'], reads: [BuiltIn], controlDependency: ['27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('25', ['24', '23'])
+				.argument('26', '25')
+				.call('26', '{', [argumentInCall('25')], { returns: ['25'], reads: [BuiltIn], controlDependency: ['27'], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('27', '3')
+				.argument('27', '20')
+				.argument('27', '26')
+				.call('27', 'if', [argumentInCall('3'), argumentInCall('20'), argumentInCall('26')], { returns: ['20', '26'], reads: ['3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
+				.argument('31', '29')
+				.call('31', 'print', [argumentInCall('29')], { returns: ['29'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '9', '11', ['27']).defineVariable('x', '15', '17', ['27']).defineVariable('x', '23', '25', ['27']) })
+				.constant('1')
+				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+				.constant('10')
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependency: ['27'] })
+				.constant('16')
+				.defineVariable('15', 'x', { definedBy: ['16', '17'], controlDependency: ['27'] })
+				.constant('24')
+				.defineVariable('23', 'x', { definedBy: ['24', '25'], controlDependency: ['27'] })
+		)
 	})
 	describe('Get and assign', () => {
 		assertDataflow(label('assign in condition', ['name-normal', 'lambda-syntax', 'numbers', 'if', 'newlines', 'assignment-functions', 'strings', 'normal-definition', 'implicit-return', 'call-normal']),
@@ -242,5 +293,85 @@ a()`,  emptyGraph()
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependency: ['17'] })
 		)
+		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments']),
+			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
+				.use('7', '"b"')
+				.reads('7', '0')
+				.use('13', 'a')
+				.reads('13', '4')
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('2', ['1', '0'])
+				.argument('9', '7')
+				.call('9', 'get', [argumentInCall('7')], { returns: [], reads: [BuiltIn, '7'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('b', '0', '2') })
+				.argument('11', '9')
+				.call('11', 'assign', [argumentInCall('4'), argumentInCall('9')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().defineVariable('b', '0', '2') })
+				.argument('11', '4')
+				.argument('15', '13')
+				.call('15', 'print', [argumentInCall('13')], { returns: ['13'], reads: [BuiltIn], environment: defaultEnv().defineVariable('b', '0', '2').defineVariable('a', '4', '11') })
+				.constant('1')
+				.defineVariable('0', 'b', { definedBy: ['1', '2'] })
+				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
+		)
+		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal']),
+			shell, `a <- 5
+f <- function() {
+  get("a")
+}
+f()`,  emptyGraph()
+				.use('7', '"a"', undefined, false)
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('2', ['1', '0'])
+				.argument('9', '7')
+				.call('9', 'get', [argumentInCall('7')], { returns: [], reads: ['7', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.argument('10', '9')
+				.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
+				.call('12', '<-', [argumentInCall('3'), argumentInCall('11')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('a', '0', '2') })
+				.argument('12', ['11', '3'])
+				.call('14', 'f', [], { returns: ['10'], reads: ['3', '0'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
+				.calls('14', '11')
+				.constant('1')
+				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
+				.defineFunction('11', ['10'], {
+					out:               [],
+					in:                [{ nodeId: '7', name: 'a', controlDependencies: [] }],
+					unknownReferences: [],
+					entryPoint:        '10',
+					graph:             new Set(['7', '9', '10']),
+					environment:       defaultEnv().pushEnv()
+				})
+				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
+		)
+		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return']),
+			shell, `a <- 5
+f <- function(a = get("a")) {
+  a
+}
+f()`, emptyGraph()
+				.use('6', '"a"', undefined, false)
+				.reads('6', '4')
+				.use('12', 'a', undefined, false)
+				.reads('12', '4')
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('2', ['1', '0'])
+				.argument('8', '6')
+				.call('8', 'get', [argumentInCall('6')], { returns: [], reads: ['6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+				.argument('13', '12')
+				.call('13', '{', [argumentInCall('12')], { returns: ['12'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '4', '9') }, false)
+				.call('15', '<-', [argumentInCall('3'), argumentInCall('14')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('a', '0', '2') })
+				.argument('15', ['14', '3'])
+				.call('17', 'f', [], { returns: ['13'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '15') })
+				.calls('17', '14')
+				.constant('1')
+				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
+				.defineVariable('4', 'a', { definedBy: ['6', '8'] }, false)
+				.defineFunction('14', ['13'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '13',
+					graph:             new Set(['4', '6', '8', '12', '13']),
+					environment:       defaultEnv().pushEnv().defineParameter('a', '4', '9')
+				})
+				.defineVariable('3', 'f', { definedBy: ['14', '15'] }))
 	})
 }))

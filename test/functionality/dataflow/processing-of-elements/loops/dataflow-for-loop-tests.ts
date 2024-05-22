@@ -151,6 +151,297 @@ x`, emptyGraph()
 	)
 
 	describe('Branch coverage', () => {
-		
+		describe('repeat', () => {
+			assertDataflow(label('Break immediately', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+				shell, `x <- 1
+repeat {
+   x <- 2;
+   break
+}
+print(x)`,  emptyGraph()
+					.use('12', 'x')
+					.reads('12', '5')
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('7', ['6', '5'])
+					.call('8', 'break', [], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('9', '7')
+					.argument('9', '8')
+					.call('9', '{', [argumentInCall('7'), argumentInCall('8')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('10', '9')
+					.call('10', 'repeat', [argumentInCall('9')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.nse('10', '9')
+					.argument('14', '12')
+					.call('14', 'print', [argumentInCall('12')], { returns: ['12'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('6')
+					.defineVariable('5', 'x', { definedBy: ['6', '7'] }))
+			assertDataflow(label('Break in condition', ['repeat-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
+				shell, `x <- 1
+repeat {
+   x <- 2;
+   if(foo) 
+      break
+}
+print(x)`, emptyGraph()
+					.use('8', 'foo')
+					.use('15', 'x')
+					.reads('15', '5')
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('7', ['6', '5'])
+					.call('9', 'break', [], { returns: [], reads: [BuiltIn], controlDependencies: ['11'], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('11', '8')
+					.argument('11', '9')
+					.call('11', 'if', [argumentInCall('8'), argumentInCall('9', { controlDependencies: ['11'] }), EmptyArgument], { returns: ['9'], reads: [BuiltIn, '8'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('12', '7')
+					.argument('12', '11')
+					.call('12', '{', [argumentInCall('7'), argumentInCall('11')], { returns: ['11'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('13', '12')
+					.call('13', 'repeat', [argumentInCall('12')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.nse('13', '12')
+					.argument('17', '15')
+					.call('17', 'print', [argumentInCall('15')], { returns: ['15'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('6')
+					.defineVariable('5', 'x', { definedBy: ['6', '7'] }))
+			assertDataflow(label('Next', ['repeat-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
+				shell, `x <- 1
+repeat {
+   x <- 2;
+   next;
+   x <- 3;
+}
+print(x)`,  emptyGraph()
+					.use('17', 'x')
+					.reads('17', '5')
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('7', ['6', '5'])
+					.call('8', 'next', [], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.argument('14', '7')
+					.call('14', '{', [argumentInCall('7')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('15', '14')
+					.call('15', 'repeat', [argumentInCall('14')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.nse('15', '14')
+					.argument('19', '17')
+					.call('19', 'print', [argumentInCall('17')], { returns: ['17'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('6')
+					.defineVariable('5', 'x', { definedBy: ['6', '7'] }))
+		})
+
+		describe('for', () => {
+			assertDataflow(label('Break immediately', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+				shell, `x <- 1
+for(i in 1:100) {
+   x <- 2;
+   break
+}
+print(x)`, emptyGraph()
+					.use('16', 'x')
+					.reads('16', ['0', '9'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { returns: [], reads: ['4', '5', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('6', ['4', '5'])
+					.call('11', '<-', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: ['14'] })], { returns: ['9'], reads: [BuiltIn], controlDependencies: [] })
+					.argument('11', ['10', '9'])
+					.call('12', 'break', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['14']) })
+					.argument('13', '11')
+					.argument('13', '12')
+					.call('13', '{', [argumentInCall('11', { controlDependencies: [] }), argumentInCall('12', { controlDependencies: [] })], { returns: ['12'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['14']) })
+					.argument('14', '6')
+					.argument('14', '13')
+					.call('14', 'for', [argumentInCall('3'), argumentInCall('6'), argumentInCall('13', { controlDependencies: [] })], { returns: [], reads: ['3', '6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '14') })
+					.argument('14', '3')
+					.nse('14', '13')
+					.argument('18', '16')
+					.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '14') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.defineVariable('3', 'i', { definedBy: ['6'] })
+					.constant('4')
+					.constant('5')
+					.constant('10', { controlDependencies: ['14'] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }))
+			assertDataflow(label('Break in condition', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
+				shell, `x <- 1
+for(i in 1:100) {
+   x <- 2;
+   if(foo) 
+      break
+}
+print(x)`,  emptyGraph()
+					.use('12', 'foo', { controlDependencies: [] })
+					.use('19', 'x')
+					.reads('19', ['0', '9'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { returns: [], reads: ['4', '5', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('6', ['4', '5'])
+					.call('11', '<-', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: ['17', '15'] })], { returns: ['9'], reads: [BuiltIn], controlDependencies: [] })
+					.argument('11', ['10', '9'])
+					.call('13', 'break', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['17']) })
+					.argument('15', '12')
+					.argument('15', '13')
+					.call('15', 'if', [argumentInCall('12', { controlDependencies: [] }), argumentInCall('13', { controlDependencies: [] }), EmptyArgument], { returns: ['13'], reads: ['12', BuiltIn], onlyBuiltIn: true, controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['17', '15']) })
+					.argument('16', '11')
+					.argument('16', '15')
+					.call('16', '{', [argumentInCall('11', { controlDependencies: [] }), argumentInCall('15', { controlDependencies: [] })], { returns: ['15'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['17', '15']) })
+					.argument('17', '6')
+					.argument('17', '16')
+					.call('17', 'for', [argumentInCall('3'), argumentInCall('6'), argumentInCall('16', { controlDependencies: [] })], { returns: [], reads: ['3', '6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '17') })
+					.argument('17', '3')
+					.nse('17', '16')
+					.argument('21', '19')
+					.call('21', 'print', [argumentInCall('19')], { returns: ['19'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('i', '3', '17') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.defineVariable('3', 'i', { definedBy: ['6'] })
+					.constant('4')
+					.constant('5')
+					.constant('10', { controlDependencies: ['17', '15'] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }))
+			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
+				shell, `x <- 1
+for(i in 1:100) {
+   x <- 2;
+   next;
+   x <- 3;
+}
+print(x)`,  emptyGraph()
+					.use('21', 'x')
+					.reads('21', ['0', '9', '14'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('6', ':', [argumentInCall('4'), argumentInCall('5')], { returns: [], reads: ['4', '5', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('6', ['4', '5'])
+					.call('11', '<-', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: ['19'] })], { returns: ['9'], reads: [BuiltIn], controlDependencies: [] })
+					.argument('11', ['10', '9'])
+					.call('12', 'next', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['19']) })
+					.call('16', '<-', [argumentInCall('14', { controlDependencies: [] }), argumentInCall('15', { controlDependencies: ['19'] })], { returns: ['14'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '9', '11', ['19']) })
+					.argument('16', ['15', '14'])
+					.argument('18', '11')
+					.call('18', '{', [argumentInCall('11', { controlDependencies: [] })], { returns: ['11'], reads: [BuiltIn], controlDependencies: [] })
+					.argument('19', '6')
+					.argument('19', '18')
+					.call('19', 'for', [argumentInCall('3'), argumentInCall('6'), argumentInCall('18', { controlDependencies: [] })], { returns: [], reads: ['3', '6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('x', '14', '16', []).defineVariable('i', '3', '19') })
+					.argument('19', '3')
+					.nse('19', '18')
+					.argument('23', '21')
+					.call('23', 'print', [argumentInCall('21')], { returns: ['21'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '9', '11', []).defineVariable('x', '14', '16', []).defineVariable('i', '3', '19') })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.defineVariable('3', 'i', { definedBy: ['6'] })
+					.constant('4')
+					.constant('5')
+					.constant('10', { controlDependencies: ['19'] })
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.constant('15', { controlDependencies: ['19'] })
+					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] }))
+		})
+
+		describe('while', () => {
+			assertDataflow(label('Break immediately', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+				shell, `x <- 1
+while(TRUE) {
+   x <- 2;
+   break
+}
+print(x)`,  emptyGraph()
+					.use('13', 'x')
+					.reads('13', ['0', '6'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('8', '<-', [argumentInCall('6', { controlDependencies: [] }), argumentInCall('7', { controlDependencies: ['11'] })], { returns: ['6'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('8', ['7', '6'])
+					.call('9', 'break', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['11']) })
+					.argument('10', '8')
+					.argument('10', '9')
+					.call('10', '{', [argumentInCall('8', { controlDependencies: [] }), argumentInCall('9', { controlDependencies: [] })], { returns: ['9'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['11']) })
+					.argument('11', '10')
+					.call('11', 'while', [argumentInCall('3'), argumentInCall('10', { controlDependencies: [] })], { returns: [], reads: ['3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['11']) })
+					.argument('11', '3')
+					.nse('11', '10')
+					.argument('15', '13')
+					.call('15', 'print', [argumentInCall('13')], { returns: ['13'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '6', '8', []) })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('3')
+					.constant('7', { controlDependencies: ['11'] })
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }))
+			assertDataflow(label('Break in condition', ['while-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
+				shell, `x <- 1
+while(TRUE) {
+   x <- 2;
+   if(foo) 
+      break
+}
+print(x)`, emptyGraph()
+					.use('9', 'foo', { controlDependencies: [] })
+					.use('16', 'x')
+					.reads('16', ['0', '6'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('8', '<-', [argumentInCall('6', { controlDependencies: [] }), argumentInCall('7', { controlDependencies: ['14', '12'] })], { returns: ['6'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('8', ['7', '6'])
+					.call('10', 'break', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['14']) })
+					.argument('12', '9')
+					.argument('12', '10')
+					.call('12', 'if', [argumentInCall('9', { controlDependencies: [] }), argumentInCall('10', { controlDependencies: [] }), EmptyArgument], { returns: ['10'], reads: [BuiltIn, '9'], onlyBuiltIn: true, controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['14', '12']) })
+					.argument('13', '8')
+					.argument('13', '12')
+					.call('13', '{', [argumentInCall('8', { controlDependencies: [] }), argumentInCall('12', { controlDependencies: [] })], { returns: ['12'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['14', '12']) })
+					.argument('14', '13')
+					.call('14', 'while', [argumentInCall('3'), argumentInCall('13', { controlDependencies: [] })], { returns: [], reads: ['3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['14', '12']) })
+					.argument('14', '3')
+					.nse('14', '13')
+					.argument('18', '16')
+					.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '6', '8', []) })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('3')
+					.constant('7', { controlDependencies: ['14', '12'] })
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }))
+			assertDataflow(label('Next', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
+				shell, `x <- 1
+while(TRUE) {
+   x <- 2;
+   next;
+   x <- 3;
+}
+print(x)`, emptyGraph()
+					.use('18', 'x')
+					.reads('18', ['0', '6', '11'])
+					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+					.argument('2', ['1', '0'])
+					.call('8', '<-', [argumentInCall('6', { controlDependencies: [] }), argumentInCall('7', { controlDependencies: ['16'] })], { returns: ['6'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.argument('8', ['7', '6'])
+					.call('9', 'next', [], { returns: [], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['16']) })
+					.call('13', '<-', [argumentInCall('11', { controlDependencies: [] }), argumentInCall('12', { controlDependencies: ['16'] })], { returns: ['11'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['16']) })
+					.argument('13', ['12', '11'])
+					.argument('15', '8')
+					.call('15', '{', [argumentInCall('8', { controlDependencies: [] })], { returns: ['8'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['16']).defineVariable('x', '11', '13', []) })
+					.argument('16', '15')
+					.call('16', 'while', [argumentInCall('3'), argumentInCall('15', { controlDependencies: [] })], { returns: [], reads: ['3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', ['16']).defineVariable('x', '11', '13', []) })
+					.argument('16', '3')
+					.nse('16', '15')
+					.argument('20', '18')
+					.call('20', 'print', [argumentInCall('18')], { returns: ['18'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', []).defineVariable('x', '6', '8', []).defineVariable('x', '11', '13', []) })
+					.constant('1')
+					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+					.constant('3')
+					.constant('7', { controlDependencies: ['16'] })
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
+					.constant('12', { controlDependencies: ['16'] })
+					.defineVariable('11', 'x', { definedBy: ['12', '13'], controlDependencies: [] }))
+		})
 	})
 }))

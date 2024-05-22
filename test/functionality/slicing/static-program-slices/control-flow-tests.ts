@@ -49,7 +49,7 @@ ${loop} {
     if(foo) break
 }
 x`)
-				assertSliced(label('Next', [...caps]),
+				assertSliced(label('Next', [...caps, 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 					shell, `x <- 1
 ${loop} {
    x <- 2;

@@ -1,20 +1,17 @@
-import type {
-	RParseRequest,
-	RParseRequestFromFile,
-	RParseRequestFromText,
-	RShell } from '../r-bridge'
-import { ts2r
-} from '../r-bridge'
-import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
-import { ALL_FEATURES, allFeatureNames } from './features'
 import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
-import { log } from '../util/log'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
-import type { StepResults } from '../core'
-import { SteppingSlicer } from '../core'
+import { log } from '../util/log'
 import { jsonReplacer, jsonRetriever } from '../util/json'
+import { PipelineExecutor } from '../core/pipeline-executor'
+import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines'
+import type { RShell } from '../r-bridge/shell'
+import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features/feature'
+import { ALL_FEATURES , allFeatureNames } from './features/feature'
+import { ts2r } from '../r-bridge/lang-4.x/convert-values'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -28,6 +25,9 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
 		}
 	}()
 }
+
+
+type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
 
 /**
  * Extract all wanted statistic information from a set of requests using the presented R session.
@@ -45,11 +45,11 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>,
 	rootPath?: string
-): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, StepResults<'dataflow'>> }> {
+): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, DataflowResult> }> {
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 
-	const outputs = new Map<T, StepResults<'dataflow'>>()
+	const outputs = new Map<T, DataflowResult>()
 	for await (const request of requests) {
 		onRequest(request)
 		const start = performance.now()
@@ -94,9 +94,8 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser()
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
-	const slicerOutput = await new SteppingSlicer({
-		stepOfInterest: 'dataflow',
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
+	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		request, shell
 	}).allRemainingSteps()
 

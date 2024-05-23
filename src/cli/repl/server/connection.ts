@@ -1,36 +1,33 @@
-import type { StepResults } from '../../../core'
-import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import type { NormalizedAst, RShell } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
-import type {
-	FileAnalysisRequestMessage,
-	FileAnalysisResponseMessageNQuads } from './messages/analysis'
-import {
-	requestAnalysisMessage
-} from './messages/analysis'
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads } from './messages/analysis'
+import { requestAnalysisMessage } from './messages/analysis'
 import type { SliceRequestMessage, SliceResponseMessage } from './messages/slice'
 import { requestSliceMessage } from './messages/slice'
 import type { FlowrErrorMessage } from './messages/error'
 import type { Socket } from './net'
 import { serverLog } from './server'
 import type { ILogObj, Logger } from 'tslog'
-import type {
-	ExecuteEndMessage,
-	ExecuteIntermediateResponseMessage,
-	ExecuteRequestMessage } from './messages/repl'
-import {
-	requestExecuteReplExpressionMessage
-} from './messages/repl'
+import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/repl'
+import { requestExecuteReplExpressionMessage } from './messages/repl'
 import { replProcessAnswer } from '../core'
-import { ansiFormatter, voidFormatter } from '../../../statistics'
+import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { LogLevel } from '../../../util/log'
 import type { ControlFlowInformation } from '../../../util/cfg/cfg'
 import { cfg2quads, extractCFG } from '../../../util/cfg/cfg'
-import { StepOutputFormat } from '../../../core/print/print'
-import type { DataflowInformation } from '../../../dataflow/internal/info'
 import type { QuadSerializationConfiguration } from '../../../util/quads'
 import { defaultQuadIdGenerator } from '../../../util/quads'
+import { printStepResult, StepOutputFormat } from '../../../core/print/print'
+import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
+import type { DataflowInformation } from '../../../dataflow/info'
+import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
+import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
+import { ansiFormatter, voidFormatter } from '../../../util/ansi'
+import { PipelineStepStage } from '../../../core/steps/pipeline-step'
+import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import type { RShell } from '../../../r-bridge/shell'
+import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline'
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -45,7 +42,7 @@ export class FlowRServerConnection {
 	// maps token to information
 	private readonly fileMap = new Map<string, {
 		filename?: string,
-		slicer:    SteppingSlicer
+		pipeline:  PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
 	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
@@ -109,7 +106,7 @@ export class FlowRServerConnection {
 		if(message.filetoken && this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
-		const slicer = this.createSteppingSlicerForRequest(message)
+		const slicer = this.createPipelineExecutorForRequest(message)
 
 		void slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
 			.catch(e => {
@@ -123,7 +120,7 @@ export class FlowRServerConnection {
 			})
 	}
 
-	private async sendFileAnalysisResponse(results: Partial<StepResults<typeof LAST_STEP>>, message: FileAnalysisRequestMessage): Promise<void> {
+	private async sendFileAnalysisResponse(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined
 		if(message.cfg) {
 			cfg = extractCFG(results.normalize as NormalizedAst)
@@ -138,9 +135,9 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {
@@ -160,12 +157,11 @@ export class FlowRServerConnection {
 		}
 	}
 
-	private createSteppingSlicerForRequest(message: FileAnalysisRequestMessage) {
-		const slicer = new SteppingSlicer({
-			stepOfInterest: LAST_STEP,
-			shell:          this.shell,
-			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
-			request:        {
+	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage) {
+		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
+			shell:   this.shell,
+			// we have to make sure that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
+			request: {
 				request: message.content === undefined ? 'file' : 'text',
 				content: message.content ?? message.filepath as string
 			},
@@ -175,7 +171,7 @@ export class FlowRServerConnection {
 			this.logger.info(`Storing file token ${message.filetoken}`)
 			this.fileMap.set(message.filetoken, {
 				filename: message.filename,
-				slicer
+				pipeline: slicer
 			})
 		}
 		return slicer
@@ -202,12 +198,15 @@ export class FlowRServerConnection {
 			return
 		}
 
-		fileInformation.slicer.updateCriterion(request.criterion)
-		void fileInformation.slicer.allRemainingSteps(true).then(results => {
+		fileInformation.pipeline.updateRequest({ criterion: request.criterion })
+		void fileInformation.pipeline.allRemainingSteps(true).then(results => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
-				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
+				results: Object.fromEntries(
+					Object.entries(results)
+						.filter(([k,]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
+				) as SliceResponseMessage['results']
 			})
 		}).catch(e => {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`)

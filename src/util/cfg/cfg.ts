@@ -1,28 +1,28 @@
-import type {
-	FoldFunctions,
-	NodeId,
-	NormalizedAst,
-	ParentInformation,
-	RAccess, RBinaryOp,
-	RForLoop,
-	RFunctionCall,
-	RFunctionDefinition,
-	RNodeWithParent, RPipe,
-	RRepeatLoop,
-	RWhileLoop
-} from '../../r-bridge'
-import {
-	foldAst,
-	RFalse,
-	RoleInParent,
-	RTrue
-} from '../../r-bridge'
 import type { MergeableRecord } from '../objects'
 import { setEquals } from '../set'
 import type { QuadSerializationConfiguration } from '../quads'
 import { graph2quads } from '../quads'
 import { log } from '../log'
 import { jsonReplacer } from '../json'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { FoldFunctions } from '../../r-bridge/lang-4.x/ast/model/processing/fold'
+import { foldAst } from '../../r-bridge/lang-4.x/ast/model/processing/fold'
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
+import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values'
+import type { RRepeatLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop'
+import type { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop'
+import type { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop'
+import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition'
+import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
+import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe'
+import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access'
 
 export const enum CfgVertexType {
 	/** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -131,25 +131,15 @@ export function emptyControlFlowInformation(): ControlFlowInformation {
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
-	foldNumber:  cfgLeaf(CfgVertexType.Expression),
-	foldString:  cfgLeaf(CfgVertexType.Expression),
-	foldLogical: cfgLeaf(CfgVertexType.Expression),
-	foldSymbol:  cfgLeaf(CfgVertexType.Expression),
-	foldAccess:  cfgAccess,
-	binaryOp:    {
-		foldLogicalOp:    cfgBinaryOp,
-		foldArithmeticOp: cfgBinaryOp,
-		foldComparisonOp: cfgBinaryOp,
-		foldAssignment:   cfgBinaryOp,
-		foldPipe:         cfgBinaryOp,
-		foldModelFormula: cfgBinaryOp
-	},
-	unaryOp: {
-		foldArithmeticOp: cfgUnaryOp,
-		foldLogicalOp:    cfgUnaryOp,
-		foldModelFormula: cfgUnaryOp
-	},
-	other: {
+	foldNumber:   cfgLeaf(CfgVertexType.Expression),
+	foldString:   cfgLeaf(CfgVertexType.Expression),
+	foldLogical:  cfgLeaf(CfgVertexType.Expression),
+	foldSymbol:   cfgLeaf(CfgVertexType.Expression),
+	foldAccess:   cfgAccess,
+	foldBinaryOp: cfgBinaryOp,
+	foldPipe:     cfgBinaryOp,
+	foldUnaryOp:  cfgUnaryOp,
+	other:        {
 		foldComment:       cfgIgnore,
 		foldLineDirective: cfgIgnore
 	},
@@ -370,7 +360,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [fn.info.id], entryPoints: [fn.info.id] }
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | undefined)[]): ControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const graph = name.graph
 	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [call.info.id + '-exit'], entryPoints: [call.info.id] }
 
@@ -391,7 +381,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	let lastArgExits: NodeId[] = [call.info.id + '-name']
 
 	for(const arg of args) {
-		if(arg === undefined) {
+		if(arg === EmptyArgument) {
 			continue
 		}
 		graph.merge(arg.graph)
@@ -485,7 +475,7 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 	return result
 }
 
-function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: string | (ControlFlowInformation | null)[]): ControlFlowInformation {
+function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: readonly (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const result = name
 	const graph = result.graph
 	graph.addVertex({ id: access.info.id, name: access.type, type: CfgVertexType.Expression })
@@ -498,11 +488,8 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 	}
 	result.entryPoints = [access.info.id]
 	result.exitPoints = [access.info.id + '-exit']
-	if(typeof accessors === 'string') {
-		return result
-	}
 	for(const accessor of accessors) {
-		if(accessor === null) {
+		if(accessor === EmptyArgument) {
 			continue
 		}
 		graph.merge(accessor.graph)
@@ -526,7 +513,7 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 }
 
 
-function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
+function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
 	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
 	let first = true
 	for(const expression of expressions) {

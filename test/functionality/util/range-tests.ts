@@ -9,7 +9,7 @@ import {
 	rangeStartsCompletelyBefore
 } from '../../../src/util/range'
 import { allPermutations } from '../../../src/util/arrays'
-import { formatRange } from '../../../src/dataflow'
+import { formatRange } from '../../../src/util/mermaid/dfg'
 
 describe('Range', () => {
 	describe('rangeFrom', () => {
@@ -21,10 +21,7 @@ describe('Range', () => {
 						for(const endColumn of pool) {
 							assert.deepStrictEqual(
 								rangeFrom(startLine, startColumn, endLine, endColumn),
-								{
-									start: { line: startLine, column: startColumn },
-									end:   { line: endLine, column: endColumn },
-								},
+								[startLine, startColumn, endLine, endColumn],
 								'with numbers'
 							)
 							assert.deepStrictEqual(
@@ -34,10 +31,7 @@ describe('Range', () => {
 									`${endLine}`,
 									`${endColumn}`
 								),
-								{
-									start: { line: startLine, column: startColumn },
-									end:   { line: endLine, column: endColumn },
-								},
+								[startLine, startColumn, endLine, endColumn],
 								'with strings'
 							)
 						}
@@ -95,10 +89,10 @@ describe('Range', () => {
 			)
 		}
 
-		const assertIndependentOfOrder = (
+		function assertIndependentOfOrder(
 			expected: SourceRange,
 			...a: SourceRange[]
-		): void => {
+		): void {
 			for(const permutation of allPermutations(a)) {
 				assertMerged(expected, ...permutation)
 			}

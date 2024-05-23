@@ -13,22 +13,19 @@ import type { NoInfo, RNode } from '../model'
 import { guard } from '../../../../../util/assert'
 import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
-import { foldAst } from './fold'
-import type {
-	RArgument,
-	RBinaryOp,
-	RFunctionCall,
-	RNamedFunctionCall,
-	RParameter,
-	RPipe,
-	RUnnamedFunctionCall
-} from '../nodes'
 import type { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
 import { RType } from '../type'
-
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
-export type NodeId = string & { __brand?: 'node-id'};
+import { foldAstStateful } from './stateful-fold'
+import type { NodeId } from './node-id'
+import type { RDelimiter } from '../nodes/info/r-delimiter'
+import type { RBinaryOp } from '../nodes/r-binary-op'
+import type { RPipe } from '../nodes/r-pipe'
+import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call'
+import { EmptyArgument } from '../nodes/r-function-call'
+import type { RExpressionList } from '../nodes/r-expression-list'
+import type { RParameter } from '../nodes/r-parameter'
+import type { RArgument } from '../nodes/r-argument'
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -41,9 +38,8 @@ export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => NodeId
 /**
  * The simplest id generator which just increments a number on each call.
  */
-export function deterministicCountingIdGenerator(start = 0): () => NodeId {
-	let id = start
-	return () => `${id++}`
+export function deterministicCountingIdGenerator(id = 0): () => NodeId {
+	return () => id++
 }
 
 export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
@@ -51,8 +47,8 @@ export function sourcedDeterministicCountingIdGenerator(path: string, location: 
 	return () => `${path}-${loc2Id(location)}-${id++}`
 }
 
-function loc2Id(loc: SourceRange) {
-	return `${loc.start.line}:${loc.start.column}-${loc.end.line}:${loc.end.column}`
+function loc2Id([sl,sc,el,ec]: SourceRange): string {
+	return `${sl}:${sc}-${el}:${ec}`
 }
 
 /**
@@ -60,7 +56,7 @@ function loc2Id(loc: SourceRange) {
  *
  * @param data - the node to generate an id for, must have location information
  */
-export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): NodeId {
+export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo> | RDelimiter): NodeId {
 	const loc = data.location
 	guard(loc !== undefined, 'location must be defined to generate a location id')
 	return loc2Id(loc)
@@ -68,9 +64,9 @@ export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): NodeId {
 
 /**
  * Generates unique ids based on the locations of the node (see {@link nodeToLocationId}).
- * If a node has no location information, it will be assigned a unique counter value.
+ * If a node has no location information, it will be assigned a unique counter-value.
  *
- * @param start - the start value for the counter in case nodes do not have a location information
+ * @param start - the start value for the counter, in case nodes do not have location information
  */
 export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
 	let id = start
@@ -80,15 +76,24 @@ export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenera
 export interface ParentContextInfo extends MergeableRecord {
 	role:  RoleInParent
 	/**
-	 * 0-based index of the child in the parent (code semantics, e.g., for an if-then-else, the condition will be 0, the then-case 1, ...)
+	 * The depth of the node in the AST
 	 *
-	 * The index is adaptive, that means that if the name of an argument exists, it will have the index 0, and the value the index 1.
+	 * The root node has a depth of 0, its children a depth of 1, and so on.
+	 */
+	depth: number
+	/**
+	 * 0-based index of the child in the parent (code semantics, e.g., for an if-then-else, the condition will be 0, the then-case will be 1, ...)
+	 *
+	 * The index is adaptive, that means that if the name of an argument exists, it will have index 0, and the value will have index 1.
 	 * But if the argument is unnamed, its value will get the index 0 instead.
 	 */
 	index: number
 }
 
-const defaultParentContext = { role: RoleInParent.Root, index: 0 }
+const defaultParentContext: Omit<ParentContextInfo, 'depth'> = {
+	role:  RoleInParent.Root,
+	index: 0
+}
 
 export interface ParentInformation extends ParentContextInfo {
 	/** uniquely identifies an AST-Node */
@@ -100,18 +105,18 @@ export interface ParentInformation extends ParentContextInfo {
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
-export type DecoratedAstMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
+export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**
  * Contains the normalized AST as a doubly linked tree
  * and a map from ids to nodes so that parent links can be chased easily.
  */
-export interface NormalizedAst<OtherInfo = ParentInformation> {
+export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
-	idMap: DecoratedAstMap<OtherInfo>
+	idMap: AstIdMap<OtherInfo>
 	/** The root of the AST with parent information */
-	ast:   RNodeWithParent<OtherInfo>
+	ast:   Node
 }
 
 /**
@@ -122,37 +127,29 @@ export interface NormalizedAst<OtherInfo = ParentInformation> {
  *
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
- * @returns A {@link DecoratedAst | decorated AST} based on the input and the id provider.
+ * @returns A decorated AST based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): NormalizedAst<OtherInfo & ParentInformation> {
-	const idMap: DecoratedAstMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
+	const idMap: AstIdMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
 	const info: FoldInfo<OtherInfo> = { idMap, getId }
 
-	/* Please note, that all fold processors do not re-create copies in higher folding steps so that the idMap stays intact. */
+	/* Please note, that all fold processors do not re-create copies in higher-folding steps so that the idMap stays intact. */
 	const foldLeaf = createFoldForLeaf(info)
 	const foldBinaryOp = createFoldForBinaryOp(info)
 	const unaryOp = createFoldForUnaryOp(info)
 
-	const decoratedAst: RNodeWithParent<OtherInfo> = foldAst(ast, {
-		foldNumber:  foldLeaf,
-		foldString:  foldLeaf,
-		foldLogical: foldLeaf,
-		foldSymbol:  foldLeaf,
-		foldAccess:  createFoldForAccess(info),
-		binaryOp:    {
-			foldLogicalOp:    foldBinaryOp,
-			foldArithmeticOp: foldBinaryOp,
-			foldComparisonOp: foldBinaryOp,
-			foldAssignment:   foldBinaryOp,
-			foldPipe:         foldBinaryOp,
-			foldModelFormula: foldBinaryOp
-		},
-		unaryOp: {
-			foldArithmeticOp: unaryOp,
-			foldLogicalOp:    unaryOp,
-			foldModelFormula: unaryOp
-		},
-		other: {
+	/* we pass down the depth */
+	const decoratedAst: RNodeWithParent<OtherInfo> = foldAstStateful(ast, -1,{
+		down:         (_, down: number): number => down + 1,
+		foldNumber:   foldLeaf,
+		foldString:   foldLeaf,
+		foldLogical:  foldLeaf,
+		foldSymbol:   foldLeaf,
+		foldAccess:   createFoldForAccess(info),
+		foldBinaryOp: foldBinaryOp,
+		foldPipe:     foldBinaryOp,
+		foldUnaryOp:  unaryOp,
+		other:        {
 			foldComment:       foldLeaf,
 			foldLineDirective: foldLeaf
 		},
@@ -183,18 +180,27 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
 }
 
 function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined, ...defaultParentContext } } as RNodeWithParent<OtherInfo>
+		const decorated = {
+			...data,
+			info: {
+				...data.info,
+				id,
+				parent: undefined,
+				...defaultParentContext,
+				depth
+			}
+		} as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		return decorated
 	}
 }
 
 function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RBinaryOp<OtherInfo> | RPipe<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RBinaryOp<OtherInfo> | RPipe<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, lhs, rhs } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, lhs, rhs } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const lhsInfo = lhs.info
 		lhsInfo.parent = id
@@ -213,9 +219,9 @@ function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, operand: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, operand: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, operand } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, operand } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const opInfo = operand.info
 		opInfo.parent = id
@@ -225,9 +231,9 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, accessed: RNodeWithParent<OtherInfo>, access: string | (RNodeWithParent<OtherInfo> | null)[]): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, accessed: RNodeWithParent<OtherInfo>, access: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, accessed, access } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, accessed, access } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const accessedInfo = accessed.info
 		accessedInfo.parent = id
@@ -236,7 +242,7 @@ function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			let idx = 0 // the first oe will be skipped in the first iter
 			for(const acc of access) {
 				idx++
-				if(acc !== null) {
+				if(acc !== EmptyArgument) {
 					const curInfo = acc.info
 					curInfo.parent = id
 					curInfo.index = idx
@@ -249,9 +255,9 @@ function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForForLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, variable, vector, body } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, variable, vector, body } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const varInfo = variable.info
 		varInfo.parent = id
@@ -269,9 +275,9 @@ function createFoldForForLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForRepeatLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, body: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined },  body } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth },  body } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const bodyInfo = body.info
 		bodyInfo.parent = id
@@ -281,9 +287,9 @@ function createFoldForRepeatLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined },  condition, body } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth },  condition, body } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const condInfo = condition.info
 		condInfo.parent = id
@@ -297,9 +303,9 @@ function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise?: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise: RNodeWithParent<OtherInfo> | undefined, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined },  condition, then, otherwise } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, condition, then, otherwise } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const condInfo = condition.info
 		condInfo.parent = id
@@ -319,9 +325,9 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, children: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+	return (data: RExpressionList<OtherInfo>, grouping: [RNodeWithParent<OtherInfo>, RNodeWithParent<OtherInfo>] | undefined, children: readonly RNodeWithParent<OtherInfo>[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, children } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, grouping, children } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		let i = 0
 		for(const child of children) {
@@ -335,13 +341,13 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: (RNodeWithParent<OtherInfo> | undefined)[]): RNodeWithParent<OtherInfo> => {
+	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
 		if(data.flavor === 'named') {
-			decorated = { ...data, info: { ...data.info, id, parent: undefined }, functionName, arguments: args } as RNamedFunctionCall<OtherInfo & ParentInformation>
+			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, functionName, arguments: args } as RNamedFunctionCall<OtherInfo & ParentInformation>
 		} else {
-			decorated = { ...data, info: { ...data.info, id, parent: undefined }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>
+			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>
 		}
 		info.idMap.set(id, decorated)
 		const funcInfo = functionName.info
@@ -350,10 +356,11 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		let idx = 0
 		for(const arg of args) {
 			idx++
-			if(arg !== undefined) {
+			if(arg !== EmptyArgument) {
 				const argInfo = arg.info
 				argInfo.parent = id
 				argInfo.index = idx
+				argInfo.role = RoleInParent.FunctionCallArgument
 			}
 		}
 		return decorated
@@ -361,9 +368,9 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, params: RNodeWithParent<OtherInfo>[], body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, params: RNodeWithParent<OtherInfo>[], body: RNodeWithParent<OtherInfo>, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, parameters: params, body } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, parameters: params, body } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		let idx = 0
 		for(const param of params) {
@@ -381,9 +388,9 @@ function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RParameter<OtherInfo>, name: RNodeWithParent<OtherInfo>, defaultValue: RNodeWithParent<OtherInfo> | undefined): RNodeWithParent<OtherInfo> => {
+	return (data: RParameter<OtherInfo>, name: RNodeWithParent<OtherInfo>, defaultValue: RNodeWithParent<OtherInfo> | undefined, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, name, defaultValue } as RParameter<OtherInfo & ParentInformation>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, name, defaultValue } as RParameter<OtherInfo & ParentInformation>
 		info.idMap.set(id, decorated)
 		const nameInfo = name.info
 		nameInfo.parent = id
@@ -399,9 +406,9 @@ function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RArgument<OtherInfo>, name: RNodeWithParent<OtherInfo> | undefined, value: RNodeWithParent<OtherInfo> | undefined): RNodeWithParent<OtherInfo> => {
+	return (data: RArgument<OtherInfo>, name: RNodeWithParent<OtherInfo> | undefined, value: RNodeWithParent<OtherInfo> | undefined, depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, name, value } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, name, value } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		let idx = 0
 		if(name) {

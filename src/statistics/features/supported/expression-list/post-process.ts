@@ -1,5 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -9,10 +8,14 @@ import {
 	recordFilePath
 } from '../../post-processing'
 import type { ExpressionListInfo } from './expression-list'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
 
 type UsedExpressionListPostProcessing = ReplaceKeysForSummary<ExpressionListInfo, SummarizedWithProject>
 

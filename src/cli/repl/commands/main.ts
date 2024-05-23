@@ -1,6 +1,6 @@
-import type { RShell } from '../../../r-bridge'
-import type { OutputFormatter } from '../../../statistics'
-import { formatter } from '../../../statistics'
+import type { OutputFormatter } from '../../../util/ansi'
+import { formatter } from '../../../util/ansi'
+import type { RShell } from '../../../r-bridge/shell'
 
 /**
  * Defines the main interface for output of the repl.

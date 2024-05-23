@@ -1,4 +1,4 @@
-For the latest code-coverage information, see [codecov.io](https://codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
+For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)
@@ -75,18 +75,7 @@ npm run performance-test
 See [test/performance](https://github.com/Code-Inspect/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
 
 ### Oh no, the tests are slow
-
-If you have just installed *flowR* and&nbsp;*R* for the first time, the tests may take really long to run! If this is the case, please inspect the output for a banner informing you that the tests have to install a specific package (probably [`xmlparsedata`](https://cran.r-project.org/package=xmlparsedata)) &mdash; if this is the case ,it's probably best to install the package yourself, locally so that it can be found by *flowR* once.
-For this, drop into the &nbsp&nbsp;*R* shell and issue:
-
-```r
-install.packages("xmlparsedata")
-```
-
-R&nbsp; may ask you if it should create a personal library, which you should confirm by typing `y` and pressing <kbd>enter</kbd> (it may ask again to create the package, answer this question with yes too). Afterwards you may have to select a mirror (any should be fine) and wait for the installation to finish. Once it is done, you can exit the R shell by typing `q()` and pressing <kbd>enter</kbd> (you do not have to save the workspace).
-Now, the tests should run much faster!
-
-If, however, you have already installed the package, or the tests are still too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
+If the tests are too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
 
 ### Testing Within Your IDE
 
@@ -97,12 +86,12 @@ From your IDE of choice, you can also run all or some of the functionality tests
 With Visual Studio Code (or Codium), you also require the Mocha Test Explorer add-on. To run functionality tests, follow these steps:
 
 1. Install and enable the [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter).
-2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this: 
+2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this:
 
 ![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
 
-3. To run the full test suite, press the Play button (▶️) above. 
-   - To only run a single, or some of the tests, navigate to it, and press the Play button, too. 
+3. To run the full test suite, press the Play button (▶️) above.
+   - To only run a single, or some of the tests, navigate to it, and press the Play button, too.
    - You can cancel running tests by clicking on the Stop button (⏹️).
    - Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
 4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
@@ -120,7 +109,7 @@ With WebStorm, you can set up Run and Debug configurations from the IDE to run t
 ![A possible Run configuration for flowR's functionality tests in WebStorm](img/testing-config-webstorm.png)
 
    4. Press `OK` to save the test run configuration.
-   
+
    Afterwards, you can run or debug the flowR functionality test suite from the Run/Debug configurations part, by clicking on the Play and Debug buttons (▶️/🪲), respectively.
 
 ## CI Pipeline
@@ -137,7 +126,7 @@ We explain the most important workflows in the following:
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](https://code-inspect.github.io/flowr/doc/)
 - [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
-- [check-broken-links.yaml](../.github/workflows/check-broken-links.yaml) repeatedly tests that all links are not dead!
+- [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
 
@@ -171,4 +160,4 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](https://github.com/Code-Inspect/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).

@@ -1,6 +1,6 @@
-import type { FeatureKey } from '../../statistics'
-import { allFeatureNames } from '../../statistics'
 import path from 'path'
+import type { FeatureKey } from '../../statistics/features/feature'
+import { allFeatureNames } from '../../statistics/features/feature'
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
 	for(const feature of features) {

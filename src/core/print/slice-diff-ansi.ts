@@ -1,8 +1,9 @@
-import type { NodeId, NormalizedAst } from '../../r-bridge'
 import type { SourceRange } from '../../util/range'
 import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range'
 import { isNotUndefined } from '../../util/assert'
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../statistics'
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/ansi'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 
 function grayOut(): string {
 	return ansiFormatter.getFormatString({ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Faint })
@@ -27,7 +28,7 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary
 }
 
-export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, criteriaIds: Set<NodeId>, originalCode: string) {
+export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))
 		.map(([id, { location }]) => ({ selected: criteriaIds.has(id), location: location as SourceRange }) as const)
@@ -45,9 +46,9 @@ export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, cri
 	const lines = originalCode.split('\n')
 
 	for(const { selected, location } of importantLocations) {
-		const { start, end } = location
-		const line = lines[start.line - 1]
-		lines[start.line - 1] = `${line.substring(0, start.column - 1)}${ansiFormatter.reset()}${highlight(line.substring(start.column - 1, end.column), selected)}${grayOut()}${line.substring(end.column)}`
+		const [sl, sc, , ec] = location
+		const line = lines[sl - 1]
+		lines[sl - 1] = `${line.substring(0, sc - 1)}${ansiFormatter.reset()}${highlight(line.substring(sc - 1, ec), selected)}${grayOut()}${line.substring(ec)}`
 	}
 
 	return `${grayOut()}${lines.join('\n')}${ansiFormatter.reset()}`

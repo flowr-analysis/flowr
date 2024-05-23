@@ -1,19 +1,21 @@
-import { log } from '../util/log'
-import { BenchmarkSlicer } from '../benchmark'
-import { DefaultAllVariablesFilter } from '../slicing'
-import type { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
-import { jsonReplacer } from '../util/json'
+import { log } from '../util/log'
 import { guard } from '../util/assert'
-import { processCommandLineArgs } from './common'
+import { jsonReplacer } from '../util/json'
+import { processCommandLineArgs } from './common/script'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
+import { BenchmarkSlicer } from '../benchmark/slicer'
+import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables'
 
 
 export interface SingleBenchmarkCliOptions {
-	verbose: boolean
-	help:    boolean
-	input?:  string
-	slice:   string
-	output?: string
+	verbose:    boolean
+	help:       boolean
+	input?:     string
+	'file-id'?: number
+	'run-num'?: number
+	slice:      string
+	output?:    string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -35,8 +37,11 @@ async function benchmark() {
 	// we do not use the limit argument to be able to pick the limit randomly
 	guard(options.input !== undefined, 'No input file given')
 	guard(options.output !== undefined, 'No output file given')
+	guard((options['file-id'] === undefined) === (options['run-num'] === undefined), 'When giving a file-id or run-num, both have to be given')
 
-	console.log(`[${options.input }] Appending output to ${options.output}`)
+	// prefix for printing to console, includes file id and run number if present
+	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`
+	console.log(`${prefix} Appending output to ${options.output}`)
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input)
@@ -50,20 +55,26 @@ async function benchmark() {
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
-			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
-			console.log(`[${options.input}] Completed Slicing`)
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
+			console.log(`${prefix} Completed Slicing`)
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
 		} else {
-			console.log(`[${options.input}] Skipping Slicing due to --slice=${options.slice}`)
+			console.log(`${prefix} Skipping Slicing due to --slice=${options.slice}`)
 		}
 
 		const { stats } = slicer.finish()
+		const output = {
+			filename:  options.input,
+			'file-id': options['file-id'],
+			'run-num': options['run-num'],
+			stats
+		}
 		// append line by line
-		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, jsonReplacer)}\n`)
+		fs.appendFileSync(options.output, `${JSON.stringify(output, jsonReplacer)}\n`)
 	} catch(e: unknown) {
 		if(e instanceof Error) {
 			if(!e.message.includes('unable to parse R')) {
-				console.log(`[${options.input}] Non R-Side error : ${e.message}`)
+				console.log(`${prefix} Non R-Side error : ${e.message}`)
 			}
 		}
 		slicer.ensureSessionClosed() // ensure finish
@@ -72,4 +83,3 @@ async function benchmark() {
 }
 
 void benchmark()
-

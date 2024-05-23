@@ -11,7 +11,7 @@ name: "Run one of flowR's npm-actions with a specific version"
       r-version:
         description: "The R version to use"
         required: false
-        default: "4.3.2"
+        default: "4.4.0"
         type: string
       action:
         description: "The action to run"
@@ -37,6 +37,11 @@ name: "Run one of flowR's npm-actions with a specific version"
         required: false
         default: ''
         type: string
+      submodule-deps:
+        description: "Whether to install the npm dependencies of submodules"
+        required: false
+        default: false
+        type: boolean
 
 
 jobs:
@@ -57,8 +62,8 @@ jobs:
         # we expect this to only work on Linux/Ubuntu
         if: ${{ inputs.action == 'doc' }}
         run: |
-            sudo apt-get update
-            sudo apt-get install graphviz
+          sudo apt-get update
+          sudo apt-get install graphviz
 
       - name: "Run the corresponding action '${{ inputs.action }}'"
         run:
@@ -66,9 +71,10 @@ jobs:
 
       - name: Upload Coverage Reports to Codecov
         if: ${{ inputs.coverage }}
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
       - name: Commit New Documentation
         if: ${{ inputs.action == 'doc' }}
@@ -92,7 +98,7 @@ jobs:
 
       - name: Upload Benchmark Results
         if: ${{ inputs.benchmark != '' }}
-        uses: actions/upload-artifact@v3.1.3
+        uses: actions/upload-artifact@v4
         with:
-            name: benchmark-results-${{ inputs.benchmark }}
-            path: test/performance/results/
+          name: benchmark-results-${{ inputs.benchmark }}
+          path: test/performance/results/

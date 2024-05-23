@@ -1,10 +1,11 @@
-import type { RParseRequestFromFile } from '../r-bridge'
-import { retrieveNormalizedAstFromRCode, RShell } from '../r-bridge'
-import { log } from '../util/log'
-import { serialize2quads } from '../util/quads'
 import fs from 'fs'
+import { serialize2quads } from '../util/quads'
+import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
-import { processCommandLineArgs } from './common'
+import { processCommandLineArgs } from './common/script'
+import { RShell } from '../r-bridge/shell'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
+import { retrieveNormalizedAstFromRCode } from '../r-bridge/retriever'
 
 export interface QuadsCliOptions {
 	verbose: boolean

@@ -1,10 +1,10 @@
 import type { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
-import { RFalse, RNa, RNull, RNumHexFloatRegex, RTrue } from '../../../../r-bridge'
-import { assertUnreachable } from '../../../../util/assert'
-import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
+import { assertUnreachable } from '../../../../util/assert'
+import { RFalse, RNa, RNull, RNumHexFloatRegex, RTrue } from '../../../../r-bridge/lang-4.x/convert-values'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 const initialValueInfo = {
 	allNumerics:      0,

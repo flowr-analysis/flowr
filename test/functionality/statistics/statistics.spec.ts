@@ -1,21 +1,17 @@
-import type { AppendFnType,
-	DummyAppendMemoryMap,
-	FeatureKey,
-	FeatureValue } from '../../../src/statistics'
-import {
-	ALL_FEATURES,
-	extractUsageStatistics, initDummyFileProvider,
-	staticRequests
-} from '../../../src/statistics'
 import { assert } from 'chai'
-import type { RShell } from '../../../src/r-bridge'
-import { deepMergeObject } from '../../../src/util/objects'
+import type { DeepPartial } from 'ts-essentials'
+import path from 'path'
 import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
 import type { TestConfiguration } from '../_helper/shell'
 import { ensureConfig } from '../_helper/shell'
-import type { DeepPartial } from 'ts-essentials'
+import { deepMergeObject } from '../../../src/util/objects'
 import { requireAllTestsInFolder } from '../_helper/collect-tests'
-import path from 'path'
+import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics'
+import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature'
+import { ALL_FEATURES } from '../../../src/statistics/features/feature'
+import type { RShell } from '../../../src/r-bridge/shell'
+import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider'
+import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
 	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))

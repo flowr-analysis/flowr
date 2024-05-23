@@ -1,6 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import type { MergeableRecord } from '../../../../util/objects'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
@@ -8,13 +6,18 @@ import {
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import type { AssignmentInfo } from './assignments'
-import { bigint2number } from '../../../../util/numbers'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 import { getUniqueCombinationsOfSize } from '../../../../util/arrays'
 import { guard } from '../../../../util/assert'
+import { bigint2number } from '../../../../util/numbers'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
 
 interface OperatorInformation<Measurement, Uniques> {
 	uniqueProjects: Uniques

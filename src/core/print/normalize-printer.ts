@@ -1,8 +1,8 @@
-import type { NormalizedAst } from '../../r-bridge'
 import { jsonReplacer } from '../../util/json'
 import type { QuadSerializationConfiguration } from '../../util/quads'
 import { serialize2quads } from '../../util/quads'
-import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid/ast'
 
 /** Should work with larger things as well */
 export function normalizedAstToJson(ast: NormalizedAst): string {

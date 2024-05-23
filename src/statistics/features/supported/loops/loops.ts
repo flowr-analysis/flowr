@@ -1,10 +1,11 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
-import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
-import type { RNodeWithParent } from '../../../../r-bridge'
-import { RType, visitAst } from '../../../../r-bridge'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
+import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { appendStatisticsFile } from '../../../output/statistics-file'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 
 const initialLoopInfo = {

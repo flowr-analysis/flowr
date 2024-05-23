@@ -1,6 +1,6 @@
-import type { RShell } from '../../../r-bridge'
-import { italic } from '../../../statistics'
 import type { ReplCommand, ReplOutput } from './main'
+import { italic } from '../../../util/ansi'
+import type { RShell } from '../../../r-bridge/shell'
 
 
 export async function executeRShellCommand(output: ReplOutput, shell: RShell, statement: string) {

@@ -1,9 +1,9 @@
 import type { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
 import type { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 export const initialUsedPackageInfos = {
 	library:              0,

@@ -3,40 +3,36 @@
  * @module
  */
 
-import type {
-	NormalizedAst,
-	RParseRequestFromFile, RParseRequestFromText
-} from '../r-bridge'
-import {
-	collectAllIds,
-	retrieveNumberOfRTokensOfLastParse,
-	RShell
-} from '../r-bridge'
+
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
+import fs from 'fs'
+import { log, LogLevel } from '../util/log'
+import type { MergeableRecord } from '../util/objects'
+import type { DataflowInformation } from '../dataflow/info'
+import type { SliceResult } from '../slicing/static/slicer-types'
+import type { ReconstructionResult } from '../reconstruct/reconstruct'
+import { PipelineExecutor } from '../core/pipeline-executor'
 import { guard } from '../util/assert'
-import type { DataflowInformation } from '../dataflow/internal/info'
-import type {
-	SlicingCriteria,
-	SlicingCriteriaFilter,
-	SliceResult, ReconstructionResult
-} from '../slicing'
-import {
-	collectAllSlicingCriteria
-} from '../slicing'
+import { withoutWhitespace } from '../util/strings'
 import type {
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats
-} from './stats'
-import fs from 'fs'
-import { log, LogLevel } from '../util/log'
-import type { MergeableRecord } from '../util/objects'
-import type { STEPS, StepResult } from '../core'
-import { LAST_STEP, SteppingSlicer } from '../core'
-import { withoutWhitespace } from '../util/strings'
+} from './stats/stats'
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { SlicingCriteria } from '../slicing/criterion/parse'
+import { RShell } from '../r-bridge/shell'
+import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever'
+import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline'
+import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
+import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -57,7 +53,7 @@ export interface BenchmarkSlicerStats extends MergeableRecord {
 
 /**
  * Additionally to {@link BenchmarkSlicerStats}, this contains the results of a *single* slice.
- * In other words, it holds the results of the slice and reconstruct steps.
+ * In other words, it holds the results of the `slice` and `reconstruct` steps.
  */
 export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	/** the measurements obtained during the single slice */
@@ -75,22 +71,21 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  *
- * @note Under the hood, the benchmark slicer maintains a {@link SteppingSlicer}.
+ * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE}.
  */
 export class BenchmarkSlicer {
-	/** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
+	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
 	private loadedXml:      string | undefined
 	private dataflow:       DataflowInformation | undefined
-	private ai:             DataflowInformation | undefined
 	private normalizedAst:  NormalizedAst | undefined
 	private totalStopwatch: IStoppableStopwatch
 	private finished = false
-	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
-	private stepper:        SteppingSlicer = null as unknown as SteppingSlicer
+	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
+	private pipeline:       PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> = null as unknown as PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
 
 	constructor() {
 		this.totalStopwatch = this.commonMeasurements.start('total')
@@ -107,18 +102,17 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
-		this.stepper = new SteppingSlicer({
-			shell:          this.shell,
-			request:        { ...request },
-			stepOfInterest: LAST_STEP,
-			criterion:      []
+		this.pipeline = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
+			shell:     this.shell,
+			request:   { ...request },
+			criterion: []
 		})
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
 
-		this.stepper.switchToSliceStage()
+		this.pipeline.switchToRequestStage()
 
 		await this.calculateStatsAfterInit(request)
 	}
@@ -127,6 +121,7 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
 		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell)
+		const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.shell, true)
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization')
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization')
@@ -147,16 +142,40 @@ export class BenchmarkSlicer {
 			}
 		}
 
+		let nodes = 0
+		let nodesNoComments = 0
+		let commentChars = 0
+		let commentCharsNoWhitespace = 0
+		visitAst(this.normalizedAst.ast, t => {
+			nodes++
+			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment)
+			if(comments && comments.length > 0) {
+				const content = comments.map(c => c.lexeme ?? '').join('')
+				commentChars += content.length
+				commentCharsNoWhitespace += withoutWhitespace(content).length
+			} else {
+				nodesNoComments++
+			}
+			return false
+		})
+
+		const split = loadedContent.split('\n')
+		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
 			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
-				numberOfLines:                   loadedContent.split('\n').length,
-				numberOfCharacters:              loadedContent.length,
-				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
-				numberOfRTokens:                 numberOfRTokens,
-				numberOfNormalizedTokens:        [...collectAllIds(this.normalizedAst.ast)].length
+				numberOfLines:                             split.length,
+				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
+				numberOfCharacters:                        loadedContent.length,
+				numberOfCharactersNoComments:              loadedContent.length - commentChars,
+				numberOfNonWhitespaceCharacters:           nonWhitespace,
+				numberOfNonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				numberOfRTokens:                           numberOfRTokens,
+				numberOfRTokensNoComments:                 numberOfRTokensNoComments,
+				numberOfNormalizedTokens:                  nodes,
+				numberOfNormalizedTokensNoComments:        nodesNoComments
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
@@ -187,26 +206,26 @@ export class BenchmarkSlicer {
 			numberOfDataflowNodesSliced: 0,
 			timesHitThreshold:           0,
 			reconstructedCode:           {
-				code:         '',
-				autoSelected: 0
+				code:                  '',
+				linesWithAutoSelected: 0
 			}
 		}
 		this.perSliceMeasurements.set(slicingCriteria, stats)
 
-		this.stepper.updateCriterion(slicingCriteria)
+		this.pipeline.updateRequest({ criterion: slicingCriteria })
 
 		const totalStopwatch = measurements.start('total')
 
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing')
-		stats.slicingCriteria = slicedOutput.decodedCriteria
+		stats.slicingCriteria = [...slicedOutput.decodedCriteria]
 
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code')
 
 		totalStopwatch.stop()
 
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
-		const results = this.stepper.getResults(false)
+		const results = this.pipeline.getResults(false)
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
 			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
@@ -216,7 +235,7 @@ export class BenchmarkSlicer {
 		}
 
 		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
-		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasNode(id, false)).length
+		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasVertex(id, false)).length
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
 		stats.measurements = measurements.get()
@@ -228,20 +247,27 @@ export class BenchmarkSlicer {
 	}
 
 	/** Bridging the gap between the new internal and the old names for the benchmarking */
-	private async measureCommonStep<Step extends keyof typeof STEPS>(expectedStep: Step, keyToMeasure: CommonSlicerMeasurements): Promise<StepResult<Step>> {
+	private async measureCommonStep<Step extends PipelineStepNames<typeof DEFAULT_SLICING_PIPELINE>>(
+		expectedStep: Step,
+		keyToMeasure: CommonSlicerMeasurements
+	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
 		const { result } = await this.commonMeasurements.measureAsync(
-			keyToMeasure, () => this.stepper.nextStep(expectedStep)
+			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
 		)
 
-		return result as StepResult<Step>
+		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>
 	}
 
-	private async measureSliceStep<Step extends keyof typeof STEPS>(expectedStep: Step, measure: Measurements<PerSliceMeasurements>, keyToMeasure: PerSliceMeasurements): Promise<StepResult<Step>> {
+	private async measureSliceStep<Step extends PipelineStepNames<typeof DEFAULT_SLICING_PIPELINE>>(
+		expectedStep: Step,
+		measure: Measurements<PerSliceMeasurements>,
+		keyToMeasure: PerSliceMeasurements
+	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
 		const { result } = await measure.measureAsync(
-			keyToMeasure, () => this.stepper.nextStep(expectedStep)
+			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
 		)
 
-		return result as StepResult<Step>
+		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>
 	}
 
 	private guardActive() {
@@ -252,14 +278,17 @@ export class BenchmarkSlicer {
    * Call {@link slice} for all slicing criteria that match the given filter.
    * See {@link collectAllSlicingCriteria} for details.
    * <p>
-   * the `report` function will be called *before* each individual slice is performed.
+   * the `report` function will be called *before* each *individual* slice is performed.
    *
    * @returns The number of slices that were produced
    *
    * @see collectAllSlicingCriteria
    * @see SlicingCriteriaFilter
    */
-	public async sliceForAll(filter: SlicingCriteriaFilter, report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }): Promise<number> {
+	public async sliceForAll(
+		filter: SlicingCriteriaFilter,
+		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }
+	): Promise<number> {
 		this.guardActive()
 		let count = 0
 		const allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)]

@@ -1,5 +1,7 @@
-import type { ReconstructionResult, SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
-import type { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
+import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ReconstructionResult } from '../../reconstruct/reconstruct'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
@@ -18,11 +20,16 @@ export interface PerSliceStats {
 }
 
 export interface SlicerStatsInput<T = number> {
-	numberOfLines:                   T
-	numberOfCharacters:              T
-	numberOfNonWhitespaceCharacters: T
-	numberOfRTokens:                 T
-	numberOfNormalizedTokens:        T
+	numberOfLines:                             T
+	numberOfNonEmptyLines:                     T
+	numberOfCharacters:                        T
+	numberOfCharactersNoComments:              T
+	numberOfNonWhitespaceCharacters:           T
+	numberOfNonWhitespaceCharactersNoComments: T
+	numberOfRTokens:                           T
+	numberOfRTokensNoComments:                 T
+	numberOfNormalizedTokens:                  T
+	numberOfNormalizedTokensNoComments:        T
 }
 
 

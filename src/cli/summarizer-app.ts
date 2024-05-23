@@ -6,12 +6,12 @@
  * @module
  */
 
-import { processCommandLineArgs } from './common'
-import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
-import { detectSummarizationType } from '../util/summarizer/auto-detect'
-import { StatisticsSummarizer } from '../util/summarizer/statistics/summarizer'
-import { SummarizerType } from '../util/summarizer/summarizer'
-import { allFeatureNames } from '../statistics'
+import { BenchmarkSummarizer } from '../benchmark/summarizer/summarizer'
+import { StatisticsSummarizer } from '../statistics/summarizer/summarizer'
+import { detectSummarizationType } from '../statistics/summarizer/auto-detect'
+import { SummarizerType } from '../util/summarizer'
+import { processCommandLineArgs } from './common/script'
+import { allFeatureNames } from '../statistics/features/feature'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -40,9 +40,8 @@ function getBenchmarkSummarizer() {
 	return new BenchmarkSummarizer({
 		graphOutputPath:        options.graph ? `${outputBase}-graph.json` : undefined,
 		inputPath:              options.input,
-		intermediateOutputPath: `${outputBase}.json`,
+		intermediateOutputPath: outputBase,
 		outputPath:             `${outputBase}-ultimate.json`,
-		outputLogPath:          `${outputBase}.log`,
 		logger:                 console.log
 	})
 }
@@ -86,4 +85,3 @@ async function run() {
 
 
 void run()
-

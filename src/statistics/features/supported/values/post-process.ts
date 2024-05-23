@@ -1,17 +1,7 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../util/summarizer/benchmark/data'
 import type { ValueInfo } from './values'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { readLineByLineSync } from '../../../../util/files'
-import { date2string } from '../../../../util/time'
-import type { StatisticsOutputFormat } from '../../../output'
-import { array2bag } from '../../../../util/arrays'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -20,6 +10,16 @@ import {
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
+import { date2string } from '../../../../util/time'
+import { readLineByLineSync } from '../../../../util/files'
+import { array2bag } from '../../../../util/arrays'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 // values contains - and + values
 

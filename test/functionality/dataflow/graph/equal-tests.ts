@@ -1,21 +1,21 @@
-import type { DataflowGraph } from '../../../../src/dataflow'
-import { diffGraphsToMermaidUrl } from '../../../../src/dataflow'
 import { assert } from 'chai'
-import { emptyGraph } from '../../_helper/dataflowgraph-builder'
+import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder'
+import type { DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {
 	try {
 		cmp(a.equals(b))
 	} catch(e) {
 		// only calculate the dataflow graphs if it fails
-		const diff = diffGraphsToMermaidUrl({ label: 'left', graph: a }, { label: 'right', graph: b }, undefined, '')
+		const diff = diffGraphsToMermaidUrl({ label: 'left', graph: a }, { label: 'right', graph: b }, '')
 		console.error(text + '; diff:\n', diff)
 		throw e
 	}
 }
 
 describe('Equal', () => {
-	const raw = (name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) => {
+	function raw(name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) {
 		return it(name, () => {
 			// as the comparison is relatively quick, we allow explicit checks for commutativity
 			test(cmp, a, b, 'a;b' + text)
@@ -24,7 +24,7 @@ describe('Equal', () => {
 	}
 
 	describe('Positive', () => {
-		const eq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
+		function eq(name: string, a: DataflowGraph, b: DataflowGraph) {
 			raw(name, a, b, 'should be equal', x => assert.isTrue(x))
 		}
 
@@ -32,7 +32,7 @@ describe('Equal', () => {
 		eq('Same vertex', emptyGraph().use('0', 'x'), emptyGraph().use('0', 'x'))
 	})
 	describe('Negative', () => {
-		const neq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
+		function neq(name: string, a: DataflowGraph, b: DataflowGraph) {
 			raw(name, a, b, 'should differ', x => assert.isFalse(x))
 		}
 		describe('More elements', () => {
@@ -45,14 +45,14 @@ describe('Equal', () => {
 				const rhs = emptyGraph().use('0', 'x')
 				neq('Id', emptyGraph().use('1', 'x'), rhs)
 				neq('Name', emptyGraph().use('0', 'y'), rhs)
-				neq('Tag', emptyGraph().exit('0', 'x'), rhs)
+				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: ['1'] }), rhs)
+				neq('Tag', emptyGraph().constant('0'), rhs)
 			})
 			describe('Different edges', () => {
 				const rhs = emptyGraph().reads('0', '1')
 				neq('Source Id', emptyGraph().reads('2', '1'), rhs)
 				neq('Target Id', emptyGraph().reads('0', '2'), rhs)
 				neq('Type', emptyGraph().calls('0', '1'), rhs)
-				neq('Attribute', emptyGraph().reads('0', '1', 'maybe'), rhs)
 			})
 		})
 	})

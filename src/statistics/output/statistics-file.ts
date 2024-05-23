@@ -89,5 +89,3 @@ export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string
 
 	statisticsFileProvider.append(name, fn, values.join('\n'))
 }
-
-

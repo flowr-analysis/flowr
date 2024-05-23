@@ -27,8 +27,7 @@ for ((i = 0; i < ${#CONTAINED[@]}; i += size)); do
 
   mkdir -p "${dirBasis}/${chunkNumber}/"
   # shellcheck disable=SC2068
-  npm run stats -- ${chunk[@]} --output-dir "${dirBasis}/${chunkNumber}/" > "${dirBasis}/${chunkNumber}/full.log" 2>&1 &
+  npm run stats --prefix ../cli -- ${chunk[@]} --output-dir "${dirBasis}/${chunkNumber}/" > "${dirBasis}/${chunkNumber}/full.log" 2>&1 &
 
   # printf '%s\n' "${chunk[@]}"
 done
-

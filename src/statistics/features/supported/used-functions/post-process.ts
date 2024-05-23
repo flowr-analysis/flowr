@@ -1,30 +1,26 @@
-import type {
-	SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
-import {
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../util/summarizer/benchmark/data'
-import type { MergeableRecord } from '../../../../util/objects'
+
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts,
 } from '../../common-syntax-probability'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
-import type { StatisticsOutputFormat } from '../../../output'
-import fs from 'node:fs'
-import { date2string } from '../../../../util/time'
+import fs from 'fs'
 import type { FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { AllCallsFileBase } from './used-functions'
-import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import type { SummarizedMeasurement } from '../../../../util/summarizer'
+import { summarizedMeasurement2Csv , summarizeMeasurement , summarizedMeasurement2CsvHeader } from '../../../../util/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
+import { readLineByLineSync } from '../../../../util/files'
+import { date2string } from '../../../../util/time'
 import { bigint2number } from '../../../../util/numbers'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
-// during the collection phase this should be a map using an array to collect
+// during the collection phase, this should be a map using an array to collect
 interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	averageCall:    Measurement
 	emptyArgs:      Measurement

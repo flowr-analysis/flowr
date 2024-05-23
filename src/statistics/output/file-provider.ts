@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
-import { guard } from '../../util/assert'
 import { log, LogLevel } from '../../util/log'
+import { guard } from '../../util/assert'
 
 type FileDescriptor = number
 export type AppendFnType = string | number | symbol
@@ -36,7 +36,7 @@ export class DummyAppendProvider implements StatisticAppendProvider {
 				if(contentList) {
 					contentList.push(...contentArr)
 				} else {
-					// just in case the map already had some entries
+					// just in case that the map already had some entries
 					fnMap.set(fn, contentArr)
 				}
 			} else {
@@ -62,7 +62,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 		guard(statisticsDirectory !== undefined, 'Please supply an output directory!')
 		this.statisticsDirectory = statisticsDirectory
 
-		// just to make sure, that they are closed
+		// just to make sure that they are closed
 		process.on('beforeExit', () => {
 			this.connections.forEach(fd => {
 				fs.closeSync(fd)

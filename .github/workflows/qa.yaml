@@ -12,6 +12,11 @@ name: "QA"
   pull_request:
     types: [ opened, synchronize ]
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'scripts/**'
   workflow_dispatch:
     inputs:
       force-full:
@@ -56,7 +61,7 @@ jobs:
     with:
       action: test-full -- --forbid-only
       coverage: true
-
+    secrets: inherit
 
   performance-test:
     needs: [ test ]

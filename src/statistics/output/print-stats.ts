@@ -1,8 +1,8 @@
-import type { FeatureKey, FeatureStatistics } from '../features'
-import { ALL_FEATURES } from '../features'
-import { ColorEffect, Colors, formatter } from './ansi'
 import type { MetaStatistics } from '../meta-statistics'
+import { ColorEffect, Colors, formatter } from '../../util/ansi'
 import { jsonReplacer } from '../../util/json'
+import type { FeatureKey, FeatureStatistics } from '../features/feature'
+import { ALL_FEATURES } from '../features/feature'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 

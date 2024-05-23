@@ -1,12 +1,16 @@
-import { log } from '../util/log'
 import fs from 'fs'
 import { guard } from '../util/assert'
-import type { ReconstructionResult, SingleSlicingCriterion, SliceResult, SlicingCriteria } from '../slicing'
-import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
-import type { NodeId } from '../r-bridge'
-import { processCommandLineArgs } from './common'
-import { jsonReplacer } from '../util/json'
+import type { SliceResult } from '../slicing/static/slicer-types'
+import { log } from '../util/log'
+import { summarizeSlicerStats } from '../benchmark/summarizer/first-phase/process'
 import { sliceDiffAnsi } from '../core/print/slice-diff-ansi'
+import { jsonReplacer } from '../util/json'
+import { processCommandLineArgs } from './common/script'
+import { BenchmarkSlicer } from '../benchmark/slicer'
+import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse'
+import type { ReconstructionResult } from '../reconstruct/reconstruct'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { stats2string } from '../benchmark/stats/print'
 
 export interface SlicerCliOptions {
 	verbose:         boolean
@@ -55,7 +59,7 @@ async function getSlice() {
 			reconstruct = reconstructedCode
 			if(options.output) {
 				console.log('Written reconstructed code to', options.output)
-				console.log(`Automatically selected ${reconstructedCode.autoSelected} statements`)
+				console.log(`Automatically selected ${reconstructedCode.linesWithAutoSelected} lines`)
 				fs.writeFileSync(options.output, reconstructedCode.code)
 			} else if(!options.api && !options.diff) {
 				console.log(reconstructedCode.code)
@@ -96,4 +100,3 @@ async function getSlice() {
 }
 
 void getSlice()
-

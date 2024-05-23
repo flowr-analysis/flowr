@@ -1,11 +1,11 @@
-import type { NodeId } from '../../../../src/r-bridge'
-import type { IEnvironment } from '../../../../src/dataflow'
-import { DefaultEnvironmentMemory, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/environments'
-import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
-import { variable } from '../../_helper/environment-builder'
+import { defaultEnv } from '../../_helper/dataflow/environment-builder'
+import { label } from '../../_helper/label'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IEnvironment } from '../../../../src/dataflow/environments/environment'
+import { overwriteEnvironment } from '../../../../src/dataflow/environments/overwrite'
+import { appendEnvironment } from '../../../../src/dataflow/environments/append'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {
@@ -20,53 +20,46 @@ function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment
 
 describe('Modification', () => {
 	describe('Global', () => {
-		it('Different variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
-			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('y', '_2'), GlobalScope, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+		it(label('Different variables', ['global-scope', 'name-normal'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('x', '_1')
+			const overwrite = defaultEnv().defineVariable('y', '_2')
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
 		})
 
-		it('Same variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
-			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('x', '_2'), GlobalScope, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+		it(label('Same variables', ['global-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('x', '_1')
+			const overwrite = defaultEnv().defineVariable('x', '_2')
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
-			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1)
 			existsDefinedAt('x', ['_2'], result.current)
 		})
 	})
 
 	describe('Local', () => {
-		it('Different variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('long', '_1'), LocalScope, clean)
-			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('short', '_2'), LocalScope, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+
+		it(label('Different variables', ['lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('long', '_1')
+			const overwrite = defaultEnv().defineVariable('short', '_2')
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2)
 			existsDefinedAt('long', ['_1'], result.current)
 			existsDefinedAt('short', ['_2'], result.current)
 		})
 
-		it('Same variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('long', '_1'), LocalScope, clean)
-			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('long', '_2'), LocalScope, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+		it(label('Same variables', ['lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('long', '_1')
+			const overwrite = defaultEnv().defineVariable('long', '_2')
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1)
 			existsDefinedAt('long', ['_2'], result.current)
 		})
 	})
@@ -74,53 +67,46 @@ describe('Modification', () => {
 
 describe('Append', () => {
 	describe('Global', () => {
-		it('Different variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
-			let append = initializeCleanEnvironments()
-			append = define(variable('y', '_2'), GlobalScope, append)
-			const result = appendEnvironments(clean, append)
+		it(label('Different variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('x', '_1', '_1')
+			const append = defaultEnv().defineVariable('y', '_2', '_2')
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
 		})
 
-		it('Same variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
-			let append = initializeCleanEnvironments()
-			append = define(variable('x', '_2'), GlobalScope, append)
-			const result = appendEnvironments(clean, append)
+		it(label('Same variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('x', '_1', '_1')
+			const append = defaultEnv().defineVariable('x', '_2', '_2')
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
-			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1)
 			existsDefinedAt('x', ['_1', '_2'], result.current)
 		})
 	})
 
 	describe('Local', () => {
-		it('Different variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('local-long', '_1'), LocalScope, clean)
-			let append = initializeCleanEnvironments()
-			append = define(variable('local-short', '_2'), LocalScope, append)
-			const result = appendEnvironments(clean, append)
+
+		it(label('Different variables', ['lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('local-long', '_1')
+			const append = defaultEnv().defineVariable('local-short', '_2')
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0)
-			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2)
 			existsDefinedAt('local-long', ['_1'], result.current)
 			existsDefinedAt('local-short', ['_2'], result.current)
 		})
 
-		it('Same variables', () => {
-			let clean = initializeCleanEnvironments()
-			clean = define(variable('local-long', '_1'), LocalScope, clean)
-			let append = initializeCleanEnvironments()
-			append = define(variable('local-long', '_2'), LocalScope, append)
-			const result = appendEnvironments(clean, append)
+		it(label('Same variables', ['lexicographic-scope'], ['other']), () => {
+			const clean = defaultEnv().defineVariable('local-long', '_1')
+			const append = defaultEnv().defineVariable('local-long', '_2')
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1 + DefaultEnvironmentMemory.size)
+			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1)
 			existsDefinedAt('local-long', ['_1', '_2'], result.current)
 		})
 	})

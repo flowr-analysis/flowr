@@ -1,24 +1,25 @@
-import type { XmlBasedJson } from '../../../r-bridge'
-import { childrenKey , attributesKey, contentKey , getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
-
-
+import type { ReplCommand } from './main'
+import type { OutputFormatter } from '../../../util/ansi'
+import { FontStyles } from '../../../util/ansi'
+import { PipelineExecutor } from '../../../core/pipeline-executor'
+import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import type { XmlBasedJson } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { attributesKey, contentKey , childrenKey , getKeysGuarded } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { RawRType } from '../../../r-bridge/lang-4.x/ast/model/type'
 import {
 	extractLocation,
 	getTokenType,
-	objectWithArrUnwrap,
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
-import type { OutputFormatter } from '../../../statistics'
-import { FontStyles } from '../../../statistics'
-import type { ReplCommand } from './main'
-import { SteppingSlicer } from '../../../core'
-import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
-import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
+	objectWithArrUnwrap
+} from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
+import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson): DepthList {
 	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
-	const visit = [ { depth: 0, node: root } ]
+	const visit: { depth: number, node: XmlBasedJson }[] = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 
 	while(visit.length > 0) {
@@ -27,7 +28,7 @@ function toDepthMap(xml: XmlBasedJson): DepthList {
 			continue
 		}
 
-		const children = current.node[childrenKey] as XmlBasedJson[] | undefined ?? []
+		const children = current.node[childrenKey] as unknown as XmlBasedJson[] | undefined ?? []
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -74,10 +75,10 @@ function initialIndentation(i: number, depth: number, deadDepths: Set<number>, n
 
 function retrieveLocationString(locationRaw: XmlBasedJson) {
 	const extracted = extractLocation(locationRaw)
-	if(extracted.start.line === extracted.end.line && extracted.start.column === extracted.end.column) {
-		return ` (${extracted.start.line}:${extracted.start.column})`
+	if(extracted[0] === extracted[2] && extracted[1] === extracted[3]) {
+		return ` (${extracted[0]}:${extracted[1]})`
 	} else {
-		return ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
+		return ` (${extracted[0]}:${extracted[1]}─${extracted[2]}:${extracted[3]})`
 	}
 }
 
@@ -118,15 +119,14 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 
 
 export const parseCommand: ReplCommand = {
-	description:  'Prints ASCII Art of the parsed, unmodified AST, start with \'file://\' to indicate a file',
+	description:  `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await new SteppingSlicer({
-			stepOfInterest: 'parse',
+		const result = await new PipelineExecutor(DEFAULT_PARSE_PIPELINE, {
 			shell,
-			request:        requestFromInput(remainingLine.trim())
+			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps()
 
 		const object = convertPreparedParsedData(prepareParsedData(result.parse))

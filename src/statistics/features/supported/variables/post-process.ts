@@ -1,5 +1,4 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
-import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
@@ -9,12 +8,16 @@ import {
 	recordFilePath
 } from '../../post-processing'
 import type { DefinedVariableInformation, VariableInfo } from './variables'
-import fs from 'node:fs'
+import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { readLineByLineSync } from '../../../../util/files'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 import type { MergeableRecord } from '../../../../util/objects'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
+import { readLineByLineSync } from '../../../../util/files'
 
 type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWithProject>
 

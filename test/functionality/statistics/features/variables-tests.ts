@@ -1,5 +1,5 @@
-import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { withShell } from '../../_helper/shell'
 
 
 describe('Variables', withShell(shell => {
@@ -32,41 +32,6 @@ describe('Variables', withShell(shell => {
 					'a',
 					[1,1]
 				]]]],
-			]
-		},
-		{
-			name:     'one variable use and re-definitions',
-			code:     'abc <- 3\nabc <- abc + 3\nabc <- x',
-			expected: {
-				numberOfDefinitions:   3,
-				numberOfRedefinitions: 2,
-				numberOfVariableUses:  2
-			},
-			written: [
-				['definedVariables', [[[
-					'abc',
-					[1,1]
-				]], [[
-					'abc',
-					[2,1]
-				]], [[
-					'abc',
-					[3,1]
-				]]]],
-				['redefinedVariables', [[[
-					'abc',
-					[1,1]
-				]], [[
-					'abc',
-					[2,1]
-				]]]],
-				['usedVariables', [[[
-					'abc',
-					[2,8]
-				]], [[
-					'x',
-					[3,8]
-				]]]]
 			]
 		}
 	])

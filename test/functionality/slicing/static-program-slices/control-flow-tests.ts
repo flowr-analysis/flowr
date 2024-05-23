@@ -63,5 +63,40 @@ print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 2\nx' : `x <- 1\n${loop} {
 x`)
 			})
 		}
+		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
+			shell, `f <- function(x) {
+   x <- 3 * x
+   return(x)
+   # alles drunter soll natürlich weg 
+   x <- 2
+   return(x)
+}
+
+f(5)`, ['9@f'],`f <- function(x) {
+        x <- 3 * x
+        return(x)
+    }
+f(5)`)
+		// this is incorrect, see https://github.com/Code-Inspect/flowr/issues/816
+		assertSliced(label('dead code (return in if)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'if', 'return', 'unnamed-arguments', 'comments']),
+			shell, `f <- function(x) {
+   x <- 3 * x
+   if(k)
+      return(x)
+   else
+      return(1)
+   # alles drunter soll natürlich weg 
+   x <- 2
+   return(x)
+}
+
+f(5)`, ['12@f'], `f <- function(x) {
+        x <- 3 * x
+        if(k) return(x) else
+        return(1)
+        x <- 2
+        return(x)
+    }
+f(5)`)
 	})
 }))

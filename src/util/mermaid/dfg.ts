@@ -134,7 +134,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	} else if(env.id === BuiltInEnvironment.id) {
 		return ['Built-in']
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}--${env.name}${'-'.repeat(40)}`]
+	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`]
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length))
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`

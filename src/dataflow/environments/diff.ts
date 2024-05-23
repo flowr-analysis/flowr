@@ -57,25 +57,22 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 	}
 }
 
-export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>): void {
+export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation<Report>, depth: number): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${a !== undefined ? 'present' : 'undefined'} vs. ${info.rightname}: ${b !== undefined ? 'present' : 'undefined'}`)
+			info.report.addComment(`${info.position}[at level: ${depth}] Different environments. ${info.leftname}: ${a !== undefined ? 'present' : 'undefined'} vs. ${info.rightname}: ${b !== undefined ? 'present' : 'undefined'}`)
 		}
 		return
 	}
-	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${a.name}  vs. ${info.rightname}: ${b.name}`)
-	}
 	if(a.memory.size !== b.memory.size) {
-		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${a.memory.size} vs. ${info.rightname}: ${b.memory.size}`)
+		info.report.addComment(`${info.position}[at level: ${depth}] Different number of definitions in environment. ${info.leftname}: ${a.memory.size} vs. ${info.rightname}: ${b.memory.size}`)
 		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {
 			...info,
-			position: `${info.position}Key comparison. `
+			position: `${info.position}[at level: ${depth}] Key comparison. `
 		})
 	}
-	diffMemory(a, b, info)
-	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` })
+	diffMemory(a, b, { ...info, position: `${info.position}[at level: ${depth}] ` })
+	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth--)
 }
 
 export function diffEnvironmentInformation<Report extends WriteableDifferenceReport>(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation<Report>): void {
@@ -85,5 +82,8 @@ export function diffEnvironmentInformation<Report extends WriteableDifferenceRep
 		}
 		return
 	}
-	diffEnvironment(a.current, b.current, info)
+	if(a.level !== b.level) {
+		info.report.addComment(`${info.position}Different environment levels: ${info.leftname}: ${a.level} vs. ${info.rightname}: ${b.level}. Using max to report level for further errors.`)
+	}
+	diffEnvironment(a.current, b.current, info, Math.max(a.level, b.level))
 }

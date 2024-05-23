@@ -233,7 +233,7 @@ function processAssignmentToSymbol<OtherInfo>({
 	return {
 		...information,
 		unknownReferences: [],
-		entryPoint:        name.info.id,
+		entryPoint:        rootId,
 		in:                readTargets,
 		out:               writeTargets
 	}

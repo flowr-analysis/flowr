@@ -451,4 +451,191 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('18', 'b', { definedBy: ['19', '20'] })
 		)
 	})
+
+	describe('Dead Code', () => {
+		assertDataflow(label('simple return', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments']),
+			shell, `f <- function(x) {
+   x <- 3 * x
+   return(x)
+   x <- 2
+   return(x)
+}
+
+f(5)`, emptyGraph()
+				.use('7', 'x', undefined, false)
+				.reads('7', '1')
+				.use('11', 'x', undefined, false)
+				.reads('11', '5')
+				.argument('8', '7')
+				.call('8', '*', [argumentInCall('6'), argumentInCall('7')], { returns: [], reads: [BuiltIn, '6', '7'], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
+				.argument('8', '6')
+				.argument('9', '8')
+				.call('9', '<-', [argumentInCall('5'), argumentInCall('8')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
+				.argument('9', '5')
+				.argument('13', '11')
+				.call('13', 'return', [argumentInCall('11')], { returns: ['11'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.argument('21', '9')
+				.argument('21', '13')
+				.call('21', '{', [argumentInCall('9'), argumentInCall('13')], { returns: ['13'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.call('23', '<-', [argumentInCall('0'), argumentInCall('22')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('23', ['22', '0'])
+				.call('27', 'f', [argumentInCall('25')], { returns: ['21'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '23') })
+				.argument('27', '25')
+				.calls('27', '22')
+				.defineVariable('1', 'x', { definedBy: [] }, false)
+				.constant('6', undefined, false)
+				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
+				.defineFunction('22', ['21'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '21',
+					graph:             new Set(['1', '6', '7', '8', '5', '9', '11', '13', '21']),
+					environment:       defaultEnv().pushEnv().defineVariable('x', '5', '9')
+				})
+				.defineVariable('0', 'f', { definedBy: ['22', '23'] })
+				.constant('25')
+				.definesOnCall('25', '1'))
+		// this is potentially incorrect, see https://github.com/Code-Inspect/flowr/issues/816
+		assertDataflow(label('return in if',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments', 'if']),
+			shell, `f <- function(x) {
+   x <- 3 * x
+   if(k)
+      return(x)
+   else
+      return(1)
+   x <- 2
+   return(x)
+}
+
+f(5)`,  emptyGraph()
+				.use('7', 'x', undefined, false)
+				.reads('7', '1')
+				.use('10', 'k', undefined, false)
+				.use('12', 'x', undefined, false)
+				.reads('12', '5')
+				.use('26', 'x', undefined, false)
+				.reads('26', ['5', '22'])
+				.argument('8', '7')
+				.call('8', '*', [argumentInCall('6'), argumentInCall('7')], { returns: [], reads: [BuiltIn, '6', '7'], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
+				.argument('8', '6')
+				.argument('9', '8')
+				.call('9', '<-', [argumentInCall('5'), argumentInCall('8')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
+				.argument('9', '5')
+				.argument('14', '12')
+				.call('14', 'return', [argumentInCall('12')], { returns: ['12'], reads: [BuiltIn], controlDependencies: ['21'], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.call('19', 'return', [argumentInCall('17')], { returns: ['17'], reads: [BuiltIn], controlDependencies: ['21'], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.argument('19', '17')
+				.argument('21', '10')
+				.argument('21', '14')
+				.argument('21', '19')
+				.call('21', 'if', [argumentInCall('10'), argumentInCall('14', { controlDependencies: ['21'] }), argumentInCall('19', { controlDependencies: ['21'] })], { returns: ['14', '19'], reads: ['10', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.call('24', '<-', [argumentInCall('22', { controlDependencies: [] }), argumentInCall('23')], { returns: ['22'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9') }, false)
+				.argument('24', ['23', '22'])
+				.argument('28', '26')
+				.call('28', 'return', [argumentInCall('26')], { returns: ['26'], reads: [BuiltIn], controlDependencies: [], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9').defineVariable('x', '22', '24', []) }, false)
+				.argument('29', '9')
+				.argument('29', '21')
+				.argument('29', '24')
+				.argument('29', '28')
+				.call('29', '{', [argumentInCall('9'), argumentInCall('21'), argumentInCall('24', { controlDependencies: [] }), argumentInCall('28', { controlDependencies: [] })], { returns: ['28', '14', '19'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineVariable('x', '5', '9').defineVariable('x', '22', '24', []) }, false)
+				.call('31', '<-', [argumentInCall('0'), argumentInCall('30')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('31', ['30', '0'])
+				.call('35', 'f', [argumentInCall('33')], { returns: ['29'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '31') })
+				.argument('35', '33')
+				.calls('35', '30')
+				.defineVariable('1', 'x', { definedBy: [] }, false)
+				.constant('6', undefined, false)
+				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
+				.constant('17', undefined, false)
+				.constant('23', undefined, false)
+				.defineVariable('22', 'x', { definedBy: ['23', '24'], controlDependencies: [] }, false)
+				.defineFunction('30', ['29'], {
+					out:               [],
+					in:                [{ nodeId: '10', name: 'k', controlDependencies: [] }],
+					unknownReferences: [],
+					entryPoint:        '29',
+					graph:             new Set(['1', '6', '7', '8', '5', '9', '10', '12', '14', '17', '19', '21', '23', '22', '24', '26', '28', '29']),
+					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '2').defineVariable('x', '5', '9').defineVariable('x', '22', '24', [])
+				})
+				.defineVariable('0', 'f', { definedBy: ['30', '31'] })
+				.constant('33')
+				.definesOnCall('33', '1'))
+	})
+
+	describe('Side Effects', () => {
+		assertDataflow(label('global definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'numbers', 'implicit-return', ...OperatorDatabase['*'].capabilities, ...OperatorDatabase['<<-'].capabilities, 'lambda-syntax', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'side-effects-in-function-call']),
+			shell, `f <- function(x) 2 * x
+
+m <- function(g) {
+   f <<- g
+}
+
+m(\\(x) x + 1)
+
+f(3)`, emptyGraph()
+				.use('4', 'x', undefined, false)
+				.reads('4', '1')
+				.use('15', 'g', undefined, false)
+				.reads('15', '10')
+				.use('23', 'x', undefined, false)
+				.reads('23', '21')
+				.argument('5', '4')
+				.call('5', '*', [argumentInCall('3'), argumentInCall('4')], { returns: [], reads: ['3', '4', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '1', '2') }, false)
+				.argument('5', '3')
+				.call('8', '<-', [argumentInCall('0'), argumentInCall('7')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('8', ['7', '0'])
+				.argument('16', '15')
+				.call('16', '<<-', [argumentInCall('14'), argumentInCall('15')], { returns: ['14'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('g', '10', '11') }, false)
+				.argument('16', '14')
+				.argument('17', '16')
+				.call('17', '{', [argumentInCall('16')], { returns: ['16'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('g', '10', '11') }, false)
+				.call('19', '<-', [argumentInCall('9'), argumentInCall('18')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '8') })
+				.argument('19', ['18', '9'])
+				.argument('25', '23')
+				.call('25', '+', [argumentInCall('23'), argumentInCall('24')], { returns: [], reads: ['23', '24', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('x', '21', '22') }, false)
+				.argument('25', '24')
+				.call('29', 'm', [argumentInCall('27')], { returns: ['17'], reads: ['9'], environment: defaultEnv().defineFunction('f', '0', '8').defineFunction('m', '9', '19') })
+				.argument('29', '27')
+				.calls('29', '18')
+				.call('33', 'f', [argumentInCall('31')], { returns: ['25'], reads: ['14'], environment: defaultEnv().defineVariable('f', '14', '16').defineFunction('m', '9', '19') })
+				.argument('33', '31')
+				.calls('33', '27')
+				.defineVariable('1', 'x', { definedBy: [] }, false)
+				.constant('3', undefined, false)
+				.defineFunction('7', ['5'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '5',
+					graph:             new Set(['1', '3', '4', '5']),
+					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '2')
+				})
+				.defineVariable('0', 'f', { definedBy: ['7', '8'] })
+				.defineVariable('10', 'g', { definedBy: [] }, false)
+				.defineVariable('14', 'f', { definedBy: ['15', '16'] }, false)
+				.sideEffectOnCall('14', '29')
+				.defineFunction('18', ['17'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '17',
+					graph:             new Set(['10', '15', '14', '16', '17']),
+					environment:       defaultEnv().pushEnv().defineVariable('f', '14', '16')
+				}, { environment: defaultEnv().defineVariable('f', '14', '16') })
+				.defineVariable('9', 'm', { definedBy: ['18', '19'] })
+				.defineVariable('21', 'x', { definedBy: [] }, false)
+				.constant('24', undefined, false)
+				.defineFunction('27', ['25'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					entryPoint:        '25',
+					graph:             new Set(['21', '23', '24', '25']),
+					environment:       defaultEnv().pushEnv().defineParameter('x', '21', '22')
+				})
+				.definesOnCall('27', '10')
+				.constant('31')
+				.definesOnCall('31', '21'))
+	})
 }))

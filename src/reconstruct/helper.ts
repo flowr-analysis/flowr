@@ -1,6 +1,9 @@
-import type { NodeId, ParentInformation, RNode } from '../r-bridge'
-import { RType } from '../r-bridge'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import type { SourcePosition } from '../util/range'
+//Is this depricated?
 import type { ReconstructionConfiguration } from './reconstruct'
 
 export type Code = PrettyPrintLine[]
@@ -20,10 +23,10 @@ export interface PrettyPrintLine {
 export function plain(text: string, location: SourcePosition): Code {
 	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
 	const split = text.split('\n')
-	let locationLine = location.line
+	let locationLine = location[0]
 
 	for(const line of split) {
-		printLine.linePart.push({ part: line, loc: { column: location.column, line: locationLine++ } })
+		printLine.linePart.push({ part: line, loc: [locationLine++, location[1]] })
 	}
 	return [printLine]
 }
@@ -31,17 +34,17 @@ export function plainSplit(text: string, location: SourcePosition): Code {
 	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
 	let i = 0
 	let token = ''
-	let currLoc = { line: location.line, column: location.column }
+	let currLoc: SourcePosition = [location[0], location[1]] 
 	while(i < text.length) {
 		if(text[i] === ' ') {
 			if(!(token === '')) {
 				printLine.linePart.push({ part: token, loc: currLoc })
 			}
-			currLoc = { column: currLoc.column + token.length + 1, line: currLoc.line }
+			currLoc = [currLoc[0], currLoc[1] + token.length + 1]
 			token = ''
 		} else if(text[i] === '\n') {
 			printLine.linePart.push({ part: token, loc: currLoc })
-			currLoc = { column: location.column, line: currLoc.line + 1 }
+			currLoc = [currLoc[0] + 1, location[1]]
 			token = ''
 		} else {
 			token = token.concat(text[i])
@@ -63,7 +66,7 @@ export function merge(...snipbits: Code[]): Code {
 	for(const code of snipbits) {
 		for(const line of code) {
 			for(const part of line.linePart) {
-				const lineNumber = part.loc.line
+				const lineNumber = part.loc[0]
 				if(buckets[lineNumber] === undefined) {	//may be necessary as empty elements count as undefined and we don't want to reassign filled buckets
 					buckets[lineNumber] = { linePart: [], indent: line.indent }
 				}
@@ -77,7 +80,7 @@ export function merge(...snipbits: Code[]): Code {
 		if(line === undefined){ //appears to be necessary as 'buckets' may be sparse (empty elements count as undefined)
 			continue
 		}
-		line.linePart.sort((a, b) => a.loc.column - b.loc.column)
+		line.linePart.sort((a, b) => a.loc[1] - b.loc[1])
 		result.push(line)
 	}
 
@@ -88,12 +91,12 @@ export function prettyPrintPartToString(line: PrettyPrintLinePart[],columnOffset
 	if(line.length === 0) {
 		return ''
 	}
-	line.sort((a, b) => a.loc.column - b.loc.column)
+	line.sort((a, b) => a.loc[1] - b.loc[1])
 	let result = ''
 	for(const part of line) {
 		const currLength = result.length + columnOffset
 		//we have to 0 any negative values as they can happen???
-		result += ' '.repeat(Math.max(part.loc.column - currLength, 0))
+		result += ' '.repeat(Math.max(part.loc[1] - currLength, 0))
 		result = result.concat(part.part)
 	}
 	return result
@@ -162,7 +165,7 @@ function addSemis(code: Code): Code {
 	for(const elem of code) {
 		let currLine = 1
 		for(const linePart of elem.linePart) {
-			currLine = linePart.loc.line
+			currLine = linePart.loc[0]
 			if(line[currLine] === undefined) {
 				line[currLine] = []
 			}
@@ -191,22 +194,13 @@ function addSemis(code: Code): Code {
 			//check if the current element may be followed by a semicolon
 			if(elem.part[elem.part.length - 1] === ')') {
 				//closing brackets
-				const lastSemi = { line: possibleSemi.line, column: possibleSemi.column }
-				const other = { line: heuristic.lastChar.loc.line , column: heuristic.lastChar.loc.column + heuristic.lastChar.part.length }
-				possibleSemi = other
-				heuristic.addedSemi = (lastSemi.line === possibleSemi.line) && (lastSemi.column === possibleSemi.column)
+				possibleSemi = updateSemi(possibleSemi, heuristic)
 			} else if(elem.part[elem.part.length - 1] === '}') {
 				//closing curlyBrackets
-				const lastSemi = { line: possibleSemi.line, column: possibleSemi.column }
-				const other = { line: heuristic.lastChar.loc.line , column: heuristic.lastChar.loc.column + heuristic.lastChar.part.length }
-				possibleSemi = other
-				heuristic.addedSemi = (lastSemi.line === possibleSemi.line) && (lastSemi.column === possibleSemi.column)
-			} else if((elem.loc.column - (heuristic.lastChar.loc.column + heuristic.lastChar.part.length)) >= 1) {
+				possibleSemi = updateSemi(possibleSemi, heuristic)
+			} else if((elem.loc[1] - (heuristic.lastChar.loc[1] + heuristic.lastChar.part.length)) >= 1) {
 				//large space
-				const other = { line: heuristic.lastChar.loc.line , column: heuristic.lastChar.loc.column + heuristic.lastChar.part.length }
-				const lastSemi = { line: possibleSemi.line, column: possibleSemi.column }
-				possibleSemi = other
-				heuristic.addedSemi = (lastSemi.line === possibleSemi.line) && (lastSemi.column === possibleSemi.column)
+				possibleSemi = updateSemi(possibleSemi, heuristic)
 			}
 
 			//checking condishions for adding semicolons
@@ -255,12 +249,20 @@ function addSemis(code: Code): Code {
 	}
 	code = merge(code)
 	return code
+
+	function updateSemi(possibleSemi: SourcePosition, heuristic: { assignment: boolean; brackets: boolean; lastChar: PrettyPrintLinePart; statement: boolean; addedSemi: boolean; curlyBrackets: boolean }) {
+		const lastSemi: SourcePosition = [possibleSemi[0], possibleSemi[1]]
+		const other: SourcePosition = [heuristic.lastChar.loc[0], heuristic.lastChar.loc[1] + heuristic.lastChar.part.length]
+		possibleSemi = other
+		heuristic.addedSemi = (lastSemi[0] === possibleSemi[0]) && (lastSemi[1] === possibleSemi[0])
+		return possibleSemi
+	}
 }
 
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge(code)
 	code = addSemis(code)
-	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc.column)}`).join(lf)
+	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc[1])}`).join(lf)
 }
 
 export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): Code {

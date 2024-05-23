@@ -8,41 +8,6 @@ import { expensiveTrace, log, LogLevel } from '../util/log'
 import { guard } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
 import type {
-<<<<<<< HEAD
-	ParentInformation,
-	RAccess,
-	RArgument,
-	RBinaryOp,
-	RExpressionList,
-	RForLoop,
-	RFunctionCall,
-	RFunctionDefinition,
-	RIfThenElse,
-	RNodeWithParent,
-	RParameter,
-	RRepeatLoop,
-	RWhileLoop,
-	RPipe,
-	StatefulFoldFunctions } from '../r-bridge'
-import { RType } from '../r-bridge'
-import { log } from '../util/log'
-import { guard, isNotNull } from '../util/assert'
-import type { MergeableRecord } from '../util/objects'
-import type {
-	Selection,
-	Code,
-	AutoSelectPredicate } from './helper'
-import {
-	prettyPrintPartToString,
-	plain,
-	isSelected,
-	getIndentString,
-	merge,
-	prettyPrintCodeToString
-} from './helper'
-import type { SourcePosition, SourceRange } from '../util/range'
-
-=======
 	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
@@ -65,17 +30,11 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { getRangeStart, SourcePosition, SourceRange } from '../util/range'
+import { autoSelectLibrary, getIndentString, indentBy, isSelected, merge, plain, prettyPrintCodeToString, prettyPrintPartToString } from './helper'
+import type { AutoSelectPredicate, Code, PrettyPrintLine, PrettyPrintLinePart } from './helper'
 
 type Selection = ReadonlySet<NodeId>
-interface PrettyPrintLine {
-	line:   string
-	indent: number
-}
-function plain(text: string): PrettyPrintLine[] {
-	return [{ line: text, indent: 0 }]
-}
-type Code = PrettyPrintLine[]
->>>>>>> upstream/main
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
@@ -86,20 +45,15 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 	return selectionHasLeaf ? foldToConst(leaf) : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start : { line: 0, column: 0 })
+const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? getRangeStart(n.location) : [0, 0])
 
-<<<<<<< HEAD
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, exprList)) {
-		const positionStart = exprList.location? exprList.location.start : { line: 0, column: 0 }
-		return plain(getLexeme(exprList), positionStart)
-	}
-
-=======
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
->>>>>>> upstream/main
 	const subExpressions = expressions.filter(e => e.length > 0)
 
+	if(isSelected(config, exprList)) {
+		const positionStart: SourcePosition = exprList.location? getRangeStart(exprList.location) : [0, 0]
+		return plain(getLexeme(exprList), positionStart)
+	}
 
 	if(subExpressions.length === 0) {
 <<<<<<< HEAD
@@ -239,8 +193,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 
 	const out = merge(
-		[{ linePart: [{ part: 'for', loc: start ?? loop.location.start }], indent: 0 }],
-		[{ linePart: [{ part: getLexeme(loop.variable), loc: loop.variable.location.start }], indent: 0 }],
+		[{ linePart: [{ part: 'for', loc: start ?? getRangeStart(loop.location) }], indent: 0 }],
+		[{ linePart: [{ part: getLexeme(loop.variable), loc: getRangeStart(loop.variable.location) }], indent: 0 }],
 		reconstructedVector,
 		...additionalTokens
 	)
@@ -249,7 +203,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		// puts {} with one space separation after for(...)
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = hBody[hBody.length - 1].loc
-		out.push({ linePart: [{ part: '{}', loc: { line: bodyLoc.line, column: bodyLoc.column + 2 } }], indent: 0 })
+		out.push({ linePart: [{ part: '{}', loc: [bodyLoc[0], bodyLoc[1] + 2] }], indent: 0 })
 		return out
 	}
 	//normal reconstruct
@@ -260,23 +214,24 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 //add heuristic to select needed semicollons
 //maybe if expr 1,5 => select next semicollon
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
-	const out = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
-		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
+	let out: Code[] = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
+		.map(t => plain(t.lexeme as string, getRangeStart((t.location? t.location : [0, 0]) as SourceRange)) ?? ([] as Code[])).filter(t => !(t === undefined)) as Code[]
 	return out
 }
 
 function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty: string): Code {
+	const h = body[body.length - 1].linePart
 	if(body.length === 0) {
-		return [{ line: `${header.line}${onEmpty}`, indent: header.indent }]
+		return [{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)}${onEmpty}`, loc: header.linePart[0].loc }], indent: header.indent }]
 	} else if(body.length === 1) {
 		return [
-			{ line: `${header.line} ${body[0].line}`, indent: header.indent }
+			{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)} ${body[0].linePart}`, loc: header.linePart[0].loc }], indent: header.indent }
 		]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+	} else if(body[0].linePart[0].part === '{' && h[h.length - 1].part === '}') {
 		return [
-			{ line: `${header.line} {`, indent: header.indent },
+			{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)} {`, loc: header.linePart[0].loc }], indent: header.indent },
 			...body.slice(1, body.length - 1),
-			{ line: '}', indent: header.indent }
+			{ linePart: [{ part: '}', loc: header.linePart[header.linePart.length - 1].loc }], indent: header.indent }
 		]
 	} else {
 		return [
@@ -287,31 +242,29 @@ function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty:
 }
 
 
+//what is happening here???
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
-<<<<<<< HEAD
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), loop.location.start)
+		return body
 	} else if(body.length === 0) {
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(loop)
 		return merge(
-			[{ linePart: [{ part: 'repeat', loc: loop.location.start }], indent: 0 }],
+			[{ linePart: [{ part: 'repeat', loc: getRangeStart(loop.location) }], indent: 0 }],
 			body,
 			...additionalTokens
 		)
-=======
 	const sel = isSelected(configuration, loop)
 	if(!sel) {
 		return body
->>>>>>> upstream/main
 	}
 	return reconstructBodyWithHeader({ line: 'repeat', indent: 0 }, body, '{}')
 }
 
-<<<<<<< HEAD
+//why is there pretty printing again??
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	const startPos = ifThenElse.location.start
+	const startPos = getRangeStart(ifThenElse.location)
 	//const endPos = ifThenElse.location.end
 	//const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
 
@@ -344,8 +297,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 +elseOffset } }], indent: 0 }], //may have to change the location
 			otherwise
 		)
-=======
-function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, then: Code, otherwise: Code | undefined, config: ReconstructionConfiguration): Code {
+ /*function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, then: Code, otherwise: Code | undefined, config: ReconstructionConfiguration): Code {
 	otherwise ??= []
 	if(then.length === 0 && otherwise.length === 0) {
 		if(isSelected(config, ifThenElse)) {
@@ -386,53 +338,29 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			{ line: `${otherwise[0].line}`, indent: 0 },
 			...indentBy(otherwise.splice(1), 1)
 		]
->>>>>>> upstream/main
 	}
-
+	*/
 	return out
+	}
 }
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-<<<<<<< HEAD
-	const start = loop.location.start
+	const start = getRangeStart(loop.location)
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop), start)
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge(
-		[{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? loop.location.start }], indent: 0 }],
+		[{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? getRangeStart(loop.location) }], indent: 0 }],
 		...additionalTokens
 	)
 	if(body.length < 1) {
 		//this puts {} one space after while(...)
 		const hBody = out[out.length - 1].linePart
-		const bodyLoc = { line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length }
-		out.push({ linePart: [{ part: '{}', loc: { line: bodyLoc.line, column: bodyLoc.column + 1 } }], indent: 0 })
+		const bodyLoc = [hBody[hBody.length - 1].loc[0], hBody[hBody.length - 1].loc[1] + hBody[hBody.length - 1].part.length]
+		out.push({ linePart: [{ part: '{}', loc: [bodyLoc[0], bodyLoc[1] + 1] }], indent: 0 })
 	} else {
 		out.push(...body)
-=======
-	const sel = isSelected(configuration, loop)
-	if(!sel && condition.length === 0) {
-		return body
-	} else if(body.length === 0 && condition.length === 0) {
-		return []
-	} else if(body.length <= 1) {
-		// 'inline'
-		return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-		// 'block'
-		return [
-			{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		]
-	} else {
-		// unknown
-		return [
-			{ line: `while(${getLexeme(loop.condition)})`, indent: 0 },
-			...indentBy(body, 1)
-		]
->>>>>>> upstream/main
 	}
 	return merge(out)
 }
@@ -448,21 +376,18 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 	})
 }
 
-<<<<<<< HEAD
-function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
-	const start = node.info.fullRange?.start ?? node.location.start
-
-	if(isSelected(configuration, node)) {
-		return plain(getLexeme(node), start)
-	}
-
-=======
 function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 	return a !== EmptyArgument
 }
 
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
->>>>>>> upstream/main
+
+	const start = node.info.fullRange? getRangeStart(node.info.fullRange) : getRangeStart(node.location)
+
+	if(isSelected(configuration, node)) {
+		return plain(getLexeme(node), start)
+	}
+
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
 	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
@@ -472,16 +397,9 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	return plain(getLexeme(node), start)
 }
 
-<<<<<<< HEAD
-function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	const start = argument.location.start
-	if(isSelected(configuration, argument)) {
-		return plain(getLexeme(argument), start)
-	}
-
-=======
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined): Code {
->>>>>>> upstream/main
+	const start = getRangeStart(argument.location)
+
 	if(argument.name !== undefined && name !== undefined && name.length > 0) {
 		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`, start)
 	} else {
@@ -489,17 +407,12 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 	}
 }
 
-<<<<<<< HEAD
-function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	const start = parameter.location.start
-	if(isSelected(configuration, parameter)) {
-		return plain(getLexeme(parameter), start)
-=======
 
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: unknown, configuration: ReconstructionConfiguration): Code {
+	const start = getRangeStart(parameter.location)
+	
 	if(!isSelected(configuration, parameter)) {
 		return []
->>>>>>> upstream/main
 	}
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`, start)
@@ -510,14 +423,12 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 	}
 }
 
-<<<<<<< HEAD
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
+//what are we doing here??
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
 		return merge(body)
-=======
-
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
+	}	
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(functionParameters.every(p => p.length === 0)) {
 		const empty = body === undefined || body.length === 0
@@ -540,7 +451,6 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 			{ line: `function(${parameters}) ${body[0].line}`, indent: 0 },
 			...body.slice(1),
 		]
->>>>>>> upstream/main
 	}
 
 	if(isSelected(configuration, definition.body)) {
@@ -574,24 +484,16 @@ function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)
 	}
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
-<<<<<<< HEAD
-	if(lhs !== undefined && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
-		if(rhs !== undefined && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location.start)
-=======
 	if(lhs !== EmptyArgument && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
 		if(rhs !== EmptyArgument && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`)
->>>>>>> upstream/main
+			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, 0)}`).join('\n')
+			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, lhs[0].linePart[0].loc)
 		} else {
-			return plain(lhsText, call.location.start)
+			return plain(lhsText, getRangeStart(call.location))
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, call.location.start)
+	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, getRangeStart(call.location))
 }
 
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
@@ -608,13 +510,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}
-<<<<<<< HEAD
-	if(call.flavor === 'named' && isSelected(configuration, call)) {
-		return plain(getLexeme(call), call.location.start)
-=======
 	if(call.flavor === 'named' && selected) {
-		return plain(getLexeme(call))
->>>>>>> upstream/main
+		return plain(getLexeme(call), getRangeStart(call.location))
 	}
 	const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
 	if(functionName.length === 0 && filteredArgs.length === 0) {
@@ -628,34 +525,20 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 
 	if(args.length === 0) {
-<<<<<<< HEAD
-		guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-		if(call.flavor === 'unnamed' && !functionName[0].linePart[functionName[0].linePart.length - 1].part.endsWith(')')) {
-			functionName[0].linePart[0].part = `(${functionName[0].linePart[0].part})`
-		}
-
-		if(!functionName[0].linePart[functionName[0].linePart.length - 1].part.endsWith('()')) {
-			// add empty call braces if not present
-			functionName[0].linePart[functionName[0].linePart.length - 1].part += '()'
-		}
-		const additionalTokens = reconstructAdditionalTokens(call)
-		return merge([{ linePart: functionName[0].linePart, indent: functionName[0].indent }], ...additionalTokens)
-=======
 		guard(functionName.length > 0, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-		const last = functionName[functionName.length - 1]
-		if(call.flavor === 'unnamed' && !last.line.endsWith(')')) {
-			functionName[0].line = `(${functionName[0].line}`
-			last.line += ')'
+		const last: PrettyPrintLinePart[] = functionName[functionName.length - 1].linePart
+		if(call.flavor === 'unnamed' && !prettyPrintPartToString(last, 0).endsWith(')')) {
+			functionName[0].linePart = [{ part: `(${prettyPrintPartToString(functionName[0].linePart, 0)}`, loc: functionName[0].linePart[0].loc}]
+			last.push({ part: ')', loc: last[last.length - 1].loc })
 		}
 
-		if(!last.line.endsWith('()')) {
+		if(!prettyPrintPartToString(last, 0).endsWith('()')) {
 			// add empty call braces if not present
-			last.line += '()'
+			last.push({ part: '()', loc: last[last.length - 1].loc })
 		}
 		return functionName
->>>>>>> upstream/main
 	} else {
-		return plain(getLexeme(call), call.location.start)
+		return plain(getLexeme(call), getRangeStart(call.location))
 	}
 }
 
@@ -708,11 +591,8 @@ export interface ReconstructionResult {
 	linesWithAutoSelected: number
 }
 
-<<<<<<< HEAD
-
-=======
 function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number) {
-	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
+	if(result.length > 1 && prettyPrintPartToString(result[0].linePart, 0) === '{' && prettyPrintPartToString(result[result.length - 1].linePart, 0) === '}') {
 		// remove outer block
 		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), linesWithAutoSelected }
 	} else {
@@ -753,4 +633,4 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 
 	return removeOuterExpressionListIfApplicable(result, linesWithAutoSelected.size)
 }
->>>>>>> upstream/main
+}

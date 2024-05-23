@@ -16,7 +16,6 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: readonly Identifi
 
 function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not append environments with undefined')
-	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
 	for(const [key, value] of next.memory) {
 		const old = map.get(key)
@@ -29,7 +28,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 
 	const parent = base.parent === BuiltInEnvironment ? BuiltInEnvironment : appendIEnvironmentWith(base.parent, next.parent)
 
-	const out = new Environment(base.name, parent)
+	const out = new Environment(parent)
 	out.memory = map
 	return out
 }

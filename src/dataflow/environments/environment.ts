@@ -45,26 +45,23 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 
 export interface IEnvironment {
 	/** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
-	readonly id:   string
-	readonly name: string
+	readonly id: string
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:        IEnvironment
+	parent:      IEnvironment
 	/**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
-	memory:        Map<Identifier, IdentifierDefinition[]>
+	memory:      Map<Identifier, IdentifierDefinition[]>
 }
 
 let environmentIdCounter = 0
 
 export class Environment implements IEnvironment {
-	readonly name: string
-	readonly id:   string = `${environmentIdCounter++}`
-	parent:        IEnvironment
-	memory:        Map<Identifier, IdentifierDefinition[]>
+	readonly id: string = `${environmentIdCounter++}`
+	parent:      IEnvironment
+	memory:      Map<Identifier, IdentifierDefinition[]>
 
-	constructor(name: string, parent: IEnvironment) {
-		this.name   = name
+	constructor(parent: IEnvironment) {
 		this.parent = parent
 		this.memory = new Map()
 	}
@@ -86,15 +83,13 @@ export interface REnvironmentInformation {
 
 
 /* the built-in environment is the root of all environments */
-export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)
+export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment)
 
 BuiltInEnvironment.memory = BuiltInMemory
 
-export const GLOBAL_ENV_NAME = 'global'
-
 export function initializeCleanEnvironments(): REnvironmentInformation {
 	return {
-		current: new Environment(GLOBAL_ENV_NAME, BuiltInEnvironment),
+		current: new Environment(BuiltInEnvironment),
 		level:   0
 	}
 }

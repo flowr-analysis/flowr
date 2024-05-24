@@ -8,9 +8,9 @@ export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = Dataf
 
 
 export const enum VertexType {
-	Value = 'value',
-	Use = 'use',
-	FunctionCall = 'function-call',
+	Value              = 'value',
+	Use                = 'use',
+	FunctionCall       = 'function-call',
 	VariableDefinition = 'variable-definition',
 	FunctionDefinition = 'function-definition'
 }

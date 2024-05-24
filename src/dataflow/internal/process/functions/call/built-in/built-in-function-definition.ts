@@ -22,6 +22,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { initializeCleanEnvironments } from '../../../../../environments/environment'
 import { resolveByName } from '../../../../../environments/resolve-by-name'
 import { EdgeType } from '../../../../../graph/edge'
+import { expensiveTrace } from '../../../../../../util/log'
 
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -125,33 +126,32 @@ function updateNestedFunctionClosures<OtherInfo>(
 	outEnvironment: REnvironmentInformation,
 	name: RSymbol<OtherInfo & ParentInformation>
 ) {
-	// track *all* function definitions - including those nested within the current graph
+	console.log('update closures', exitPoints, name)
+
+	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, info] of subgraph.vertices(true)) {
-		if(info.tag !== VertexType.FunctionDefinition) {
+	for(const [id, { subflow, tag }] of subgraph.vertices(true)) {
+		if(tag !== VertexType.FunctionDefinition) {
 			continue
 		}
 
-		const ingoingRefs = info.subflow.in
-		const remainingIn: Set<IdentifierReference> = new Set()
+		const ingoingRefs = subflow.in
+		console.log(id, ingoingRefs)
+		const remainingIn: IdentifierReference[] = []
 		for(const ingoing of ingoingRefs) {
-			for(const { nodeId } of exitPoints) {
-				const node = subgraph.getVertex(nodeId, true)
-				const env = initializeCleanEnvironments()
-				env.current.memory = node === undefined ? outEnvironment.current.memory : (node.environment?.current.memory ?? outEnvironment.current.memory)
-				const resolved = ingoing.name ? resolveByName(ingoing.name, env) : undefined
-				if(resolved === undefined) {
-					remainingIn.add(ingoing)
-					continue
-				}
-				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
-				for(const ref of resolved) {
-					subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads })
-				}
+			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment) : undefined
+			console.log(ingoing.name, resolved)
+			if(resolved === undefined) {
+				remainingIn.push(ingoing)
+				continue
+			}
+			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
+			for(const ref of resolved) {
+				subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads })
 			}
 		}
-		dataflowLogger.trace(`Keeping ${remainingIn.size} (unique) references to open ref ${id} in closure of function definition ${name.info.id}`)
-		info.subflow.in = [...remainingIn]
+		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
+		subflow.in = remainingIn
 	}
 }
 

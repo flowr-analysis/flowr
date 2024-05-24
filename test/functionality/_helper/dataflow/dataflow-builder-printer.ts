@@ -6,7 +6,7 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { DefaultMap } from '../../../../src/util/defaultmap'
 import { EnvironmentBuilderPrinter } from './environment-builder-printer'
-import { wrap, wrapControlDependency, wrapReference } from './printer'
+import { wrap, wrapControlDependencies, wrapReference } from './printer'
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge'
 import type { DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph'
 import { isPositionalArgument } from '../../../../src/dataflow/graph/graph'
@@ -248,7 +248,7 @@ class DataflowBuilderPrinter {
 
 	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
-			return `${prefix}controlDependencies: ${wrapControlDependency(arg)}${suffix}`
+			return `${prefix}controlDependencies: ${wrapControlDependencies(arg)}${suffix}`
 		}
 		return undefined
 	}

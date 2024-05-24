@@ -56,7 +56,6 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	}
 
 	if(subExpressions.length === 0) {
-<<<<<<< HEAD
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(exprList)
@@ -64,34 +63,6 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 			...subExpressions,
 			...additionalTokens
 		)
-=======
-		if(isSelected(config, exprList)) {
-			return plain('{}')
-		} else {
-			return []
-		}
-	} else if(subExpressions.length === 1) {
-		if(!isSelected(config, exprList)) {
-			return subExpressions[0]
-		}
-		const [fst] = subExpressions
-		const g = exprList.grouping
-
-		if(g && fst.length > 0) {
-			const start = g[0].content
-			const end = g[1].content
-			fst[0].line = `${start}${start === '{' ? ' ' : ''}${fst[0].line}`
-			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${end}`
-		}
-		return fst
-	} else {
-		const g = exprList.grouping
-		return [
-			...(g ? plain(g[0].content) : plain('{')),
-			...indentBy(subExpressions.flat(), 1),
-			...(g ? plain(g[1].content) : plain('}'))
-		]
->>>>>>> upstream/main
 	}
 }
 
@@ -113,42 +84,14 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	}
 }
 
-<<<<<<< HEAD
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
 		return plain(getLexeme(n), n.lhs.location?.start ?? n.location.start)
 	}
 
-=======
-function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
->>>>>>> upstream/main
-	if(lhs.length === 0 && rhs.length === 0) {
-		if(isSelected(config, n)) {
-			return plain(getLexeme(n))
-		} else {
-			return []
-		}
-	} else if(lhs.length === 0) { // if we have no lhs, only return rhs
-		return rhs
-<<<<<<< HEAD
-	}
-	if(rhs.length === 0) {
-		// if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n), n.lhs.location?.start ?? n.location.start)
-=======
-	} else if(rhs.length === 0) {
-		if(isSelected(config, n)) {
-			return plain(getLexeme(n))
-		} else {
-			return lhs
-		}
->>>>>>> upstream/main
-	}
-
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
-<<<<<<< HEAD
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	if(isSelected(configuration, loop)) {
@@ -164,32 +107,6 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 
 	if(variable.length === 0 && vector.length === 0 && body.length === 0) {
 		return []
-=======
-function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, config: ReconstructionConfiguration): Code {
-	if(!isSelected(config, loop) && variable.length === 0 && vector.length === 0) {
-		return body
-	} else if(body.length === 0 && variable.length === 0 && vector.length === 0) {
-		return []
-	} else if(body.length <= 1) {
-		// 'inline'
-		return [{
-			line:   `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`,
-			indent: 0
-		}]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
-		// 'block'
-		return [
-			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
-		]
-	} else {
-		// unknown
-		return [
-			{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, indent: 0 },
-			...indentBy(body, 1)
-		]
->>>>>>> upstream/main
 	}
 
 	const out = merge(
@@ -251,15 +168,11 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(loop)
 		return merge(
-			[{ linePart: [{ part: 'repeat', loc: getRangeStart(loop.location) }], indent: 0 }],
+			[{linePart: [{part: 'repeat', loc: getRangeStart(loop.location)}], indent: 0}],
 			body,
 			...additionalTokens
 		)
-	const sel = isSelected(configuration, loop)
-	if(!sel) {
-		return body
 	}
-	return reconstructBodyWithHeader({ line: 'repeat', indent: 0 }, body, '{}')
 }
 
 //why is there pretty printing again??
@@ -380,7 +293,7 @@ function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 	return a !== EmptyArgument
 }
 
-function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
+function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
 
 	const start = node.info.fullRange? getRangeStart(node.info.fullRange) : getRangeStart(node.location)
 
@@ -410,7 +323,7 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: unknown, configuration: ReconstructionConfiguration): Code {
 	const start = getRangeStart(parameter.location)
-	
+
 	if(!isSelected(configuration, parameter)) {
 		return []
 	}
@@ -428,7 +341,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
 		return merge(body)
-	}	
+	}
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(functionParameters.every(p => p.length === 0)) {
 		const empty = body === undefined || body.length === 0

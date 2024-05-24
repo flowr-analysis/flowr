@@ -1,13 +1,14 @@
-import type { ReconstructionResult } from './reconstruct'
-import { reconstructLogger, reconstructAstFolds } from './reconstruct'
+import {reconstructLogger, ReconstructionResult, reconstructAstFolds } from './reconstruct'
 import { prettyPrintCodeToString, removeOuterExpressionListIfApplicable , autoSelectLibrary } from './helper'
 
 import type { AutoSelectPredicate , Selection } from './helper'
 
 
-import type { NormalizedAst, RNode, ParentInformation } from '../r-bridge'
-import { foldAstStateful } from '../r-bridge'
 import { LogLevel } from '../util/log'
+import {RNode} from "../r-bridge/lang-4.x/ast/model/model";
+import {NormalizedAst, ParentInformation} from "../r-bridge/lang-4.x/ast/model/processing/decorate";
+import {foldAstStateful} from "../r-bridge/lang-4.x/ast/model/processing/stateful-fold";
+
 
 
 /**
@@ -43,5 +44,5 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}
 
-	return { code: prettyPrintCodeToString(removeOuterExpressionListIfApplicable(result)), autoSelected }
+	return { code: prettyPrintCodeToString(removeOuterExpressionListIfApplicable(result)), linesWithAutoSelected: autoSelected }
 }

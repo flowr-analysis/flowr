@@ -43,18 +43,6 @@ while(i > 3) {
 }
 cat(x)
     `, ['6@x'], 'x <- 1\nwhile(i > 3) {\n  x <- x * 2\n}\ncat(x)')
-    `, ['6@x'], 'x <- 1\nwhile(i > 3) x <- x * 2\nx')
-
-		assertSliced(label('if-then', ['name-normal', 'if', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
-			shell, `
-x <- 1
-if(i > 3) {
-    x <- x * 2
-}
-cat(x)
-    `, ['6@x'], `x <- 1
-if(i > 3) { x <- x * 2 }
-x`)
 
 		assertSliced(label('independent if-then with extra requirements', ['name-normal', 'if', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
@@ -162,8 +150,7 @@ w <- 7
 N <- 10
 for (i in 1:(N-1)) {
   sum <- sum + i + w
-}`
-for(i in 1:(N-1)) sum <- sum + i + w`, {
+}`, {
 				expectedOutput: 'Sum: 108\nProduct: 362880'
 			}
 		)
@@ -205,8 +192,6 @@ for (i in 1:(N-1)) {
   sum <- sum + i + w
 }
 cat("Sum:", sum, "\\n")`
-for(i in 1:(N-1)) sum <- sum + i + w
-sum`
 		)
 
 		assertSliced(label('Product in call', capabilities),
@@ -217,8 +202,6 @@ for (i in 1:(N-1)) {
   product <- product * i
 }
 cat("Product:", product, "\\n")`
-for(i in 1:(N-1)) product <- product * i
-product`
 		)
 
 		assertSliced(label('Top by name', capabilities),

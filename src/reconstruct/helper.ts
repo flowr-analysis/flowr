@@ -3,11 +3,11 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import type { SourcePosition } from '../util/range'
-//Is this depricated?
-import type { ReconstructionConfiguration } from './reconstruct'
+import {ReconstructionConfiguration} from "./reconstruct";
+//Is this deprecated?
 
 export type Code = PrettyPrintLine[]
-export type Selection = Set<NodeId>
+export type Selection = ReadonlySet<NodeId>
 export interface PrettyPrintLinePart {
 	part: string
 	loc:  SourcePosition
@@ -34,7 +34,7 @@ export function plainSplit(text: string, location: SourcePosition): Code {
 	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
 	let i = 0
 	let token = ''
-	let currLoc: SourcePosition = [location[0], location[1]] 
+	let currLoc: SourcePosition = [location[0], location[1]]
 	while(i < text.length) {
 		if(text[i] === ' ') {
 			if(!(token === '')) {
@@ -190,7 +190,7 @@ function addSemis(code: Code): Code {
 			if(heuristic.addedSemi) {
 				heuristic.assignment = false
 			}
-			
+
 			//check if the current element may be followed by a semicolon
 			if(elem.part[elem.part.length - 1] === ')') {
 				//closing brackets
@@ -242,7 +242,7 @@ function addSemis(code: Code): Code {
 					}
 				}
 			}
-			
+
 			//update the last character seen
 			heuristic.lastChar = elem
 		}

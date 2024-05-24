@@ -97,7 +97,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls))
 			}
 
-			if(node.flavor === 'unnamed') {
+			if(!node.named) {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
 				allCalls.push([

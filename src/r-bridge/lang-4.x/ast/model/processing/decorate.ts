@@ -344,7 +344,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
-		if(data.flavor === 'named') {
+		if(data.named) {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, functionName, arguments: args } as RNamedFunctionCall<OtherInfo & ParentInformation>
 		} else {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>

@@ -6,6 +6,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
+import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -797,6 +798,6 @@ f(3)`, emptyGraph()
 				})
 				.definesOnCall('27', '10')
 				.constant('31')
-				.definesOnCall('31', '21'))
+				.definesOnCall('31', '21'), { minRVersion: MIN_VERSION_LAMBDA })
 	})
 }))

@@ -5,6 +5,7 @@ import { label } from '../../../_helper/label'
 import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of ['<-', '<<-', '=']) {
@@ -290,8 +291,8 @@ a()`,  emptyGraph()
 					graph:             new Set(['11']),
 					environment:       defaultEnv().pushEnv()
 				})
-				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependencies: [{ id: '17', when: true }] })
-		)
+				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependencies: [{ id: '17', when: true }] }),
+			{ minRVersion: MIN_VERSION_LAMBDA })
 		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments']),
 			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
 				.use('7', '"b"')

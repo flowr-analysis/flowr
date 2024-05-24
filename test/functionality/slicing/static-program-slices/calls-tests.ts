@@ -2,6 +2,7 @@ import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
+import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
@@ -447,7 +448,7 @@ if(y) {
 }
 a()`, ['5@a'], `a <- function() 2
 if(y) { assign("a", function() 1) }
-a()`)
+a()`, { minRVersion: MIN_VERSION_LAMBDA })
 		})
 		describe('DelayedAssign', () => {
 			assertSliced(label('using delayed-assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),

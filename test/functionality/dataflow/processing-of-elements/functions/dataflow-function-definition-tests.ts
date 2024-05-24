@@ -169,7 +169,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().pushEnv().defineVariable('x', '3', '4')
 			})
 		)
-		assertDataflow(label('global define with <<- in function, read after', ['normal-definition', 'name-normal', 'numbers', ...OperatorDatabase['<<-'].capabilities, 'semicolons']), shell, 'function() { x <<- 3; }; x',  emptyGraph()
+		assertDataflow(label('global define with <<- in function, read after', ['normal-definition', 'name-normal', 'numbers', ...OperatorDatabase['<<-'].capabilities, 'semicolons', 'side-effects-in-function-call']), shell, 'function() { x <<- 3; }; x',  emptyGraph()
 			.use('7', 'x')
 			.call('4', '<<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -184,7 +184,7 @@ describe('Function Definition', withShell(shell => {
 				environment:       defaultEnv().defineVariable('x', '2', '4').pushEnv()
 			}, { environment: defaultEnv().defineVariable('x', '2', '4') })
 		)
-		assertDataflow(label('global define with ->> in function, read after', ['normal-definition', 'numbers', ...OperatorDatabase['->>'].capabilities, 'semicolons', 'name-normal']), shell, 'function() { 3 ->> x; }; x', emptyGraph()
+		assertDataflow(label('global define with ->> in function, read after', ['normal-definition', 'numbers', ...OperatorDatabase['->>'].capabilities, 'semicolons', 'name-normal', 'side-effects-in-function-call']), shell, 'function() { 3 ->> x; }; x', emptyGraph()
 			.use('7', 'x')
 			.call('4', '->>', [argumentInCall('2'), argumentInCall('3')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
@@ -350,7 +350,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
-		assertDataflow(label('Two possible exit points to bind y closure', ['normal-definition', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'if', 'return']), shell, `function() {
+		assertDataflow(label('Two possible exit points to bind y closure', ['normal-definition', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'if', 'return', 'closures']), shell, `function() {
   g <- function() { y }
   y <- 5
   if(z)
@@ -415,7 +415,7 @@ describe('Function Definition', withShell(shell => {
 	})
 
 	describe('Nested Function Definitions', () => {
-		assertDataflow(label('double nested functions', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'unnamed-arguments', 'semicolons']), shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',  emptyGraph()
+		assertDataflow(label('double nested functions', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'unnamed-arguments', 'semicolons', 'closures']), shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',  emptyGraph()
 			.use('9', 'b', undefined, false)
 			.use('14', 'x', undefined, false)
 			.reads('14', '3')

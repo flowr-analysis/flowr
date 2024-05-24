@@ -67,7 +67,7 @@ print(x)`, emptyGraph()
 			.definesOnCall('7', '1')
 			.constant('9')
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }))
-	assertDataflow(label('<-', []),
+	assertDataflow(label('<-', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'name-escaped', ...OperatorDatabase['*'].capabilities, 'named-arguments']),
 		shell, `x <- 2
 \`<-\` <- \`*\`
 x <- 3
@@ -94,7 +94,7 @@ print(y = x)`, emptyGraph()
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('3', '`<-`', { definedBy: ['4', '5'] })
 			.constant('7'))
-	assertDataflow(label('<- in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return','newlines', ...OperatorDatabase['*'].capabilities, 'call-normal', 'unnamed-arguments']),
+	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return','newlines', ...OperatorDatabase['*'].capabilities, 'call-normal', 'unnamed-arguments']),
 		shell, `f <- function() {
    x <- 2
    \`<-\` <- \`*\`

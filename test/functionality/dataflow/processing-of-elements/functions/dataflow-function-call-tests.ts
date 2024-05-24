@@ -133,7 +133,7 @@ a(i)`,  emptyGraph()
 			outGraph
 		)
 
-		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers']), shell, `a <- function() { function() { 42 } }
+		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers', 'closures']), shell, `a <- function() { function() { 42 } }
 a()()`,  emptyGraph()
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.call('8', '{', [argumentInCall('7')], { returns: ['7'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)

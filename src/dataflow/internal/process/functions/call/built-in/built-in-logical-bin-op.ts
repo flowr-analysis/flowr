@@ -26,8 +26,8 @@ export function processSpecialBinOp<OtherInfo>(
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
 		patchData: (d, i) => {
 			if(i === 1) {
-			// the rhs will be overshadowed by the lhs
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], name.info.id] }
+			// the rhs will be overshadowed by the lhs, TODO: correct when
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] }
 			}
 			return d
 		}

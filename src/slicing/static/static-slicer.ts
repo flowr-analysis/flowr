@@ -58,8 +58,8 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		if(currentVertex.controlDependencies) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
 			for(const cd of currentVertex.controlDependencies) {
-				if(!topLevel || (ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
-					queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
+				if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
+					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
 				}
 			}
 		}

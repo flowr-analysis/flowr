@@ -9,15 +9,16 @@ import { BuiltInMemory } from './built-in'
 import type { DataflowGraph } from '../graph/graph'
 import { resolveByName } from './resolve-by-name'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ControlDependency } from '../info'
 
 
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
 	if(includeDefs) {
 		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
-				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.includes(defaultCd)) {
+				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
 					definition.controlDependencies.push(defaultCd)
 				} else {
 					definition.controlDependencies = defaultCd ? [defaultCd] : []
@@ -35,7 +36,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] }
 }
 
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}

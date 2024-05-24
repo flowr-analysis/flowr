@@ -2,6 +2,7 @@ import type { MergeableRecord } from '../../util/objects'
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { REnvironmentInformation } from '../environments/environment'
+import type { ControlDependency } from '../info'
 
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
@@ -37,7 +38,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * See {@link IdentifierReference}
 	 */
-	controlDependencies: NodeId[] | undefined
+	controlDependencies: ControlDependency[] | undefined
 }
 
 export interface DataflowGraphValue extends DataflowGraphVertexBase {

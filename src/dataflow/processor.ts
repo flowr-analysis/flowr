@@ -1,7 +1,7 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { DataflowInformation } from './info'
+import type { ControlDependency, DataflowInformation } from './info'
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -38,7 +38,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g. of known ifs).
 	 */
-	readonly controlDependencies: NodeId[] | undefined
+	readonly controlDependencies: ControlDependency[] | undefined
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

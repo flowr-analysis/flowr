@@ -46,7 +46,7 @@ export function processForLoop<OtherInfo>(
 	// this should not be able to exit always!
 
 	const originalDependency = data.controlDependencies
-	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], name.info.id] }
+	data = { ...data, controlDependencies: [...data.controlDependencies ?? [], { id: name.info.id, when: true }] }
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
 	const headGraph = variable.graph.mergeWith(vector.graph)

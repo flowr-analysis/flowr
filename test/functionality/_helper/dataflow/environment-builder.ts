@@ -7,6 +7,7 @@ import { initializeCleanEnvironments } from '../../../../src/dataflow/environmen
 import { define } from '../../../../src/dataflow/environments/define'
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping'
 import { appendEnvironment } from '../../../../src/dataflow/environments/append'
+import type { ControlDependency } from '../../../../src/dataflow/info'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
 	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined }
@@ -17,8 +18,8 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param nodeId - AST Node ID
  * @param options - optional allows to give further options
  */
-export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: NodeId[] }): FunctionArgument {
-	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependency?.map(normalizeIdToNumberIfPossible) }
+export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: ControlDependency[] }): FunctionArgument {
+	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependency?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }
 }
 /**
  * The constant global environment with all pre-defined functions.
@@ -53,7 +54,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param definedAt - AST Node ID of definition
 	 * @param controlDependencies - Control dependencies
 	 */
-	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: NodeId[] | undefined = undefined) {
+	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
 			kind: 'argument',
 			name,
@@ -69,7 +70,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param definedAt - AST Node ID of definition
 	 * @param controlDependencies - Control dependencies
 	 */
-	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: NodeId[] | undefined = undefined) {
+	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
 			kind: 'function',
 			name,
@@ -86,7 +87,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param definedAt - AST Node ID of definition
 	 * @param controlDependencies - Control dependencies
 	 * */
-	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: NodeId[] | undefined = undefined) {
+	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
 			kind: 'parameter',
 			name,
@@ -103,7 +104,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param definedAt - AST Node ID of definition
 	 * @param controlDependencies - Control dependencies
 	 */
-	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependencies: NodeId[] | undefined = undefined) {
+	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
 			kind: 'variable',
 			name,
@@ -123,7 +124,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			...def,
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
-			controlDependencies: def.controlDependencies?.map(normalizeIdToNumberIfPossible)
+			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
 		} as IdentifierDefinition, superAssignment, this)
 		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level)
 	}
@@ -145,8 +146,8 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Appends the writes in other to the given environment
-	 * (i.e. those _may_ happen).
+	 * Appends the `writes` in other to the given environment
+	 * (i.e., those _may_ happen).
 	 * @param other - The next environment.
 	 */
 	appendWritesOf(other: REnvironmentInformation) {

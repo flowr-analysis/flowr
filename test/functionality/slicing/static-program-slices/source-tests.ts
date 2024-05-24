@@ -5,15 +5,13 @@ import { label } from '../../_helper/label'
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
 
 describe('source', withShell(shell => {
-	// reset the source provider back to the default value after our tests
-	after(() => setSourceProvider(requestProviderFromFile()))
-
 	const sources = {
 		simple:   'N <- 9',
 		closure1: 'f <- function() { function() 3 }',
 		closure2: 'f <- function() { x <<- 3 }'
 	}
-	setSourceProvider(requestProviderFromText(sources))
+	before(() => setSourceProvider(requestProviderFromText(sources)))
+	after(() => setSourceProvider(requestProviderFromFile()))
 
 	// these are incorrect - where is the content from the sourced file?
 	assertSliced(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),

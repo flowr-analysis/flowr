@@ -9,9 +9,6 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('source', withShell(shell => {
-	// reset the source provider back to the default value after our tests
-	after(() => setSourceProvider(requestProviderFromFile()))
-
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',
@@ -19,7 +16,8 @@ describe('source', withShell(shell => {
 		closure1:   'f <- function() { function() 3 }',
 		closure2:   'f <- function() { x <<- 3 }'
 	}
-	setSourceProvider(requestProviderFromText(sources))
+	before(() => setSourceProvider(requestProviderFromText(sources)))
+	after(() => setSourceProvider(requestProviderFromFile()))
 
 	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')

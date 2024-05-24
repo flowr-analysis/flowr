@@ -100,7 +100,7 @@ describe('Constant Parsing',
 				for(const symbol of RSymbolPool) {
 					const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1)
 					const exported = symbol.namespace !== undefined
-					const mapped = exported ? [symbol.internal ? 'accessing-internal-names' as const : 'accessing-exported-names' as const] : []
+					const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : []
 					assertAst(label(symbol.str, ['name-normal', ...mapped]),
 						shell, symbol.str, exprList({
 							type:      RType.Symbol,

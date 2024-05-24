@@ -367,7 +367,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.defineVariable('0', 'x', { definedBy: ['4', '5'] })
 					)
 
-					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers', 'built-in-sequencing']),
+					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers']),
 						shell, 'x <- for (i in 1:4) 3',  emptyGraph()
 							.call('4', ':', [argumentInCall('2'), argumentInCall('3')], { returns: [], reads: [BuiltIn, '2', '3'], onlyBuiltIn: true })
 							.call('7', 'for', [argumentInCall('1'), argumentInCall('4'), argumentInCall('5')], { returns: [], reads: [BuiltIn, '1', '4'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', '1', '7') })
@@ -628,7 +628,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 
 	describe('Loops', () => {
 		describe('For', () => {
-			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { 1 }', emptyGraph()
 					.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: ['1', '2', BuiltIn], onlyBuiltIn: true })
 					.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [] })
@@ -639,7 +639,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.constant('2')
 					.constant('6', { controlDependencies: [] })
 			)
-			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { i }',  emptyGraph()
 					.use('6', 'i', { controlDependencies: [] })
 					.reads('6', '0')

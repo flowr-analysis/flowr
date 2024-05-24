@@ -96,4 +96,14 @@ f(5)`, ['12@f'], `f <- function(x) {
     }
 f(5)`)
 	})
+	describe('Redefinitions', () => {
+		assertSliced(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
+			shell, `\`{\` <- function(...) 3
+x <- 4
+{
+   x <- 2
+   print(x)
+}
+print(x)`, ['7@x'], 'x <- 2\nx')
+	})
 }))

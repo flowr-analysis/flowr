@@ -564,7 +564,7 @@ print(g())`, emptyGraph()
 				.defineVariable('0', 'f', { definedBy: ['26', '27'] })
 				.constant('30')
 				.definesOnCall('30', '1')
-				.defineVariable('28', 'g', { definedBy: ['32', '33'] }))
+				.defineVariable('28', 'g', { definedBy: ['32', '33'] }), { minRVersion: MIN_VERSION_LAMBDA })
 		assertDataflow(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
 			shell, `f <- function() {
   function() {

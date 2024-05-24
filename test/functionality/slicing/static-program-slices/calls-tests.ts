@@ -573,4 +573,35 @@ if(x == 3) {
 x`)
 		})
 	})
+	describe('Closures', () => {
+		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
+			shell, `f <- function(x = 1) {
+  function() x
+}
+g <- f(2)
+print(g())`, ['5@g'], `f <- function(x=1) { function() x }
+g <- f(2)
+g()`)
+		assertSliced(label('nested closures w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'closures', 'grouping']),
+			shell, `f <- function(x = 1) {
+  (\\(y = 2) function(z = 3) x + y + z)()
+}
+g <- f(8)
+print(g())`, ['5@g'], `f <- function(x=1) {}
+g <- f(8)
+g()`, { minRVersion: MIN_VERSION_LAMBDA })
+		assertSliced(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
+			shell, `f <- function() {
+  function() {
+    x <<- x + 1
+    x
+  }
+}
+x <- 2
+f()()
+print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
+x <- 2
+f()
+x`)
+	})
 }))

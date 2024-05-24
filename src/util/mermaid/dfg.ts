@@ -3,24 +3,19 @@ import type { SourceRange } from '../range'
 
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
-import type {
-	DataflowFunctionFlowInformation,
-	DataflowGraph,
-	FunctionArgument } from '../../dataflow/graph/graph'
-import { isNamedArgument
-	,
-	isPositionalArgument
-} from '../../dataflow/graph/graph'
+import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph'
+import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { EdgeType } from '../../dataflow/graph/edge'
-import { edgeTypeToName , splitEdgeTypes } from '../../dataflow/graph/edge'
+import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge'
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex'
 import { VertexType } from '../../dataflow/graph/vertex'
 import type { IEnvironment } from '../../dataflow/environments/environment'
 import { BuiltInEnvironment } from '../../dataflow/environments/environment'
 import { BuiltIn } from '../../dataflow/environments/built-in'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 
 type MarkVertex = NodeId
@@ -156,10 +151,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id)
-	const escapedName = escapeMarkdown(node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??')
+	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??'
+	const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??')
 
 	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(mermaid.rootGraph.idMap?.get(id)?.location)}*${
+	const n = mermaid.rootGraph.idMap?.get(id) ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0] : undefined)
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n?.info.fullRange ?? n?.location )}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {

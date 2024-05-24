@@ -12,6 +12,7 @@ import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { IdentifierReference } from '../environments/identifier'
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { diffControlDependencies } from '../info'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -183,12 +184,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg.name !== bArg.name) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the name differs: ${aArg.name} vs ${bArg.name}.`)
 			}
-			if(!arrayEqual(aArg.controlDependencies, bArg.controlDependencies)) {
-				ctx.report.addComment(
-					`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.`,
-					{ tag: 'vertex', id: fn }
-				)
-			}
+			diffControlDependencies(aArg.controlDependencies, bArg.controlDependencies, { ...ctx, position: `${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.` })
 		}
 	}
 }
@@ -224,12 +220,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				})
 			}
 		}
-		if(!arrayEqual(lInfo.controlDependencies, rInfo.controlDependencies)) {
-			ctx.report.addComment(
-				`Vertex ${id} differs in controlDependencies. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
-				{ tag: 'vertex', id }
-			)
-		}
+		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` })
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 

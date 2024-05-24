@@ -1,5 +1,6 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ControlDependency } from '../info'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -28,5 +29,5 @@ export interface IdentifierReference {
 	 * If the reference is only effective if, e.g. an if-then-else condition is true, this references the root of the `if`.
 	 * As a hackey intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	controlDependencies: NodeId[] | undefined
+	controlDependencies: ControlDependency[] | undefined
 }

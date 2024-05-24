@@ -211,8 +211,8 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		// keep a clone of the original environment
 		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
 
-		
-		
+
+
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
 			when: vertex.controlDependencies ?? 'always',
@@ -238,7 +238,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
 		const { type, ...rest } = edgeInfo
-		
+
 		if(fromId === toId) {
 			return this
 		}
@@ -343,10 +343,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		const vertex = this.getVertex(reference.nodeId, true)
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
-			guard(vertex.controlDependencies !== undefined
-				|| reference.controlDependencies !== undefined
-				|| arrayEqual(vertex.controlDependencies, reference.controlDependencies),
-			() => `node ${JSON.stringify(vertex)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
 			vertex.controlDependencies = reference.controlDependencies
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: 'variable-definition' })

@@ -8,16 +8,16 @@ import type { Identifier, IdentifierDefinition, IdentifierReference } from './id
 import { BuiltInMemory } from './built-in'
 import type { DataflowGraph } from '../graph/graph'
 import { resolveByName } from './resolve-by-name'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ControlDependency } from '../info'
 
 
-export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
 	if(includeDefs) {
 		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
-				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.includes(defaultCd)) {
+				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
 					definition.controlDependencies.push(defaultCd)
 				} else {
 					definition.controlDependencies = defaultCd ? [defaultCd] : []
@@ -35,7 +35,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] }
 }
 
-export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: NodeId | undefined = undefined): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}
@@ -45,26 +45,23 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 
 export interface IEnvironment {
 	/** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
-	readonly id:   string
-	readonly name: string
+	readonly id: string
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent:        IEnvironment
+	parent:      IEnvironment
 	/**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
-	memory:        Map<Identifier, IdentifierDefinition[]>
+	memory:      Map<Identifier, IdentifierDefinition[]>
 }
 
 let environmentIdCounter = 0
 
 export class Environment implements IEnvironment {
-	readonly name: string
-	readonly id:   string = `${environmentIdCounter++}`
-	parent:        IEnvironment
-	memory:        Map<Identifier, IdentifierDefinition[]>
+	readonly id: string = `${environmentIdCounter++}`
+	parent:      IEnvironment
+	memory:      Map<Identifier, IdentifierDefinition[]>
 
-	constructor(name: string, parent: IEnvironment) {
-		this.name   = name
+	constructor(parent: IEnvironment) {
 		this.parent = parent
 		this.memory = new Map()
 	}
@@ -86,15 +83,13 @@ export interface REnvironmentInformation {
 
 
 /* the built-in environment is the root of all environments */
-export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)
+export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment)
 
 BuiltInEnvironment.memory = BuiltInMemory
 
-export const GLOBAL_ENV_NAME = 'global'
-
 export function initializeCleanEnvironments(): REnvironmentInformation {
 	return {
-		current: new Environment(GLOBAL_ENV_NAME, BuiltInEnvironment),
+		current: new Environment(BuiltInEnvironment),
 		level:   0
 	}
 }

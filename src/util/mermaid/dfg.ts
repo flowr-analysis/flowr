@@ -100,7 +100,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
-function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD'>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False'>): string {
 	return `${from}->${to}["${[...types].join(':')}"]`
 }
 
@@ -134,7 +134,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	} else if(env.id === BuiltInEnvironment.id) {
 		return ['Built-in']
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}--${env.name}${'-'.repeat(40)}`]
+	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`]
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length))
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`
@@ -168,7 +168,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes)
@@ -179,7 +179,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)
 			}
-			if(edgeTypes.has('CD')) {
+			if(edgeTypes.has('CD-True')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
 			if(target === BuiltIn) {

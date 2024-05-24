@@ -6,7 +6,7 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { DefaultMap } from '../../../../src/util/defaultmap'
 import { EnvironmentBuilderPrinter } from './environment-builder-printer'
-import { wrap, wrapReference } from './printer'
+import { wrap, wrapControlDependency, wrapReference } from './printer'
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge'
 import type { DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph'
 import { isPositionalArgument } from '../../../../src/dataflow/graph/graph'
@@ -19,6 +19,7 @@ import type {
 import { VertexType } from '../../../../src/dataflow/graph/vertex'
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
+import type { ControlDependency } from '../../../../src/dataflow/info'
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
@@ -153,7 +154,7 @@ class DataflowBuilderPrinter {
 		}
 	}
 
-	private controlDependenciesForArgument(id: NodeId): NodeId[] | undefined {
+	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
 		return this.graph.getVertex(id, true)?.controlDependencies
@@ -245,9 +246,9 @@ class DataflowBuilderPrinter {
 		])
 	}
 
-	private getControlDependencySuffix(arg: NodeId[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
+	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
-			return `${prefix}controlDependencies: [${arg.map(id => wrap(id)).join(', ')}]${suffix}`
+			return `${prefix}controlDependencies: ${wrapControlDependency(arg)}${suffix}`
 		}
 		return undefined
 	}

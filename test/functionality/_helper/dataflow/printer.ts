@@ -5,6 +5,7 @@ import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
 import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier'
+import type { ControlDependency } from '../../../../src/dataflow/info'
 
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
@@ -20,11 +21,13 @@ export function wrap(id: string | NodeId | undefined): string {
 	}
 }
 
-function wrapControlDependencies(controlDependencies: NodeId[] | undefined): string {
+export function wrapControlDependencies(controlDependencies: ControlDependency[] | undefined): string {
 	if(controlDependencies === undefined) {
 		return 'undefined'
 	} else {
-		return `[${controlDependencies.map(wrap).join(', ')}]`
+		return `[${controlDependencies.map(c =>
+			`{ id: ${wrap(c.id)}, when: ${c.when} }`	
+		).join(', ')}]`
 	}
 }
 export function wrapReference(ref: IdentifierReference): string {

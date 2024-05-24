@@ -3,7 +3,7 @@ import { setDifference } from '../../util/diff'
 import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
-import { arrayEqual } from '../../util/arrays'
+import { diffControlDependencies } from '../info'
 
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -18,9 +18,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${info.leftname}: ${a.nodeId} vs. ${info.rightname}: ${b.nodeId}`)
 	}
-	if(!arrayEqual(a.controlDependencies, b.controlDependencies)) {
-		info.report.addComment(`${info.position}Different control dependency: ${info.leftname}: ${JSON.stringify(a.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(b.controlDependencies)}`)
-	}
+	diffControlDependencies(a.controlDependencies, b.controlDependencies, info)
 }
 
 function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b: IEnvironment, info: GenericDifferenceInformation<Report>) {
@@ -44,9 +42,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
-			if(!arrayEqual(aVal.controlDependencies, bVal.controlDependencies)) {
-				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependencies)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependencies)}`)
-			}
+			diffControlDependencies(aVal.controlDependencies, bVal.controlDependencies, { ...info, position: `${info.position} For ${key}. ` })
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
 			}

@@ -45,7 +45,7 @@ export function processWhileLoop<OtherInfo>(
 		markAsNSE: [1],
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], name.info.id] }
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] }
 			}
 			return d
 		} })

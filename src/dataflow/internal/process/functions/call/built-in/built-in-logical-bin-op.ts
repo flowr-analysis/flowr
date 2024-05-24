@@ -14,7 +14,7 @@ export function processSpecialBinOp<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { lazy: boolean }
+	config: { lazy: boolean, evalRhsWhen: boolean }
 ): DataflowInformation {
 	if(!config.lazy) {
 		return processKnownFunctionCall({ name, args, rootId, data }).information
@@ -26,8 +26,7 @@ export function processSpecialBinOp<OtherInfo>(
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
 		patchData: (d, i) => {
 			if(i === 1) {
-			// the rhs will be overshadowed by the lhs
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], name.info.id] }
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: config.evalRhsWhen }] }
 			}
 			return d
 		}

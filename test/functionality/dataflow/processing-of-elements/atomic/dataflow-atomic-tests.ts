@@ -145,7 +145,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						inputDifferent,
 						emptyGraph()
 							.use('0', 'x')
-							.use('1', 'y', { controlDependencies: [{ id: '2', when: true }] })
+							.use('1', 'y', { controlDependencies: [{ id: '2', when: op === '&&' || op === '&' }] })
 							.call('2', op, [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 							.reads('2', '0')
 					)
@@ -154,7 +154,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						shell, inputSame,
 						emptyGraph()
 							.use('0', 'x')
-							.use('1', 'x', { controlDependencies: [{ id: '2', when: true }] })
+							.use('1', 'x', { controlDependencies: [{ id: '2', when: op === '&&' || op === '&' }] })
 							.call('2', op, [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 							.reads('2', '0')
 					)

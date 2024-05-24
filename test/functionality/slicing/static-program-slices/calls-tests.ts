@@ -573,6 +573,7 @@ if(x == 3) {
 x`)
 		})
 	})
+	// these have some inconsistencies, see https://github.com/Code-Inspect/flowr/issues/821
 	describe('Closures', () => {
 		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
 			shell, `f <- function(x = 1) {

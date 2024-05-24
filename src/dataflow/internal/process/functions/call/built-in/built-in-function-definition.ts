@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation, ExitPoint } from '../../../../../info'
+import type { DataflowInformation } from '../../../../../info'
 import { ExitPointType } from '../../../../../info'
 import { linkInputs } from '../../../../linker'
 import { processKnownFunctionCall } from '../known-call-handling'
@@ -80,7 +80,7 @@ export function processFunctionDefinition<OtherInfo>(
 				tag:                 VertexType.Use,
 				id:                  read.nodeId,
 				environment:         undefined,
-				controlDependencies: []
+				controlDependencies: undefined
 			})
 		}
 	}
@@ -94,8 +94,8 @@ export function processFunctionDefinition<OtherInfo>(
 		environment:       outEnvironment
 	}
 
+	updateNestedFunctionClosures(subgraph, outEnvironment, name)
 	const exitPoints = body.exitPoints
-	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, name)
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false)
 	graph.addVertex({
@@ -121,13 +121,10 @@ export function processFunctionDefinition<OtherInfo>(
 
 
 function updateNestedFunctionClosures<OtherInfo>(
-	exitPoints: readonly ExitPoint[],
 	subgraph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
 	name: RSymbol<OtherInfo & ParentInformation>
 ) {
-	console.log('update closures', exitPoints, name)
-
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { subflow, tag }] of subgraph.vertices(true)) {
@@ -136,11 +133,9 @@ function updateNestedFunctionClosures<OtherInfo>(
 		}
 
 		const ingoingRefs = subflow.in
-		console.log(id, ingoingRefs)
 		const remainingIn: IdentifierReference[] = []
 		for(const ingoing of ingoingRefs) {
 			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment) : undefined
-			console.log(ingoing.name, resolved)
 			if(resolved === undefined) {
 				remainingIn.push(ingoing)
 				continue

@@ -313,7 +313,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 		const empty = body === undefined || body.length === 0
 		const selected = isSelected(config, definition)
 		if(empty && selected) { // give function stub
-			return plain(`function(${reconstructParameters(definition.parameters).join(', ')}) { }`)
+			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`)
 		} else if(!selected) { // do not require function
 			return body
 		}
@@ -323,11 +323,11 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 		// 'inline'
 		const bodyStr = body.length === 0 ? '{ }' : `${body[0].line}`
 		// we keep the braces in every case because I do not like no-brace functions
-		return [{ line: `function(${parameters}) ${bodyStr}`, indent: 0 }]
+		return [{ line: `${definition.lexeme}(${parameters}) ${bodyStr}`, indent: 0 }]
 	} else {
 		// 'block'
 		return [
-			{ line: `function(${parameters}) ${body[0].line}`, indent: 0 },
+			{ line: `${definition.lexeme}(${parameters}) ${body[0].line}`, indent: 0 },
 			...body.slice(1),
 		]
 	}

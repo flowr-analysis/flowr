@@ -112,8 +112,14 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		&& edgeIncludesType(e.types, readBits)
 	).map(([target, _]) => target)
 
+	if(id === 36) {
+		console.log('seed', functionDefinitionReadIds)
+	}
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
+		if(id === 36) {
+			console.log('linking call', id, def)
+		}
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {
@@ -163,18 +169,18 @@ export function linkFunctionCalls(
 }
 
 
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
 	const result = new Map<NodeId, DataflowGraphVertexInfo>()
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId
 
+		// do not traverse builtins
 		if(currentId === BuiltIn) {
-			// do not traverse builtins
-			slicerLogger.trace('skipping builtin function definition during collection')
 			continue
 		}
+
 		const currentInfo = dataflowGraph.get(currentId, true)
 		if(currentInfo === undefined) {
 			slicerLogger.trace('skipping unknown link')

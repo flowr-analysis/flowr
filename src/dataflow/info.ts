@@ -4,7 +4,6 @@ import type { IdentifierReference } from './environments/identifier'
 import type { REnvironmentInformation } from './environments/environment'
 import { DataflowGraph } from './graph/graph'
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff'
-import { setMinus } from '../util/set'
 
 export const enum ExitPointType {
 	Default = 0,

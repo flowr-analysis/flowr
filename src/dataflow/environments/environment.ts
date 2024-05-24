@@ -8,7 +8,6 @@ import type { Identifier, IdentifierDefinition, IdentifierReference } from './id
 import { BuiltInMemory } from './built-in'
 import type { DataflowGraph } from '../graph/graph'
 import { resolveByName } from './resolve-by-name'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { ControlDependency } from '../info'
 
 

@@ -9,7 +9,6 @@ import type {
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { REnvironmentInformation } from './environments/environment'
 import type { RParseRequest } from '../r-bridge/retriever'
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 
 export interface DataflowProcessorInformation<OtherInfo> {

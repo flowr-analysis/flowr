@@ -386,10 +386,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 			last.line += ')'
 		}
 
-		if(!last.line.endsWith('()')) {
-			// add empty call braces if not present
-			last.line += '()'
-		}
+		// add empty call braces if not present
+		last.line += '()'
 		return functionName
 	} else {
 		return plain(getLexeme(call))

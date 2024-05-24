@@ -29,7 +29,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 	visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.IfThenElse) {
-				if(node.type === RType.FunctionCall && node.flavor === 'named' && node.functionName.content === 'switch') {
+				if(node.type === RType.FunctionCall && node.named && node.functionName.content === 'switch') {
 					const initialArg = unpackArgument(node.arguments[0])
 					if(initialArg) {
 						info.switchCase = updateCommonSyntaxTypeCounts(info.switchCase, initialArg)

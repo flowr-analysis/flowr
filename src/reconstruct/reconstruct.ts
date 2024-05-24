@@ -336,14 +336,14 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
-	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
+	guard(call.named, `infix special call must be named, got: ${call.named}`)
 	const [lhs, rhs] = args
 
 	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return []
 	}
 	// else if (rhs === undefined || rhs.length === 0) {
-	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
+	// if rhs is undefined we still have to keep both now, but reconstruct manually :/
 	if(lhs !== EmptyArgument && lhs.length > 0) {
 		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
 		if(rhs !== EmptyArgument && rhs.length > 0) {
@@ -370,7 +370,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}
-	if(call.flavor === 'named' && selected) {
+	if(call.named && selected) {
 		return plain(getLexeme(call))
 	}
 	const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
@@ -381,7 +381,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	if(args.length === 0) {
 		guard(functionName.length > 0, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
 		const last = functionName[functionName.length - 1]
-		if(call.flavor === 'unnamed' && !last.line.endsWith(')')) {
+		if(!call.named && !last.line.endsWith(')')) {
 			functionName[0].line = `(${functionName[0].line}`
 			last.line += ')'
 		}
@@ -413,7 +413,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-	if(node.type !== RType.FunctionCall || node.flavor !== 'named') {
+	if(node.type !== RType.FunctionCall || !node.named) {
 		return false
 	}
 	return libraryFunctionCall.test(node.functionName.content)

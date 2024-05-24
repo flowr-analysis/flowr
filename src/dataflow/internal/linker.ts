@@ -112,14 +112,8 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		&& edgeIncludesType(e.types, readBits)
 	).map(([target, _]) => target)
 
-	if(id === 36) {
-		console.log('seed', functionDefinitionReadIds)
-	}
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
-		if(id === 36) {
-			console.log('linking call', id, def)
-		}
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {

@@ -50,7 +50,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 		// parse as infix function call!
 		return {
 			type:         RType.FunctionCall,
-			flavor:       'named',
+			named:        true,
 			infixSpecial: true,
 			lexeme:       data.currentLexeme ?? content,
 			location,

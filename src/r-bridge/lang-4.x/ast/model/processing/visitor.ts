@@ -24,11 +24,11 @@ class NodeVisitor<OtherInfo = NoInfo> {
 			return
 		}
 
-		/* let the type system know, that the type does not change */
+		/* let the type system know that the type does not change */
 		const type = node.type
 		switch(type) {
 			case RType.FunctionCall:
-				this.visitSingle(node.flavor === 'named' ? node.functionName : node.calledFunction)
+				this.visitSingle(node.named ? node.functionName : node.calledFunction)
 				this.visit(node.arguments)
 				break
 			case RType.FunctionDefinition:

@@ -107,7 +107,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
 		case RType.FunctionCall:
-			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down)
+			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down)
 		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
 		case RType.Parameter:

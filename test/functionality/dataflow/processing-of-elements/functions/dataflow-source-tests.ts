@@ -15,7 +15,9 @@ describe('source', withShell(shell => {
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',
-		recursive2: 'cat(x)\nsource("recursive1")'
+		recursive2: 'cat(x)\nsource("recursive1")',
+		closure1:   'f <- function() { function() 3 }',
+		closure2:   'f <- function() { x <<- 3 }'
 	}
 	setSourceProvider(requestProviderFromText(sources))
 
@@ -91,4 +93,71 @@ describe('source', withShell(shell => {
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 	)
+
+	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
+		shell, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
+			.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
+			.argument('3', '1')
+			.call('closure1-1:1-1:6-8', '<-', [argumentInCall('closure1-1:1-1:6-0'), argumentInCall('closure1-1:1-1:6-7')], { returns: ['closure1-1:1-1:6-0'], reads: [BuiltIn] })
+			.argument('closure1-1:1-1:6-8', ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-0'])
+			.call('6', 'f', [], { returns: ['closure1-1:1-1:6-5'], reads: ['closure1-1:1-1:6-0'], environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8') })
+			.calls('6', 'closure1-1:1-1:6-7')
+			.argument('7', '6')
+			.call('7', '<-', [argumentInCall('4'), argumentInCall('6')], { returns: ['4'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8') })
+			.argument('7', '4')
+			.call('10', 'g', [], { returns: ['closure1-1:1-1:6-3'], reads: ['4'], environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8').defineVariable('g', '4', '7') })
+			.calls('10', 'closure1-1:1-1:6-5')
+			.argument('12', '10')
+			.call('12', 'print', [argumentInCall('10')], { returns: ['10'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8').defineVariable('g', '4', '7') })
+			.constant('1')
+			.constant('closure1-1:1-1:6-3', undefined, false)
+			.defineFunction('closure1-1:1-1:6-5', ['closure1-1:1-1:6-3'], {
+				out:               [],
+				in:                [{ nodeId: 'closure1-1:1-1:6-3', name: undefined, controlDependencies: [] }],
+				unknownReferences: [],
+				entryPoint:        'closure1-1:1-1:6-3',
+				graph:             new Set(['closure1-1:1-1:6-3']),
+				environment:       defaultEnv().pushEnv().pushEnv()
+			}, { environment: defaultEnv().pushEnv() }, false)
+			.defineFunction('closure1-1:1-1:6-7', ['closure1-1:1-1:6-5'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				entryPoint:        'closure1-1:1-1:6-5',
+				graph:             new Set(['closure1-1:1-1:6-5']),
+				environment:       defaultEnv().pushEnv()
+			})
+			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
+			.defineVariable('4', 'g', { definedBy: ['6', '7'] }))
+	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
+		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
+			.use('10', 'x')
+			.reads('10', 'closure2-2:1-2:6-3')
+			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+			.argument('2', ['1', '0'])
+			.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.argument('6', '4')
+			.call('closure2-2:1-2:6-5', '<<-', [argumentInCall('closure2-2:1-2:6-3'), argumentInCall('closure2-2:1-2:6-4')], { returns: ['closure2-2:1-2:6-3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
+			.argument('closure2-2:1-2:6-5', ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3'])
+			.call('closure2-2:1-2:6-8', '<-', [argumentInCall('closure2-2:1-2:6-0'), argumentInCall('closure2-2:1-2:6-7')], { returns: ['closure2-2:1-2:6-0'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.argument('closure2-2:1-2:6-8', ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-0'])
+			.call('8', 'f', [], { returns: ['closure2-2:1-2:6-5'], reads: ['closure2-2:1-2:6-0'], environment: defaultEnv().defineVariable('x', '0', '2').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8') })
+			.calls('8', 'closure2-2:1-2:6-7')
+			.argument('12', '10')
+			.call('12', 'print', [argumentInCall('10')], { returns: ['10'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8') })
+			.constant('1')
+			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+			.constant('4')
+			.constant('closure2-2:1-2:6-4', undefined, false)
+			.defineVariable('closure2-2:1-2:6-3', 'x', { definedBy: ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-5'] }, false)
+			.sideEffectOnCall('closure2-2:1-2:6-3', '8')
+			.defineFunction('closure2-2:1-2:6-7', ['closure2-2:1-2:6-5'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				entryPoint:        'closure2-2:1-2:6-5',
+				graph:             new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
+				environment:       defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv()
+			}, { environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5') })
+			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] }))
 }))

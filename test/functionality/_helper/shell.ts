@@ -293,6 +293,8 @@ export function assertSliced(name: string | TestLabel, shell: RShell, input: str
 	const fullname = decorateLabelContext(name, ['slice'])
 
 	const t = it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
+		await ensureConfig(shell, this, userConfig)
+
 		const result = await new PipelineExecutor(DEFAULT_RECONSTRUCT_PIPELINE,{
 			getId,
 			request:   requestFromInput(input),

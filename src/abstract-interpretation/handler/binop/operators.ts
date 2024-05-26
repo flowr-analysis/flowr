@@ -35,23 +35,12 @@ export const operators: BinOpOperators = {
 		const calculateDomains = (lhs: AINode, rhs: AINode, narrowKind: NarrowKind, idSuffix = ''): AINode[] => {
 			const lhsNarrowed = narrowDomain(lhs.domain, rhs.domain, narrowKind)
 			const rhsNarrowed = narrowDomain(rhs.domain, lhs.domain, narrowKind ^ 0b110 /* flip < and > but not = */)
-			return [{
-				nodeId:       node.info.id + idSuffix,
-				expressionId: node.info.id,
-				domain:       lhsNarrowed.isBottom() && rhsNarrowed.isBottom() ? Domain.bottom() : Domain.top(),
-				astNode:      node,
-			},
-			{
-				nodeId:       lhs.nodeId + idSuffix,
-				expressionId: node.info.id,
-				domain:       lhsNarrowed,
-				astNode:      node,
-			}, {
-				nodeId:       rhs.nodeId + idSuffix,
-				expressionId: node.info.id,
-				domain:       rhsNarrowed,
-				astNode:      node,
-			}]
+			const isConditionTrue = lhsNarrowed.isBottom() && rhsNarrowed.isBottom()
+			return [
+				new AINode(isConditionTrue ? Domain.bottom() : Domain.top(), node, node.info.id, node.info.id + idSuffix),
+				new AINode(lhsNarrowed, node, node.info.id, lhs.nodeId + idSuffix),
+				new AINode(rhsNarrowed, node, node.info.id, rhs.nodeId + idSuffix),
+			]
 		}
 		const thenDomains = calculateDomains(lhs, rhs, narrowKind)
 		const elseDomains = calculateDomains(lhs, rhs, narrowKind ^ 0b111 /* flip everything */, '-else')

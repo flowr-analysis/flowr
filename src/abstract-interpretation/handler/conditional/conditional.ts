@@ -1,6 +1,6 @@
 import {ParentInformation, RIfThenElse} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
-import {AINodeStore, RegisterBehavior} from '../../ainode'
+import {AINode, AINodeStore, RegisterBehavior} from '../../ainode'
 import {aiLogger, getDfgChildrenOfType} from '../../processor'
 import {Handler} from '../handler'
 import {DataflowInformation} from '../../../dataflow/internal/info'
@@ -50,43 +50,35 @@ export class Conditional extends Handler {
 				const dfChildren = getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads)
 				if(dfChildren === undefined) {
 					if(isElseNode) {
-						this.elseDomains.register({...node, nodeId: cleanedId}, RegisterBehavior.Overwrite)
+						this.elseDomains.register(AINode.copy(node, {nodeId: cleanedId}), RegisterBehavior.Overwrite)
 					} else {
 						this.thenDomains.register(node, RegisterBehavior.Overwrite)
 					}
 				} else {
 					for(const child of dfChildren) {
 						if(isElseNode) {
-							this.elseDomains.register({
-								...node,
-								nodeId: child
-							}, RegisterBehavior.Overwrite)
+							this.elseDomains.register(AINode.copy(node, {nodeId: child}), RegisterBehavior.Overwrite)
 						} else {
-							this.thenDomains.register({
-								...node,
-								nodeId: child
-							}, RegisterBehavior.Overwrite)
+							this.thenDomains.register(AINode.copy(node, {nodeId: child}), RegisterBehavior.Overwrite)
 						}
 					}
 				}
 			}
 			this.domains.updateWith(this.thenDomains)
 		} else if(this.then === undefined) {
-			this.then = aiNodes
+			this.then = AINodeStore.empty()
 			const conditionDomain = this.thenDomains.get(this.node.condition.info.id)?.domain
 			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
-			if(conditionDomain.isBottom()) {
-				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
-				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			if(!conditionDomain.isBottom()) {
+				this.then.updateWith(aiNodes)
 			}
 			this.domains.updateWith(this.elseDomains)
 		} else if(this.else === undefined) {
-			this.else = aiNodes
+			this.else = AINodeStore.empty()
 			const conditionDomain = this.elseDomains.get(this.node.condition.info.id)?.domain
 			guard(conditionDomain !== undefined, `No domain found for condition ${this.node.condition.info.id}`)
-			if(conditionDomain.isBottom()) {
-				// TODO: How can I indicate that this path is not possible and all Domains in it should be bottom?
-				//       Do I just iterate over all AINodes and replace the domains. Sounds dumb :D
+			if(!conditionDomain.isBottom()) {
+				this.else.updateWith(aiNodes)
 			}
 		} else {
 			guard(false, `Conditional ${this.node.info.id} already has condition, then and else`)

@@ -27,17 +27,17 @@ export class Interval {
 		return `${this.min.inclusive ? '[' : '('}${this.min.value}, ${this.max.value}${this.max.inclusive ? ']' : ')'}`
 	}
 
-	// An interval is considered empty if it's of the form [T, T) or (T, T]
+	/** An interval is considered empty if it's of the form [T, T) or (T, T] */
 	isBottom(): boolean {
 		return this.min.value === this.max.value && !(this.min.inclusive && this.max.inclusive)
 	}
 
-	// An interval is considered singleton if it's of the form [T, T]
+	/** An interval is considered singleton if it's of the form [T, T] */
 	isSingleton(): boolean {
 		return this.min.value === this.max.value && this.min.inclusive && this.max.inclusive
 	}
 
-	// An interval is considered top if it's of the form (-∞, ∞)
+	/** An interval is considered top if it's of the form (-∞, ∞) */
 	isTop(): boolean {
 		return this.min.value === Number.NEGATIVE_INFINITY && this.max.value === Number.POSITIVE_INFINITY
 	}
@@ -79,17 +79,6 @@ export class Domain {
 
 	get intervals(): Set<Interval> {
 		return this._intervals
-	}
-
-	private set intervals(intervals: Interval[]) {
-		this._intervals.clear()
-		for(const interval of intervals) {
-			this._intervals.add(interval)
-		}
-	}
-
-	addInterval(interval: Interval): void {
-		this.intervals = unifyOverlappingIntervals([...this.intervals, interval])
 	}
 
 	toString(): string {

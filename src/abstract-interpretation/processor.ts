@@ -10,7 +10,7 @@ import {Conditional} from './handler/conditional/conditional'
 import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 import {ExprList} from './handler/exprlist/exprlist'
-import {AINodeStore} from './ainode'
+import {AINode, AINodeStore} from './ainode'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
 
@@ -61,19 +61,11 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		} else if(astNode?.type === RType.ExpressionList) {
 			operationStack.push(new ExprList(dfg, AINodeStore.withParent(top.domains))).enter()
 		} else if(astNode?.type === RType.Symbol) {
-			top.next(AINodeStore.from({
-				nodeId:       astNode.info.id,
-				expressionId: astNode.info.id,
-				domain:       getDomainOfDfgChild(node.id, dfg, top.domains),
-				astNode:      astNode,
-			}))
+			top.next(AINodeStore.from(new AINode(getDomainOfDfgChild(node.id, dfg, top.domains), astNode)))
 		} else if(astNode?.type === RType.Number) {
-			top.next(AINodeStore.from({
-				nodeId:       astNode.info.id,
-				expressionId: astNode.info.id,
-				domain:       Domain.fromScalar(astNode.content.num),
-				astNode:      astNode,
-			}))
+			top.next(AINodeStore.from(new AINode(Domain.fromScalar(astNode.content.num), astNode)))
+		} else if(astNode?.type === RType.Logical) {
+			top.next(AINodeStore.from(new AINode(astNode.content ? Domain.top() : Domain.bottom(), astNode)))
 		} else if(node.type === CfgVertexType.EndMarker) {
 			const operationResult = operationStack.pop()?.exit()
 			guard(operationResult !== undefined, 'No operation result')

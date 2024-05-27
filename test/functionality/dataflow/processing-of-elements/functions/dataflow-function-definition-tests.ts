@@ -505,6 +505,7 @@ print(g())`, emptyGraph()
 				.use('14', 'x', undefined, false)
 				.reads('14', '1')
 				.use('15', 'y', undefined, false)
+				.reads('15', '8')
 				.use('17', 'z', undefined, false)
 				.reads('17', '11')
 				.argument('16', '14')
@@ -517,8 +518,8 @@ print(g())`, emptyGraph()
 				.argument('23', '22')
 				.call('24', `${UnnamedFunctionCallPrefix}24`, [], { returns: ['20'], reads: ['23'], environment: defaultEnv().pushEnv().defineParameter('x', '1', '3') }, false)
 				.calls('24', ['23', '22'])
-				.argument('25', '23')
-				.call('25', '{', [argumentInCall('23')], { returns: ['23'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '1', '3') }, false)
+				.argument('25', '24')
+				.call('25', '{', [argumentInCall('24')], { returns: ['24'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('x', '1', '3') }, false)
 				.call('27', '<-', [argumentInCall('0'), argumentInCall('26')], { returns: ['0'], reads: [BuiltIn] })
 				.argument('27', ['26', '0'])
 				.call('32', 'f', [argumentInCall('30')], { returns: ['25'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '27') })
@@ -527,8 +528,8 @@ print(g())`, emptyGraph()
 				.argument('33', '32')
 				.call('33', '<-', [argumentInCall('28'), argumentInCall('32')], { returns: ['28'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '27') })
 				.argument('33', '28')
-				.call('36', 'g', [], { returns: ['20'], reads: ['28'], environment: defaultEnv().defineFunction('f', '0', '27').defineVariable('g', '28', '33') })
-				.calls('36', '22')
+				.call('36', 'g', [], { returns: ['18'], reads: ['28'], environment: defaultEnv().defineFunction('f', '0', '27').defineVariable('g', '28', '33') })
+				.calls('36', '20')
 				.argument('38', '36')
 				.call('38', 'print', [argumentInCall('36')], { returns: ['36'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '27').defineVariable('g', '28', '33') })
 				.defineVariable('1', 'x', { definedBy: ['2'] }, false)
@@ -539,7 +540,7 @@ print(g())`, emptyGraph()
 				.constant('12', undefined, false)
 				.defineFunction('20', ['18'], {
 					out:               [],
-					in:                [{ nodeId: '15', name: 'y', controlDependencies: [] }],
+					in:                [],
 					unknownReferences: [],
 					entryPoint:        '18',
 					graph:             new Set(['11', '12', '14', '15', '16', '17', '18']),

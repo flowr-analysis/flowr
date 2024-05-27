@@ -446,7 +446,7 @@ cat(4 %a% 5)`)
 if(y) {
    assign("a", function() 1)
 }
-a()`, ['5@a'], `a <- function() 2
+a()`, ['5@a'], `a <- \\() 2
 if(y) { assign("a", function() 1) }
 a()`, { minRVersion: MIN_VERSION_LAMBDA })
 		})
@@ -573,7 +573,6 @@ if(x == 3) {
 x`)
 		})
 	})
-	// these have some inconsistencies, see https://github.com/Code-Inspect/flowr/issues/821
 	describe('Closures', () => {
 		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
 			shell, `f <- function(x = 1) {
@@ -588,7 +587,7 @@ g()`)
   (\\(y = 2) function(z = 3) x + y + z)()
 }
 g <- f(8)
-print(g())`, ['5@g'], `f <- function(x=1) {}
+print(g())`, ['5@g'], `f <- function(x=1) { (\\(y=2) function(z=3) x + y + z)() }
 g <- f(8)
 g()`, { minRVersion: MIN_VERSION_LAMBDA })
 		assertSliced(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
@@ -602,7 +601,7 @@ x <- 2
 f()()
 print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
 x <- 2
-f()
+f()()
 x`)
 	})
 }))

@@ -1,9 +1,15 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import type { NodeId, NormalizedAst, ParentInformation, RNode, RNodeWithParent, RParseRequest } from '../r-bridge'
-import type { REnvironmentInformation } from './environments'
-import type { DataflowInformation } from './info'
+import type { ControlDependency, DataflowInformation } from './info'
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { REnvironmentInformation } from './environments/environment'
+import type { RParseRequest } from '../r-bridge/retriever'
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**
@@ -31,7 +37,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g. of known ifs).
 	 */
-	readonly controlDependencies: NodeId[] | undefined
+	readonly controlDependencies: ControlDependency[] | undefined
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

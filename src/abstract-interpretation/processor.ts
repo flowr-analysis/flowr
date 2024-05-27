@@ -1,16 +1,22 @@
 import type { DataflowInformation } from '../dataflow/info'
-import type { NodeId, NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
-import { RType } from '../r-bridge'
 import { CfgVertexType, extractCFG } from '../util/cfg/cfg'
 import { visitCfg } from '../util/cfg/visitor'
 import { guard } from '../util/assert'
-import type { DataflowGraphVertexInfo, OutgoingEdges } from '../dataflow'
-import { edgeIncludesType , EdgeType } from '../dataflow'
 
 import type { Handler } from './handler/handler'
 import { BinOp } from './handler/binop/binop'
 import { Domain, unifyDomains } from './domain'
 import { log } from '../util/log'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type {
+	NormalizedAst,
+	ParentInformation,
+	RNodeWithParent
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { DataflowGraphVertexInfo } from '../dataflow/graph/vertex'
+import type { OutgoingEdges } from '../dataflow/graph/graph'
+import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 
 export const aiLogger = log.getSubLogger({ name: 'abstract-interpretation' })
 

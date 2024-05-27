@@ -1,15 +1,16 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
-import type { RNode } from '../../../../model'
-import { RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
-import { normalizeExpressions, splitComments } from '../structure'
-import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
 import { tryNormalizeAccess } from '../normalize-access'
-import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../util/arrays'
+import type { RNode } from '../../../../model/model'
+import { normalizeExpressions, splitComments } from '../structure/normalize-expressions'
+import { tryNormalizeFunctionCall } from '../functions/normalize-call'
+import { tryNormalizeFunctionDefinition } from '../functions/normalize-definition'
+import { RType } from '../../../../model/type'
+import { normalizeComment } from '../other/normalize-comment'
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -50,7 +51,7 @@ export function normalizeExpression(data: NormalizerData, obj: XmlBasedJson): RN
 
 	const children = normalizeExpressions(childData, childrenSource)
 
-	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
+	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter || x.type === RType.Comment)
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode

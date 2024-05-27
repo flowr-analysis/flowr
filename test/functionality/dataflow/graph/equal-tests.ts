@@ -1,7 +1,7 @@
-import type { DataflowGraph } from '../../../../src/dataflow'
-import { diffGraphsToMermaidUrl } from '../../../../src/dataflow'
 import { assert } from 'chai'
 import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder'
+import type { DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {
 	try {
@@ -45,7 +45,7 @@ describe('Equal', () => {
 				const rhs = emptyGraph().use('0', 'x')
 				neq('Id', emptyGraph().use('1', 'x'), rhs)
 				neq('Name', emptyGraph().use('0', 'y'), rhs)
-				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: ['1'] }), rhs)
+				neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: [{ id: '1', when: true }] }), rhs)
 				neq('Tag', emptyGraph().constant('0'), rhs)
 			})
 			describe('Different edges', () => {

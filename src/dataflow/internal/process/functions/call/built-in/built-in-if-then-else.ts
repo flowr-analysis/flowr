@@ -1,18 +1,20 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { alwaysExits } from '../../../../../info'
-import {
-	appendEnvironment,
-	type IdentifierReference,
-	makeAllMaybe,
-	resolvesToBuiltInConstant
-} from '../../../../../environments'
-import { dataflowLogger, EdgeType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { patchFunctionCall } from '../common'
 import { unpackArgument } from '../argument/unpack-argument'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-by-name'
+import { EdgeType } from '../../../../../graph/edge'
+import { appendEnvironment } from '../../../../../environments/append'
+import type { IdentifierReference } from '../../../../../environments/identifier'
+import { makeAllMaybe } from '../../../../../environments/environment'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -77,22 +79,24 @@ export function processIfThenElse<OtherInfo>(
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
 	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment)
 
+	const cdTrue = { id: rootId, when: true }
+	const cdFalse = { id: rootId, when: false }
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [
 		...cond.in,
-		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, rootId) : then?.in ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, rootId) : otherwise?.in ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.in ?? []),
 		...cond.unknownReferences,
-		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, rootId) : then?.unknownReferences ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, rootId) : otherwise?.unknownReferences ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? []),
 	]
 
 	// we assign all with a maybe marker
 	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
 	const outgoing = [
 		...cond.out,
-		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, rootId) : then?.out ?? []),
-		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, rootId) : otherwise?.out ?? []),
+		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
+		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
 	]
 
 	patchFunctionCall({
@@ -107,8 +111,8 @@ export function processIfThenElse<OtherInfo>(
 	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads })
 
 	const exitPoints = [
-		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? []] : e.controlDependencies })),
-		...(otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? []] : e.controlDependencies }))
+		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies })),
+		...(otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies }))
 	]
 
 	return {

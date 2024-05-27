@@ -1,12 +1,13 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { RNode, RParameter } from '../../../../model'
-import { RType, RawRType } from '../../../../model'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../../json/parser'
-import type { RDelimiter } from '../../../../model/nodes/info'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
-import { normalizeSingleNode } from '../structure'
+import type { RParameter } from '../../../../model/nodes/r-parameter'
+import { RawRType, RType } from '../../../../model/type'
+import type { RNode } from '../../../../model/model'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.

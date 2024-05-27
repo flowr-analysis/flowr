@@ -1,4 +1,4 @@
-import type { RawRType } from '../../model'
+import type { RawRType } from '../../model/type'
 
 export const attributesKey = 'a'
 export const childrenKey = 'c'

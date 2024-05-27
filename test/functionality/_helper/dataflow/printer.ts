@@ -1,10 +1,11 @@
-import type { NodeId } from '../../../../src'
-import { EmptyArgument } from '../../../../src'
-import type { IdentifierReference } from '../../../../src/dataflow'
-import { BuiltIn } from '../../../../src/dataflow'
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
+import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
+import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier'
+import type { ControlDependency } from '../../../../src/dataflow/info'
 
 export function wrap(id: string | NodeId | undefined): string {
 	if(id === undefined) {
@@ -20,11 +21,13 @@ export function wrap(id: string | NodeId | undefined): string {
 	}
 }
 
-function wrapControlDependency(controlDependency: NodeId[] | undefined): string {
+export function wrapControlDependency(controlDependency: ControlDependency[] | undefined): string {
 	if(controlDependency === undefined) {
 		return 'undefined'
 	} else {
-		return `[${controlDependency.map(wrap).join(', ')}]`
+		return `[${controlDependency.map(c =>
+			`{ id: ${wrap(c.id)}, when: ${c.when} }`	
+		).join(', ')}]`
 	}
 }
 export function wrapReference(ref: IdentifierReference): string {

@@ -1,14 +1,9 @@
-import type {
-	AstIdMap,
-	ParentInformation,
-	RNode,
-	RUnnamedArgument
-} from '../../../../../../r-bridge'
-import {
-	EmptyArgument,
-	RType
-} from '../../../../../../r-bridge'
 import { rangeFrom } from '../../../../../../util/range'
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 
 const voidRange = rangeFrom(-1, -1, -1, -1)
 

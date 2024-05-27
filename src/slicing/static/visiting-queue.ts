@@ -1,9 +1,9 @@
 import type { Fingerprint } from './fingerprint'
 import { fingerprint } from './fingerprint'
-import type { NodeId } from '../../r-bridge'
 import type { NodeToSlice, SliceResult } from './slicer-types'
-import type { REnvironmentInformation } from '../../dataflow'
 import { slicerLogger } from './static-slicer'
+import type { REnvironmentInformation } from '../../dataflow/environments/environment'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export class VisitingQueue {
 	private readonly threshold: number
@@ -27,19 +27,17 @@ export class VisitingQueue {
 	 */
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target) ?? 0
-
 		if(idCounter > this.threshold) {
 			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`)
 			this.timesHitThreshold++
 			return
-		} else {
-			this.idThreshold.set(target, idCounter + 1)
 		}
 
 		/* we do not include the in call part in the fingerprint as it is 'deterministic' from the source position */
 		const print = fingerprint(target, envFingerprint, onlyForSideEffects)
 
 		if(!this.seen.has(print)) {
+			this.idThreshold.set(target, idCounter + 1)
 			this.seen.set(print, target)
 			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects })
 		}

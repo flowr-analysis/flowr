@@ -1,12 +1,12 @@
 import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RIfThenElse } from '../../../../model'
-import { RType , RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { tryNormalizeIfThen } from './normalize-if-then'
 import { guard } from '../../../../../../../util/assert'
-import { normalizeSingleNode } from '../structure'
 import { ensureExpressionList } from '../../normalize-meta'
+import type { RIfThenElse } from '../../../../model/nodes/r-if-then-else'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import { RawRType, RType } from '../../../../model/type'
 
 
 /**

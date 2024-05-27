@@ -1,20 +1,23 @@
-import type {
-	DataflowGraph,
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexInfo,
-	FunctionArgument
-} from '../graph'
-import { edgeDoesNotIncludeType, edgeIncludesType, isNamedArgument, VertexType } from '../graph'
-import type { IdentifierReference, REnvironmentInformation } from '../environments'
-import { BuiltIn, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { expensiveTrace, log } from '../../util/log'
-import type { AstIdMap, NodeId, ParentInformation, RParameter } from '../../r-bridge'
-import { EmptyArgument, RType } from '../../r-bridge'
-import { slicerLogger } from '../../slicing'
-import { dataflowLogger, EdgeType } from '../index'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierReference } from '../environments/identifier'
+import type { DataflowGraph, FunctionArgument } from '../graph/graph'
+import { isNamedArgument } from '../graph/graph'
+import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter'
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { dataflowLogger } from '../logger'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../graph/vertex'
+import { VertexType } from '../graph/vertex'
+import { resolveByName } from '../environments/resolve-by-name'
+import { BuiltIn } from '../environments/built-in'
+import { slicerLogger } from '../../slicing/static/static-slicer'
+import type { REnvironmentInformation } from '../environments/environment'
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -160,18 +163,18 @@ export function linkFunctionCalls(
 }
 
 
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
 	const result = new Map<NodeId, DataflowGraphVertexInfo>()
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId
 
+		// do not traverse builtins
 		if(currentId === BuiltIn) {
-			// do not traverse builtins
-			slicerLogger.trace('skipping builtin function definition during collection')
 			continue
 		}
+
 		const currentInfo = dataflowGraph.get(currentId, true)
 		if(currentInfo === undefined) {
 			slicerLogger.trace('skipping unknown link')

@@ -1,28 +1,26 @@
-import type {
-	Base,
-	Location,
-	NodeId,
-	ParentInformation,
-	RFunctionArgument,
-	RNode,
-	RNodeWithParent,
-	RString,
-	RSymbol,
-	RUnnamedArgument
-} from '../../../../../../r-bridge'
-import { removeRQuotes, RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { IdentifierDefinition, IdentifierReference } from '../../../../../index'
-import { dataflowLogger, EdgeType, VertexType } from '../../../../../index'
-
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
-import { define, overwriteEnvironment } from '../../../../../environments'
 import { unpackArgument } from '../argument/unpack-argument'
 import { processAsNamedCall } from '../../../process-named-call'
 import { toUnnamedArgument } from '../argument/make-argument'
+import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import type { IdentifierDefinition, IdentifierReference } from '../../../../../environments/identifier'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string'
+import { removeRQuotes } from '../../../../../../r-bridge/retriever'
+import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import { VertexType } from '../../../../../graph/vertex'
+import { define } from '../../../../../environments/define'
+import { EdgeType } from '../../../../../graph/edge'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -48,6 +46,7 @@ export interface AssignmentConfiguration {
 	/* Make maybe if assigned to symbol */
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
+	readonly canBeReplacement?:    boolean
 }
 
 /**
@@ -70,7 +69,7 @@ export function processAssignment<OtherInfo>(
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>])
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
-	const { type, flavor } = target
+	const { type, named } = target
 
 	if(type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
@@ -84,12 +83,12 @@ export function processAssignment<OtherInfo>(
 			data,
 			information: res.information,
 		})
-	} else if(type === RType.FunctionCall && flavor === 'named') {
+	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source])
-	} else if(type === RType.Access) {
+	} else if(config.canBeReplacement && type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source])
@@ -150,6 +149,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget
 	})
+
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 		...config,
 		name,
@@ -201,7 +201,7 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1)
-	const readTargets: readonly IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
@@ -224,7 +224,7 @@ function processAssignmentToSymbol<OtherInfo>({
 		}
 	}
 
-	information.graph.addEdge(name.info.id, targetArg.entryPoint, { type: EdgeType.Returns })
+	information.graph.addEdge(rootId, targetArg.entryPoint, { type: EdgeType.Returns })
 
 	if(quoteSource) {
 		information.graph.addEdge(rootId, source.info.id, { type: EdgeType.NonStandardEvaluation })
@@ -233,7 +233,7 @@ function processAssignmentToSymbol<OtherInfo>({
 	return {
 		...information,
 		unknownReferences: [],
-		entryPoint:        name.info.id,
+		entryPoint:        rootId,
 		in:                readTargets,
 		out:               writeTargets
 	}

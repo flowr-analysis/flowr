@@ -1,11 +1,16 @@
-import type { ParentInformation, RArgument, RNode } from '../../../../r-bridge'
-import { collectAllIds, RType } from '../../../../r-bridge'
-import type { IdentifierReference } from '../../../environments'
-import { DataflowGraph, EdgeType, VertexType } from '../../../graph'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type { DataflowInformation } from '../../../info'
 import { ExitPointType } from '../../../info'
+import { collectAllIds } from '../../../../r-bridge/lang-4.x/ast/model/collect'
+import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model'
+import type { IdentifierReference } from '../../../environments/identifier'
+import { DataflowGraph } from '../../../graph/graph'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { EdgeType } from '../../../graph/edge'
+import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import { VertexType } from '../../../graph/vertex'
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {

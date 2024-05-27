@@ -1,13 +1,12 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import type { NamespaceIdentifier, RNumberValue, RStringValue } from '../../../src'
-import {
-	RNa, RNull,
-	Operators,
-	OperatorArity,
-	OperatorDatabase
-} from '../../../src'
+
 
 // maps a string to the expected R number parse value
+import type { RNumberValue, RStringValue } from '../../../src/r-bridge/lang-4.x/convert-values'
+import { RNa, RNull } from '../../../src/r-bridge/lang-4.x/convert-values'
+import type { NamespaceIdentifier } from '../../../src/r-bridge/lang-4.x/ast/model/model'
+import { OperatorArity, OperatorDatabase, Operators } from '../../../src/r-bridge/lang-4.x/ast/model/operators'
+
 export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	// the default block
 	{ str: '1', val: { num: 1, complexNumber: false, markedAsInt: false } },

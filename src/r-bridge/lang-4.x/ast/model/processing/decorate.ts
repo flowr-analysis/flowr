@@ -13,24 +13,19 @@ import type { NoInfo, RNode } from '../model'
 import { guard } from '../../../../../util/assert'
 import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
-import type {
-	RArgument,
-	RBinaryOp,
-	RExpressionList,
-	RFunctionCall,
-	RNamedFunctionCall,
-	RParameter,
-	RPipe,
-	RUnnamedFunctionCall
-} from '../nodes'
-import { EmptyArgument } from '../nodes'
 import type { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
 import { RType } from '../type'
-import type { RDelimiter } from '../nodes/info'
 import { foldAstStateful } from './stateful-fold'
 import type { NodeId } from './node-id'
-
+import type { RDelimiter } from '../nodes/info/r-delimiter'
+import type { RBinaryOp } from '../nodes/r-binary-op'
+import type { RPipe } from '../nodes/r-pipe'
+import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call'
+import { EmptyArgument } from '../nodes/r-function-call'
+import type { RExpressionList } from '../nodes/r-expression-list'
+import type { RParameter } from '../nodes/r-parameter'
+import type { RArgument } from '../nodes/r-argument'
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -349,7 +344,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
-		if(data.flavor === 'named') {
+		if(data.named) {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, functionName, arguments: args } as RNamedFunctionCall<OtherInfo & ParentInformation>
 		} else {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>

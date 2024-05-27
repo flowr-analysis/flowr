@@ -7,9 +7,9 @@
 
 
 import { DefaultMap } from '../../../src/util/defaultmap'
-import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data'
-import { getAllCapabilities } from '../../../src/r-bridge/data'
 import type { MergeableRecord } from '../../../src/util/objects'
+import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get'
+import { getAllCapabilities } from '../../../src/r-bridge/data/get'
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => [])
@@ -20,7 +20,8 @@ const uniqueTestId = (() => {
 })()
 
 
-export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other' | 'slice'
+export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other' | 'slice' | 'output'
+
 export interface TestLabel extends MergeableRecord {
 	readonly id:           number
 	readonly name:         string
@@ -63,6 +64,20 @@ function getFullNameOfLabel(label: TestLabel): string {
 	return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`
 }
 
+
+export function modifyLabelName(label: TestLabel, nameModification: (name: string) => string): TestLabel
+export function modifyLabelName(label: string, nameModification: (name: string) => string): string
+export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string
+export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string {
+	if(typeof label === 'string') {
+		return nameModification(label)
+	}
+
+	return {
+		...label,
+		name: nameModification(label.name)
+	}
+}
 
 /**
  * Returns the full name of the testlabel and adds the respective contexts

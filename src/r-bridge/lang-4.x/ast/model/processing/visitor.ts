@@ -1,8 +1,7 @@
 import type { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
-import { EmptyArgument } from '../nodes'
-
+import { EmptyArgument } from '../nodes/r-function-call'
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
@@ -25,11 +24,11 @@ class NodeVisitor<OtherInfo = NoInfo> {
 			return
 		}
 
-		/* let the type system know, that the type does not change */
+		/* let the type system know that the type does not change */
 		const type = node.type
 		switch(type) {
 			case RType.FunctionCall:
-				this.visitSingle(node.flavor === 'named' ? node.functionName : node.calledFunction)
+				this.visitSingle(node.named ? node.functionName : node.calledFunction)
 				this.visit(node.arguments)
 				break
 			case RType.FunctionDefinition:
@@ -98,7 +97,7 @@ class NodeVisitor<OtherInfo = NoInfo> {
 
 	visit(nodes: RNode<OtherInfo> | readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
 		if(Array.isArray(nodes)) {
-			const n = nodes as (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[]
+			const n = nodes as readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[]
 			for(const node of n) {
 				if(node && node !== EmptyArgument) {
 					this.visitSingle(node)

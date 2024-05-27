@@ -1,8 +1,7 @@
-import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
+import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'readline'
-import { ts2r } from './lang-4.x'
 import { expensiveTrace, log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
@@ -11,6 +10,7 @@ import fs from 'fs'
 import type { DeepReadonly , AsyncOrSync } from 'ts-essentials'
 import { initCommand } from './init'
 import { getConfig } from '../config'
+import { ts2r } from './lang-4.x/convert-values'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -263,7 +263,8 @@ export class RShell {
    */
 	public clearEnvironment(): void {
 		this.log.debug('clearing environment')
-		this._sendCommand('rm(list=ls())')
+		// run rm(list=ls()) but ignore 'flowr_get_ast', which is the compile command installed
+		this._sendCommand('rm(list=setdiff(ls(), "flowr_get_ast"))')
 	}
 
 	/**

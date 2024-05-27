@@ -1,10 +1,11 @@
-import type { NodeId } from '../../../../src'
-import type { IEnvironment } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironment, overwriteEnvironment } from '../../../../src/dataflow/environments'
 import { defaultEnv } from '../../_helper/dataflow/environment-builder'
 import { label } from '../../_helper/label'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IEnvironment } from '../../../../src/dataflow/environments/environment'
+import { overwriteEnvironment } from '../../../../src/dataflow/environments/overwrite'
+import { appendEnvironment } from '../../../../src/dataflow/environments/append'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {

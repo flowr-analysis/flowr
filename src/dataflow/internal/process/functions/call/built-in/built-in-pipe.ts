@@ -1,16 +1,16 @@
-import type {
-	NodeId,
-	ParentInformation,
-	RFunctionArgument,
-	RSymbol
-} from '../../../../../../r-bridge'
-import { RType } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { dataflowLogger, EdgeType, VertexType } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { dataflowLogger } from '../../../../../logger'
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
+import { VertexType } from '../../../../../graph/vertex'
+import { EdgeType } from '../../../../../graph/edge'
 
 
 export function processPipe<OtherInfo>(

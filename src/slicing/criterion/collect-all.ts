@@ -4,13 +4,13 @@
  * @module
  */
 import type { MergeableRecord } from '../../util/objects'
-import type {
-	NodeId,
-	RNodeWithParent
-} from '../../r-bridge'
+
 import type { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
 import { getUniqueCombinationsOfSize } from '../../util/arrays'
+import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
@@ -50,6 +50,9 @@ export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<Other
 	}
 
 	for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
-		yield combination.map(n => `$${n}` as SingleSlicingCriterion)
+		const c = combination.filter(n => n !== undefined && n !== EmptyArgument)
+		if(c.length > 0) {
+			yield c.map(n => `$${n}` as SingleSlicingCriterion)
+		}
 	}
 }

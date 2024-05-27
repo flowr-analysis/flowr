@@ -1,7 +1,3 @@
-import type { IdentifierReference } from '../environments'
-import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments'
-import type { NodeId } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges } from './graph'
 import { isNamedArgument } from './graph'
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff'
@@ -10,8 +6,13 @@ import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
 import { VertexType } from './vertex'
 import type { DataflowGraphEdge } from './edge'
-import { splitEdgeTypes } from './edge'
+import { edgeTypesToNames , splitEdgeTypes } from './edge'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierReference } from '../environments/identifier'
+import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { diffControlDependencies } from '../info'
 
 interface ProblematicVertex {
 	tag: 'vertex',
@@ -95,10 +96,18 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	}
 
 	for(const [id, edge] of lEdges) {
+		if(!ctx.left.hasVertex(id)) {
+			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			continue
+		}
 		diffEdges(ctx, id, edge, rEdges.get(id))
 	}
 	// just to make it both ways in case the length differs
 	for(const [id, edge] of rEdges) {
+		if(!ctx.right.hasVertex(id)) {
+			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			continue
+		}
 		if(!lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge)
 		}
@@ -175,12 +184,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg.name !== bArg.name) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the name differs: ${aArg.name} vs ${bArg.name}.`)
 			}
-			if(!arrayEqual(aArg.controlDependencies, bArg.controlDependencies)) {
-				ctx.report.addComment(
-					`${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.`,
-					{ tag: 'vertex', id: fn }
-				)
-			}
+			diffControlDependencies(aArg.controlDependencies, bArg.controlDependencies, { ...ctx, position: `${ctx.position}In argument #${i} (of ${ctx.leftname}, unnamed) the control dependency differs: ${JSON.stringify(aArg.controlDependencies)} vs ${JSON.stringify(bArg.controlDependencies)}.` })
 		}
 	}
 }
@@ -216,12 +220,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				})
 			}
 		}
-		if(!arrayEqual(lInfo.controlDependencies, rInfo.controlDependencies)) {
-			ctx.report.addComment(
-				`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
-				{ tag: 'vertex', id }
-			)
-		}
+		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependency. ` })
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 
@@ -274,7 +273,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Da
 	}
 	if(edge.types !== otherEdge.types) {
 		ctx.report.addComment(
-			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
+			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypesToNames(edge.types)])} vs ${JSON.stringify([...edgeTypesToNames(otherEdge.types)])}`,
 			{ tag: 'edge', from: id, to: target }
 		)
 	}

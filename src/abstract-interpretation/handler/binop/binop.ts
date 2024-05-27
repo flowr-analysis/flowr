@@ -1,9 +1,10 @@
 import type { Handler } from '../handler'
 import type { AINode } from '../../processor'
 import { aiLogger } from '../../processor'
-import type { ParentInformation, RBinaryOp } from '../../../r-bridge'
 import { guard } from '../../../util/assert'
 import { operators } from './operators'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
 
 export type BinaryOpProcessor = (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINode
 

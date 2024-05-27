@@ -1,5 +1,25 @@
+const replacements = {
+	// keep newlines
+	'\\n': '\n',
+	'`':   '#96;',
+	'[':   '#91;',
+	']':   '#93;',
+	'<':   '#60;',
+	'>':   '#62;',
+	'*':   '#42;',
+	'+':   '#43;',
+	'-':   '#45;',
+	'"':   '#34;',
+	'\\':  '#92;',
+	'_':   '#95;',
+	'{':   '#123;',
+	'}':   '#125;'
+}
 export function escapeMarkdown(text: string): string {
-	return text.replaceAll(/([+*<>-])/g, '\\$1').replaceAll('"', '\'\'')
+	for(const [key, value] of Object.entries(replacements)) {
+		text = text.replaceAll(key, value)
+	}
+	return text
 }
 
 /**

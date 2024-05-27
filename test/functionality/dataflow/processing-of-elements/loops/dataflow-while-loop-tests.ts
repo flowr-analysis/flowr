@@ -1,9 +1,9 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { BuiltIn } from '../../../../../src/dataflow'
 import { label } from '../../../_helper/label'
-import { OperatorDatabase } from '../../../../../src'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 
 describe('While', withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
@@ -24,7 +24,7 @@ describe('While', withShell(shell => {
 		.call('7', 'while', [argumentInCall('0'), argumentInCall('6')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.nse('7', '6')
 		.constant('0')
-		.constant('4', { controlDependency: ['7'] })
+		.constant('4', { controlDependency: [{ id: '7', when: true }] })
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], controlDependency: [] })
 	)
 	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()

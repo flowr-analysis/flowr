@@ -1,11 +1,14 @@
-import { childrenKey, nameKey, attributesKey, contentKey } from '../xml'
-import type { IdGenerator, NoInfo, NormalizedAst } from '../../model'
-import { decorateAst, deterministicCountingIdGenerator, RawRType } from '../../model'
 import type { Entry } from './format'
 import { prepareParsedData } from './format'
 import { log } from '../../../../../util/log'
-import type { NormalizerData, XmlBasedJson } from '../xml'
-import { normalizeRootObjToAst } from '../xml/internal'
+import type { IdGenerator, NormalizedAst } from '../../model/processing/decorate'
+import { decorateAst , deterministicCountingIdGenerator } from '../../model/processing/decorate'
+import type { NormalizerData } from '../xml/normalizer-data'
+import type { NoInfo } from '../../model/model'
+import { normalizeRootObjToAst } from '../xml/internal/structure/normalize-root'
+import type { XmlBasedJson } from '../xml/input-format'
+import { childrenKey , contentKey , attributesKey, nameKey } from '../xml/input-format'
+import { RawRType } from '../../model/type'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

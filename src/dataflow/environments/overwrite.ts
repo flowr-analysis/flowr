@@ -17,7 +17,6 @@ function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 
 export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
-	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
 	for(const [key, values] of next.memory) {
 		const hasMaybe = anyIsMaybeOrEmpty(values)
@@ -44,7 +43,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		parent = base.parent
 	}
 
-	const out = new Environment(base.name, parent)
+	const out = new Environment(parent)
 	out.memory = map
 	return out
 }

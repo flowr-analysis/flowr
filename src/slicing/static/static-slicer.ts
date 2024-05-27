@@ -1,22 +1,18 @@
-import type { DataflowGraph } from '../../dataflow'
-import {
-	edgeIncludesType ,
-	BuiltIn,
-	EdgeType,
-	initializeCleanEnvironments,
-	shouldTraverseEdge,
-	TraverseEdge,
-	VertexType
-} from '../../dataflow'
 import { guard } from '../../util/assert'
-import type { NodeId, NormalizedAst } from '../../r-bridge'
 import { expensiveTrace, log } from '../../util/log'
-import type { SlicingCriteria } from '../criterion'
-import { convertAllSlicingCriteriaToIds } from '../criterion'
 import type { SliceResult } from './slicer-types'
 import { envFingerprint } from './fingerprint'
 import { VisitingQueue } from './visiting-queue'
 import { handleReturns, sliceForCall } from './slice-call'
+import type { DataflowGraph } from '../../dataflow/graph/graph'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { SlicingCriteria } from '../criterion/parse'
+import { convertAllSlicingCriteriaToIds } from '../criterion/parse'
+import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { VertexType } from '../../dataflow/graph/vertex'
+import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
+import { BuiltIn } from '../../dataflow/environments/built-in'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
@@ -63,8 +59,8 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
 			if(!topLevel) {
 				for(const cd of currentVertex.controlDependencies) {
-					if((ast.idMap.get(cd)?.info.depth ?? 0) <= minDepth) {
-						queue.add(cd, baseEnvironment, baseEnvFingerprint, false)
+					if((ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
+						queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
 					}
 				}
 			}

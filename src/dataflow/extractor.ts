@@ -1,5 +1,3 @@
-import type { NormalizedAst, ParentInformation, RParseRequest } from '../r-bridge'
-import { RType, requestFingerprint } from '../r-bridge'
 import type { DataflowInformation } from './info'
 import type { DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'
@@ -7,13 +5,17 @@ import { processUninterestingLeaf } from './internal/process/process-uninteresti
 import { processSymbol } from './internal/process/process-symbol'
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling'
 import { processFunctionParameter } from './internal/process/functions/process-parameter'
-import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/process-argument'
 import { processAsNamedCall } from './internal/process/process-named-call'
 import { processValue } from './internal/process/process-value'
 import { processNamedCall } from './internal/process/functions/call/named-call-handling'
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument'
 import { rangeFrom } from '../util/range'
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import type { RParseRequest } from '../r-bridge/retriever'
+import { requestFingerprint } from '../r-bridge/retriever'
+import { initializeCleanEnvironments } from './environments/environment'
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,

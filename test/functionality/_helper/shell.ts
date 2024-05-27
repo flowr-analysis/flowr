@@ -1,32 +1,37 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import type {
-	AstIdMap, fileProtocol,
-	IdGenerator,
-	NodeId,
-	NoInfo,
-	RExpressionList,
-	RNode,
-	RNodeWithParent,
-	SlicingCriteria } from '../../../src'
-import {
-	deterministicCountingIdGenerator, requestFromInput,
-	RShell
-} from '../../../src'
 import { assert } from 'chai'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { guard } from '../../../src/util/assert'
-import { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import type { TestLabel } from './label'
-import { decorateLabelContext } from './label'
-import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
-import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
+import { modifyLabelName , decorateLabelContext } from './label'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
-import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid'
+import { RShell } from '../../../src/r-bridge/shell'
+import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
+import type { fileProtocol } from '../../../src/r-bridge/retriever'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import type {
+	AstIdMap, IdGenerator,
+	RNodeWithParent
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import {
+	deterministicCountingIdGenerator
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import {
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE
+} from '../../../src/core/steps/pipeline/default-pipelines'
+import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
+import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff'
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
+import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
+import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
+import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -91,6 +96,12 @@ export interface TestConfiguration extends MergeableRecord {
 	minRVersion:            string | undefined
 	needsPackages:          string[]
 	needsNetworkConnection: boolean
+}
+
+export interface TestConfigurationWithOutput extends TestConfiguration {
+	/** HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system! */
+	expectedOutput: string | RegExp
+	trimOutput:     boolean
 }
 
 export const defaultTestConfiguration: TestConfiguration = {
@@ -174,12 +185,38 @@ function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | 
 	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? p.id : `${p.from}->${p.to}`))
 }
 
+
+/**
+ * Assert that the given input code produces the expected output in R. Trims by default.
+ */
+export function assertOutput(name: string | TestLabel, shell: RShell, input: string, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+	const effectiveName = decorateLabelContext(name, ['output'])
+	it(`${effectiveName} (input: ${input})`, async function() {
+		await ensureConfig(shell, this, userConfig)
+		const lines = await shell.sendCommandWithOutput(input, { automaticallyTrimOutput: userConfig?.trimOutput ?? true })
+		/* we have to reset in between such tests! */
+		shell.clearEnvironment()
+		if(typeof expected === 'string') {
+			assert.strictEqual(lines.join('\n'), expected, `for input ${input}`)
+		} else {
+			assert.match(lines.join('\n'), expected,`, for input ${input}`)
+		}
+	})
+}
+
+function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string, userConfig?: Partial<TestConfigurationWithOutput>): void {
+	const e = userConfig?.expectedOutput
+	if(e) {
+		assertOutput(modifyLabelName(name, n => `[output] ${n}`), shell, input, e, userConfig)
+	}
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string,
 	expected: DataflowGraph,
-	userConfig?: Partial<TestConfiguration>,
+	userConfig?: Partial<TestConfigurationWithOutput>,
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
@@ -192,6 +229,9 @@ export function assertDataflow(
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
+		// assign the same id map to the expected graph, so that resolves work as expected
+		expected.setIdMap(info.normalize.idMap)
+
 		const report: DataflowDifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
@@ -202,12 +242,16 @@ export function assertDataflow(
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
+
+			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast))
+
 			console.error('best-effort reconstruction:\n', printAsBuilder(info.dataflow.graph))
 
 			console.error('diff:\n', diff)
 			throw e
 		}
-	}).timeout('3min')
+	}).timeout('4min')
+	handleAssertOutput(name, shell, input, userConfig)
 }
 
 
@@ -217,11 +261,11 @@ function printIdMapping(ids: NodeId[], map: AstIdMap): string {
 }
 
 /**
- * Please note, that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
+ * Please note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
-export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
-	return it(decorateLabelContext(name, ['slice']), async function() {
+	const t = it(decorateLabelContext(name, ['slice']), async function() {
 		await ensureConfig(shell, this, userConfig)
 
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
@@ -240,13 +284,15 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 		assert.strictEqual(reconstructed.code, expected,
 			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`)
 	})
+	handleAssertOutput(name, shell, input, userConfig)
+	return t
 }
 
 
-export function assertSliced(name: string | TestLabel, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertSliced(name: string | TestLabel, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const fullname = decorateLabelContext(name, ['slice'])
 
-	return it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
+	const t = it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
 		const result = await new PipelineExecutor(DEFAULT_RECONSTRUCT_PIPELINE,{
 			getId,
 			request:   requestFromInput(input),
@@ -260,9 +306,11 @@ export function assertSliced(name: string | TestLabel, shell: RShell, input: str
 				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			)
 		} catch(e) {
-			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
 			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`)
+			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
 			throw e
 		}
 	})
+	handleAssertOutput(name, shell, input, userConfig)
+	return t
 }

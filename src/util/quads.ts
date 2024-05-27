@@ -18,7 +18,7 @@ import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
 import { log } from './log'
-import type { NodeId } from '../r-bridge'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 

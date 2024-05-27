@@ -16,7 +16,6 @@
   "lib": [ "esnext", "dom" ],
   "exclude": [
     "node_modules/**/*",
-    "dist/**/*",
-    "modules/**/*"
+    "dist/**/*"
   ]
 }

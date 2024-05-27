@@ -1,10 +1,12 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider'
-import { OperatorDatabase, type RShell, RType } from '../../../../../src'
 import { rangeFrom } from '../../../../../src/util/range'
 import { label } from '../../../_helper/label'
 import { startAndEndsWith } from '../../../../../src/util/strings'
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import type { RShell } from '../../../../../src/r-bridge/shell'
 
 describe('Parse simple operations', withShell(shell => {
 	describe('unary operations', () => {
@@ -57,23 +59,26 @@ describe('Parse simple operations', withShell(shell => {
 
 		describe('Intermixed with comments', () => {
 			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines', ...OperatorDatabase['+'].capabilities]),
-				shell, '1 + # comment\n2', exprList({ // hoist children
+				shell, '1 + # comment\n2', { // hoist children
 					type:     RType.ExpressionList,
-					location: rangeFrom(1, 1, 2, 1),
+					location: undefined,
 					grouping: undefined,
 					info:     {},
-					lexeme:   '1 + # comment\n2',
+					lexeme:   undefined,
 					children: [
 						{
-							type:     RType.Comment,
-							content:  ' comment',
-							lexeme:   '# comment',
-							location: rangeFrom(1, 5, 1, 13),
-							info:     {}
-						},
-						{
-							type:     RType.BinaryOp,
-							info:     {},
+							type: RType.BinaryOp,
+							info: {
+								additionalTokens: [
+									{
+										type:     RType.Comment,
+										content:  ' comment',
+										lexeme:   '# comment',
+										location: rangeFrom(1, 5, 1, 13),
+										info:     {}
+									}
+								]
+							},
 							lexeme:   '+',
 							operator: '+',
 							location: rangeFrom(1, 3, 1, 3),
@@ -93,7 +98,7 @@ describe('Parse simple operations', withShell(shell => {
 							}
 						}
 					]
-				}), {
+				}, {
 					ignoreAdditionalTokens: false
 				}
 			)
@@ -102,7 +107,7 @@ describe('Parse simple operations', withShell(shell => {
 			assertAst(label('1 %xx% 2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'special-operator']),
 				shell, '1 %xx% 2', exprList({
 					type:         RType.FunctionCall,
-					flavor:       'named',
+					named:        true,
 					infixSpecial: true,
 					info:         {},
 					lexeme:       '1 %xx% 2',

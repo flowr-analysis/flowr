@@ -1,27 +1,21 @@
-import type { NodeId } from '../../r-bridge'
-import { EmptyArgument } from '../../r-bridge'
 import type { SourceRange } from '../range'
-import type {
-	DataflowFunctionFlowInformation,
-	DataflowGraph,
-	DataflowGraphVertexInfo,
-	FunctionArgument,
-	IdentifierDefinition,
-	IdentifierReference,
-	IEnvironment,
-	EdgeType } from '../../dataflow'
-import { edgeTypeToName
-	,
-	splitEdgeTypes,
-	isNamedArgument,
-	isPositionalArgument,
-	VertexType,
-	BuiltIn,
-	BuiltInEnvironment,
-} from '../../dataflow'
+
 
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
+import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph'
+import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier'
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { EdgeType } from '../../dataflow/graph/edge'
+import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge'
+import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex'
+import { VertexType } from '../../dataflow/graph/vertex'
+import type { IEnvironment } from '../../dataflow/environments/environment'
+import { BuiltInEnvironment } from '../../dataflow/environments/environment'
+import { BuiltIn } from '../../dataflow/environments/built-in'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 
 type MarkVertex = NodeId
@@ -44,8 +38,13 @@ interface MermaidGraph {
 export function formatRange(range: SourceRange | undefined): string {
 	if(range === undefined) {
 		return '??-??'
+	} else if(range[0] === range[2]) {
+		if(range[1] === range[3]) {
+			return `${range[0]}.${range[1]}`
+		} else {
+			return `${range[0]}.${range[1]}-${range[3]}`
+		}
 	}
-
 	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`
 }
 
@@ -101,7 +100,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
-function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD'>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False'>): string {
 	return `${from}->${to}["${[...types].join(':')}"]`
 }
 
@@ -135,7 +134,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	} else if(env.id === BuiltInEnvironment.id) {
 		return ['Built-in']
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}--${env.name}${'-'.repeat(40)}`]
+	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`]
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length))
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`
@@ -157,10 +156,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id)
-	const escapedName = escapeMarkdown(node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??')
+	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??'
+	const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??')
 
 	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(mermaid.rootGraph.idMap?.get(id)?.location)}*${
+	const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined)
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {
@@ -169,7 +170,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD'>(['CD']) }] as const)
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const)
 	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes)
@@ -180,7 +181,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)
 			}
-			if(edgeTypes.has('CD')) {
+			if(edgeTypes.has('CD-True')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
 			if(target === BuiltIn) {

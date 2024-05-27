@@ -1,13 +1,17 @@
 import type { NamedXmlBasedJson } from '../input-format'
 import type { NormalizerData } from '../normalizer-data'
-import { normalizeExpressions, normalizeSingleNode } from './structure'
 import { tryToNormalizeArgument } from './functions/normalize-argument'
 import { parseLog } from '../../json/parser'
-import type { RAccess, RArgument, RNode } from '../../../model'
-import { EmptyArgument, RawRType, RType } from '../../../model'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { guard } from '../../../../../../util/assert'
 import { retrieveMetaStructure } from '../normalize-meta'
+import { RawRType, RType } from '../../../model/type'
+import { normalizeSingleNode } from './structure/normalize-single-node'
+import type { RNode } from '../../../model/model'
+import { EmptyArgument } from '../../../model/nodes/r-function-call'
+import type { RAccess } from '../../../model/nodes/r-access'
+import { normalizeExpressions } from './structure/normalize-expressions'
+import type { RArgument } from '../../../model/nodes/r-argument'
 
 function normalizeAbstractArgument(x: readonly NamedXmlBasedJson[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
 	if(x.length === 0) {

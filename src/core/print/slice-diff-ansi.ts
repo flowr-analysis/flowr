@@ -1,8 +1,9 @@
-import type { NodeId, NormalizedAst } from '../../r-bridge'
 import type { SourceRange } from '../../util/range'
 import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range'
 import { isNotUndefined } from '../../util/assert'
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../../src/util/ansi'
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/ansi'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 
 function grayOut(): string {
 	return ansiFormatter.getFormatString({ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Faint })
@@ -27,7 +28,7 @@ function highlight(s: string, selected: boolean): string {
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary
 }
 
-export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, criteriaIds: Set<NodeId>, originalCode: string) {
+export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: NormalizedAst, criteriaIds: ReadonlySet<NodeId>, originalCode: string) {
 	let importantLocations = Array.from(normalized.idMap.entries())
 		.filter(([id, { location }]) => slice.has(id) && isNotUndefined(location))
 		.map(([id, { location }]) => ({ selected: criteriaIds.has(id), location: location as SourceRange }) as const)

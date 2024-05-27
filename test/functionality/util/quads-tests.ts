@@ -1,10 +1,11 @@
 import { retrieveNormalizedAst, withShell } from '../_helper/shell'
-import { decorateAst, requestFromInput } from '../../../src'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline'
+import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { requestFromInput } from '../../../src/r-bridge/retriever'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
 
 describe('Quads', withShell(shell => {
 	const context = 'test'
@@ -55,24 +56,21 @@ describe('Quads', withShell(shell => {
 <${idPrefix}1> <${domain}tag> "use" <${context}> .
 <${idPrefix}1> <${domain}id> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}1> <${domain}when> "always" <${context}> .
-<${idPrefix}1> <${domain}environment> <${idPrefix}3> <${context}> .
-<${idPrefix}3> <${domain}current> <${idPrefix}4> <${context}> .
-<${idPrefix}3> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}2> <${context}> .
 <${idPrefix}2> <${domain}tag> "function-call" <${context}> .
 <${idPrefix}2> <${domain}id> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}2> <${domain}environment> <${idPrefix}5> <${context}> .
-<${idPrefix}5> <${domain}current> <${idPrefix}6> <${context}> .
-<${idPrefix}5> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}environment> <${idPrefix}3> <${context}> .
+<${idPrefix}3> <${domain}current> <${idPrefix}4> <${context}> .
+<${idPrefix}3> <${domain}level> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}name> "foo" <${context}> .
 <${idPrefix}2> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
-<${idPrefix}2> <${domain}args> <${idPrefix}7> <${context}> .
-<${idPrefix}7> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}args> <${idPrefix}5> <${context}> .
+<${idPrefix}5> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}when> "always" <${context}> .
-<${idPrefix}0> <${domain}edges> <${idPrefix}8> <${context}> .
-<${idPrefix}8> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}8> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}8> <${domain}type> "argument" <${context}> .
+<${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
+<${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}6> <${domain}type> "argument" <${context}> .
     `)
 	})
 }))

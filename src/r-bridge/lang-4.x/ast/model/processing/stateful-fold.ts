@@ -1,31 +1,29 @@
 import { assertUnreachable } from '../../../../../util/assert'
 import type { DeepReadonly } from 'ts-essentials'
 import { RType } from '../type'
-import type {
-	RExpressionList,
-	RNumber,
-	RSymbol,
-	RLogical,
-	RString,
-	RBinaryOp,
-	RUnaryOp,
-	RIfThenElse,
-	RForLoop,
-	RRepeatLoop,
-	RWhileLoop,
-	RFunctionCall,
-	RComment,
-	RNext,
-	RBreak,
-	RParameter,
-	RArgument,
-	RFunctionDefinition,
-	RAccess,
-	RLineDirective, RPipe
-} from '../nodes'
-import { EmptyArgument
-} from '../nodes'
 import type { RNode } from '../model'
+import type { RNumber } from '../nodes/r-number'
+import type { RString } from '../nodes/r-string'
+import type { RLogical } from '../nodes/r-logical'
+import type { RSymbol } from '../nodes/r-symbol'
+import type { RAccess } from '../nodes/r-access'
+import type { RBinaryOp } from '../nodes/r-binary-op'
+import type { RPipe } from '../nodes/r-pipe'
+import type { RUnaryOp } from '../nodes/r-unary-op'
+import type { RFunctionCall } from '../nodes/r-function-call'
+import { EmptyArgument } from '../nodes/r-function-call'
+import type { RForLoop } from '../nodes/r-for-loop'
+import type { RWhileLoop } from '../nodes/r-while-loop'
+import type { RRepeatLoop } from '../nodes/r-repeat-loop'
+import type { RNext } from '../nodes/r-next'
+import type { RBreak } from '../nodes/r-break'
+import type { RComment } from '../nodes/r-comment'
+import type { RLineDirective } from '../nodes/r-line-directive'
+import type { RIfThenElse } from '../nodes/r-if-then-else'
+import type { RExpressionList } from '../nodes/r-expression-list'
+import type { RFunctionDefinition } from '../nodes/r-function-definition'
+import type { RArgument } from '../nodes/r-argument'
+import type { RParameter } from '../nodes/r-parameter'
 
 
 /**
@@ -109,7 +107,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
 		case RType.FunctionCall:
-			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down)
+			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down)
 		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
 		case RType.Parameter:

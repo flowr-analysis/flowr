@@ -1,9 +1,11 @@
-import type { ParentInformation, RSymbol } from '../../../r-bridge'
-import { RNa, RNull } from '../../../r-bridge'
-import { DataflowGraph, VertexType } from '../../graph'
 import { type DataflowInformation, ExitPointType } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
 import { processValue } from './process-value'
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values'
+import { DataflowGraph } from '../../graph/graph'
+import { VertexType } from '../../graph/vertex'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {

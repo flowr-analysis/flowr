@@ -1,19 +1,25 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import type { NormalizerData } from '../../normalizer-data'
-import type { RComment, RExpressionList, RNode } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
-import type { RDelimiter } from '../../../../model/nodes/info'
 import { normalizeSingleNode } from './normalize-single-node'
-import { tryNormalizeBinary, tryNormalizeUnary } from '../operators'
-import { tryNormalizeFor, tryNormalizeRepeat, tryNormalizeWhile } from '../loops'
-import { tryNormalizeSymbol } from '../values'
-import { tryNormalizeIfThen, tryNormalizeIfThenElse } from '../control'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType } from '../../normalize-meta'
 import { expensiveTrace, log } from '../../../../../../../util/log'
-import { normalizeComment } from '../other'
 import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import type { RNode } from '../../../../model/model'
+import { tryNormalizeUnary } from '../operators/normalize-unary'
+import { tryNormalizeRepeat } from '../loops/normalize-repeat'
+import { tryNormalizeBinary } from '../operators/normalize-binary'
+import { tryNormalizeFor } from '../loops/normalize-for'
+import { tryNormalizeSymbol } from '../values/normalize-symbol'
+import { tryNormalizeIfThen } from '../control/normalize-if-then'
+import { tryNormalizeWhile } from '../loops/normalize-while'
+import { tryNormalizeIfThenElse } from '../control/normalize-if-then-else'
+import { RawRType, RType } from '../../../../model/type'
+import type { RComment } from '../../../../model/nodes/r-comment'
+import { normalizeComment } from '../other/normalize-comment'
+import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
@@ -136,7 +142,6 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 			additionalTokens: comments,
 		}
 	}
-
 }
 
 export function normalizeExpressions(

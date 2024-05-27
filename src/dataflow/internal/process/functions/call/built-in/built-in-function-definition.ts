@@ -1,29 +1,28 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation, ExitPoint } from '../../../../../info'
+import type { DataflowInformation } from '../../../../../info'
 import { ExitPointType } from '../../../../../info'
 import { linkInputs } from '../../../../linker'
-import {
-	type DataflowFunctionFlowInformation,
-	DataflowGraph,
-	dataflowLogger,
-	EdgeType,
-	type IdentifierReference,
-	initializeCleanEnvironments,
-	type REnvironmentInformation,
-	VertexType
-} from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
-import {
-	overwriteEnvironment,
-	popLocalEnvironment,
-	pushLocalEnvironment,
-	resolveByName
-} from '../../../../../environments'
+import { dataflowLogger } from '../../../../../logger'
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph'
+import { DataflowGraph } from '../../../../../graph/graph'
+import type { IdentifierReference } from '../../../../../environments/identifier'
+import { overwriteEnvironment } from '../../../../../environments/overwrite'
+import { VertexType } from '../../../../../graph/vertex'
+import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping'
+import type { REnvironmentInformation } from '../../../../../environments/environment'
+import { initializeCleanEnvironments } from '../../../../../environments/environment'
+import { resolveByName } from '../../../../../environments/resolve-by-name'
+import { EdgeType } from '../../../../../graph/edge'
+import { expensiveTrace } from '../../../../../../util/log'
 
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -81,7 +80,7 @@ export function processFunctionDefinition<OtherInfo>(
 				tag:                 VertexType.Use,
 				id:                  read.nodeId,
 				environment:         undefined,
-				controlDependencies: []
+				controlDependencies: undefined
 			})
 		}
 	}
@@ -95,8 +94,8 @@ export function processFunctionDefinition<OtherInfo>(
 		environment:       outEnvironment
 	}
 
+	updateNestedFunctionClosures(subgraph, outEnvironment, name)
 	const exitPoints = body.exitPoints
-	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, name)
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false)
 	graph.addVertex({
@@ -122,38 +121,32 @@ export function processFunctionDefinition<OtherInfo>(
 
 
 function updateNestedFunctionClosures<OtherInfo>(
-	exitPoints: readonly ExitPoint[],
 	subgraph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
 	name: RSymbol<OtherInfo & ParentInformation>
 ) {
-	// track *all* function definitions - including those nested within the current graph
+	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, info] of subgraph.vertices(true)) {
-		if(info.tag !== VertexType.FunctionDefinition) {
+	for(const [id, { subflow, tag }] of subgraph.vertices(true)) {
+		if(tag !== VertexType.FunctionDefinition) {
 			continue
 		}
 
-		const ingoingRefs = info.subflow.in
-		const remainingIn: Set<IdentifierReference> = new Set()
+		const ingoingRefs = subflow.in
+		const remainingIn: IdentifierReference[] = []
 		for(const ingoing of ingoingRefs) {
-			for(const { nodeId } of exitPoints) {
-				const node = subgraph.getVertex(nodeId, true)
-				const env = initializeCleanEnvironments()
-				env.current.memory = node === undefined ? outEnvironment.current.memory : (node.environment?.current.memory ?? outEnvironment.current.memory)
-				const resolved = ingoing.name ? resolveByName(ingoing.name, env) : undefined
-				if(resolved === undefined) {
-					remainingIn.add(ingoing)
-					continue
-				}
-				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
-				for(const ref of resolved) {
-					subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads })
-				}
+			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment) : undefined
+			if(resolved === undefined) {
+				remainingIn.push(ingoing)
+				continue
+			}
+			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
+			for(const ref of resolved) {
+				subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads })
 			}
 		}
-		dataflowLogger.trace(`Keeping ${remainingIn.size} (unique) references to open ref ${id} in closure of function definition ${name.info.id}`)
-		info.subflow.in = [...remainingIn]
+		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
+		subflow.in = remainingIn
 	}
 }
 
@@ -168,11 +161,11 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 /**
  * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
  * `a` will be defined by `b` and `b`will be a promise object bound by the first definition of b it can find.
- * This means, that this function returns `2` due to the first `b <- 1` definition.
+ * This means that this function returns `2` due to the first `b <- 1` definition.
  * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
  * as `b` can be defined by either one of them.
  * <p>
- * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
+ * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
  */
 function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first, we try to bind again within parameters - if we have it, fine

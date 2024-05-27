@@ -1,10 +1,10 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { RNext } from '../../../../model'
-import { RType } from '../../../../model'
 import type { XmlBasedJson } from '../../input-format'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../normalize-meta'
+import { RType } from '../../../../model/type'
+import type { RNext } from '../../../../model/nodes/r-next'
 
 export function normalizeNext(data: NormalizerData, obj: XmlBasedJson): RNext {
 	expensiveTrace(parseLog, () => `[next] ${JSON.stringify(obj)}`)

@@ -39,7 +39,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 				case RType.Next:         info.nextStatements++; return
 				case RType.Break:        info.breakStatements++; return
 				case RType.FunctionCall:
-					if(node.flavor === 'named' && isImplicitLoop.test(node.functionName.lexeme)) {
+					if(node.named && isImplicitLoop.test(node.functionName.lexeme)) {
 						info.implicitLoops++
 						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.info.fullLexeme ?? node.functionName.lexeme], input.filepath)
 					}

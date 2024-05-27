@@ -7,7 +7,7 @@ import type { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/n
 
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	if(functionCall.flavor === 'named') {
+	if(functionCall.named) {
 		return processNamedCall(functionCall.functionName, functionCall.arguments, functionCall.info.id, data)
 	} else {
 		return processUnnamedFunctionCall(functionCall, data)

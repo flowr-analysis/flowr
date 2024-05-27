@@ -66,7 +66,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		out:               calledFunction.out,
 		graph:             finalGraph,
 		environment:       finalEnv,
-		entryPoint:        calledRootId,
+		entryPoint:        functionCall.info.id,
 		exitPoints:        calledFunction.exitPoints
 	}
 }

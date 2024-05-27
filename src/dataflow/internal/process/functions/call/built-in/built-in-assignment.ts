@@ -69,7 +69,7 @@ export function processAssignment<OtherInfo>(
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>])
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
-	const { type, flavor } = target
+	const { type, named } = target
 
 	if(type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
@@ -83,7 +83,7 @@ export function processAssignment<OtherInfo>(
 			data,
 			information: res.information,
 		})
-	} else if(config.canBeReplacement && type === RType.FunctionCall && flavor === 'named') {
+	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false)

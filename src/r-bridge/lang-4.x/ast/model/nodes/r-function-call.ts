@@ -14,7 +14,7 @@ export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArg
  */
 export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
 	readonly type:      RType.FunctionCall;
-	readonly flavor:    'named';
+	readonly named:     true;
 	functionName:       RSymbol<Info>;
 	/** arguments can be empty, for example when calling as `a(1, ,3)` */
 	readonly arguments: readonly RFunctionArgument<Info>[];
@@ -28,7 +28,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
  */
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
 	readonly type:      RType.FunctionCall;
-	readonly flavor:    'unnamed';
+	readonly named:     false | undefined;
 	calledFunction:     RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
 	/** marks function calls like `3 %xx% 4` which have been written in special infix notation; deprecated in v2 */
 	infixSpecial?:      boolean;

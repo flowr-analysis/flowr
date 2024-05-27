@@ -163,18 +163,18 @@ export function linkFunctionCalls(
 }
 
 
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
 	const result = new Map<NodeId, DataflowGraphVertexInfo>()
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId
 
+		// do not traverse builtins
 		if(currentId === BuiltIn) {
-			// do not traverse builtins
-			slicerLogger.trace('skipping builtin function definition during collection')
 			continue
 		}
+
 		const currentInfo = dataflowGraph.get(currentId, true)
 		if(currentInfo === undefined) {
 			slicerLogger.trace('skipping unknown link')

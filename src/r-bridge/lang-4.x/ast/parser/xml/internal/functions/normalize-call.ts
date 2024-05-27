@@ -110,7 +110,7 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: Named
 
 	return {
 		type:           RType.FunctionCall,
-		flavor:         'unnamed',
+		named:          undefined,
 		location,
 		lexeme:         content,
 		calledFunction: calledFunction,
@@ -146,7 +146,7 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: NamedXmlBas
 
 	return {
 		type:      RType.FunctionCall,
-		flavor:    'named',
+		named:     true,
 		location,
 		lexeme:    content,
 		functionName,

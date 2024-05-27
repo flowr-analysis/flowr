@@ -107,7 +107,7 @@ describe('Parse simple operations', withShell(shell => {
 			assertAst(label('1 %xx% 2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'special-operator']),
 				shell, '1 %xx% 2', exprList({
 					type:         RType.FunctionCall,
-					flavor:       'named',
+					named:        true,
 					infixSpecial: true,
 					info:         {},
 					lexeme:       '1 %xx% 2',

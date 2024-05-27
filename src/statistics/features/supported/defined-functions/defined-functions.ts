@@ -136,7 +136,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			// track all calls with the same name that do not already have a bound calls edge, superfluous if recursive tracking is explicit
 			const recursiveCalls: RNodeWithParent[] = []
 			visitAst(node.body, n => {
-				if(n.type === RType.FunctionCall && n.flavor === 'named' && assigned.has(n.functionName.lexeme)) {
+				if(n.type === RType.FunctionCall && n.named && assigned.has(n.functionName.lexeme)) {
 					recursiveCalls.push(n)
 				}
 			})

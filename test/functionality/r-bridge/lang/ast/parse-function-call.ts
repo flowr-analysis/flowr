@@ -10,7 +10,7 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('f()', ['call-normal', 'name-normal']),
 			shell, 'f()', exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 1),
 				lexeme:       'f',
 				info:         {},
@@ -30,7 +30,7 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('f(1, 2)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers']),
 			shell, 'f(1, 2)', exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 1),
 				lexeme:       'f',
 				info:         {},
@@ -76,7 +76,7 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('f(1,)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers', 'empty-arguments']),
 			shell, 'f(1,)', exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 1),
 				lexeme:       'f',
 				info:         {},
@@ -110,7 +110,7 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('f(1, x=2, 4, y=3)', ['name-normal', 'call-normal', 'unnamed-arguments', 'named-arguments', 'numbers']),
 			shell, 'f(1, x=2, 4, y=3)', exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 1),
 				lexeme:       'f',
 				info:         {},
@@ -197,7 +197,7 @@ describe('Parse function calls', withShell(shell => {
 			shell,'f("a"=3,\'x\'=2)',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 1),
 				lexeme:       'f',
 				info:         {},
@@ -259,7 +259,7 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition', 'grouping']),
 			shell, '(function(x) { x })(2)', exprList({
 				type:           RType.FunctionCall,
-				flavor:         'unnamed',
+				named:          undefined,
 				location:       rangeFrom(1, 1, 1, 19),
 				lexeme:         '(function(x) { x })',
 				info:           {},
@@ -358,13 +358,13 @@ describe('Parse function calls', withShell(shell => {
 		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
 			shell, 'a(1)(2)', exprList({
 				type:           RType.FunctionCall,
-				flavor:         'unnamed',
+				named:          undefined,
 				location:       rangeFrom(1, 1, 1, 4),
 				lexeme:         'a(1)',
 				info:           {},
 				calledFunction: {
 					type:         RType.FunctionCall,
-					flavor:       'named',
+					named:        true,
 					functionName: {
 						type:      RType.Symbol,
 						location:  rangeFrom(1, 1, 1, 1),
@@ -415,7 +415,7 @@ describe('Parse function calls', withShell(shell => {
 			shell, 'x::f()',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 4),
 				lexeme:       'x::f',
 				info:         {},
@@ -436,7 +436,7 @@ describe('Parse function calls', withShell(shell => {
 			shell, "'f'()",
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       'named',
+				named:        true,
 				location:     rangeFrom(1, 1, 1, 3),
 				lexeme:       "'f'",
 				info:         {},

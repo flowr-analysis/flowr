@@ -108,7 +108,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 			}
 			break
 		case RType.FunctionCall:
-			if(node.flavor === 'unnamed') {
+			if(!node.named) {
 				current.unnamedCall++
 			} else {
 				incrementEntry(current.call, node.functionName.content)

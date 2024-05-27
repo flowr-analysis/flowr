@@ -224,8 +224,9 @@ export async function summarizeSlicerStats(
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
 	const min = data.map(d => d.min).filter(isNotUndefined).reduce((a, b) => Math.min(a, b), Infinity)
 	const max = data.map(d => d.max).filter(isNotUndefined).reduce((a, b) => Math.max(a, b), -Infinity)
-	// get most average
-	const median = data.map(d => d.median).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length
+	// calculate median of medians (don't just average the median!)
+	const medians = data.map(d => d.median).filter(isNotUndefined).sort((a, b) => a - b)
+	const median = medians[Math.floor(medians.length / 2)]
 	const mean = data.map(d => d.mean).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length
 	// Method 1 of https://www.statology.org/averaging-standard-deviations/
 	const std = Math.sqrt(data.map(d => d.std ** 2).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length)

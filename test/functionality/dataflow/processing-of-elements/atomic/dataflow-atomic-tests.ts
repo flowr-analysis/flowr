@@ -15,6 +15,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph'
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -362,11 +363,11 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.argument('5', '4')
 							.call('5', '<-', [argumentInCall('0'), argumentInCall('4')], { returns: ['0'], reads: [BuiltIn] })
 							.argument('5', '0')
-							.constant('2', { controlDependency: [] })
+							.constant('2', { controlDependencies: [] })
 							.defineVariable('0', 'x', { definedBy: ['4', '5'] })
 					)
 
-					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers', 'built-in-sequencing']),
+					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers']),
 						shell, 'x <- for (i in 1:4) 3',  emptyGraph()
 							.call('4', ':', [argumentInCall('2'), argumentInCall('3')], { returns: [], reads: [BuiltIn, '2', '3'], onlyBuiltIn: true })
 							.call('7', 'for', [argumentInCall('1'), argumentInCall('4'), argumentInCall('5')], { returns: [], reads: [BuiltIn, '1', '4'], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', '1', '7') })
@@ -375,7 +376,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 							.defineVariable('1', 'i', { definedBy: ['4'] })
 							.constant('2')
 							.constant('3')
-							.constant('5', { controlDependency: [] })
+							.constant('5', { controlDependencies: [] })
 							.defineVariable('0', 'x', { definedBy: ['7', '8'] })
 					)
 				})
@@ -459,7 +460,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('2', ['0', '1'])
 					.call('5', 'if', [argumentInCall('2'), argumentInCall('3'), EmptyArgument], { returns: ['3'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 					.constant('1')
-					.constant('3', { controlDependency: [{ id: '5', when: true }] })
+					.constant('3', { controlDependencies: [{ id: '5', when: true }] })
 			)
 			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) y',  emptyGraph()
@@ -527,13 +528,13 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('0', 'x')
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: [BuiltIn] })
 					.reads('11', '2')
 					.constant('1')
-					.constant('5', { controlDependency: [{ id: '11', when: true }] })
-					.constant('9', { controlDependency: [{ id: '11', when: false }] })
+					.constant('5', { controlDependencies: [{ id: '11', when: true }] })
+					.constant('9', { controlDependencies: [{ id: '11', when: false }] })
 			)
 			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { 42 }',
@@ -543,15 +544,15 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
 					.argument('2', ['1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
 					.argument('6', '5')
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.argument('10', '9')
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: [BuiltIn] })
 					.argument('11', ['6', '10', '2'])
 					.reads('11', '2')
 					.constant('1')
-					.constant('9', { controlDependency: [{ id: '11', when: false }] })
+					.constant('9', { controlDependencies: [{ id: '11', when: false }] })
 			)
 			assertDataflow(label('compare cond. symbol in then & else', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { z }', emptyGraph()
@@ -560,8 +561,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('9', 'z', { controlDependencies: [{ id: '11', when: false }] })
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 					.constant('1')
 			)
@@ -573,8 +574,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('9', 'a', { controlDependencies: [{ id: '11', when: false }] })
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 			)
 			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
@@ -585,8 +586,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('9', 'y', { controlDependencies: [{ id: '11', when: false }] })
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 			)
 			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
@@ -597,8 +598,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('9', 'x', { controlDependencies: [{ id: '11', when: false }] })
 					.call('2', '>', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 					.reads('2', ['0', '1'])
-					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependency: [{ id: '11', when: true }] })
-					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependency: [{ id: '11', when: false }] })
+					.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: true }] })
+					.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], controlDependencies: [{ id: '11', when: false }] })
 					.call('11', 'if', [argumentInCall('2'), argumentInCall('6'), argumentInCall('10')], { returns: ['6', '10'], reads: ['2', BuiltIn], onlyBuiltIn: true })
 			)
 		})
@@ -612,38 +613,38 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.reads('11', ['0', '6'])
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 				.argument('2', ['1', '0'])
-				.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [BuiltIn], controlDependency: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('y', '0', '2') })
+				.call('8', '<-', [argumentInCall('6'), argumentInCall('7')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('y', '0', '2') })
 				.argument('8', ['7', '6'])
-				.call('9', '(', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], controlDependency: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('y', '0', '2').defineVariable('y', '6', '8', [{ id: '10', when: true }]) })
+				.call('9', '(', [argumentInCall('8')], { returns: ['8'], reads: [BuiltIn], controlDependencies: [{ id: '10', when: true }], environment: defaultEnv().defineVariable('y', '0', '2').defineVariable('y', '6', '8', [{ id: '10', when: true }]) })
 				.call('10', '&&', [argumentInCall('3'), argumentInCall('9')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('y', '0', '2').defineVariable('y', '6', '8', [{ id: '10', when: true }]) })
 				.reads('10', '3')
 				.argument('10', ['3', '9'])
 				.constant('1')
 				.defineVariable('0', 'y', { definedBy: ['1', '2'] })
-				.constant('7', { controlDependency: [{ id: '10', when: true }] })
-				.defineVariable('6', 'y', { definedBy: ['7', '8'], controlDependency: [{ id: '10', when: true }] })
+				.constant('7', { controlDependencies: [{ id: '10', when: true }] })
+				.defineVariable('6', 'y', { definedBy: ['7', '8'], controlDependencies: [{ id: '10', when: true }] })
 		)
 	})
 
 	describe('Loops', () => {
 		describe('For', () => {
-			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+			assertDataflow(label('simple constant for-loop', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { 1 }', emptyGraph()
 					.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: ['1', '2', BuiltIn], onlyBuiltIn: true })
-					.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependency: [] })
+					.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [] })
 					.call('8', 'for', [argumentInCall('0'), argumentInCall('3'), argumentInCall('7')], { returns: [], reads: ['0', '3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', '0', '8') })
 					.nse('8', '7')
 					.defineVariable('0', 'i', { definedBy: ['3'] })
 					.constant('1')
 					.constant('2')
-					.constant('6', { controlDependency: [] })
+					.constant('6', { controlDependencies: [] })
 			)
-			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'built-in-sequencing', 'grouping']),
+			assertDataflow(label('using loop variable in body', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { i }',  emptyGraph()
 					.use('6', 'i', { controlDependencies: [] })
 					.reads('6', '0')
 					.call('3', ':', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: ['1', '2', BuiltIn], onlyBuiltIn: true })
-					.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependency: [] })
+					.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [] })
 					.call('8', 'for', [argumentInCall('0'), argumentInCall('3'), argumentInCall('7')], { returns: [], reads: ['0', '3', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('i', '0', '8') })
 					.nse('8', '7')
 					.defineVariable('0', 'i', { definedBy: ['3'] })
@@ -684,5 +685,43 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable('2', 'x', { definedBy: ['3', '4'] })
 			)
 		})
+	})
+	describe('Get and assign', () => {
+		assertDataflow(label('simple assign', ['assignment-functions', 'strings', 'implicit-return', 'normal-definition', 'newlines', 'call-normal', 'numbers']),
+			shell, 'assign("a", function() 1)\na()', emptyGraph()
+				.call('9', 'a', [], { returns: ['3'], reads: ['1'], environment: defaultEnv().defineFunction('a', '1', '7') })
+				.calls('9', '5')
+				.defineVariable('1', '"a"', { definedBy: ['7', '5'] })
+				.call('7', 'assign', [argumentInCall('1'), argumentInCall('5')], { returns: ['1'], onlyBuiltIn: true, reads: [BuiltIn] })
+				.defineFunction('5', ['3'], {
+					entryPoint:        '5',
+					environment:       defaultEnv().pushEnv(),
+					graph:             new Set(['3']),
+					in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+					out:               [],
+					unknownReferences: []
+				})
+				.constant('3', undefined, false)
+		)
+		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments']),
+			shell, 'a <- function() 1\nget("a")()', emptyGraph()
+				.call('9', `${UnnamedFunctionCallPrefix}9`, [], { returns: ['1'], reads: ['8'], environment: defaultEnv().defineFunction('a', '0', '4') })
+				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')],{ returns: ['0'], reads: [BuiltIn] })
+				.calls('9', '8')
+				.calls('9', '3')
+				.call('8', 'get', [argumentInCall('6')], { reads: ['6', BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineFunction('a', '0', '4') })
+				.defineFunction('3', ['1'], {
+					entryPoint:        '0',
+					environment:       defaultEnv().pushEnv(),
+					graph:             new Set(['1']),
+					in:                [{ nodeId: '9', name: 'get("a")', controlDependencies: [] }],
+					out:               [],
+					unknownReferences: []
+				})
+				.use('6', '"a"')
+				.defineVariable('0', 'a', { definedBy: ['4', '3'] })
+				.constant('1', undefined, false)
+				.reads('6', '0')
+		)
 	})
 }))

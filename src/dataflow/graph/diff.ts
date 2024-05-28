@@ -220,7 +220,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				})
 			}
 		}
-		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependency. ` })
+		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` })
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 

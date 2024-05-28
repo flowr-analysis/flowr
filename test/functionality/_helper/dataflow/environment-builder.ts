@@ -18,8 +18,8 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param nodeId - AST Node ID
  * @param options - optional allows to give further options
  */
-export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependency?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }
+export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependencies?: ControlDependency[] }): FunctionArgument {
+	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }
 }
 /**
  * The constant global environment with all pre-defined functions.

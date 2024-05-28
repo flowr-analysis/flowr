@@ -139,7 +139,9 @@ export const enum RawRType {
 	 */
 	ExprOfAssignOrHelp = 'expr_or_assign_or_help',
 	/**
-	 * Pre-4.0 version of expr_or_assign_or_help, see {@link RawRType.ExprOfAssignOrHelp} documentation
+	 * Pre-4.0 version of expr_or_assign_or_help, which was seemingly silently renamed here:
+	 * https://github.com/wch/r-source/commit/84bbf385f909c0223924c310af6c7c77aa810234
+	 * (Also see {@link ExprOfAssignOrHelp} documentation for more context.)
 	 */
 	LegacyEqualAssign = 'equal_assign',
 	/** T65 */

@@ -91,4 +91,50 @@ describe('Lists with variable references', withShell(shell => {
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 		)
 	})
+	// potentially incorrect? redefinition appears correct in dataflow graph, but why is the {} still flagged up as an expression list?
+	describe('Redefining expression lists', () => {
+		assertDataflow(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
+			shell, `\`{\` <- function(...) 3
+x <- 4
+{
+   x <- 2
+   print(x)
+}
+print(x)`, emptyGraph()
+				.use('16', 'x')
+				.reads('16', '12')
+				.use('21', 'x')
+				.reads('21', '12')
+				.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [BuiltIn] })
+				.argument('6', ['5', '0'])
+				.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6') })
+				.argument('9', ['8', '7'])
+				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
+				.argument('14', ['13', '12'])
+				.definesOnCall('14', '1')
+				.argument('18', '16')
+				.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '12', '14') })
+				.definesOnCall('18', '1')
+				.argument('19', '14')
+				.argument('19', '18')
+				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
+				.calls('19', '5')
+				.argument('23', '21')
+				.call('23', 'print', [argumentInCall('21')], { returns: ['21'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '12', '14') })
+				.defineVariable('1', '...', { definedBy: [] }, false)
+				.constant('3', undefined, false)
+				.defineFunction('5', ['3'], {
+					out:               [],
+					in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+					unknownReferences: [],
+					entryPoint:        '3',
+					graph:             new Set(['1', '3']),
+					environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
+				})
+				.defineVariable('0', '`{`', { definedBy: ['5', '6'] })
+				.constant('8')
+				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
+				.constant('13')
+				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
+	})
 }))

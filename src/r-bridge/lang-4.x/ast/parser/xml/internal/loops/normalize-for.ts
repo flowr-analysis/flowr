@@ -25,7 +25,7 @@ export function tryNormalizeFor(
 		return undefined
 	} else if(head.name !== RawRType.ForCondition) {
 		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
-	} else if(body.name !== RawRType.Expression && body.name !== RawRType.ExprOfAssignOrHelp && body.name != RawRType.LegacyEqualAssign) {
+	} else if(body.name !== RawRType.Expression && body.name !== RawRType.ExprOfAssignOrHelp && body.name !== RawRType.LegacyEqualAssign) {
 		throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
 	}
 

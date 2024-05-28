@@ -1,15 +1,17 @@
-import {ParentInformation, RIfThenElse} from '../../../r-bridge'
-import {guard} from '../../../util/assert'
-import {AINode, AINodeStore, RegisterBehavior} from '../../ainode'
-import {aiLogger, getDfgChildrenOfType} from '../../processor'
-import {Handler} from '../handler'
-import {DataflowInformation} from '../../../dataflow/internal/info'
-import {EdgeType} from '../../../dataflow'
+import { guard } from '../../../util/assert'
+import { AINode, AINodeStore, RegisterBehavior } from '../../ainode'
+import { aiLogger, getDfgChildrenOfType } from '../../processor'
+import { Handler } from '../handler'
+import type { DataflowInformation } from '../../../dataflow/info'
+import type { RIfThenElse } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { EdgeType } from '../../../dataflow/graph/edge'
 
 export class Conditional extends Handler {
 	condition: AINodeStore | undefined
 	then:      AINodeStore | undefined
 	else:      AINodeStore | undefined
+	// TODO: They are pretty unnecessary, and only here 'cause we use then and else to indicate which we already handled
 	thenDomains = AINodeStore.empty()
 	elseDomains = AINodeStore.empty()
 
@@ -45,21 +47,21 @@ export class Conditional extends Handler {
 		if(this.condition === undefined) {
 			this.condition = aiNodes
 			for(const node of aiNodes) {
-				const isElseNode = node.nodeId.endsWith('-else')
-				const cleanedId = isElseNode ? node.nodeId.slice(0, -5) : node.nodeId
+				const isElseNode = node.nodeId.toString().endsWith('-else')
+				const cleanedId = isElseNode ? node.nodeId.toString().slice(0, -5) : node.nodeId
 				const dfChildren = getDfgChildrenOfType(cleanedId, this.dfg, EdgeType.Reads)
 				if(dfChildren === undefined) {
 					if(isElseNode) {
-						this.elseDomains.register(AINode.copy(node, {nodeId: cleanedId}), RegisterBehavior.Overwrite)
+						this.elseDomains.register(AINode.copy(node, { nodeId: cleanedId }), RegisterBehavior.Overwrite)
 					} else {
 						this.thenDomains.register(node, RegisterBehavior.Overwrite)
 					}
 				} else {
 					for(const child of dfChildren) {
 						if(isElseNode) {
-							this.elseDomains.register(AINode.copy(node, {nodeId: child}), RegisterBehavior.Overwrite)
+							this.elseDomains.register(AINode.copy(node, { nodeId: child }), RegisterBehavior.Overwrite)
 						} else {
-							this.thenDomains.register(AINode.copy(node, {nodeId: child}), RegisterBehavior.Overwrite)
+							this.thenDomains.register(AINode.copy(node, { nodeId: child }), RegisterBehavior.Overwrite)
 						}
 					}
 				}

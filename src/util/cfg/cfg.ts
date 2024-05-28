@@ -514,9 +514,9 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 
 
 function cfgExprList(node: RNodeWithParent, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
-    const exitPoint: NodeId = node.info.id + '-exit'
+	const exitPoint: NodeId = node.info.id + '-exit'
 	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [exitPoint], entryPoints: [node.info.id] }
-    let previousExitPoints: NodeId[] = [node.info.id]
+	let previousExitPoints: NodeId[] = [node.info.id]
 	let first = true
 	for(const expression of expressions) {
 		if(first) {

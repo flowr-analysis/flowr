@@ -12,8 +12,8 @@ export class Interval {
 
 	static top(): Interval {
 		return new Interval(
-			{value: Number.NEGATIVE_INFINITY, inclusive: false},
-			{value: Number.POSITIVE_INFINITY, inclusive: false}
+			{ value: Number.NEGATIVE_INFINITY, inclusive: false },
+			{ value: Number.POSITIVE_INFINITY, inclusive: false }
 		)
 	}
 
@@ -140,10 +140,9 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval, kin
 	if(diff1 < 0 || diff2 < 0) {
 		doIntervalsOverlap = false
 		doIntervalsTouch = false
-	}
 	// If their bounds have the same value, they overlap if both are inclusive
 	// and touch if only one is inclusive
-	else if(diff1 === 0) {
+	} else if(diff1 === 0) {
 		doIntervalsOverlap = interval1.max.inclusive && interval2.min.inclusive
 		doIntervalsTouch = interval1.max.inclusive !== interval2.min.inclusive
 	} else if(diff2 === 0) {
@@ -233,7 +232,7 @@ interface IntervalOverlap {
 }
 
 function flipInclusiveness(intervalBound: IntervalBound): IntervalBound {
-	return {value: intervalBound.value, inclusive: !intervalBound.inclusive}
+	return { value: intervalBound.value, inclusive: !intervalBound.inclusive }
 }
 
 export function overlapIntervals(interval1: Interval, interval2: Interval): IntervalOverlap {
@@ -242,10 +241,12 @@ export function overlapIntervals(interval1: Interval, interval2: Interval): Inte
 
 	if(!doIntervalsOverlap(interval1, interval2)) {
 		if(diffMin < 0) {
-			return {smaller: interval1, intersection: undefined, larger: undefined}
+			return { smaller: interval1, intersection: undefined, larger: undefined }
 		} else if(diffMin > 0) {
-			return {smaller: undefined, intersection: undefined, larger: interval1}
-		} else { guard(false, 'Their lower bounds cannot be the same as they do not overlap') }
+			return { smaller: undefined, intersection: undefined, larger: interval1 }
+		} else {
+			guard(false, 'Their lower bounds cannot be the same as they do not overlap') 
+		}
 	}
 
 	const intersectionStart = diffMin > 0 ? interval1.min : interval2.min
@@ -271,28 +272,34 @@ export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind
 
 	let getNarrowedIntervals: (overlap: IntervalOverlap, bound: Interval) => (Interval | undefined)[]
 	if(isGreater) {
-		getNarrowedIntervals = ({intersection, larger}, bound) => {
+		getNarrowedIntervals = ({ intersection, larger }, bound) => {
 			if(!isEqual && intersection !== undefined && compareIntervalsByTheirMinimum(intersection, bound) === 0) {
-				intersection = new Interval({value: intersection.min.value, inclusive: false}, intersection.max)
+				intersection = new Interval({ value: intersection.min.value, inclusive: false }, intersection.max)
 			}
 			return [intersection, larger]
 		}
 	} else if(isSmaller) {
-		getNarrowedIntervals = ({smaller, intersection}, bound) => {
+		getNarrowedIntervals = ({ smaller, intersection }, bound) => {
 			if(!isEqual && intersection !== undefined && compareIntervalsByTheirMaximum(intersection, bound) === 0) {
-				intersection = new Interval(intersection.min, {value: intersection.max.value, inclusive: false})
+				intersection = new Interval(intersection.min, { value: intersection.max.value, inclusive: false })
 			}
 			return [intersection, smaller]
 		}
-	} else {guard(false, 'Either isGreater or isSmaller must be set')}
+	} else {
+		guard(false, 'Either isGreater or isSmaller must be set')
+	}
 
 	const narrowedIntervals: (Interval | undefined)[] = []
 	for(const baseInterval of baseDomain.intervals) {
 		for(const boundInterval of boundDomain.intervals) {
 			const overlap = overlapIntervals(baseInterval, boundInterval)
+			console.log(`Prompt:  ${baseInterval.toString()} ${isSmaller ? '<' : ''}${isGreater ? '>' : ''}${isEqual ? '=' : ''} ${boundInterval.toString()}`)
+			console.log(`Overlap: ${(overlap.smaller ?? 'none').toString()} ${(overlap.intersection ?? 'none').toString()} ${(overlap.larger ?? 'none').toString()}`)
 			narrowedIntervals.push(...getNarrowedIntervals(overlap, boundInterval))
 		}
 	}
 
-	return Domain.fromIntervals(narrowedIntervals.filter(interval => interval !== undefined).map(interval => interval as Interval))
+	const newDomain = Domain.fromIntervals(narrowedIntervals.filter(interval => interval !== undefined).map(interval => interval as Interval))
+	console.log(`Domain: ${newDomain.toString()}`)
+	return newDomain
 }

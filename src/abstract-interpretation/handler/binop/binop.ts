@@ -7,7 +7,7 @@ import { operators } from './operators'
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { DataflowInformation } from '../../../dataflow/info'
 
-export type BinOpOperators = (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINode
+export type BinOpOperators = Record<string, (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINodeStore>
 
 export class BinOp extends Handler {
 	lhs: NodeId | undefined
@@ -18,7 +18,7 @@ export class BinOp extends Handler {
 		domains: AINodeStore,
 		private readonly node: RBinaryOp<ParentInformation>
 	) {
-		super(dfg, domains, `Bin Op (${node.flavor})`)
+		super(dfg, domains, `Bin Op (${node.operator})`)
 	}
 
 	exit(): AINodeStore {

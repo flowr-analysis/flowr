@@ -17,7 +17,7 @@ const calculateComparisonDomains = (lhs: AINode, rhs: AINode, node: RBinaryOp<Pa
 
 export const operators: BinOpOperators = {
 	'<-': (lhs, rhs, node) => {
-		return AINodeStore.from(new AINode(rhs.domain, node.lhs, node.info.if))
+		return AINodeStore.from(new AINode(rhs.domain, node.lhs, node.info.id))
 	},
 	'+': (lhs, rhs, node) => {
 		return AINodeStore.from(new AINode(addDomains(lhs.domain, rhs.domain), node))
@@ -27,22 +27,22 @@ export const operators: BinOpOperators = {
 	},
 	'<': (lhs, rhs, node) => {
 		const narrowKind = NarrowKind.Smaller
-		return calculateComparisonDomains(lhs, rhs, node, narrowKind)
-			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else'))
+		return AINodeStore.from(calculateComparisonDomains(lhs, rhs, node, narrowKind)
+			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else')))
 	},
 	'>': (lhs, rhs, node) => {
 		const narrowKind = NarrowKind.Greater
-		return calculateComparisonDomains(lhs, rhs, node, narrowKind)
-			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else'))
+		return AINodeStore.from(calculateComparisonDomains(lhs, rhs, node, narrowKind)
+			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else')))
 	},
 	'<=': (lhs, rhs, node) => {
 		const narrowKind = NarrowKind.Smaller | NarrowKind.Equal
-		return calculateComparisonDomains(lhs, rhs, node, narrowKind)
-			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else'))
+		return AINodeStore.from(calculateComparisonDomains(lhs, rhs, node, narrowKind)
+			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else')))
 	},
 	'>=': (lhs, rhs, node) => {
 		const narrowKind = NarrowKind.Greater | NarrowKind.Equal
-		return calculateComparisonDomains(lhs, rhs, node, narrowKind)
-			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else'))
+		return AINodeStore.from(calculateComparisonDomains(lhs, rhs, node, narrowKind)
+			.concat(calculateComparisonDomains(lhs, rhs, node, narrowKind ^0b111, '-else')))
 	},
 }

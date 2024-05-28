@@ -1,6 +1,8 @@
-import {NodeId, ParentInformation, RNodeWithParent} from '../r-bridge'
-import {assertUnreachable, guard} from '../util/assert'
-import {Domain, unifyDomains} from './domain'
+import { assertUnreachable, guard } from '../util/assert'
+import type { Domain } from './domain'
+import { unifyDomains } from './domain'
+import type { ParentInformation, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export class AINode {
 	constructor(
@@ -91,7 +93,7 @@ export class AINodeStore implements Iterable<AINode> {
 				case RegisterBehavior.Merge: {
 					const existing = this.map.get(node.nodeId)
 					guard(existing !== undefined, `Node with ID ${node.nodeId} should exist`)
-					this.register(AINode.copy(node, {domain: unifyDomains([existing.domain, node.domain])}), RegisterBehavior.Overwrite)
+					this.register(AINode.copy(node, { domain: unifyDomains([existing.domain, node.domain]) }), RegisterBehavior.Overwrite)
 					break
 				}
 				default: assertUnreachable(behavior)

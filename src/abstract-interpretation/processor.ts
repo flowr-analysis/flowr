@@ -87,5 +87,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			aiLogger.warn(`Unknown node type ${node.type}`)
 		}
 	})
+	const result = operationStack.pop()?.exit()
+	guard(result !== undefined, 'Empty operationStack')
 	return dfg
 }

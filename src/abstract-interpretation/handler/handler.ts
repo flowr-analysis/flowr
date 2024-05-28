@@ -1,6 +1,6 @@
-import {AINodeStore} from '../ainode'
-import {DataflowInformation} from '../../dataflow/internal/info'
-import {aiLogger} from '../processor'
+import type { AINodeStore } from '../ainode'
+import { aiLogger } from '../processor'
+import type { DataflowInformation } from '../../dataflow/info'
 
 export abstract class Handler {
 	protected constructor(

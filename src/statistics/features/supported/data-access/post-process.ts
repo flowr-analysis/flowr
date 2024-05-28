@@ -1,22 +1,24 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	SummarizedMeasurement,
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type {
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
-import { DataAccessInfo } from './data-access'
-import { bigint2number } from '../../../../util/numbers'
-import fs from 'node:fs'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
+import type { DataAccessInfo } from './data-access'
+import fs from 'fs'
 import path from 'path'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import { bigint2number } from '../../../../util/numbers'
+import type { MergeableRecord } from '../../../../util/objects'
+import type {
+	SummarizedMeasurement } from '../../../../util/summarizer'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader, summarizeMeasurement
+} from '../../../../util/summarizer'
 
 interface DataAccessMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	singleBracket:         Map<number, Measurement | CommonSyntaxTypeCounts<Measurement>>,

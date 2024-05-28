@@ -1,5 +1,5 @@
-import { RShell } from '../../../src/r-bridge'
 import semver from 'semver/preload'
+import type { RShell } from '../../../src/r-bridge/shell'
 
 /**
  * Automatically skip a test if it does not satisfy the given version pattern (for a [semver](https://www.npmjs.com/package/semver) version).

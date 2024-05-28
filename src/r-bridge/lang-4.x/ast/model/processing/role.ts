@@ -1,4 +1,4 @@
-import { DecoratedAstMap, RNodeWithParent } from './decorate'
+import type { AstIdMap, RNodeWithParent } from './decorate'
 
 /**
  * Describes the role of the node in its parent. For example,
@@ -41,7 +41,7 @@ export const enum RoleInParent {
 /**
  * Returns the roles of the parents of the given node, starting with the parent-role of the node itself.
  */
-export function rolesOfParents(node: RNodeWithParent, idMap: DecoratedAstMap): RoleInParent[] {
+export function rolesOfParents(node: RNodeWithParent, idMap: AstIdMap): RoleInParent[] {
 	const roles: RoleInParent[] = []
 	let current: RNodeWithParent | undefined = node
 	while(current !== undefined) {

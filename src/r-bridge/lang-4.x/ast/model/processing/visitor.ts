@@ -1,7 +1,7 @@
-import { NoInfo, RNode } from '../model'
+import type { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
-
+import { EmptyArgument } from '../nodes/r-function-call'
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
@@ -36,6 +36,7 @@ class NodeVisitor<OtherInfo = NoInfo> {
 				this.visitSingle(node.body)
 				break
 			case RType.ExpressionList:
+				this.visit(node.grouping)
 				this.visit(node.children)
 				break
 			case RType.ForLoop:
@@ -94,15 +95,16 @@ class NodeVisitor<OtherInfo = NoInfo> {
 		this.onExit?.(node)
 	}
 
-	visit(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined | null): void {
+	visit(nodes: RNode<OtherInfo> | readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
 		if(Array.isArray(nodes)) {
-			for(const node of nodes) {
-				if(node) {
+			const n = nodes as readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[]
+			for(const node of n) {
+				if(node && node !== EmptyArgument) {
 					this.visitSingle(node)
 				}
 			}
 		} else if(nodes) {
-			this.visitSingle(nodes)
+			this.visitSingle(nodes as RNode<OtherInfo>)
 		}
 	}
 

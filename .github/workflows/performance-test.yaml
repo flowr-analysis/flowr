@@ -18,10 +18,12 @@ jobs:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
         name: ['artificial', 'social-science']
     with:
-      action: performance-test -- 1 "${{ matrix.name }}"
+      # 1 parallel process and 1 run
+      action: performance-test -- 1 1 "${{ matrix.name }}"
       coverage: false
       benchmark: ${{ matrix.name }}
       timeout-minutes: 400
+      submodule-deps: true
 
   performance-test-upload:
     name: "Upload Performance Test Results"
@@ -34,7 +36,7 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial
           path: benchmark-ai/
@@ -65,7 +67,7 @@ jobs:
           auto-push: false
 
       - name: "⬇️ Get benchmark Artifacts (social-science)"
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: benchmark-results-social-science
           path: benchmark-ss/

@@ -1,6 +1,6 @@
-import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
-import { RFalse, RTrue } from '../../../../src/r-bridge'
+import { withShell } from '../../_helper/shell'
+import { RFalse, RTrue } from '../../../../src/r-bridge/lang-4.x/convert-values'
 
 
 describe('Loops', withShell(shell => {
@@ -124,16 +124,16 @@ describe('Loops', withShell(shell => {
 		{
 			name: 'many nested loops',
 			code: `
-				while(TRUE) {
-					while(FALSE) {
-					  for(i in 1:10) {
-					    repeat { }
-					  }
-					}
-					for(j in 1:10) { while(x) { } }
-					repeat { while(FALSE) {} }
-			  }
-			  for(k in x:3) { repeat { } }
+while(TRUE) {
+	while(FALSE) {
+		for(i in 1:10) {
+			repeat { }
+		}
+	}
+	for(j in 1:10) { while(x) { } }
+	repeat { while(FALSE) {} }
+}
+for(k in x:3) { repeat { } }
 			`,
 			expected: {
 				whileLoops: {
@@ -188,9 +188,9 @@ describe('Loops', withShell(shell => {
 			},
 			written: [
 				['all-loops', [
-					['while(TRUE) {\nwhile(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}\nfor(j in 1:10) { while(x) { } }\nrepeat { while(FALSE) {} }\n}' ],
-					['while(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}' ],
-					['for(i in 1:10) {\nrepeat { }\n}' ],
+					['while(TRUE) {\n\twhile(FALSE) {\n\t\tfor(i in 1:10) {\n\t\t\trepeat { }\n\t\t}\n\t}\n\tfor(j in 1:10) { while(x) { } }\n\trepeat { while(FALSE) {} }\n}' ],
+					['while(FALSE) {\n\t\tfor(i in 1:10) {\n\t\t\trepeat { }\n\t\t}\n\t}' ],
+					['for(i in 1:10) {\n\t\t\trepeat { }\n\t\t}' ],
 					['repeat { }' ],
 					['for(j in 1:10) { while(x) { } }' ],
 					['while(x) { }' ],
@@ -203,4 +203,3 @@ describe('Loops', withShell(shell => {
 		}
 	])
 }))
-

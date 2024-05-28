@@ -1,4 +1,4 @@
-import { ReplCommand } from './main'
+import type { ReplCommand } from './main'
 import { log } from '../../../util/log'
 
 export const quitCommand: ReplCommand = {
@@ -6,5 +6,7 @@ export const quitCommand: ReplCommand = {
 	aliases:      [ 'q', 'exit' ],
 	usageExample: ':quit',
 	script:       false,
-	fn:           () => { log.info('bye'); process.exit(0) }
+	fn:           () => {
+		log.info('bye'); process.exit(0)
+	}
 }

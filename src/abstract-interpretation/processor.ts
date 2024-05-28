@@ -1,25 +1,36 @@
-import {DataflowInformation} from '../dataflow/internal/info'
-import {NodeId, NormalizedAst, RType} from '../r-bridge'
-import {CfgVertexType, extractCFG} from '../util/cfg/cfg'
-import {visitCfg} from '../util/cfg/visitor'
-import {guard} from '../util/assert'
-import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
-import {Handler} from './handler/handler'
-import {BinOp} from './handler/binop/binop'
-import {Conditional} from './handler/conditional/conditional'
-import {Domain, unifyDomains} from './domain'
-import {log} from '../util/log'
-import {ExprList} from './handler/exprlist/exprlist'
-import {AINode, AINodeStore} from './ainode'
+import type { DataflowInformation } from '../dataflow/info'
+import { CfgVertexType, extractCFG } from '../util/cfg/cfg'
+import { visitCfg } from '../util/cfg/visitor'
+import { guard } from '../util/assert'
 
-export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
+import type { Handler } from './handler/handler'
+import { BinOp } from './handler/binop/binop'
+import { Domain, unifyDomains } from './domain'
+import { log } from '../util/log'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { DataflowGraphVertexInfo } from '../dataflow/graph/vertex'
+import type { OutgoingEdges } from '../dataflow/graph/graph'
+import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge'
+import { RType } from '../r-bridge/lang-4.x/ast/model/type'
+import { ExprList } from './handler/exprlist/exprlist'
+import { AINode, AINodeStore } from './ainode'
+import { Conditional } from './handler/conditional/conditional'
+
+export const aiLogger = log.getSubLogger({ name: 'abstract-interpretation' })
 
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
 
-	size(): number { return this.backingStore.length }
-	peek(): ElementType | undefined { return this.backingStore[this.size() - 1] }
-	pop(): ElementType | undefined { return this.backingStore.pop() }
+	size(): number {
+		return this.backingStore.length
+	}
+	peek(): ElementType | undefined {
+		return this.backingStore[this.size() - 1]
+	}
+	pop(): ElementType | undefined {
+		return this.backingStore.pop()
+	}
 	push(item: ElementType): ElementType {
 		this.backingStore.push(item)
 		return item
@@ -33,12 +44,12 @@ export function getDfgChildrenOfType(node: NodeId, dfg: DataflowInformation, ...
 	}
 	const [_, children] = dfgNode
 	return Array.from(children.entries())
-		.filter(([_, edge]) => types.some(type => edge.types.has(type)))
+		.filter(([_, edge]) => types.some(type => edgeIncludesType(edge.types, type)))
 		.map(([id, _]) => id)
 }
 
 function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, domainStore: AINodeStore): Domain {
-	guard(dfg.graph.hasNode(node, true), `No DFG-Node found with ID ${node}`)
+	guard(dfg.graph.hasVertex(node, true), `No DFG-Node found with ID ${node}`)
 	const domains = getDfgChildrenOfType(node, dfg, EdgeType.Reads)
 		?.map(id => domainStore.get(id)?.domain)
 		.filter(domain => domain !== undefined)

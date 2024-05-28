@@ -1,19 +1,17 @@
-import {
-	ALL_FEATURES, AppendFnType,
-	DummyAppendMemoryMap,
-	extractUsageStatistics,
-	FeatureKey,
-	FeatureValue, initDummyFileProvider,
-	staticRequests
-} from '../../../src/statistics'
 import { assert } from 'chai'
-import { RShell } from '../../../src/r-bridge'
-import { deepMergeObject } from '../../../src/util/objects'
-import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
-import { ensureConfig, TestConfiguration } from '../_helper/shell'
-import { DeepPartial } from 'ts-essentials'
-import { requireAllTestsInFolder } from '../_helper/collect-tests'
+import type { DeepPartial } from 'ts-essentials'
 import path from 'path'
+import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
+import type { TestConfiguration } from '../_helper/shell'
+import { ensureConfig } from '../_helper/shell'
+import { deepMergeObject } from '../../../src/util/objects'
+import { requireAllTestsInFolder } from '../_helper/collect-tests'
+import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics'
+import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature'
+import { ALL_FEATURES } from '../../../src/statistics/features/feature'
+import type { RShell } from '../../../src/r-bridge/shell'
+import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider'
+import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
 	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
@@ -49,7 +47,10 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 	const featureInfo = ALL_FEATURES[feature]
 	for(const test of tests) {
 		it(test.name, async function(){
-			await ensureConfig(shell, this, test.requirements)
+			await ensureConfig(shell, this, test.requirements ? {
+				...test.requirements,
+				needsPackages: ['xmlparsedata', ...(test.requirements.needsPackages ?? [])]
+			} : { needsPackages: ['xmlparsedata'] })
 			// create a new feature map to record to, this resets the state as well
 			const map: DummyAppendMemoryMap = new Map()
 			initDummyFileProvider(map)

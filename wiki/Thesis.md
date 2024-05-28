@@ -10,7 +10,7 @@ The submission state is still available with [v1.0.0](https://github.com/Code-In
 
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
 
-> 💡 Information\
+> [!IMPORTANT]  
 > Since [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that *flowR* should be used. Hence, to reproduce the results, please make sure to work on [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0).
 
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,
@@ -40,11 +40,13 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    ```
 
 4. Now you can run the statistics program on the downloaded sources.
-   You can do this in two ways (check `npm run stats -- --help` for more information).
+   You can do this in two ways (run `npm run stats -- --help` from the `cli` directory for more information).
    In any case, the extraction may take a long time, so be prepared for that!
    Furthermore, you may want to store the output of the tool as it provides additional information.
 
    - **On the complete folder**
+   
+       First, make sure you are currently in the `cli` directory to allow running command-line interface commands.
 
        ```shell
        npm run stats -- --input <location-of-source folders> --output-dir <output-dir>
@@ -64,7 +66,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    of course limited to only those files that have been processed so far.
 
 5. Afterward, your output folder should contain several folders with the recorded stats of all extracted features.
-   To make sense of them, you need to use the post-processor, which prints the summarized information to the command-line:
+   To make sense of them, you need to use the command-line interface's post-processor, which prints the summarized information to the command-line:
 
    ```shell
    npm run stats -- --post-process "./statistics-out/cran-500" --no-ansi > "./statistics-out/cran-500/cran-500-summary.log"

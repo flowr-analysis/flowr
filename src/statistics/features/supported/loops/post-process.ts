@@ -1,18 +1,23 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
-import { LoopInfo } from './loops'
-import { MergeableRecord } from '../../../../util/objects'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
+import type { LoopInfo } from './loops'
+import type {
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { bigint2number } from '../../../../util/numbers'
 import path from 'path'
-import fs from 'node:fs'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import fs from 'fs'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
+import { bigint2number } from '../../../../util/numbers'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
 
 type LoopInfoPostProcess = MergeableRecord & {
 	[k in keyof LoopInfo]: LoopInfo[k] extends number | bigint ? SummarizedWithProject : CommonSyntaxTypeCounts<number[][]>

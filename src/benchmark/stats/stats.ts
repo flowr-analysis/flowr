@@ -1,8 +1,9 @@
-import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
-import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
-import { ReconstructionResult } from '../../slicing'
+import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { ReconstructionResult } from '../../reconstruct/reconstruct'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever'
 
-export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'run abstract interpretation', 'close R session', 'total'] as const
+export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
 
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const

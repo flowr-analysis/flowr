@@ -8,15 +8,17 @@
  * @module
  */
 
-import { DataFactory, NamedNode, Quad, Writer } from 'n3'
+import type { NamedNode, Quad } from 'n3'
+import { DataFactory, Writer } from 'n3'
 import namedNode = DataFactory.namedNode
 import quad = DataFactory.quad
-import { deepMergeObject, isObjectOrArray, MergeableRecord } from './objects'
+import type { MergeableRecord } from './objects'
+import { deepMergeObject, isObjectOrArray } from './objects'
 import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
 import { log } from './log'
-import { NodeId } from '../r-bridge'
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -33,8 +35,8 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - the object to retrieve the id for
- * @param context - In order to provide unique ids even for different contexts, we add the context to the id.
+ * @param obj - The object to retrieve the id for
+ * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string
 
@@ -277,7 +279,6 @@ function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], con
 	} else if(obj instanceof Set) {
 		let i = 0
 		for(const value of obj.values()) {
-			console.log('set', value)
 			processObjectEntry('idx-'+String(i++), value, obj, quads, config)
 		}
 	} else {

@@ -1,4 +1,4 @@
-***This wiki page is currently under construction (currently, references to the capabilities are missing)***
+***This wiki page is currently under construction and not linked to the [capabilities](https://github.com/Code-Inspect/flowr/wiki/Capabilities)***
 
 Based on the collection of tokens that we know can be emitted by R, this page is almost a verbatim copy of the corresponding section of the appendix in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
 
@@ -147,10 +147,11 @@ While some of these tokens, like `COLON_ASSIGN`, are explicitly marked as deprec
 | T61 | ✓ | `{`   | Groups expressions, no effect on scoping.       |
 | T62 | ✓ | `}`   | Corresponding end of `{`.                       |
 
+
 ## Tokens Representing Meta-Elements
 
 | #   | ✓ | Token                    | Description                                                                                                                                |
 |:----|:-:|:-------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------|
 | T63 | ✓ | `expr`                   | Represents an expression.                                                                                                                  |
 | T64 | ✓ | `expr_or_assign_or_help` | Used for example by `EQ-ASSIGN`, with the same semantics as `expr`.                                                                        |
-| T65 | ✓ | `exprlist`               | Added by [xml_parse_data](https://www.rdocumentation.org/packages/xmlparsedata/versions/1.0.5/topics/xml_parse_data) to group expressions. |
+| T65 | ✓ | `exprlist`               | Added by [xml_parse_data](https://www.rdocumentation.org/packages/xmlparsedata/versions/1.0.5/topics/xml_parse_data) to group expressions, no longer used since [#659](https://github.com/Code-Inspect/flowr/pull/659). |

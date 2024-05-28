@@ -1,8 +1,8 @@
 import fs, { promises as fsPromise } from 'fs'
-import { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
 import LineByLine from 'n-readlines'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -14,7 +14,7 @@ export interface Table {
 
 /**
  * Retrieves all files in the given directory recursively
- * @param dir    - Directory-path to start the search from
+ * @param dir    - Directory path to start the search from
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
@@ -128,3 +128,12 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	}
 }
 
+/**
+ * Chops off the last part of the given directory path after a path separator, essentially returning the path's parent directory.
+ * If an absolute path is passed, the returned path is also absolute.
+ * @param directory - The directory whose parent to return
+ */
+export function getParentDirectory(directory: string): string{
+	// apparently this is somehow the best way to do it in node, what
+	return directory.split(path.sep).slice(0, -1).join(path.sep)
+}

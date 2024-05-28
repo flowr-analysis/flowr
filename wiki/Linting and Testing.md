@@ -7,6 +7,9 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
     - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
+  - [Testing Within Your IDE](#testing-within-your-ide)
+    - [Using Visual Studio Code](#using-visual-studio-code)
+    - [Using WebStorm](#using-webstorm)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
@@ -72,18 +75,42 @@ npm run performance-test
 See [test/performance](https://github.com/Code-Inspect/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
 
 ### Oh no, the tests are slow
+If the tests are too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
 
-If you have just installed *flowR* and&nbsp;*R* for the first time, the tests may take really long to run! If this is the case, please inspect the output for a banner informing you that the tests have to install a specific package (probably [`xmlparsedata`](https://cran.r-project.org/package=xmlparsedata)) &mdash; if this is the case ,it's probably best to install the package yourself, locally so that it can be found by *flowR* once.
-For this, drop into the &nbsp&nbsp;*R* shell and issue:
+### Testing Within Your IDE
 
-```r
-install.packages("xmlparsedata")
-```
+From your IDE of choice, you can also run all or some of the functionality tests that flowR provides.
 
-R&nbsp; may ask you if it should create a personal library, which you should confirm by typing `y` and pressing <kbd>enter</kbd> (it may ask again to create the package, answer this question with yes too). Afterwards you may have to select a mirror (any should be fine) and wait for the installation to finish. Once it is done, you can exit the R shell by typing `q()` and pressing <kbd>enter</kbd> (you do not have to save the workspace).
-Now, the tests should run much faster!
+#### Using Visual Studio Code
 
-If, however, you have already installed the package, or the tests are still too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
+With Visual Studio Code (or Codium), you also require the Mocha Test Explorer add-on. To run functionality tests, follow these steps:
+
+1. Install and enable the [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter).
+2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this:
+
+![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
+
+3. To run the full test suite, press the Play button (▶️) above.
+   - To only run a single, or some of the tests, navigate to it, and press the Play button, too.
+   - You can cancel running tests by clicking on the Stop button (⏹️).
+   - Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
+4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
+
+#### Using WebStorm
+
+With WebStorm, you can set up Run and Debug configurations from the IDE to run tests without additional add-ons.
+
+1. If you only want to run those tests from a single test file, navigate to that file in the Project view, and then right-click on it. Then select `Run (file)`, or `Debug (file)`.
+   You can also open the test file directly, to run a single test from it.
+2. If you want to run the whole test suite, you need to set-up a new Run/Debug configuration:
+   1. In the Run/Debug Configurations part of WebStorm, click the Drop-Down menu, and then `Edit Configurations`.
+   2. Click on `+` to add a new configuration, and then select `Mocha`.
+   3. Set the name of this new configuration, and select `File patterns` to run all specified functionality tests, like in the example above.
+![A possible Run configuration for flowR's functionality tests in WebStorm](img/testing-config-webstorm.png)
+
+   4. Press `OK` to save the test run configuration.
+
+   Afterwards, you can run or debug the flowR functionality test suite from the Run/Debug configurations part, by clicking on the Play and Debug buttons (▶️/🪲), respectively.
 
 ## CI Pipeline
 
@@ -99,7 +126,7 @@ We explain the most important workflows in the following:
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](https://code-inspect.github.io/flowr/doc/)
 - [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
-- [check-broken-links.yaml](../.github/workflows/check-broken-links.yaml) repeatedly tests that all links are not dead!
+- [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
 
@@ -126,9 +153,11 @@ npm run lint-local -- --fix
 
 ### Oh no, the linter fails
 
-By now, the rules should be rather stable and so, if the linter fails it is usually best if you (if necessary) read the respective [eslint](https://eslint.org/docs/latest/rules) description and fix the respective problem.
+By now, the rules should be rather stable and so, if the linter fails it is usually best if you (if necessary) read the respective description and fix the respective problem.
+Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
+
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose).
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](https://github.com/Code-Inspect/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).

@@ -1,6 +1,6 @@
-import { MergeableRecord } from '../../util/objects'
-import { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
 import path from 'path'
+import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
+import type { MergeableRecord } from '../../util/objects'
 
 export interface SummarizedWithProject<Uniques=Set<string>, Count=number[]> {
 	uniqueProjects: Uniques

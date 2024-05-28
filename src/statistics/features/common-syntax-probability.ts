@@ -1,10 +1,13 @@
 /**
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
-import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
-import { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../util/summarizer/benchmark/first-phase/process'
 import { bigint2number } from '../../util/numbers'
+import type { SummarizedMeasurement } from '../../util/summarizer'
+import { summarizeMeasurement } from '../../util/summarizer'
+import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
+import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -63,7 +66,7 @@ function incrementEntry<T extends string | number | symbol>(map: Record<T, bigin
 /**
  * Updates the given counts based on the type of the given node.
  */
-export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: RNodeWithParent[]): CommonSyntaxTypeCounts {
+export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: (RNode| RArgument)[]): CommonSyntaxTypeCounts {
 	current.total++
 	if(nodes.length === 0) {
 		current.empty++
@@ -73,7 +76,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 		return current
 	}
 
-	let node = nodes[0]
+	let node: RNode | RArgument  = nodes[0]
 	if(node.type === RType.Argument) {
 		if(node.name !== undefined) {
 			current.withArgument++
@@ -118,7 +121,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 			incrementEntry(current.unaryOp, node.operator)
 			break
 		default:
-			// for space reasons we do not record the full lexeme!
+			// for space reasons, we do not record the full lexeme!
 			if(node.lexeme) {
 				incrementEntry(current.other, node.lexeme)
 			}
@@ -133,7 +136,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
 	for(const [key, val] of Object.entries(b)) {
 		const get = a[key]
-		// we guard with array to guard against methods like `toString` which are given in js
+		// we guard with array, to guard against methods like `toString` which are given in js
 		if(!get || !Array.isArray(get)) {
 			a[key] = [[bigint2number(val)]]
 			continue

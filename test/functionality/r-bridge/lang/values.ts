@@ -1,7 +1,7 @@
 import { it } from 'mocha'
 import { assert } from 'chai'
-import { boolean2ts, isBoolean, number2ts, string2ts, ts2r } from '../../../../src/r-bridge'
 import { RNumberPool, RStringPool } from '../../_helper/provider'
+import { boolean2ts, isBoolean, number2ts, string2ts, ts2r } from '../../../../src/r-bridge/lang-4.x/convert-values'
 
 describe('Bidirectional Value Translation', () => {
 	describe('TS value to R', () => {
@@ -18,6 +18,12 @@ describe('Bidirectional Value Translation', () => {
 		it('numbers', () => {
 			assert.equal(ts2r(1), '1')
 			assert.equal(ts2r(1.1), '1.1')
+		})
+		it('Infinity and NaN', () => {
+			assert.equal(ts2r(Infinity), 'Inf')
+			assert.equal(ts2r(10 ** 1000), 'Inf')
+			assert.equal(ts2r(NaN), 'NA')
+			assert.equal(ts2r(Math.sqrt(-1)), 'NA')
 		})
 		it('strings', () => {
 			assert.equal(ts2r(''), '""', 'empty string')

@@ -1,10 +1,11 @@
-import { log } from '../util/log'
-import { allRFilesFrom } from '../util/files'
-import { RParseRequestFromFile } from '../r-bridge'
-import { LimitedThreadPool } from '../util/parallel'
-import { guard } from '../util/assert'
 import fs from 'fs'
-import { processCommandLineArgs } from './common'
+import path from 'path'
+import { guard } from '../util/assert'
+import { allRFilesFrom } from '../util/files'
+import { log } from '../util/log'
+import { LimitedThreadPool } from '../util/parallel'
+import { processCommandLineArgs } from './common/script'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -14,6 +15,7 @@ export interface BenchmarkCliOptions {
 	slice:    string
 	parallel: number
 	limit?:   number
+	runs?:    number
 }
 
 
@@ -31,17 +33,20 @@ if(options.input.length === 0) {
 }
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
+guard(options.runs === undefined || options.runs > 0, 'runs must be greater than zero')
 
 function removeIfExists(summarizedRaw: string) {
 	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`)
-		fs.unlinkSync(summarizedRaw)
+		fs.rmSync(summarizedRaw, { recursive: true })
 	}
 }
 
 async function benchmark() {
 	removeIfExists(options.output)
-	console.log(`Writing output continuously to ${options.output}`)
+	fs.mkdirSync(options.output)
+
+	console.log(`Storing output in ${options.output}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 	// we do not use the limit argument to be able to pick the limit randomly
 	const files: RParseRequestFromFile[] = []
@@ -57,17 +62,26 @@ async function benchmark() {
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
+	const args = files.map((f,i) => [
+		'--input', f.content,
+		'--file-id', `${i}`,
+		'--output', path.join(options.output, `${path.parse(f.content).name}.json`),
+		'--slice', options.slice, ...verboseAdd])
 
-	const pool = new LimitedThreadPool(
-		`${__dirname}/benchmark-helper-app`,
-		files.map(f => [f.content, '--output', options.output, '--slice', options.slice, ...verboseAdd]),
-		limit,
-		options.parallel
-	)
-	await pool.run()
-	const stats = pool.getStats()
-	console.log(`Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
+	const runs = options.runs ?? 1
+	for(let i = 1; i <= runs; i++) {
+		console.log(`Run ${i} of ${runs}`)
+		const pool = new LimitedThreadPool(
+			`${__dirname}/benchmark-helper-app`,
+			// we reverse here "for looks", since the helper pops from the end, and we want file ids to be ascending :D
+			args.map(a => [...a, '--run-num', `${i}`]).reverse(),
+			limit,
+			options.parallel
+		)
+		await pool.run()
+		const stats = pool.getStats()
+		console.log(`Run ${i} of ${runs}: Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
+	}
 }
 
 void benchmark()
-

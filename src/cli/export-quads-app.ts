@@ -1,9 +1,11 @@
-import { retrieveNormalizedAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
-import { log } from '../util/log'
-import { serialize2quads } from '../util/quads'
 import fs from 'fs'
+import { serialize2quads } from '../util/quads'
+import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
-import { processCommandLineArgs } from './common'
+import { processCommandLineArgs } from './common/script'
+import { RShell } from '../r-bridge/shell'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
+import { retrieveNormalizedAstFromRCode } from '../r-bridge/retriever'
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -22,13 +24,9 @@ const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
 })
 
 const shell = new RShell()
-shell.tryToInjectHomeLibPath()
 
 async function writeQuadForSingleFile(request: RParseRequestFromFile, output: string) {
-	const normalized = await retrieveNormalizedAstFromRCode({
-		...request,
-		ensurePackageInstalled: true
-	}, shell)
+	const normalized = await retrieveNormalizedAstFromRCode(request, shell)
 	const serialized = serialize2quads(normalized.ast, { context: request.content })
 	log.info(`Appending quads to ${output}`)
 	fs.appendFileSync(output, serialized)
@@ -50,4 +48,3 @@ async function getQuads() {
 }
 
 void getQuads()
-

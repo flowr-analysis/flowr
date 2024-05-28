@@ -1,13 +1,13 @@
-import {Handler} from '../handler'
-import {BinaryOperatorFlavor, NodeId, ParentInformation, RBinaryOp} from '../../../r-bridge'
-import {guard} from '../../../util/assert'
-import {operators} from './operators'
-import {AINode, AINodeStore} from '../../ainode'
-import {DataflowInformation} from '../../../dataflow/internal/info'
+import { Handler } from '../handler'
+import type { AINode, AINodeStore } from '../../ainode'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
+import { guard } from '../../../util/assert'
+import { operators } from './operators'
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { DataflowInformation } from '../../../dataflow/info'
 
-export type BinOpOperators = {
-	[key in BinaryOperatorFlavor]: (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINodeStore
-}
+export type BinOpOperators = (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINode
 
 export class BinOp extends Handler {
 	lhs: NodeId | undefined
@@ -26,7 +26,7 @@ export class BinOp extends Handler {
 		const rhs = this.domains.get(this.rhs)
 		guard(lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
 		guard(rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
-		this.domains.updateWith(operators[this.node.flavor](lhs, rhs, this.node))
+		this.domains.updateWith(operators[this.node.operator](lhs, rhs, this.node))
 		return super.exit()
 	}
 

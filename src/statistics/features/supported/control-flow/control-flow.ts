@@ -1,8 +1,12 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
-import { Writable } from 'ts-essentials'
+import type { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
-import { ParentInformation, RExpressionList, RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
 import { postProcess } from './post-process'
+import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
+import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import type { RExpressionList } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
 
 const initialControlflowInfo = {
 	ifThen:           emptyCommonSyntaxTypeCounts(),
@@ -26,7 +30,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 		node => {
 			if(node.type !== RType.IfThenElse) {
 				if(node.type === RType.FunctionCall && node.flavor === 'named' && node.functionName.content === 'switch') {
-					const initialArg = node.arguments[0]
+					const initialArg = unpackArgument(node.arguments[0])
 					if(initialArg) {
 						info.switchCase = updateCommonSyntaxTypeCounts(info.switchCase, initialArg)
 					}

@@ -1,10 +1,11 @@
 name: "Setup the node and R version"
+description: "Prepare a CI environment for flowR"
 
 inputs:
     node-version:
         description: "The node version to use"
         required: false
-        default: "18.15.x"
+        default: "21.6.x"
     r-version:
         description: "The R version to use"
         required: false
@@ -16,11 +17,14 @@ runs:
   steps:
     - name: "Checkout Repository"
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Use Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
+        registry-url: 'https://registry.npmjs.org/'
 
     - name: Setup R
       if: ${{ inputs.r-version != '' }}
@@ -31,4 +35,4 @@ runs:
     - name: Install R packages
       if: ${{ inputs.r-version != '' }}
       shell: Rscript {0}
-      run: install.packages("xmlparsedata", repos="http://cran.us.r-project.org")
+      run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")

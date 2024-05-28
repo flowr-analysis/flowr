@@ -1,14 +1,19 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
-import { appendStatisticsFile } from '../../../output'
-import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
-import { EdgeType } from '../../../../dataflow'
+import type { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
+import type {
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
+import { getRangeStart } from '../../../../util/range'
+import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
+import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { appendStatisticsFile } from '../../../output/statistics-file'
+import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -89,7 +94,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			const dataflowNode = input.dataflow.graph.get(node.info.id)
 			let hasCallsEdge = false
 			if(dataflowNode) {
-				hasCallsEdge = [...dataflowNode[1].values()].some(e => e.types.has(EdgeType.Calls))
+				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls))
 			}
 
 			if(node.flavor === 'unnamed') {
@@ -97,7 +102,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
 				allCalls.push([
 					undefined,
-					[node.location.start.line, node.location.start.column],
+					getRangeStart(node.location),
 					node.arguments.length,
 					'',
 					hasCallsEdge ? 1 : 0
@@ -105,14 +110,14 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
-					[node.location.start.line, node.location.start.column],
+					getRangeStart(node.location),
 					node.arguments.length,
 					node.functionName.namespace ?? '',
 					hasCallsEdge ? 1 : 0
 				])
 			}
 
-			classifyArguments(node.arguments, info.args)
+			classifyArguments(node.arguments.map(unpackArgument), info.args)
 
 			calls.push(node)
 		}, node => {

@@ -1,16 +1,17 @@
-import {
-	RParseRequest,
-	RParseRequestFromFile,
-	RParseRequestFromText,
-	RShell
-} from '../r-bridge'
-import { ALL_FEATURES, allFeatureNames, Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
+import type { MetaStatistics } from './meta-statistics'
+import { initialMetaStatistics } from './meta-statistics'
 import { log } from '../util/log'
-import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
-import { SteppingSlicer,StepResults } from '../core'
 import { jsonReplacer, jsonRetriever } from '../util/json'
+import { PipelineExecutor } from '../core/pipeline-executor'
+import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline'
+import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines'
+import type { RShell } from '../r-bridge/shell'
+import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features/feature'
+import { ALL_FEATURES , allFeatureNames } from './features/feature'
+import { ts2r } from '../r-bridge/lang-4.x/convert-values'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -24,6 +25,9 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
 		}
 	}()
 }
+
+
+type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
 
 /**
  * Extract all wanted statistic information from a set of requests using the presented R session.
@@ -41,26 +45,21 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>,
 	rootPath?: string
-): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, StepResults<'dataflow'>> }> {
+): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, DataflowResult> }> {
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 
-	let first = true
-	const outputs = new Map<T, StepResults<'dataflow'>>()
+	const outputs = new Map<T, DataflowResult>()
 	for await (const request of requests) {
 		onRequest(request)
 		const start = performance.now()
 		const suffix = request.request === 'file' ? request.content.replace(new RegExp('^' + (rootPath ?? '')), '') : undefined
 		try {
 			let output
-			({ stats: result, output } = await extractSingle(result, shell, {
-				...request,
-				ensurePackageInstalled: first
-			}, features, suffix))
+			({ stats: result, output } = await extractSingle(result, shell, request, features, suffix))
 			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
 			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size)
-			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)
 			processMetaOnUnsuccessful(meta, request)
@@ -95,13 +94,19 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser()
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
-	const slicerOutput = await new SteppingSlicer({
-		stepOfInterest: 'dataflow',
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
+	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		request, shell
 	}).allRemainingSteps()
-	// await retrieveXmlFromRCode(from, shell)
-	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')
+
+	// retrieve parsed xml through (legacy) xmlparsedata
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	shell.sendCommands(
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+	)
+	const parsed = (await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)).join(shell.options.eol)
+	const doc = parser.parseFromString(parsed, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {

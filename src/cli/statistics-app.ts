@@ -1,16 +1,14 @@
-import {
-	initFileProvider,
-	setFormatter,
-	voidFormatter
-} from '../statistics'
-import { log } from '../util/log'
-import { allRFilesFrom } from '../util/files'
-import { processCommandLineArgs } from './common'
-import { Arguments, LimitedThreadPool } from '../util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
-import { jsonReplacer } from '../util/json'
 import fs from 'fs'
+import { log } from '../util/log'
+import { setFormatter, voidFormatter } from '../util/ansi'
+import type { Arguments } from '../util/parallel'
+import { LimitedThreadPool } from '../util/parallel'
+import { allRFilesFrom } from '../util/files'
+import { jsonReplacer } from '../util/json'
+import { processCommandLineArgs } from './common/script'
+import { initFileProvider } from '../statistics/output/statistics-file'
 
 export interface StatsCliOptions {
 	readonly verbose:      boolean
@@ -127,4 +125,3 @@ async function getStats() {
 }
 
 void getStats()
-

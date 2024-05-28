@@ -1,19 +1,25 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	emptySummarizedWithProject,
-	recordFilePath,
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
 } from '../../post-processing'
-import { initialUsedPackageInfos, UsedPackageInfo } from './used-packages'
-import fs from 'node:fs'
+import {
+	emptySummarizedWithProject,
+	recordFilePath
+} from '../../post-processing'
+import type { UsedPackageInfo } from './used-packages'
+import { initialUsedPackageInfos } from './used-packages'
+import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
 import { readLineByLineSync } from '../../../../util/files'
-import { array2bag } from '../../../../util/arrays'
 import { startAndEndsWith } from '../../../../util/strings'
+import { array2bag } from '../../../../util/arrays'
 
 type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
 
@@ -99,7 +105,7 @@ function retrieveDataForLoad(operator: string, readFromPath: string, outputPath:
 
 		const [packages, context] = JSON.parse(line.toString()) as [string[], string]
 
-		// first we have to collect what this file gives us
+		// first, we have to collect what this file gives us
 		// we normalize surrounding quotation marks
 		const bag = array2bag(packages.map(p => {
 			if(startAndEndsWith(p, '"') || startAndEndsWith(p, "'") || startAndEndsWith(p, '`')){
@@ -135,4 +141,3 @@ function retrieveDataForLoad(operator: string, readFromPath: string, outputPath:
 
 	return collected
 }
-

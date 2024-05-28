@@ -1,11 +1,13 @@
-import { RShell } from '../../../r-bridge'
-import { retrieveVersionInformation, VersionInformation } from '../commands/version'
+import type { VersionInformation } from '../commands/version'
+import { retrieveVersionInformation } from '../commands/version'
 import { FlowRServerConnection } from './connection'
 import { getUnnamedSocketName, sendMessage } from './send'
-import { FlowrHelloResponseMessage } from './messages/hello'
-import { FlowrErrorMessage } from './messages/error'
-import { NetServer, Server, Socket } from './net'
+import type { FlowrHelloResponseMessage } from './messages/hello'
+import type { FlowrErrorMessage } from './messages/error'
+import type { Server, Socket } from './net'
+import { NetServer } from './net'
 import { FlowrLogger } from '../../../util/log'
+import type { RShell } from '../../../r-bridge/shell'
 
 // we detach from the main logger so that it can have its own switch
 export const serverLog = new FlowrLogger({ name: 'server' })

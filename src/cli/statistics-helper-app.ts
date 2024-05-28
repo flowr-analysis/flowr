@@ -1,20 +1,21 @@
-import { RShell } from '../r-bridge'
-import {
-	extractUsageStatistics,
-	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider, statisticsFileProvider
-} from '../statistics'
-import { log } from '../util/log'
-import { processCommandLineArgs } from './common'
-import { jsonReplacer } from '../util/json'
 import fs from 'fs'
-import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
-import { printStepResult } from '../core'
-import { StepOutputFormat } from '../core/print/print'
-import { date2string } from '../util/time'
+import { log } from '../util/log'
+import { setFormatter, voidFormatter } from '../util/ansi'
 import { create } from 'tar'
 import { extractCFG } from '../util/cfg/cfg'
+import { printStepResult, StepOutputFormat } from '../core/print/print'
+import { PARSE_WITH_R_SHELL_STEP } from '../core/steps/all/core/00-parse'
+import { NORMALIZE } from '../core/steps/all/core/10-normalize'
+import { STATIC_DATAFLOW } from '../core/steps/all/core/20-dataflow'
+import { jsonReplacer } from '../util/json'
+import { date2string } from '../util/time'
+import { guard } from '../util/assert'
+import { processCommandLineArgs } from './common/script'
+import type { FeatureKey } from '../statistics/features/feature'
+import { RShell } from '../r-bridge/shell'
+import { initFileProvider, statisticsFileProvider } from '../statistics/output/statistics-file'
+import { extractUsageStatistics, staticRequests } from '../statistics/statistics'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -56,7 +57,6 @@ if(options.compress) {
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
 
 const shell = new RShell()
-shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
@@ -89,13 +89,13 @@ async function getStatsForSingleFile() {
 		if(options['dump-json']) {
 			const [, output] = [...stats.outputs.entries()][0]
 			const cfg = extractCFG(output.normalize)
-			statisticsFileProvider.append('output-json', 'parse', await printStepResult('parse', output.parse, StepOutputFormat.Json))
-			statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
-			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'parse', await printStepResult(PARSE_WITH_R_SHELL_STEP, output.parse, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'normalize', await printStepResult(NORMALIZE, output.normalize, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult(STATIC_DATAFLOW, output.dataflow, StepOutputFormat.Json))
 			statisticsFileProvider.append('output-json', 'cfg', JSON.stringify(cfg, jsonReplacer))
 		}
 
-		statisticsFileProvider.append('meta', 'stats', JSON.stringify({...stats.meta, file: options.input }, jsonReplacer))
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify({ ...stats.meta, file: options.input }, jsonReplacer))
 		statisticsFileProvider.append('meta', 'features', JSON.stringify(stats.features, jsonReplacer))
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
@@ -110,4 +110,3 @@ async function getStatsForSingleFile() {
 }
 
 void getStatsForSingleFile()
-

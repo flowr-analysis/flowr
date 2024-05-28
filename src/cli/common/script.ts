@@ -5,10 +5,10 @@
  */
 import { scripts } from './scripts-info'
 import commandLineUsage from 'command-line-usage'
-import { CommonOptions } from './options'
-import { log, LogLevel } from '../../util/log'
+import type { CommonOptions } from './options'
 import commandLineArgs from 'command-line-args'
-import { italic } from '../../statistics'
+import { italic } from '../../util/ansi'
+import { log, LogLevel } from '../../util/log'
 
 /**
  * Just a helping data structure to allow the user to provide example usages of the respective script.
@@ -65,5 +65,3 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 	}
 	return options
 }
-
-

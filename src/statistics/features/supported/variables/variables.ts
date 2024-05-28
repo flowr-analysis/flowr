@@ -1,9 +1,11 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
-import { Writable } from 'ts-essentials'
-import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../../r-bridge'
-import { appendStatisticsFile } from '../../../output'
-import { EdgeType } from '../../../../dataflow'
+import type { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
+import { getRangeStart } from '../../../../util/range'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { appendStatisticsFile } from '../../../output/statistics-file'
 
 
 const initialVariableInfo = {
@@ -23,10 +25,6 @@ export type DefinedVariableInformation = [
 ]
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
-
-	// same-def-def edges are bidirectional, we want to avoid counting them twice!
-	const redefinedBlocker = new Set<NodeId>()
-
 	visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.Symbol || isSpecialSymbol(node)) {
@@ -40,34 +38,25 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 				info.unknownVariables++
 				appendStatisticsFile(variables.name, 'unknown', [[
 					node.info.fullLexeme ?? node.lexeme,
-					[node.location.start.line, node.location.start.column]
+					getRangeStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath)
 				return
 			}
 
-			const [dfNode, edges] = mayNode
+			const [dfNode] = mayNode
 			if(dfNode.tag === 'variable-definition') {
 				info.numberOfDefinitions++
 				const lexeme = node.info.fullLexeme ?? node.lexeme
 				appendStatisticsFile(variables.name, 'definedVariables', [[
 					lexeme,
-					[node.location.start.line, node.location.start.column]
+					getRangeStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath)
-				// check for redefinitions
-				const hasRedefinitions = [...edges.entries()].some(([target, edge]) => !redefinedBlocker.has(target) && edge.types.has(EdgeType.SameDefDef))
-				if(hasRedefinitions) {
-					info.numberOfRedefinitions++
-					redefinedBlocker.add(node.info.id)
-					appendStatisticsFile(variables.name, 'redefinedVariables', [[
-						lexeme,
-						[node.location.start.line, node.location.start.column]
-					] satisfies DefinedVariableInformation ], input.filepath)
-				}
+				// checking for redefinitions is no longer possible in its current form!
 			} else if(dfNode.tag === 'use') {
 				info.numberOfVariableUses++
 				appendStatisticsFile(variables.name, 'usedVariables', [[
 					node.info.fullLexeme ?? node.lexeme,
-					[node.location.start.line, node.location.start.column]
+					getRangeStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath)
 			}
 		}

@@ -2,14 +2,10 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
+import type { ElapsedTime, PerSliceMeasurements } from './stats'
+import type { SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 import { guard } from '../../util/assert'
-import { ElapsedTime, PerSliceMeasurements } from './stats'
-import {
-	SummarizedMeasurement,
-	SummarizedPerSliceStats,
-	SummarizedSlicerStats,
-	UltimateSlicerStats
-} from '../../util/summarizer/benchmark/data'
+import type { SummarizedMeasurement } from '../../util/summarizer'
 
 const padSize = 15
 
@@ -91,7 +87,6 @@ export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
 Request: ${JSON.stringify(stats.request)}
 Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
-Retrieval of token map:       ${print(stats.commonMeasurements,'retrieve token map')}
 AST retrieval:                ${print(stats.commonMeasurements,'retrieve AST from R code')}
 AST normalization:            ${print(stats.commonMeasurements,'normalize R AST')}
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
@@ -137,7 +132,6 @@ export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	return `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
 Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
-Retrieval of token map:       ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve token map'))}
 AST retrieval:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
 AST normalization:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
 Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}

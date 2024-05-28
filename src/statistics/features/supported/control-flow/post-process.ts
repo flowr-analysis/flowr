@@ -1,17 +1,22 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import type {
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { MergeableRecord } from '../../../../util/objects'
-import { ControlflowInfo } from './control-flow'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { ControlflowInfo } from './control-flow'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import fs from 'fs'
 import path from 'path'
+import type { MergeableRecord } from '../../../../util/objects'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
 
 interface ControlFlowMetaPostProcessing<Measurement> extends MergeableRecord {
 	ifThen:           CommonSyntaxTypeCounts<Measurement>

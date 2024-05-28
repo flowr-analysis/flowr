@@ -1,11 +1,16 @@
-There are two main ways to use *flowR*.
-You can download and build it from source, or download the accompanying docker image.
+There are several ways to use *flowR*.
+You can download and build it from source, download the accompanying docker image, or use its Visual Studio Code extension.
 
 <!-- TOC -->
+- [🗒️ Using the Visual Studio Code Extension](#️-using-the-visual-studio-code-extension)
 - [🐳️ Using the Docker Image](#️-using-the-docker-image)
 - [⚒️ Building From Scratch](#️-building-from-scratch)
 - [📜 Developing for *flowR*](#-developing-for-flowr)
 <!-- TOC -->
+
+## 🗒️ Using the Visual Studio Code Extension
+
+The easiest way to use *flowR* is to install the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr). Please check out the marketplace entry for more information.
 
 ## 🐳️ Using the Docker Image
 
@@ -33,13 +38,13 @@ For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-p
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
 
-After cloning the repository, you can install the dependencies with:
+After cloning the repository,<a href="#note2" id="note2ref"><sup>&lt;2&gt;</sup></a> you can install the dependencies with:
 
 ```shell
 npm i
 ```
 
-After that, you should be fine! You may test *flowR* by running:
+After that, you should be fine! You may test *flowR*'s command-line interface by running the following from the `cli` directory:
 
 ```shell
 npm run slicer -- --criterion "12@product" test/testfiles/example.R
@@ -62,4 +67,7 @@ If you want to develop for *flowR*, see the [core](https://github.com/Code-Inspe
 For details on *how* to contribute, please refer to the [CONTRIBUTING.md](https://github.com/Code-Inspect/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
 
 -----
-<a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, *flowR* is only tested with R version  `4.3.1 (2023-06-16) -- "Beagle Scouts"`
+<a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, *flowR* is only tested with R versions `4.x`.
+
+<a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
+[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/Code-Inspect/flowr/blob/main/.github/CONTRIBUTING.md) in the repository for more information).

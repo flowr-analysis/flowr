@@ -1,4 +1,4 @@
-import {assertUnreachable, guard} from '../util/assert'
+import { assertUnreachable, guard } from '../util/assert'
 
 interface IntervalBound {
 	readonly value:     number,
@@ -64,8 +64,8 @@ export class Domain {
 
 	static fromScalar(n: number): Domain {
 		return new Domain([new Interval(
-			{value: n, inclusive: true},
-			{value: n, inclusive: true}
+			{ value: n, inclusive: true },
+			{ value: n, inclusive: true }
 		)])
 	}
 

@@ -5,24 +5,24 @@
  *
  * @module
  */
-import {
-	assignments,
-	comments,
-	controlflow,
-	dataAccess,
-	definedFunctions, expressionList,
-	loops,
-	usedFunctions,
-	usedPackages,
-	values
-} from './supported'
-import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { MergeableRecord } from '../../util/objects'
-import { NormalizedAst } from '../../r-bridge'
-import { DataflowInformation } from '../../dataflow/internal/info'
+
+import type { EvalOptions } from 'xpath-ts2/src/parse-api'
+import type { MetaStatistics } from '../meta-statistics'
+import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
+import type { MergeableRecord } from '../../util/objects'
+import type { DataflowInformation } from '../../dataflow/info'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { usedPackages } from './supported/used-packages/used-packages'
+import { comments } from './supported/comments/comments'
+import { definedFunctions } from './supported/defined-functions/defined-functions'
+import { usedFunctions } from './supported/used-functions/used-functions'
+import { values } from './supported/values/values'
+import { assignments } from './supported/assignments/assignments'
+import { loops } from './supported/loops/loops'
+import { controlflow } from './supported/control-flow/control-flow'
+import { dataAccess } from './supported/data-access/data-access'
+import { expressionList } from './supported/expression-list/expression-list'
 import { variables } from './supported/variables/variables'
-import { MetaStatistics } from '../meta-statistics'
-import { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

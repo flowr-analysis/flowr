@@ -1,7 +1,8 @@
-import { IdMessageBase, MessageDefinition } from './messages'
-import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
+import type { IdMessageBase, MessageDefinition } from './messages'
 import Joi from 'joi'
-import { ControlFlowInformation } from '../../../../util/cfg/cfg'
+import type { ControlFlowInformation } from '../../../../util/cfg/cfg'
+import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines'
+import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline'
 
 /**
  * Send by the client to request an analysis of a given file.
@@ -63,7 +64,7 @@ export interface FileAnalysisResponseMessageJson extends IdMessageBase {
 	/**
 	 * See the {@link SteppingSlicer} and {@link StepResults} for details on the results.
 	 */
-	results: StepResults<typeof LAST_PER_FILE_STEP>
+	results: PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>
 	/**
 	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
 	 */
@@ -80,11 +81,10 @@ export interface FileAnalysisResponseMessageNQuads extends IdMessageBase {
 	 * @see FileAnalysisResponseMessageJson#results
 	 */
 	results: {
-		[K in keyof StepResults<typeof LAST_PER_FILE_STEP>]: string
+		[K in keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]: string
 	}
 	/**
 	 * @see FileAnalysisResponseMessageJson#cfg
 	 */
 	cfg?: string
 }
-

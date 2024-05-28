@@ -1,24 +1,24 @@
-import {
-	SummarizedMeasurement,
-	summarizedMeasurement2Csv,
-	summarizedMeasurement2CsvHeader
-} from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { readLineByLineSync } from '../../../../util/files'
+import type { FeatureStatisticsWithMeta } from '../../feature'
 import path from 'path'
-import { StatisticsOutputFormat } from '../../../output'
-import fs from 'node:fs'
-import { date2string } from '../../../../util/time'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	AllDefinitionsFileBase,
+import fs from 'fs'
+import type {
 	FunctionDefinitionInfo,
 	SingleFunctionDefinitionInformation
 } from './defined-functions'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
+import {
+	AllDefinitionsFileBase
+} from './defined-functions'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
+
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
+import type { SummarizedMeasurement } from '../../../../util/summarizer'
+import { summarizedMeasurement2CsvHeader , summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
+import { readLineByLineSync } from '../../../../util/files'
+import { date2string } from '../../../../util/time'
 import { array2bag } from '../../../../util/arrays'
+import type { StatisticsOutputFormat } from '../../../output/statistics-file'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,
@@ -38,7 +38,7 @@ interface FunctionDefinitionSummaryInformation<Measurement> {
 	linePercentageInFile:          Measurement,
 	callsites:                     Measurement
 }
-// during the collection phase this should be a map using an array to collect
+// during the collection phase, this should be a map using an array to collect
 interface DefinedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	total:             Measurement
 	lambdasOnly:       Measurement
@@ -54,8 +54,8 @@ function getFnDefCsv(idx: number | string, info: FunctionDefinitionSummaryInform
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.lines.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.chars.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.nonWhitespaceChars.flat()))}`
-		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.explicit.flat()))}`
-		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.implicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement([0]))}` /* this has to be changed once we have explicit returns again */
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement([0]))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyExplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyImplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.exitPointsLinePercentageInDef.flat(2)))}`
@@ -94,8 +94,6 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 		mergedSuperDefinitions.length.lines.push(...info.length.lines)
 		mergedSuperDefinitions.length.chars.push(...info.length.chars)
 		mergedSuperDefinitions.length.nonWhitespaceChars.push(...info.length.nonWhitespaceChars)
-		mergedSuperDefinitions.returns.explicit.push(...info.returns.explicit)
-		mergedSuperDefinitions.returns.implicit.push(...info.returns.implicit)
 		mergedSuperDefinitions.returns.onlyExplicit.push(...info.returns.onlyExplicit)
 		mergedSuperDefinitions.returns.onlyImplicit.push(...info.returns.onlyImplicit)
 		mergedSuperDefinitions.exitPointsLinePercentageInDef.push(...info.exitPointsLinePercentageInDef)
@@ -200,7 +198,7 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 
 	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
-	for(const { location, length, returns, numberOfParameters, callsites} of hits) {
+	for(const { location, length, returns, numberOfParameters, callsites } of hits) {
 		const stats = info.get(context ?? '')?.stats.lines[0].length
 
 		// we retrieve the first component fo the path
@@ -209,17 +207,12 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 		forFile.length.lines.push(length.lines)
 		forFile.length.chars.push(length.characters)
 		forFile.length.nonWhitespaceChars.push(length.nonWhitespaceCharacters)
-		const explicits = returns.filter(r => r.explicit)
-		forFile.returns.explicit.push(explicits.length)
-		forFile.returns.implicit.push(returns.length - explicits.length)
-		forFile.returns.onlyExplicit.push(explicits.length === returns.length ? 1 : 0)
-		forFile.returns.onlyImplicit.push(explicits.length === 0 ? 1 : 0)
-		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location.line).map(l => l/length.lines))
+		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l/length.lines))
 
 		forFile.callsites.push(callsites.length)
 
 		if(stats) {
-			forFile.linePercentageInFile.push(location.line / stats)
+			forFile.linePercentageInFile.push(location[0] / stats)
 		}
 	}
 

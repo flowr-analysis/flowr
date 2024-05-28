@@ -1,6 +1,6 @@
-import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from '../type'
-import { RExpressionList } from './r-expression-list'
+import type { Base, Location, NoInfo, RNode } from '../model'
+import type { RType } from '../type'
+import type { RExpressionList } from './r-expression-list'
 
 /**
  * ```ts

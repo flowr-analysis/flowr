@@ -1,19 +1,23 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { MergeableRecord } from '../../../../util/objects'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type {
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { AssignmentInfo } from './assignments'
-import { bigint2number } from '../../../../util/numbers'
-import fs from 'node:fs'
+import type { AssignmentInfo } from './assignments'
+import fs from 'fs'
 import path from 'path'
-import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
-import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
 import { getUniqueCombinationsOfSize } from '../../../../util/arrays'
 import { guard } from '../../../../util/assert'
+import { bigint2number } from '../../../../util/numbers'
+import {
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader,
+	summarizeMeasurement
+} from '../../../../util/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
 
 interface OperatorInformation<Measurement, Uniques> {
 	uniqueProjects: Uniques
@@ -51,7 +55,7 @@ function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<numb
 		return new Map()
 	}
 	const allCombinations = [...getUniqueCombinationsOfSize(ops, 1)]
-	const store = new Map<string, { uniqueProjects: Set<string>, uniqueFiles: Set<string> }>
+	const store = new Map<string, { uniqueProjects: Set<string>, uniqueFiles: Set<string> }>()
 	for(const combs of allCombinations) {
 		if(combs.length === 1) {
 			// we can just copy the information

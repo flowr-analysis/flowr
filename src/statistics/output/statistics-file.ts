@@ -1,7 +1,8 @@
-import {
+import type {
 	DummyAppendMemoryMap,
+	StatisticAppendProvider } from './file-provider'
+import {
 	DummyAppendProvider,
-	StatisticAppendProvider,
 	StatisticFileProvider
 } from './file-provider'
 import { log } from '../../util/log'
@@ -88,5 +89,3 @@ export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string
 
 	statisticsFileProvider.append(name, fn, values.join('\n'))
 }
-
-

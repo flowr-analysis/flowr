@@ -1,15 +1,16 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
-import * as readline from 'node:readline'
-import { parseCSV, ts2r } from './lang-4.x'
-import { log, LogLevel } from '../util/log'
-import { SemVer } from 'semver'
+import * as readline from 'readline'
+import { expensiveTrace, log, LogLevel } from '../util/log'
+import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
-import { DeepWritable } from 'ts-essentials'
+import type { DeepReadonly , AsyncOrSync } from 'ts-essentials'
+import { initCommand } from './init'
+import { getConfig } from '../config'
+import { ts2r } from './lang-4.x/convert-values'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -18,10 +19,14 @@ export interface CollectorTimeout extends MergeableRecord {
    * number of milliseconds to wait for the collection to finish
    */
 	ms:             number
-	/**
+	/*
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
+	/**
+	 * invoked when the timeout is reached. If not set, the promise will be rejected with an error.
+	 */
+	onTimeout?:     (resolve: (value: AsyncOrSync<string[]>) => void, reject: (value: AsyncOrSync<string[]>) => void, partialResult: string[]) => void
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -61,6 +66,12 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	errorStopsWaiting:       true
 }
 
+export const enum RShellReviveOptions {
+	Never,
+	OnError,
+	Always
+}
+
 export interface RShellExecutionOptions extends MergeableRecord {
 	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
@@ -71,14 +82,14 @@ export interface RShellExecutionOptions extends MergeableRecord {
 	/** The character to use to mark the end of a line. Is probably always `\n` (even on windows). */
 	readonly eol:                string
 	/** The environment variables available in the R session. */
-	readonly env:                NodeJS.ProcessEnv
+	readonly env:                NodeJS.ProcessEnv | undefined
 	/** The path to the library directory, use undefined to let R figure that out for itself */
 	readonly homeLibPath:        string | undefined
 }
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
 	/** If set, the R session will be restarted if it exits due to an error */
-	readonly revive:   'never' | 'on-error' | 'always'
+	readonly revive:   RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive: (code: number, signal: string | null) => void
 }
@@ -91,19 +102,20 @@ export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
 
+export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R'
 export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
-	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
-	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
+	pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
+	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save', '--slave'],
 	cwd:                process.cwd(),
-	env:                process.env,
+	env:                undefined,
 	eol:                '\n',
-	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs'
 } as const
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	...DEFAULT_R_SHELL_EXEC_OPTIONS,
 	sessionName: 'default',
-	revive:      'never',
+	revive:      RShellReviveOptions.Never,
 	onRevive:    () => { /* do nothing */ }
 } as const
 
@@ -120,12 +132,11 @@ export class RShell {
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
 	private versionCache:    SemVer | null = null
-	private tokenMapCache:   TokenMap | null = null
 	// should never be more than one, but let's be sure
 	private tempDirs         = new Set<string>()
 
 	public constructor(options?: Partial<RShellOptions>) {
-		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.options = { ...DEFAULT_R_SHELL_OPTIONS, ...options }
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
@@ -133,12 +144,12 @@ export class RShell {
 	}
 
 	private revive() {
-		if(this.options.revive === 'never') {
+		if(this.options.revive === RShellReviveOptions.Never) {
 			return
 		}
 
 		this.session.onExit((code, signal) => {
-			if(this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+			if(this.options.revive === RShellReviveOptions.Always || (this.options.revive === RShellReviveOptions.OnError && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`)
 				this.options.onRevive(code, signal)
 				this.session = new RShellSession(this.options, this.log)
@@ -152,7 +163,7 @@ export class RShell {
    * will not do anything to alter input markers!
    */
 	public sendCommand(command: string): void {
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
+		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
 		this._sendCommand(command)
@@ -163,43 +174,49 @@ export class RShell {
 			return this.versionCache
 		}
 		// retrieve raw version:
-		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
-		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		this.versionCache = semver.coerce(result[0])
-		return result.length === 1 ? this.versionCache : null
+		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`, {
+			timeout: {
+				ms:             5000,
+				resetOnNewData: false,
+				// just resolve on timeout and handle the empty array case below
+				onTimeout:      resolve => resolve([])
+			}
+		})
+		expensiveTrace(this.log, () => `raw version: ${JSON.stringify(result)}`)
+		if(result.length === 1) {
+			this.versionCache = semver.coerce(result[0])
+			return this.versionCache
+		} else {
+			return null
+		}
 	}
 
+	public injectLibPaths(...paths: readonly string[]): void {
+		expensiveTrace(this.log, () => `injecting lib paths ${JSON.stringify(paths)}`)
+		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+	}
+
+	public tryToInjectHomeLibPath(): void {
+		// ensure the path exists first
+		if(this.options.homeLibPath === undefined) {
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
+			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
+	}
 
 	/**
-	 * Retrieve the token map of the xmlparsedata package.
-	 *
-	 * @note For multiple calls, this makes use of caching
+	 * checks if a given package is already installed on the system!
 	 */
-	async tokenMap(): Promise<TokenMap> {
-		if(this.tokenMapCache === null) {
-			this.tokenMapCache = await this.retrieveTokenMap()
-		}
-		return this.tokenMapCache
+	public async isPackageInstalled(packageName: string): Promise<boolean> {
+		this.log.debug(`checking if package "${packageName}" is installed`)
+		const result = await this.sendCommandWithOutput(
+			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
+		return result.length === 1 && result[0] === 'TRUE'
 	}
 
-	private async retrieveTokenMap(): Promise<TokenMap> {
-		await this.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
-		// we invert the token map to get a mapping back from the replacement
-		const parsed = parseCSV(await this.sendCommandWithOutput(
-			'write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)'
-		))
-
-		if(parsed.some(s => s.length !== 2)) {
-			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
-		}
-
-		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
-		const cache: DeepWritable<TokenMap> = {}
-		for(const [key, value] of parsed) {
-			cache[value] = removeTokenMapQuotationMarks(key)
-		}
-		return cache
-	}
 
 	/**
    * Send a command and collect the output
@@ -210,9 +227,7 @@ export class RShell {
    */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
-			this.log.trace(`> ${JSON.stringify(command)}`)
-		}
+		expensiveTrace(this.log, () => `> ${JSON.stringify(command)}`)
 
 		const output = await this.session.collectLinesUntil(config.from, {
 			predicate:       data => data === config.postamble,
@@ -220,7 +235,7 @@ export class RShell {
 		}, config.timeout, () => {
 			this._sendCommand(command)
 			if(config.from === 'stderr') {
-				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
+				this._sendCommand(`cat("${config.postamble}${this.options.eol}",file=stderr())`)
 			} else {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
 			}
@@ -237,7 +252,7 @@ export class RShell {
    *
    * @see sendCommand
    */
-	public sendCommands(...commands: string[]): void {
+	public sendCommands(...commands: readonly string[]): void {
 		for(const element of commands) {
 			this.sendCommand(element)
 		}
@@ -252,99 +267,12 @@ export class RShell {
 	}
 
 	/**
-   * usually R will stop execution on errors, with this the R session will try to
-   * continue working!
-   */
-	public continueOnError(): void {
-		this.log.info('continue in case of Errors')
-		this._sendCommand('options(error=function() {})')
-	}
-
-	public injectLibPaths(...paths: string[]): void {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-	}
-
-	public tryToInjectHomeLibPath(): void {
-		// ensure the path exists first
-		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
-			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
-		} else {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
-	}
-
-	/**
-   * checks if a given package is already installed on the system!
-   */
-	public async isPackageInstalled(packageName: string): Promise<boolean> {
-		this.log.debug(`checking if package "${packageName}" is installed`)
-		const result = await this.sendCommandWithOutput(
-			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
-		return result.length === 1 && result[0] === 'TRUE'
-	}
-
-	public async allInstalledPackages(): Promise<string[]> {
-		this.log.debug('getting all installed packages')
-		const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
-		return packages.split(',')
-	}
-
-	/**
-   * Installs the package using a temporary location
-   *
-   * @param packageName - The package to install
-   * @param autoload    - If true, the package will be loaded after installation
-   * @param force       - If true, the package will be installed no if it is already on the system and ready to be loaded
-   */
-	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
-		packageName:           string
-		packageExistedAlready: boolean
-		/** the temporary directory used for the installation, undefined if none was used */
-		libraryLocation?:      string
-	}> {
-		const packageExistedAlready = await this.isPackageInstalled(packageName)
-		if(!force && packageExistedAlready) {
-			this.log.info(`package "${packageName}" is already installed`)
-			if(autoload) {
-				this.sendCommand(`library(${ts2r(packageName)})`)
-			}
-			return {
-				packageName,
-				packageExistedAlready: true
-			}
-		}
-
-		// obtain a temporary directory
-		const tempdir = await this.obtainTmpDir()
-
-		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
-
-		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
-			ms:             750_000,
-			resetOnNewData: true
-		})
-
-		if(autoload) {
-			this.sendCommand(`library(${ts2r(packageName)},lib.loc=temp)`)
-		}
-
-		return {
-			packageName,
-			libraryLocation: tempdir,
-			packageExistedAlready
-		}
-	}
-
-	/**
 	 * Obtain the temporary directory used by R.
 	 * Additionally, this marks the directory for removal when the shell exits.
 	 */
 	public async obtainTmpDir(): Promise<string> {
-		this.sendCommand('temp <- tempdir()')
-		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
+		this.sendCommand('temp<-tempdir()')
+		const [tempdir] = await this.sendCommandWithOutput(`cat(temp,${ts2r(this.options.eol)})`)
 		this.tempDirs.add(tempdir)
 		return tempdir
 	}
@@ -370,11 +298,10 @@ class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams
 	private readonly sessionStdOut: readline.Interface
 	private readonly sessionStdErr: readline.Interface
-	private readonly options:       RShellSessionOptions
-	private readonly log:           Logger<ILogObj>
+	private readonly options:       DeepReadonly<RShellSessionOptions>
 	private collectionTimeout:      NodeJS.Timeout | undefined
 
-	public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
+	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
 			env:         options.env,
 			cwd:         options.cwd,
@@ -388,10 +315,25 @@ class RShellSession {
 			input:    this.bareSession.stderr,
 			terminal: false
 		})
-		this.onExit(() => { this.end() })
+		this.onExit(() => {
+			this.end()
+		})
 		this.options = options
-		this.log = log
-		this.setupRSessionLoggers()
+		// initialize the session
+		this.writeLine(initCommand(options.eol))
+
+		if(log.settings.minLevel <= LogLevel.Trace) {
+			this.bareSession.stdout.on('data', (data: Buffer) => {
+				log.trace(`< ${data.toString()}`)
+			})
+			this.bareSession.on('close', (code: number) => {
+				log.trace(`session exited with code ${code}`)
+			})
+		}
+
+		this.bareSession.stderr.on('data', (data: string) => {
+			log.warn(`< ${data}`)
+		})
 	}
 
 	public write(data: string): void {
@@ -419,7 +361,11 @@ class RShellSession {
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
-				reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				if(timeout.onTimeout) {
+					timeout.onTimeout(resolve, reject, result)
+				} else {
+					reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+				}
 			}, timeout.ms)
 			this.collectionTimeout = makeTimer()
 
@@ -437,7 +383,9 @@ class RShellSession {
 				}
 			}
 
-			error = () => { resolve(result) }
+			error = () => {
+				resolve(result)
+			}
 			this.onExit(error)
 			this.on(from, 'line', handler)
 			action?.()
@@ -456,7 +404,7 @@ class RShellSession {
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-	end(filesToUnlink?: string[]): boolean {
+	end(filesToUnlink?: readonly string[]): boolean {
 		if(filesToUnlink !== undefined) {
 			log.info(`unlinking ${filesToUnlink.length} files (${JSON.stringify(filesToUnlink)})`)
 			for(const f of filesToUnlink) {
@@ -472,20 +420,6 @@ class RShellSession {
 		this.sessionStdErr.close()
 		log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
 		return killResult
-	}
-
-	private setupRSessionLoggers(): void {
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
-			this.bareSession.stdout.on('data', (data: Buffer) => {
-				this.log.trace(`< ${data.toString()}`)
-			})
-			this.bareSession.on('close', (code: number) => {
-				this.log.trace(`session exited with code ${code}`)
-			})
-		}
-		this.bareSession.stderr.on('data', (data: string) => {
-			this.log.warn(`< ${data}`)
-		})
 	}
 
 	public onExit(callback: (code: number, signal: string | null) => void): void {

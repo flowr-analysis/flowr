@@ -1,4 +1,4 @@
-import { DeepPartial, DeepRequired } from 'ts-essentials'
+import type { DeepPartial, DeepRequired } from 'ts-essentials'
 import { jsonReplacer } from './json'
 
 /**
@@ -51,6 +51,11 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
 	for(const key of Object.keys(addon)) {
+		// values that are undefined (like from a partial object) should NOT be overwritten
+		if(addon[key] === undefined) {
+			continue
+		}
+
 		if(typeof addon[key] === 'object') {
 			if(key in base) {
 				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable)

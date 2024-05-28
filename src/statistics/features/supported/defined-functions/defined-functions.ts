@@ -1,18 +1,17 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
-import { appendStatisticsFile } from '../../../output'
-import { Writable } from 'ts-essentials'
-import { SourcePosition } from '../../../../util/range'
-import { MergeableRecord } from '../../../../util/objects'
-import {
-	ParentInformation,
-	RFunctionDefinition,
-	RNodeWithParent,
-	RType,
-	visitAst
-} from '../../../../r-bridge'
-import { EdgeType } from '../../../../dataflow'
-import { guard, isNotUndefined } from '../../../../util/assert'
+import type { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
+import type { MergeableRecord } from '../../../../util/objects'
+import type { SourcePosition } from '../../../../util/range'
+import { getRangeStart } from '../../../../util/range'
+import { guard, isNotUndefined } from '../../../../util/assert'
+import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition'
+import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { appendStatisticsFile } from '../../../output/statistics-file'
+import { VertexType } from '../../../../dataflow/graph/vertex'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
@@ -36,8 +35,8 @@ export interface SingleFunctionDefinitionInformation extends MergeableRecord {
 	/** locations of all direct call sites */
 	callsites:          SourcePosition[],
 	numberOfParameters: number,
-	// for each return site, classifies if it is implicit or explicit (i.e., with return)
-	returns:            { explicit: boolean, location: SourcePosition }[],
+	// for each return site, currently unable to classify if it is implicit or explicit (i.e., with return)
+	returns:            { location: SourcePosition }[],
 	length:   {
 		lines:                   number,
 		characters:              number,
@@ -50,18 +49,18 @@ function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefin
 	const dfStart = input.dataflow.graph.outgoingEdges(node.info.id)
 	const callsites = []
 	for(const [target, edge] of dfStart ?? []) {
-		if(!edge.types.has(EdgeType.Calls)) {
+		if(!edgeIncludesType(edge.types, EdgeType.Calls)) {
 			continue
 		}
-		const loc = input.normalizedRAst.idMap.get(target)?.location?.start
+		const loc = input.normalizedRAst.idMap.get(target)?.location
 		if(loc) {
-			callsites.push(loc)
+			callsites.push(getRangeStart(loc))
 		}
 	}
 	for(const call of recursiveCalls) {
 		const loc = call.location
 		if(loc) {
-			callsites.push(loc.start)
+			callsites.push(getRangeStart(loc))
 		}
 	}
 	return callsites
@@ -84,13 +83,15 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 				return
 			}
 			const [fnDefinition] = dfNode
-			guard(fnDefinition.tag === 'function-definition', () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`)
+			guard(fnDefinition.tag === VertexType.FunctionDefinition, () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`)
 
 			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
-				.map(([vertex]) => ({
-					explicit: vertex.tag === 'function-call' && vertex.name === 'return',
-					location: input.normalizedRAst.idMap.get(vertex.id)?.location?.start ?? { line: -1, column: -1 }
-				}))
+				.map(([vertex]) => {
+					const l = graph.idMap?.get(vertex.id)?.location
+					return {
+						location: l ? getRangeStart(l) : [-1, -1] satisfies SourcePosition
+					}
+				})
 
 			if(definitionStack.length > 0) {
 				info.nestedFunctions++
@@ -115,7 +116,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const edges = input.dataflow.graph.ingoingEdges(node.info.id)
 			if(edges !== undefined) {
 				for(const [targetId, edge] of edges) {
-					if(edge.types.has(EdgeType.DefinedBy)) {
+					if(edgeIncludesType(edge.types, EdgeType.DefinedBy)) {
 						const target = input.normalizedRAst.idMap.get(targetId)
 						guard(target !== undefined, 'Dataflow edge points to unknown node')
 						const name = target.info.fullLexeme ?? target.lexeme
@@ -125,7 +126,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 						info.assignedFunctions++
 						appendStatisticsFile(definedFunctions.name, 'assignedFunctions', [name ?? '<unknown>'], input.filepath)
 					}
-					if(edge.types.has(EdgeType.Calls)) {
+					if(edgeIncludesType(edge.types, EdgeType.Calls)) {
 						const target = input.normalizedRAst.idMap.get(targetId)
 						guard(target !== undefined, 'Dataflow edge points to unknown node')
 					}
@@ -147,7 +148,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const lexemeSplit= lexeme?.split('\n')
 
 			allDefinitions.push({
-				location:           node.location.start,
+				location:           getRangeStart(node.location),
 				callsites:          retrieveAllCallsites(input, node, recursiveCalls),
 				numberOfParameters: node.parameters.length,
 				returns:            returnTypes,

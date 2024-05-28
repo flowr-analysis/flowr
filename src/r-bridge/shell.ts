@@ -105,7 +105,9 @@ export interface RShellOptions extends RShellSessionOptions {
 export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R'
 export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
-	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save', '--slave'],
+	// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
+	// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
+	commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
 	cwd:                process.cwd(),
 	env:                undefined,
 	eol:                '\n',

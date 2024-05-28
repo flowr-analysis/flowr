@@ -1,5 +1,5 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
-import { wrap, wrapControlDependency } from './printer'
+import { wrap, wrapControlDependencies } from './printer'
 import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 import { BuiltInEnvironment } from '../../../../src/dataflow/environments/environment'
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier'
@@ -77,7 +77,7 @@ export class EnvironmentBuilderPrinter {
 	}
 
 	private getControlDependencyArgument(def: IdentifierDefinition) {
-		return def.controlDependencies ? wrapControlDependency(def.controlDependencies) : undefined
+		return def.controlDependencies ? wrapControlDependencies(def.controlDependencies) : undefined
 	}
 
 	private push() {

@@ -2,6 +2,7 @@ import { assertSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get'
+import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
@@ -438,6 +439,16 @@ cat(4 %a% 5)`)
 			assertSliced(label('using assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
 				shell, 'assign("x", 42)\nx', ['2@x'],
 				'assign("x", 42)\nx')
+			assertSliced(label('function', ['name-normal', 'assignment-functions', 'strings', 'newlines', 'numbers', 'implicit-return', 'normal-definition']),
+				shell, 'assign("a", function() 1)\na()', ['2@a'], 'assign("a", function() 1)\na()')
+			assertSliced(label('conditional assign', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'if', 'lambda-syntax', 'numbers', 'call-normal', 'implicit-return', 'assignment-functions', 'strings', 'numbers']),
+				shell, `a <- \\() 2
+if(y) {
+   assign("a", function() 1)
+}
+a()`, ['5@a'], `a <- \\() 2
+if(y) { assign("a", function() 1) }
+a()`, { minRVersion: MIN_VERSION_LAMBDA })
 		})
 		describe('DelayedAssign', () => {
 			assertSliced(label('using delayed-assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
@@ -451,6 +462,27 @@ cat(4 %a% 5)`)
 			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope']),
 				shell, 'x <- 42\ny <- get("x")', ['2@y'],
 				'x <- 42\ny <- get("x")')
+			assertSliced(label('function', ['name-normal', 'strings', 'newlines', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities]),
+				shell, 'a <- function() 1\nb <- get("a")\nb()', ['3@b'], 'a <- function() 1\nb <- get("a")\nb()')
+			assertSliced(label('get in function', ['name-normal', 'function-definitions', 'newlines', 'strings', 'implicit-return']),
+				shell, `a <- 5
+f <- function() {
+  get("a")
+}
+f()`, ['5@f'], `a <- 5
+f <- function() { get("a") }
+f()`)
+			assertSliced(label('get in function argument', ['name-normal', 'formals-default', 'strings', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
+				shell, `a <- 5
+f <- function(a = get("a")) {
+  a
+}
+f()`, ['5@f'], `f <- function(a=get("a")) { a }
+f()`)
+		})
+		describe('Combine get and assign', () => {
+			assertSliced(label('get in assign', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'assignment-functions', 'strings', 'unnamed-arguments', 'newlines']),
+				shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', ['3@a'], 'b <- 5\nassign("a", get("b"))\na')
 			assertSliced(label('get-access a function call', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'function-definitions', 'call-normal']),
 				shell, `a <- function() 1
 b <- get("a")
@@ -462,6 +494,30 @@ res <- b()`)
 	describe('Redefine built-ins', () => {
 		assertSliced(label('redefining assignments should work', ['name-quoted', 'name-normal', 'precedence', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, 'redefinition-of-built-in-functions-primitives']),
 			shell, 'x <- 1\n`<-`<-`*`\nx <- 3\ny = x', ['4@y'], 'x <- 1\ny = x')
+		assertSliced(label('redefine if', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-dot-dot-dot', 'newlines', 'unnamed-arguments']),
+			shell, `\`if\` <- function(...) 2
+if(1) 
+   x <- 3
+print(x)`, ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/)
+		assertSliced(label('named argument with redefine', ['name-escaped', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'named-arguments', 'newlines', 'numbers']),
+			shell, `x <- 2
+\`<-\` <- \`*\`
+x <- 3
+print(y = x)`, ['4@y'], 'y=x')
+		assertSliced(label('redefine in local scope', []),
+			shell, `f <- function() {
+   x <- 2
+   \`<-\` <- \`*\`
+   x <- 3
+}
+y <- f()
+print(y)`, ['7@y'], `f <- function() {
+        x <- 2
+        \`<-\` <- \`*\`
+        x <- 3
+    }
+y <- f()
+y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1] 6' })
 	})
 	describe('Switch', () => {
 		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]),
@@ -516,5 +572,36 @@ if(x == 3) {
 { x <- y <- 3 }
 x`)
 		})
+	})
+	describe('Closures', () => {
+		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
+			shell, `f <- function(x = 1) {
+  function() x
+}
+g <- f(2)
+print(g())`, ['5@g'], `f <- function(x=1) { function() x }
+g <- f(2)
+g()`)
+		assertSliced(label('nested closures w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'closures', 'grouping']),
+			shell, `f <- function(x = 1) {
+  (\\(y = 2) function(z = 3) x + y + z)()
+}
+g <- f(8)
+print(g())`, ['5@g'], `f <- function(x=1) { (\\(y=2) function(z=3) x + y + z)() }
+g <- f(8)
+g()`, { minRVersion: MIN_VERSION_LAMBDA })
+		assertSliced(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
+			shell, `f <- function() {
+  function() {
+    x <<- x + 1
+    x
+  }
+}
+x <- 2
+f()()
+print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
+x <- 2
+f()()
+x`)
 	})
 }))

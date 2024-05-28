@@ -258,7 +258,7 @@ describe('Parse simple constructs', withShell(shell => {
 	})
 	describe('loops', () => {
 		describe('for', () => {
-			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing']), shell, 'for(i in 1:42)2',
+			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers']), shell, 'for(i in 1:42)2',
 				exprList({
 					type:     RType.ForLoop,
 					location: rangeFrom(1, 1, 1, 3),
@@ -304,7 +304,7 @@ describe('Parse simple constructs', withShell(shell => {
 					ignoreAdditionalTokens: true
 				}
 			)
-			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments', 'newlines']), shell, `for(#a
+			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'comments', 'newlines']), shell, `for(#a
 				i#b
 				in#c
 				1:42#d

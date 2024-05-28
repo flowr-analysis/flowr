@@ -463,7 +463,7 @@ export const flowrCapabilities = {
 									name:        'Sequencing',
 									id:          'built-in-sequencing',
 									supported:   'not',
-									description: '_Handle `:`, `seq`, ... as they are used often._'
+									description: '_Handle `:`, `seq`, ... by gathering value information using abstract interpretation._'
 								},
 								{
 									name:        'Internal and Primitive Functions',

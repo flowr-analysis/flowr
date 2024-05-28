@@ -21,15 +21,15 @@ export function wrap(id: string | NodeId | undefined): string {
 	}
 }
 
-export function wrapControlDependency(controlDependency: ControlDependency[] | undefined): string {
-	if(controlDependency === undefined) {
+export function wrapControlDependencies(controlDependencies: ControlDependency[] | undefined): string {
+	if(controlDependencies === undefined) {
 		return 'undefined'
 	} else {
-		return `[${controlDependency.map(c =>
+		return `[${controlDependencies.map(c =>
 			`{ id: ${wrap(c.id)}, when: ${c.when} }`	
 		).join(', ')}]`
 	}
 }
 export function wrapReference(ref: IdentifierReference): string {
-	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependency(ref.controlDependencies)} }`
+	return `{ nodeId: ${wrap(ref.nodeId)}, name: ${wrap(ref.name)}, controlDependencies: ${wrapControlDependencies(ref.controlDependencies)} }`
 }

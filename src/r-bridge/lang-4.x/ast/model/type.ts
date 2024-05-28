@@ -138,6 +138,10 @@ export const enum RawRType {
 	 * https://github.com/REditorSupport/languageserver/pull/328
 	 */
 	ExprOfAssignOrHelp = 'expr_or_assign_or_help',
+	/**
+	 * Pre-4.0 version of expr_or_assign_or_help, see {@link RawRType.ExprOfAssignOrHelp} documentation
+	 */
+	LegacyEqualAssign = 'equal_assign',
 	/** T65 */
 	ExpressionList = 'exprlist',
 }

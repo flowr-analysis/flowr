@@ -38,6 +38,7 @@ export function normalizeSingleNode(data: NormalizerData, elem: NamedXmlBasedJso
 		case RawRType.ExpressionList:
 		case RawRType.Expression:
 		case RawRType.ExprOfAssignOrHelp:
+		case RawRType.LegacyEqualAssign:
 			return normalizeExpression(data, elem.content)
 		case RawRType.NumericConst:
 			return normalizeNumber(data, elem.content)

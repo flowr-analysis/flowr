@@ -8,13 +8,7 @@ import { withoutWhitespace } from '../../../util/strings'
 import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
 import { isNotUndefined } from '../../../util/assert'
-import type {
-	PerSliceMeasurements,
-	PerSliceStats,
-	SlicerStats,
-	SlicerStatsDataflow,
-	SlicerStatsInput
-} from '../../stats/stats'
+import type { PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats'
 import type { SlicingCriteria } from '../../../slicing/criterion/parse'
 import { RShell } from '../../../r-bridge/shell'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever'
@@ -82,9 +76,7 @@ export async function summarizeSlicerStats(
 	stats: SlicerStats,
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
 	}): Promise<Readonly<SummarizedSlicerStats>> {
-	const perSliceStats = stats.perSliceMeasurements
-	// TODO this is incorrect! this is the TOTAL dataflow time, and we're dividing it by the amount of tokens in THIS slice
-	const dataflowTime = Number(stats.commonMeasurements.get('produce dataflow information'))
+	const dataflowTime = Number(stats.commonMeasurements.get('produce dataflow information')) / stats.perSliceMeasurements.size
 
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
 	const sizeOfSliceCriteria: number[] = []
@@ -113,7 +105,7 @@ export async function summarizeSlicerStats(
 	}
 
 	let timesHitThreshold = 0
-	for(const [criteria, perSliceStat] of perSliceStats) {
+	for(const [criteria, perSliceStat] of stats.perSliceMeasurements) {
 		report(criteria, perSliceStat)
 		for(const measure of perSliceStat.measurements) {
 			collect.get(measure[0]).push(Number(measure[1]))
@@ -210,7 +202,7 @@ export async function summarizeSlicerStats(
 	return {
 		...stats,
 		perSliceMeasurements: {
-			numberOfSlices:     perSliceStats.size,
+			numberOfSlices:     stats.perSliceMeasurements.size,
 			sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
 			measurements:       summarized,
 			failedToRepParse:   failedOutputs,

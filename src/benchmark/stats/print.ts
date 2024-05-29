@@ -97,7 +97,8 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
 		result += `
   Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
   Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
-  Slice creation per line:    ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerLine)}
+  Slice creation per token:   ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.normalized)}
+  Slice creation per R token: ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.raw)}
   Reconstruction:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
   Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
@@ -149,7 +150,8 @@ Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurem
 Slice summary for:
   Total:                      ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
   Slice creation:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
-  Slice creation per line:    ${formatSummarizedTimeMeasure(stats.sliceTimePerLine)}
+  Slice creation per token:   ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
+  Slice creation per R token: ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.raw)}
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
   Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
   Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 

@@ -1,5 +1,5 @@
 import * as tmp from 'tmp'
-import type { Reduction, SliceSizeCollection, SummarizedSlicerStats } from '../data'
+import type { Reduction, SliceSizeCollection, SummarizedSlicerStats, TimePerToken } from '../data'
 
 import fs from 'fs'
 import { DefaultMap } from '../../../util/defaultmap'
@@ -88,7 +88,7 @@ export async function summarizeSlicerStats(
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 
-	const sliceTimes: number[] = []
+	const sliceTimes: TimePerToken<number>[] = []
 	const reductions: Reduction<number | undefined>[] = []
 	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
@@ -122,10 +122,8 @@ export async function summarizeSlicerStats(
 		const split = output.split('\n')
 		const lines = split.length
 		const nonEmptyLines = split.filter(l => l.trim().length > 0).length
-		const sliceTimePerLine = Number(perSliceStat.measurements.get('static slicing')) / lines
 		sliceSize.lines.push(lines)
 		sliceSize.nonEmptyLines.push(nonEmptyLines)
-		sliceTimes.push(sliceTimePerLine)
 		sliceSize.characters.push(output.length)
 		const nonWhitespace = withoutWhitespace(output).length
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace)
@@ -179,6 +177,12 @@ export async function summarizeSlicerStats(
 			}
 			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false))
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
+
+			const sliceTime = Number(perSliceStat.measurements.get('static slicing'))
+			sliceTimes.push({
+				normalized: sliceTime / numberOfNormalizedTokensNoComments,
+				raw:        sliceTime / numberOfRTokensNoComments
+			})
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
 			console.error(`      Code: ${output}\n`)
@@ -206,8 +210,11 @@ export async function summarizeSlicerStats(
 			timesHitThreshold,
 			reduction:          summarizeReductions(reductions),
 			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
-			sliceTimePerLine:   summarizeMeasurement(sliceTimes),
-			sliceSize:          {
+			sliceTimePerToken:  {
+				raw:        summarizeMeasurement(sliceTimes.map(t => t.raw)),
+				normalized: summarizeMeasurement(sliceTimes.map(t => t.normalized)),
+			},
+			sliceSize: {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:                        summarizeMeasurement(sliceSize.characters),

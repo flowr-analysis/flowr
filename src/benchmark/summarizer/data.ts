@@ -42,13 +42,18 @@ export interface Reduction<T = number> {
 	numberOfDataflowNodes:           T
 }
 
+export interface TimePerToken<T = SummarizedMeasurement> {
+	raw:        T,
+	normalized: T
+}
+
 export interface SummarizedPerSliceStats {
 	/** number of total slicing calls */
 	numberOfSlices:     number
 	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
 	sliceCriteriaSizes: SummarizedMeasurement
 	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
-	sliceTimePerLine:   SummarizedMeasurement
+	sliceTimePerToken:  TimePerToken
 	reduction:          Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
 	reductionNoFluff:   Reduction<SummarizedMeasurement>
@@ -64,7 +69,7 @@ export interface UltimateSlicerStats {
 	totalSlices:          number
 	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
 	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
-	sliceTimePerLine:     SummarizedMeasurement
+	sliceTimePerToken:    TimePerToken
 	/** sum */
 	failedToRepParse:     number
 	/** sum */

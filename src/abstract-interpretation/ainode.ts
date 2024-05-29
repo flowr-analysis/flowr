@@ -31,14 +31,21 @@ export const enum RegisterBehavior {
 	Merge
 }
 
+function nodeIdToString(id: NodeId): NodeId<string> {
+	if(typeof id === 'string') {
+		return id
+	}
+	return String(id)
+}
+
 export class AINodeStore implements Iterable<AINode> {
-	private readonly map: Map<NodeId, AINode>
+	private readonly map: Map<NodeId<string>, AINode>
 
 	private constructor(content: AINode[] | AINode | undefined = undefined, private readonly parent: AINodeStore | undefined = undefined) {
 		if(Array.isArray(content)) {
-			this.map = new Map(content.map(node => [node.nodeId, node]))
+			this.map = new Map(content.map(node => [nodeIdToString(node.nodeId), node]))
 		} else if(content !== undefined) {
-			this.map = new Map([[content.nodeId, content]])
+			this.map = new Map([[nodeIdToString(content.nodeId), content]])
 		} else if(content === undefined) {
 			this.map = new Map()
 		} else {
@@ -59,14 +66,16 @@ export class AINodeStore implements Iterable<AINode> {
 	}
 
 	has(id: NodeId): boolean {
-		return this.map.has(id) || (this.parent?.has(id) ?? false)
+		const stringId = nodeIdToString(id)
+		return this.map.has(stringId) || (this.parent?.has(stringId) ?? false)
 	}
 
 	get(id: NodeId | undefined): AINode | undefined {
 		if(id === undefined) {
 			return undefined
 		}
-		return this.map.get(id) ?? this.parent?.get(id)
+		const stringId = nodeIdToString(id)
+		return this.map.get(stringId) ?? this.parent?.get(stringId)
 	}
 
 	get size(): number {
@@ -84,14 +93,14 @@ export class AINodeStore implements Iterable<AINode> {
 				case RegisterBehavior.Overwrite:
 					// Even if a parent contains the node, we will set it in the top store, so
 					// outer scopes are not affected by inner scopes
-					this.map.set(node.nodeId, node)
+					this.map.set(nodeIdToString(node.nodeId), node)
 					break
 				case RegisterBehavior.Ignore:
 					break
 				case RegisterBehavior.Fail:
 					return guard(existing === node, `Node with ID ${node.nodeId} already exists in the store`)
 				case RegisterBehavior.Merge: {
-					const existing = this.map.get(node.nodeId)
+					const existing = this.map.get(nodeIdToString(node.nodeId))
 					guard(existing !== undefined, `Node with ID ${node.nodeId} should exist`)
 					this.register(AINode.copy(node, { domain: unifyDomains([existing.domain, node.domain]) }), RegisterBehavior.Overwrite)
 					break
@@ -99,7 +108,7 @@ export class AINodeStore implements Iterable<AINode> {
 				default: assertUnreachable(behavior)
 			}
 		} else {
-			this.map.set(node.nodeId, node)
+			this.map.set(nodeIdToString(node.nodeId), node)
 		}
 	}
 

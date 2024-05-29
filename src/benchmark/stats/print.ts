@@ -135,7 +135,9 @@ Dataflow:
   Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}`
+  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}
+  Dataflow time per token:    ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.dataflowTimePerToken.normalized)}
+  Dataflow time per R token:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.dataflowTimePerToken.raw)}`
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
@@ -177,7 +179,9 @@ Dataflow:
   Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
+  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
+  Dataflow time per token:    ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
+  Dataflow time per R token:  ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}`
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {

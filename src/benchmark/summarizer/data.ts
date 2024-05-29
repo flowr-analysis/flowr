@@ -49,16 +49,17 @@ export interface TimePerToken<T = SummarizedMeasurement> {
 
 export interface SummarizedPerSliceStats {
 	/** number of total slicing calls */
-	numberOfSlices:     number
+	numberOfSlices:       number
 	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
-	sliceCriteriaSizes: SummarizedMeasurement
-	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
-	sliceTimePerToken:  TimePerToken
-	reduction:          Reduction<SummarizedMeasurement>
+	sliceCriteriaSizes:   SummarizedMeasurement
+	measurements:         Map<PerSliceMeasurements, SummarizedMeasurement>
+	sliceTimePerToken:    TimePerToken
+	dataflowTimePerToken: TimePerToken
+	reduction:            Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:   Reduction<SummarizedMeasurement>
-	failedToRepParse:   number
-	timesHitThreshold:  number
+	reductionNoFluff:     Reduction<SummarizedMeasurement>
+	failedToRepParse:     number
+	timesHitThreshold:    number
 	sliceSize: {
 		[K in keyof SliceSizeCollection]: SummarizedMeasurement
 	}
@@ -70,6 +71,7 @@ export interface UltimateSlicerStats {
 	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
 	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
 	sliceTimePerToken:    TimePerToken
+	dataflowTimePerToken: TimePerToken
 	/** sum */
 	failedToRepParse:     number
 	/** sum */

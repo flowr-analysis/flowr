@@ -83,12 +83,14 @@ export async function summarizeSlicerStats(
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
 	}): Promise<Readonly<SummarizedSlicerStats>> {
 	const perSliceStats = stats.perSliceMeasurements
+	const dataflowTime = Number(stats.commonMeasurements.get('produce dataflow information'))
 
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 
 	const sliceTimes: TimePerToken<number>[] = []
+	const dataflowTimes: TimePerToken<number>[] = []
 	const reductions: Reduction<number | undefined>[] = []
 	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
@@ -180,8 +182,12 @@ export async function summarizeSlicerStats(
 
 			const sliceTime = Number(perSliceStat.measurements.get('static slicing'))
 			sliceTimes.push({
-				normalized: sliceTime / numberOfNormalizedTokensNoComments,
-				raw:        sliceTime / numberOfRTokensNoComments
+				raw:        sliceTime / numberOfRTokens,
+				normalized: sliceTime / numberOfNormalizedTokens
+			})
+			dataflowTimes.push({
+				raw:        dataflowTime / numberOfRTokens,
+				normalized: dataflowTime / numberOfNormalizedTokens
 			})
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
@@ -213,6 +219,10 @@ export async function summarizeSlicerStats(
 			sliceTimePerToken:  {
 				raw:        summarizeMeasurement(sliceTimes.map(t => t.raw)),
 				normalized: summarizeMeasurement(sliceTimes.map(t => t.normalized)),
+			},
+			dataflowTimePerToken: {
+				raw:        summarizeMeasurement(dataflowTimes.map(t => t.raw)),
+				normalized: summarizeMeasurement(dataflowTimes.map(t => t.normalized)),
 			},
 			sliceSize: {
 				lines:                             summarizeMeasurement(sliceSize.lines),

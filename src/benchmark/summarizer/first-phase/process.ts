@@ -88,6 +88,7 @@ export async function summarizeSlicerStats(
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 
+	const sliceTimes: number[] = []
 	const reductions: Reduction<number | undefined>[] = []
 	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
@@ -121,8 +122,10 @@ export async function summarizeSlicerStats(
 		const split = output.split('\n')
 		const lines = split.length
 		const nonEmptyLines = split.filter(l => l.trim().length > 0).length
+		const sliceTimePerLine = Number(perSliceStat.measurements.get('static slicing')) / lines
 		sliceSize.lines.push(lines)
 		sliceSize.nonEmptyLines.push(nonEmptyLines)
+		sliceTimes.push(sliceTimePerLine)
 		sliceSize.characters.push(output.length)
 		const nonWhitespace = withoutWhitespace(output).length
 		sliceSize.nonWhitespaceCharacters.push(nonWhitespace)
@@ -203,6 +206,7 @@ export async function summarizeSlicerStats(
 			timesHitThreshold,
 			reduction:          summarizeReductions(reductions),
 			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
+			sliceTimePerLine:   summarizeMeasurement(sliceTimes),
 			sliceSize:          {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),

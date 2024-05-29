@@ -48,6 +48,7 @@ export interface SummarizedPerSliceStats {
 	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
 	sliceCriteriaSizes: SummarizedMeasurement
 	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
+	sliceTimePerLine:   SummarizedMeasurement
 	reduction:          Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
 	reductionNoFluff:   Reduction<SummarizedMeasurement>
@@ -63,6 +64,7 @@ export interface UltimateSlicerStats {
 	totalSlices:          number
 	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
 	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
+	sliceTimePerLine:     SummarizedMeasurement
 	/** sum */
 	failedToRepParse:     number
 	/** sum */

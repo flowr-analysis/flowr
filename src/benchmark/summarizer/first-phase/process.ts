@@ -83,6 +83,7 @@ export async function summarizeSlicerStats(
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
 	}): Promise<Readonly<SummarizedSlicerStats>> {
 	const perSliceStats = stats.perSliceMeasurements
+	// TODO this is incorrect! this is the TOTAL dataflow time, and we're dividing it by the amount of tokens in THIS slice
 	const dataflowTime = Number(stats.commonMeasurements.get('produce dataflow information'))
 
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])

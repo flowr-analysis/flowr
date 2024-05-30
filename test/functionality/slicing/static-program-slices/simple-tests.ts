@@ -75,15 +75,6 @@ x`, {
 				assertSliced('Repeated named access and definition', shell, code, ['6@a'], 'a <- list(1,2)\na[[1]] = 2\na[[2]] = 3\ncat(a)')
 				assertSliced('Full redefinitions still apply', shell, code, ['8@a'], `a <- list(3,4)
 cat(a)`)
-				const code = `
-a <- list(1,2)
-a[[1]] = 2
-a[[2]] = 3
-b[[4]] = 5
-cat(a)
-a <- list(3,4)
-cat(a)
-`
 				assertSliced(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 					shell, code, ['6@a'], `a <- list(1,2)
 a[[1]] = 2
@@ -99,15 +90,6 @@ a`)
 				assertSliced('Repeated named access and definition', shell, codeB, ['6@a'], 'a <- list(a=1,b=2)\na$a = 2\na$b = 3\ncat(a)')
 				assertSliced('Full redefinitions still apply', shell, codeB, ['8@a'], `a <- list(a=3,b=4)
 cat(a)`)
-				const codeB = `
-a <- list(a=1,b=2)
-a$a = 2
-a$b = 3
-b[[4]] = 5
-cat(a)
-a <- list(a=3,b=4)
-cat(a)
-`
 				assertSliced(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
 					shell, codeB, ['6@a'], `a <- list(a=1,b=2)
 a$a = 2

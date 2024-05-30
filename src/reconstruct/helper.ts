@@ -3,8 +3,7 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import type { SourcePosition } from '../util/range'
-import {ReconstructionConfiguration} from "./reconstruct";
-//Is this deprecated?
+import {ReconstructionConfiguration} from "./reconstruct"
 
 export type Code = PrettyPrintLine[]
 export type Selection = ReadonlySet<NodeId>
@@ -65,6 +64,9 @@ export function merge(...snipbits: Code[]): Code {
 	//separate and group lineParts by lines
 	for(const code of snipbits) {
 		for(const line of code) {
+			if(line === undefined) {
+				continue
+			}
 			for(const part of line.linePart) {
 				const lineNumber = part.loc[0]
 				if(buckets[lineNumber] === undefined) {	//may be necessary as empty elements count as undefined and we don't want to reassign filled buckets

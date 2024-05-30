@@ -2,22 +2,23 @@ import { assert } from 'chai'
 import type { Code, PrettyPrintLinePart } from '../../../../src/reconstruct/helper'
 import { plain, merge, prettyPrintCodeToString, prettyPrintPartToString, plainSplit } from '../../../../src/reconstruct/helper'
 import { jsonReplacer } from '../../../../src/util/json'
+import { SourcePosition } from '../../../../src/util/range'
 
 describe('Functions Reconstruct', () => {
 	describe('plain', () => {
 		function positive(input: string, line: number, column: number, expected: Code) {
 			it(`${input} for ${line}:${column}`, () => {
-				const result:Code = plain(input, { line,column })
+				const result:Code = plain(input, [line,column]  )
 				assert.deepStrictEqual(result,expected)
 			})
 		}
 
 		for(const testCase of [
-			{ input: 'Hello', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: { line: 1, column: 1 } }],indent: 0 }] },
-			{ input: 'Hello World', line: 4, column: 3, expected: [{ linePart: [{ part: 'Hello World', loc: { line: 4, column: 3 } }],indent: 0 }] },
-			{ input: 'Hello\nWorld', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: { line: 1, column: 1 } },{ part: 'World', loc: { line: 2, column: 1 } }],indent: 0 }] },
-			{ input: 'Hello\nWorld', line: 3, column: 4, expected: [{ linePart: [{ part: 'Hello', loc: { line: 3, column: 4 } },{ part: 'World', loc: { line: 4, column: 4 } }],indent: 0 }] },
-			{ input: 'Hello\n World\n24', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: { line: 1, column: 1 } },{ part: ' World', loc: { line: 2, column: 1 } },{ part: '24', loc: { line: 3, column: 1 } }],indent: 0 }] }
+			{ input: 'Hello', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc:[1, 1] }],indent: 0 }] as Code},
+			{ input: 'Hello World', line: 4, column: 3, expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code},
+			{ input: 'Hello\nWorld', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [2, 1] }],indent: 0 }] as Code},
+			{ input: 'Hello\nWorld', line: 3, column: 4, expected: [{ linePart: [{ part: 'Hello', loc: [3, 4] },{ part: 'World', loc: [4, 4] }],indent: 0 }] as Code},
+			{ input: 'Hello\n World\n24', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: ' World', loc: [2, 1] },{ part: '24', loc: [3, 1] }],indent: 0 }] as Code }
 		]) {
 			positive(testCase.input, testCase.line, testCase.column, testCase.expected)
 		}
@@ -31,39 +32,41 @@ describe('Functions Reconstruct', () => {
 		}
 		describe('single line merge', () => {
 			for(const testCase of [
-				{ snipbit: [[{ linePart: [{ part: 'Hello World', loc: { line: 4, column: 3 } }],indent: 0 }]], expected: [{ linePart: [{ part: 'Hello World', loc: { line: 4, column: 3 } }],indent: 0 }] },
-				{ snipbit: [[{ linePart: [{ part: 'Hello', loc: { line: 1, column: 1 } },{ part: 'World', loc: { line: 1, column: 1 } }],indent: 0 }]], expected: [{ linePart: [{ part: 'Hello', loc: { line: 1, column: 1 } },{ part: 'World', loc: { line: 1, column: 1 } }],indent: 0 }] }
+				{ snipbit: [[{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code},
+				{ snipbit: [[{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }] as Code}
 			]) {
 				positive(testCase.snipbit, testCase.expected)
 			}
 		})
 		describe('two lines merge', () => {
+			const helloLocation = [0, 0] as SourcePosition
+			const worldLocation = [1, 0] as SourcePosition
+			const numLocation = [1, 7] as SourcePosition
 			const testCases = [
-				//Case 1 (in order)
 				{
-					snipbit:  [[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }],[{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }], [{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]
 				},
 				{
-					snipbit:  [[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }, { part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'Hello', loc: helloLocation }, { part: 'World', loc: worldLocation }], indent: 0 }]] as [Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]
 				},
 				{
-					snipbit:  [[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }, { part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }],[{ linePart: [{ part: '24', loc: { line: 1, column: 7 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }, { part: '24', loc: { line: 1, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'Hello', loc: helloLocation }, { part: 'World', loc: worldLocation }], indent: 0 }],[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }, { part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 2 (out of order)
 				{
-					snipbit:  [[{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }],[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }],[{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]
 				},
 				{
-					snipbit:  [[{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }, { part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'World', loc: worldLocation }, { part: 'Hello', loc: helloLocation }], indent: 0 }]] as [Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]
 				},
 				{
-					snipbit:  [[{ linePart: [{ part: '24', loc: { line: 1, column: 7 } }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }, { part: 'World', loc: { line: 1, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 0 } }, { part: '24', loc: { line: 1, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: helloLocation }, { part: 'World', loc: worldLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }, { part: '24', loc: numLocation }], indent: 0 }]
 				}
 			]
 			for(const testCase of testCases) {
@@ -71,36 +74,39 @@ describe('Functions Reconstruct', () => {
 			}
 		})
 		describe('three lines merge', () => {
+			const helloLocation = [0, 0] as SourcePosition
+			const worldLocation = [1, 7] as SourcePosition
+			const numLocation = [2, 7] as SourcePosition
 			const testCases = [
 				//Case 1 (in order) 123
 				{
-					snipbit:  [[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }, { part: 'World', loc: { line: 1, column: 7 } }], indent: 0 }],[{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'Hello', loc: helloLocation }, { part: 'World', loc: worldLocation }], indent: 0 }],[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 2 (2nd Line out of order) 213
 				{
-					snipbit:  [[{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }, { part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }],[{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'World', loc: worldLocation }, { part: 'Hello', loc: helloLocation }], indent: 0 }],[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]] as [Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 3 (3rd Line out of order) 231
 				{
-					snipbit:  [[{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 }],[{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }],[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }]] as [Code, Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 4 (reverse order) 321
 				{
-					snipbit:  [[{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }],[{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }],[{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }]] as [Code, Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 5 () 312
 				{
-					snipbit:  [[{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }], [{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }], [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }], [{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]] as [Code, Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				},
 				//Case 6 () 132
 				{
-					snipbit:  [[{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 }], [{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }], [{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 }]],
-					expected: [{ linePart: [{ part: 'Hello', loc: { line: 0, column: 0 } }], indent: 0 },{ linePart: [{ part: 'World', loc: { line: 1, column: 7 } }], indent: 0 },{ linePart: [{ part: '24', loc: { line: 2, column: 7 } }], indent: 0 }]
+					snipbit:  [[{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 }], [{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }], [{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 }]] as [Code, Code, Code],
+					expected: [{ linePart: [{ part: 'Hello', loc: helloLocation }], indent: 0 },{ linePart: [{ part: 'World', loc: worldLocation }], indent: 0 },{ linePart: [{ part: '24', loc: numLocation }], indent: 0 }]
 				}
 			]
 			for(const testCase of testCases) {
@@ -112,17 +118,17 @@ describe('Functions Reconstruct', () => {
 				const testCase = [] as Code[]
 				const partPool = ['Hello', 'World', 'FlowR', 'Is', 'Incredible']
 				for(let i = 0; i < lines; i++) {
-					const line: Code = [{ linePart: [{ part: partPool[Math.random() % 5], loc: { line: Math.random() % lines, column: Math.random() % 15 } }], indent: 0 }]
+					const line: Code = [{ linePart: [{ part: partPool[Math.random() % 5], loc: [Math.random() % lines, Math.random() % 15] }], indent: 0 }]
 					testCase.push(line)
 				}
 				return testCase
 			}
 			function checkTestCase(code: Code): boolean {
-				let currentLoc = { line: 0, column: 0 }
+				let currentLoc = [0, 0] as SourcePosition
 				for(const line of code) {
 					for(const part of line.linePart) {
 						const nextLoc = part.loc
-						if(currentLoc.line <= nextLoc.line && currentLoc.column <= nextLoc.column) {
+						if(currentLoc[0] <= nextLoc[0] && currentLoc[1] <= nextLoc[1]) {
 							currentLoc = nextLoc
 						} else {
 							return false
@@ -151,11 +157,11 @@ describe('Functions Reconstruct', () => {
 			})
 		}
 		for(const testCase of [
-			{ input: [{ part: 'Hello', loc: { line: 0, column: 0 } }],expected: 'Hello',msg: 'No Spaces anywhere', columnOffset: 0 },
-			{ input: [{ part: 'Hello World', loc: { line: 0, column: 0 } }],expected: 'Hello World',msg: 'Spaces get preserved', columnOffset: 0 },
-			{ input: [{ part: 'Hello', loc: { line: 0, column: 0 } }, { part: 'World', loc: { line: 0, column: 6 } }],expected: 'Hello World',msg: 'Spaces get added within the string', columnOffset: 0 },
-			{ input: [{ part: 'Hello', loc: { line: 0, column: 6 } }],expected: '      Hello',msg: 'Spaces get added at the beginning', columnOffset: 0 },
-			{ input: [{ part: 'World', loc: { line: 0, column: 6 } },{ part: 'Hello', loc: { line: 0, column: 0 } }],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order', columnOffset: 0 },
+			{ input: [{ part: 'Hello', loc: [0, 0] }] as [PrettyPrintLinePart],expected: 'Hello',msg: 'No Spaces anywhere', columnOffset: 0 },
+			{ input: [{ part: 'Hello World', loc: [0, 0] }] as [PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get preserved', columnOffset: 0 },
+			{ input: [{ part: 'Hello', loc: [0, 0] }, { part: 'World', loc: [0, 6] }] as [PrettyPrintLinePart, PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get added within the string', columnOffset: 0 },
+			{ input: [{ part: 'Hello', loc: [0, 6] }] as [PrettyPrintLinePart],expected: '      Hello',msg: 'Spaces get added at the beginning', columnOffset: 0 },
+			{ input: [{ part: 'World', loc: [0, 6] },{ part: 'Hello', loc: [0, 0] }] as [PrettyPrintLinePart, PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order', columnOffset: 0 },
 		]) {
 			positive(testCase.input, testCase.expected, testCase.msg, testCase.columnOffset)
 		}
@@ -163,7 +169,7 @@ describe('Functions Reconstruct', () => {
 	describe('semicolon reconstruction', () => {
 		function positive(input: string, expected: string, msg: string) {
 			it(`Add semicolons to ${JSON.stringify(input, jsonReplacer)}`, () => {
-				const convertedInput = plainSplit(input, { line: 1, column: 1 })
+				const convertedInput = plainSplit(input, [1, 1])
 				const out = prettyPrintCodeToString(convertedInput)
 				assert.strictEqual(out, expected, msg)
 			})

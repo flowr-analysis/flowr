@@ -86,23 +86,24 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n), n.lhs.location?.start ?? n.location.start)
+		const loc = (n.lhs.location? getRangeStart(n.lhs.location) : getRangeStart(n.location))
+		return plain(getLexeme(n), loc)
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-	const start = loop.info.fullRange?.start //may be unnesseccary
+	const start = getRangeStart(loop.info.fullRange) //may be unnesseccary
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), start ?? loop.location.start)
+		return plain(getLexeme(loop), start ?? getRangeStart(loop.location))
 	}
 	if(isSelected(configuration, loop.body)) {
 		return merge(body)
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
-	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
-	vectorLocation.column -= 1 //somehow the vector is consistently one space to late
+	const vectorLocation: SourcePosition = loop.vector.location? getRangeStart(loop.vector.location) : vector[0].linePart[0].loc
+	vectorLocation[1] -= 1 //somehow the vector is consistently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
 
 	if(variable.length === 0 && vector.length === 0 && body.length === 0) {
@@ -202,59 +203,16 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		//console.log('we have an else-body')
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
-		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: { line: elsePos.line, column: elsePos.column + 2 } }], indent: 0 }] : []
+		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: [elsePos[0], elsePos[1] + 2] as SourcePosition }], indent: 0 }] : ([] as Code)
 		const elseOffset = when.length === 0 ? 4 : 0
 		out = merge(
 			out,
 			fakeWhenBlock,
-			[{ linePart: [{ part: 'else', loc: { line: elsePos.line, column: elsePos.column + 2 +elseOffset } }], indent: 0 }], //may have to change the location
+			[{ linePart: [{ part: 'else', loc: [elsePos[0], elsePos[1] + 2 +elseOffset] }], indent: 0 }], //may have to change the location
 			otherwise
 		)
- /*function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, then: Code, otherwise: Code | undefined, config: ReconstructionConfiguration): Code {
-	otherwise ??= []
-	if(then.length === 0 && otherwise.length === 0) {
-		if(isSelected(config, ifThenElse)) {
-			return [{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }]
-		} else if(condition.length > 0) {
-			return condition
-		} else {
-			return []
-		}
-	} else if(otherwise.length === 0) {
-		if(isSelected(config, ifThenElse)) {
-			return reconstructBodyWithHeader(
-				{ line: `if(${getLexeme(ifThenElse.condition)})`, indent: 0 },
-				then, '{}'
-			)
-		} else {
-			return then
-		}
-	} else if(then.length === 0) {
-		if(isSelected(config, ifThenElse)) {
-			return reconstructBodyWithHeader(
-				{ line: `if(${getLexeme(ifThenElse.condition)}) { } else`, indent: 0 },
-				then, '{}'
-			)
-		} else {
-			return otherwise
-		}
-	} else {
-		const thenRemainder = indentBy(then.slice(1), 1)
-		if(thenRemainder.length > 0) {
-			if(!thenRemainder[thenRemainder.length - 1].line.trim().endsWith('else')) {
-				thenRemainder[thenRemainder.length - 1].line += ' else '
-			}
-		}
-		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) ${then[0].line} ${then.length === 1 ? 'else' : ''}`, indent: 0 },
-			...thenRemainder,
-			{ line: `${otherwise[0].line}`, indent: 0 },
-			...indentBy(otherwise.splice(1), 1)
-		]
 	}
-	*/
 	return out
-	}
 }
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
@@ -339,34 +297,11 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 //what are we doing here??
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
-	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
+	if(!isSelected(config, definition) && functionParameters.every(p => p.length === 0)) {
 		return merge(body)
 	}
-	// if a definition is not selected, we only use the body - slicing will always select the definition
-	if(functionParameters.every(p => p.length === 0)) {
-		const empty = body === undefined || body.length === 0
-		const selected = isSelected(config, definition)
-		if(empty && selected) { // give function stub
-			return plain(`function(${reconstructParameters(definition.parameters).join(', ')}) { }`)
-		} else if(!selected) { // do not require function
-			return body
-		}
-	}
-	const parameters = reconstructParameters(definition.parameters).join(', ')
-	if(body.length <= 1) {
-		// 'inline'
-		const bodyStr = body.length === 0 ? '{ }' : `${body[0].line}`
-		// we keep the braces in every case because I do not like no-brace functions
-		return [{ line: `function(${parameters}) ${bodyStr}`, indent: 0 }]
-	} else {
-		// 'block'
-		return [
-			{ line: `function(${parameters}) ${body[0].line}`, indent: 0 },
-			...body.slice(1),
-		]
-	}
 
-	if(isSelected(configuration, definition.body)) {
+	if(isSelected(config, definition.body)) {
 		const out = merge(body)
 		const h = out[out.length - 1].linePart
 		if(h[h.length - 1].part === ';') {
@@ -375,7 +310,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 		return out
 	}
 
-	const startPos = definition.location.start
+	const startPos = getRangeStart(definition.location)
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
@@ -545,5 +480,4 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`)
 
 	return removeOuterExpressionListIfApplicable(result, linesWithAutoSelected.size)
-}
 }

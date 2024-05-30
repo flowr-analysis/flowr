@@ -5,6 +5,7 @@ import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
 import { guard } from '../../../util/assert'
 import type {
+	BenchmarkMemoryMeasurement,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../../stats/stats'
@@ -69,7 +70,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
 			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
-			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges))
+			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
+			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject))
 		}
 	}
 }
@@ -103,7 +105,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),
 			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
-			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges))
+			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
+			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject))
 		}
 	}
 }
@@ -115,6 +118,10 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 			input:              got.summarize.input,
 			request:            got.summarize.request,
 			dataflow:           got.summarize.dataflow,
+			memory: 		        new Map(
+				(got.summarize.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
+					.map(([k, v]) => [k, v])
+			),
 			commonMeasurements: new Map(
 				(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {

@@ -26,7 +26,6 @@ type Mark = MarkVertex | MarkEdge
 interface MermaidGraph {
 	nodeLines:           string[]
 	edgeLines:           string[]
-	hasBuiltIn:          boolean
 	includeEnvironments: boolean
 	mark:                ReadonlySet<Mark> | undefined
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
@@ -184,9 +183,6 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			if(edgeTypes.has('CD-True')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
-			if(target === BuiltIn) {
-				mermaid.hasBuiltIn = true
-			}
 		}
 	}
 	if(info.tag === 'function-definition') {
@@ -210,16 +206,14 @@ function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
 	{ graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>() }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments }
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments }
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
 			vertexToMermaid(info, mermaid, id, idPrefix, mark)
 		}
 	}
-	if(mermaid.hasBuiltIn) {
-		mermaid.nodeLines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)
-	}
+
 	return mermaid
 }
 

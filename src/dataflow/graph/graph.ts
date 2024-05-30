@@ -15,6 +15,7 @@ import type { REnvironmentInformation } from '../environments/environment'
 import { initializeCleanEnvironments } from '../environments/environment'
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { cloneEnvironmentInformation } from '../environments/clone'
+import { BuiltIn } from '../environments/built-in';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
@@ -234,12 +235,13 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
+	* Please note, that this will never make edges to {@link BuiltIn} as they are not part of the graph.
    */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
 		const { type, ...rest } = edgeInfo
 
-		if(fromId === toId) {
+		if(fromId === toId || toId === BuiltIn) {
 			return this
 		}
 

@@ -33,8 +33,8 @@ cat(x)
 		assertSliced('While-Loop', shell, `
 print(x)
     `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\nx', {
-				expectedOutput: '[1] 1024'
-			})
+			expectedOutput: '[1] 1024'
+		})
 		assertSliced(label('While-Loop', ['name-normal', 'while-loop', 'newlines', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1

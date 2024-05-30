@@ -4,8 +4,8 @@ import { PipelineStepStage } from '../../pipeline-step'
 import type { DeepReadonly } from 'ts-essentials'
 import type { SliceResult } from '../../../../slicing/static/slicer-types'
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import {reconstructToCode} from "../../../../reconstruct/main"
-import {AutoSelectPredicate} from "../../../../reconstruct/helper"
+import { reconstructToCode } from '../../../../reconstruct/main'
+import type { AutoSelectPredicate } from '../../../../reconstruct/helper'
 
 export interface ReconstructRequiredInput {
 	autoSelectIf?: AutoSelectPredicate

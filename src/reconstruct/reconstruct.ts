@@ -30,7 +30,8 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { getRangeStart, SourcePosition, SourceRange } from '../util/range'
+import { getRangeStart } from '../util/range'
+import type { SourcePosition, SourceRange } from '../util/range'
 import { autoSelectLibrary, getIndentString, indentBy, isSelected, merge, plain, prettyPrintCodeToString, prettyPrintPartToString } from './helper'
 import type { AutoSelectPredicate, Code, PrettyPrintLine, PrettyPrintLinePart } from './helper'
 
@@ -132,31 +133,9 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 //add heuristic to select needed semicollons
 //maybe if expr 1,5 => select next semicollon
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
-	let out: Code[] = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
+	const out: Code[] = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
 		.map(t => plain(t.lexeme as string, getRangeStart((t.location? t.location : [0, 0]) as SourceRange)) ?? ([] as Code[])).filter(t => !(t === undefined)) as Code[]
 	return out
-}
-
-function reconstructBodyWithHeader(header: PrettyPrintLine, body: Code, onEmpty: string): Code {
-	const h = body[body.length - 1].linePart
-	if(body.length === 0) {
-		return [{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)}${onEmpty}`, loc: header.linePart[0].loc }], indent: header.indent }]
-	} else if(body.length === 1) {
-		return [
-			{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)} ${body[0].linePart}`, loc: header.linePart[0].loc }], indent: header.indent }
-		]
-	} else if(body[0].linePart[0].part === '{' && h[h.length - 1].part === '}') {
-		return [
-			{ linePart: [{ part: `${prettyPrintPartToString(header.linePart, 0)} {`, loc: header.linePart[0].loc }], indent: header.indent },
-			...body.slice(1, body.length - 1),
-			{ linePart: [{ part: '}', loc: header.linePart[header.linePart.length - 1].loc }], indent: header.indent }
-		]
-	} else {
-		return [
-			header,
-			...indentBy(body, 1)
-		]
-	}
 }
 
 
@@ -169,7 +148,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(loop)
 		return merge(
-			[{linePart: [{part: 'repeat', loc: getRangeStart(loop.location)}], indent: 0}],
+			[{ linePart: [{ part: 'repeat', loc: getRangeStart(loop.location) }], indent: 0 }],
 			body,
 			...additionalTokens
 		)
@@ -376,7 +355,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 		guard(functionName.length > 0, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
 		const last: PrettyPrintLinePart[] = functionName[functionName.length - 1].linePart
 		if(call.flavor === 'unnamed' && !prettyPrintPartToString(last, 0).endsWith(')')) {
-			functionName[0].linePart = [{ part: `(${prettyPrintPartToString(functionName[0].linePart, 0)}`, loc: functionName[0].linePart[0].loc}]
+			functionName[0].linePart = [{ part: `(${prettyPrintPartToString(functionName[0].linePart, 0)}`, loc: functionName[0].linePart[0].loc }]
 			last.push({ part: ')', loc: last[last.length - 1].loc })
 		}
 

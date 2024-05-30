@@ -1,13 +1,14 @@
-import {reconstructLogger, ReconstructionResult, reconstructAstFolds } from './reconstruct'
+import { reconstructLogger, reconstructAstFolds } from './reconstruct'
+import type { ReconstructionResult } from './reconstruct'
 import { prettyPrintCodeToString, removeOuterExpressionListIfApplicable , autoSelectLibrary } from './helper'
 
 import type { AutoSelectPredicate , Selection } from './helper'
 
 
 import { LogLevel } from '../util/log'
-import {RNode} from "../r-bridge/lang-4.x/ast/model/model";
-import {NormalizedAst, ParentInformation} from "../r-bridge/lang-4.x/ast/model/processing/decorate";
-import {foldAstStateful} from "../r-bridge/lang-4.x/ast/model/processing/stateful-fold";
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 
 
 

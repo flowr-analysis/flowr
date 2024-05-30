@@ -2,7 +2,7 @@ import { assert } from 'chai'
 import type { Code, PrettyPrintLinePart } from '../../../../src/reconstruct/helper'
 import { plain, merge, prettyPrintCodeToString, prettyPrintPartToString, plainSplit } from '../../../../src/reconstruct/helper'
 import { jsonReplacer } from '../../../../src/util/json'
-import { SourcePosition } from '../../../../src/util/range'
+import type { SourcePosition } from '../../../../src/util/range'
 
 describe('Functions Reconstruct', () => {
 	describe('plain', () => {
@@ -14,10 +14,10 @@ describe('Functions Reconstruct', () => {
 		}
 
 		for(const testCase of [
-			{ input: 'Hello', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc:[1, 1] }],indent: 0 }] as Code},
-			{ input: 'Hello World', line: 4, column: 3, expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code},
-			{ input: 'Hello\nWorld', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [2, 1] }],indent: 0 }] as Code},
-			{ input: 'Hello\nWorld', line: 3, column: 4, expected: [{ linePart: [{ part: 'Hello', loc: [3, 4] },{ part: 'World', loc: [4, 4] }],indent: 0 }] as Code},
+			{ input: 'Hello', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] }],indent: 0 }] as Code },
+			{ input: 'Hello World', line: 4, column: 3, expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code },
+			{ input: 'Hello\nWorld', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [2, 1] }],indent: 0 }] as Code },
+			{ input: 'Hello\nWorld', line: 3, column: 4, expected: [{ linePart: [{ part: 'Hello', loc: [3, 4] },{ part: 'World', loc: [4, 4] }],indent: 0 }] as Code },
 			{ input: 'Hello\n World\n24', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: ' World', loc: [2, 1] },{ part: '24', loc: [3, 1] }],indent: 0 }] as Code }
 		]) {
 			positive(testCase.input, testCase.line, testCase.column, testCase.expected)
@@ -32,8 +32,8 @@ describe('Functions Reconstruct', () => {
 		}
 		describe('single line merge', () => {
 			for(const testCase of [
-				{ snipbit: [[{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code},
-				{ snipbit: [[{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }] as Code}
+				{ snipbit: [[{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello World', loc: [4, 3] }],indent: 0 }] as Code },
+				{ snipbit: [[{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }]] as [Code], expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: 'World', loc: [1, 1] }],indent: 0 }] as Code }
 			]) {
 				positive(testCase.snipbit, testCase.expected)
 			}

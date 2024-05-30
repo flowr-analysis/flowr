@@ -3,7 +3,7 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import type { SourcePosition } from '../util/range'
-import {ReconstructionConfiguration} from "./reconstruct"
+import type { ReconstructionConfiguration } from './reconstruct'
 
 export type Code = PrettyPrintLine[]
 export type Selection = ReadonlySet<NodeId>

@@ -27,10 +27,10 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 		'file-id': got['file-id'],
 		'run-num': got['run-num'],
 		stats:     {
-			input:              got.stats.input,
-			request:            got.stats.request,
-			dataflow:           got.stats.dataflow,
-			memory:             new Map(
+			input:    got.stats.input,
+			request:  got.stats.request,
+			dataflow: got.stats.dataflow,
+			memory:   new Map(
 				(got.stats.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
 					.map(([k, v]) => [k, v])
 			),

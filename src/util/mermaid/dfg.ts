@@ -14,7 +14,6 @@ import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex'
 import { VertexType } from '../../dataflow/graph/vertex'
 import type { IEnvironment } from '../../dataflow/environments/environment'
 import { BuiltInEnvironment } from '../../dataflow/environments/environment'
-import { BuiltIn } from '../../dataflow/environments/built-in'
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 

@@ -33,7 +33,7 @@ import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
-import { getSizeOfDfGraph } from './stats/size-of';
+import { getSizeOfDfGraph } from './stats/size-of'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -262,10 +262,10 @@ export class BenchmarkSlicer {
 		)
 		const memoryEnd = process.memoryUsage()
 		this.deltas.set(keyToMeasure, {
-			heap: memoryEnd.heapUsed - memoryInit.heapUsed,
-			rss:  memoryEnd.rss - memoryInit.rss,
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
 			external: memoryEnd.external - memoryInit.external,
-			buffs: memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		})
 		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>
 	}

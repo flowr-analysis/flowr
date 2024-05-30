@@ -2,7 +2,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/crit
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { ReconstructionResult } from '../../reconstruct/reconstruct'
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever'
-import { MergeableRecord } from '../../util/objects';
+import type { MergeableRecord } from '../../util/objects'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]

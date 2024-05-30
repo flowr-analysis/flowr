@@ -15,7 +15,7 @@ import type { REnvironmentInformation } from '../environments/environment'
 import { initializeCleanEnvironments } from '../environments/environment'
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { cloneEnvironmentInformation } from '../environments/clone'
-import { BuiltIn } from '../environments/built-in';
+import { BuiltIn } from '../environments/built-in'
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 

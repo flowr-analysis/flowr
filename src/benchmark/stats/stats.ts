@@ -48,15 +48,15 @@ export interface SlicerStatsDataflow<T = number> {
  * Please note, that these measurement can be negative as there is no guarantee that the memory usage will increase
  * due to, e.g., garbage collection.
 */
-export interface BenchmarkMemoryMeasurement extends MergeableRecord {
+export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord {
 	/* used heap memory delta as reported by the node process in bytes */
-	heap:     number
+	heap:     T
 	/* resident set size delta as reported by the node process in bytes */
-	rss:      number
+	rss:      T
 	/* external memory delta as reported by the node process in bytes */
-	external: number
+	external: T
 	/* (array) buffer memory delta as reported by the node process in bytes */
-	buffs:    number
+	buffs:    T
 }
 
 /**

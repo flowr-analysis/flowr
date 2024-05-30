@@ -2,7 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import type { ElapsedTime, PerSliceMeasurements } from './stats'
+import type { BenchmarkMemoryMeasurement, ElapsedTime, PerSliceMeasurements } from './stats'
 import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
 import { guard } from '../../util/assert'
 import type { SummarizedMeasurement } from '../../util/summarizer'
@@ -82,13 +82,14 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 
 const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
    
-// https://stackoverflow.com/a/39906526
-function convertNumberToNiceBytes(n: number){
+// based on https://stackoverflow.com/a/39906526
+function convertNumberToNiceBytes(x: number){
+  let n = Math.abs(x)
   let l = 0;
   while(n >= 1024 && ++l){
       n = n/1024;
   }
-  return(n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
+  return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
 }
 
 /**
@@ -148,6 +149,15 @@ Dataflow:
   Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`
 }
 
+
+function printMemory(mem: BenchmarkMemoryMeasurement<SummarizedMeasurement>): string {
+  return `        Heap:     ${formatSummarizedMeasure(mem.heap, convertNumberToNiceBytes)}
+        RSS:      ${formatSummarizedMeasure(mem.rss, convertNumberToNiceBytes)}
+        External: ${formatSummarizedMeasure(mem.external, convertNumberToNiceBytes)}
+        Buffers:  ${formatSummarizedMeasure(mem.buffs, convertNumberToNiceBytes)}`
+}
+
+
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
 	// Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
 	return `
@@ -186,7 +196,11 @@ Dataflow:
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, x => pad(convertNumberToNiceBytes(x)))}`
+  Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
+ 
+Memory Deltas:
+  ${[...stats.memory.entries()].map(([k, v]) => `${k}:\n${printMemory(v)}`).join('\n  ')}
+`
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {

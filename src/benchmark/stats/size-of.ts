@@ -2,7 +2,6 @@ import { BuiltInEnvironment, IEnvironment } from "../../dataflow/environments/en
 import { DataflowGraph } from "../../dataflow/graph/graph";
 import { DataflowGraphVertexInfo, VertexType } from "../../dataflow/graph/vertex";
 import { Identifier, IdentifierDefinition } from "../../dataflow/environments/identifier";
-import { BuiltInIdentifierProcessor } from "../../dataflow/environments/built-in";
 import sizeof from "object-sizeof";
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */

@@ -1,5 +1,6 @@
 import type { SummarizedMeasurement } from '../../util/summarizer'
 import type {
+	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
@@ -63,6 +64,7 @@ export interface UltimateSlicerStats {
 	totalSlices:          number
 	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
 	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
+	memory:					 Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement<SummarizedMeasurement>>
 	/** sum */
 	failedToRepParse:     number
 	/** sum */

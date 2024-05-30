@@ -17,6 +17,7 @@ import {
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
+	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => [])
 	const reductions: Reduction<SummarizedMeasurement>[] = []
 	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = []
 	const inputs: SlicerStatsInput[] = []
@@ -31,6 +32,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		}
 		for(const [k, v] of stat.perSliceMeasurements.measurements) {
 			perSliceMeasurements.get(k).push(v)
+		}
+		for(const [k, v] of stat.memory) {
+			memory.get(k).push(v)
 		}
 		reductions.push(stat.perSliceMeasurements.reduction)
 		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff)
@@ -49,6 +53,14 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		),
 		perSliceMeasurements: new Map(
 			[...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
+		),
+		memory:            new Map(
+			[...memory.entries()].map(([k, v]) => [k, {
+				heap:     summarizeMeasurement(v.map(m => m.heap)),
+				rss:      summarizeMeasurement(v.map(m => m.rss)),
+				external: summarizeMeasurement(v.map(m => m.external)),
+				buffs:    summarizeMeasurement(v.map(m => m.buffs))
+			}])
 		),
 		failedToRepParse,
 		timesHitThreshold,
@@ -76,6 +88,25 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	}
 }
 
+function summarizeMemoryMeasurements(measurements: Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement<SummarizedMeasurement>>[]): Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement<SummarizedMeasurement>> {
+	const result = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement<SummarizedMeasurement>[]>(() => [])
+	
+	for(const measurement of measurements) {
+		for(const [k, v] of measurement) {
+			result.get(k).push(v)
+		}
+	}
+	
+	return new Map(
+		[...result.entries()].map(([k, v]) => [k, {
+			heap:     summarizeSummarizedMeasurement(v.map(m => m.heap)),
+			rss:      summarizeSummarizedMeasurement(v.map(m => m.rss)),
+			external: summarizeSummarizedMeasurement(v.map(m => m.external)),
+			buffs:    summarizeSummarizedMeasurement(v.map(m => m.buffs))
+		}])
+	)
+}
+
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
@@ -83,7 +114,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		totalSlices:       Math.max(...stats.map(s => s.totalSlices)),
 		failedToRepParse:  Math.max(...stats.map(s => s.failedToRepParse)),
 		timesHitThreshold: Math.max(...stats.map(s => s.timesHitThreshold)),
-
+		memory:            summarizeMemoryMeasurements(stats.map(s => s.memory)),
 		// average out / summarize other measurements
 		commonMeasurements:   new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
 		perSliceMeasurements: new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
@@ -150,6 +181,7 @@ export function processNextUltimateSummary(line: Buffer, allSummarized: Ultimate
 		summarize: {
 			totalRequests:        got.summarize.totalRequests,
 			totalSlices:          got.summarize.totalSlices,
+			memory:               new Map(got.summarize.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement<SummarizedMeasurement>][]),
 			commonMeasurements:   new Map(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
 			perSliceMeasurements: new Map(got.summarize.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
 			failedToRepParse:     got.summarize.failedToRepParse,

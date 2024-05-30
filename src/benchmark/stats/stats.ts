@@ -2,6 +2,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/crit
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { ReconstructionResult } from '../../reconstruct/reconstruct'
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever'
+import type { MergeableRecord } from '../../util/objects'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
@@ -38,6 +39,24 @@ export interface SlicerStatsDataflow<T = number> {
 	numberOfEdges:               T
 	numberOfCalls:               T
 	numberOfFunctionDefinitions: T
+	/* size of object in bytes as measured by v8 serialization */
+	sizeOfObject:                T
+}
+
+
+/**
+ * Please note, that these measurement can be negative as there is no guarantee that the memory usage will increase
+ * due to, e.g., garbage collection.
+*/
+export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord {
+	/* used heap memory delta as reported by the node process in bytes */
+	heap:     T
+	/* resident set size delta as reported by the node process in bytes */
+	rss:      T
+	/* external memory delta as reported by the node process in bytes */
+	external: T
+	/* (array) buffer memory delta as reported by the node process in bytes */
+	buffs:    T
 }
 
 /**
@@ -46,6 +65,7 @@ export interface SlicerStatsDataflow<T = number> {
 export interface SlicerStats {
 	commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>
 	perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
+	memory:               Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
 	request:              RParseRequestFromFile | RParseRequestFromText
 	input:                SlicerStatsInput
 	dataflow:             SlicerStatsDataflow

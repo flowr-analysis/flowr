@@ -1,9 +1,9 @@
 import { BuiltInEnvironment, IEnvironment } from "../../dataflow/environments/environment";
 import { DataflowGraph } from "../../dataflow/graph/graph";
-import { DataflowGraphVertexInfo } from "../../dataflow/graph/vertex";
-import * as v8 from 'v8'
-import { jsonReplacer } from "../../util/json";
+import { DataflowGraphVertexInfo, VertexType } from "../../dataflow/graph/vertex";
 import { Identifier, IdentifierDefinition } from "../../dataflow/environments/identifier";
+import { BuiltInIdentifierProcessor } from "../../dataflow/environments/built-in";
+import sizeof from "object-sizeof";
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
 function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
@@ -17,10 +17,16 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
          memory: new Map<Identifier, IdentifierDefinition[]>()
       }
    }
+   
+   const memory = new Map<Identifier, IdentifierDefinition[]>()
+   for(const [k, v] of env.memory) {
+      memory.set(k, v.filter(v => !v.kind.startsWith('built-in') && !('processor' in v)))
+   }
+   
    return {
       id: env.id,
       parent: killBuiltInEnv(env.parent),
-      memory: env.memory
+      memory
    }
 }
 
@@ -29,16 +35,37 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
    const verts = []
    for(const [, v] of df.vertices(true)) {
       let vertex: DataflowGraphVertexInfo = v
-      if('environment' in v && v.environment !== undefined) {
+      if(vertex.environment) {
          vertex = {
-            ...v,
+            ...vertex,
             environment: {
-               ...v.environment,
+               ...vertex.environment,
                current: killBuiltInEnv(v.environment.current)
             }
          } as DataflowGraphVertexInfo
       }
+      
+      if(vertex.tag === VertexType.FunctionDefinition) {
+         vertex = {
+            ...vertex,
+            subflow: {
+               ...vertex.subflow,
+               environment: {
+                  ...vertex.subflow.environment,
+                  current: killBuiltInEnv(vertex.subflow.environment.current)
+               }
+            }
+         } as DataflowGraphVertexInfo
+      }
+      
+      vertex = {
+         ...vertex,
+         /* shared anyway by using constants */
+         tag: 0 as unknown
+      } as DataflowGraphVertexInfo
+      
       verts.push(vertex)
    }
-   return v8.serialize([...verts, ...df.edges()]).byteLength
+   
+   return sizeof([...verts, ...df.edges()])
 }

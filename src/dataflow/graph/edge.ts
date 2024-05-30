@@ -2,7 +2,6 @@
  * An edge consist of:
  * - the target node (i.e., the variable or processing node),
  * - a type (if it is read or used in the context), and
- * - an attribute (if this edge exists for every program execution or if it is only one possible execution path).
  */
 export interface DataflowGraphEdge {
 	// currently multiple edges are represented by multiple types

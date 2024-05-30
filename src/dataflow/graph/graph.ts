@@ -216,7 +216,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
-			when: vertex.controlDependencies ?? 'always',
 			environment
 		} as unknown as Vertex)
 		if(asRoot) {

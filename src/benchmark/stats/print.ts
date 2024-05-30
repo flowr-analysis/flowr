@@ -185,7 +185,8 @@ Dataflow:
   Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
+  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
+  Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, x => pad(convertNumberToNiceBytes(x)))}`
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {

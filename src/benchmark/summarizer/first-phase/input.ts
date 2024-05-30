@@ -53,6 +53,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	let atSliceNumber = 0
 	const summarized  = await summarizeSlicerStats(got.stats, (criterion, stats) => {
 		console.log(`${escape}1F${escape}1G${escape}2K    [${++atSliceNumber}/${totalSlices}] Summarizing ${JSON.stringify(criterion)} (reconstructed has ${stats.reconstructedCode.code.length} characters)`)
+		if(stats.reconstructedCode.code.length < 50) {
+			console.log(`Reconstructed code: ${stats.reconstructedCode.code}`)
+		}
 	})
 
 	console.log(`    - Append raw summary to ${outputPath}`)

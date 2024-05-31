@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process'
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer'
-import { stats2string } from '../../../src/benchmark/stats/print'
+import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print'
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats'
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
@@ -16,6 +16,14 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 }
 
 describe('Benchmark Slicer', () => {
+	it('Print times', () => {
+		assert.equal(formatNanoseconds(0).trim(), '0:000000ms')
+		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms')
+		assert.equal(formatNanoseconds(1e+9).trim(), '1.000 s')
+		assert.equal(formatNanoseconds(1.25e+9).trim(), '1.250 s')
+		assert.equal(formatNanoseconds(234892342839398).trim(), '52.342:839398 s')
+	})
+
 	describe('Stats by parsing text-based inputs', function() {
 		this.timeout('15min')
 		it('Simple slice for simple line', async() => {

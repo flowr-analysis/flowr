@@ -13,22 +13,22 @@ function pad<T>(string: T) {
 	return String(string).padStart(padSize, ' ')
 }
 
-function divWithRest(dividend: bigint, divisor: bigint): [bigint, bigint] {
-	return [dividend / divisor, dividend % divisor]
-}
-
-function formatNanoseconds(nanoseconds: bigint | number): string {
+export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??'
 	}
-	const [seconds, rest] = divWithRest(typeof nanoseconds === 'number' ? BigInt(Math.round(nanoseconds)) : nanoseconds, BigInt(1e9))
-	const [milliseconds, remainingNanoseconds] = divWithRest(rest, BigInt(1e6))
 
-	const secondsStr= seconds > 0 ? `${String(seconds).padStart(2, '0')}.` : ''
-	const millisecondsStr = seconds > 0 ? `${String(milliseconds).padStart(3, '0')}:` : `${String(milliseconds)}:`
-	const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
-	const unit = seconds === 0n ? 'ms' : ' s' /* space for padding */
-	return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
+	const wholeNanos = typeof nanoseconds === 'bigint' ? nanoseconds : BigInt(Math.round(nanoseconds))
+	const nanos = wholeNanos % BigInt(1e+6)
+	const wholeMillis = wholeNanos / BigInt(1e+6)
+	const millis = wholeMillis % BigInt(1000)
+	const wholeSeconds = wholeMillis / BigInt(1000)
+	if(wholeSeconds > 0){
+		const nanoString = nanos > 0 ? `:${nanos}` : ''
+		return pad(`${wholeSeconds}.${String(millis).padStart(3, '0')}${nanoString} s`)
+	} else {
+		return pad(`${millis}:${String(nanos).padStart(6, '0')}ms`)
+	}
 }
 
 

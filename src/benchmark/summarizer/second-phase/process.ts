@@ -104,10 +104,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
-		totalRequests:        Math.max(...stats.map(s => s.totalRequests)),
-		totalSlices:          Math.max(...stats.map(s => s.totalSlices)),
-		failedToRepParse:     Math.max(...stats.map(s => s.failedToRepParse)),
-		timesHitThreshold:    Math.max(...stats.map(s => s.timesHitThreshold)),
+		totalRequests:             Math.max(...stats.map(s => s.totalRequests)),
+		totalSlices:               Math.max(...stats.map(s => s.totalSlices)),
+		failedToRepParse:          Math.max(...stats.map(s => s.failedToRepParse)),
+		timesHitThreshold:         Math.max(...stats.map(s => s.timesHitThreshold)),
 		// average out / summarize other measurements
 		commonMeasurements:        new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
 		perSliceMeasurements:      new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),

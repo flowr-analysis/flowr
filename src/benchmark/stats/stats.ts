@@ -66,7 +66,7 @@ export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord 
 export interface SlicerStats {
 	commonMeasurements:      Map<CommonSlicerMeasurements, ElapsedTime>
 	perSliceMeasurements:    Map<SlicingCriteria, PerSliceStats>
-	memory:               Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
+	memory:                  Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
 	request:                 RParseRequestFromFile | RParseRequestFromText
 	input:                   SlicerStatsInput
 	dataflow:                SlicerStatsDataflow

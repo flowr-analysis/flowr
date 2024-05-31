@@ -24,7 +24,7 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 		...got,
 		stats: {
 			...got.stats,
-			memory:   new Map(
+			memory: new Map(
 				(got.stats.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
 					.map(([k, v]) => [k, v])
 			),

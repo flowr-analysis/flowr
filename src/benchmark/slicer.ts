@@ -33,7 +33,6 @@ import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
-import type { TimePerToken } from './summarizer/data'
 import { getSizeOfDfGraph } from './stats/size-of'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })

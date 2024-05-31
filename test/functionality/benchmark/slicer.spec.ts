@@ -21,7 +21,7 @@ describe('Benchmark Slicer', () => {
 		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms')
 		assert.equal(formatNanoseconds(1e+9).trim(), '1.000 s')
 		assert.equal(formatNanoseconds(1.25e+9).trim(), '1.250 s')
-		assert.equal(formatNanoseconds(234892342839398).trim(), '52.342:839398 s')
+		assert.equal(formatNanoseconds(234892342839398).trim(), '234892.342:839398 s')
 	})
 
 	describe('Stats by parsing text-based inputs', function() {

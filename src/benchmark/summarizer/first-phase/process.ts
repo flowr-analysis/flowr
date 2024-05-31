@@ -235,6 +235,7 @@ export async function summarizeSlicerStats(
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
+	data = data.filter(isNotUndefined)
 	const min = data.map(d => d.min).filter(isNotUndefined).reduce((a, b) => Math.min(a, b), Infinity)
 	const max = data.map(d => d.max).filter(isNotUndefined).reduce((a, b) => Math.max(a, b), -Infinity)
 	// calculate median of medians (don't just average the median!)

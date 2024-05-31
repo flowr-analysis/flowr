@@ -3,7 +3,6 @@
  * @module
  */
 
-
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
 import fs from 'fs'
@@ -16,6 +15,7 @@ import { PipelineExecutor } from '../core/pipeline-executor'
 import { guard } from '../util/assert'
 import { withoutWhitespace } from '../util/strings'
 import type {
+	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
@@ -34,6 +34,7 @@ import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 import type { TimePerToken } from './summarizer/data'
+import { getSizeOfDfGraph } from './stats/size-of'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -65,6 +66,7 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	code:  ReconstructionResult
 }
 
+
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
  * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
@@ -76,8 +78,9 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
  */
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
-	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
+	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>()
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
+	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
 	private loadedXml:      string | undefined
@@ -164,6 +167,7 @@ export class BenchmarkSlicer {
 		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
 			perSliceMeasurements: this.perSliceMeasurements,
+			memory:               this.deltas,
 			request,
 			input:                {
 				numberOfLines:                             split.length,
@@ -181,7 +185,8 @@ export class BenchmarkSlicer {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
-				numberOfFunctionDefinitions: numberOfDefinitions
+				numberOfFunctionDefinitions: numberOfDefinitions,
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph)
 			},
 
 			// these are all properly initialized in finish()
@@ -258,10 +263,17 @@ export class BenchmarkSlicer {
 		expectedStep: Step,
 		keyToMeasure: CommonSlicerMeasurements
 	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
+		const memoryInit = process.memoryUsage()
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
 		)
-
+		const memoryEnd = process.memoryUsage()
+		this.deltas.set(keyToMeasure, {
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
+			external: memoryEnd.external - memoryInit.external,
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+		})
 		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>
 	}
 

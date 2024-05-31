@@ -5,7 +5,7 @@ import { summarizeSlicerStats } from './process'
 import { guard } from '../../../util/assert'
 import { escape } from '../../../util/ansi'
 import { jsonReplacer } from '../../../util/json'
-import type { CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats'
+import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats'
 import type { SlicingCriteria } from '../../../slicing/criterion/parse'
 import { stats2string } from '../../stats/print'
 
@@ -24,6 +24,10 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 		...got,
 		stats: {
 			...got.stats,
+			memory:   new Map(
+				(got.stats.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
+					.map(([k, v]) => [k, v])
+			),
 			commonMeasurements: new Map(
 				(got.stats.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {
@@ -43,6 +47,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	let atSliceNumber = 0
 	const summarized  = await summarizeSlicerStats(got.stats, (criterion, stats) => {
 		console.log(`${escape}1F${escape}1G${escape}2K    [${++atSliceNumber}/${totalSlices}] Summarizing ${JSON.stringify(criterion)} (reconstructed has ${stats.reconstructedCode.code.length} characters)`)
+		if(stats.reconstructedCode.code.length < 50) {
+			console.log(`Reconstructed code: ${stats.reconstructedCode.code}`)
+		}
 	})
 
 	console.log(`    - Write raw summary to ${rawOutputPath}`)

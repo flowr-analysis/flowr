@@ -5,6 +5,7 @@ import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
 import { guard } from '../../../util/assert'
 import type {
+	BenchmarkMemoryMeasurement,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../../stats/stats'
@@ -23,6 +24,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	const normalizeTimesPerToken: TimePerToken<number>[] = []
 	const dataflowTimesPerToken: TimePerToken<number>[] = []
 	const totalCommonTimesPerToken: TimePerToken<number>[] = []
+	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => [])
 	const reductions: Reduction<SummarizedMeasurement>[] = []
 	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = []
 	const inputs: SlicerStatsInput[] = []
@@ -45,6 +47,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		normalizeTimesPerToken.push(stat.normalizeTimePerToken)
 		dataflowTimesPerToken.push(stat.dataflowTimePerToken)
 		totalCommonTimesPerToken.push(stat.totalCommonTimePerToken)
+		for(const [k, v] of stat.memory) {
+			memory.get(k).push(v)
+		}
 		reductions.push(stat.perSliceMeasurements.reduction)
 		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff)
 		inputs.push(stat.input)
@@ -90,7 +95,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
 			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
-			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges))
+			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
+			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject))
 		}
 	}
 }
@@ -98,11 +104,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): UltimateSlicerStats {
 	return {
 		// these should be deterministic, so we don't technically need to use max, but we do just in case something unexpected happens :)
-		totalRequests:     Math.max(...stats.map(s => s.totalRequests)),
-		totalSlices:       Math.max(...stats.map(s => s.totalSlices)),
-		failedToRepParse:  Math.max(...stats.map(s => s.failedToRepParse)),
-		timesHitThreshold: Math.max(...stats.map(s => s.timesHitThreshold)),
-
+		totalRequests:        Math.max(...stats.map(s => s.totalRequests)),
+		totalSlices:          Math.max(...stats.map(s => s.totalSlices)),
+		failedToRepParse:     Math.max(...stats.map(s => s.failedToRepParse)),
+		timesHitThreshold:    Math.max(...stats.map(s => s.timesHitThreshold)),
 		// average out / summarize other measurements
 		commonMeasurements:        new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
 		perSliceMeasurements:      new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
@@ -131,7 +136,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfNodes:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfNodes)),
 			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
-			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges))
+			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
+			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject))
 		}
 	}
 }
@@ -142,6 +148,10 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 		summarize: {
 			...got.summarize,
 			// restore maps
+			memory: new Map(
+				(got.summarize.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
+					.map(([k, v]) => [k, v])
+			),
 			commonMeasurements: new Map(
 				(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {

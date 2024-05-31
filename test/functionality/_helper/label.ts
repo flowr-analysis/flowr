@@ -20,7 +20,8 @@ const uniqueTestId = (() => {
 })()
 
 
-export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other' | 'slice' | 'output'
+const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output'] as const
+export type TestLabelContext = typeof TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {
 	readonly id:           number
@@ -163,6 +164,24 @@ function printLabelSummary(): void {
 
 	for(const [capability, testNames] of entries) {
 		printCapability(capability, testNames)
+	}
+
+	console.log('-- Tests-By-Context ' + '-'.repeat(80))
+	const contextMap = new DefaultMap<TestLabelContext, number>(() => 0)
+	const blockedIds = new Set<number>()
+	for(const testNames of TheGlobalLabelMap.values()) {
+		for(const t of testNames) {
+			if(blockedIds.has(t.id)) {
+				continue
+			}
+			blockedIds.add(t.id)
+			for(const c of t.context) {
+				contextMap.set(c, contextMap.get(c) + 1)
+			}
+		}
+	}
+	for(const [context, count] of contextMap.entries()) {
+		console.log(`- ${context}: ${count}`)
 	}
 }
 

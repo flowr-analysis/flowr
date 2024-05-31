@@ -2,6 +2,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/crit
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { ReconstructionResult } from '../../reconstruct/reconstruct'
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever'
+import type { TimePerToken } from '../summarizer/data'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
@@ -44,9 +45,13 @@ export interface SlicerStatsDataflow<T = number> {
  * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
 export interface SlicerStats {
-	commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>
-	perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
-	request:              RParseRequestFromFile | RParseRequestFromText
-	input:                SlicerStatsInput
-	dataflow:             SlicerStatsDataflow
+	commonMeasurements:      Map<CommonSlicerMeasurements, ElapsedTime>
+	perSliceMeasurements:    Map<SlicingCriteria, PerSliceStats>
+	request:                 RParseRequestFromFile | RParseRequestFromText
+	input:                   SlicerStatsInput
+	dataflow:                SlicerStatsDataflow
+	retrieveTimePerToken:    TimePerToken<number>
+	normalizeTimePerToken:   TimePerToken<number>
+	dataflowTimePerToken:    TimePerToken<number>
+	totalCommonTimePerToken: TimePerToken<number>
 }

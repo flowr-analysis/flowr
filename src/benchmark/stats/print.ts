@@ -89,26 +89,30 @@ export function stats2string(stats: SummarizedSlicerStats): string {
 Request: ${JSON.stringify(stats.request)}
 Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
 AST retrieval:                ${print(stats.commonMeasurements,'retrieve AST from R code')}
-AST retrieval per token:      ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.retrieve.normalized)}
-AST retrieval per R token:    ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.retrieve.raw)}
+AST retrieval per token:      ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:    ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
 AST normalization:            ${print(stats.commonMeasurements,'normalize R AST')}
-AST normalization per token:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.normalize.normalized)}
-AST normalization per R token:${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.normalize.raw)}
+AST normalization per token:  ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:${formatNanoseconds(stats.normalizeTimePerToken.raw)}
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
-Dataflow creation per token:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.dataflow.normalized)}
-Dataflow creation per R token:${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.dataflow.raw)}
+Dataflow creation per token:  ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:${formatNanoseconds(stats.dataflowTimePerToken.raw)}
+Total common time per token:  ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:${formatNanoseconds(stats.totalCommonTimePerToken.raw)}
 
 Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
-  Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
-  Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
-  Slice creation per token:   ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.slice.normalized)}
-  Slice creation per R token: ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.slice.raw)}
-  Reconstruction:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
-  Reconstruction per token:   ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.reconstruct.normalized)}
-  Reconstruction per R token: ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.reconstruct.raw)}
-  Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
+  Total:                              ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
+  Slice creation:                     ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
+  Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.normalized)}
+  Slice creation per R token in slice:${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.raw)}
+  Reconstruction:                     ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
+  Reconstruction per token in slice:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.reconstructTimePerToken.normalized)}
+  Reconstruction per R token in slice:${formatSummarizedTimeMeasure(stats.perSliceMeasurements.reconstructTimePerToken.raw)}
+  Total per token in slice:           ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.totalPerSliceTimePerToken.normalized)}
+  Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.totalPerSliceTimePerToken.raw)}
+  Used Slice Criteria Sizes:          ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
     Number of lines:                     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
     Number of non-empty lines:           ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonEmptyLines)}
@@ -126,8 +130,6 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
 	return `${result}
 Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
 Total:                        ${print(stats.commonMeasurements, 'total')}
-Total per token:              ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.total.normalized)}
-Total per R token:            ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.timesPerToken.total.raw)}
 
 Input:
   Number of lines:                     ${pad(stats.input.numberOfLines)}
@@ -154,32 +156,34 @@ export function ultimateStats2String(stats: UltimateSlicerStats): string {
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
 Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
 AST retrieval:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
-AST retrieval per token:      ${formatSummarizedTimeMeasure(stats.timesPerToken.retrieve.normalized)}
-AST retrieval per R token:    ${formatSummarizedTimeMeasure(stats.timesPerToken.retrieve.raw)}
+AST retrieval per token:      ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:    ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
 AST normalization:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST normalization per token:  ${formatSummarizedTimeMeasure(stats.timesPerToken.normalize.normalized)}
-AST normalization per R token:${formatSummarizedTimeMeasure(stats.timesPerToken.normalize.raw)}
+AST normalization per token:  ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
 Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
-Dataflow creation per token:  ${formatSummarizedTimeMeasure(stats.timesPerToken.dataflow.normalized)}
-Dataflow creation per R token:${formatSummarizedTimeMeasure(stats.timesPerToken.dataflow.raw)}
+Dataflow creation per token:  ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
+Total common time per token:  ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}
 
 Slice summary for:
-  Total:                      ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
-  Slice creation:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
-  Slice creation per token:   ${formatSummarizedTimeMeasure(stats.timesPerToken.slice.normalized)}
-  Slice creation per R token: ${formatSummarizedTimeMeasure(stats.timesPerToken.slice.raw)}
-  Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
-  Reconstruction per token:   ${formatSummarizedTimeMeasure(stats.timesPerToken.reconstruct.normalized)}
-  Reconstruction per R token: ${formatSummarizedTimeMeasure(stats.timesPerToken.reconstruct.raw)}
-  Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
-  Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
+  Total:                              ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
+  Slice creation:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
+  Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
+  Slice creation per R token in slice:${formatSummarizedTimeMeasure(stats.sliceTimePerToken.raw)}
+  Reconstruction:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
+  Reconstruction per token in slice:  ${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.normalized)}
+  Reconstruction per R token in slice:${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.raw)}
+  Total per token in slice:           ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.normalized)}
+  Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.raw)}
+  Failed to Re-Parse:                 ${pad(stats.failedToRepParse)}/${stats.totalSlices}
+  Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
 ${reduction2String('Reductions', stats.reduction)}
 ${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}
 
 Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
-Total per token:              ${formatSummarizedTimeMeasure(stats.timesPerToken.total.normalized)}
-Total per R token:            ${formatSummarizedTimeMeasure(stats.timesPerToken.total.raw)}
 
 Input:
   Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}

@@ -33,6 +33,7 @@ import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
+import type { TimePerToken } from './summarizer/data'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -162,7 +163,6 @@ export class BenchmarkSlicer {
 		const split = loadedContent.split('\n')
 		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
-			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
 			request,
 			input:                {
@@ -182,7 +182,14 @@ export class BenchmarkSlicer {
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions
-			}
+			},
+
+			// these are all properly initialized in finish()
+			commonMeasurements:      new Map<CommonSlicerMeasurements, ElapsedTime>(),
+			retrieveTimePerToken:    { raw: 0, normalized: 0 },
+			normalizeTimePerToken:   { raw: 0, normalized: 0 },
+			dataflowTimePerToken:    { raw: 0, normalized: 0 },
+			totalCommonTimePerToken: { raw: 0, normalized: 0 }
 		}
 	}
 
@@ -317,6 +324,25 @@ export class BenchmarkSlicer {
 		}
 
 		this.stats.commonMeasurements = this.commonMeasurements.get()
+		const retrieveTime = Number(this.stats.commonMeasurements.get('retrieve AST from R code'))
+		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'))
+		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'))
+		this.stats.retrieveTimePerToken = {
+			raw:        retrieveTime / this.stats.input.numberOfRTokens,
+			normalized: retrieveTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.normalizeTimePerToken = {
+			raw:        normalizeTime / this.stats.input.numberOfRTokens,
+			normalized: normalizeTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.dataflowTimePerToken = {
+			raw:        dataflowTime / this.stats.input.numberOfRTokens,
+			normalized: dataflowTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.totalCommonTimePerToken= {
+			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
+			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
+		}
 		return {
 			stats:     this.stats,
 			parse:     this.loadedXml as string,

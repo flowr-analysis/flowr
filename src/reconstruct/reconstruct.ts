@@ -48,7 +48,7 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? getRangeStart(n.location) : [0, 0])
 
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
+function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
 
 	if(isSelected(config, exprList)) {
@@ -62,12 +62,14 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		const additionalTokens = reconstructAdditionalTokens(exprList)
 		return merge(
 			...subExpressions,
-			...additionalTokens
+			...additionalTokens,
+			...(grouping ?? [])
 		)
 	}
 }
 
 function reconstructRawBinaryOperator(lhs: Code, n: string, rhs: Code): Code {
+	console.log(lhs, n, rhs)
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
 		{ linePart: [{ part: `${prettyPrintCodeToString([lhs[lhs.length - 1]])} ${n} ${prettyPrintCodeToString([rhs[0]])}`, loc: lhs[lhs.length - 1].linePart[lhs.length - 1].loc }], indent: 0 },
@@ -91,7 +93,17 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		return plain(getLexeme(n), loc)
 	}
 
-	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
+	if(lhs.length === 0) {
+		if(rhs.length === 0) {
+			return []
+		}
+		return rhs
+	} else {
+		if(rhs.length === 0) {
+			return lhs
+		}
+		return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
+	}
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
@@ -133,9 +145,9 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 //add heuristic to select needed semicollons
 //maybe if expr 1,5 => select next semicollon
 function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
-	const out: Code[] = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
-		.map(t => plain(t.lexeme as string, getRangeStart((t.location? t.location : [0, 0]) as SourceRange)) ?? ([] as Code[])).filter(t => !(t === undefined)) as Code[]
-	return out
+	const out = node.info.additionalTokens?.filter(t => t.lexeme && t.location)
+		.map(t => plain(t.lexeme as string, getRangeStart((t.location? t.location : [0, 0]) as SourceRange)) ?? ([] as Code[])).filter(t => !(t === undefined))
+	return out ?? []
 }
 
 

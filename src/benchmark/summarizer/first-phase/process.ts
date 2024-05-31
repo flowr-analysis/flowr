@@ -1,5 +1,5 @@
 import * as tmp from 'tmp'
-import type { Reduction, SliceSizeCollection, SummarizedSlicerStats, TimePerToken } from '../data'
+import type { Reduction, SliceSizeCollection, SummarizedSlicerStats, TimePerToken, TimesPerToken } from '../data'
 
 import fs from 'fs'
 import { DefaultMap } from '../../../util/defaultmap'
@@ -76,16 +76,16 @@ export async function summarizeSlicerStats(
 	stats: SlicerStats,
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
 	}): Promise<Readonly<SummarizedSlicerStats>> {
+	// we measure these per slice below, so we divide them by the total amount of slices we did
+	const retrieveTime = Number(stats.commonMeasurements.get('retrieve AST from R code')) / stats.perSliceMeasurements.size
+	const normalizeTime = Number(stats.commonMeasurements.get('normalize R AST')) / stats.perSliceMeasurements.size
 	const dataflowTime = Number(stats.commonMeasurements.get('produce dataflow information')) / stats.perSliceMeasurements.size
 
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 
-	const sliceTimes: TimePerToken<number>[] = []
-	const reconstructTimes: TimePerToken<number>[] = []
-	const dataflowTimes: TimePerToken<number>[] = []
-	const totalTimes: TimePerToken<number>[] = []
+	const times: TimesPerToken<number>[] = []
 	const reductions: Reduction<number | undefined>[] = []
 	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
@@ -177,21 +177,31 @@ export async function summarizeSlicerStats(
 
 			const sliceTime = Number(perSliceStat.measurements.get('static slicing'))
 			const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'))
-			sliceTimes.push({
-				raw:        sliceTime / numberOfRTokens,
-				normalized: sliceTime / numberOfNormalizedTokens
-			})
-			reconstructTimes.push({
-				raw:        reconstructTime / numberOfRTokens,
-				normalized: reconstructTime / numberOfNormalizedTokens
-			})
-			dataflowTimes.push({
-				raw:        dataflowTime / numberOfRTokens,
-				normalized: dataflowTime / numberOfNormalizedTokens
-			})
-			totalTimes.push({
-				raw:        (sliceTime + reconstructTime + dataflowTime) / numberOfRTokens,
-				normalized: (sliceTime + reconstructTime + dataflowTime) / numberOfNormalizedTokens
+			times.push({
+				slice: {
+					raw:        sliceTime / numberOfRTokens,
+					normalized: sliceTime / numberOfNormalizedTokens
+				},
+				reconstruct: {
+					raw:        reconstructTime / numberOfRTokens,
+					normalized: reconstructTime / numberOfNormalizedTokens
+				},
+				retrieve: {
+					raw:        retrieveTime / numberOfRTokens,
+					normalized: retrieveTime / numberOfNormalizedTokens
+				},
+				normalize: {
+					raw:        normalizeTime / numberOfRTokens,
+					normalized: normalizeTime / numberOfNormalizedTokens
+				},
+				dataflow: {
+					raw:        dataflowTime / numberOfRTokens,
+					normalized: dataflowTime / numberOfNormalizedTokens
+				},
+				total: {
+					raw:        (sliceTime + reconstructTime + retrieveTime + normalizeTime + dataflowTime) / numberOfRTokens,
+					normalized: (sliceTime + reconstructTime + retrieveTime + normalizeTime + dataflowTime) / numberOfNormalizedTokens
+				}
 			})
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
@@ -213,18 +223,22 @@ export async function summarizeSlicerStats(
 	return {
 		...stats,
 		perSliceMeasurements: {
-			numberOfSlices:          stats.perSliceMeasurements.size,
-			sliceCriteriaSizes:      summarizeMeasurement(sizeOfSliceCriteria),
-			measurements:            summarized,
-			failedToRepParse:        failedOutputs,
+			numberOfSlices:     stats.perSliceMeasurements.size,
+			sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
+			measurements:       summarized,
+			failedToRepParse:   failedOutputs,
 			timesHitThreshold,
-			reduction:               summarizeReductions(reductions),
-			reductionNoFluff:        summarizeReductions(reductionsNoFluff),
-			sliceTimePerToken:       summarizeTimePerToken(sliceTimes),
-			reconstructTimePerToken: summarizeTimePerToken(reconstructTimes),
-			dataflowTimePerToken:    summarizeTimePerToken(dataflowTimes),
-			totalTimePerToken:       summarizeTimePerToken(totalTimes),
-			sliceSize:               {
+			reduction:          summarizeReductions(reductions),
+			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
+			timesPerToken:      {
+				slice:       summarizeTimePerToken(times.map(t => t.slice)),
+				reconstruct: summarizeTimePerToken(times.map(t => t.reconstruct)),
+				retrieve:    summarizeTimePerToken(times.map(t => t.retrieve)),
+				normalize:   summarizeTimePerToken(times.map(t => t.normalize)),
+				dataflow:    summarizeTimePerToken(times.map(t => t.dataflow)),
+				total:       summarizeTimePerToken(times.map(t => t.total))
+			},
+			sliceSize: {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:                        summarizeMeasurement(sliceSize.characters),

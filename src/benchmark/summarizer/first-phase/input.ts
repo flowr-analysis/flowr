@@ -21,13 +21,9 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`)
 	// now we have to recover the maps and bigints :C
 	got = {
-		filename:  got.filename,
-		'file-id': got['file-id'],
-		'run-num': got['run-num'],
-		stats:     {
-			input:              got.stats.input,
-			request:            got.stats.request,
-			dataflow:           got.stats.dataflow,
+		...got,
+		stats: {
+			...got.stats,
 			commonMeasurements: new Map(
 				(got.stats.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {

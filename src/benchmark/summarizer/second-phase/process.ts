@@ -1,4 +1,4 @@
-import type { Reduction, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data'
+import type { Reduction, SummarizedSlicerStats, TimesPerToken, UltimateSlicerStats } from '../data'
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken } from '../first-phase/process'
 import { DefaultMap } from '../../../util/defaultmap'
 import type { SummarizedMeasurement } from '../../../util/summarizer'
@@ -16,10 +16,7 @@ import {
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
-	const sliceTimePerToken: TimePerToken[] = []
-	const reconstructTimePerToken: TimePerToken[] = []
-	const dataflowTimePerToken: TimePerToken[] = []
-	const totalTimePerToken: TimePerToken[] = []
+	const timesPerToken: TimesPerToken[] = []
 	const reductions: Reduction<SummarizedMeasurement>[] = []
 	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = []
 	const inputs: SlicerStatsInput[] = []
@@ -35,10 +32,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		for(const [k, v] of stat.perSliceMeasurements.measurements) {
 			perSliceMeasurements.get(k).push(v)
 		}
-		sliceTimePerToken.push(stat.perSliceMeasurements.sliceTimePerToken)
-		reconstructTimePerToken.push(stat.perSliceMeasurements.reconstructTimePerToken)
-		dataflowTimePerToken.push(stat.perSliceMeasurements.dataflowTimePerToken)
-		totalTimePerToken.push(stat.perSliceMeasurements.totalTimePerToken)
+		timesPerToken.push(stat.perSliceMeasurements.timesPerToken)
 		reductions.push(stat.perSliceMeasurements.reduction)
 		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff)
 		inputs.push(stat.input)
@@ -57,15 +51,19 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		perSliceMeasurements: new Map(
 			[...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
 		),
-		sliceTimePerToken:       summarizeSummarizedTimePerToken(sliceTimePerToken),
-		reconstructTimePerToken: summarizeSummarizedTimePerToken(reconstructTimePerToken),
-		dataflowTimePerToken:    summarizeSummarizedTimePerToken(dataflowTimePerToken),
-		totalTimePerToken:       summarizeSummarizedTimePerToken(totalTimePerToken),
+		timesPerToken: {
+			slice:       summarizeSummarizedTimePerToken(timesPerToken.map(s => s.slice)),
+			reconstruct: summarizeSummarizedTimePerToken(timesPerToken.map(s => s.reconstruct)),
+			retrieve:    summarizeSummarizedTimePerToken(timesPerToken.map(s => s.retrieve)),
+			normalize:   summarizeSummarizedTimePerToken(timesPerToken.map(s => s.normalize)),
+			dataflow:    summarizeSummarizedTimePerToken(timesPerToken.map(s => s.dataflow)),
+			total:       summarizeSummarizedTimePerToken(timesPerToken.map(s => s.total)),
+		},
 		failedToRepParse,
 		timesHitThreshold,
-		reduction:               summarizeSummarizedReductions(reductions),
-		reductionNoFluff:        summarizeSummarizedReductions(reductionsNoFluff),
-		input:                   {
+		reduction:        summarizeSummarizedReductions(reductions),
+		reductionNoFluff: summarizeSummarizedReductions(reductionsNoFluff),
+		input:            {
 			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
 			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
 			numberOfCharacters:                        summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
@@ -95,15 +93,19 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		timesHitThreshold: Math.max(...stats.map(s => s.timesHitThreshold)),
 
 		// average out / summarize other measurements
-		commonMeasurements:      new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
-		perSliceMeasurements:    new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
-		sliceTimePerToken:       summarizeSummarizedTimePerToken(stats.map(s => s.sliceTimePerToken)),
-		reconstructTimePerToken: summarizeSummarizedTimePerToken(stats.map(s => s.reconstructTimePerToken)),
-		dataflowTimePerToken:    summarizeSummarizedTimePerToken(stats.map(s => s.dataflowTimePerToken)),
-		totalTimePerToken:       summarizeSummarizedTimePerToken(stats.map(s => s.totalTimePerToken)),
-		reduction:               summarizeSummarizedReductions(stats.map(s => s.reduction)),
-		reductionNoFluff:        summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
-		input:                   {
+		commonMeasurements:   new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
+		perSliceMeasurements: new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
+		timesPerToken:        {
+			slice:       summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.slice)),
+			reconstruct: summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.reconstruct)),
+			retrieve:    summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.retrieve)),
+			normalize:   summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.normalize)),
+			dataflow:    summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.dataflow)),
+			total:       summarizeSummarizedTimePerToken(stats.map(s => s.timesPerToken.total)),
+		},
+		reduction:        summarizeSummarizedReductions(stats.map(s => s.reduction)),
+		reductionNoFluff: summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
+		input:            {
 			numberOfLines:                             summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
 			numberOfNonEmptyLines:                     summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
 			numberOfCharacters:                        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),

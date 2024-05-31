@@ -100,6 +100,8 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
   Slice creation per token:   ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.normalized)}
   Slice creation per R token: ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.raw)}
   Reconstruction:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
+  Reconstruction per token:   ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.reconstructTimePerToken.normalized)}
+  Reconstruction per R token: ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.reconstructTimePerToken.raw)}
   Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
     Number of lines:                     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
@@ -155,6 +157,8 @@ Slice summary for:
   Slice creation per token:   ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
   Slice creation per R token: ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.raw)}
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
+  Reconstruction per token:   ${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.normalized)}
+  Reconstruction per R token: ${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.raw)}
   Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
   Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
 ${reduction2String('Reductions', stats.reduction)}
@@ -181,7 +185,10 @@ Dataflow:
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
   Dataflow time per token:    ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
-  Dataflow time per R token:  ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}`
+  Dataflow time per R token:  ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
+  
+Total time per token:   ${formatSummarizedTimeMeasure(stats.totalTimePerToken.normalized)}
+Total time per R token: ${formatSummarizedTimeMeasure(stats.totalTimePerToken.raw)}`
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {

@@ -83,7 +83,9 @@ export async function summarizeSlicerStats(
 	const reParseShellSession = new RShell()
 
 	const sliceTimes: TimePerToken<number>[] = []
+	const reconstructTimes: TimePerToken<number>[] = []
 	const dataflowTimes: TimePerToken<number>[] = []
+	const totalTimes: TimePerToken<number>[] = []
 	const reductions: Reduction<number | undefined>[] = []
 	const reductionsNoFluff: Reduction<number | undefined>[] = []
 
@@ -174,13 +176,22 @@ export async function summarizeSlicerStats(
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true))
 
 			const sliceTime = Number(perSliceStat.measurements.get('static slicing'))
+			const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'))
 			sliceTimes.push({
 				raw:        sliceTime / numberOfRTokens,
 				normalized: sliceTime / numberOfNormalizedTokens
 			})
+			reconstructTimes.push({
+				raw:        reconstructTime / numberOfRTokens,
+				normalized: reconstructTime / numberOfNormalizedTokens
+			})
 			dataflowTimes.push({
 				raw:        dataflowTime / numberOfRTokens,
 				normalized: dataflowTime / numberOfNormalizedTokens
+			})
+			totalTimes.push({
+				raw:        (sliceTime + reconstructTime + dataflowTime) / numberOfRTokens,
+				normalized: (sliceTime + reconstructTime + dataflowTime) / numberOfNormalizedTokens
 			})
 		} catch(e: unknown) {
 			console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
@@ -202,22 +213,18 @@ export async function summarizeSlicerStats(
 	return {
 		...stats,
 		perSliceMeasurements: {
-			numberOfSlices:     stats.perSliceMeasurements.size,
-			sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
-			measurements:       summarized,
-			failedToRepParse:   failedOutputs,
+			numberOfSlices:          stats.perSliceMeasurements.size,
+			sliceCriteriaSizes:      summarizeMeasurement(sizeOfSliceCriteria),
+			measurements:            summarized,
+			failedToRepParse:        failedOutputs,
 			timesHitThreshold,
-			reduction:          summarizeReductions(reductions),
-			reductionNoFluff:   summarizeReductions(reductionsNoFluff),
-			sliceTimePerToken:  {
-				raw:        summarizeMeasurement(sliceTimes.map(t => t.raw)),
-				normalized: summarizeMeasurement(sliceTimes.map(t => t.normalized)),
-			},
-			dataflowTimePerToken: {
-				raw:        summarizeMeasurement(dataflowTimes.map(t => t.raw)),
-				normalized: summarizeMeasurement(dataflowTimes.map(t => t.normalized)),
-			},
-			sliceSize: {
+			reduction:               summarizeReductions(reductions),
+			reductionNoFluff:        summarizeReductions(reductionsNoFluff),
+			sliceTimePerToken:       summarizeTimePerToken(sliceTimes),
+			reconstructTimePerToken: summarizeTimePerToken(reconstructTimes),
+			dataflowTimePerToken:    summarizeTimePerToken(dataflowTimes),
+			totalTimePerToken:       summarizeTimePerToken(totalTimes),
+			sliceSize:               {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:                        summarizeMeasurement(sliceSize.characters),
@@ -269,5 +276,19 @@ function summarizeReductions(reductions: Reduction<number | undefined>[]): Reduc
 		numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
 		numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
 		numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
+	}
+}
+
+export function summarizeSummarizedTimePerToken(times: TimePerToken[]): TimePerToken {
+	return {
+		raw:        summarizeSummarizedMeasurement(times.map(t => t.raw)),
+		normalized: summarizeSummarizedMeasurement(times.map(t => t.normalized)),
+	}
+}
+
+function summarizeTimePerToken(times: TimePerToken<number>[]): TimePerToken {
+	return {
+		raw:        summarizeMeasurement(times.map(t => t.raw)),
+		normalized: summarizeMeasurement(times.map(t => t.normalized)),
 	}
 }

@@ -1,5 +1,5 @@
 import type { Reduction, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data'
-import { summarizeSummarizedReductions, summarizeSummarizedMeasurement } from '../first-phase/process'
+import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken } from '../first-phase/process'
 import { DefaultMap } from '../../../util/defaultmap'
 import type { SummarizedMeasurement } from '../../../util/summarizer'
 import { summarizeMeasurement } from '../../../util/summarizer'
@@ -16,8 +16,10 @@ import {
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
 	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
-	const sliceTimePerLine: TimePerToken[] = []
-	const dataflowTimePerLine: TimePerToken[] = []
+	const sliceTimePerToken: TimePerToken[] = []
+	const reconstructTimePerToken: TimePerToken[] = []
+	const dataflowTimePerToken: TimePerToken[] = []
+	const totalTimePerToken: TimePerToken[] = []
 	const reductions: Reduction<SummarizedMeasurement>[] = []
 	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = []
 	const inputs: SlicerStatsInput[] = []
@@ -33,8 +35,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		for(const [k, v] of stat.perSliceMeasurements.measurements) {
 			perSliceMeasurements.get(k).push(v)
 		}
-		sliceTimePerLine.push(stat.perSliceMeasurements.sliceTimePerToken)
-		dataflowTimePerLine.push(stat.perSliceMeasurements.dataflowTimePerToken)
+		sliceTimePerToken.push(stat.perSliceMeasurements.sliceTimePerToken)
+		reconstructTimePerToken.push(stat.perSliceMeasurements.reconstructTimePerToken)
+		dataflowTimePerToken.push(stat.perSliceMeasurements.dataflowTimePerToken)
+		totalTimePerToken.push(stat.perSliceMeasurements.totalTimePerToken)
 		reductions.push(stat.perSliceMeasurements.reduction)
 		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff)
 		inputs.push(stat.input)
@@ -53,19 +57,15 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		perSliceMeasurements: new Map(
 			[...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
 		),
-		sliceTimePerToken: {
-			raw:        summarizeSummarizedMeasurement(sliceTimePerLine.map(s => s.raw)),
-			normalized: summarizeSummarizedMeasurement(sliceTimePerLine.map(s => s.normalized)),
-		},
-		dataflowTimePerToken: {
-			raw:        summarizeSummarizedMeasurement(dataflowTimePerLine.map(s => s.raw)),
-			normalized: summarizeSummarizedMeasurement(dataflowTimePerLine.map(s => s.normalized)),
-		},
+		sliceTimePerToken:       summarizeSummarizedTimePerToken(sliceTimePerToken),
+		reconstructTimePerToken: summarizeSummarizedTimePerToken(reconstructTimePerToken),
+		dataflowTimePerToken:    summarizeSummarizedTimePerToken(dataflowTimePerToken),
+		totalTimePerToken:       summarizeSummarizedTimePerToken(totalTimePerToken),
 		failedToRepParse,
 		timesHitThreshold,
-		reduction:        summarizeSummarizedReductions(reductions),
-		reductionNoFluff: summarizeSummarizedReductions(reductionsNoFluff),
-		input:            {
+		reduction:               summarizeSummarizedReductions(reductions),
+		reductionNoFluff:        summarizeSummarizedReductions(reductionsNoFluff),
+		input:                   {
 			numberOfLines:                             summarizeMeasurement(inputs.map(i => i.numberOfLines)),
 			numberOfNonEmptyLines:                     summarizeMeasurement(inputs.map(i => i.numberOfNonEmptyLines)),
 			numberOfCharacters:                        summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
@@ -95,19 +95,15 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		timesHitThreshold: Math.max(...stats.map(s => s.timesHitThreshold)),
 
 		// average out / summarize other measurements
-		commonMeasurements:   new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
-		perSliceMeasurements: new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
-		sliceTimePerToken:    {
-			raw:        summarizeSummarizedMeasurement(stats.map(s => s.sliceTimePerToken.raw)),
-			normalized: summarizeSummarizedMeasurement(stats.map(s => s.sliceTimePerToken.normalized))
-		},
-		dataflowTimePerToken: {
-			raw:        summarizeSummarizedMeasurement(stats.map(s => s.dataflowTimePerToken.raw)),
-			normalized: summarizeSummarizedMeasurement(stats.map(s => s.dataflowTimePerToken.normalized))
-		},
-		reduction:        summarizeSummarizedReductions(stats.map(s => s.reduction)),
-		reductionNoFluff: summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
-		input:            {
+		commonMeasurements:      new Map(CommonSlicerMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.commonMeasurements.get(m) as SummarizedMeasurement))])),
+		perSliceMeasurements:    new Map(PerSliceMeasurements.map(m => [m, summarizeSummarizedMeasurement(stats.map(s => s.perSliceMeasurements.get(m) as SummarizedMeasurement))])),
+		sliceTimePerToken:       summarizeSummarizedTimePerToken(stats.map(s => s.sliceTimePerToken)),
+		reconstructTimePerToken: summarizeSummarizedTimePerToken(stats.map(s => s.reconstructTimePerToken)),
+		dataflowTimePerToken:    summarizeSummarizedTimePerToken(stats.map(s => s.dataflowTimePerToken)),
+		totalTimePerToken:       summarizeSummarizedTimePerToken(stats.map(s => s.totalTimePerToken)),
+		reduction:               summarizeSummarizedReductions(stats.map(s => s.reduction)),
+		reductionNoFluff:        summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
+		input:                   {
 			numberOfLines:                             summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfLines)),
 			numberOfNonEmptyLines:                     summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfNonEmptyLines)),
 			numberOfCharacters:                        summarizeSummarizedMeasurement(stats.map(s => s.input.numberOfCharacters)),
@@ -143,16 +139,18 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 					})
 			),
 			perSliceMeasurements: {
-				numberOfSlices:       got.summarize.perSliceMeasurements.numberOfSlices,
-				sliceCriteriaSizes:   got.summarize.perSliceMeasurements.sliceCriteriaSizes,
-				measurements:         new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
-				sliceTimePerToken:    got.summarize.perSliceMeasurements.sliceTimePerToken,
-				dataflowTimePerToken: got.summarize.perSliceMeasurements.dataflowTimePerToken,
-				reduction:            got.summarize.perSliceMeasurements.reduction,
-				reductionNoFluff:     got.summarize.perSliceMeasurements.reductionNoFluff,
-				timesHitThreshold:    got.summarize.perSliceMeasurements.timesHitThreshold,
-				failedToRepParse:     got.summarize.perSliceMeasurements.failedToRepParse,
-				sliceSize:            got.summarize.perSliceMeasurements.sliceSize
+				numberOfSlices:          got.summarize.perSliceMeasurements.numberOfSlices,
+				sliceCriteriaSizes:      got.summarize.perSliceMeasurements.sliceCriteriaSizes,
+				measurements:            new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+				sliceTimePerToken:       got.summarize.perSliceMeasurements.sliceTimePerToken,
+				reconstructTimePerToken: got.summarize.perSliceMeasurements.reconstructTimePerToken,
+				dataflowTimePerToken:    got.summarize.perSliceMeasurements.dataflowTimePerToken,
+				totalTimePerToken:       got.summarize.perSliceMeasurements.totalTimePerToken,
+				reduction:               got.summarize.perSliceMeasurements.reduction,
+				reductionNoFluff:        got.summarize.perSliceMeasurements.reductionNoFluff,
+				timesHitThreshold:       got.summarize.perSliceMeasurements.timesHitThreshold,
+				failedToRepParse:        got.summarize.perSliceMeasurements.failedToRepParse,
+				sliceSize:               got.summarize.perSliceMeasurements.sliceSize
 			}
 		}
 	}
@@ -162,18 +160,20 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 export function processNextUltimateSummary(line: Buffer, allSummarized: UltimateSlicerStats[]): void {
 	let got = JSON.parse(line.toString()) as UltimateSlicerStats
 	got = {
-		totalRequests:        got.totalRequests,
-		totalSlices:          got.totalSlices,
-		commonMeasurements:   new Map(got.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
-		perSliceMeasurements: new Map(got.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
-		sliceTimePerToken:    got.sliceTimePerToken,
-		dataflowTimePerToken: got.dataflowTimePerToken,
-		failedToRepParse:     got.failedToRepParse,
-		timesHitThreshold:    got.timesHitThreshold,
-		reduction:            got.reduction,
-		reductionNoFluff:     got.reductionNoFluff,
-		input:                got.input,
-		dataflow:             got.dataflow,
+		totalRequests:           got.totalRequests,
+		totalSlices:             got.totalSlices,
+		commonMeasurements:      new Map(got.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
+		perSliceMeasurements:    new Map(got.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+		sliceTimePerToken:       got.sliceTimePerToken,
+		reconstructTimePerToken: got.reconstructTimePerToken,
+		dataflowTimePerToken:    got.dataflowTimePerToken,
+		totalTimePerToken:       got.totalTimePerToken,
+		failedToRepParse:        got.failedToRepParse,
+		timesHitThreshold:       got.timesHitThreshold,
+		reduction:               got.reduction,
+		reductionNoFluff:        got.reductionNoFluff,
+		input:                   got.input,
+		dataflow:                got.dataflow,
 	}
 	allSummarized.push(got)
 }

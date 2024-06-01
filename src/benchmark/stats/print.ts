@@ -80,6 +80,18 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 	return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`
 }
 
+const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+   
+// based on https://stackoverflow.com/a/39906526
+function convertNumberToNiceBytes(x: number){
+	let n = Math.abs(x)
+	let l = 0
+	while(n >= 1024 && ++l){
+		n = n/1024
+	}
+	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l])
+}
+
 /**
  * Converts the given stats to a human-readable string.
  * You may have to {@link summarizeSlicerStats | summarize} the stats first.
@@ -133,7 +145,8 @@ Dataflow:
   Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}`
+  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}
+  Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
@@ -173,7 +186,9 @@ Dataflow:
   Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
+  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
+  Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
+`
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {

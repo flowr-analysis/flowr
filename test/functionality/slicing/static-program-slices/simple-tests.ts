@@ -19,7 +19,7 @@ describe('Simple', withShell(shell => {
 			shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 4\nx')
 	})
 	describe('Independent Control-Flow', () => {
-		assertSliced(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', 'built-in-sequencing', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
+		assertSliced(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
 x <- 1
 for(i in 1:10) {
@@ -69,9 +69,9 @@ x`, {
 			shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na')
 		assertSliced(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[i]')
-		assertSliced(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting']),
+		assertSliced(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting']),
 			shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[1:i,]')
-		assertSliced(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting', 'range-assignment']),
+		assertSliced(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting', 'range-assignment']),
 			shell, 'a <- 1:10\na[1:5] <- 3\na', ['3@a'], 'a <- 1 : 10\na[1:5] <- 3\na')
 		describe('Definitions', () => {
 			describe('[[', () => {
@@ -122,7 +122,7 @@ a <- 5
     `, ['3@a'], 'a <- 5')
 	})
 	describe('The classic', () => {
-		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'built-in-sequencing', 'strings', 'precedence']
+		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence']
 		const code = `
 sum <- 0
 product <- 1

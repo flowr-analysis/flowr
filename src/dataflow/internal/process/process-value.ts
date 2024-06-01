@@ -13,7 +13,6 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag:                 VertexType.Value,
 			id:                  value.info.id,
-			value:               value.lexeme,
 			controlDependencies: data.controlDependencies
 		}),
 		exitPoints: [{ nodeId: value.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],

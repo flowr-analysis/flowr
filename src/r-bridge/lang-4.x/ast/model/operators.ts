@@ -73,7 +73,7 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
   '=':    { name: 'equal assignment',             stringUsedInRAst: RawRType.EqualAssign, stringUsedInternally: '=',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment', capabilities: ['binary-operator', 'infix-calls', 'assignment-functions', 'local-equal-assignment', 'function-calls']  },
   /* others */
   /* maybe introduce custom in-r-ast flavor for these? we consider it arithmetic, as it works on numbers => if we change this we have to create custom tests! (with arithmetic, there is the automatic test set) */
-  ':':    { name: 'sequence operator',            stringUsedInRAst: RawRType.Colon,       stringUsedInternally: ':',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation', capabilities: ['binary-operator', 'infix-calls', 'function-calls', 'built-in-sequencing'] },
+  ':':    { name: 'sequence operator',            stringUsedInRAst: RawRType.Colon,       stringUsedInternally: ':',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation', capabilities: ['binary-operator', 'infix-calls', 'function-calls'] },
   '?':    { name: 'question',                     stringUsedInRAst: RawRType.Question,    stringUsedInternally: '?',    writtenAs: 'prefix', arity:  OperatorArity.Unary,  usedAs: 'operation', capabilities: ['unary-operator', 'built-in-help'] }
 }
 /* eslint-enable */

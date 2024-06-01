@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715467769262,
+  "lastUpdate": 1716911273598,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -2288,6 +2288,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 1.2491682419110006,
             "extra": "median: 1.68ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 4158 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.797431685913541,
+            "unit": "#",
+            "extra": "std: 0.13787531016355367"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7740577588998524,
+            "unit": "#",
+            "extra": "std: 0.14093764179320997"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "d22453ad5b876eaffda4b7595db678f8e426493b",
+          "message": "[release:patch] Fixing Control-Flow, Markdown-Exports, and Handling of Unnamed Closures",
+          "timestamp": "2024-05-28T17:35:51+02:00",
+          "tree_id": "0f59a79dfa984998f6ebf263b3656546a6088458",
+          "url": "https://github.com/Code-Inspect/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
+        },
+        "date": 1716911262506,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 243.05429936363637,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 213.96ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 32.13724890909091,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 16.43ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 58.000780727272726,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 24.19ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1316.1662891363637,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 345.35ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.2440452530761172,
+            "unit": "ms",
+            "range": 1.046316928010988,
+            "extra": "median: 0.77ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.4163136129101463,
+            "unit": "ms",
+            "range": 0.24489407898378365,
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.678792450315851,
+            "unit": "ms",
+            "range": 1.1147291519637863,
+            "extra": "median: 1.17ms"
           },
           {
             "name": "failed to reconstruct/re-parse",
@@ -4714,6 +4810,102 @@ window.BENCHMARK_DATA = {
             "value": 0.9241844105867956,
             "unit": "#",
             "extra": "std: 0.09300218811319369"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8924953600737399,
+            "unit": "#",
+            "extra": "std: 0.13307655364098295"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "d22453ad5b876eaffda4b7595db678f8e426493b",
+          "message": "[release:patch] Fixing Control-Flow, Markdown-Exports, and Handling of Unnamed Closures",
+          "timestamp": "2024-05-28T17:35:51+02:00",
+          "tree_id": "0f59a79dfa984998f6ebf263b3656546a6088458",
+          "url": "https://github.com/Code-Inspect/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
+        },
+        "date": 1716911273594,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 247.43381508000002,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 223.86ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 33.4230567,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 19.60ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 85.83065882,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 34.07ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2777.5929095,
+            "unit": "ms",
+            "range": 0,
+            "extra": "median: 741.09ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 5.5137404737607545,
+            "unit": "ms",
+            "range": 10.327216642720945,
+            "extra": "median: 1.68ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.43471190543086874,
+            "unit": "ms",
+            "range": 0.2334928148723243,
+            "extra": "median: 0.20ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 5.958018194733382,
+            "unit": "ms",
+            "range": 10.414870484304286,
+            "extra": "median: 2.11ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 2,
+            "unit": "#",
+            "extra": "out of 1054 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.9244759792036856,
+            "unit": "#",
+            "extra": "std: 0.09247519780429117"
           },
           {
             "name": "reduction (normalized tokens)",

@@ -16,7 +16,6 @@ import { BuiltIn } from '../../dataflow/environments/built-in'
 import { resolveByName } from '../../dataflow/environments/resolve-by-name'
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
 
-// TODO: can we simplify whis?
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 

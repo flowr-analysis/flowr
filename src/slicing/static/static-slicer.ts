@@ -13,6 +13,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex'
 import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
 import { BuiltIn } from '../../dataflow/environments/built-in'
+import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
@@ -67,6 +68,24 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		}
 
 		if(!onlyForSideEffects) {
+			// handle ignoring default parameters if we pass a value
+			if(currentVertex.tag == VertexType.FunctionCall) {
+				for(const [target] of currentEdges) {
+					const targetInfo = graph.get(target, true)
+					if(targetInfo) {
+						const [targetNode] = targetInfo
+						if(targetNode.tag == VertexType.FunctionDefinition) {
+							const def = ast.idMap.get(targetNode.id) as RFunctionDefinition
+							for(const param of def.parameters){
+								// TODO obviously we need some kind of check here to see if we're supplying this param...
+								param.defaultValue = undefined
+							}
+						}
+					}
+
+				}
+			}
+
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, graph, queue)
 			}

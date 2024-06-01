@@ -99,11 +99,9 @@ x <- 2
 b()`)
 	})
 	describe('Functions with named arguments', () => {
-		const code = `a <- function(x=4) { x }
-a(x = 3)`
 		/* if we give an explicit value to the parameter, we do not need the default value */
 		assertSliced(label('Must include function definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments','resolve-arguments', 'numbers']),
-			shell, code, ['2@a'], 'a <- function(x) { x }\na(x = 3)')
+			shell, 'a <- function(x=4) { x }\na(x = 3)', ['2@a'], 'a <- function(x) { x }\na(x = 3)')
 
 		assertSliced(label('Must work for same named arguments too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'named-arguments', 'newlines']),
 			shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')

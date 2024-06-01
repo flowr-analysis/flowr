@@ -55,7 +55,7 @@ jobs:
         with:
           name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/artificial-graph.json
+          output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -77,7 +77,7 @@ jobs:
         with:
           name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/social-science-graph.json
+          output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false

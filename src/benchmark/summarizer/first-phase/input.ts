@@ -5,7 +5,6 @@ import { summarizeSlicerStats } from './process'
 import { guard } from '../../../util/assert'
 import { escape } from '../../../util/ansi'
 import { jsonReplacer } from '../../../util/json'
-import { readLineByLineSync } from '../../../util/files'
 import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats'
 import type { SlicingCriteria } from '../../../slicing/criterion/parse'
 import { stats2string } from '../../stats/print'
@@ -17,20 +16,15 @@ interface BenchmarkData {
 	stats:     SlicerStats
 }
 
-
-export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, summarizedText: string, outputPath: string) {
+export async function processRunMeasurement(line: Buffer, fileNum: number, lineNum: number, textOutputAppendPath: string, rawOutputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData
 	console.log(`[file ${fileNum}, line ${lineNum}] Summarize for ${got.filename}`)
 	// now we have to recover the maps and bigints :C
 	got = {
-		filename:  got.filename,
-		'file-id': got['file-id'],
-		'run-num': got['run-num'],
-		stats:     {
-			input:    got.stats.input,
-			request:  got.stats.request,
-			dataflow: got.stats.dataflow,
-			memory:   new Map(
+		...got,
+		stats: {
+			...got.stats,
+			memory: new Map(
 				(got.stats.memory as unknown as [CommonSlicerMeasurements, BenchmarkMemoryMeasurement][])
 					.map(([k, v]) => [k, v])
 			),
@@ -58,28 +52,28 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 		}
 	})
 
-	console.log(`    - Append raw summary to ${outputPath}`)
-	fs.appendFileSync(outputPath, `${JSON.stringify({
+	console.log(`    - Write raw summary to ${rawOutputPath}`)
+	fs.writeFileSync(rawOutputPath, `${JSON.stringify({
 		filename:  got.filename,
 		'file-id': got['file-id'],
 		'run-num': got['run-num'],
 		summarize: summarized
 	}, jsonReplacer)}\n`)
 
-	console.log(`    - Append textual summary to ${summarizedText}`)
-	fs.appendFileSync(summarizedText, `${stats2string(summarized)}\n`)
+	console.log(`    - Append textual summary to ${textOutputAppendPath}`)
+	fs.appendFileSync(textOutputAppendPath, `${stats2string(summarized)}\n`)
 }
 
-export function processSummarizedFileMeasurement(file: string, summariesFile: string, outputPath: string) {
-	console.log(`Summarize all runs for ${file}`)
+export function processSummarizedRunMeasurement(runNum: number, summarizedFiles: string[], appendPath: string) {
+	console.log(`Summarizing all file statistics for run ${runNum}`)
 
 	const summaries: SummarizedSlicerStats[] = []
-	readLineByLineSync(summariesFile, l => processNextSummary(l, summaries))
+	for(const file of summarizedFiles) {
+		processNextSummary(fs.readFileSync(file), summaries)
+	}
 
-	fs.appendFileSync(outputPath, `${JSON.stringify({
-		filename:  file,
-		summarize: summarizeAllSummarizedStats(summaries)
-	}, jsonReplacer)}\n`)
+	fs.appendFileSync(appendPath, `${JSON.stringify(summarizeAllSummarizedStats(summaries), jsonReplacer)}\n`)
+	console.log(`Appended summary of run ${runNum} to ${appendPath}`)
 }
 
 function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteria, PerSliceStats] {

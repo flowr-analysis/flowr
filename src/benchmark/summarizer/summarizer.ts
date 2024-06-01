@@ -4,7 +4,7 @@
  */
 import type { UltimateSlicerStats } from './data'
 import fs from 'fs'
-import { processRunMeasurement, processSummarizedFileMeasurement } from './first-phase/input'
+import { processRunMeasurement, processSummarizedRunMeasurement } from './first-phase/input'
 import { processNextUltimateSummary, summarizeAllUltimateStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
 import path from 'path'
@@ -13,6 +13,7 @@ import { Summarizer } from '../../util/summarizer'
 import { readLineByLine, readLineByLineSync } from '../../util/files'
 import { jsonReplacer } from '../../util/json'
 import { ultimateStats2String } from '../stats/print'
+import { DefaultMap } from '../../util/defaultmap'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -39,20 +40,31 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	}
 
 	public async preparationPhase(): Promise<void> {
-		this.removeIfExists(`${this.config.intermediateOutputPath}.json`)
+		this.removeIfExists(this.summaryFile())
+
 		this.removeIfExists(this.config.intermediateOutputPath)
 		fs.mkdirSync(this.config.intermediateOutputPath)
 
-		const dirContent = fs.readdirSync(this.config.inputPath)
-		for(let i = 0; i < dirContent.length; i++) {
-			const filePath   = path.join(this.config.inputPath, dirContent[i])
-			const outputPath = path.join(this.config.intermediateOutputPath, dirContent[i])
+		const filesToSummarize = fs.readdirSync(this.config.inputPath)
+
+		const outputPathsPerRun = new DefaultMap<number, string[]>(() => [])
+		for(let i = 0; i < filesToSummarize.length; i++) {
+			const fileInputPath = path.join(this.config.inputPath, filesToSummarize[i])
+			const outputDir = path.join(this.config.intermediateOutputPath, path.parse(filesToSummarize[i]).name)
+			fs.mkdirSync(outputDir)
+			const textOutputPath = path.join(outputDir, 'summary.log')
 
 			// generate measurements for each run
-			await readLineByLine(filePath, (line, lineNumber) => processRunMeasurement(line, i, lineNumber, `${outputPath}.log`, outputPath))
+			await readLineByLine(fileInputPath, (line, lineNumber) => {
+				const runOutputPath = path.join(outputDir, `run-${lineNumber}.json`)
+				outputPathsPerRun.get(lineNumber).push(runOutputPath)
+				return processRunMeasurement(line, i, lineNumber, textOutputPath, runOutputPath)
+			})
+		}
 
-			// generate combined measurements for the file
-			processSummarizedFileMeasurement(filePath, outputPath, `${this.config.intermediateOutputPath}.json`)
+		// generate combined measurements for each file per run
+		for(const [run, paths] of outputPathsPerRun.entries()) {
+			processSummarizedRunMeasurement(run, paths, this.summaryFile())
 		}
 
 		this.log('Done summarizing')
@@ -60,12 +72,12 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<UltimateSlicerStats> {
-		this.log(`Summarizing all summaries from ${this.config.inputPath}...`)
+		this.log(`Summarizing all summaries from ${this.summaryFile()}...`)
 
 		this.removeIfExists(this.config.outputPath)
 
 		const summaries: UltimateSlicerStats[] = []
-		readLineByLineSync(`${this.config.intermediateOutputPath}.json`, (l) => processNextUltimateSummary(l, summaries))
+		readLineByLineSync(this.summaryFile(), (l) => processNextUltimateSummary(l, summaries))
 
 		const ultimate = summarizeAllUltimateStats(summaries)
 		this.log(`Writing ultimate summary to ${this.config.outputPath}`)
@@ -78,11 +90,15 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		return ultimate
 	}
 
-	private removeIfExists(path?: string) {
+	private removeIfExists(path?: string): void {
 		if(path && fs.existsSync(path)) {
 			this.log(`Removing existing ${path}`)
 			fs.rmSync(path, { recursive: true })
 		}
+	}
+
+	private summaryFile(): string {
+		return `${this.config.intermediateOutputPath}.json`
 	}
 
 }

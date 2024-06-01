@@ -42,34 +42,49 @@ export interface Reduction<T = number> {
 	numberOfDataflowNodes:           T
 }
 
+export interface TimePerToken<T = SummarizedMeasurement> {
+	raw:        T,
+	normalized: T
+}
+
 export interface SummarizedPerSliceStats {
 	/** number of total slicing calls */
-	numberOfSlices:     number
+	numberOfSlices:            number
 	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
-	sliceCriteriaSizes: SummarizedMeasurement
-	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
-	reduction:          Reduction<SummarizedMeasurement>
+	sliceCriteriaSizes:        SummarizedMeasurement
+	measurements:              Map<PerSliceMeasurements, SummarizedMeasurement>
+	sliceTimePerToken:         TimePerToken
+	reconstructTimePerToken:   TimePerToken
+	totalPerSliceTimePerToken: TimePerToken
+	reduction:                 Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:   Reduction<SummarizedMeasurement>
-	failedToRepParse:   number
-	timesHitThreshold:  number
+	reductionNoFluff:          Reduction<SummarizedMeasurement>
+	failedToRepParse:          number
+	timesHitThreshold:         number
 	sliceSize: {
 		[K in keyof SliceSizeCollection]: SummarizedMeasurement
 	}
 }
 
 export interface UltimateSlicerStats {
-	totalRequests:        number
-	totalSlices:          number
-	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
-	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
+	totalRequests:             number
+	totalSlices:               number
+	commonMeasurements:        Map<CommonSlicerMeasurements, SummarizedMeasurement>
+	perSliceMeasurements:      Map<PerSliceMeasurements, SummarizedMeasurement>
+	retrieveTimePerToken:      TimePerToken
+	normalizeTimePerToken:     TimePerToken
+	dataflowTimePerToken:      TimePerToken
+	totalCommonTimePerToken:   TimePerToken
+	sliceTimePerToken:         TimePerToken
+	reconstructTimePerToken:   TimePerToken
+	totalPerSliceTimePerToken: TimePerToken
 	/** sum */
-	failedToRepParse:     number
+	failedToRepParse:          number
 	/** sum */
-	timesHitThreshold:    number
-	reduction:            Reduction<SummarizedMeasurement>
+	timesHitThreshold:         number
+	reduction:                 Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:     Reduction<SummarizedMeasurement>
-	input:                SlicerStatsInput<SummarizedMeasurement>
-	dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
+	reductionNoFluff:          Reduction<SummarizedMeasurement>
+	input:                     SlicerStatsInput<SummarizedMeasurement>
+	dataflow:                  SlicerStatsDataflow<SummarizedMeasurement>
 }

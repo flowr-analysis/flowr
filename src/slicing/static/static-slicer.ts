@@ -5,9 +5,7 @@ import { envFingerprint } from './fingerprint'
 import { VisitingQueue } from './visiting-queue'
 import { handleReturns, sliceForCall } from './slice-call'
 import type { DataflowGraph } from '../../dataflow/graph/graph'
-import { isNamedArgument, isPositionalArgument , getReferenceOfArgument } from '../../dataflow/graph/graph'
-
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { SlicingCriteria } from '../criterion/parse'
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse'
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
@@ -77,14 +75,10 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 					if(targetInfo) {
 						const [targetNode] = targetInfo
 						if(targetNode.tag == VertexType.FunctionDefinition) {
-							const targetDef = ast.idMap.get(targetNode.id) as RFunctionDefinition<ParentInformation>
-							for(let i = 0; i < currentVertex.args.length; i++){
-								const arg = currentVertex.args[i]
-								const param = isNamedArgument(arg) ? targetDef.parameters.find(p => p.name.lexeme === arg.name) :
-									isPositionalArgument(arg) ? targetDef.parameters[i] : undefined
-								if(param?.defaultValue) {
-									// TODO what to do with this info??
-								}
+							const def = ast.idMap.get(targetNode.id) as RFunctionDefinition
+							for(const param of def.parameters){
+								// TODO obviously we need some kind of check here to see if we're supplying this param...
+								param.defaultValue = undefined
 							}
 						}
 					}

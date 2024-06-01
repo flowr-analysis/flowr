@@ -43,8 +43,8 @@ export const enum EdgeTypeName {
 	DefinedBy             = 'defined-by',
 	Calls                 = 'calls',
 	Returns               = 'returns',
-	DefinesOnCall         = 'defined-by-on-call',
-	DefinedByOnCall       = 'defines-on-call',
+	DefinesOnCall         = 'defines-on-call',
+	DefinedByOnCall       = 'defined-by-on-call',
 	Argument              = 'argument',
 	SideEffectOnCall      = 'side-effect-on-call',
 	NonStandardEvaluation = 'non-standard-evaluation'

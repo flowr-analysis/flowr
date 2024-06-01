@@ -100,7 +100,7 @@ b()`)
 	})
 	describe('Functions with named arguments', () => {
 		/* if we give an explicit value to the parameter, we do not need the default value */
-		assertSliced(label('Must include function definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments','resolve-arguments', 'numbers']),
+		assertSliced(label('Must include function definition (named arg)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments','resolve-arguments', 'numbers']),
 			shell, 'a <- function(x=4) { x }\na(x = 3)', ['2@a'], 'a <- function(x) { x }\na(x = 3)')
 
 		assertSliced(label('Must work for same named arguments too', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'named-arguments', 'newlines']),

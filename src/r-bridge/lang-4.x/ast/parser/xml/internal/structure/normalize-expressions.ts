@@ -23,7 +23,6 @@ import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
-	console.log(mappedWithName)
 	switch(mappedWithName.length) {
 		case 1:
 			result = normalizeSingleNode(data, mappedWithName[0])

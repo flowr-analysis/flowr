@@ -6,8 +6,9 @@ export const ErrorMarker = 'err'
 export function initCommand(eol: string): string {
 	/* define the get function complete wrapped in a try so that we can handle failures gracefully on stdout
 	 * furthermore, we compile for performance reasons
+	 * Please note that we add a `flowr_output` assignment before to avoid issues with earlier R versions
 	 */
-	return 'flowr_get_ast<-compiler::cmpfun(function(...){tryCatch({'
+	return 'flowr_output<-NULL;flowr_get_ast<-compiler::cmpfun(function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 		+ 'flowr_output<<-getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!

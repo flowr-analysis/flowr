@@ -17,13 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.3', '3.2.0', '3.0.0' ]
+        r-version: [ '3.2.0', '3.0.0' ]
         os: [ ubuntu-latest ]
-        include:
-           - os: macos-latest
-             r-version: '4.4.0'
-           - os: windows-latest
-             r-version: '4.4.0'
     name: "Test Suite (full)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     concurrency:

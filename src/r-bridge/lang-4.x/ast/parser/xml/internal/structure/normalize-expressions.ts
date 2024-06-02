@@ -79,7 +79,7 @@ function splitExprs(tokens: readonly NamedXmlBasedJson[]) {
 			lastExpr = false
 			last = i + 1
 		} else {
-			const thisExpr = token.name === RawRType.Expression || token.name === RawRType.ExprOfAssignOrHelp
+			const thisExpr = token.name === RawRType.Expression || token.name === RawRType.ExprOfAssignOrHelp || token.name === RawRType.LegacyEqualAssign
 			if(thisExpr && lastExpr) {
 				if(i > last) {
 					segments.push(tokens.slice(last, i))

@@ -29,7 +29,7 @@ import { tryNormalizeSymbol } from '../values/normalize-symbol'
  */
 export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
 	const fnBase = mappedWithName[0]
-	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp) {
+	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp && fnBase.name !== RawRType.LegacyEqualAssign) {
 		parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
 		return undefined
 	}

@@ -80,7 +80,7 @@ export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedXm
 	}
 
 	const accessed = mappedWithName[0]
-	if(accessed.name !== RawRType.Expression && accessed.name !== RawRType.ExprOfAssignOrHelp) {
+	if(accessed.name !== RawRType.Expression && accessed.name !== RawRType.ExprOfAssignOrHelp && accessed.name !== RawRType.LegacyEqualAssign) {
 		parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
 		return undefined
 	}

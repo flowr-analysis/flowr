@@ -22,7 +22,12 @@ type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, 
  * Parses the given data and sets child relationship, return the list of root entries (with a parent of {@link RootId}).
  */
 export function prepareParsedData(data: string): Entry[] {
-	const json: unknown = JSON.parse(`[${data}]`)
+	let json: unknown
+	try {
+		json = JSON.parse(`[${data}]`)
+	} catch(e) {
+		throw new Error(`Failed to parse data ${data}: ${(e as Error)?.message}`)
+	}
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`)
 
 	const ret = new Map<number, Entry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {

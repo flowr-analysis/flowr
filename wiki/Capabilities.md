@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-05-11, 12:41:27 UTC summarizig flowR's current capabilities_
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-06-02, 14:07:37 UTC summarizig flowR's current capabilities_
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -152,7 +152,7 @@ Besides, we use colored bullets like this:
              2. **Pipe and Pipe-Bind** (<a id='built-in-pipe-and-pipe-bind'>`built-in-pipe-and-pipe-bind`</a>)\
           :large_orange_diamond: _Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.
              3. **Sequencing** (<a id='built-in-sequencing'>`built-in-sequencing`</a>)\
-          :red_circle: _Handle `:`, `seq`, ... as they are used often._
+          :red_circle: _Handle `:`, `seq`, ... by gathering value information using abstract interpretation._
              4. **Internal and Primitive Functions** (<a id='built-in-internal-and-primitive-functions'>`built-in-internal-and-primitive-functions`</a>)\
           :red_circle: _Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.
              5. **Options** (<a id='built-in-options'>`built-in-options`</a>)\

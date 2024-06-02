@@ -1,3 +1,4 @@
+*.heapsnapshot
 doc/
 *-flowr.log.*
 statistics-out*/

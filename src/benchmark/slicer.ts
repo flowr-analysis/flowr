@@ -3,7 +3,6 @@
  * @module
  */
 
-
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
 import fs from 'fs'
@@ -16,6 +15,7 @@ import { PipelineExecutor } from '../core/pipeline-executor'
 import { guard } from '../util/assert'
 import { withoutWhitespace } from '../util/strings'
 import type {
+	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
@@ -33,6 +33,7 @@ import type { SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { getSizeOfDfGraph } from './stats/size-of'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
@@ -64,6 +65,7 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	code:  ReconstructionResult
 }
 
+
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
  * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
@@ -75,8 +77,9 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
  */
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
-	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
+	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>()
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
+	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
 	private loadedXml:      string | undefined
@@ -162,8 +165,8 @@ export class BenchmarkSlicer {
 		const split = loadedContent.split('\n')
 		const nonWhitespace = withoutWhitespace(loadedContent).length
 		this.stats = {
-			commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
 			perSliceMeasurements: this.perSliceMeasurements,
+			memory:               this.deltas,
 			request,
 			input:                {
 				numberOfLines:                             split.length,
@@ -181,8 +184,16 @@ export class BenchmarkSlicer {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
-				numberOfFunctionDefinitions: numberOfDefinitions
-			}
+				numberOfFunctionDefinitions: numberOfDefinitions,
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph)
+			},
+
+			// these are all properly initialized in finish()
+			commonMeasurements:      new Map<CommonSlicerMeasurements, ElapsedTime>(),
+			retrieveTimePerToken:    { raw: 0, normalized: 0 },
+			normalizeTimePerToken:   { raw: 0, normalized: 0 },
+			dataflowTimePerToken:    { raw: 0, normalized: 0 },
+			totalCommonTimePerToken: { raw: 0, normalized: 0 }
 		}
 	}
 
@@ -251,10 +262,17 @@ export class BenchmarkSlicer {
 		expectedStep: Step,
 		keyToMeasure: CommonSlicerMeasurements
 	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
+		const memoryInit = process.memoryUsage()
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
 		)
-
+		const memoryEnd = process.memoryUsage()
+		this.deltas.set(keyToMeasure, {
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
+			external: memoryEnd.external - memoryInit.external,
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+		})
 		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>
 	}
 
@@ -317,6 +335,25 @@ export class BenchmarkSlicer {
 		}
 
 		this.stats.commonMeasurements = this.commonMeasurements.get()
+		const retrieveTime = Number(this.stats.commonMeasurements.get('retrieve AST from R code'))
+		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'))
+		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'))
+		this.stats.retrieveTimePerToken = {
+			raw:        retrieveTime / this.stats.input.numberOfRTokens,
+			normalized: retrieveTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.normalizeTimePerToken = {
+			raw:        normalizeTime / this.stats.input.numberOfRTokens,
+			normalized: normalizeTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.dataflowTimePerToken = {
+			raw:        dataflowTime / this.stats.input.numberOfRTokens,
+			normalized: dataflowTime / this.stats.input.numberOfNormalizedTokens
+		}
+		this.stats.totalCommonTimePerToken= {
+			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
+			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
+		}
 		return {
 			stats:     this.stats,
 			parse:     this.loadedXml as string,

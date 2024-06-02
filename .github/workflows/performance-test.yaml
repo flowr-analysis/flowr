@@ -55,13 +55,15 @@ jobs:
         with:
           name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/artificial-graph.json
+          output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: refs/heads/main
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -77,13 +79,15 @@ jobs:
         with:
           name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/social-science-graph.json
+          output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: refs/heads/main
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

@@ -42,6 +42,7 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd))
 }
 
+export type EnvironmentMemory = Map<Identifier, IdentifierDefinition[]>
 
 export interface IEnvironment {
 	/** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
@@ -51,7 +52,7 @@ export interface IEnvironment {
 	/**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
-	memory:      Map<Identifier, IdentifierDefinition[]>
+	memory:      EnvironmentMemory
 }
 
 let environmentIdCounter = 0

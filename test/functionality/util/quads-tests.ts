@@ -55,7 +55,6 @@ describe('Quads', withShell(shell => {
 <${idPrefix}1> <${domain}next> <${idPrefix}2> <${context}> .
 <${idPrefix}1> <${domain}tag> "use" <${context}> .
 <${idPrefix}1> <${domain}id> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}1> <${domain}when> "always" <${context}> .
 <${idPrefix}0> <${domain}vertices> <${idPrefix}2> <${context}> .
 <${idPrefix}2> <${domain}tag> "function-call" <${context}> .
 <${idPrefix}2> <${domain}id> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
@@ -66,7 +65,6 @@ describe('Quads', withShell(shell => {
 <${idPrefix}2> <${domain}onlyBuiltin> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
 <${idPrefix}2> <${domain}args> <${idPrefix}5> <${context}> .
 <${idPrefix}5> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}2> <${domain}when> "always" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
 <${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .

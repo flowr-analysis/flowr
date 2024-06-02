@@ -54,6 +54,13 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 		value: ultimate.reduction.numberOfNormalizedTokens.mean,
 		extra: `std: ${ultimate.reduction.numberOfNormalizedTokens.std}`
 	})
+	data.push({
+		name:  'memory (df-graph)',
+		unit:  'Bytes',
+		value: Number(ultimate.dataflow.sizeOfObject.mean),
+		range: Number(ultimate.dataflow.sizeOfObject.std),
+		extra: `median: ${(ultimate.dataflow.sizeOfObject.median).toFixed(2)}`
+	})
 
 
 	// write the output file

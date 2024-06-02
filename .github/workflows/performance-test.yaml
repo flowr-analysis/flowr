@@ -62,6 +62,8 @@ jobs:
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: refs/heads/main
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -84,6 +86,8 @@ jobs:
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: refs/heads/main
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

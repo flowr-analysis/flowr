@@ -5,7 +5,7 @@
  * @module
  */
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
-import { BuiltInMemory } from './built-in'
+import { BuiltInMemory, EmptyBuiltInMemory } from './built-in'
 import type { DataflowGraph } from '../graph/graph'
 import { resolveByName } from './resolve-by-name'
 import type { ControlDependency } from '../info'
@@ -85,12 +85,20 @@ export interface REnvironmentInformation {
 
 /* the built-in environment is the root of all environments */
 export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment)
+BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory
 
-BuiltInEnvironment.memory = BuiltInMemory
+const EmptyBuiltInEnvironment: IEnvironment = {
+	id:     BuiltInEnvironment.id,
+	memory: undefined as unknown as EnvironmentMemory,
+	parent: undefined as unknown as IEnvironment
+}
 
-export function initializeCleanEnvironments(): REnvironmentInformation {
+
+export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
+	BuiltInEnvironment.memory ??= BuiltInMemory
+	EmptyBuiltInEnvironment.memory ??= EmptyBuiltInMemory
 	return {
-		current: new Environment(BuiltInEnvironment),
+		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
 		level:   0
 	}
 }

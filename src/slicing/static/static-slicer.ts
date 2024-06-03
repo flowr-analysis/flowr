@@ -66,7 +66,6 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				console.log(currentVertex.tag, currentVertex.onlyBuiltin, currentVertex.name)
 				sliceForCall(current, currentVertex, graph, queue)
 			}
 

@@ -57,7 +57,7 @@ export function processForLoop<OtherInfo>(
 	}
 	data = { ...data, environment: headEnvironments }
 	/* process the body without any environment first, to retrieve all open references */
-	let environment = initializeCleanEnvironments()
+	let environment = initializeCleanEnvironments(false)
 	while(headEnvironments.level > environment.level) {
 		environment = pushLocalEnvironment(environment)
 	}

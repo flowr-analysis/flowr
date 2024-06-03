@@ -4,6 +4,7 @@ import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
 import { diffControlDependencies } from '../info'
+import { BuiltInMemory, EmptyBuiltInMemory } from './built-in'
 
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -58,6 +59,10 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		if(a !== b) {
 			info.report.addComment(`${info.position}[at level: ${depth}] Different environments. ${info.leftname}: ${a !== undefined ? 'present' : 'undefined'} vs. ${info.rightname}: ${b !== undefined ? 'present' : 'undefined'}`)
 		}
+		return
+	}
+	if((a.memory === BuiltInMemory || a.memory === EmptyBuiltInMemory) &&
+		(b.memory === BuiltInMemory || b.memory === EmptyBuiltInMemory)) {
 		return
 	}
 	if(a.memory.size !== b.memory.size) {

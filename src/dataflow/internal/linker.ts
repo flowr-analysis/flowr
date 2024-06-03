@@ -68,7 +68,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
 				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall })
 			} else {
-				dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
+				dataflowLogger.warn(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
 			}
 			continue
 		}

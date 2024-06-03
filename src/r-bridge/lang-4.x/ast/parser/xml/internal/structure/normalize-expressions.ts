@@ -21,9 +21,9 @@ import type { RComment } from '../../../../model/nodes/r-comment'
 import { normalizeComment } from '../other/normalize-comment'
 import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
 
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RNode | RDelimiter)[] {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[] | undefined, data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
-	switch(mappedWithName.length) {
+	switch(mappedWithName?.length) {
 		case 1:
 			result = normalizeSingleNode(data, mappedWithName[0])
 			break
@@ -106,7 +106,7 @@ function handleExpressionList(raw: readonly NamedXmlBasedJson[]): HandledExpress
 		return { segments: [], comments: [], braces: undefined }
 	}
 	const { comments, others: tokens } = splitComments(raw)
-	const first = tokens[0].name
+	const first = tokens[0]?.name
 	if(first === RawRType.BraceLeft) {
 		const endType = tokens[tokens.length - 1].name
 		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
@@ -136,8 +136,8 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 		type:     RType.ExpressionList,
 		children: processed,
 		grouping: [newStart, newEnd],
-		lexeme:   undefined,
-		location: undefined,
+		lexeme:   data.currentLexeme ?? newStart.lexeme,
+		location: newStart.location,
 		info:     {
 			additionalTokens: comments,
 		}
@@ -192,10 +192,10 @@ export function normalizeExpressions(
 	return [...parsedComments, ...normalizeMappedWithoutSemicolonBasedOnType(mappedWithName, data)]
 }
 
-export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
+export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedXmlBasedJson[] | undefined): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
-	for(const elem of mappedWithName) {
+	for(const elem of mappedWithName ?? []) {
 		const retrieved = normalizeSingleNode(data, elem)
 		parsedNodes.push(retrieved)
 	}

@@ -78,8 +78,8 @@ export function getTokenType(content: XmlBasedJson): RawRType {
 	return content[nameKey] as RawRType
 }
 
-export function getWithTokenType(obj: XmlBasedJson[]) {
-	return obj.map((content) => ({
+export function getWithTokenType(obj: readonly XmlBasedJson[]) {
+	return obj.map(content => ({
 		name: getTokenType(content),
 		content
 	}))

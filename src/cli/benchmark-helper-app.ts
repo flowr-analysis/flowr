@@ -30,7 +30,9 @@ if(options.verbose) {
 	log.error('running with *verbose* setting - do not use for final benchmark', options)
 }
 
-guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
+const numberRegex = /^\d+$/
+
+guard(options.slice === 'all' || options.slice === 'no' || numberRegex.test(options.slice), 'slice must be either all, no, or a number')
 
 
 async function benchmark() {
@@ -58,8 +60,14 @@ async function benchmark() {
 			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
 			console.log(`${prefix} Completed Slicing`)
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
-		} else {
+		} else if(options.slice === 'no') {
 			console.log(`${prefix} Skipping Slicing due to --slice=${options.slice}`)
+		} else {
+			const limit = parseInt(options.slice)
+			console.log(`${prefix} Slicing up to ${limit} possible slices`)
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), limit)
+			console.log(`${prefix} Completed Slicing`)
+			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
 		}
 
 		const { stats } = slicer.finish()

@@ -305,11 +305,16 @@ export class BenchmarkSlicer {
    */
 	public async sliceForAll(
 		filter: SlicingCriteriaFilter,
-		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }
+		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
+		sampleRandom = -1
 	): Promise<number> {
 		this.guardActive()
 		let count = 0
 		const allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)]
+		if(sampleRandom > 0) {
+			allCriteria.sort(() => Math.random() - 0.5)
+			allCriteria.length = Math.min(allCriteria.length, sampleRandom)
+		}
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria)
 			await this.slice(...slicingCriteria)

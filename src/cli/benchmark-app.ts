@@ -32,7 +32,10 @@ if(options.input.length === 0) {
 	process.exit(0)
 }
 
-guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
+const numberRegex = /^\d+$/
+
+guard(options.slice === 'all' || options.slice === 'no' || numberRegex.test(options.slice), 'slice must be either all, no, or a number')
+
 guard(options.runs === undefined || options.runs > 0, 'runs must be greater than zero')
 
 function removeIfExists(summarizedRaw: string) {

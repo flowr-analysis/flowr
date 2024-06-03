@@ -45,8 +45,11 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 	const { location, content } = retrieveMetaStructure(operator.content)
 
 	if(startAndEndsWith(operationName, '%')) {
-		guard(parsedLhs.location !== undefined && parsedLhs.lexeme !== undefined && parsedRhs.location !== undefined && parsedRhs.lexeme !== undefined,
-			() => `special op lhs and rhs must have a locations and lexemes, but ${JSON.stringify(parsedLhs)} and ${JSON.stringify(parsedRhs)})`)
+		const lhsLoc = parsedLhs.type === RType.ExpressionList ? parsedLhs.grouping?.[0].location : parsedLhs.location
+		const rhsLoc = parsedRhs.type === RType.ExpressionList ? parsedRhs.grouping?.[0].location : parsedRhs.location
+
+		guard(lhsLoc !== undefined && rhsLoc !== undefined,
+			() => `special op lhs and rhs must have a locations, but ${JSON.stringify(parsedLhs)} || ${JSON.stringify(lhsLoc)} and ${JSON.stringify(parsedRhs)} ||  || ${JSON.stringify(rhsLoc)})`)
 		// parse as infix function call!
 		return {
 			type:         RType.FunctionCall,
@@ -65,18 +68,18 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 			arguments: [
 				{
 					type:     RType.Argument,
-					location: parsedLhs.location,
+					location: lhsLoc,
 					value:    parsedLhs,
 					name:     undefined,
-					lexeme:   parsedLhs.lexeme,
+					lexeme:   parsedLhs.lexeme ?? '',
 					info:     {}
 				},
 				{
 					type:     RType.Argument,
-					location: parsedRhs.location,
+					location: rhsLoc,
 					value:    parsedRhs,
 					name:     undefined,
-					lexeme:   parsedRhs.lexeme,
+					lexeme:   parsedRhs.lexeme ?? '',
 					info:     {}
 				}
 			],

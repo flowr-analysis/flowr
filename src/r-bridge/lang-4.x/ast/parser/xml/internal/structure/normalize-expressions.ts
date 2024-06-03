@@ -136,8 +136,8 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 		type:     RType.ExpressionList,
 		children: processed,
 		grouping: [newStart, newEnd],
-		lexeme:   data.currentLexeme ?? newStart.lexeme,
-		location: newStart.location,
+		lexeme:   undefined,
+		location: undefined,
 		info:     {
 			additionalTokens: comments,
 		}

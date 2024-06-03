@@ -40,16 +40,16 @@ foo(x, x.(3))
 foo(x, x.(3))`)
 		assertSliced(label('Using ...', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
 			shell, `
-f1 <- function (a,b) { c }
+f1 <- function (a,b) { WW }
 f2 <- function (...) { f1(...) }
 x <- 3
-c <- 4
+WW <- 4
 y <- 3
 f2(1,x)
-    `, ['7@f2'], `f1 <- function(a, b) { c }
+    `, ['7@f2'], `f1 <- function(a, b) { WW }
 f2 <- function(...) { f1(...) }
 x <- 3
-c <- 4
+WW <- 4
 f2(1,x)`)
 	})
 	describe('Functions using environment', () => {

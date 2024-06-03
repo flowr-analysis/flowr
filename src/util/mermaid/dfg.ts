@@ -82,10 +82,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 	} else if(arg === EmptyArgument) {
 		return '[empty]'
 	} else if(isNamedArgument(arg)) {
-		const deps = arg.controlDependencies ? ', :maybe:' + arg.controlDependencies.join(',') : ''
+		const deps = arg.controlDependencies ? ', :maybe:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : ''
 		return `${arg.name} (${arg.nodeId}${deps})`
 	} else if(isPositionalArgument(arg)) {
-		const deps = arg.controlDependencies ? ' (:maybe:' + arg.controlDependencies.join(',') + ')': ''
+		const deps = arg.controlDependencies ? ' (:maybe:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': ''
 		return `${arg.nodeId}${deps}`
 	} else {
 		return '??'
@@ -123,7 +123,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 }
 
 function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.join(',') + '},' : ''} def. @${id.definedAt})`
+	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {

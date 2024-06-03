@@ -51,6 +51,10 @@ export class VisitingQueue {
 		return this.queue.length > 0
 	}
 
+	public hasId(id: NodeId): boolean {
+		return this.idThreshold.has(id)
+	}
+
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,

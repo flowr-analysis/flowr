@@ -125,8 +125,11 @@ export function edgeDoesNotIncludeType(type: EdgeTypeBits, types: EdgeTypeBits):
 	return (types & type) === 0
 }
 
+
+const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls | EdgeType.DefinesOnCall
+
 export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
-	if(edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls | EdgeType.DefinesOnCall)) {
+	if(edgeIncludesType(types, alwaysTraverseEdgeTypes)) {
 		return TraverseEdge.Always
 	} else if(edgeIncludesType(types, EdgeType.DefinedByOnCall)) {
 		return TraverseEdge.DefinedByOnCall

@@ -55,9 +55,9 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		const [currentVertex, currentEdges] = currentInfo
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
-		if(currentVertex.controlDependencies) {
+		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
-			for(const cd of currentVertex.controlDependencies) {
+			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
 				}
@@ -66,6 +66,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
+				console.log(currentVertex.tag, currentVertex.onlyBuiltin, currentVertex.name)
 				sliceForCall(current, currentVertex, graph, queue)
 			}
 

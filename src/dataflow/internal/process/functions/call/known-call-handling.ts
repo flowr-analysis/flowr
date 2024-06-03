@@ -85,7 +85,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	})
 
 	const inIds = remainingReadInArgs
-	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies }
+	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, call: true as const }
 	inIds.push(fnRef)
 
 	return {

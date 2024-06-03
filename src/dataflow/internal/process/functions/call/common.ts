@@ -105,7 +105,7 @@ export function patchFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
-		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined })
+		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined })
 	})
 	for(const arg of argumentProcessResult) {
 		if(arg) {

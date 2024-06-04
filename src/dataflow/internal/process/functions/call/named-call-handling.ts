@@ -66,6 +66,7 @@ export function processNamedCall<OtherInfo>(
 		const v = information.graph.getVertex(rootId)
 		if(v?.tag === VertexType.FunctionCall) {
 			v.onlyBuiltin = true
+			v.environment = undefined
 		}
 	}
 

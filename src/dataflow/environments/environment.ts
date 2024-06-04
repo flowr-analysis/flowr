@@ -9,6 +9,7 @@ import { BuiltInMemory, EmptyBuiltInMemory } from './built-in'
 import type { DataflowGraph } from '../graph/graph'
 import { resolveByName } from './resolve-by-name'
 import type { ControlDependency } from '../info'
+import { jsonReplacer } from '../../util/json'
 
 
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
@@ -100,6 +101,16 @@ export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentIn
 	return {
 		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
 		level:   0
+	}
+}
+
+export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
+	if(v === BuiltInEnvironment) {
+		return '<BuiltInEnvironment>'
+	} else if(v === EmptyBuiltInEnvironment) {
+		return '<EmptyBuiltInEnvironment>'
+	} else {
+		return jsonReplacer(k, v)
 	}
 }
 

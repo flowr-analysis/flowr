@@ -9,6 +9,7 @@ import type {
 	DataflowGraphVertexFunctionDefinition
 } from '../../dataflow/graph/vertex'
 import type { REnvironmentInformation } from '../../dataflow/environments/environment'
+import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import { pushLocalEnvironment } from '../../dataflow/environments/scoping'
 import { overwriteEnvironment } from '../../dataflow/environments/overwrite'
 import type { DataflowGraph, OutgoingEdges } from '../../dataflow/graph/graph'
@@ -19,12 +20,14 @@ import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 
-	if(baseEnvironment.level !== callerEnvironment.level) {
-		while(baseEnvironment.level < callerEnvironment.level) {
+	const level = callerEnvironment?.level ?? 0
+
+	if(baseEnvironment.level !== level) {
+		while(baseEnvironment.level < level) {
 			baseEnvironment = pushLocalEnvironment(baseEnvironment)
 		}
-		while(baseEnvironment.level > callerEnvironment.level) {
-			callerEnvironment = pushLocalEnvironment(callerEnvironment)
+		while(baseEnvironment.level > level) {
+			callerEnvironment = pushLocalEnvironment(callerEnvironment ?? initializeCleanEnvironments(true))
 		}
 	}
 

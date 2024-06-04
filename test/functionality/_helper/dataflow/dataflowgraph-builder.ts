@@ -85,7 +85,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
 			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependencies: undefined }),
-			environment:         info?.environment ?? initializeCleanEnvironments(),
+			environment:         (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
 		}, asRoot)

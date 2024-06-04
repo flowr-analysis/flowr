@@ -5,8 +5,15 @@ import { EdgeType } from './edge'
 import type { DataflowInformation } from '../info'
 import type { DataflowDifferenceReport } from './diff'
 import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
-import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, DataflowGraphVertices } from './vertex'
-import { VertexType } from './vertex'
+import type {
+	DataflowGraphVertexArgument,
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo,
+	DataflowGraphVertices } from './vertex'
+import {
+	VertexType
+} from './vertex'
 import { arrayEqual } from '../../util/arrays'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier'
@@ -208,7 +215,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			return this
 		}
 
-		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT
+		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT
 		// keep a clone of the original environment
 		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
 

@@ -12,7 +12,6 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { VertexType } from '../../dataflow/graph/vertex'
 import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
-import { BuiltIn } from '../../dataflow/environments/built-in'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
@@ -76,7 +75,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		}
 
 		for(const [target, { types }] of currentEdges) {
-			if(target === BuiltIn || edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+			if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 				continue
 			}
 			const t = shouldTraverseEdge(types)

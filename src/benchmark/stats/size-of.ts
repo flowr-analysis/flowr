@@ -18,12 +18,12 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 			memory: new Map<Identifier, IdentifierDefinition[]>()
 		}
 	}
-   
+
 	const memory = new Map<Identifier, IdentifierDefinition[]>()
 	for(const [k, v] of env.memory) {
 		memory.set(k, v.filter(v => !v.kind.startsWith('built-in') && !('processor' in v)))
 	}
-   
+
 	return {
 		id:     env.id,
 		parent: killBuiltInEnv(env.parent),
@@ -41,11 +41,11 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 				...vertex,
 				environment: {
 					...vertex.environment,
-					current: killBuiltInEnv(v.environment.current)
+					current: killBuiltInEnv(v.environment?.current)
 				}
 			} as DataflowGraphVertexInfo
 		}
-      
+
 		if(vertex.tag === VertexType.FunctionDefinition) {
 			vertex = {
 				...vertex,
@@ -58,15 +58,15 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 				}
 			} as DataflowGraphVertexInfo
 		}
-      
+
 		vertex = {
 			...vertex,
 			/* shared anyway by using constants */
 			tag: 0 as unknown
 		} as DataflowGraphVertexInfo
-      
+
 		verts.push(vertex)
 	}
-   
+
 	return sizeof([...verts, ...df.edges()])
 }

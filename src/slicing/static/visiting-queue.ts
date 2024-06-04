@@ -12,7 +12,7 @@ export class VisitingQueue {
 	private idThreshold                       = new Map<NodeId, number>()
 	private queue:              NodeToSlice[] = []
 	// the set of potential arguments holds arguments which may be added if found with the `defined-by-on-call` edge
-	public potentialArguments:  Set<NodeId> = new Set()
+	public potentialArguments = new Map<NodeId, NodeToSlice>()
 
 	constructor(threshold: number) {
 		this.threshold = threshold

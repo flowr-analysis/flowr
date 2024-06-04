@@ -23,7 +23,8 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
-	expensiveTrace(slicerLogger, () =>`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
+	expensiveTrace(slicerLogger, () => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
+
 	const queue = new VisitingQueue(threshold)
 
 	let minDepth = Number.MAX_SAFE_INTEGER
@@ -81,9 +82,12 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 			const t = shouldTraverseEdge(types)
 			if(t === TraverseEdge.Always) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-			} else if(t === TraverseEdge.DefinedByOnCall && queue.potentialArguments.has(target)) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-				queue.potentialArguments.delete(target)
+			} else if(t === TraverseEdge.DefinedByOnCall) {
+				const n = queue.potentialArguments.get(target)
+				if(n) {
+					queue.add(target, n.baseEnvironment, envFingerprint(n.baseEnvironment), n.onlyForSideEffects)
+					queue.potentialArguments.delete(target)
+				}
 			} else if(t === TraverseEdge.SideEffect) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}

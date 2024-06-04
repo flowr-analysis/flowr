@@ -59,7 +59,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
-	for(const [_, functionCallTarget] of functionCallTargets) {
+	for(const functionCallTarget of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
@@ -91,7 +91,11 @@ export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges,
 		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 		} else if(edgeIncludesType(edge.types, EdgeType.Argument)) {
-			queue.potentialArguments.add(target)
+			queue.potentialArguments.set(target, {
+				id:                 target,
+				baseEnvironment,
+				onlyForSideEffects: false
+			})
 		}
 	}
 	return true

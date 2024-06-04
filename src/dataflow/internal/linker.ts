@@ -162,11 +162,10 @@ export function linkFunctionCalls(
 	return calledFunctionDefinitions
 }
 
-
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Set<DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
-	const result = new Map<NodeId, DataflowGraphVertexInfo>()
+	const result = new Set<DataflowGraphVertexInfo>()
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId
 
@@ -195,7 +194,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Reado
 		const followEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, followBits))
 
 		if(currentInfo[0].subflow !== undefined) {
-			result.set(currentId, currentInfo[0])
+			result.add(currentInfo[0])
 		}
 
 		// trace all joined reads

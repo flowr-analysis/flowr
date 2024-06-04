@@ -16,6 +16,8 @@ function pad<T>(string: T) {
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
 		return '??'
+	} else if(!Number.isFinite(nanoseconds)) {
+		return nanoseconds > 0 ? '∞' : '-∞'
 	}
 
 	const wholeNanos = typeof nanoseconds === 'bigint' ? nanoseconds : BigInt(Math.round(nanoseconds))
@@ -81,7 +83,7 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 }
 
 const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-   
+
 // based on https://stackoverflow.com/a/39906526
 function convertNumberToNiceBytes(x: number){
 	let n = Math.abs(x)
@@ -164,7 +166,22 @@ Dataflow:
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
-	// Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
+	const slice = stats.totalSlices > 0 ? `Slice summary for:
+  Total:                              ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
+  Slice creation:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
+  Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
+  Slice creation per R token in slice:${formatSummarizedTimeMeasure(stats.sliceTimePerToken.raw)}
+  Reconstruction:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
+  Reconstruction per token in slice:  ${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.normalized)}
+  Reconstruction per R token in slice:${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.raw)}
+  Total per token in slice:           ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.normalized)}
+  Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.raw)}
+  Failed to Re-Parse:                 ${pad(stats.failedToRepParse)}/${stats.totalSlices}
+  Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
+${reduction2String('Reductions', stats.reduction)}
+${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}` : 'No slices'
+
+	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
 	return `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
 Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
@@ -180,20 +197,7 @@ Dataflow creation per R token:${formatSummarizedTimeMeasure(stats.dataflowTimePe
 Total common time per token:  ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
 Total common time per R token:${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}
 
-Slice summary for:
-  Total:                              ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
-  Slice creation:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
-  Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
-  Slice creation per R token in slice:${formatSummarizedTimeMeasure(stats.sliceTimePerToken.raw)}
-  Reconstruction:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
-  Reconstruction per token in slice:  ${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.normalized)}
-  Reconstruction per R token in slice:${formatSummarizedTimeMeasure(stats.reconstructTimePerToken.raw)}
-  Total per token in slice:           ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.normalized)}
-  Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.raw)}
-  Failed to Re-Parse:                 ${pad(stats.failedToRepParse)}/${stats.totalSlices}
-  Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
-${reduction2String('Reductions', stats.reduction)}
-${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}
+${slice}
 
 Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}

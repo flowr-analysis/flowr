@@ -10,11 +10,11 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { dataflowLogger } from '../../../../../logger'
-import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-by-name'
 import { EdgeType } from '../../../../../graph/edge'
 import { appendEnvironment } from '../../../../../environments/append'
 import type { IdentifierReference } from '../../../../../environments/identifier'
 import { makeAllMaybe } from '../../../../../environments/environment'
+import type { Ternary } from '../../../../../../util/logic'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -48,9 +48,9 @@ export function processIfThenElse<OtherInfo>(
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
 
-	// we should defer this to the abstract interpretation
-	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false)
-	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true)
+	// FIXME: better notion of true/false in a domain
+	const conditionIsFalse: Ternary = !cond.domain?.isTop() ? 'always' : 'never'
+	const conditionIsTrue: Ternary = cond.domain?.isTop() ? 'always' : 'never'
 	if(conditionIsFalse !== 'always') {
 		then = processDataflowFor(thenArg, data)
 		if(then.entryPoint) {

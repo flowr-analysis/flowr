@@ -25,6 +25,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { EdgeType } from '../graph/edge'
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library'
 import { processArithmetic } from '../internal/process/functions/call/built-in/built-in-arithmetic'
+import { processComparison } from '../internal/process/functions/call/built-in/built-in-comparison'
 
 export const BuiltIn = 'built-in'
 
@@ -148,8 +149,9 @@ registerBuiltInConstant('TRUE', true)
 registerBuiltInConstant('T', true)
 registerBuiltInConstant('FALSE', false)
 registerBuiltInConstant('F', false)
-registerSimpleFunctions('~', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':', 'list')
+registerSimpleFunctions('~', '*', '/', '^', '!', '?', '**', '%%', '%/%', '%*%', ':', 'list')
 registerBuiltInFunctions(['+', '-'],                         processArithmetic,         {}                                                                           )
+registerBuiltInFunctions(['<', '<=', '>', '>=', '==', '!='], processComparison,         {}                                                                           )
 registerBuiltInFunctions(['cat', 'switch'],                  defaultBuiltInProcessor,   {}) /* returns null */
 registerBuiltInFunctions(['print', '('],                     defaultBuiltInProcessor,   { returnsNthArgument: 0 },                                                   )
 registerBuiltInFunctions(['return'],                         defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return },                        )

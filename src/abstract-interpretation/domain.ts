@@ -90,6 +90,19 @@ export class Domain {
 			return `{${Array.from(this.intervals).join(', ')}}`
 		}
 	}
+
+	toJSON(): object {
+		return {
+			__type:    'Domain',
+			intervals: this.intervals
+		}
+	}
+
+	static revive(data: object): Domain {
+		// @ts-expect-error I'm too lazy to define the proper type for the JSON object
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		return Domain.fromIntervals(data.intervals)
+	}
 }
 
 const enum CompareType {

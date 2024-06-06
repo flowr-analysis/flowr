@@ -156,7 +156,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id)
-	const escapedName = escapeMarkdown(node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??')
+	const escapedName = escapeMarkdown(node ? `${info.domain?.toString() ?? ''} [${node.type}] ${node.lexeme ?? '??'}` : '??')
 
 	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(mermaid.rootGraph.idMap?.get(id)?.location)}*${

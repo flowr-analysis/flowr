@@ -3,6 +3,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { IdentifierReference } from './environments/identifier'
 import type { REnvironmentInformation } from './environments/environment'
 import { DataflowGraph } from './graph/graph'
+import type { Domain } from '../abstract-interpretation/domain'
 
 export const enum ExitPointType {
 	Default = 0,
@@ -50,6 +51,8 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
+	/** Domain of the thing that was most recently added */
+	domain?:           Domain
 }
 
 export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {

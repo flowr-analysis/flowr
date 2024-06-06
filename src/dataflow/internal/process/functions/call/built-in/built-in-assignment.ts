@@ -6,7 +6,10 @@ import { log, LogLevel } from '../../../../../../util/log'
 import { unpackArgument } from '../argument/unpack-argument'
 import { processAsNamedCall } from '../../../process-named-call'
 import { toUnnamedArgument } from '../argument/make-argument'
-import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type {
+	ParentInformation,
+	RNodeWithParent
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
@@ -110,12 +113,13 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target }
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, source: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
 	return target.in.map(ref => ({
 		...ref,
 		kind:                isFunctionDef ? 'function' : 'variable',
 		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined)
+		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+		domain:              source.domain
 	}))
 }
 
@@ -192,7 +196,7 @@ function processAssignmentToSymbol<OtherInfo>({
 }: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data, makeMaybe ?? false)
+	const writeNodes = produceWrittenNodes(rootId, targetArg, sourceArg, isFunctionDef, data, makeMaybe ?? false)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
@@ -234,6 +238,7 @@ function processAssignmentToSymbol<OtherInfo>({
 		unknownReferences: [],
 		entryPoint:        name.info.id,
 		in:                readTargets,
-		out:               writeTargets
+		out:               writeTargets,
+		domain:            sourceArg.domain
 	}
 }

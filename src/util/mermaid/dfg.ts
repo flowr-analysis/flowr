@@ -3,19 +3,13 @@ import type { SourceRange } from '../range'
 
 import { guard } from '../assert'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
-import type {
-	DataflowFunctionFlowInformation,
-	DataflowGraph,
-	FunctionArgument } from '../../dataflow/graph/graph'
-import { isNamedArgument
-	,
-	isPositionalArgument
-} from '../../dataflow/graph/graph'
+import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph'
+import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { EdgeType } from '../../dataflow/graph/edge'
-import { edgeTypeToName , splitEdgeTypes } from '../../dataflow/graph/edge'
+import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge'
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex'
 import { VertexType } from '../../dataflow/graph/vertex'
 import type { IEnvironment } from '../../dataflow/environments/environment'

@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../processor'
+import type { DataflowInformation } from '../info'
 import { ExitPointType } from '../info'
-import type { DataflowInformation  } from '../info'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'

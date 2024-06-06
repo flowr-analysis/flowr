@@ -1,11 +1,5 @@
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from './environment'
-import {
-	Environment,
-	BuiltInEnvironment
-} from './environment'
+import type { IEnvironment, REnvironmentInformation } from './environment'
+import { BuiltInEnvironment, Environment } from './environment'
 import type { Identifier, IdentifierDefinition } from './identifier'
 import { Domain } from '../../abstract-interpretation/domain'
 

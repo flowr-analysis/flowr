@@ -312,7 +312,5 @@ export function narrowDomain(baseDomain: Domain, boundDomain: Domain, narrowKind
 		}
 	}
 
-	const newDomain = Domain.fromIntervals(narrowedIntervals.filter(interval => interval !== undefined).map(interval => interval as Interval))
-	console.log(`Domain: ${newDomain.toString()}`)
-	return newDomain
+	return Domain.fromIntervals(narrowedIntervals.filter(interval => interval !== undefined).map(interval => interval as Interval))
 }

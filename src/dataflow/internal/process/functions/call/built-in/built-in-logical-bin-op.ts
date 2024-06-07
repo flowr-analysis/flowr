@@ -7,6 +7,8 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { dataflowLogger } from '../../../../../logger'
 import { EdgeType } from '../../../../../graph/edge'
+import type { Narrowing } from '../../../../../../abstract-interpretation/domain'
+import { AiInfo, Domain } from '../../../../../../abstract-interpretation/domain'
 
 
 export function processSpecialBinOp<OtherInfo>(
@@ -43,5 +45,24 @@ export function processSpecialBinOp<OtherInfo>(
 		}
 	}
 
-	return information
+	const [lhs, rhs] = processedArguments.map(arg => arg?.aiInfo)
+	let domain: Domain | undefined
+	let narrowings: Narrowing[] | undefined
+	if(lhs !== undefined && rhs !== undefined) {
+		switch(name.content) {
+			case '&&':
+				domain = lhs.domain.isTruthy() && rhs.domain.isTruthy() ? Domain.truthy() : Domain.falsy()
+				narrowings = [...lhs.narrowings, ...rhs.narrowings]
+				break
+			case '||':
+				domain = lhs.domain.isTruthy() || rhs.domain.isTruthy() ? Domain.truthy() : Domain.falsy()
+				narrowings = [...lhs.narrowings, ...rhs.narrowings]
+				break
+		}
+	}
+
+	return {
+		...information,
+		aiInfo: domain && narrowings && new AiInfo('', domain, narrowings)
+	}
 }

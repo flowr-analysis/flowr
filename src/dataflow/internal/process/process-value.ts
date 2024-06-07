@@ -10,7 +10,7 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 	let domain: Domain | undefined
 	switch(value.type) {
 		case RType.Number: domain = Domain.fromScalar(value.content.num); break
-		case RType.Logical: domain = value.content ? Domain.top() : Domain.bottom(); break
+		case RType.Logical: domain = value.content ? Domain.truthy() : Domain.falsy(); break
 	}
 	return {
 		unknownReferences: [],

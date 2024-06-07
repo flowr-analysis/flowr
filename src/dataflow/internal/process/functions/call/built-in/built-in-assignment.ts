@@ -213,6 +213,11 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
+		if(write.kind === 'function' || write.kind === 'variable' || write.kind === 'parameter' || write.kind === 'argument') {
+			information.graph.updateVertex(write.nodeId, {
+				domain: write.aiInfo?.domain
+			})
+		}
 		information.environment = define(write, superAssignment, information.environment)
 		information.graph.setDefinitionOfVertex(write)
 		if(!quoteSource) {

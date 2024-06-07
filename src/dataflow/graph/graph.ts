@@ -119,6 +119,13 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		return includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined
 	}
 
+	public updateVertex(id: NodeId, updated: Partial<Vertex>): this {
+		const vertex = this.vertexInformation.get(id)
+		guard(vertex !== undefined, () => `vertex with id ${id} does not exist`)
+		this.vertexInformation.set(id, { ...vertex, ...updated } as Vertex)
+		return this
+	}
+
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
 		return this.edgeInformation.get(id)
 	}

@@ -42,6 +42,20 @@ export class Interval {
 	isTop(): boolean {
 		return this.min.value === Number.NEGATIVE_INFINITY && this.max.value === Number.POSITIVE_INFINITY
 	}
+
+	toJSON(): object {
+		return {
+			__type: 'Interval',
+			min:    this.min,
+			max:    this.max
+		}
+	}
+
+	static revive(data: object): Interval {
+		// @ts-expect-error I'm too lazy to define the proper type for the JSON object
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		return new Interval(data.min, data.max)
+	}
 }
 
 export class Domain {
@@ -95,7 +109,7 @@ export class Domain {
 	toJSON(): object {
 		return {
 			__type:    'Domain',
-			intervals: this.intervals
+			intervals: Array.from(this.intervals)
 		}
 	}
 

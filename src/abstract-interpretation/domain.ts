@@ -1,4 +1,5 @@
 import { assertUnreachable, guard } from '../util/assert'
+import type { Identifier } from '../dataflow/environments/identifier'
 
 interface IntervalBound {
 	readonly value:     number,
@@ -103,6 +104,15 @@ export class Domain {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		return Domain.fromIntervals(data.intervals)
 	}
+}
+
+export interface Narrowing {
+	readonly positive: Omit<AiInfo, 'narrowings'>,
+	readonly negative: Omit<AiInfo, 'narrowings'>
+}
+
+export class AiInfo {
+	constructor(readonly id: Identifier, public domain: Domain, readonly narrowings: Narrowing[] = []) { }
 }
 
 const enum CompareType {

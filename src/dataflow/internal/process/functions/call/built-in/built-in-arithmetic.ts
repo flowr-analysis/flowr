@@ -6,7 +6,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { processKnownFunctionCall } from '../known-call-handling'
 import type { Domain } from '../../../../../../abstract-interpretation/domain'
-import { addDomains, subtractDomains } from '../../../../../../abstract-interpretation/domain'
+import { addDomains, AiInfo, subtractDomains } from '../../../../../../abstract-interpretation/domain'
 import { guard } from '../../../../../../util/assert'
 
 export function processArithmetic<OtherInfo>(
@@ -16,7 +16,7 @@ export function processArithmetic<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	const { information: dfgInfo, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
-	const [lhsDomain, rhsDomain] = processedArguments.map(arg => arg?.domain)
+	const [lhsDomain, rhsDomain] = processedArguments.map(arg => arg?.aiInfo?.domain)
 	let domain: Domain | undefined
 	if(lhsDomain !== undefined && rhsDomain !== undefined) {
 		switch(name.content) {
@@ -27,6 +27,6 @@ export function processArithmetic<OtherInfo>(
 	}
 	return {
 		...dfgInfo,
-		domain: domain
+		aiInfo: domain && new AiInfo('', domain, [])
 	}
 }

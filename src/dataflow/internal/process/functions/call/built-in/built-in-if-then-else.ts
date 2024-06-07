@@ -13,8 +13,29 @@ import { dataflowLogger } from '../../../../../logger'
 import { EdgeType } from '../../../../../graph/edge'
 import { appendEnvironment } from '../../../../../environments/append'
 import type { IdentifierReference } from '../../../../../environments/identifier'
+import type { REnvironmentInformation } from '../../../../../environments/environment'
 import { makeAllMaybe } from '../../../../../environments/environment'
 import type { Ternary } from '../../../../../../util/logic'
+import { cloneEnvironmentInformation } from '../../../../../environments/clone'
+import { AiInfo } from '../../../../../../abstract-interpretation/domain'
+
+function applyNarrowing(environment: REnvironmentInformation, narrowings: Omit<AiInfo, 'narrowings'>[]): REnvironmentInformation {
+	const envClone = cloneEnvironmentInformation(environment)
+	for(const narrowing of narrowings) {
+		const possibleDefinitions = envClone.current.memory.get(narrowing.id)
+		for(const definition of possibleDefinitions ?? []) {
+			if(definition.kind !== 'variable' && definition.kind !== 'parameter' && definition.kind !== 'argument') {
+				continue
+			}
+			if(definition.aiInfo === undefined) {
+				definition.aiInfo = new AiInfo(narrowing.id, narrowing.domain, [])
+			} else {
+				definition.aiInfo.domain = narrowing.domain
+			}
+		}
+	}
+	return envClone
+}
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -49,10 +70,13 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false
 
 	// FIXME: better notion of true/false in a domain
-	const conditionIsFalse: Ternary = !cond.domain?.isTop() ? 'always' : 'never'
-	const conditionIsTrue: Ternary = cond.domain?.isTop() ? 'always' : 'never'
+	const conditionIsFalse: Ternary = !cond.aiInfo?.domain?.isTop() ? 'always' : 'never'
+	const conditionIsTrue: Ternary = cond.aiInfo?.domain?.isTop() ? 'always' : 'never'
 	if(conditionIsFalse !== 'always') {
-		then = processDataflowFor(thenArg, data)
+		then = processDataflowFor(thenArg, {
+			...data,
+			environment: applyNarrowing(data.environment, cond.aiInfo?.narrowings?.map(n => n.positive) ?? [])
+		})
 		if(then.entryPoint) {
 			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns })
 		}
@@ -64,7 +88,10 @@ export function processIfThenElse<OtherInfo>(
 	let otherwise: DataflowInformation | undefined
 	let makeOtherwiseMaybe = false
 	if(otherwiseArg !== undefined && conditionIsTrue !== 'always') {
-		otherwise = processDataflowFor(otherwiseArg, data)
+		otherwise = processDataflowFor(otherwiseArg, {
+			...data,
+			environment: applyNarrowing(data.environment, cond.aiInfo?.narrowings?.map(n => n.negative) ?? [])
+		})
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns })
 		}

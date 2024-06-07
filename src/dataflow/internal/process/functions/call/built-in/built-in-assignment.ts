@@ -24,6 +24,7 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import { VertexType } from '../../../../../graph/vertex'
 import { define } from '../../../../../environments/define'
 import { EdgeType } from '../../../../../graph/edge'
+import { AiInfo } from '../../../../../../abstract-interpretation/domain'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -113,13 +114,14 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target }
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, source: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation & RSymbol<OtherInfo & ParentInformation, string>, source: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+	const sourceAiInfo = source.aiInfo
 	return target.in.map(ref => ({
 		...ref,
 		kind:                isFunctionDef ? 'function' : 'variable',
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		domain:              source.domain
+		aiInfo:              sourceAiInfo && new AiInfo(target.content, sourceAiInfo.domain, sourceAiInfo.narrowings)
 	}))
 }
 
@@ -196,7 +198,7 @@ function processAssignmentToSymbol<OtherInfo>({
 }: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, sourceArg, isFunctionDef, data, makeMaybe ?? false)
+	const writeNodes = produceWrittenNodes(rootId, { ...target, ...targetArg }, sourceArg, isFunctionDef, data, makeMaybe ?? false)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
@@ -233,12 +235,13 @@ function processAssignmentToSymbol<OtherInfo>({
 		information.graph.addEdge(rootId, source.info.id, { type: EdgeType.NonStandardEvaluation })
 	}
 
+	const sourceAiInfo = sourceArg.aiInfo
 	return {
 		...information,
 		unknownReferences: [],
 		entryPoint:        name.info.id,
 		in:                readTargets,
 		out:               writeTargets,
-		domain:            sourceArg.domain
+		aiInfo:            sourceAiInfo && new AiInfo(name.content, sourceAiInfo.domain, sourceAiInfo.narrowings)
 	}
 }

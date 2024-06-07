@@ -1,6 +1,6 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { Domain } from '../../abstract-interpretation/domain'
+import type { AiInfo } from '../../abstract-interpretation/domain'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -8,8 +8,8 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	kind:      'function' | 'variable' | 'parameter' | 'argument'
 	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
 	definedAt: NodeId
-	/** If one could be determined, the domain of the identifier */
-	domain?:   Domain
+	/** If it could be determined, ai infos of the identifier */
+	aiInfo?:   AiInfo
 }
 
 /**

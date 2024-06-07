@@ -39,7 +39,7 @@ export function processFunctionArgument<OtherInfo>(
 			tag:                 VertexType.Use,
 			id:                  argument.info.id,
 			controlDependencies: data.controlDependencies,
-			domain:              value?.domain
+			aiInfo:              value?.aiInfo
 		})
 		entryPoint = argument.info.id
 	}
@@ -62,6 +62,6 @@ export function processFunctionArgument<OtherInfo>(
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
 		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
-		domain:            value?.domain
+		aiInfo:            value?.aiInfo
 	}
 }

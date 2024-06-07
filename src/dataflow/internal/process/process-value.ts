@@ -3,7 +3,7 @@ import type { DataflowProcessorInformation } from '../../processor'
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { DataflowGraph } from '../../graph/graph'
 import { VertexType } from '../../graph/vertex'
-import { Domain } from '../../../abstract-interpretation/domain'
+import { AiInfo, Domain } from '../../../abstract-interpretation/domain'
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type'
 
 export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
@@ -26,6 +26,6 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		}),
 		exitPoints: [{ nodeId: value.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
 		entryPoint: value.info.id,
-		domain:     domain
+		aiInfo:     domain && new AiInfo('', domain, [])
 	}
 }

@@ -39,7 +39,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * See {@link IdentifierReference}
 	 */
 	controlDependencies: NodeId[] | undefined
-	domain?:             Domain
+	domain?:             Domain | undefined
 }
 
 export interface DataflowGraphValue extends DataflowGraphVertexBase {

@@ -90,12 +90,29 @@ export class Domain {
 		)])
 	}
 
+	static truthy(): Domain {
+		return Domain.fromScalar(1)
+	}
+
+	static falsy(): Domain {
+		return this.bottom()
+	}
+
 	isBottom(): boolean {
 		return this.intervals.size === 0
 	}
 
+	// FIXME: better notion of true/false in a domain
 	isTop(): boolean {
 		return this.intervals.size === 1 && Array.from(this.intervals)[0].isTop()
+	}
+
+	isTruthy(): boolean {
+		return !this.isBottom()
+	}
+
+	isFalsy(): boolean {
+		return this.isBottom()
 	}
 
 	get intervals(): Set<Interval> {

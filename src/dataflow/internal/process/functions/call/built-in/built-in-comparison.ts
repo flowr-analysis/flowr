@@ -19,7 +19,7 @@ function calculateResult(lhs: AiInfo, rhs: AiInfo, narrowKind: NarrowKind): {
 	const isConditionTrue = lhsNarrowed.isBottom() && rhsNarrowed.isBottom()
 
 	return {
-		domain:     isConditionTrue ? Domain.bottom() : Domain.top(),
+		domain:     isConditionTrue ? Domain.truthy() : Domain.falsy(),
 		narrowings: [{
 			positive: {
 				id:     lhs.id,

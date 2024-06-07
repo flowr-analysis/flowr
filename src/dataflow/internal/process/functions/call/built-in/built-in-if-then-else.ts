@@ -69,9 +69,8 @@ export function processIfThenElse<OtherInfo>(
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
 
-	// FIXME: better notion of true/false in a domain
-	const conditionIsFalse: Ternary = !cond.aiInfo?.domain?.isTop() ? 'always' : 'never'
-	const conditionIsTrue: Ternary = cond.aiInfo?.domain?.isTop() ? 'always' : 'never'
+	const conditionIsFalse: Ternary = cond.aiInfo?.domain?.isFalsy() ? 'always' : 'never'
+	const conditionIsTrue: Ternary = cond.aiInfo?.domain?.isTruthy() ? 'always' : 'never'
 	if(conditionIsFalse !== 'always') {
 		then = processDataflowFor(thenArg, {
 			...data,

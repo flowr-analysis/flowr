@@ -20,7 +20,6 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		.filter(aiInfo => aiInfo !== undefined)
 		.map(aiInfo => aiInfo as AiInfo)
 
-	//FIXME: aggregate AiInfos (especially narrowings)
 	const domain = aiInfos && unifyDomains(aiInfos.map(info => info.domain))
 	const narrowings = aiInfos && aiInfos.map(info => info.narrowings).flat()
 

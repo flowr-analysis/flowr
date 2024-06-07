@@ -2,12 +2,8 @@ import { deepMergeObject } from '../../../../src/util/objects'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
-import type {
-	DataflowFunctionFlowInformation,
-	FunctionArgument } from '../../../../src/dataflow/graph/graph'
-import {
-	isPositionalArgument
-	, DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import { DataflowGraph, isPositionalArgument } from '../../../../src/dataflow/graph/graph'
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
 import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'
@@ -15,6 +11,7 @@ import { VertexType } from '../../../../src/dataflow/graph/vertex'
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
 import { EdgeType } from '../../../../src/dataflow/graph/edge'
+import type { Domain } from '../../../../src/abstract-interpretation/domain'
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap)
@@ -75,7 +72,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			reads?:             readonly NodeId[],
 			onlyBuiltIn?:       boolean,
 			environment?:       REnvironmentInformation,
-			controlDependency?: NodeId[]
+			controlDependency?: NodeId[],
+			domain?:            Domain
 		},
 		asRoot: boolean = true) {
 		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
@@ -86,7 +84,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			args:                args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), controlDependency: undefined }),
 			environment:         info?.environment ?? initializeCleanEnvironments(),
 			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
-			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
+			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
+			domain:              info?.domain
 		}, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
@@ -131,12 +130,17 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name: string,
-		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		info?: {
+			controlDependency?: NodeId[],
+			definedBy?:         NodeId[],
+			domain?:		          Domain
+		}, asRoot: boolean = true) {
 		this.addVertex({
 			tag:                 VertexType.VariableDefinition,
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
 			controlDependencies: info?.controlDependency?.map(normalizeIdToNumberIfPossible),
+			domain:              info?.domain
 		}, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -177,12 +181,16 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
+	public constant(id: NodeId, options?: {
+			controlDependency?: NodeId[],
+			domain?:	           Domain
+		}, asRoot: boolean = true) {
 		return this.addVertex({
 			tag:                 VertexType.Value,
 			id:                  normalizeIdToNumberIfPossible(id),
 			controlDependencies: options?.controlDependency?.map(normalizeIdToNumberIfPossible),
-			environment:         undefined
+			environment:         undefined,
+			domain:			           options?.domain
 		}, asRoot)
 	}
 

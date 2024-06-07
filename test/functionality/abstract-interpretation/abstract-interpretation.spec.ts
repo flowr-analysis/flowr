@@ -9,6 +9,10 @@ import {
 	unifyOverlappingIntervals
 } from '../../../src/abstract-interpretation/domain'
 import { assert } from 'chai'
+import { assertDataflow, withShell } from '../_helper/shell'
+import { emptyGraph } from '../_helper/dataflow/dataflowgraph-builder'
+import { argumentInCall } from '../_helper/dataflow/environment-builder'
+import { BuiltIn } from '../../../src/dataflow/environments/built-in'
 
 describe('Abstract Interpretation', () => {
 	it('Interval overlapping', () => {
@@ -146,4 +150,48 @@ describe('Abstract Interpretation', () => {
 		console.log(`overlap: ${overlap.intersection?.toString() ?? 'none'}`)
 		console.log(`right: ${overlap.larger?.toString() ?? 'none'}`) */
 	})
+
+	describe('Dataflow graph', withShell(shell => {
+		describe('simple stuff', () => {
+			it('simple assignment', () => {
+				assertDataflow('Unsure whats supposed to be here', shell, 'x <- 42', emptyGraph()
+					.call(2, '<-', [argumentInCall(0), argumentInCall(1)], {
+						domain:  Domain.fromScalar(42),
+						reads:   [BuiltIn],
+						returns: [0]
+					})
+					.defineVariable(0, 'x', {
+						domain:    Domain.fromScalar(43),
+						definedBy: [1, 2]
+					})
+					.constant(1, { domain: Domain.fromScalar(42) })
+				)
+			})
+			it('Two assignments', () => {
+				assertDataflow('Unsure whats supposed to be here', shell, 'x <- 42; a <- x', emptyGraph()
+					.call(2, '<-', [argumentInCall(0), argumentInCall(1)], {
+						domain:  Domain.fromScalar(42),
+						reads:   [BuiltIn],
+						returns: [0]
+					})
+					.defineVariable(0, 'x', {
+						domain:    Domain.fromScalar(42),
+						definedBy: [1, 2]
+					})
+					.constant(1, { domain: Domain.fromScalar(42) })
+
+					.call(4, '<-', [argumentInCall(3), argumentInCall(4)], {
+						domain:  Domain.fromScalar(42),
+						reads:   [BuiltIn],
+						returns: [3]
+					})
+					.defineVariable(3, 'a', {
+						domain:    Domain.fromScalar(45),
+						definedBy: [4, 5]
+					})
+				)
+			})
+		})
+	}))
+
 })

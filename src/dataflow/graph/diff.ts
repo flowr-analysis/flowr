@@ -6,7 +6,7 @@ import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
 import { VertexType } from './vertex'
 import type { DataflowGraphEdge } from './edge'
-import { edgeTypesToNames , splitEdgeTypes } from './edge'
+import { edgeTypesToNames, splitEdgeTypes } from './edge'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { IdentifierReference } from '../environments/identifier'
@@ -221,6 +221,10 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependencies)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependencies)}`,
 				{ tag: 'vertex', id }
 			)
+		}
+
+		if(lInfo.domain && rInfo.domain && !lInfo.domain.equals(rInfo.domain)) {
+			ctx.report.addComment(`Vertex ${id} differs in domain. ${ctx.leftname}: ${lInfo.domain.toString()} vs ${ctx.rightname}: ${rInfo.domain.toString()}`, { tag: 'vertex', id })
 		}
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })

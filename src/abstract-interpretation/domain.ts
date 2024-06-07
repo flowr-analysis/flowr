@@ -28,6 +28,12 @@ export class Interval {
 		return `${this.min.inclusive ? '[' : '('}${this.min.value}, ${this.max.value}${this.max.inclusive ? ']' : ')'}`
 	}
 
+	equals(other: Interval): boolean {
+		return this.min.value === other.min.value && this.min.inclusive === other.min.inclusive &&
+			this.max.value === other.max.value && this.max.inclusive === other.max.inclusive
+
+	}
+
 	/** An interval is considered empty if it's of the form [T, T) or (T, T] */
 	isBottom(): boolean {
 		return this.min.value === this.max.value && !(this.min.inclusive && this.max.inclusive)
@@ -104,6 +110,17 @@ export class Domain {
 		} else {
 			return `{${Array.from(this.intervals).join(', ')}}`
 		}
+	}
+
+	equals(other: Domain): boolean {
+		if(this.isBottom()) {
+			return other.isBottom()
+		}
+		if(this.isTop()) {
+			return other.isTop()
+		}
+		return this.intervals.size === other.intervals.size &&
+			Array.from(this.intervals).every(interval => Array.from(other.intervals).some(otherInterval => interval.equals(otherInterval)))
 	}
 
 	toJSON(): object {

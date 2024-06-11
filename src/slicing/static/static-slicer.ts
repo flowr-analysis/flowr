@@ -6,7 +6,7 @@ import { VisitingQueue } from './visiting-queue'
 import { handleReturns, sliceForCall } from './slice-call'
 import type { DataflowGraph } from '../../dataflow/graph/graph'
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { SlicingCriteria } from '../criterion/parse'
+import type { DecodedCriteria, SlicingCriteria } from '../criterion/parse'
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse'
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
@@ -14,6 +14,18 @@ import { VertexType } from '../../dataflow/graph/vertex'
 import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
+
+export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
+	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
+	expensiveTrace(slicerLogger, () => `calculating forward slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
+
+	const queue = new VisitingQueue(threshold)
+	const { nodesToSlice, minDepth } = addCriteriaToQueue(decodedCriteria, ast, queue)
+
+	// TODO actually write this
+
+	return { ...queue.status(), decodedCriteria }
+}
 
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -26,20 +38,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 	expensiveTrace(slicerLogger, () => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 
 	const queue = new VisitingQueue(threshold)
-
-	let minDepth = Number.MAX_SAFE_INTEGER
-	const sliceSeedIds = new Set<NodeId>()
-	// every node ships the call environment which registers the calling environment
-	{
-		const emptyEnv = initializeCleanEnvironments()
-		const basePrint = envFingerprint(emptyEnv)
-		for(const startId of decodedCriteria) {
-			queue.add(startId.id, emptyEnv, basePrint, false)
-			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
-			minDepth = Math.min(minDepth, ast.idMap.get(startId.id)?.info.depth ?? minDepth)
-			sliceSeedIds.add(startId.id)
-		}
-	}
+	const { minDepth, nodesToSlice } = addCriteriaToQueue(decodedCriteria, ast, queue)
 
 	while(queue.nonEmpty()) {
 		const current = queue.next()
@@ -56,7 +55,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
 		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
-			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
+			const topLevel = graph.isRoot(id) || nodesToSlice.has(id)
 			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
@@ -95,4 +94,21 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 	}
 
 	return { ...queue.status(), decodedCriteria }
+}
+
+function addCriteriaToQueue(decodedCriteria: DecodedCriteria, ast: NormalizedAst, queue: VisitingQueue): {nodesToSlice: Set<NodeId>, minDepth: number} {
+	let minDepth = Number.MAX_SAFE_INTEGER
+	const nodesToSlice = new Set<NodeId>()
+
+	// every node ships the call environment which registers the calling environment
+	const emptyEnv = initializeCleanEnvironments()
+	const basePrint = envFingerprint(emptyEnv)
+	for(const startId of decodedCriteria) {
+		queue.add(startId.id, emptyEnv, basePrint, false)
+		// retrieve the minimum depth of all involved nodes to only add control dependencies if they are "part" of the current execution
+		minDepth = Math.min(minDepth, ast.idMap.get(startId.id)?.info.depth ?? minDepth)
+		nodesToSlice.add(startId.id)
+	}
+
+	return { nodesToSlice, minDepth }
 }

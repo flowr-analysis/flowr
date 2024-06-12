@@ -32,7 +32,7 @@ export const enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 128,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 256,
+	NonStandardEvaluation = 256
 }
 
 /**

@@ -10,7 +10,7 @@ import { writeGraphOutput } from './second-phase/graph'
 import path from 'path'
 import type { CommonSummarizerConfiguration } from '../../util/summarizer'
 import { Summarizer } from '../../util/summarizer'
-import { readLineByLine, readLineByLineSync } from '../../util/files'
+import { getAllFiles, readLineByLine, readLineByLineSync } from '../../util/files'
 import { jsonReplacer } from '../../util/json'
 import { ultimateStats2String } from '../stats/print'
 import { DefaultMap } from '../../util/defaultmap'
@@ -43,24 +43,24 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.summaryFile())
 
 		this.removeIfExists(this.config.intermediateOutputPath)
-		fs.mkdirSync(this.config.intermediateOutputPath)
+		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
 
-		// recursively find all files in all the input path subdirectories
-		const filesToSummarize = fs.readdirSync(this.config.inputPath, { encoding: 'utf-8', recursive: true })
-			.map(e => path.join(this.config.inputPath, e)).filter(e => fs.statSync(e).isFile())
-
+		let fileNum = 0
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => [])
-		for(let i = 0; i < filesToSummarize.length; i++) {
-			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, filesToSummarize[i]))
+		// recursively find all files in all the input path subdirectories
+		for await (const file of getAllFiles(this.config.inputPath)){
+			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, file))
 			fs.mkdirSync(outputDir, { recursive: true })
 			const textOutputPath = path.join(outputDir, 'summary.log')
 
 			// generate measurements for each run
-			await readLineByLine(filesToSummarize[i], (line, lineNumber) => {
+			await readLineByLine(file, (line, lineNumber) => {
 				const runOutputPath = path.join(outputDir, `run-${lineNumber}.json`)
 				outputPathsPerRun.get(lineNumber).push(runOutputPath)
-				return processRunMeasurement(line, i, lineNumber, textOutputPath, runOutputPath)
+				return processRunMeasurement(line, fileNum, lineNumber, textOutputPath, runOutputPath)
 			})
+
+			fileNum++
 		}
 
 		// generate combined measurements for each file per run

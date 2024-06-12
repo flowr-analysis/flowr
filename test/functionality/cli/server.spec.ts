@@ -94,7 +94,6 @@ describe('flowr', () => {
 				.replace(/"id":"\d+"/g, '')
 			const got = JSON.stringify(response.results, jsonReplacer)
 				.replace(/"id":"\d+"/g, '')
-			console.log(JSON.stringify(response))
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer')
 		}))
 

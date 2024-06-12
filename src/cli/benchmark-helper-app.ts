@@ -6,6 +6,7 @@ import { processCommandLineArgs } from './common/script'
 import type { RParseRequestFromFile } from '../r-bridge/retriever'
 import { BenchmarkSlicer } from '../benchmark/slicer'
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables'
+import path from 'path'
 
 
 export interface SingleBenchmarkCliOptions {
@@ -44,6 +45,7 @@ async function benchmark() {
 	// prefix for printing to console, includes file id and run number if present
 	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`
 	console.log(`${prefix} Appending output to ${options.output}`)
+	fs.mkdirSync(path.parse(options.output).dir, { recursive: true })
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input)

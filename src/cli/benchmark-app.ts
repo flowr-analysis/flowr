@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { guard } from '../util/assert'
-import { allRFilesFrom } from '../util/files'
+import { allRFiles } from '../util/files'
 import { log } from '../util/log'
 import { LimitedThreadPool } from '../util/parallel'
 import { processCommandLineArgs } from './common/script'
@@ -52,9 +52,11 @@ async function benchmark() {
 	console.log(`Storing output in ${options.output}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 	// we do not use the limit argument to be able to pick the limit randomly
-	const files: RParseRequestFromFile[] = []
-	for await (const file of allRFilesFrom(options.input)) {
-		files.push(file)
+	const files: {request: RParseRequestFromFile, baseDir: string}[] = []
+	for(const input of options.input) {
+		for await (const file of allRFiles(input)) {
+			files.push({ request: file, baseDir: input })
+		}
 	}
 
 	if(options.limit) {
@@ -66,9 +68,9 @@ async function benchmark() {
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 	const args = files.map((f,i) => [
-		'--input', f.content,
+		'--input', f.request.content,
 		'--file-id', `${i}`,
-		'--output', path.join(options.output, `${path.parse(f.content).name}.json`),
+		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
 		'--slice', options.slice, ...verboseAdd])
 
 	const runs = options.runs ?? 1

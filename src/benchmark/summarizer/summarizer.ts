@@ -45,17 +45,18 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.config.intermediateOutputPath)
 		fs.mkdirSync(this.config.intermediateOutputPath)
 
-		const filesToSummarize = fs.readdirSync(this.config.inputPath)
+		// recursively find all files in all the input path subdirectories
+		const filesToSummarize = fs.readdirSync(this.config.inputPath, { encoding: 'utf-8', recursive: true })
+			.map(e => path.join(this.config.inputPath, e)).filter(e => fs.statSync(e).isFile())
 
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => [])
 		for(let i = 0; i < filesToSummarize.length; i++) {
-			const fileInputPath = path.join(this.config.inputPath, filesToSummarize[i])
-			const outputDir = path.join(this.config.intermediateOutputPath, path.parse(filesToSummarize[i]).name)
-			fs.mkdirSync(outputDir)
+			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, filesToSummarize[i]))
+			fs.mkdirSync(outputDir, { recursive: true })
 			const textOutputPath = path.join(outputDir, 'summary.log')
 
 			// generate measurements for each run
-			await readLineByLine(fileInputPath, (line, lineNumber) => {
+			await readLineByLine(filesToSummarize[i], (line, lineNumber) => {
 				const runOutputPath = path.join(outputDir, `run-${lineNumber}.json`)
 				outputPathsPerRun.get(lineNumber).push(runOutputPath)
 				return processRunMeasurement(line, i, lineNumber, textOutputPath, runOutputPath)

@@ -47,7 +47,7 @@ export type EnvironmentMemory = Map<Identifier, IdentifierDefinition[]>
 
 export interface IEnvironment {
 	/** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
-	readonly id: string
+	readonly id: number
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
 	parent:      IEnvironment
 	/**
@@ -59,9 +59,9 @@ export interface IEnvironment {
 let environmentIdCounter = 0
 
 export class Environment implements IEnvironment {
-	readonly id: string = `${environmentIdCounter++}`
-	parent:      IEnvironment
-	memory:      Map<Identifier, IdentifierDefinition[]>
+	readonly id = environmentIdCounter++
+	parent: IEnvironment
+	memory: Map<Identifier, IdentifierDefinition[]>
 
 	constructor(parent: IEnvironment) {
 		this.parent = parent

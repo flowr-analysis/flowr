@@ -79,7 +79,9 @@ async function benchmark() {
 			'run-num': options['run-num'],
 			stats
 		}
+
 		// append line by line
+		console.log(`Appending benchmark of ${options.input} to ${options.output}`)
 		fs.appendFileSync(options.output, `${JSON.stringify(output, jsonReplacer)}\n`)
 	} catch(e: unknown) {
 		if(e instanceof Error) {

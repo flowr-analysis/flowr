@@ -47,7 +47,7 @@ function removeIfExists(summarizedRaw: string) {
 
 async function benchmark() {
 	removeIfExists(options.output)
-	fs.mkdirSync(options.output)
+	fs.mkdirSync(options.output, { recursive: true })
 
 	console.log(`Storing output in ${options.output}`)
 	console.log(`Using ${options.parallel} parallel executors`)

@@ -14,6 +14,7 @@ import { readLineByLine, readLineByLineSync } from '../../util/files'
 import { jsonReplacer } from '../../util/json'
 import { ultimateStats2String } from '../stats/print'
 import { DefaultMap } from '../../util/defaultmap'
+import { guard } from '../../util/assert'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -43,11 +44,14 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.summaryFile())
 
 		this.removeIfExists(this.config.intermediateOutputPath)
-		fs.mkdirSync(this.config.intermediateOutputPath)
+		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
 
 		// recursively find all files in all the input path subdirectories
 		const filesToSummarize = fs.readdirSync(this.config.inputPath, { encoding: 'utf-8', recursive: true })
 			.map(e => path.join(this.config.inputPath, e)).filter(e => fs.statSync(e).isFile())
+
+		guard(filesToSummarize.length > 0, `Found no files to summarize in ${this.config.inputPath}`)
+		this.log(`Found ${filesToSummarize.length} files to summarize in ${this.config.inputPath}`)
 
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => [])
 		for(let i = 0; i < filesToSummarize.length; i++) {

@@ -259,7 +259,7 @@ export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof D
 		dataflow: {
 			...results.dataflow,
 			graph: {
-				...(results.dataflow as DataflowInformation).graph,
+				...results.dataflow?.graph,
 				functionCache: undefined,
 				// @ts-expect-error this is private, but we want to sanitize it for the purpose of json serialization
 				_idMap:        undefined

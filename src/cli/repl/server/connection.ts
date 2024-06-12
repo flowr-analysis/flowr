@@ -28,6 +28,7 @@ import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-p
 import type { RShell } from '../../../r-bridge/shell'
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline'
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { DeepPartial } from 'ts-essentials'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -127,6 +128,7 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
+		const sanitizedResults = sanitizeAnalysisResults(results)
 
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
@@ -135,9 +137,9 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as string, StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(NORMALIZE, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(STATIC_DATAFLOW, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {
@@ -146,13 +148,7 @@ export class FlowRServerConnection {
 				format:  'json',
 				id:      message.id,
 				cfg,
-				results: {
-					...results,
-					normalize: {
-						...results.normalize,
-						idMap: undefined
-					}
-				}
+				results: sanitizedResults
 			})
 		}
 	}
@@ -251,4 +247,23 @@ export class FlowRServerConnection {
 		})
 	}
 
+}
+
+export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {
+	return {
+		...results,
+		normalize: {
+			...results.normalize,
+			idMap: undefined
+		},
+		dataflow: {
+			...results.dataflow,
+			graph: {
+				...(results.dataflow as DataflowInformation).graph,
+				functionCache: undefined,
+				// @ts-expect-error this is private, but we want to sanitize it for the purpose of json serialization
+				_idMap:        undefined
+			}
+		}
+	}
 }

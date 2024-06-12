@@ -17,7 +17,7 @@ import { jsonReplacer } from '../../../src/util/json'
 import { extractCFG } from '../../../src/util/cfg/cfg'
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
 import { requestFromInput } from '../../../src/r-bridge/retriever'
-import type { AstIdMap, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection'
 
 describe('flowr', () => {
 	describe('Server', withShell(shell => {
@@ -79,12 +79,10 @@ describe('flowr', () => {
 			const response = messages[1] as FileAnalysisResponseMessageJson
 
 			// we are testing the server and not the slicer here!
-			const results = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				shell,
 				request: requestFromInput('1 + 1'),
-			}).allRemainingSteps()
-			// hideous
-			results.normalize.idMap = undefined as unknown as AstIdMap<ParentInformation>
+			}).allRemainingSteps())
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it')
@@ -96,6 +94,7 @@ describe('flowr', () => {
 				.replace(/"id":"\d+"/g, '')
 			const got = JSON.stringify(response.results, jsonReplacer)
 				.replace(/"id":"\d+"/g, '')
+			console.log(JSON.stringify(response))
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer')
 		}))
 

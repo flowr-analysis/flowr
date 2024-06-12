@@ -44,7 +44,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.summaryFile())
 
 		this.removeIfExists(this.config.intermediateOutputPath)
-		fs.mkdirSync(this.config.intermediateOutputPath)
+		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
 
 		// recursively find all files in all the input path subdirectories
 		const filesToSummarize = fs.readdirSync(this.config.inputPath, { encoding: 'utf-8', recursive: true })

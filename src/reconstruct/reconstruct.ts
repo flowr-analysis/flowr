@@ -30,7 +30,7 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { getRangeStart } from '../util/range'
+import { getRangeEnd, getRangeStart } from '../util/range'
 import type { SourcePosition, SourceRange } from '../util/range'
 import { autoSelectLibrary, getIndentString, indentBy, isSelected, merge, plain, prettyPrintCodeToString, prettyPrintPartToString } from './helper'
 import type { AutoSelectPredicate, Code, PrettyPrintLine, PrettyPrintLinePart } from './helper'
@@ -123,10 +123,14 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		return []
 	}
 
+	const startLoc = start ?? getRangeStart(loop.location)
 	const out = merge(
-		[{ linePart: [{ part: 'for', loc: start ?? getRangeStart(loop.location) }], indent: 0 }],
+		[{ linePart: [{ part: 'for', loc: startLoc }], indent: 0 }],
+		[{ linePart: [{ part: '(', loc: [startLoc[0], startLoc[1] + 3] }], indent: 0 }],
 		[{ linePart: [{ part: getLexeme(loop.variable), loc: getRangeStart(loop.variable.location) }], indent: 0 }],
+		[{ linePart: [{ part: ' in ', loc: getRangeEnd(loop.variable.location) }], indent: 0 }],
 		reconstructedVector,
+		[{ linePart: [{ part: ')', loc: [vectorLocation[0], vectorLocation[1] + prettyPrintCodeToString(reconstructedVector).length] }], indent: 0 }],
 		...additionalTokens
 	)
 	//if body empty
@@ -285,7 +289,6 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 	}
 }
 
-//what are we doing here??
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(config, definition) && functionParameters.every(p => p.length === 0)) {

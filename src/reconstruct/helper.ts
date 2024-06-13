@@ -93,6 +93,9 @@ export function prettyPrintPartToString(line: PrettyPrintLinePart[],columnOffset
 	if(line.length === 0) {
 		return ''
 	}
+	if(line.length === 1) {
+		return /*' '.repeat(Math.max(columnOffset - 1, 0)) + */line[0].part
+	}
 	line.sort((a, b) => a.loc[1] - b.loc[1])
 	let result = ''
 	for(const part of line) {
@@ -162,8 +165,10 @@ function addSemis(code: Code): Code {
 		}
 		return false
 	}
+
 	const line: PrettyPrintLinePart[][] = []
-	const specialChar = ['+', '-', '*', '/', ':', '<-', '->', '<<-', '->>', '$', '$$', '&', '&&', '||', '?', '<', '>', '=', '<=', '>=', '==', '(', ')', '{', '}', '[', '[[', ']', ']]']
+	const specialChar = ['+', '-', '*', '/', ':', '<-', '->', '<<-', '->>', '$', '$$', '&', '&&', '||', '?', '<', '>', '=', '<=', '>=', '==', '(', ')', '((', '))', '{', '}', '[', '[[', ']', ']]', 'for', ' in ']
+	//find a way to make this work with merge, as this is a very similar piece of code
 	for(const elem of code) {
 		let currLine = 1
 		for(const linePart of elem.linePart) {
@@ -175,10 +180,12 @@ function addSemis(code: Code): Code {
 		}
 	}
 
+	//iterate through all elements of the code piece to search for places for semicolons
 	for(const lineElements of line) {
 		if(lineElements === undefined) {
 			continue
 		}
+		//create a heuristic to store information about the current search
 		const heuristic = { assignment: false, brackets: false, lastChar: lineElements[0], statement: false, addedSemi: false, curlyBrackets: false }
 		let possibleSemi = heuristic.lastChar.loc
 		lineElements.splice(0, 1)
@@ -194,54 +201,42 @@ function addSemis(code: Code): Code {
 			}
 
 			//check if the current element may be followed by a semicolon
-			if(elem.part[elem.part.length - 1] === ')') {
+			if((elem.loc[1] - (heuristic.lastChar.loc[1] + heuristic.lastChar.part.length)) >= 1) {
 				//closing brackets
 				possibleSemi = updateSemi(possibleSemi, heuristic)
 			} else if(elem.part[elem.part.length - 1] === '}') {
 				//closing curlyBrackets
 				possibleSemi = updateSemi(possibleSemi, heuristic)
-			} else if((elem.loc[1] - (heuristic.lastChar.loc[1] + heuristic.lastChar.part.length)) >= 1) {
+			} else if(elem.part[elem.part.length - 1] === ')') {
 				//large space
 				possibleSemi = updateSemi(possibleSemi, heuristic)
 			}
-
+			
 			//checking condishions for adding semicolons
 			if((elem.part === '<-') || (elem.part === '->') || (elem.part === '<<-') || (elem.part === '->>')) {
 			//check for assignments
 				if(heuristic.assignment) {
-					if(!heuristic.addedSemi) {
-						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
-						heuristic.addedSemi = true
-					}
+					pushSemi(heuristic, possibleSemi)
 				}
 				heuristic.assignment = !heuristic.assignment
 			} else if(elem.part[0] === '(') {
 				//check for brackets
 				heuristic.assignment = false
 				if(heuristic.brackets) {
-					if(!heuristic.addedSemi) {
-						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
-						heuristic.addedSemi = true
-					}
+					pushSemi(heuristic, possibleSemi)
 					heuristic.brackets = false
 				}
 			} else if(elem.part[0] === '{') {
 				//check for curlyBrackets
 				heuristic.assignment = false
 				if(heuristic.curlyBrackets) {
-					if(!heuristic.addedSemi) {
-						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
-						heuristic.addedSemi = true
-					}
+					pushSemi(heuristic, possibleSemi)
 					heuristic.curlyBrackets = false
 				}
 			} else if(!contains(specialChar, elem.part)) {
 				//check for two consecutive statements
 				if(heuristic.statement) {
-					if(!heuristic.addedSemi) {
-						code.push({ linePart: [ { part: ';', loc: possibleSemi } ], indent: 0 })
-						heuristic.addedSemi = true
-					}
+					pushSemi(heuristic, possibleSemi)
 				}
 			}
 
@@ -252,6 +247,13 @@ function addSemis(code: Code): Code {
 	code = merge(code)
 	return code
 
+	function pushSemi(heuristic: { assignment: boolean; brackets: boolean; lastChar: PrettyPrintLinePart; statement: boolean; addedSemi: boolean; curlyBrackets: boolean }, possibleSemi: SourcePosition) {
+		if(!heuristic.addedSemi) {
+			code.push({ linePart: [{ part: ';', loc: possibleSemi }], indent: 0 })
+			heuristic.addedSemi = true
+		}
+	}
+
 	function updateSemi(possibleSemi: SourcePosition, heuristic: { assignment: boolean; brackets: boolean; lastChar: PrettyPrintLinePart; statement: boolean; addedSemi: boolean; curlyBrackets: boolean }) {
 		const lastSemi: SourcePosition = [possibleSemi[0], possibleSemi[1]]
 		const other: SourcePosition = [heuristic.lastChar.loc[0], heuristic.lastChar.loc[1] + heuristic.lastChar.part.length]
@@ -260,6 +262,7 @@ function addSemis(code: Code): Code {
 		return possibleSemi
 	}
 }
+
 
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge(code)

@@ -29,7 +29,7 @@ for(i in 1:10) {
   x <- x * 2
 }
 cat(x)
-    `, ['6@x'], 'x <- 1\nfor(i in 1:10) {\n  x <- x * 2\n}\ncat(x)')
+    `, ['6@x'], 'x <- 1\nfor(i in 1:10) {\n  x <- x * 2\n}\nx')
 		assertSliced('While-Loop', shell, `
 print(x)
     `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\nx', {

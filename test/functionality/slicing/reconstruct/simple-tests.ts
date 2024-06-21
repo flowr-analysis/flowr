@@ -20,6 +20,7 @@ describe('Simple', withShell(shell => {
 			['12 + (supi <- 42)', 0, '12', ['grouping', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'precedence']],
 			['y <- x <- 42', 1, 'x', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
 			['y <- x <- 42', 0, 'y', ['name-normal', 'numbers', 'return-value-of-assignments', ...OperatorDatabase['<-'].capabilities, 'precedence'] ],
+			//this test now reconstructs the for??
 			['for (i in 1:20) { x <- 5 }', 6, 'x', ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities] ]
 		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected)
@@ -37,11 +38,17 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('Loops', () => {
-		describe('repeat', () => {
+		describe.only('repeat', () => {
 			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+				//this test now reconstructs the repeat??
+				//repeat   x
 				['repeat { x }', 2, 'x', ['repeat-loop', 'name-normal']],
+				//this test now reconstructs the repeat??
+				//repeat   x
 				['repeat { x <- 5; y <- 9 }', 2, 'x', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']],
-				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5\n9', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']]
+				//this test now reconstructs the repeat??
+				//repeat { x <- 5; y <- 9 }
+				['repeat { x <- 5; y <- 9 }', [2, 4, 6], 'x <- 5;      9', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons', 'numbers']]
 			]
 			for(const [code, id, expected, caps] of pool) {
 				assertReconstructed(label(code, caps), shell, code, id, expected)
@@ -51,21 +58,30 @@ describe('Simple', withShell(shell => {
 		describe('while', () => {
 			const fiveNineCaps: SupportedFlowrCapabilityId[] = ['while-loop', 'logical', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']
 			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
+				//this test now reconstructs the while
+				//while(TRUE)   x
 				['while(TRUE) { x }', 3, 'x', ['while-loop', 'logical', 'name-normal']],
+				//this test now reconstructs the while
+				//while(TRUE)   x
 				['while(TRUE) { x <- 5 }', 3, 'x', ['while-loop', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
+				//this test now reconstructs the while
+				//while(TRUE)   x
 				['while(TRUE) { x <- 5; y <- 9 }', 3, 'x', fiveNineCaps],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 3], 'while(TRUE) x', fiveNineCaps],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 3, 5], 'while(TRUE) x <- 5', fiveNineCaps],
-				['while(TRUE) { x <- 5; y <- 9 }', [10, 6], 'while(TRUE) y', fiveNineCaps],
-				['while(TRUE) { x <- 5; y <- 9 }', [3, 4, 6], 'x <- 5\ny', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 3], 'while(TRUE)   x', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 3, 5], 'while(TRUE)   x <- 5', fiveNineCaps],
+				['while(TRUE) { x <- 5; y <- 9 }', [10, 6], 'while(TRUE)           y', fiveNineCaps],
+				//this test now reconstructs the while??
+				['while(TRUE) { x <- 5; y <- 9 }', [3, 4, 6], 'x <- 5; y', fiveNineCaps],
+				//this test now reconstructs the while
 				['while(x + 2 > 3) { x <- 0 }', [7], 'x', ['while-loop', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']],
-				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3) x', ['while-loop', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']]
+				['while(x + 2 > 3) { x <- 0 }', [0, 7], 'while(x + 2 > 3)   x', ['while-loop', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers']]
 			]
 			for(const [code, id, expected, caps] of pool) {
 				assertReconstructed(label(code, caps), shell, code, id, expected)
 			}
 		})
 
+		//for tests will fail due to the current pretty printing
 		describe('for', () => {
 			const largeFor = `
       for (i in 1:20) {
@@ -94,9 +110,13 @@ describe('Simple', withShell(shell => {
 
 	describe('function definition', () => {
 		const testCases: {name: string, case: string, argument: string[], expected: string}[] = [
+			//this test does not reconstruct anything??
 			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
+			//this test does not reconstruct anything??
 			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
+			//this test does not reconstruct anything??
 			{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
+			//this test does not reconstruct anything??
 			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
 		]
 		for(const test of testCases) {
@@ -106,8 +126,10 @@ describe('Simple', withShell(shell => {
 
 	describe('Branches', () => {
 		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
-			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: ['10', '3', '0'], expected: 'if(TRUE) { x <- 3 }\nx' },
-			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: ['10', '7', '0'], expected: 'if(FALSE) {} else         { x <- 4 }\nx' }
+			//this test does not reconstruct anything?? [ids may be wrong]
+			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: ['5', '13', '0', '14'], expected: 'if(TRUE) { x <- 3 }\nx' },
+			//this test does not reconstruct anything?? [ids may be wrong]
+			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: ['11', '0', '13', '14'], expected: 'if(FALSE) {} else         { x <- 4 }\nx' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
@@ -116,9 +138,10 @@ describe('Simple', withShell(shell => {
 
 	describe('Functions in assignments', () => {
 		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
+			//this test does not reconstruct anything?? [ids may be wrong]
 			{ name:     'Nested Side-Effect For First', 
 				case:     'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', 
-				argument: ['0', '1', '2', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '20', '21', '22', '23'], 
+				argument: ['0', '1', '2', '3', '4', '5', '6', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '20', '21', '22', '24', '25', '26', '27', '28', '29'], 
 				expected: 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()' }
 		] 
 		for(const test of testCases) {

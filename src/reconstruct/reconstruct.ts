@@ -34,6 +34,7 @@ import { getRangeEnd, getRangeStart } from '../util/range'
 import type { SourcePosition, SourceRange } from '../util/range'
 import { autoSelectLibrary, getIndentString, indentBy, isSelected, merge, plain, prettyPrintCodeToString, prettyPrintPartToString } from './helper'
 import type { AutoSelectPredicate, Code, PrettyPrintLine, PrettyPrintLinePart } from './helper'
+import { jsonReplacer } from '../util/json'
 
 type Selection = ReadonlySet<NodeId>
 
@@ -157,7 +158,20 @@ function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
 
 //what is happening here???
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
+	console.log(`${JSON.stringify(configuration, jsonReplacer)}\n${loop.info.id}\n${loop.body.info.id}`)
+	for( const id of configuration.selection) {
+		if(loop.body.children.filter(n => n.info.id === id).length > 0) {
+			return body
+		}
+	}
+	for( const children of loop.body.children) {
+		console.log(`${children.info.id}`)
+	}
 	if(isSelected(configuration, loop)) {
+		console.log('whole loop selected')
+		return body
+	} else if(isSelected(configuration, loop.body)) {
+		console.log('just body selected')
 		return body
 	} else if(body.length === 0) {
 		return []
@@ -171,7 +185,6 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
-//why is there pretty printing again??
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = getRangeStart(ifThenElse.location)
 	//const endPos = ifThenElse.location.end
@@ -212,8 +225,10 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = getRangeStart(loop.location)
+	//do we print the entiry while loop if the while gets selected??
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), start)
+		//return plain(getLexeme(loop), start)
+		return merge([{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? getRangeStart(loop.location) }], indent: 0 }], reconstructExpressionList(loop.body, undefined, [body], configuration))
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge(

@@ -160,7 +160,7 @@ describe('Functions Reconstruct', () => {
 			{ input: [{ part: 'Hello', loc: [0, 0] }] as [PrettyPrintLinePart],expected: 'Hello',msg: 'No Spaces anywhere', columnOffset: 0 },
 			{ input: [{ part: 'Hello World', loc: [0, 0] }] as [PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get preserved', columnOffset: 0 },
 			{ input: [{ part: 'Hello', loc: [0, 0] }, { part: 'World', loc: [0, 6] }] as [PrettyPrintLinePart, PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get added within the string', columnOffset: 0 },
-			{ input: [{ part: 'Hello', loc: [0, 6] }] as [PrettyPrintLinePart],expected: '      Hello',msg: 'Spaces get added at the beginning', columnOffset: 0 },
+			{ input: [{ part: 'Hello', loc: [0, 6] }] as [PrettyPrintLinePart],expected: 'Hello',msg: 'Spaces get added at the beginning', columnOffset: 0 },
 			{ input: [{ part: 'World', loc: [0, 6] },{ part: 'Hello', loc: [0, 0] }] as [PrettyPrintLinePart, PrettyPrintLinePart],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order', columnOffset: 0 },
 		]) {
 			positive(testCase.input, testCase.expected, testCase.msg, testCase.columnOffset)

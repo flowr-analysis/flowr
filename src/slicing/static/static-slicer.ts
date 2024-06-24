@@ -8,9 +8,11 @@ import type { DataflowGraph } from '../../dataflow/graph/graph'
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion/parse'
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse'
+import type { REnvironmentInformation } from '../../dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { VertexType } from '../../dataflow/graph/vertex'
+import type { DataflowGraphEdge } from '../../dataflow/graph/edge'
 import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
@@ -20,9 +22,26 @@ export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, c
 	expensiveTrace(slicerLogger, () => `calculating forward slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 
 	const queue = new VisitingQueue(threshold)
-	const { nodesToSlice, minDepth } = addCriteriaToQueue(decodedCriteria, ast, queue)
+	const { minDepth, nodesToSlice } = addCriteriaToQueue(decodedCriteria, ast, queue)
 
-	// TODO actually write this
+	while(queue.nonEmpty()) {
+		const current = queue.next()
+		const { baseEnvironment, id, onlyForSideEffects } = current
+		const baseEnvFingerprint = envFingerprint(baseEnvironment)
+
+		const currentVertex = graph.getVertex(id, true)
+		if(currentVertex === undefined) {
+			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`)
+			continue
+		}
+		const ingoingEdges = graph.ingoingEdges(id) ?? new Map<NodeId, DataflowGraphEdge>()
+
+		// TODO control dependencies
+
+		// TODO function calls and returns (if not only for side effects)
+
+		traverseEdges(ingoingEdges, queue, baseEnvironment, baseEnvFingerprint)
+	}
 
 	return { ...queue.status(), decodedCriteria }
 }
@@ -74,23 +93,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 			}
 		}
 
-		for(const [target, { types }] of currentEdges) {
-			if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
-				continue
-			}
-			const t = shouldTraverseEdge(types)
-			if(t === TraverseEdge.Always) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
-			} else if(t === TraverseEdge.DefinedByOnCall) {
-				const n = queue.potentialArguments.get(target)
-				if(n) {
-					queue.add(target, n.baseEnvironment, envFingerprint(n.baseEnvironment), n.onlyForSideEffects)
-					queue.potentialArguments.delete(target)
-				}
-			} else if(t === TraverseEdge.SideEffect) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
-			}
-		}
+		traverseEdges(currentEdges, queue, baseEnvironment, baseEnvFingerprint)
 	}
 
 	return { ...queue.status(), decodedCriteria }
@@ -111,4 +114,24 @@ function addCriteriaToQueue(decodedCriteria: DecodedCriteria, ast: NormalizedAst
 	}
 
 	return { nodesToSlice, minDepth }
+}
+
+function traverseEdges(currentEdges: Map<NodeId, DataflowGraphEdge>, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: string) {
+	for(const [target, { types }] of currentEdges) {
+		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+			continue
+		}
+		const t = shouldTraverseEdge(types)
+		if(t === TraverseEdge.Always) {
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false)
+		} else if(t === TraverseEdge.DefinedByOnCall) {
+			const node = queue.potentialArguments.get(target)
+			if(node) {
+				queue.add(target, node.baseEnvironment, envFingerprint(node.baseEnvironment), node.onlyForSideEffects)
+				queue.potentialArguments.delete(target)
+			}
+		} else if(t === TraverseEdge.SideEffect) {
+			queue.add(target, baseEnvironment, baseEnvFingerprint, true)
+		}
+	}
 }

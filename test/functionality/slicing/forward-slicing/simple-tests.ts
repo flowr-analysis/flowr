@@ -1,6 +1,7 @@
 import { assertForwardSliced, withShell } from '../../_helper/shell'
 import { label } from '../../_helper/label'
 
+// TODO add labels to these tests
 describe('Assignments', withShell(shell => {
 	assertForwardSliced(label('simple value', []), shell,
 		'x <- 1\nx', ['1@x'], 'x <- 1\nx')
@@ -16,7 +17,7 @@ print(x)`.trimStart()
 	assertForwardSliced(label('before if/else', []), shell,
 		ifElse, ['1@x'], 'x <- 1')
 	assertForwardSliced(label('within if/else', []), shell,
-		ifElse, ['3@x'], 'if(y) {\nx <- 2\n}\nprint(x)')
+		ifElse, ['3@x'], 'if(y) { x <- 2 }\nprint(x)')
 
 	assertForwardSliced(label('if', []), shell,
 		`

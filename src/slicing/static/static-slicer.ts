@@ -11,7 +11,7 @@ import { convertAllSlicingCriteriaToIds } from '../criterion/parse'
 import type { REnvironmentInformation } from '../../dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { VertexType } from '../../dataflow/graph/vertex'
+import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex'
 import type { DataflowGraphEdge } from '../../dataflow/graph/edge'
 import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge'
 
@@ -36,7 +36,7 @@ export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, c
 		}
 		const ingoingEdges = graph.ingoingEdges(id) ?? new Map<NodeId, DataflowGraphEdge>()
 
-		// TODO control dependencies
+		addControlDependencies(currentVertex, nodesToSlice, minDepth, graph, ast, queue, baseEnvironment, baseEnvFingerprint)
 
 		// TODO function calls and returns (if not only for side effects)
 
@@ -72,15 +72,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		const [currentVertex, currentEdges] = currentInfo
 
-		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
-		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
-			const topLevel = graph.isRoot(id) || nodesToSlice.has(id)
-			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
-				if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
-					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
-				}
-			}
-		}
+		addControlDependencies(currentVertex, nodesToSlice, minDepth, graph, ast, queue, baseEnvironment, baseEnvFingerprint)
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
@@ -132,6 +124,18 @@ function traverseEdges(currentEdges: Map<NodeId, DataflowGraphEdge>, queue: Visi
 			}
 		} else if(t === TraverseEdge.SideEffect) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, true)
+		}
+	}
+}
+
+function addControlDependencies(currentVertex: DataflowGraphVertexInfo, nodesToSlice: Set<NodeId>, minDepth: number, graph: DataflowGraph, ast: NormalizedAst, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: string) {
+	// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
+	if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
+		const topLevel = graph.isRoot(currentVertex.id) || nodesToSlice.has(currentVertex.id)
+		for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
+			if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
+				queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
+			}
 		}
 	}
 }

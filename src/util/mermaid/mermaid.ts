@@ -13,8 +13,10 @@ const replacements = {
 	'\\':  '#92;',
 	'_':   '#95;',
 	'{':   '#123;',
-	'}':   '#125;'
+	'}':   '#125;',
+	'&':   '#38;'
 }
+
 export function escapeMarkdown(text: string): string {
 	for(const [key, value] of Object.entries(replacements)) {
 		text = text.replaceAll(key, value)

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1718195270818,
+  "lastUpdate": 1719303028429,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -3098,6 +3098,109 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 1.0891507696308096,
             "extra": "median: 1.08ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7974469447714406,
+            "unit": "#",
+            "extra": "std: 0.137866619804194"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.774073695901592,
+            "unit": "#",
+            "extra": "std: 0.14092814050818442"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 151127.95454545456,
+            "unit": "Bytes",
+            "range": 367879.65634065185,
+            "extra": "median: 46487.00"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "5b3ed9d7e79cfa406a8a9145190f66b72202c8e4",
+          "message": "[release:patch] Fix: Correctly print CDs in mermaid",
+          "timestamp": "2024-06-25T09:57:48+02:00",
+          "tree_id": "5bdc6eeff97fccbed9fa85a43ad37df03483e839",
+          "url": "https://github.com/Code-Inspect/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
+        },
+        "date": 1719303026409,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 239.78362031818182,
+            "unit": "ms",
+            "range": 101.71215351954449,
+            "extra": "median: 210.27ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 31.126457727272726,
+            "unit": "ms",
+            "range": 60.59364235765207,
+            "extra": "median: 16.07ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 57.31573868181818,
+            "unit": "ms",
+            "range": 143.97508076081658,
+            "extra": "median: 21.74ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1272.543320590909,
+            "unit": "ms",
+            "range": 3093.2003834604784,
+            "extra": "median: 366.94ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.1706521036126456,
+            "unit": "ms",
+            "range": 1.0185054293350448,
+            "extra": "median: 0.74ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.41664238454733316,
+            "unit": "ms",
+            "range": 0.2535032314593369,
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.605898785152831,
+            "unit": "ms",
+            "range": 1.0896979662103579,
+            "extra": "median: 1.13ms"
           },
           {
             "name": "failed to reconstruct/re-parse",
@@ -6324,6 +6427,109 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 7.902796435245641,
             "extra": "median: 1.83ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.9250085598882571,
+            "unit": "#",
+            "extra": "std: 0.09163704405604677"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8936602769604,
+            "unit": "#",
+            "extra": "std: 0.13105244106324643"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 145967.48,
+            "unit": "Bytes",
+            "range": 150220.2921073235,
+            "extra": "median: 72246.00"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "5b3ed9d7e79cfa406a8a9145190f66b72202c8e4",
+          "message": "[release:patch] Fix: Correctly print CDs in mermaid",
+          "timestamp": "2024-06-25T09:57:48+02:00",
+          "tree_id": "5bdc6eeff97fccbed9fa85a43ad37df03483e839",
+          "url": "https://github.com/Code-Inspect/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
+        },
+        "date": 1719303028425,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 243.97138318,
+            "unit": "ms",
+            "range": 43.85312989297979,
+            "extra": "median: 228.06ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 33.32186876,
+            "unit": "ms",
+            "range": 27.7304378627707,
+            "extra": "median: 20.21ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 79.67889694,
+            "unit": "ms",
+            "range": 90.9276974383577,
+            "extra": "median: 31.96ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 2218.10364312,
+            "unit": "ms",
+            "range": 3803.48849751598,
+            "extra": "median: 694.98ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 4.3128597072218735,
+            "unit": "ms",
+            "range": 7.960117727429911,
+            "extra": "median: 1.38ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.37606291199102965,
+            "unit": "ms",
+            "range": 0.19272447461649175,
+            "extra": "median: 0.19ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 4.697860587731026,
+            "unit": "ms",
+            "range": 8.030224482502822,
+            "extra": "median: 1.79ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

@@ -82,10 +82,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 	} else if(arg === EmptyArgument) {
 		return '[empty]'
 	} else if(isNamedArgument(arg)) {
-		const deps = arg.controlDependencies ? ', :maybe:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : ''
+		const deps = arg.controlDependencies ? ', :may:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : ''
 		return `${arg.name} (${arg.nodeId}${deps})`
 	} else if(isPositionalArgument(arg)) {
-		const deps = arg.controlDependencies ? ' (:maybe:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': ''
+		const deps = arg.controlDependencies ? ' (:may:' + arg.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': ''
 		return `${arg.nodeId}${deps}`
 	} else {
 		return '??'
@@ -157,7 +157,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??'
 	const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??')
 
-	const deps = info.controlDependencies ? ', :maybe:' + info.controlDependencies.join(',') : ''
+	const deps = info.controlDependencies ? ', :may:' + info.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : ''
 	const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined)
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''

@@ -59,23 +59,26 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
 	for(const functionCallTarget of functionCallTargets) {
+		let isInDefined = false
+
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
 			if(defs === undefined) {
 				continue
 			}
+			isInDefined = true
 
 			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
 				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
 			}
+		}
 
-			// when forward slicing, also traverse the function and its subflow itself, since it might contain the sliced node
-			if(forward) {
-				queue.add(functionCallTarget.id, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
-				for(const subNode of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.graph) {
-					queue.add(subNode, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
-				}
+		// when forward slicing, also traverse the function and its subflow itself, since it might contain the sliced node
+		if(forward && isInDefined) {
+			queue.add(functionCallTarget.id, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
+			for(const subNode of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.graph) {
+				queue.add(subNode, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 			}
 		}
 

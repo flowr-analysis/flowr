@@ -40,7 +40,7 @@ export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, c
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue, true)
+				sliceForCall(current, currentVertex, graph, queue, nodesToSlice, true)
 			}
 		}
 
@@ -80,7 +80,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
-				sliceForCall(current, currentVertex, graph, queue)
+				sliceForCall(current, currentVertex, graph, queue, nodesToSlice)
 			}
 
 			const ret = handleReturns(queue, currentEdges, baseEnvFingerprint, baseEnvironment)

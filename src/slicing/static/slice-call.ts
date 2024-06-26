@@ -16,6 +16,7 @@ import type { DataflowGraph, OutgoingEdges } from '../../dataflow/graph/graph'
 import { BuiltIn } from '../../dataflow/environments/built-in'
 import { resolveByName } from '../../dataflow/environments/resolve-by-name'
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
@@ -34,10 +35,15 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, 
 	return overwriteEnvironment(baseEnvironment, callerEnvironment)
 }
 
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue, forward = false): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue, nodesToSlice: Set<NodeId>, forward = false): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
+
+	// when forward slicing, only take into account functions that include the slicing criteria
+	if(forward && ![...nodesToSlice].some(c => outgoingEdges[1].has(c))) {
+		return
+	}
 
 	// lift baseEnv on the same level
 	const baseEnvironment = current.baseEnvironment

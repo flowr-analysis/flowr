@@ -34,8 +34,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, 
 	return overwriteEnvironment(baseEnvironment, callerEnvironment)
 }
 
-/** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue, forward = false): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -66,13 +65,25 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 			if(defs === undefined) {
 				continue
 			}
+
 			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
 				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
 			}
+
+			// when forward slicing, also traverse the function and its subflow itself, since it might contain the sliced node
+			if(forward) {
+				queue.add(functionCallTarget.id, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
+				for(const subNode of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.graph) {
+					queue.add(subNode, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
+				}
+			}
 		}
 
-		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
+		// when forward slicing, ignore exit points since we only care about whether the subflow contains the sliced node
+		if(!forward) {
+			for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+				queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
+			}
 		}
 	}
 }

@@ -38,7 +38,14 @@ export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, c
 
 		addControlDependencies(currentVertex, nodesToSlice, minDepth, graph, ast, queue, baseEnvironment, baseEnvFingerprint)
 
-		// TODO function calls and returns (if not only for side effects)
+		if(!onlyForSideEffects) {
+			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
+				sliceForCall(current, currentVertex, graph, queue, true)
+			}
+			/*if(handleReturns(queue, ingoingEdges, baseEnvFingerprint, baseEnvironment)) {
+				continue
+			}*/
+		}
 
 		traverseEdges(ingoingEdges, queue, baseEnvironment, baseEnvFingerprint)
 	}

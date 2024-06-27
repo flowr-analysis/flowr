@@ -5,7 +5,7 @@ import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import type { XmlBasedJson } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
-import { attributesKey, contentKey , childrenKey , getKeysGuarded } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { attributesKey, contentKey, childrenKey, getKeyGuarded } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
 import { RawRType } from '../../../r-bridge/lang-4.x/ast/model/type'
 import {
 	extractLocation,
@@ -18,7 +18,8 @@ import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson): DepthList {
-	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	
 	const visit: { depth: number, node: XmlBasedJson }[] = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 
@@ -29,6 +30,7 @@ function toDepthMap(xml: XmlBasedJson): DepthList {
 		}
 
 		const children = current.node[childrenKey] as unknown as XmlBasedJson[] | undefined ?? []
+		
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -112,7 +114,7 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 			result += f.format(type, { style: FontStyles.Bold })
 		}
 
-		i ++
+		i++
 	}
 	return result
 }

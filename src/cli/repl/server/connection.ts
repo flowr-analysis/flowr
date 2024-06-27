@@ -29,6 +29,7 @@ import type { RShell } from '../../../r-bridge/shell'
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline'
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { DeepPartial } from 'ts-essentials'
+import { DataflowGraph } from '../../../dataflow/graph/graph'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -258,12 +259,8 @@ export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof D
 		},
 		dataflow: {
 			...results.dataflow,
-			graph: {
-				...results.dataflow?.graph,
-				functionCache: undefined,
-				// @ts-expect-error this is private, but we want to sanitize it for the purpose of json serialization
-				_idMap:        undefined
-			}
+			// we want to keep the DataflowGraph type information, but not the idMap
+			graph: new DataflowGraph(undefined).mergeWith(results.dataflow?.graph)
 		}
 	}
 }

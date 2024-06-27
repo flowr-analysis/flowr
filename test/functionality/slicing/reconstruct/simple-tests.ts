@@ -4,7 +4,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/g
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
-describe('Simple', withShell(shell => {
+describe.only('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const [id, code, caps] of [
 			[0, 'x <- 5', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
@@ -38,7 +38,7 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('Loops', () => {
-		describe.only('repeat', () => {
+		describe('repeat', () => {
 			const pool: [string, NodeId | NodeId[], string, SupportedFlowrCapabilityId[]][] = [
 				//this test now reconstructs the repeat??
 				//repeat   x
@@ -83,23 +83,15 @@ describe('Simple', withShell(shell => {
 
 		//for tests will fail due to the current pretty printing
 		describe('for', () => {
-			const largeFor = `
-      for (i in 1:20) {
-        y <- 9
-        x <- 5
-        12 -> x
-      }
-    `
+			const largeFor = 'for (i in 1:20) {\n    y <- 9\n    x <- 5\n    12 -> x\n}'
+
 			const caps: SupportedFlowrCapabilityId[] = ['for-loop', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['->'].capabilities, 'newlines']
 			const pool: [string, NodeId | NodeId[], string][] = [
-				[largeFor, 0, 'for(i in 1:20) {}'],
+				[largeFor, [0], 'for (i in 1:20) {}'],
 				[largeFor, 6, 'y'],
-				[largeFor, [6, 16], 'for(i in 1:20) y'],
+				[largeFor, [6, 16, 4], 'for (i in 1:20) {\n    y\n}'],
 				[largeFor, [6, 9], 'y\nx'],
-				[largeFor, [6, 12, 16], `for(i in 1:20) {
-    y
-    12
-}`],
+				[largeFor, [6, 12, 16, 4], 'for (i in 1:20) {\n    y\n    12\n}'],
 			]
 
 			for(const [code, id, expected] of pool) {
@@ -109,15 +101,11 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('function definition', () => {
-		const testCases: {name: string, case: string, argument: string[], expected: string}[] = [
-			//this test does not reconstruct anything??
-			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
-			//this test does not reconstruct anything??
-			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
-			//this test does not reconstruct anything??
-			{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
-			//this test does not reconstruct anything??
-			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
+		const testCases: {name: string, case: string, argument: NodeId[], expected: string}[] = [
+			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: [10], expected: 'a <- function (x) { x <- 2 }' },
+			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: [7], expected: 'x <- 2' },
+			{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: [13], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
+			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: [7], expected: 'x <- 2' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
@@ -125,11 +113,10 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('Branches', () => {
-		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
-			//this test does not reconstruct anything?? [ids may be wrong]
-			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: ['5', '13', '0', '14'], expected: 'if(TRUE) { x <- 3 }\nx' },
-			//this test does not reconstruct anything?? [ids may be wrong]
-			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: ['11', '0', '13', '14'], expected: 'if(FALSE) {} else         { x <- 4 }\nx' }
+		const testCases: {name: string, case: string, argument: NodeId|NodeId[], expected: string}[] = [
+			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 3, 5, 14, 2], expected: 'if(TRUE) { x <- 3 }\nx' },
+			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 11, 14, 9, 8], expected: 'if(FALSE) {} else         { x <- 4 }\nx' },
+			{ name: 'multi-line true if statement', case: 'if(TRUE) {\n    x <- 3\n    y <- 4\n} else {\n    x <- 4\n    y <- 3\n}\nx', argument: [0, 3, 5, 2, 20], expected: 'if(TRUE) {\n    x <- 3\n}\nx' }
 		]
 		for(const test of testCases) {
 			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
@@ -137,11 +124,10 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('Functions in assignments', () => {
-		const testCases: {name: string, case: string, argument: string|string[], expected: string}[] = [
-			//this test does not reconstruct anything?? [ids may be wrong]
+		const testCases: {name: string, case: string, argument: NodeId|NodeId[], expected: string}[] = [
 			{ name:     'Nested Side-Effect For First', 
 				case:     'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n', 
-				argument: ['0', '1', '2', '3', '4', '5', '6', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '20', '21', '22', '24', '25', '26', '27', '28', '29'], 
+				argument: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 24, 25, 26, 27, 28, 29], 
 				expected: 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()' }
 		] 
 		for(const test of testCases) {

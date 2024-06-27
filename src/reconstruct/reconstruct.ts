@@ -34,6 +34,7 @@ import { getRangeEnd, getRangeStart } from '../util/range'
 import type { SourcePosition, SourceRange } from '../util/range'
 import { autoSelectLibrary, getIndentString, indentBy, isSelected, merge, plain, prettyPrintCodeToString, prettyPrintPartToString } from './helper'
 import type { AutoSelectPredicate, Code, PrettyPrintLine, PrettyPrintLinePart } from './helper'
+import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect'
 import { jsonReplacer } from '../util/json'
 
 type Selection = ReadonlySet<NodeId>
@@ -109,31 +110,39 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = getRangeStart(loop.info.fullRange) //may be unnesseccary
-	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), start ?? getRangeStart(loop.location))
-	}
-	if(isSelected(configuration, loop.body)) {
-		return merge(body)
-	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const vectorLocation: SourcePosition = loop.vector.location? getRangeStart(loop.vector.location) : vector[0].linePart[0].loc
 	vectorLocation[1] -= 1 //somehow the vector is consistently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
-
-	if(variable.length === 0 && vector.length === 0 && body.length === 0) {
-		return []
-	}
-
 	const startLoc = start ?? getRangeStart(loop.location)
 	const out = merge(
 		[{ linePart: [{ part: 'for', loc: startLoc }], indent: 0 }],
-		[{ linePart: [{ part: '(', loc: [startLoc[0], startLoc[1] + 3] }], indent: 0 }],
+		[{ linePart: [{ part: '(', loc: [startLoc[0], startLoc[1] + 4] }], indent: 0 }],
 		[{ linePart: [{ part: getLexeme(loop.variable), loc: getRangeStart(loop.variable.location) }], indent: 0 }],
 		[{ linePart: [{ part: ' in ', loc: getRangeEnd(loop.variable.location) }], indent: 0 }],
 		reconstructedVector,
 		[{ linePart: [{ part: ')', loc: [vectorLocation[0], vectorLocation[1] + prettyPrintCodeToString(reconstructedVector).length] }], indent: 0 }],
 		...additionalTokens
 	)
+	console.log(JSON.stringify(body), jsonReplacer)
+
+	if(isSelected(configuration, loop)) {
+		return merge(out, body)
+	}
+	if(Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))) {
+		return merge(body)
+	}
+	if(isSelected(configuration, loop.variable) || isSelected(configuration, loop.vector)) {
+		const hBody = out[out.length - 1].linePart
+		const bodyLoc = hBody[hBody.length - 1].loc
+		out.push({ linePart: [{ part: '{}', loc: [bodyLoc[0], bodyLoc[1] + 2] }], indent: 0 })
+		return out
+	}
+
+	if(variable.length === 0 && vector.length === 0 && body.length === 0) {
+		return []
+	}
+
 	//if body empty
 	if(body.length < 1) {
 		// puts {} with one space separation after for(...)
@@ -156,22 +165,10 @@ function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
 }
 
 
-//what is happening here???
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
-	console.log(`${JSON.stringify(configuration, jsonReplacer)}\n${loop.info.id}\n${loop.body.info.id}`)
-	for( const id of configuration.selection) {
-		if(loop.body.children.filter(n => n.info.id === id).length > 0) {
-			return body
-		}
-	}
-	for( const children of loop.body.children) {
-		console.log(`${children.info.id}`)
-	}
-	if(isSelected(configuration, loop)) {
-		console.log('whole loop selected')
+	if(Array.from(collectAllIds(loop)).some(n => configuration.selection.has(n))) {
 		return body
-	} else if(isSelected(configuration, loop.body)) {
-		console.log('just body selected')
+	} else if(isSelected(configuration, loop)) {
 		return body
 	} else if(body.length === 0) {
 		return []
@@ -200,41 +197,65 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
 	//console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
-
 	let out = merge(
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }],
-		when
 	)
 
-	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
+	console.log(JSON.stringify(when, jsonReplacer))
+	if(when.length === 1) {
+		const xLoc = when[0].linePart[1].part.indexOf(when[0].linePart[0].part)
+		const whenLoc = when[0].linePart[0].loc
+		out.push(when[0].linePart.length === 2 ? { linePart: [{ part: when[0].linePart[1].part, loc: [whenLoc[0], whenLoc[1] - xLoc] }], indent: 0 }: { linePart: [when[0].linePart[0]], indent: 0 })
+	} else if(when.length > 1) {
+		//this feels very hacky..
+		//we should probably improve this
+		when = when.filter(n => !n.linePart[0].part.startsWith(' '))
+		when = merge(when)
+		console.log(JSON.stringify(when, jsonReplacer))
+		const secondLastLoc = when[when.length - 2].linePart[0].loc
+		const lastLoc = when[when.length - 1].linePart[0].loc
+		when[when.length - 1].linePart[0].loc = lastLoc[0] === secondLastLoc[0]? lastLoc : [secondLastLoc[0] + 1, secondLastLoc[1]]
+		when[when.length - 2].linePart[0].loc = [when[0].linePart[0].loc[0] - 1, when[0].linePart[0].loc[1]] //this will stick to the condition, maybe change this
+		out.push(...when)
+	}
+
+	if(otherwise.length > 0) {
+		console.log(JSON.stringify(otherwise, jsonReplacer))
 		//console.log('we have an else-body')
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
 		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: [elsePos[0], elsePos[1] + 2] as SourcePosition }], indent: 0 }] : ([] as Code)
 		const elseOffset = when.length === 0 ? 4 : 0
+		const xLoc = otherwise[0].linePart[1].part.indexOf(otherwise[0].linePart[0].part)
+		const otherwiseLoc = otherwise[0].linePart[0].loc
 		out = merge(
 			out,
 			fakeWhenBlock,
 			[{ linePart: [{ part: 'else', loc: [elsePos[0], elsePos[1] + 2 +elseOffset] }], indent: 0 }], //may have to change the location
-			otherwise
+			otherwise[0].linePart.length > 1 ? [{ linePart: [{ part: otherwise[0].linePart[1].part, loc: [otherwiseLoc[0], otherwiseLoc[1] - xLoc] }], indent: 0 }]: [{ linePart: [otherwise[0].linePart[0]], indent: 0 }]
 		)
 	}
-	return out
+	return merge(out)
 }
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = getRangeStart(loop.location)
-	//do we print the entiry while loop if the while gets selected??
-	if(isSelected(configuration, loop)) {
-		//return plain(getLexeme(loop), start)
-		return merge([{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? getRangeStart(loop.location) }], indent: 0 }], reconstructExpressionList(loop.body, undefined, [body], configuration))
-	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge(
 		[{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? getRangeStart(loop.location) }], indent: 0 }],
 		...additionalTokens
 	)
+	//do we print the entiry while loop if the while gets selected??
+	if(isSelected(configuration, loop)) {
+		out.push(...reconstructExpressionList(loop.body, undefined, [body], configuration))
+		return merge(out)
+	} else if(
+		!Array.from(collectAllIds(loop.condition)).some(n => configuration.selection.has(n))
+		&& Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))
+	) {
+		return body
+	}
 	if(body.length < 1) {
 		//this puts {} one space after while(...)
 		const hBody = out[out.length - 1].linePart

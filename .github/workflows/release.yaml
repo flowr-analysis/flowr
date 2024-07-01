@@ -46,6 +46,9 @@ jobs:
             exit 1
           fi
 
+          # store the version as a github output for the performance test below
+          echo "version=$(npm run release --silent -- --increment "$step" --release-version)" >> "$GITHUB_OUTPUT"
+
           npm run release -- --increment "$step" --ci --verbose --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
@@ -77,6 +80,7 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
     with:
       push: true
+      ref: refs/tags/v${{ needs.release.outputs.version }}
     secrets: inherit
 
   deploy-docker:

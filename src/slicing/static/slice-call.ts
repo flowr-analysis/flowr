@@ -40,11 +40,6 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
 
-	// when forward slicing, only take into account functions that include the slicing criteria
-	if(forward && ![...nodesToSlice].some(c => outgoingEdges[1].has(c))) {
-		return
-	}
-
 	// lift baseEnv on the same level
 	const baseEnvironment = current.baseEnvironment
 	const baseEnvPrint = envFingerprint(baseEnvironment)
@@ -65,32 +60,35 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
 	for(const functionCallTarget of functionCallTargets) {
-		let isInDefined = false
+		const functionCallTargetDef = functionCallTarget as DataflowGraphVertexFunctionDefinition
 
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
+		let slicedNodeInFunction = false
+		for(const openIn of functionCallTargetDef.subflow.in) {
 			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
 			if(defs === undefined) {
 				continue
 			}
-			isInDefined = true
 
 			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
 				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
+				if(nodesToSlice.has(def.nodeId)) {
+					slicedNodeInFunction = true
+				}
 			}
 		}
 
-		// when forward slicing, also traverse the function and its subflow itself, since it might contain the sliced node
-		if(forward && isInDefined) {
+		// when forward slicing, add the function itself if our node is contained in it
+		if(slicedNodeInFunction && forward) {
 			queue.add(functionCallTarget.id, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
-			for(const subNode of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.graph) {
+			for(const subNode of functionCallTargetDef.subflow.graph) {
 				queue.add(subNode, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 			}
 		}
 
 		// when forward slicing, ignore exit points since we only care about whether the subflow contains the sliced node
 		if(!forward) {
-			for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+			for(const exitPoint of functionCallTargetDef.exitPoints) {
 				queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 			}
 		}

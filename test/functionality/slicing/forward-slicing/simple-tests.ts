@@ -5,6 +5,8 @@ import { label } from '../../_helper/label'
 describe('Assignments', withShell(shell => {
 	assertForwardSliced(label('simple value', []), shell,
 		'x <- 1\nx', ['1@x'], 'x <- 1\nx')
+	assertForwardSliced(label('simple value with reassignment', []), shell,
+		'x <- 1\nprint(x)\nx <- 2\nx', ['1@x'], 'x <- 1\nprint(x)')
 
 	const ifElse = `
 x <- 1

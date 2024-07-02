@@ -162,7 +162,7 @@
       "publish": false
     },
     "hooks": {
-      "before:bump": [
+      "before:init": [
         "npm run lint",
         "npm run test-full"
       ],

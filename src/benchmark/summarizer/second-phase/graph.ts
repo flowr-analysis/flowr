@@ -56,10 +56,10 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 	})
 	data.push({
 		name:  'memory (df-graph)',
-		unit:  'Bytes',
-		value: Number(ultimate.dataflow.sizeOfObject.mean),
-		range: Number(ultimate.dataflow.sizeOfObject.std),
-		extra: `median: ${(ultimate.dataflow.sizeOfObject.median).toFixed(2)}`
+		unit:  'KiB',
+		value: ultimate.dataflow.sizeOfObject.mean / 1024,
+		range: ultimate.dataflow.sizeOfObject.std / 1024,
+		extra: `median: ${(ultimate.dataflow.sizeOfObject.median / 1024).toFixed(2)}`
 	})
 
 

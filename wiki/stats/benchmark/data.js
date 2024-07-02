@@ -2506,10 +2506,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 176295.04545454544,
-            "unit": "Bytes",
-            "range": 419178.1683095103,
-            "extra": "median: 54579.00"
+            "value": 172.16313032670453,
+            "unit": "KiB",
+            "range": 409.35367998975613,
+            "extra": "median: 53.29"
           }
         ]
       },
@@ -2609,10 +2609,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 176295.04545454544,
-            "unit": "Bytes",
-            "range": 419178.1683095103,
-            "extra": "median: 54579.00"
+            "value": 172.16313032670453,
+            "unit": "KiB",
+            "range": 409.35367998975613,
+            "extra": "median: 53.29"
           }
         ]
       },
@@ -2712,10 +2712,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 176295.04545454544,
-            "unit": "Bytes",
-            "range": 419178.1683095103,
-            "extra": "median: 54579.00"
+            "value": 172.16313032670453,
+            "unit": "KiB",
+            "range": 409.35367998975613,
+            "extra": "median: 53.29"
           }
         ]
       },
@@ -2815,10 +2815,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 176295.04545454544,
-            "unit": "Bytes",
-            "range": 419178.1683095103,
-            "extra": "median: 54579.00"
+            "value": 172.16313032670453,
+            "unit": "KiB",
+            "range": 409.35367998975613,
+            "extra": "median: 53.29"
           }
         ]
       },
@@ -2918,10 +2918,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 178989.0909090909,
-            "unit": "Bytes",
-            "range": 427354.18825573596,
-            "extra": "median: 54579.00"
+            "value": 174.7940340909091,
+            "unit": "KiB",
+            "range": 417.33807446849215,
+            "extra": "median: 53.29"
           }
         ]
       },
@@ -3021,10 +3021,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 151615.13636363635,
-            "unit": "Bytes",
-            "range": 369422.56988247525,
-            "extra": "median: 46495.00"
+            "value": 148.06165660511363,
+            "unit": "KiB",
+            "range": 360.76422840085473,
+            "extra": "median: 45.40"
           }
         ]
       },
@@ -3124,10 +3124,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 151127.95454545456,
-            "unit": "Bytes",
-            "range": 367879.65634065185,
-            "extra": "median: 46487.00"
+            "value": 147.58589311079547,
+            "unit": "KiB",
+            "range": 359.2574768951678,
+            "extra": "median: 45.39"
           }
         ]
       },
@@ -3227,10 +3227,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 151127.95454545456,
-            "unit": "Bytes",
-            "range": 367879.65634065185,
-            "extra": "median: 46487.00"
+            "value": 147.58589311079547,
+            "unit": "KiB",
+            "range": 359.2574768951678,
+            "extra": "median: 45.39"
           }
         ]
       },
@@ -3330,10 +3330,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 151127.95454545456,
-            "unit": "Bytes",
-            "range": 367879.65634065185,
-            "extra": "median: 46487.00"
+            "value": 147.58589311079547,
+            "unit": "KiB",
+            "range": 359.2574768951678,
+            "extra": "median: 45.39"
           }
         ]
       }
@@ -5938,10 +5938,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 168990.62,
-            "unit": "Bytes",
-            "range": 170449.66365832346,
-            "extra": "median: 84221.00"
+            "value": 165.02990234375,
+            "unit": "KiB",
+            "range": 166.4547496663315,
+            "extra": "median: 82.24"
           }
         ]
       },
@@ -6041,10 +6041,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 168990.62,
-            "unit": "Bytes",
-            "range": 170449.66365832346,
-            "extra": "median: 84221.00"
+            "value": 165.02990234375,
+            "unit": "KiB",
+            "range": 166.4547496663315,
+            "extra": "median: 82.24"
           }
         ]
       },
@@ -6144,10 +6144,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 168990.62,
-            "unit": "Bytes",
-            "range": 170449.66365832346,
-            "extra": "median: 84221.00"
+            "value": 165.02990234375,
+            "unit": "KiB",
+            "range": 166.4547496663315,
+            "extra": "median: 82.24"
           }
         ]
       },
@@ -6247,10 +6247,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 168990.62,
-            "unit": "Bytes",
-            "range": 170449.66365832346,
-            "extra": "median: 84221.00"
+            "value": 165.02990234375,
+            "unit": "KiB",
+            "range": 166.4547496663315,
+            "extra": "median: 82.24"
           }
         ]
       },
@@ -6350,10 +6350,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 169227.66,
-            "unit": "Bytes",
-            "range": 170963.65792127987,
-            "extra": "median: 84535.00"
+            "value": 165.26138671875,
+            "unit": "KiB",
+            "range": 166.95669718874987,
+            "extra": "median: 82.55"
           }
         ]
       },
@@ -6453,10 +6453,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 146353.56,
-            "unit": "Bytes",
-            "range": 150627.60807636293,
-            "extra": "median: 72380.00"
+            "value": 142.9233984375,
+            "unit": "KiB",
+            "range": 147.09727351207317,
+            "extra": "median: 70.68"
           }
         ]
       },
@@ -6556,10 +6556,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 145967.48,
-            "unit": "Bytes",
-            "range": 150220.2921073235,
-            "extra": "median: 72246.00"
+            "value": 142.5463671875,
+            "unit": "KiB",
+            "range": 146.6995040110581,
+            "extra": "median: 70.55"
           }
         ]
       },
@@ -6659,10 +6659,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 145967.48,
-            "unit": "Bytes",
-            "range": 150220.2921073235,
-            "extra": "median: 72246.00"
+            "value": 142.5463671875,
+            "unit": "KiB",
+            "range": 146.6995040110581,
+            "extra": "median: 70.55"
           }
         ]
       },
@@ -6762,10 +6762,10 @@ window.BENCHMARK_DATA = {
           },
           {
             "name": "memory (df-graph)",
-            "value": 145967.48,
-            "unit": "Bytes",
-            "range": 150220.2921073235,
-            "extra": "median: 72246.00"
+            "value": 142.5463671875,
+            "unit": "KiB",
+            "range": 146.6995040110581,
+            "extra": "median: 70.55"
           }
         ]
       }

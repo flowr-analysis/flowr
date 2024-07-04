@@ -44,7 +44,7 @@ export function staticForwardSlicing(graph: DataflowGraph, ast: NormalizedAst, c
 			}
 		}
 
-		traverseEdges(ingoingEdges, queue, baseEnvironment, baseEnvFingerprint)
+		traverseEdges(currentVertex, ingoingEdges, queue, baseEnvironment, baseEnvFingerprint, true)
 	}
 
 	return { ...queue.status(), decodedCriteria }
@@ -89,7 +89,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 			}
 		}
 
-		traverseEdges(currentEdges, queue, baseEnvironment, baseEnvFingerprint)
+		traverseEdges(currentVertex, currentEdges, queue, baseEnvironment, baseEnvFingerprint)
 	}
 
 	return { ...queue.status(), decodedCriteria }
@@ -112,7 +112,7 @@ function addCriteriaToQueue(decodedCriteria: DecodedCriteria, ast: NormalizedAst
 	return { nodesToSlice, minDepth }
 }
 
-function traverseEdges(currentEdges: Map<NodeId, DataflowGraphEdge>, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: string) {
+function traverseEdges(currentVertex: DataflowGraphVertexInfo, currentEdges: Map<NodeId, DataflowGraphEdge>, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: string, forward = false) {
 	for(const [target, { types }] of currentEdges) {
 		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 			continue

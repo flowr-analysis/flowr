@@ -71,7 +71,10 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 			}
 
 			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
-				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
+				// we don't add other nodes used by the function to the queue when forward slicing!
+				if(!forward) {
+					queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
+				}
 				if(nodesToSlice.has(def.nodeId)) {
 					slicedNodeInFunction = true
 				}

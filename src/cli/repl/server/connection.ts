@@ -30,6 +30,9 @@ import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline'
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { DeepPartial } from 'ts-essentials'
 import { DataflowGraph } from '../../../dataflow/graph/graph'
+import * as tmp from 'tmp'
+import fs from 'fs'
+import type { RParseRequest } from '../../../r-bridge/retriever'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -46,6 +49,8 @@ export class FlowRServerConnection {
 		filename?: string,
 		pipeline:  PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
 	}>()
+
+	private tempFile: tmp.FileResult | undefined
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
 	constructor(socket: Socket, name: string, shell: RShell) {
@@ -155,13 +160,19 @@ export class FlowRServerConnection {
 	}
 
 	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage) {
+		let request: RParseRequest
+		if(message.content !== undefined){
+			// we store the code in a temporary file in case it's too big for the shell to handle
+			const temp = this.getTempFile()
+			fs.writeFileSync(temp.name, message.content ?? '')
+			request = { request: 'file', content: temp.name }
+		} else {
+			request = { request: 'file', content: message.filepath as string }
+		}
+
 		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
-			shell:   this.shell,
-			// we have to make sure that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
-			request: {
-				request: message.content === undefined ? 'file' : 'text',
-				content: message.content ?? message.filepath as string
-			},
+			shell:     this.shell,
+			request,
 			criterion: [] // currently unknown
 		})
 		if(message.filetoken) {
@@ -172,6 +183,14 @@ export class FlowRServerConnection {
 			})
 		}
 		return slicer
+	}
+
+	private getTempFile(): tmp.FileResult {
+		if(!this.tempFile) {
+			this.tempFile = tmp.fileSync({ postfix: '.R', keep: false })
+			this.socket.on('close', () => this.tempFile?.removeCallback())
+		}
+		return this.tempFile
 	}
 
 	private handleSliceRequest(base: SliceRequestMessage) {

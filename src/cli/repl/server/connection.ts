@@ -50,8 +50,6 @@ export class FlowRServerConnection {
 		pipeline:  PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
 	}>()
 
-	private tempFile: tmp.FileResult | undefined
-
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
 	constructor(socket: Socket, name: string, shell: RShell) {
 		this.socket = socket
@@ -82,7 +80,7 @@ export class FlowRServerConnection {
 		}
 		switch(request.message.type) {
 			case 'request-file-analysis':
-				this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage)
+				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage)
 				break
 			case 'request-slice':
 				this.handleSliceRequest(request.message as SliceRequestMessage)
@@ -101,7 +99,7 @@ export class FlowRServerConnection {
 		}
 	}
 
-	private handleFileAnalysisRequest(base: FileAnalysisRequestMessage) {
+	private async handleFileAnalysisRequest(base: FileAnalysisRequestMessage) {
 		const requestResult = validateMessage(base, requestAnalysisMessage)
 		if(requestResult.type === 'error') {
 			answerForValidationError(this.socket, requestResult, base.id)
@@ -113,9 +111,11 @@ export class FlowRServerConnection {
 		if(message.filetoken && this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
-		const slicer = this.createPipelineExecutorForRequest(message)
 
-		void slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
+		const tempFile = tmp.fileSync({ postfix: '.R' })
+		const slicer = this.createPipelineExecutorForRequest(message, tempFile.name)
+
+		await slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
 			.catch(e => {
 				this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`)
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -125,6 +125,9 @@ export class FlowRServerConnection {
 					reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
 				})
 			})
+
+		// this is a weird function name that means "I am a callback that removes a file" - so this deletes the file
+		tempFile.removeCallback()
 	}
 
 	private async sendFileAnalysisResponse(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
@@ -159,13 +162,12 @@ export class FlowRServerConnection {
 		}
 	}
 
-	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage) {
+	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
 		let request: RParseRequest
 		if(message.content !== undefined){
 			// we store the code in a temporary file in case it's too big for the shell to handle
-			const temp = this.getTempFile()
-			fs.writeFileSync(temp.name, message.content ?? '')
-			request = { request: 'file', content: temp.name }
+			fs.writeFileSync(tempFile, message.content ?? '')
+			request = { request: 'file', content: tempFile }
 		} else {
 			request = { request: 'file', content: message.filepath as string }
 		}
@@ -183,14 +185,6 @@ export class FlowRServerConnection {
 			})
 		}
 		return slicer
-	}
-
-	private getTempFile(): tmp.FileResult {
-		if(!this.tempFile) {
-			this.tempFile = tmp.fileSync({ postfix: '.R', keep: false })
-			this.socket.on('close', () => this.tempFile?.removeCallback())
-		}
-		return this.tempFile
 	}
 
 	private handleSliceRequest(base: SliceRequestMessage) {

@@ -126,6 +126,7 @@ export class FlowRServerConnection {
 				})
 			})
 
+		// this is a weird function name that means "I am a callback that removes a file" - so this deletes the file
 		tempFile.removeCallback()
 	}
 

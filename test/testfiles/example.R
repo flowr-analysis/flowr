@@ -8,5 +8,7 @@ for (i in 1:(N-1)) {
   product <- product * i
 }
 
+if(TRUE) {product <- sum * product} else {sum <- product + sum}
+
 cat("Sum:", sum, "\n")
 cat("Product:", product, "\n")

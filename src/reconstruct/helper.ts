@@ -263,7 +263,6 @@ function addSemis(code: Code): Code {
 	}
 }
 
-
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge(code)
 	code = addSemis(code)

@@ -52,7 +52,6 @@ const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location
 
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
-
 	if(isSelected(config, exprList)) {
 		const positionStart: SourcePosition = exprList.location? getRangeStart(exprList.location) : [0, 0]
 		return plain(getLexeme(exprList), positionStart)
@@ -62,10 +61,21 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(exprList)
+		const ifGrouping = exprList.grouping
+		let opening: Code = []
+		let closing: Code = []
+		if(ifGrouping) {
+			const openingLoc = getRangeStart(exprList.grouping?.[0].location)
+			const closingLoc = getRangeStart(exprList.grouping?.[1].location)
+			opening = plain(exprList.grouping?.[0].lexeme, openingLoc)
+			closing = plain(exprList.grouping?.[1].lexeme, closingLoc)
+			subExpressions.filter((code) => code[0].linePart[0].loc[0] > openingLoc[0] && code[0].linePart[0].loc[0] < closingLoc[0]).map(code => code[0].indent = code[0].linePart[0].loc[1] / 4)
+		}
 		return merge(
 			...subExpressions,
 			...additionalTokens,
-			...(grouping ?? [])
+			opening,
+			closing
 		)
 	}
 }
@@ -200,40 +210,20 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	let out = merge(
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }],
+		when
 	)
 
-	console.log(JSON.stringify(when, jsonReplacer))
-	if(when.length === 1) {
-		const xLoc = when[0].linePart[1].part.indexOf(when[0].linePart[0].part)
-		const whenLoc = when[0].linePart[0].loc
-		out.push(when[0].linePart.length === 2 ? { linePart: [{ part: when[0].linePart[1].part, loc: [whenLoc[0], whenLoc[1] - xLoc] }], indent: 0 }: { linePart: [when[0].linePart[0]], indent: 0 })
-	} else if(when.length > 1) {
-		//this feels very hacky..
-		//we should probably improve this
-		when = when.filter(n => !n.linePart[0].part.startsWith(' '))
-		when = merge(when)
-		console.log(JSON.stringify(when, jsonReplacer))
-		const secondLastLoc = when[when.length - 2].linePart[0].loc
-		const lastLoc = when[when.length - 1].linePart[0].loc
-		when[when.length - 1].linePart[0].loc = lastLoc[0] === secondLastLoc[0]? lastLoc : [secondLastLoc[0] + 1, secondLastLoc[1]]
-		when[when.length - 2].linePart[0].loc = [when[0].linePart[0].loc[0] - 1, when[0].linePart[0].loc[1]] //this will stick to the condition, maybe change this
-		out.push(...when)
-	}
-
-	if(otherwise.length > 0) {
-		console.log(JSON.stringify(otherwise, jsonReplacer))
+	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
 		//console.log('we have an else-body')
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
 		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: [elsePos[0], elsePos[1] + 2] as SourcePosition }], indent: 0 }] : ([] as Code)
 		const elseOffset = when.length === 0 ? 4 : 0
-		const xLoc = otherwise[0].linePart[1].part.indexOf(otherwise[0].linePart[0].part)
-		const otherwiseLoc = otherwise[0].linePart[0].loc
 		out = merge(
 			out,
 			fakeWhenBlock,
 			[{ linePart: [{ part: 'else', loc: [elsePos[0], elsePos[1] + 2 +elseOffset] }], indent: 0 }], //may have to change the location
-			otherwise[0].linePart.length > 1 ? [{ linePart: [{ part: otherwise[0].linePart[1].part, loc: [otherwiseLoc[0], otherwiseLoc[1] - xLoc] }], indent: 0 }]: [{ linePart: [otherwise[0].linePart[0]], indent: 0 }]
+			otherwise
 		)
 	}
 	return merge(out)

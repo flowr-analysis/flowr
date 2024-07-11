@@ -23,6 +23,25 @@ describe('Functions Reconstruct', () => {
 			positive(testCase.input, testCase.line, testCase.column, testCase.expected)
 		}
 	})
+	describe('plainSplit', () => {
+		function positive(input: string, startPos: SourcePosition, expected: Code) {
+			it(`${input} for ${startPos[0]}:${startPos[1]}`, () => {
+				const result:Code = plain(input, startPos)
+				assert.deepStrictEqual(result,expected)
+			})
+		}
+		const testCases = [
+			{ input: 'Hello', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] }],indent: 0 }] as Code },
+			{ input: 'Hello World', line: 4, column: 3, expected: [{ linePart: [{ part: 'Hello', loc: [4, 3] }, { part: 'World', loc: [4, 9] }],indent: 0 }] as Code },
+			{ input: 'Hello\nWorld', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] }],indent: 0 }, { linePart: [{ part: 'World', loc: [2, 1] }],indent: 0 }] as Code },
+			{ input: 'Hello\nWorld', line: 3, column: 4, expected: [{ linePart: [{ part: 'Hello', loc: [3, 4] }],indent: 0 }, { linePart: [{ part: 'World', loc: [4, 1] }],indent: 0 }] as Code }
+			//{ input: 'Hello\n World\n24', line: 1, column: 1, expected: [{ linePart: [{ part: 'Hello', loc: [1, 1] },{ part: ' World', loc: [2, 1] },{ part: '24', loc: [3, 1] }],indent: 0 }] as Code }
+		]
+		for(const testCase of testCases) {
+			positive(testCase.input, [testCase.line, testCase.column], testCase.expected)
+		}
+	}
+	)
 	describe('merge', () => {
 		function positive(snipbits: Code[],expected: Code) {
 			it(prettyPrintCodeToString(expected),() => {

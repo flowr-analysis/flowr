@@ -130,7 +130,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		return merge(out, body)
 	}
 	if(Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))) {
-		return merge(body)
+		return merge(out, body)
 	}
 	if(isSelected(configuration, loop.variable) || isSelected(configuration, loop.vector)) {
 		const hBody = out[out.length - 1].linePart

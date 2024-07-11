@@ -4,7 +4,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/g
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
-describe.only('Simple', withShell(shell => {
+describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const [id, code, caps] of [
 			[0, 'x <- 5', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],
@@ -112,7 +112,7 @@ describe.only('Simple', withShell(shell => {
 		}
 	})
 
-	describe('Branches', () => {
+	describe.only('Branches', () => {
 		const testCases: {name: string, case: string, argument: NodeId|NodeId[], expected: string}[] = [
 			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 3, 5, 14, 2], expected: 'if(TRUE) { x <- 3 }\nx' },
 			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 11, 14, 9, 8], expected: 'if(FALSE) {} else         { x <- 4 }\nx' },

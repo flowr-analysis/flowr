@@ -1,6 +1,6 @@
 window.BENCHMARK_DATA = {
   "lastUpdate": 1719454716073,
-  "repoUrl": "https://github.com/Code-Inspect/flowr",
+  "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
       {
@@ -20,7 +20,7 @@ window.BENCHMARK_DATA = {
           "message": "Fine tune benchmark plots with new colors, labels, and more (#338)\n\n* ci: cycle colors\r\n\r\n* ci: show commit message name start in benchmarks as well\r\n\r\n* ci-fix: npm script `performance-test` should be able to read arguments :D\r\n\r\n* ci, typo: fix wrong name for uploading of benchmark results\r\n\r\n* ci-fix: add `--` to separatae arguments in `qa.yaml`\r\n\r\n* ci: reset current benchmark data (Release v1.1.4)",
           "timestamp": "2023-09-21T01:44:43+02:00",
           "tree_id": "9f4b37285d7d1eb59c97e553f8fd0766c9bb1b06",
-          "url": "https://github.com/Code-Inspect/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
+          "url": "https://github.com/flowr-analysis/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
         },
         "date": 1695255188267,
         "tool": "customSmallerIsBetter",
@@ -116,7 +116,7 @@ window.BENCHMARK_DATA = {
           "message": "Fine tune benchmark plots with new colors, labels, and more (#338)\n\n* ci: cycle colors\r\n\r\n* ci: show commit message name start in benchmarks as well\r\n\r\n* ci-fix: npm script `performance-test` should be able to read arguments :D\r\n\r\n* ci, typo: fix wrong name for uploading of benchmark results\r\n\r\n* ci-fix: add `--` to separatae arguments in `qa.yaml`\r\n\r\n* ci: reset current benchmark data (Release v1.1.4)",
           "timestamp": "2023-09-21T01:44:43+02:00",
           "tree_id": "9f4b37285d7d1eb59c97e553f8fd0766c9bb1b06",
-          "url": "https://github.com/Code-Inspect/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
+          "url": "https://github.com/flowr-analysis/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
         },
         "date": 1695255188267,
         "tool": "customSmallerIsBetter",
@@ -212,7 +212,7 @@ window.BENCHMARK_DATA = {
           "message": "ci-fix: remove `comment-always` from the `github-action-benchmark` action as it seems to simply duplicate the commit (Release v1.1.4)",
           "timestamp": "2023-09-21T07:25:25+02:00",
           "tree_id": "6335e8da9c2187d2a440388c40a1b8b022d8a429",
-          "url": "https://github.com/Code-Inspect/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
+          "url": "https://github.com/flowr-analysis/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
         },
         "date": 1695275825503,
         "tool": "customSmallerIsBetter",
@@ -308,7 +308,7 @@ window.BENCHMARK_DATA = {
           "message": "ci-fix: remove summary from the social-science graph to avoid double commit (Release v1.1.4)",
           "timestamp": "2023-09-21T09:21:19+02:00",
           "tree_id": "d487002e9ec254edd9cc4b596b0dce914d8cfbbd",
-          "url": "https://github.com/Code-Inspect/flowr/commit/05f243e420d0a81a6884f1a65a2003b16af6ef7c"
+          "url": "https://github.com/flowr-analysis/flowr/commit/05f243e420d0a81a6884f1a65a2003b16af6ef7c"
         },
         "date": 1695282675607,
         "tool": "customSmallerIsBetter",
@@ -404,7 +404,7 @@ window.BENCHMARK_DATA = {
           "message": "Merge benchmark commits into one (#340)\n\nci, refactor: merge benchmark commits into one (Release v1.1.4)",
           "timestamp": "2023-09-21T12:24:40+02:00",
           "tree_id": "180c8b31c7e6d78169d1bd2523ee0a42008906da",
-          "url": "https://github.com/Code-Inspect/flowr/commit/127bc834a15a16930038f25587b54cb1422c9df4"
+          "url": "https://github.com/flowr-analysis/flowr/commit/127bc834a15a16930038f25587b54cb1422c9df4"
         },
         "date": 1695293611928,
         "tool": "customSmallerIsBetter",
@@ -500,7 +500,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Update xmldom Dependency and Benchmarking Support (Release v1.1.5)",
           "timestamp": "2023-09-24T14:13:29+02:00",
           "tree_id": "4ecc81b2e690ba8ac4f1912756542fa125261a27",
-          "url": "https://github.com/Code-Inspect/flowr/commit/0fda4c49cd9e2b2191a1b15c137cd78cb08f52aa"
+          "url": "https://github.com/flowr-analysis/flowr/commit/0fda4c49cd9e2b2191a1b15c137cd78cb08f52aa"
         },
         "date": 1695559897555,
         "tool": "customSmallerIsBetter",
@@ -596,7 +596,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] CFG, N-Quads export (Release v1.1.6)",
           "timestamp": "2023-10-10T11:16:02+02:00",
           "tree_id": "4760f5664753b99fdb69e3d5675ba0cef3cf1140",
-          "url": "https://github.com/Code-Inspect/flowr/commit/77159de13994c94d1a86ebf0db70c0a01067d372"
+          "url": "https://github.com/flowr-analysis/flowr/commit/77159de13994c94d1a86ebf0db70c0a01067d372"
         },
         "date": 1696931418749,
         "tool": "customSmallerIsBetter",
@@ -692,7 +692,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:minor] Feature Extraction and CFG Export (Release v1.2.0)",
           "timestamp": "2023-10-15T08:56:06+02:00",
           "tree_id": "89e99a6cb66c08dc2c808dd798df9e888c88931c",
-          "url": "https://github.com/Code-Inspect/flowr/commit/a13ba7d57c8f8ca264630109c56e1906e21c2066"
+          "url": "https://github.com/flowr-analysis/flowr/commit/a13ba7d57c8f8ca264630109c56e1906e21c2066"
         },
         "date": 1697355093950,
         "tool": "customSmallerIsBetter",
@@ -788,7 +788,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] More Robust Server (Release v1.2.1)",
           "timestamp": "2023-10-18T14:31:58+02:00",
           "tree_id": "c4d6e9b11aa00ac6785f02ca584364bfdf5b52ab",
-          "url": "https://github.com/Code-Inspect/flowr/commit/1e9911dfb7b57bba9af2fbc21bb25b7b8a769b63"
+          "url": "https://github.com/flowr-analysis/flowr/commit/1e9911dfb7b57bba9af2fbc21bb25b7b8a769b63"
         },
         "date": 1697634673188,
         "tool": "customSmallerIsBetter",
@@ -884,7 +884,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Include character counts in meta statistics (Release v1.3.1)",
           "timestamp": "2023-11-02T13:39:16+01:00",
           "tree_id": "48744a8fc8d41b2b0740b8b7b4ccf7b4ca9c388c",
-          "url": "https://github.com/Code-Inspect/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
+          "url": "https://github.com/flowr-analysis/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
         },
         "date": 1698930897537,
         "tool": "customSmallerIsBetter",
@@ -980,7 +980,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Robustness against encoding errors (Release v1.3.2)",
           "timestamp": "2023-11-03T20:54:13+01:00",
           "tree_id": "c245f343a8ef43765a4f36f2aad48763dc77d6b3",
-          "url": "https://github.com/Code-Inspect/flowr/commit/266b087710648b96b1779436aee32a0c47ac80cd"
+          "url": "https://github.com/flowr-analysis/flowr/commit/266b087710648b96b1779436aee32a0c47ac80cd"
         },
         "date": 1699043092723,
         "tool": "customSmallerIsBetter",
@@ -1076,7 +1076,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Robustify Quad Export Against Cyclic Structures (Release v1.3.3)",
           "timestamp": "2023-11-10T18:59:51+01:00",
           "tree_id": "8e5af22f7b39483e95e62308330a5e9e002ba57a",
-          "url": "https://github.com/Code-Inspect/flowr/commit/243959c2f01ddf928c85ee4905105307971ad19b"
+          "url": "https://github.com/flowr-analysis/flowr/commit/243959c2f01ddf928c85ee4905105307971ad19b"
         },
         "date": 1699640652120,
         "tool": "customSmallerIsBetter",
@@ -1172,7 +1172,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Allow Strings as Names for Function Call Arguments (Release v1.3.4)",
           "timestamp": "2023-11-22T13:22:53+01:00",
           "tree_id": "a052c400e622d7062e4ff675a07f088883eaccee",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c209d78300f23960363beb046efd2b07a0a5531d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c209d78300f23960363beb046efd2b07a0a5531d"
         },
         "date": 1700657318626,
         "tool": "customSmallerIsBetter",
@@ -1268,7 +1268,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Quads With Repeated Edge Types (Release v1.3.5)",
           "timestamp": "2023-12-08T15:24:04+01:00",
           "tree_id": "e7a3ab3994be6ef3dfd8e8b13a4957bbfe0242b5",
-          "url": "https://github.com/Code-Inspect/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
+          "url": "https://github.com/flowr-analysis/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
         },
         "date": 1702046952548,
         "tool": "customSmallerIsBetter",
@@ -1364,7 +1364,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Using Next in RDF Quads (Release v1.3.6)",
           "timestamp": "2023-12-13T13:59:30+01:00",
           "tree_id": "c9aa3c29b811c7d73cc287b2a5f9e89f06951cd9",
-          "url": "https://github.com/Code-Inspect/flowr/commit/5d9e4d36fce917d72f382c8cc441ce576baf18a6"
+          "url": "https://github.com/flowr-analysis/flowr/commit/5d9e4d36fce917d72f382c8cc441ce576baf18a6"
         },
         "date": 1702473792545,
         "tool": "customSmallerIsBetter",
@@ -1460,7 +1460,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Demo File for Presentations (Release v1.3.7)",
           "timestamp": "2024-01-04T09:31:14+01:00",
           "tree_id": "952d243e0eef028eb0fc52f25ccac831253d9f17",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c148955f1c3a57e08545baa6a94b58c9124b4613"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c148955f1c3a57e08545baa6a94b58c9124b4613"
         },
         "date": 1704358481170,
         "tool": "customSmallerIsBetter",
@@ -1556,7 +1556,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Publish NPM to own namespace (Release v1.3.12)",
           "timestamp": "2024-01-04T16:44:38+01:00",
           "tree_id": "3af219dac7ab8e8aeff5ce9aaec1f1b45f9d32bb",
-          "url": "https://github.com/Code-Inspect/flowr/commit/4b9d841139c45af7a2e50de57bf454b4d98dcd34"
+          "url": "https://github.com/flowr-analysis/flowr/commit/4b9d841139c45af7a2e50de57bf454b4d98dcd34"
         },
         "date": 1704384536144,
         "tool": "customSmallerIsBetter",
@@ -1652,7 +1652,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Update NPM Package Dependencies (Release v1.3.13)",
           "timestamp": "2024-01-13T14:09:36+01:00",
           "tree_id": "81a22dece7b6bc2454b2f78cc3dd742fa9b690fa",
-          "url": "https://github.com/Code-Inspect/flowr/commit/2e17bd230fd0762e103508098f5fb1fa3d565d46"
+          "url": "https://github.com/flowr-analysis/flowr/commit/2e17bd230fd0762e103508098f5fb1fa3d565d46"
         },
         "date": 1705152647474,
         "tool": "customSmallerIsBetter",
@@ -1748,7 +1748,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Drop readlines/promises Dependency (Release v1.3.14)",
           "timestamp": "2024-01-15T23:29:47+01:00",
           "tree_id": "2383d566e88ea2e0dbe60dd73f7d7b92b3093407",
-          "url": "https://github.com/Code-Inspect/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
+          "url": "https://github.com/flowr-analysis/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
         },
         "date": 1705359154980,
         "tool": "customSmallerIsBetter",
@@ -1844,7 +1844,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] npm for WebSocket Server (Release v1.4.1)",
           "timestamp": "2024-01-31T15:39:17+01:00",
           "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
         },
         "date": 1706713170342,
         "tool": "customSmallerIsBetter",
@@ -1947,7 +1947,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Dropping xmlparsedata, Benchmark Re-Runs, and Repl Fixes (Release v1.4.2)",
           "timestamp": "2024-03-17T22:21:47+01:00",
           "tree_id": "3f3bb3107a47ce4ffee7f569cb902e0c641dbe60",
-          "url": "https://github.com/Code-Inspect/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
+          "url": "https://github.com/flowr-analysis/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
         },
         "date": 1710711451253,
         "tool": "customSmallerIsBetter",
@@ -2043,7 +2043,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Completed Declutter of flowr (Release v1.5.2)",
           "timestamp": "2024-04-05T17:19:28+02:00",
           "tree_id": "b3d73e6ef022921d7e9367296525a7389e976aa4",
-          "url": "https://github.com/Code-Inspect/flowr/commit/1e5ddeb7a95d9191d401a3c3bacce978d16b0075"
+          "url": "https://github.com/flowr-analysis/flowr/commit/1e5ddeb7a95d9191d401a3c3bacce978d16b0075"
         },
         "date": 1712331738240,
         "tool": "customSmallerIsBetter",
@@ -2139,7 +2139,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:major] Dataflow v2 (Release v2.0.0)",
           "timestamp": "2024-05-11T23:33:15+02:00",
           "tree_id": "076a1a4d0811c48b8d5b1772f553266db1b1df6f",
-          "url": "https://github.com/Code-Inspect/flowr/commit/0e655150b7b2a4064640d9f4d1da8292c2ddc1c0"
+          "url": "https://github.com/flowr-analysis/flowr/commit/0e655150b7b2a4064640d9f4d1da8292c2ddc1c0"
         },
         "date": 1715463946683,
         "tool": "customSmallerIsBetter",
@@ -2235,7 +2235,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Drop `node:` prefix from dependencies (Release v2.0.1)",
           "timestamp": "2024-05-12T00:38:09+02:00",
           "tree_id": "f33b1f4a06829b8f849c4229bf9855e38270193d",
-          "url": "https://github.com/Code-Inspect/flowr/commit/eddce744a32324cab8a47397de625e142cb26a91"
+          "url": "https://github.com/flowr-analysis/flowr/commit/eddce744a32324cab8a47397de625e142cb26a91"
         },
         "date": 1715467766937,
         "tool": "customSmallerIsBetter",
@@ -2331,7 +2331,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fixing Control-Flow, Markdown-Exports, and Handling of Unnamed Closures (Release v2.0.2)",
           "timestamp": "2024-05-28T17:35:51+02:00",
           "tree_id": "0f59a79dfa984998f6ebf263b3656546a6088458",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
         },
         "date": 1716911262506,
         "tool": "customSmallerIsBetter",
@@ -2427,7 +2427,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fine-Grained Benchmarks (Release v2.0.3)",
           "timestamp": "2024-06-02T01:28:31+02:00",
           "tree_id": "4fe2a786a66b2863b953662c0179d11e7fce64dc",
-          "url": "https://github.com/Code-Inspect/flowr/commit/7462f093ba274f5b5a43541dff95acfb36b44133"
+          "url": "https://github.com/flowr-analysis/flowr/commit/7462f093ba274f5b5a43541dff95acfb36b44133"
         },
         "date": 1717285174183,
         "tool": "customSmallerIsBetter",
@@ -2530,7 +2530,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Supply ref for Benchmark Reports (Release v2.0.4)",
           "timestamp": "2024-06-02T12:20:41+02:00",
           "tree_id": "c4eb733ab79584ed9a08bf5b99902613beeb4eaa",
-          "url": "https://github.com/Code-Inspect/flowr/commit/f52a2e4651cfb3a8a8abc910d5736243f7c4dd0c"
+          "url": "https://github.com/flowr-analysis/flowr/commit/f52a2e4651cfb3a8a8abc910d5736243f7c4dd0c"
         },
         "date": 1717324355376,
         "tool": "customSmallerIsBetter",
@@ -2633,7 +2633,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Support for R 3.6.0 (Release v2.0.5)",
           "timestamp": "2024-06-02T16:05:52+02:00",
           "tree_id": "49c7c72a37e1403900352f0acbcc48ce3fe3680d",
-          "url": "https://github.com/Code-Inspect/flowr/commit/fb3aeb716a5945a820d37df8341ea431a5fcd462"
+          "url": "https://github.com/flowr-analysis/flowr/commit/fb3aeb716a5945a820d37df8341ea431a5fcd462"
         },
         "date": 1717337861178,
         "tool": "customSmallerIsBetter",
@@ -2736,7 +2736,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Expression-Lists in Binary-Operators and Comment-Only Files (Release v2.0.6)",
           "timestamp": "2024-06-03T11:28:44+02:00",
           "tree_id": "1c00ff329c711b6c9af0a386c677ecef5dfd7410",
-          "url": "https://github.com/Code-Inspect/flowr/commit/575f504c26d43c968abb9c9fabf7e99b6cbf371e"
+          "url": "https://github.com/flowr-analysis/flowr/commit/575f504c26d43c968abb9c9fabf7e99b6cbf371e"
         },
         "date": 1717407621867,
         "tool": "customSmallerIsBetter",
@@ -2839,7 +2839,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] More Built-Ins and Sample-Benchmarks (Release v2.0.7)",
           "timestamp": "2024-06-03T23:49:38+02:00",
           "tree_id": "cecee91a74d6ca26a55782eb4d9ccaf3ddcb0242",
-          "url": "https://github.com/Code-Inspect/flowr/commit/39dfc7cdf4c4761a03a4a4e255fe8c8ec1d8e9d0"
+          "url": "https://github.com/flowr-analysis/flowr/commit/39dfc7cdf4c4761a03a4a4e255fe8c8ec1d8e9d0"
         },
         "date": 1717452066684,
         "tool": "customSmallerIsBetter",
@@ -2942,7 +2942,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Reduce Dataflow Memory-Print (Release v2.0.8)",
           "timestamp": "2024-06-04T14:41:02+02:00",
           "tree_id": "bbb9834a895cbcd96b15d03ea473dce0bbca5e62",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c919f62d01807eca7e54a00e415bad56a46e9311"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c919f62d01807eca7e54a00e415bad56a46e9311"
         },
         "date": 1717505552027,
         "tool": "customSmallerIsBetter",
@@ -3045,7 +3045,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: File-Specific Benchmarks, Shorter Server Messages, Smaller Environments (Release v2.0.9)",
           "timestamp": "2024-06-12T14:15:47+02:00",
           "tree_id": "be2b0649d99fd34f81dfd6033b134f98ecd037f9",
-          "url": "https://github.com/Code-Inspect/flowr/commit/f700458cef613440be51006076707eddda8ee1dc"
+          "url": "https://github.com/flowr-analysis/flowr/commit/f700458cef613440be51006076707eddda8ee1dc"
         },
         "date": 1718195269468,
         "tool": "customSmallerIsBetter",
@@ -3148,7 +3148,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Correctly print CDs in mermaid (Release v2.0.10)",
           "timestamp": "2024-06-25T09:57:48+02:00",
           "tree_id": "5bdc6eeff97fccbed9fa85a43ad37df03483e839",
-          "url": "https://github.com/Code-Inspect/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
+          "url": "https://github.com/flowr-analysis/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
         },
         "date": 1719303026409,
         "tool": "customSmallerIsBetter",
@@ -3251,7 +3251,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: undefined parse in repl (Release v2.0.11)",
           "timestamp": "2024-06-27T04:05:32+02:00",
           "tree_id": "ebcf13e298ffdcddc68023ca2e2e871f3494200a",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d16b9a2cd653d7276b7f9f60e143773eab5f488d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d16b9a2cd653d7276b7f9f60e143773eab5f488d"
         },
         "date": 1719454714800,
         "tool": "customSmallerIsBetter",
@@ -3356,7 +3356,7 @@ window.BENCHMARK_DATA = {
           "message": "Fine tune benchmark plots with new colors, labels, and more (#338)\n\n* ci: cycle colors\r\n\r\n* ci: show commit message name start in benchmarks as well\r\n\r\n* ci-fix: npm script `performance-test` should be able to read arguments :D\r\n\r\n* ci, typo: fix wrong name for uploading of benchmark results\r\n\r\n* ci-fix: add `--` to separatae arguments in `qa.yaml`\r\n\r\n* ci: reset current benchmark data (Release v1.1.4)",
           "timestamp": "2023-09-21T01:44:43+02:00",
           "tree_id": "9f4b37285d7d1eb59c97e553f8fd0766c9bb1b06",
-          "url": "https://github.com/Code-Inspect/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
+          "url": "https://github.com/flowr-analysis/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
         },
         "date": 1695255188618,
         "tool": "customSmallerIsBetter",
@@ -3452,7 +3452,7 @@ window.BENCHMARK_DATA = {
           "message": "Fine tune benchmark plots with new colors, labels, and more (#338)\n\n* ci: cycle colors\r\n\r\n* ci: show commit message name start in benchmarks as well\r\n\r\n* ci-fix: npm script `performance-test` should be able to read arguments :D\r\n\r\n* ci, typo: fix wrong name for uploading of benchmark results\r\n\r\n* ci-fix: add `--` to separatae arguments in `qa.yaml`\r\n\r\n* ci: reset current benchmark data (Release v1.1.4)",
           "timestamp": "2023-09-21T01:44:43+02:00",
           "tree_id": "9f4b37285d7d1eb59c97e553f8fd0766c9bb1b06",
-          "url": "https://github.com/Code-Inspect/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
+          "url": "https://github.com/flowr-analysis/flowr/commit/20612c4734312e5bbd8963132eb9d25802d2f8a8"
         },
         "date": 1695255188618,
         "tool": "customSmallerIsBetter",
@@ -3548,7 +3548,7 @@ window.BENCHMARK_DATA = {
           "message": "ci-fix: remove `comment-always` from the `github-action-benchmark` action as it seems to simply duplicate the commit (Release v1.1.4)",
           "timestamp": "2023-09-21T07:25:25+02:00",
           "tree_id": "6335e8da9c2187d2a440388c40a1b8b022d8a429",
-          "url": "https://github.com/Code-Inspect/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
+          "url": "https://github.com/flowr-analysis/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
         },
         "date": 1695275827810,
         "tool": "customSmallerIsBetter",
@@ -3644,7 +3644,7 @@ window.BENCHMARK_DATA = {
           "message": "ci-fix: remove `comment-always` from the `github-action-benchmark` action as it seems to simply duplicate the commit (Release v1.1.4)",
           "timestamp": "2023-09-21T07:25:25+02:00",
           "tree_id": "6335e8da9c2187d2a440388c40a1b8b022d8a429",
-          "url": "https://github.com/Code-Inspect/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
+          "url": "https://github.com/flowr-analysis/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
         },
         "date": 1695275827810,
         "tool": "customSmallerIsBetter",
@@ -3740,7 +3740,7 @@ window.BENCHMARK_DATA = {
           "message": "ci-fix: remove summary from the social-science graph to avoid double commit (Release v1.1.4)",
           "timestamp": "2023-09-21T09:21:19+02:00",
           "tree_id": "d487002e9ec254edd9cc4b596b0dce914d8cfbbd",
-          "url": "https://github.com/Code-Inspect/flowr/commit/05f243e420d0a81a6884f1a65a2003b16af6ef7c"
+          "url": "https://github.com/flowr-analysis/flowr/commit/05f243e420d0a81a6884f1a65a2003b16af6ef7c"
         },
         "date": 1695282677149,
         "tool": "customSmallerIsBetter",
@@ -3836,7 +3836,7 @@ window.BENCHMARK_DATA = {
           "message": "Merge benchmark commits into one (#340)\n\nci, refactor: merge benchmark commits into one (Release v1.1.4)",
           "timestamp": "2023-09-21T12:24:40+02:00",
           "tree_id": "180c8b31c7e6d78169d1bd2523ee0a42008906da",
-          "url": "https://github.com/Code-Inspect/flowr/commit/127bc834a15a16930038f25587b54cb1422c9df4"
+          "url": "https://github.com/flowr-analysis/flowr/commit/127bc834a15a16930038f25587b54cb1422c9df4"
         },
         "date": 1695293613097,
         "tool": "customSmallerIsBetter",
@@ -3932,7 +3932,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Update xmldom Dependency and Benchmarking Support (Release v1.1.5)",
           "timestamp": "2023-09-24T14:13:29+02:00",
           "tree_id": "4ecc81b2e690ba8ac4f1912756542fa125261a27",
-          "url": "https://github.com/Code-Inspect/flowr/commit/0fda4c49cd9e2b2191a1b15c137cd78cb08f52aa"
+          "url": "https://github.com/flowr-analysis/flowr/commit/0fda4c49cd9e2b2191a1b15c137cd78cb08f52aa"
         },
         "date": 1695559899869,
         "tool": "customSmallerIsBetter",
@@ -4028,7 +4028,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] CFG, N-Quads export (Release v1.1.6)",
           "timestamp": "2023-10-10T11:16:02+02:00",
           "tree_id": "4760f5664753b99fdb69e3d5675ba0cef3cf1140",
-          "url": "https://github.com/Code-Inspect/flowr/commit/77159de13994c94d1a86ebf0db70c0a01067d372"
+          "url": "https://github.com/flowr-analysis/flowr/commit/77159de13994c94d1a86ebf0db70c0a01067d372"
         },
         "date": 1696931420717,
         "tool": "customSmallerIsBetter",
@@ -4124,7 +4124,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:minor] Feature Extraction and CFG Export (Release v1.2.0)",
           "timestamp": "2023-10-15T08:56:06+02:00",
           "tree_id": "89e99a6cb66c08dc2c808dd798df9e888c88931c",
-          "url": "https://github.com/Code-Inspect/flowr/commit/a13ba7d57c8f8ca264630109c56e1906e21c2066"
+          "url": "https://github.com/flowr-analysis/flowr/commit/a13ba7d57c8f8ca264630109c56e1906e21c2066"
         },
         "date": 1697355095607,
         "tool": "customSmallerIsBetter",
@@ -4220,7 +4220,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] More Robust Server (Release v1.2.1)",
           "timestamp": "2023-10-18T14:31:58+02:00",
           "tree_id": "c4d6e9b11aa00ac6785f02ca584364bfdf5b52ab",
-          "url": "https://github.com/Code-Inspect/flowr/commit/1e9911dfb7b57bba9af2fbc21bb25b7b8a769b63"
+          "url": "https://github.com/flowr-analysis/flowr/commit/1e9911dfb7b57bba9af2fbc21bb25b7b8a769b63"
         },
         "date": 1697634674497,
         "tool": "customSmallerIsBetter",
@@ -4316,7 +4316,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Include character counts in meta statistics (Release v1.3.1)",
           "timestamp": "2023-11-02T13:39:16+01:00",
           "tree_id": "48744a8fc8d41b2b0740b8b7b4ccf7b4ca9c388c",
-          "url": "https://github.com/Code-Inspect/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
+          "url": "https://github.com/flowr-analysis/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
         },
         "date": 1698930900376,
         "tool": "customSmallerIsBetter",
@@ -4412,7 +4412,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Robustness against encoding errors (Release v1.3.2)",
           "timestamp": "2023-11-03T20:54:13+01:00",
           "tree_id": "c245f343a8ef43765a4f36f2aad48763dc77d6b3",
-          "url": "https://github.com/Code-Inspect/flowr/commit/266b087710648b96b1779436aee32a0c47ac80cd"
+          "url": "https://github.com/flowr-analysis/flowr/commit/266b087710648b96b1779436aee32a0c47ac80cd"
         },
         "date": 1699043094505,
         "tool": "customSmallerIsBetter",
@@ -4508,7 +4508,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Robustify Quad Export Against Cyclic Structures (Release v1.3.3)",
           "timestamp": "2023-11-10T18:59:51+01:00",
           "tree_id": "8e5af22f7b39483e95e62308330a5e9e002ba57a",
-          "url": "https://github.com/Code-Inspect/flowr/commit/243959c2f01ddf928c85ee4905105307971ad19b"
+          "url": "https://github.com/flowr-analysis/flowr/commit/243959c2f01ddf928c85ee4905105307971ad19b"
         },
         "date": 1699640654242,
         "tool": "customSmallerIsBetter",
@@ -4604,7 +4604,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Allow Strings as Names for Function Call Arguments (Release v1.3.4)",
           "timestamp": "2023-11-22T13:22:53+01:00",
           "tree_id": "a052c400e622d7062e4ff675a07f088883eaccee",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c209d78300f23960363beb046efd2b07a0a5531d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c209d78300f23960363beb046efd2b07a0a5531d"
         },
         "date": 1700657321110,
         "tool": "customSmallerIsBetter",
@@ -4700,7 +4700,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Quads With Repeated Edge Types (Release v1.3.5)",
           "timestamp": "2023-12-08T15:24:04+01:00",
           "tree_id": "e7a3ab3994be6ef3dfd8e8b13a4957bbfe0242b5",
-          "url": "https://github.com/Code-Inspect/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
+          "url": "https://github.com/flowr-analysis/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
         },
         "date": 1702046953709,
         "tool": "customSmallerIsBetter",
@@ -4796,7 +4796,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Using Next in RDF Quads (Release v1.3.6)",
           "timestamp": "2023-12-13T13:59:30+01:00",
           "tree_id": "c9aa3c29b811c7d73cc287b2a5f9e89f06951cd9",
-          "url": "https://github.com/Code-Inspect/flowr/commit/5d9e4d36fce917d72f382c8cc441ce576baf18a6"
+          "url": "https://github.com/flowr-analysis/flowr/commit/5d9e4d36fce917d72f382c8cc441ce576baf18a6"
         },
         "date": 1702473795124,
         "tool": "customSmallerIsBetter",
@@ -4892,7 +4892,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Demo File for Presentations (Release v1.3.7)",
           "timestamp": "2024-01-04T09:31:14+01:00",
           "tree_id": "952d243e0eef028eb0fc52f25ccac831253d9f17",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c148955f1c3a57e08545baa6a94b58c9124b4613"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c148955f1c3a57e08545baa6a94b58c9124b4613"
         },
         "date": 1704358482215,
         "tool": "customSmallerIsBetter",
@@ -4988,7 +4988,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Publish NPM to own namespace (Release v1.3.12)",
           "timestamp": "2024-01-04T16:44:38+01:00",
           "tree_id": "3af219dac7ab8e8aeff5ce9aaec1f1b45f9d32bb",
-          "url": "https://github.com/Code-Inspect/flowr/commit/4b9d841139c45af7a2e50de57bf454b4d98dcd34"
+          "url": "https://github.com/flowr-analysis/flowr/commit/4b9d841139c45af7a2e50de57bf454b4d98dcd34"
         },
         "date": 1704384537083,
         "tool": "customSmallerIsBetter",
@@ -5084,7 +5084,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Update NPM Package Dependencies (Release v1.3.13)",
           "timestamp": "2024-01-13T14:09:36+01:00",
           "tree_id": "81a22dece7b6bc2454b2f78cc3dd742fa9b690fa",
-          "url": "https://github.com/Code-Inspect/flowr/commit/2e17bd230fd0762e103508098f5fb1fa3d565d46"
+          "url": "https://github.com/flowr-analysis/flowr/commit/2e17bd230fd0762e103508098f5fb1fa3d565d46"
         },
         "date": 1705152648795,
         "tool": "customSmallerIsBetter",
@@ -5180,7 +5180,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Drop readlines/promises Dependency (Release v1.3.14)",
           "timestamp": "2024-01-15T23:29:47+01:00",
           "tree_id": "2383d566e88ea2e0dbe60dd73f7d7b92b3093407",
-          "url": "https://github.com/Code-Inspect/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
+          "url": "https://github.com/flowr-analysis/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
         },
         "date": 1705359156307,
         "tool": "customSmallerIsBetter",
@@ -5276,7 +5276,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] npm for WebSocket Server (Release v1.4.1)",
           "timestamp": "2024-01-31T15:39:17+01:00",
           "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
         },
         "date": 1706713172666,
         "tool": "customSmallerIsBetter",
@@ -5379,7 +5379,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Dropping xmlparsedata, Benchmark Re-Runs, and Repl Fixes (Release v1.4.2)",
           "timestamp": "2024-03-17T22:21:47+01:00",
           "tree_id": "3f3bb3107a47ce4ffee7f569cb902e0c641dbe60",
-          "url": "https://github.com/Code-Inspect/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
+          "url": "https://github.com/flowr-analysis/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
         },
         "date": 1710711452839,
         "tool": "customSmallerIsBetter",
@@ -5475,7 +5475,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Completed Declutter of flowr (Release v1.5.2)",
           "timestamp": "2024-04-05T17:19:28+02:00",
           "tree_id": "b3d73e6ef022921d7e9367296525a7389e976aa4",
-          "url": "https://github.com/Code-Inspect/flowr/commit/1e5ddeb7a95d9191d401a3c3bacce978d16b0075"
+          "url": "https://github.com/flowr-analysis/flowr/commit/1e5ddeb7a95d9191d401a3c3bacce978d16b0075"
         },
         "date": 1712331740598,
         "tool": "customSmallerIsBetter",
@@ -5571,7 +5571,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:major] Dataflow v2 (Release v2.0.0)",
           "timestamp": "2024-05-11T23:33:15+02:00",
           "tree_id": "076a1a4d0811c48b8d5b1772f553266db1b1df6f",
-          "url": "https://github.com/Code-Inspect/flowr/commit/0e655150b7b2a4064640d9f4d1da8292c2ddc1c0"
+          "url": "https://github.com/flowr-analysis/flowr/commit/0e655150b7b2a4064640d9f4d1da8292c2ddc1c0"
         },
         "date": 1715463948018,
         "tool": "customSmallerIsBetter",
@@ -5667,7 +5667,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Drop `node:` prefix from dependencies (Release v2.0.1)",
           "timestamp": "2024-05-12T00:38:09+02:00",
           "tree_id": "f33b1f4a06829b8f849c4229bf9855e38270193d",
-          "url": "https://github.com/Code-Inspect/flowr/commit/eddce744a32324cab8a47397de625e142cb26a91"
+          "url": "https://github.com/flowr-analysis/flowr/commit/eddce744a32324cab8a47397de625e142cb26a91"
         },
         "date": 1715467769258,
         "tool": "customSmallerIsBetter",
@@ -5763,7 +5763,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fixing Control-Flow, Markdown-Exports, and Handling of Unnamed Closures (Release v2.0.2)",
           "timestamp": "2024-05-28T17:35:51+02:00",
           "tree_id": "0f59a79dfa984998f6ebf263b3656546a6088458",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d22453ad5b876eaffda4b7595db678f8e426493b"
         },
         "date": 1716911273594,
         "tool": "customSmallerIsBetter",
@@ -5859,7 +5859,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fine-Grained Benchmarks (Release v2.0.3)",
           "timestamp": "2024-06-02T01:28:31+02:00",
           "tree_id": "4fe2a786a66b2863b953662c0179d11e7fce64dc",
-          "url": "https://github.com/Code-Inspect/flowr/commit/7462f093ba274f5b5a43541dff95acfb36b44133"
+          "url": "https://github.com/flowr-analysis/flowr/commit/7462f093ba274f5b5a43541dff95acfb36b44133"
         },
         "date": 1717285175222,
         "tool": "customSmallerIsBetter",
@@ -5962,7 +5962,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Supply ref for Benchmark Reports (Release v2.0.4)",
           "timestamp": "2024-06-02T12:20:41+02:00",
           "tree_id": "c4eb733ab79584ed9a08bf5b99902613beeb4eaa",
-          "url": "https://github.com/Code-Inspect/flowr/commit/f52a2e4651cfb3a8a8abc910d5736243f7c4dd0c"
+          "url": "https://github.com/flowr-analysis/flowr/commit/f52a2e4651cfb3a8a8abc910d5736243f7c4dd0c"
         },
         "date": 1717324356386,
         "tool": "customSmallerIsBetter",
@@ -6065,7 +6065,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Support for R 3.6.0 (Release v2.0.5)",
           "timestamp": "2024-06-02T16:05:52+02:00",
           "tree_id": "49c7c72a37e1403900352f0acbcc48ce3fe3680d",
-          "url": "https://github.com/Code-Inspect/flowr/commit/fb3aeb716a5945a820d37df8341ea431a5fcd462"
+          "url": "https://github.com/flowr-analysis/flowr/commit/fb3aeb716a5945a820d37df8341ea431a5fcd462"
         },
         "date": 1717337873451,
         "tool": "customSmallerIsBetter",
@@ -6168,7 +6168,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Expression-Lists in Binary-Operators and Comment-Only Files (Release v2.0.6)",
           "timestamp": "2024-06-03T11:28:44+02:00",
           "tree_id": "1c00ff329c711b6c9af0a386c677ecef5dfd7410",
-          "url": "https://github.com/Code-Inspect/flowr/commit/575f504c26d43c968abb9c9fabf7e99b6cbf371e"
+          "url": "https://github.com/flowr-analysis/flowr/commit/575f504c26d43c968abb9c9fabf7e99b6cbf371e"
         },
         "date": 1717407622969,
         "tool": "customSmallerIsBetter",
@@ -6271,7 +6271,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] More Built-Ins and Sample-Benchmarks (Release v2.0.7)",
           "timestamp": "2024-06-03T23:49:38+02:00",
           "tree_id": "cecee91a74d6ca26a55782eb4d9ccaf3ddcb0242",
-          "url": "https://github.com/Code-Inspect/flowr/commit/39dfc7cdf4c4761a03a4a4e255fe8c8ec1d8e9d0"
+          "url": "https://github.com/flowr-analysis/flowr/commit/39dfc7cdf4c4761a03a4a4e255fe8c8ec1d8e9d0"
         },
         "date": 1717452068678,
         "tool": "customSmallerIsBetter",
@@ -6374,7 +6374,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Reduce Dataflow Memory-Print (Release v2.0.8)",
           "timestamp": "2024-06-04T14:41:02+02:00",
           "tree_id": "bbb9834a895cbcd96b15d03ea473dce0bbca5e62",
-          "url": "https://github.com/Code-Inspect/flowr/commit/c919f62d01807eca7e54a00e415bad56a46e9311"
+          "url": "https://github.com/flowr-analysis/flowr/commit/c919f62d01807eca7e54a00e415bad56a46e9311"
         },
         "date": 1717505553349,
         "tool": "customSmallerIsBetter",
@@ -6477,7 +6477,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: File-Specific Benchmarks, Shorter Server Messages, Smaller Environments (Release v2.0.9)",
           "timestamp": "2024-06-12T14:15:47+02:00",
           "tree_id": "be2b0649d99fd34f81dfd6033b134f98ecd037f9",
-          "url": "https://github.com/Code-Inspect/flowr/commit/f700458cef613440be51006076707eddda8ee1dc"
+          "url": "https://github.com/flowr-analysis/flowr/commit/f700458cef613440be51006076707eddda8ee1dc"
         },
         "date": 1718195270813,
         "tool": "customSmallerIsBetter",
@@ -6580,7 +6580,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: Correctly print CDs in mermaid (Release v2.0.10)",
           "timestamp": "2024-06-25T09:57:48+02:00",
           "tree_id": "5bdc6eeff97fccbed9fa85a43ad37df03483e839",
-          "url": "https://github.com/Code-Inspect/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
+          "url": "https://github.com/flowr-analysis/flowr/commit/5b3ed9d7e79cfa406a8a9145190f66b72202c8e4"
         },
         "date": 1719303028425,
         "tool": "customSmallerIsBetter",
@@ -6683,7 +6683,7 @@ window.BENCHMARK_DATA = {
           "message": "[release:patch] Fix: undefined parse in repl (Release v2.0.11)",
           "timestamp": "2024-06-27T04:05:32+02:00",
           "tree_id": "ebcf13e298ffdcddc68023ca2e2e871f3494200a",
-          "url": "https://github.com/Code-Inspect/flowr/commit/d16b9a2cd653d7276b7f9f60e143773eab5f488d"
+          "url": "https://github.com/flowr-analysis/flowr/commit/d16b9a2cd653d7276b7f9f60e143773eab5f488d"
         },
         "date": 1719454716068,
         "tool": "customSmallerIsBetter",

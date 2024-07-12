@@ -1,4 +1,4 @@
-Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/Code-Inspect/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
+Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/flowr-analysis/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 <!-- TOC -->
 - [💬 Communicating with the Server](#-communicating-with-the-server)
@@ -24,7 +24,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
 
 ## 💬 Communicating with the Server
 
-As explained in the [Overview](https://github.com/Code-Inspect/flowr/wiki/Overview), you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the `--server` flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
+As explained in the [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview), you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the `--server` flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
 Currently, every connection is handled by the same underlying `RShell` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary amount of&nbsp;R shell sessions on the target machine).
 
@@ -134,8 +134,8 @@ The `results` field of the response effectively contains three keys of importanc
 
 - `parse`: which contains 1:1 the parse result in CSV format that we received from the `RShell` (i.e., the AST produced by the parser of the R interpreter).
 - `normalize`: which contains the normalized AST, including ids (see the `info` field).
-  To better understand the structure, refer to figure&nbsp;40A in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107) or refer to the documentation in the [source code](https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts).
-- `dataflow`: especially important is the `graph` field which contains the dataflow graph as a set of root vertices (i.e. vertices that appear on the top level), a list of all vertices (`vertexInformation`), and an adjacency list of all edges (again, refer to the [source code](https://github.com/Code-Inspect/flowr/tree/main/src/dataflow/graph/graph.ts) for more information).
+  To better understand the structure, refer to figure&nbsp;40A in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107) or refer to the documentation in the [source code](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts).
+- `dataflow`: especially important is the `graph` field which contains the dataflow graph as a set of root vertices (i.e. vertices that appear on the top level), a list of all vertices (`vertexInformation`), and an adjacency list of all edges (again, refer to the [source code](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts) for more information).
 
 ```json
 {
@@ -2269,7 +2269,7 @@ It contains a human-readable description *why* the analysis failed (see the erro
 
 #### Including the Control Flow Graph
 
-While *flowR* does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) for any bug you may encounter).
+While *flowR* does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) for any bug you may encounter).
 For this, the analysis request may add `cfg: true` to its list of options.
 
 <details open>
@@ -2505,7 +2505,7 @@ The default response is formatted as JSON. However, by specifying `format: "n-qu
 
 *Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
-Please note, that the base message format is still JSON. Only the individual results get converted. While the context is derived from the `filename`, we currently offer no way to customize other configurations (please open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) if you require this).
+Please note, that the base message format is still JSON. Only the individual results get converted. While the context is derived from the `filename`, we currently offer no way to customize other configurations (please open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) if you require this).
 
 ```json
 {
@@ -2594,7 +2594,7 @@ sequenceDiagram
 </details>
 
 In order to slice, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly slice the same file.
-Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
+Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
 See the implementation of the request-slice message for more information.
 
 <details open>
@@ -2698,7 +2698,7 @@ sequenceDiagram
 
 </details>
 
-The REPL execution message allows to send a REPL command to receive its output. For more on the REPL, see the [introduction](https://github.com/Code-Inspect/flowr/wiki/Overview#the-read-eval-print-loop-repl), or the [description below](#using-the-repl).
+The REPL execution message allows to send a REPL command to receive its output. For more on the REPL, see the [introduction](https://github.com/flowr-analysis/flowr/wiki/Overview#the-read-eval-print-loop-repl), or the [description below](#using-the-repl).
 You only have to pass the command you want to execute in the `expression` field. Furthermore, you can set the `ansi` field to `true` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
 We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
@@ -2796,7 +2796,7 @@ R> :parse file://test/testfiles/example.R
 
 ## ⚒️ Writing Code
 
-*flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/Code-Inspect/flowr/wiki/Core) wiki page for more information).
+*flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
 
 ### Interfacing with R by Using the `RShell`
 

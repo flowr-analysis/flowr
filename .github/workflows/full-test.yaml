@@ -8,7 +8,7 @@ name: "Full Test"
 jobs:
   lint:
     name: "Linting (Full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     with:
       r-version: ''
       action: lint-local
@@ -25,7 +25,7 @@ jobs:
            - os: windows-latest
              r-version: '4.4.0'
     name: "Test Suite (full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
       cancel-in-progress: true

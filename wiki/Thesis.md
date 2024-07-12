@@ -2,7 +2,7 @@
 
 Originally, Florian Sihler created *flowR* as a part of his master's thesis, to be found at: <http://dx.doi.org/10.18725/OPARU-50107>.
 This page explains how to reproduce (and replicate) the results from the thesis.
-The submission state is still available with [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0).
+The submission state is still available with [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0).
 
 - [How to Reproduce the Statistics From the Master’s Thesis](#how-to-reproduce-the-statistics-from-the-masters-thesis)
 
@@ -11,10 +11,10 @@ The submission state is still available with [v1.0.0](https://github.com/Code-In
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
 
 > [!IMPORTANT]  
-> Since [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that *flowR* should be used. Hence, to reproduce the results, please make sure to work on [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0).
+> Since [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that *flowR* should be used. Hence, to reproduce the results, please make sure to work on [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0).
 
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,
-the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0)).
+the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0)).
 
 1. If you want to **update** the set of packages, use the [scripts/top-downloads.R](../scripts/top-downloads.R) script and potentially modify the package limit by setting `N` to a different value.
 The (sorted) results should be versioned and can be found in [scripts/top-r-downloads.txt](../scripts/top-r-downloads.txt).

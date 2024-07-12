@@ -1,7 +1,7 @@
 const enum RequiredFeature {
-	/** https://github.com/Code-Inspect/flowr/labels/typing */
+	/** https://github.com/flowr-analysis/flowr/labels/typing */
 	Typing,
-	/** https://github.com/Code-Inspect/flowr/labels/abstract%20interpretation */
+	/** https://github.com/flowr-analysis/flowr/labels/abstract%20interpretation */
 	AbstractInterpretation,
 }
 

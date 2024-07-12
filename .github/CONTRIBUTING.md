@@ -2,7 +2,7 @@
 
 First of all: **Thank You for Every Contribution!**
 
-On this page, you can find some guidelines and tips on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me directly at <florian.sihler@uni-ulm.de>.
+On this page, you can find some guidelines and tips on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or email me directly at <florian.sihler@uni-ulm.de>.
 
 - [How to Contribute](#how-to-contribute)
   - [Obtaining the Source Code](#obtaining-the-source-code)
@@ -20,7 +20,7 @@ On this page, you can find some guidelines and tips on how to contribute to *flo
 
 ## Obtaining the Source Code
 
-If you found a small typo or want to fix a minor wording problem, you can use GitHub's web interface to edit the file directly (e.g., to edit the main readme file, you can use [this link](https://github.com/Code-Inspect/flowr/edit/main/README.md)). In case you have never contributed to a project before or you are unsure how git works, [GitHub's guide][github-guide] is a good place to start.
+If you found a small typo or want to fix a minor wording problem, you can use GitHub's web interface to edit the file directly (e.g., to edit the main readme file, you can use [this link](https://github.com/flowr-analysis/flowr/edit/main/README.md)). In case you have never contributed to a project before or you are unsure how git works, [GitHub's guide][github-guide] is a good place to start.
 
 ### Git-LFS Usage
 
@@ -31,13 +31,13 @@ We use [git-lfs](https://git-lfs.github.com/) to store large file blobs (like im
 To clone the repository, you can use the following command:
 
 ```shell
-git clone https://github.com/Code-Inspect/flowr.git
+git clone https://github.com/flowr-analysis/flowr.git
 ```
 
 If you prefer ssh, you can use the following command:
 
 ```shell
-git clone git@github.com:Code-Inspect/flowr.git
+git clone git@github.com:flowr-analysis/flowr.git
 ```
 
 For more information on how to clone and work with a repository, please see [GitHub's guide][github-guide].
@@ -73,13 +73,13 @@ Linting project (local mode)...
 
 </details>
 
-If you have any questions, refer to the [wiki](https://github.com/Code-Inspect/flowr/wiki) or just email me at: <florian.sihler@uni-ulm.de>.
+If you have any questions, refer to the [wiki](https://github.com/flowr-analysis/flowr/wiki) or just email me at: <florian.sihler@uni-ulm.de>.
 
 ## Commits and Commit Messages
 
 We prioritize smaller commits over big-bang patches. Besides, we only enforce a basic message format for the commits.
 
-With [#521](https://github.com/Code-Inspect/flowr/pull/521), we follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), configured by the [.github/.commitlintrc.json](https://github.com/Code-Inspect/flowr/blob/main/.github/.commitlintrc.json) and enforced by our [git-hooks](#git-hooks).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a> In general, these commits have the following shape:
+With [#521](https://github.com/flowr-analysis/flowr/pull/521), we follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), configured by the [.github/.commitlintrc.json](https://github.com/flowr-analysis/flowr/blob/main/.github/.commitlintrc.json) and enforced by our [git-hooks](#git-hooks).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a> In general, these commits have the following shape:
 
 ```text
 <type>(<scope(s)>): <subject>
@@ -137,10 +137,10 @@ With scopes, it could look like this:
 
 All the basic style conventions are defined inside the `package.json` (with the help of the `eslint` package). Please make sure to adhere to them.
 
-As indicated by [#238](https://github.com/Code-Inspect/flowr/issues/238) I decided to forbid `TODO`, `FIXME`, and `XXX` comments in code in favor of explicit *issues* directly on GitHub. Please do not try to get around that rule.
+As indicated by [#238](https://github.com/flowr-analysis/flowr/issues/238) I decided to forbid `TODO`, `FIXME`, and `XXX` comments in code in favor of explicit *issues* directly on GitHub. Please do not try to get around that rule.
 
 For more information on the linter, how to call it (and automatically deal with some of the issues raised),
-please refer to the [Test](https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing) wiki page.
+please refer to the [Test](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) wiki page.
 
 ## Releases
 

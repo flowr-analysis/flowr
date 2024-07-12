@@ -15,7 +15,7 @@ RUN npm ci && npm run build
 
 FROM node:22.1-alpine3.19 AS flowR
 
-LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
+LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
 WORKDIR /app
 

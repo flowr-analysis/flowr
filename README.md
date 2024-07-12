@@ -12,10 +12,9 @@ To get started with _flowR_, please check out the [Overview](https://github.com/
 docker run -it --rm eagleoutice/flowr
  ```
 
-
 ## 📜 More Information
 
-For more details, see the [wiki pages](https://github.com/flowr-analysis/flowr/wiki) and the deployed [code documentation](https://code-inspect.github.io/flowr/doc/).
+For more details, see the [wiki pages](https://github.com/flowr-analysis/flowr/wiki) and the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
 
 ## 🚀 Contributing
 

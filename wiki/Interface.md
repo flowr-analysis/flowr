@@ -2909,4 +2909,4 @@ We use `example.name` to avoid duplication with the name that we have assigned t
 `'comments'` refers to a freely chosen (but unique) name, that will be used as the name for the output file within the folder. The `comments` variable holds the result of the query, which is an array of nodes. Finally, we pass the `filepath` of the file that was analyzed (if known), so that it can be added to the statistics file (as additional information).
 
 -----
-<a id="note1" href="#note1ref">&lt;1&gt;</a>: For more information, see the code documentation at: <https://code-inspect.github.io/flowr/doc/>.
+<a id="note1" href="#note1ref">&lt;1&gt;</a>: For more information, see the code documentation at: <https://flowr-analysis.github.io/flowr/doc/>.

@@ -1,4 +1,4 @@
-For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
+For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)
@@ -72,9 +72,10 @@ To run them, issue:
 npm run performance-test
 ```
 
-See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
+See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
 
 ### Oh no, the tests are slow
+
 If the tests are too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
 
 ### Testing Within Your IDE
@@ -120,11 +121,11 @@ We explain the most important workflows in the following:
 - [run.yaml](../.github/workflows/run.yaml) is a [reusable workflow](https://docs.github.com/en/actions/using-workflows/reusing-workflows) that we use *whenever* we want to run a *flowR* npm script in the pipeline (furthermore, this hides necessary extra steps for coverage, documentation, and benchmarks).
 - [qa.yaml](../.github/workflows/qa.yaml) is the main workflow which will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
-    - uploading the results to the [benchmark page](https://code-inspect.github.io/flowr/wiki/stats/benchmark) for releases
+    - uploading the results to the [benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
-  - deploying the documentation to [GitHub Pages](https://code-inspect.github.io/flowr/doc/)
+  - deploying the documentation to [GitHub Pages](https://flowr-analysis.github.io/flowr/doc/)
 - [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
 - [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 

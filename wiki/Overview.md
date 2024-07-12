@@ -1,5 +1,5 @@
 This page focuses on the features presented by *flowR* and how to use them.
-If you have never used *flowR* before, please refer to the [setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page first, for instructions on how to install *flowR*.
+If you have never used *flowR* before, please refer to the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page first, for instructions on how to install *flowR*.
 
 <!-- TOC -->
 - [*flowR*'s Modules](#flowrs-modules)
@@ -35,16 +35,16 @@ flowchart TD
 
    style utility stroke-dasharray: 5 5,opacity:0.5;
 
-   click root href "https://github.com/Code-Inspect/flowr/" "Jump to the Repository"
-   click rb href "https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge/shell.ts" "Jump to the Implementation"
-   click norm href "https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge/lang%3A4.x/ast/parser/xml" "Jump to the Implementation"
-   click da href "https://github.com/Code-Inspect/flowr/tree/main/src/dataflow" "Jump to the Implementation"
-   click slice href "https://github.com/Code-Inspect/flowr/tree/main/src/slicing" "Jump to the Implementation"
-   click rc href "https://github.com/Code-Inspect/flowr/blob/main/src/reconstruct/reconstruct.ts" "Jump to the Implementation"
-   click core href "https://github.com/Code-Inspect/flowr/blob/main/src/core" "Jump to the Implementation"
-   click benchmark href "https://github.com/Code-Inspect/flowr/tree/main/benchmark/src" "Jump to the Implementation"
-   click stat href "https://github.com/Code-Inspect/flowr/tree/main/statistics/src" "Jump to the Implementation"
-   click utility href "https://github.com/Code-Inspect/flowr/tree/main/src/util" "Jump to the Implementation"
+   click root href "https://github.com/flowr-analysis/flowr/" "Jump to the Repository"
+   click rb href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts" "Jump to the Implementation"
+   click norm href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang%3A4.x/ast/parser/xml" "Jump to the Implementation"
+   click da href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow" "Jump to the Implementation"
+   click slice href "https://github.com/flowr-analysis/flowr/tree/main/src/slicing" "Jump to the Implementation"
+   click rc href "https://github.com/flowr-analysis/flowr/blob/main/src/reconstruct/reconstruct.ts" "Jump to the Implementation"
+   click core href "https://github.com/flowr-analysis/flowr/blob/main/src/core" "Jump to the Implementation"
+   click benchmark href "https://github.com/flowr-analysis/flowr/tree/main/benchmark/src" "Jump to the Implementation"
+   click stat href "https://github.com/flowr-analysis/flowr/tree/main/statistics/src" "Jump to the Implementation"
+   click utility href "https://github.com/flowr-analysis/flowr/tree/main/src/util" "Jump to the Implementation"
 ```
 
 The [mermaid](https://mermaid.js.org/) diagram above presents the architecture of *flowR*,
@@ -52,16 +52,16 @@ with the important components directly related to the actual slicing highlighted
 (all boxes should be hyperlinks to the corresponding implementation *if* you are interested -
 depending on your browser, you may have to specifically open them in a new tab).
 
-Primarily, *flowR* provides a backward [program slicer](https://en.wikipedia.org/wiki/Program_slicing) for the [*R*](https://www.r-project.org/) programming language, which is available with the corresponding [slicer](https://github.com/Code-Inspect/flowr/tree/main/src/slicing) module and exposed by the [`slicer`](#generate-static-slices) script.
-Its subcomponents (like the custom [R bridge](https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge) or the static [dataflow analysis]("https://github.com/Code-Inspect/flowr/tree/main/src/dataflow)) are not important if you simply wish to use *flowR*.
+Primarily, *flowR* provides a backward [program slicer](https://en.wikipedia.org/wiki/Program_slicing) for the [*R*](https://www.r-project.org/) programming language, which is available with the corresponding [slicer](https://github.com/flowr-analysis/flowr/tree/main/src/slicing) module and exposed by the [`slicer`](#generate-static-slices) script.
+Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use *flowR*.
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. It is available with the [`benchmark`](#benchmark-the-slicer) script.
 
 The statistics module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [`statistics`](#generate-usage-statistics-of-r-code) script.
 
-The [core](https://github.com/Code-Inspect/flowr/tree/main/src/core) module contains *flowR*'s read-eval-print loop (REPL) and *flowR*'s server. Furthermore, it contains the root definitions of how *flowR* slices (see the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information).
+The [core](https://github.com/flowr-analysis/flowr/tree/main/src/core) module contains *flowR*'s read-eval-print loop (REPL) and *flowR*'s server. Furthermore, it contains the root definitions of how *flowR* slices (see the [interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information).
 
-The [utility](https://github.com/Code-Inspect/flowr/tree/main/src/util) module is of no further interest for the usage of *flowR*
+The [utility](https://github.com/flowr-analysis/flowr/tree/main/src/util) module is of no further interest for the usage of *flowR*
 
 The following sections explain how to use these features.
 
@@ -77,7 +77,7 @@ Besides these, there is a [Visual Studio Code extension](https://marketplace.vis
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
 ⚒️ If you compile the *flowR* sources yourself, you can access *flowR* by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).
 
-Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/flowr.js`. See the [setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page for more information on how to get *flowR* running.
+Independent of your way of launching *flowr*, we will write simply `flowr` for either (🐳️)&nbsp;`docker run -it --rm eagleoutice/flowr:latest` or (⚒️)&nbsp;`node dist/src/flowr.js`. See the [setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page for more information on how to get *flowR* running.
 
 ### The Read-Eval-Print Loop (REPL)
 
@@ -89,7 +89,7 @@ In general, all commands start with a colon (`:`), everything else is interprete
 ### The Server
 
 Instead of the REPL, you can start *flowR* in "([TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)) server-mode" using `flowr --server` (write `flowr --help` to find out more). Together with the server option, you can configure the port with `--port`.
-The supported requests are documented alongside the internal documentation, see the [Interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information.
+The supported requests are documented alongside the internal documentation, see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information.
 
 <details>
     <summary>Small demonstration using netcat</summary>
@@ -132,7 +132,7 @@ Sleep 200ms
 </details>
 
 The server allows accessing the REPL as well
-(see the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information).
+(see the [interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information).
 
 ## Calling the Scripts Directly
 
@@ -142,7 +142,7 @@ This describes the old way of using *flowR* by creating and calling the respecti
 
 To generate a slice, you need to provide two things:
 
-1. A [slicing criterion](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion): the location of a single variable or several variables of interest to slice for, like "`12@product`"
+1. A [slicing criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion): the location of a single variable or several variables of interest to slice for, like "`12@product`"
 2. The path to an R&nbsp;file that should be sliced.
 
 For example, from the `cli` directory, you can run
@@ -151,7 +151,7 @@ For example, from the `cli` directory, you can run
 npm run slicer -- --criterion "12@product" "test/testfiles/example.R"
 ```
 
-This slices for the first use of the variable `product` in line&nbsp;12 of the source file at `test/testfiles/example.R` (see the [slicing criterion](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) definition for more information).
+This slices for the first use of the variable `product` in line&nbsp;12 of the source file at `test/testfiles/example.R` (see the [slicing criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) definition for more information).
 By default, the resulting slice is output to the standard output.
 
 For more options, run the following from the `cli` directory:
@@ -168,7 +168,7 @@ flowr -e ":slicer --help"
 
 ### Benchmark the Slicer
 
-Within the original [thesis](https://github.com/Code-Inspect/flowr/wiki/Thesis), I conducted a benchmark of the slicer, measuring:
+Within the original [thesis](https://github.com/flowr-analysis/flowr/wiki/Thesis), I conducted a benchmark of the slicer, measuring:
 
 1. The required time of each step of the slicing process, and
 2. The achieved reductions in the size of the slice.
@@ -212,7 +212,7 @@ npm run summarizer -- --help
 
 ### Generate Usage Statistics of R Code
 
-If you want to reproduce the statistics as presented in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/Code-Inspect/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
+If you want to reproduce the statistics as presented in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
 
 For more information, run the following from the `cli` directory:
 

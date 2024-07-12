@@ -11,7 +11,7 @@ concurrency:
 jobs:
   doc:
     name: "Build and Deploy Documentation"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     with:
       r-version: ''
       action: doc

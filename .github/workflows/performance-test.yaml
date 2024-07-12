@@ -16,7 +16,7 @@ name: "Run flowR's performance tests"
 jobs:
   performance-test:
     name: "Run Performance Tests"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     strategy:
       fail-fast: true
       matrix:

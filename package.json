@@ -5,11 +5,11 @@
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Code-Inspect/flowr.git"
+    "url": "git+https://github.com/flowr-analysis/flowr.git"
   },
-  "homepage": "https://github.com/Code-Inspect/flowr",
+  "homepage": "https://github.com/flowr-analysis/flowr",
   "bugs": {
-    "url": "https://github.com/Code-Inspect/flowr/issues"
+    "url": "https://github.com/flowr-analysis/flowr/issues"
   },
   "scripts": {
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",

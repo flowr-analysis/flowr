@@ -11,7 +11,7 @@ jobs:
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
-    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/full-test.yaml@main
 
   release:
     name: "Release"
@@ -19,7 +19,7 @@ jobs:
     needs: ['full-test']
     steps:
       - name: "Setup the Environment"
-        uses: Code-Inspect/flowr/.github/actions/setup@main
+        uses: flowr-analysis/flowr/.github/actions/setup@main
 
       - name: "Checkout Repository"
         uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           # apparently, putting the message into an env variable first sanitizes it
-          # (see https://github.com/Code-Inspect/flowr/security/code-scanning/29)
+          # (see https://github.com/flowr-analysis/flowr/security/code-scanning/29)
           MESSAGE: ${{ github.event.head_commit.message }}
 
       - name: Ensure up-to-date Dependencies
@@ -75,7 +75,7 @@ jobs:
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
-    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/performance-test.yaml@main
     with:
       push: true
       ref: refs/tags/v${{ needs.release.outputs.version }}
@@ -84,5 +84,5 @@ jobs:
   deploy-docker:
     needs: ['performance-test']
     name: "Deploy Docker (only on main)"
-    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

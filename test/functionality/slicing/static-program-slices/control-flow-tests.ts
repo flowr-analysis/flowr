@@ -21,7 +21,7 @@ print(x)`, ['11@x'], `if(y) { if(z) { x <- 3 } else
 { x <- 4 }
 x`)
 
-		// we don't expect to be smart about loops other than repeat at the moment, see https://github.com/Code-Inspect/flowr/issues/804
+		// we don't expect to be smart about loops other than repeat at the moment, see https://github.com/flowr-analysis/flowr/issues/804
 		const loops: [string, SupportedFlowrCapabilityId[]][] = [
 			['repeat', ['repeat-loop']],
 			['while(TRUE)', ['while-loop', 'logical']],

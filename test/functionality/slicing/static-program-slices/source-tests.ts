@@ -13,7 +13,7 @@ describe('source', withShell(shell => {
 	before(() => setSourceProvider(requestProviderFromText(sources)))
 	after(() => setSourceProvider(requestProviderFromFile()))
 
-	// these are incorrect - where is the content from the sourced file? (see https://github.com/Code-Inspect/flowr/issues/822)
+	// these are incorrect - where is the content from the sourced file? (see https://github.com/flowr-analysis/flowr/issues/822)
 	assertSliced(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
 		shell, 'source("simple")\ncat(N)', ['2@N'], 'N')
 	assertSliced(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),

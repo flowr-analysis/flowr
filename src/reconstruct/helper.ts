@@ -266,7 +266,7 @@ function addSemis(code: Code): Code {
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge(code)
 	code = addSemis(code)
-	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc[1])}`).join(lf)
+	return code.map(({ linePart, indent }) => `${getIndentString(Math.max(indent, 0))}${prettyPrintPartToString(linePart, code[0].linePart[0].loc[1])}`).join(lf)
 }
 
 export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): Code {

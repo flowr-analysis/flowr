@@ -112,7 +112,7 @@ describe('Simple', withShell(shell => {
 		}
 	})
 
-	describe.only('Branches', () => {
+	describe('Branches', () => {
 		const testCases: {name: string, case: string, argument: NodeId|NodeId[], expected: string}[] = [
 			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 3, 5, 14, 2, 1], expected: 'if(TRUE) { x <- 3 }\nx' },
 			{ name: 'false if statement', case: 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', argument: [0, 11, 14, 9, 8], expected: 'if(FALSE) {} else         { x <- 4 }\nx' },

@@ -69,7 +69,11 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 			const closingLoc = getRangeStart(exprList.grouping?.[1].location)
 			opening = plain(exprList.grouping?.[0].lexeme, openingLoc)
 			closing = plain(exprList.grouping?.[1].lexeme, closingLoc)
-			subExpressions.filter((code) => code[0].linePart[0].loc[0] > openingLoc[0] && code[0].linePart[0].loc[0] < closingLoc[0]).map(code => code[0].indent = code[0].linePart[0].loc[1] / 4)
+			subExpressions.filter(
+				code => code[0].linePart[0].loc[0] > openingLoc[0] && code[0].linePart[0].loc[0] < closingLoc[0]
+			).map(
+				code => code[0].linePart[0].part = ' '.repeat(code[0].linePart[0].loc[1] - 1).concat(code[0].linePart[0].part)
+			)
 		}
 		return merge(
 			...subExpressions,
@@ -134,12 +138,15 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		[{ linePart: [{ part: ')', loc: [vectorLocation[0], vectorLocation[1] + prettyPrintCodeToString(reconstructedVector).length] }], indent: 0 }],
 		...additionalTokens
 	)
-	console.log(JSON.stringify(body), jsonReplacer)
 
 	if(isSelected(configuration, loop)) {
 		return merge(out, body)
 	}
-	if(Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))) {
+	if(!isSelected(configuration, loop.variable) && Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))) {
+		body.map( prettyPrintLine => prettyPrintLine.linePart[0].part = prettyPrintLine.linePart[0].part.replaceAll(' ',''))
+		return body
+	}
+	if(isSelected(configuration, loop.variable) && Array.from(collectAllIds(loop.body)).some(n => configuration.selection.has(n))) {
 		return merge(out, body)
 	}
 	if(isSelected(configuration, loop.variable) || isSelected(configuration, loop.vector)) {
@@ -206,15 +213,16 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 		return []
 	}
 	const additionalTokens = reconstructAdditionalTokens(ifThenElse)
-	//console.log('additional Tokens: ', JSON.stringify(additionalTokens,jsonReplacer))
 	let out = merge(
 		...additionalTokens,
 		[{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)})`, loc: startPos }], indent: 0 }],
 		when
 	)
+	console.log(JSON.stringify(when,jsonReplacer))
 
 	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
-		//console.log('we have an else-body')
+		console.log('we got here')
+		
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
 		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: [elsePos[0], elsePos[1] + 2] as SourcePosition }], indent: 0 }] : ([] as Code)
@@ -225,7 +233,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 			[{ linePart: [{ part: 'else', loc: [elsePos[0], elsePos[1] + 2 +elseOffset] }], indent: 0 }], //may have to change the location
 			otherwise
 		)
-	}
+	}	
 	return merge(out)
 }
 

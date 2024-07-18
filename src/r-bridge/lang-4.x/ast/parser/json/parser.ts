@@ -3,8 +3,8 @@ import { log } from '../../../../../util/log'
 import type { IdGenerator, NormalizedAst } from '../../model/processing/decorate'
 import { decorateAst , deterministicCountingIdGenerator } from '../../model/processing/decorate'
 import type { NoInfo } from '../../model/model'
-import { normalizeRootObjToAst } from '../xml/internal/structure/normalize-root'
-import type { NormalizerData } from '../xml/normalizer-data'
+import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root'
+import type { NormalizerData } from '../main/normalizer-data'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

@@ -1,7 +1,7 @@
 import {
 	extractLocation,
 	getTokenType,
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
+} from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta'
 import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
 import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'

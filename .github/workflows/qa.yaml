@@ -48,7 +48,7 @@ jobs:
     needs: [ debug ]
     name: "Linting (Local)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     with:
       r-version: ''
       action:    lint-local
@@ -57,11 +57,11 @@ jobs:
     needs: [ debug ]
     name: "Test Suite (coverage)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     with:
       action: test-full -- --forbid-only
       coverage: true
-
+    secrets: inherit
 
   performance-test:
     needs: [ test ]
@@ -77,7 +77,7 @@ jobs:
                 startsWith(github.event.head_commit.message, '[release:patch]')
               )
       }}
-    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/performance-test.yaml@main
     with:
       push: false
     secrets: inherit
@@ -90,10 +90,10 @@ jobs:
           && !failure()
           && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'))
       }}
-    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
     needs: [ test, full-test, performance-test ]
     name: "Deploy Doc. (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
-    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/deploy-doc.yaml@main

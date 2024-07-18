@@ -1,8 +1,8 @@
 import fs, { promises as fsPromise } from 'fs'
-import type { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
 import LineByLine from 'n-readlines'
+import type { RParseRequestFromFile } from '../r-bridge/retriever'
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -14,7 +14,7 @@ export interface Table {
 
 /**
  * Retrieves all files in the given directory recursively
- * @param dir    - Directory-path to start the search from
+ * @param dir    - Directory path to start the search from
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
  */

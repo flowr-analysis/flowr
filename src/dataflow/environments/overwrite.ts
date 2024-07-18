@@ -1,38 +1,25 @@
 import { guard } from '../../util/assert'
-import type { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
-import { Environment } from './environment'
+import type { REnvironmentInformation, IEnvironment } from './environment'
+import { BuiltInEnvironment , Environment } from './environment'
+import type { IdentifierDefinition } from './identifier'
 
-function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
+function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
 		return true
 	}
-	const attr = values[0].used
-	if(attr === 'maybe') {
-		return true
-	}
-	let same = true
-	for(let i = 1; i < values.length; i++) {
-		const used = values[i].used
-		if(used === 'maybe') {
+	for(const val of values) {
+		if(val.controlDependencies !== undefined) {
 			return true
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case we want to add more attributes in the future
-		if(used !== attr) {
-			same = false
-		}
-	}
-	if(!same) {
-		throw new Error('all values must have either a maybe or are all the same')
 	}
 	return false
 }
 
 export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true): IEnvironment {
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
-	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
 	for(const [key, values] of next.memory) {
-		const hasMaybe = anyIsMaybeGuardingSame(values)
+		const hasMaybe = anyIsMaybeOrEmpty(values)
 		if(hasMaybe) {
 			const old = map.get(key)
 			// we need to make a copy to avoid side effects for old reference in other environments
@@ -49,28 +36,28 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		}
 	}
 
-	let parent: IEnvironment | undefined
+	let parent: IEnvironment
 	if(includeParent) {
-		parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+		parent = base.parent.id === BuiltInEnvironment.id ? BuiltInEnvironment : overwriteIEnvironmentWith(base.parent, next.parent)
 	} else {
 		parent = base.parent
 	}
 
-	const out = new Environment(base.name, parent)
+	const out = new Environment(parent)
 	out.memory = map
 	return out
 }
 
 
-export function overwriteEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
-export function overwriteEnvironments(base: undefined, next: undefined): undefined
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
+export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
+export function overwriteEnvironment(base: undefined, next: undefined): undefined
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
- * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironments}.
+ * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
  */
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next
 	} else if(next === undefined) {

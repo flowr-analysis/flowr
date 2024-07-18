@@ -47,12 +47,19 @@ export interface NamedJsonEntry {
 type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string]
 
 export function prepareParsedData(data: string): Map<number, CsvEntry> {
-	const json: unknown = JSON.parse(data)
+	let json: unknown
+    try {
+        json = JSON.parse(`[${data}]`)
+    } catch(e) {
+        throw new Error(`Failed to parse data ${data}: ${(e as Error)?.message}`)
+    }
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`)
 
 	const ret = new Map<number, CsvEntry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
 		return [id, { line1, col1, line2, col2, id, parent, token: removeRQuotes(token), terminal, text }] satisfies [number, CsvEntry]
 	}))
+
+	const roots: Entry[] = []
 
 	// iterate a second time to set parent-child relations (since they may be out of order in the csv)
 	for(const entry of ret.values()) {
@@ -62,10 +69,12 @@ export function prepareParsedData(data: string): Map<number, CsvEntry> {
 				parent.children ??= []
 				parent.children.push(entry)
 			}
+		} else {
+			roots.push(entry)
 		}
 	}
 
-	return ret
+	return roots
 }
 
 export function convertPreparedParsedData(valueMapping: Map<number, CsvEntry>): JsonEntry {
@@ -112,7 +121,7 @@ function convertEntry(csvEntry: CsvEntry): JsonEntry {
 /**
  * we sort children the same way xmlparsedata does (by line, by column, by inverse end line, by inverse end column, by terminal state, by combined "start" tiebreaker value)
  * (https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L153C72-L153C78)
- */		
+ */
 function orderOf(c1: CsvEntry, c2: CsvEntry): number {
 	return c1.line1 - c2.line1 || c1.col1 - c2.col1 || c2.line2 - c1.line2 || c2.col2 - c1.col2 || Number(c1.terminal) - Number(c2.terminal) || sortTiebreak(c1) - sortTiebreak(c2)
 }

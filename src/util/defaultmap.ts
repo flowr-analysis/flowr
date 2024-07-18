@@ -1,5 +1,5 @@
 /**
- * A default map allows for a generator to produce values automatically if you want to add something to a map that does not have a value associated with a given key.
+ * A default map allows for a generator producing values automatically if you want to add something to a map that does not have a value associated with a given key.
  * This does not implement the default map interface as return types (and some future methods may) change
  */
 export class DefaultMap<K, V = K> {

@@ -1,6 +1,6 @@
-import { removeRQuotes } from '../../../src/r-bridge'
 import { assert } from 'chai'
 import { randomString } from '../../../src/util/random'
+import { removeRQuotes } from '../../../src/r-bridge/retriever'
 
 describe('(AST) Retriever', () => {
 	describe('helper functions', () => {

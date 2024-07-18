@@ -1,6 +1,6 @@
-import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
-import { emptyCommonSyntaxTypeCounts } from '../../../../statistics/src/features/common-syntax-probability'
+import { withShell } from '../../_helper/shell'
+import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
 
 
 describe('Used Function Calls', withShell(shell => {

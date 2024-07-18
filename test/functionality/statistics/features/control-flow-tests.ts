@@ -1,6 +1,6 @@
-import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
-import { RFalse, RTrue } from '../../../../src/r-bridge'
+import { withShell } from '../../_helper/shell'
+import { RFalse, RTrue } from '../../../../src/r-bridge/lang-4.x/convert-values'
 
 
 describe('Controlflow', withShell(shell => {
@@ -190,4 +190,3 @@ describe('Controlflow', withShell(shell => {
 		}
 	])
 }))
-

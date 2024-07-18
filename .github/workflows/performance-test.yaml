@@ -7,11 +7,16 @@ name: "Run flowR's performance tests"
         description: "Should the resulting commits for the graphs be pushed?"
         required: true
         type: boolean
+      ref:
+        description: "The git ref to use for the benchmark data"
+        default: "refs/heads/main"
+        required: false
+        type: string
 
 jobs:
   performance-test:
     name: "Run Performance Tests"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
     strategy:
       fail-fast: true
       matrix:
@@ -23,6 +28,7 @@ jobs:
       coverage: false
       benchmark: ${{ matrix.name }}
       timeout-minutes: 400
+      submodule-deps: true
 
   performance-test-upload:
     name: "Upload Performance Test Results"
@@ -54,13 +60,15 @@ jobs:
         with:
           name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/artificial-graph.json
+          output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: ${{ inputs.ref }}
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -76,13 +84,15 @@ jobs:
         with:
           name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/social-science-graph.json
+          output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: ${{ inputs.ref }}
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

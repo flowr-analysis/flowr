@@ -1,10 +1,10 @@
-import type { OnConnect, Server, Socket } from '../../../cli/src/repl/server/net'
 import * as Buffer from 'buffer'
-import type { IdMessageBase } from '../../../cli/src/repl'
-import type { RShell } from '../../../src/r-bridge'
-import { FlowRServer } from '../../../cli/src/repl/server/server'
+import type { OnConnect, Server, Socket } from '../../../src/cli/repl/server/net'
 import { jsonReplacer } from '../../../src/util/json'
 import { guard } from '../../../src/util/assert'
+import { FlowRServer } from '../../../src/cli/repl/server/server'
+import type { IdMessageBase } from '../../../src/cli/repl/server/messages/messages'
+import type { RShell } from '../../../src/r-bridge/shell'
 
 export class FakeServer implements Server {
 	private connectHandler: OnConnect | undefined

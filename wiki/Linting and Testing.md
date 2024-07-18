@@ -1,4 +1,4 @@
-For the latest code-coverage information, see [codecov.io](https://codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
+For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)
@@ -35,12 +35,12 @@ What may be counter-intuitive is that this does not run *all* tests by default b
 npm run test-full
 ```
 
-However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they do not apply to your current system setup (or can't be tested with the current prerequisites). Each test can specify such requirements as part of the `TestConfiguration`, which is then enforced by the [`ensureConfig`](https://github.com/Code-Inspect/flowr/blob/main/test/functionality/_helper/shell.ts) function.
+However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they do not apply to your current system setup (or can't be tested with the current prerequisites). Each test can specify such requirements as part of the `TestConfiguration`, which is then enforced by the [`ensureConfig`](https://github.com/flowr-analysis/flowr/blob/main/test/functionality/_helper/shell.ts) function.
 It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests are ensured to run.
 
 #### Test Structure
 
-All functionality tests are to be located under [test/functionality](https://github.com/Code-Inspect/flowr/tree/main/test/functionality).
+All functionality tests are to be located under [test/functionality](https://github.com/flowr-analysis/flowr/tree/main/test/functionality).
 
 This folder contains two special elements:
 
@@ -72,9 +72,10 @@ To run them, issue:
 npm run performance-test
 ```
 
-See [test/performance](https://github.com/Code-Inspect/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
+See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
 
 ### Oh no, the tests are slow
+
 If the tests are too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
 
 ### Testing Within Your IDE
@@ -120,13 +121,13 @@ We explain the most important workflows in the following:
 - [run.yaml](../.github/workflows/run.yaml) is a [reusable workflow](https://docs.github.com/en/actions/using-workflows/reusing-workflows) that we use *whenever* we want to run a *flowR* npm script in the pipeline (furthermore, this hides necessary extra steps for coverage, documentation, and benchmarks).
 - [qa.yaml](../.github/workflows/qa.yaml) is the main workflow which will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
-    - uploading the results to the [benchmark page](https://code-inspect.github.io/flowr/wiki/stats/benchmark) for releases
+    - uploading the results to the [benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
-  - deploying the documentation to [GitHub Pages](https://code-inspect.github.io/flowr/doc/)
+  - deploying the documentation to [GitHub Pages](https://flowr-analysis.github.io/flowr/doc/)
 - [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
-- [check-broken-links.yaml](../.github/workflows/check-broken-links.yaml) repeatedly tests that all links are not dead!
+- [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
 
@@ -156,8 +157,8 @@ npm run lint-local -- --fix
 By now, the rules should be rather stable and so, if the linter fails it is usually best if you (if necessary) read the respective description and fix the respective problem.
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
-However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose).
+However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose).
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](https://github.com/Code-Inspect/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).

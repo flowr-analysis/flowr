@@ -3,7 +3,7 @@
 		"@commitlint/config-angular"
 	],
 	"defaultIgnores": true,
-	"helpUrl": "https://github.com/Code-Inspect/flowr/blob/main/.github/CONTRIBUTING.md",
+	"helpUrl": "https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md",
 	"parserPreset": {
 		"parserOpts": {
 			"headerPattern": "^([^\\(\\):]*)(?:\\((.*)\\))?!?: (.*)$"

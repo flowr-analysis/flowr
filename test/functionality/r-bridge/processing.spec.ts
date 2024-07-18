@@ -1,30 +1,30 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
-import type {
-	RNodeWithParent,
-	NodeId } from '../../../src/r-bridge'
-import {
-	RType,
-	decorateAst,
-	collectAllIds, RoleInParent
-} from '../../../src/r-bridge'
 import { assert } from 'chai'
+import type { RNodeWithParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type'
+import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role'
+import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect'
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
 describe('Assign unique Ids and Parents', withShell((shell) => {
-	describe('Testing deterministic counting Id assignment', () => {
+	describe('Testing Deterministic Counting of Id Assignment', () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
 			assertDecoratedAst(name, shell, input, expected)
 		}
 		// decided to test with ast parsing, as we are dependent on these changes in reality
 		describe('Single nodes (leafs)', () => {
-			const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
-				type:   RType.ExpressionList,
-				lexeme: undefined,
-				info:   {
+			const exprList = (...children: readonly RNodeWithParent[]): RNodeWithParent => ({
+				type:     RType.ExpressionList,
+				lexeme:   undefined,
+				grouping: undefined,
+				info:     {
 					parent: undefined,
 					id:     '1',
 					index:  0,
+					depth:  0,
 					role:   RoleInParent.Root
 				},
 				children,
@@ -41,6 +41,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info: {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0,
 					},
@@ -55,6 +56,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:     {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},
@@ -69,6 +71,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:     {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},
@@ -84,6 +87,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					info:      {
 						parent: '1',
 						id:     '0',
+						depth:  1,
 						role:   RoleInParent.ExpressionListChild,
 						index:  0
 					},
@@ -91,7 +95,7 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 			)
 		})
 	})
-	describe('Collect all íds in ast', () => {
+	describe('Collect all Ids in AST', () => {
 		function assertIds(name: string, input: string, expected: Set<NodeId>, stop?: (node: RNodeWithParent) => boolean) {
 			it(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input)
@@ -100,11 +104,11 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 				assert.deepStrictEqual(ids, expected, `Ids do not match for input ${input}`)
 			})
 		}
-		assertIds('Without stop', 'x <- 2', new Set(['0', '1', '2', '3']))
-		assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === RType.Number)
-		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']))
+		assertIds('Without stop', 'x <- 2', new Set([0, 1, 2, 3]))
+		assertIds('Stop one', 'x <- 2', new Set([0, 2, 3]), n => n.type === RType.Number)
+		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]))
 		// if, TRUE, [when]
-		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8', '9']), n => n.type === RType.BinaryOp)
+		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set([3, 4, 5, 9, 10, 11]), n => n.type === RType.BinaryOp)
 	})
 })
 )

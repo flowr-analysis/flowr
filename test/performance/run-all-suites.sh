@@ -10,7 +10,7 @@ ONLY_SUITE="${3-}"
 
 
 SUITE_PREFIX="suite-"
-OUTPUT_DIR="results/"
+OUTPUT_DIR="results"
 
 mkdir -p "${OUTPUT_DIR}"
 

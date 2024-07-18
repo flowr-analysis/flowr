@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data'
+import { ParseError } from '../../normalizer-data'
 import type { NamedJsonEntry } from '../../../json/format'
-import { ParseError } from '../../data'
 import { parseLog } from '../../../json/parser'
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import { RawRType, RType } from '../../../../model/type'
@@ -9,7 +9,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node'
 
 export function tryNormalizeWhile(
 	data: NormalizerData,
-	[whileToken, leftParen, condition, rightParen, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
+	[whileToken, leftParen, condition, rightParen, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
 ): RWhileLoop | undefined {
 	if(whileToken.name !== RawRType.While) {
 		parseLog.debug(

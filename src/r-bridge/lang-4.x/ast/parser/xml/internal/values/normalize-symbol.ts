@@ -1,11 +1,11 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedJsonEntry } from '../../../json/format'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { startAndEndsWith } from '../../../../../../../util/strings'
 import type { RSymbol } from '../../../../model/nodes/r-symbol'
 import { isSymbol, RType } from '../../../../model/type'
+import type { NamedJsonEntry } from '../../../json/format'
 
 /**
  * Normalize the given entries as R symbols (incorporating namespace information).
@@ -17,8 +17,8 @@ import { isSymbol, RType } from '../../../../model/type'
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedXmlBasedJson[]): RSymbol | undefined {
-	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
+export function tryNormalizeSymbol(data: NormalizerData, entries: readonly NamedJsonEntry[]): RSymbol | undefined {
+	guard(entries.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug('trying to parse symbol')
 
 	let location, content, namespace

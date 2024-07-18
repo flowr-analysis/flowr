@@ -1,22 +1,5 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import type { DeepPartial } from 'ts-essentials'
-import {
-	deterministicCountingIdGenerator, requestFromInput,
-	RShell
-} from '../../../src/r-bridge'
-import type {
-	DecoratedAstMap, fileProtocol,
-	IdGenerator,
-	NodeId,
-	NoInfo,
-	RExpressionList,
-	RNode,
-	RNodeWithParent,
-	XmlParserHooks
-
-} from '../../../src/r-bridge'
-
 import { assert } from 'chai'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
@@ -101,7 +84,7 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	}
 }
 
-export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		shell, request

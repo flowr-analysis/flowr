@@ -1,6 +1,4 @@
 import { type RShell } from './shell'
-import type { ParserHooks, NormalizedAst } from './lang-4.x'
-import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import type { AsyncOrSync } from 'ts-essentials'
 import { guard } from '../util/assert'

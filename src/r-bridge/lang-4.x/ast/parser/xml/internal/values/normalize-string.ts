@@ -1,15 +1,10 @@
-import type { JsonEntry } from '../../../json/format'
-import { retrieveMetaStructure } from '../meta'
-import { string2ts } from '../../../../../values'
-import type { RString } from '../../../../model'
-import { RType } from '../../../../model'
-import { executeHook } from '../../hooks'
-import type { ParserData } from '../../data'
 import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
-import { parseLog } from '../../../json/parser'
+import type { JsonEntry } from '../../../json/format'
+import type { RString } from '../../../../model/nodes/r-string'
+import { RType } from '../../../../model/type'
+import { string2ts } from '../../../../../convert-values'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).
@@ -18,7 +13,7 @@ import { parseLog } from '../../../json/parser'
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function normalizeString(data: NormalizerData, obj: XmlBasedJson): RString {
+export function normalizeString(data: NormalizerData, obj: JsonEntry): RString {
 	const { location, content } = retrieveMetaStructure(obj)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.

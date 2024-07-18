@@ -1,20 +1,15 @@
-import type { ParserData } from '../../data'
-import type { NamedJsonEntry } from '../../../json/format'
-import type { RFunctionDefinition, RParameter } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
-import { ensureExpressionList, retrieveMetaStructure } from '../meta'
+
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../../json/parser'
-import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryNormalizeParameter } from './normalize-parameter'
+import { normalizeExpressions } from '../structure/normalize-expressions'
+import type { NamedJsonEntry } from '../../../json/format'
 import type { RFunctionDefinition } from '../../../../model/nodes/r-function-definition'
 import { RawRType, RType } from '../../../../model/type'
+import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import type { RParameter } from '../../../../model/nodes/r-parameter'
-import { normalizeExpressions } from '../structure/normalize-expressions'
 
 /**
  * Tries to parse the given data as a function definition.
@@ -24,7 +19,7 @@ import { normalizeExpressions } from '../structure/normalize-expressions'
  *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
-export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedXmlBasedJson[]): RFunctionDefinition | undefined {
+export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Function && fnBase.name !== RawRType.Lambda) {
 		parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)

@@ -1,4 +1,3 @@
-import type { NamedXmlBasedJson } from '../input-format'
 import type { NormalizerData } from '../normalizer-data'
 import { tryToNormalizeArgument } from './functions/normalize-argument'
 import { parseLog } from '../../json/parser'
@@ -12,8 +11,9 @@ import { EmptyArgument } from '../../../model/nodes/r-function-call'
 import type { RAccess } from '../../../model/nodes/r-access'
 import { normalizeExpressions } from './structure/normalize-expressions'
 import type { RArgument } from '../../../model/nodes/r-argument'
+import type { NamedJsonEntry } from '../../json/format'
 
-function normalizeAbstractArgument(x: readonly NamedXmlBasedJson[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
+function normalizeAbstractArgument(x: NamedJsonEntry[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
 	if(x.length === 0) {
 		return EmptyArgument
 	} else if(x.length !== 1 || x[0].name === RawRType.Expression) {
@@ -46,7 +46,7 @@ function normalizeAbstractArgument(x: readonly NamedXmlBasedJson[], data: Normal
  *
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
-export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
+export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedJsonEntry[]): RAccess | undefined {
 	parseLog.trace('trying to parse access')
 
 	if(mappedWithName.length < 3) {

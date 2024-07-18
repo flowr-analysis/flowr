@@ -1,4 +1,3 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import type { NormalizerData } from '../../normalizer-data'
 import { normalizeSingleNode } from './normalize-single-node'
 import { parseLog } from '../../../json/parser'
@@ -20,28 +19,29 @@ import { RawRType, RType } from '../../../../model/type'
 import type { RComment } from '../../../../model/nodes/r-comment'
 import { normalizeComment } from '../other/normalize-comment'
 import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
+import type { JsonEntry, NamedJsonEntry } from '../../../json/format'
 
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[] | undefined, data: NormalizerData): (RNode | RDelimiter)[] {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedJsonEntry[] | undefined, data: NormalizerData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
 	switch(mappedWithName?.length) {
 		case 1:
 			result = normalizeSingleNode(data, mappedWithName[0])
 			break
 		case 2:
-			result = tryNormalizeUnary(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson])
-				?? tryNormalizeRepeat(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson])
+			result = tryNormalizeUnary(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry])
+				?? tryNormalizeRepeat(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry])
 			break
 		case 3:
-			result = tryNormalizeBinary(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
-				?? tryNormalizeFor(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+			result = tryNormalizeBinary(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry])
+				?? tryNormalizeFor(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry])
 				?? tryNormalizeSymbol(data, mappedWithName)
 			break
 		case 5:
-			result = tryNormalizeIfThen(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
-				?? tryNormalizeWhile(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+			result = tryNormalizeIfThen(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry])
+				?? tryNormalizeWhile(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry])
 			break
 		case 7:
-			result = tryNormalizeIfThenElse(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+			result = tryNormalizeIfThenElse(data, mappedWithName as [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry, NamedJsonEntry])
 			break
 	}
 
@@ -50,12 +50,12 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly Nam
 }
 
 interface HandledExpressionList {
-	segments: readonly NamedXmlBasedJson[][]
-	comments: readonly NamedXmlBasedJson[]
-	braces:   undefined | [start: NamedXmlBasedJson, end: NamedXmlBasedJson]
+	segments: readonly NamedJsonEntry[][]
+	comments: readonly NamedJsonEntry[]
+	braces:   undefined | [start: NamedJsonEntry, end: NamedJsonEntry]
 }
 
-export function splitComments(tokens: readonly NamedXmlBasedJson[]) {
+export function splitComments(tokens: readonly NamedJsonEntry[]) {
 	const comments = []
 	const others = []
 	for(const elem of tokens) {
@@ -69,10 +69,10 @@ export function splitComments(tokens: readonly NamedXmlBasedJson[]) {
 }
 
 
-function splitExprs(tokens: readonly NamedXmlBasedJson[]) {
+function splitExprs(tokens: readonly NamedJsonEntry[]) {
 	let last = 0, i = 0
 	let lastExpr = false
-	const segments: NamedXmlBasedJson[][] = []
+	const segments: NamedJsonEntry[][] = []
 	for(const token of tokens) {
 		if(token.name === RawRType.Semicolon) {
 			segments.push(tokens.slice(last, i))
@@ -101,7 +101,7 @@ function splitExprs(tokens: readonly NamedXmlBasedJson[]) {
  * Handles semicolons within _and_ braces at the start and end of the expression
  * @param raw - The tokens to split
  */
-function handleExpressionList(raw: readonly NamedXmlBasedJson[]): HandledExpressionList {
+function handleExpressionList(raw: readonly NamedJsonEntry[]): HandledExpressionList {
 	if(raw.length === 0) {
 		return { segments: [], comments: [], braces: undefined }
 	}
@@ -129,7 +129,7 @@ function handleExpressionList(raw: readonly NamedXmlBasedJson[]): HandledExpress
 }
 
 
-function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBasedJson], processed: readonly RNode[], comments: RComment[], data: NormalizerData) : RExpressionList {
+function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry], processed: readonly RNode[], comments: RComment[], data: NormalizerData) : RExpressionList {
 	const [newStart, newEnd] = [tryNormalizeSymbol(data, [start]), tryNormalizeSymbol(data, [end])]
 	guard(newStart !== undefined && newEnd !== undefined, () => `expected both start and end to be symbols, but ${JSON.stringify(start, jsonReplacer)} :: ${JSON.stringify(end, jsonReplacer)}`)
 	return {
@@ -146,14 +146,14 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 
 export function normalizeExpressions(
 	data: NormalizerData,
-	tokens: readonly XmlBasedJson[] | readonly NamedXmlBasedJson[]
+	tokens: readonly JsonEntry[] | readonly NamedJsonEntry[]
 ): (RNode | RDelimiter)[] {
 	if(tokens.length === 0) {
 		parseLog.warn('no children received, skipping')
 		return []
 	}
 
-	let mappedWithName = tokens[0].name ? tokens as readonly NamedXmlBasedJson[] : getWithTokenType(tokens as XmlBasedJson[])
+	let mappedWithName = tokens[0].name ? tokens as readonly NamedJsonEntry[] : getWithTokenType(tokens as JsonEntry[])
 
 	expensiveTrace(log, () => `[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
 
@@ -192,7 +192,7 @@ export function normalizeExpressions(
 	return [...parsedComments, ...normalizeMappedWithoutSemicolonBasedOnType(mappedWithName, data)]
 }
 
-export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedXmlBasedJson[] | undefined): (RNode | RDelimiter)[] {
+export function parseNodesWithUnknownType(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[] | undefined): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
 	for(const elem of mappedWithName ?? []) {

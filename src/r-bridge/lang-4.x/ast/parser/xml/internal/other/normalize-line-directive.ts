@@ -1,13 +1,12 @@
-import type { RComment, RLineDirective } from '../../../../model'
-import { RType } from '../../../../model'
-import { retrieveMetaStructure } from '../meta'
+
 import { guard } from '../../../../../../../util/assert'
-import { executeHook } from '../../hooks'
-import type { ParserData } from '../../data'
-import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
 import { parseLog } from '../../../json/parser'
 import type { JsonEntry } from '../../../json/format'
+import type { NormalizerData } from '../../normalizer-data'
+import type { RLineDirective } from '../../../../model/nodes/r-line-directive'
+import type { RComment } from '../../../../model/nodes/r-comment'
+import { retrieveMetaStructure } from '../../normalize-meta'
+import { RType } from '../../../../model/type'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 
@@ -19,7 +18,7 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param entry  - The json object to extract the meta-information from
  */
-export function normalizeLineDirective(data: NormalizerData, obj: XmlBasedJson): RLineDirective | RComment {
+export function normalizeLineDirective(data: NormalizerData, obj: JsonEntry): RLineDirective | RComment {
 	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#line'), 'line directive must start with #line')
 	const match = LineDirectiveRegex.exec(content)

@@ -1,18 +1,19 @@
-import { getWithTokenType } from '../../normalize-meta'
 import type { NormalizerData } from '../../normalizer-data'
+import { ParseError } from '../../normalizer-data'
 import type { NamedJsonEntry } from '../../../json/format'
-import { ParseError } from '../../data'
-import { normalizeLineDirective } from '../other/normalize-line-directive'
 import { guard } from '../../../../../../../util/assert'
-import type { ParserData } from '../../data'
-import { normalizeExpression } from '../expression'
-import { getWithTokenType, retrieveMetaStructure } from '../meta'
-import type { RNode } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
-import { normalizeComment } from '../other'
-import { normalizeBreak, normalizeNext } from '../loops'
-import { normalizeLineDirective } from '../other/line-directive'
-import type { RDelimiter } from '../../../../model/nodes/info'
+import { RawRType, RType } from '../../../../model/type'
+import { normalizeComment } from '../other/normalize-comment'
+import { normalizeExpression } from '../expression/normalize-expression'
+import { normalizeNumber } from '../values/normalize-number'
+import { normalizeString } from '../values/normalize-string'
+import { normalizeBreak } from '../loops/normalize-break'
+import { normalizeNext } from '../loops/normalize-next'
+import { tryNormalizeSymbol } from '../values/normalize-symbol'
+import type { RNode } from '../../../../model/model'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
+import { normalizeLineDirective } from '../other/normalize-line-directive'
 
 function normalizeDelimiter(elem: NamedJsonEntry): RDelimiter {
 	const {
@@ -26,17 +27,6 @@ function normalizeDelimiter(elem: NamedJsonEntry): RDelimiter {
 		subtype: elem.name
 	}
 }
-import { normalizeDelimiter } from './normalize-delimiter'
-import { RawRType } from '../../../../model/type'
-import { normalizeComment } from '../other/normalize-comment'
-import { normalizeExpression } from '../expression/normalize-expression'
-import { normalizeNumber } from '../values/normalize-number'
-import { normalizeString } from '../values/normalize-string'
-import { normalizeBreak } from '../loops/normalize-break'
-import { normalizeNext } from '../loops/normalize-next'
-import { tryNormalizeSymbol } from '../values/normalize-symbol'
-import type { RNode } from '../../../../model/model'
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)

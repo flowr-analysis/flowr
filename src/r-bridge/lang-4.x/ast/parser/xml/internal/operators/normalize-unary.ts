@@ -1,5 +1,4 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
@@ -9,6 +8,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node'
 import { RType } from '../../../../model/type'
 import type { RNode } from '../../../../model/model'
 import type { RUnaryOp } from '../../../../model/nodes/r-unary-op'
+import type { NamedJsonEntry } from '../../../json/format'
 
 
 /**
@@ -20,7 +20,7 @@ import type { RUnaryOp } from '../../../../model/nodes/r-unary-op'
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedXmlBasedJson, NamedXmlBasedJson]): RNode | undefined {
+export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedJsonEntry, NamedJsonEntry]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`)
 
 	if(UnaryOperatorsInRAst.has(operator.name)) {
@@ -30,7 +30,7 @@ export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [Na
 	}
 }
 
-function parseUnaryOp(data: NormalizerData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
+function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: NamedJsonEntry): RUnaryOp {
 	const parsedOperand = normalizeSingleNode(data, operand)
 
 	guard(parsedOperand.type !== RType.Delimiter, 'unexpected under-sided unary op')

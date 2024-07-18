@@ -1,47 +1,48 @@
-import type { NamedXmlBasedJson } from '../../input-format'
-import { retrieveMetaStructure } from '../meta'
-import type { RNode, RSymbol, RArgument } from '../../../../model'
-import { RType, RawRType } from '../../../../model'
-import type { ParserData } from '../../data'
-import { executeHook, executeUnknownHook } from '../../hooks'
-import { log } from '../../../../../../../util/log'
-import { guard } from '../../../../../../../util/assert'
-import { tryNormalizeSingleNode } from '../structure'
-import type { RDelimiter } from '../../../../model/nodes/info'
+import type { NamedJsonEntry } from '../../../json/format'
+import type { RArgument } from '../../../../model/nodes/r-argument'
 import { parseLog } from '../../../json/parser'
+import { log } from '../../../../../../../util/log'
+import type { NormalizerData } from '../../normalizer-data'
+import type { RNode } from '../../../../model/model'
+import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import { guard } from '../../../../../../../util/assert'
+import { RawRType, RType } from '../../../../model/type'
+import { normalizeSingleNode } from '../structure/normalize-single-node'
+import { retrieveMetaStructure } from '../../normalize-meta'
+import type { RSymbol } from '../../../../model/nodes/r-symbol'
+
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.
  *
  * @param data    - The data used by the parser (see {@link NormalizerData})
- * @param entries - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
+ * @param objs - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
+export function tryToNormalizeArgument(data: NormalizerData, objs: NamedJsonEntry[]): RArgument | undefined {
 	parseLog.debug('[argument]')
-	objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
 	if(objs.length < 1 || objs.length > 3) {
 		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
-		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
+		return undefined
 	}
 
 
-	const symbolOrExpr = entries[0]
+	const symbolOrExpr = objs[0]
 	const { location, content } = retrieveMetaStructure(symbolOrExpr.content)
 
-	let parsedValue: RNode | RDelimiter | undefined |  null
+	let parsedValue: RNode | RDelimiter | undefined | null
 	let name: RSymbol | undefined
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
 		parsedValue = normalizeSingleNode(data, symbolOrExpr)
 	} else if(symbolOrExpr.name === RawRType.SymbolSub || symbolOrExpr.name === RawRType.StringConst) {
-		name =    {
+		name = {
 			type:      RType.Symbol,
 			location,
-			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : content,
+			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : content,
 			namespace: undefined,
 			lexeme:    content,
 			info:      {
@@ -50,13 +51,13 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 				fullLexeme:       content
 			}
 		}
-		parsedValue = parseWithValue(data, entries)
+		parsedValue = parseWithValue(data, objs)
 	} else {
 		parseLog.warn(`expected symbol or expr for argument, yet received ${objs.map(o => o.name).join(',')}`)
 		return undefined
 	}
 
-	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(entries)}`)
+	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
 	return {
 		type:   RType.Argument,
@@ -72,7 +73,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	}
 }
 
-function parseWithValue(data: NormalizerData, objs: NamedJsonEntry[]): RNode | RDelimiter | undefined | null{
+function parseWithValue(data: NormalizerData, objs: NamedJsonEntry[]): RNode | RDelimiter | undefined | null {
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
 	return objs[2] ? normalizeSingleNode(data, objs[2]) : null

@@ -1,6 +1,6 @@
 import type { NormalizerData } from '../../normalizer-data'
+import { ParseError } from '../../normalizer-data'
 import type { NamedJsonEntry } from '../../../json/format'
-import { ParseError } from '../../data'
 import { parseLog } from '../../../json/parser'
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import { RawRType, RType } from '../../../../model/type'

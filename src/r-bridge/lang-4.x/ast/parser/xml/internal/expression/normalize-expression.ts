@@ -1,16 +1,4 @@
-import { getWithTokenType, retrieveMetaStructure } from '../meta'
-import type { ParserData } from '../../data'
-import { normalizeBasedOnType, splitComments } from '../structure'
-import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
-import type { RNode } from '../../../../model'
-import { RType } from '../../../../model'
-import { executeHook } from '../../hooks'
-import { tryNormalizeAccess } from '../access'
-import { normalizeComment } from '../other'
-import { partition } from '../../../../../../../util/arrays'
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey, getKeyGuarded } from '../../input-format'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { tryNormalizeAccess } from '../normalize-access'
@@ -30,18 +18,15 @@ import type { JsonEntry } from '../../../json/format'
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param entry  - The json object to extract the meta-information from.
  */
-export function normalizeExpression(data: ParserData, entry: JsonEntry): RNode {
+export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNode {
 	parseLog.debug('Parsing expr')
-	entry = executeHook(data.hooks.expression.onExpression.before, data, entry)
-export function normalizeExpression(data: NormalizerData, obj: XmlBasedJson): RNode {
-	parseLog.debug('[expr]')
 
 	const { content,
 		location
 	} = retrieveMetaStructure(entry)
 
-	const childrenSource = getKeyGuarded<XmlBasedJson[]>(unwrappedObj, childrenKey)
-	const typed: NamedXmlBasedJson[] = getWithTokenType(childrenSource)
+	const childrenSource = entry.children
+	const typed = getWithTokenType(childrenSource)
 
 	const { others, comments } = splitComments(typed)
 

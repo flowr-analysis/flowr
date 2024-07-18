@@ -1,6 +1,4 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
-import { childrenKey, getKeyGuarded } from '../../input-format'
 import { assureTokenType } from '../../normalize-meta'
 import { normalizeExpressions } from './normalize-expressions'
 import { log } from '../../../../../../../util/log'
@@ -9,20 +7,20 @@ import { RawRType, RType } from '../../../../model/type'
 import type { RExpressionList } from '../../../../model/nodes/r-expression-list'
 import type { RNode } from '../../../../model/model'
 import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
+import type { JsonEntry } from '../../../json/format'
 
 
 export function normalizeRootObjToAst(
 	data: NormalizerData,
-	obj: XmlBasedJson
+	obj: JsonEntry
 ): RExpressionList {
-	const exprContent = getKeyGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
+	const exprContent = obj.token
 	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(childrenKey in exprContent) {
-		const children = getKeyGuarded<XmlBasedJson[]>(exprContent, childrenKey)
-
+	if(obj.children.length > 0) {
+		const children = obj.children
 		parsedChildren = normalizeExpressions(data, children)
 	} else {
 		log.debug('no children found, assume empty input')

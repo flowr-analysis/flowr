@@ -1,7 +1,5 @@
 import type { NamedJsonEntry } from '../../../json/format'
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey, getKeyGuarded } from '../../input-format'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
@@ -44,8 +42,6 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: N
 
 	const { entry, content, location } = retrieveMetaStructure(fnBase.content)
 	const symbolContent = entry.children
-
-	let result: RFunctionCall | RNext | RBreak
 
 	const namedSymbolContent = getWithTokenType(symbolContent)
 

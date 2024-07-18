@@ -1,18 +1,20 @@
-import { fileProtocol , removeRQuotes , requestFromInput } from '@eagleoutice/flowr/r-bridge'
 import {
 	extractLocation,
 	getTokenType,
-	objectWithArrUnwrap
 } from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
 import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
+import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import type { OutputFormatter } from '../../../util/ansi'
+import { FontStyles } from '../../../util/ansi'
+import type { ReplCommand } from './main'
+import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever'
 
 type DepthList = { depth: number, node: JsonEntry, leaf: boolean }[]
 
-function toDepthMap(xml: XmlBasedJson): DepthList {
-	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
-
-	const visit: { depth: number, node: XmlBasedJson }[] = [ { depth: 0, node: root } ]
+function toDepthMap(xml: JsonEntry): DepthList {
+	const visit: { depth: number, node: JsonEntry }[] = [ { depth: 0, node: xml } ]
 	const result: DepthList = []
 
 	while(visit.length > 0) {
@@ -21,7 +23,7 @@ function toDepthMap(xml: XmlBasedJson): DepthList {
 			continue
 		}
 
-        const children = current.node.children
+		const children = current.node.children
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 

@@ -1,18 +1,6 @@
-import { ParseError } from '../../data'
-import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../meta'
-import { guard } from '../../../../../../../util/assert'
-import type { ParserData } from '../../data'
-import { tryNormalizeSymbol } from '../values'
-import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
-import type { RComment, RForLoop, RNode, RSymbol } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
-import { normalizeComment } from '../other'
-import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { XmlParseError, childrenKey, getKeyGuarded } from '../../input-format'
+
 import { parseLog } from '../../../json/parser'
-import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../normalize-meta'
+import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import type { RForLoop } from '../../../../model/nodes/r-for-loop'
 import { RawRType, RType } from '../../../../model/type'
@@ -23,12 +11,13 @@ import { normalizeComment } from '../other/normalize-comment'
 import type { RNode } from '../../../../model/model'
 import type { RSymbol } from '../../../../model/nodes/r-symbol'
 import type { RComment } from '../../../../model/nodes/r-comment'
-
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format'
+import type { NormalizerData } from '../../normalizer-data'
+import { ParseError } from '../../normalizer-data'
 
 export function tryNormalizeFor(
-    data: NormalizerData,
-    [forToken, head, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
+	data: NormalizerData,
+	[forToken, head, body]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
 	if(forToken.name !== RawRType.For) {
@@ -81,7 +70,7 @@ export function tryNormalizeFor(
 
 function normalizeForHead(data: NormalizerData, forCondition: JsonEntry): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-    const children = getWithTokenType(forCondition.children)
+	const children = getWithTokenType(forCondition.children)
 	const { comments, others } = splitComments(children)
 
 	const inPosition = others.findIndex(elem => elem.name === RawRType.ForIn)

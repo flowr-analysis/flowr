@@ -1,12 +1,4 @@
-import type { NamedJsonEntry } from '../../../json/format'
-import { tryNormalizeSingleNode } from '../structure'
-import type { ParserData } from '../../data'
-import { tryNormalizeIfThen } from './if-then'
-import { guard } from '../../../../../../../util/assert'
-import type { RIfThenElse } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
-import { ensureExpressionList } from '../meta'
+
 import { parseLog } from '../../../json/parser'
 import { tryNormalizeIfThen } from './normalize-if-then'
 import { guard } from '../../../../../../../util/assert'
@@ -14,6 +6,8 @@ import { ensureExpressionList } from '../../normalize-meta'
 import type { RIfThenElse } from '../../../../model/nodes/r-if-then-else'
 import { normalizeSingleNode } from '../structure/normalize-single-node'
 import { RawRType, RType } from '../../../../model/type'
+import type { NamedJsonEntry } from '../../../json/format'
+import type { NormalizerData } from '../../normalizer-data'
 
 
 /**

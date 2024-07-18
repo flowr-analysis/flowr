@@ -1,6 +1,5 @@
 import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson } from '../../input-format'
-import { XmlParseError } from '../../input-format'
+import { ParseError } from '../../normalizer-data'
 import { parseLog } from '../../../json/parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
@@ -13,6 +12,7 @@ import { normalizeSingleNode } from '../structure/normalize-single-node'
 import type { RFunctionCall } from '../../../../model/nodes/r-function-call'
 import type { RBinaryOp } from '../../../../model/nodes/r-binary-op'
 import type { RPipe } from '../../../../model/nodes/r-pipe'
+import type { NamedJsonEntry } from '../../../json/format'
 
 
 /**
@@ -21,7 +21,7 @@ import type { RPipe } from '../../../../model/nodes/r-pipe'
  */
 export function tryNormalizeBinary(
 	data: NormalizerData,
-	[lhs, operator, rhs]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
+	[lhs, operator, rhs]: [NamedJsonEntry, NamedJsonEntry, NamedJsonEntry]
 ): RNode | undefined {
 	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe) {
@@ -31,13 +31,13 @@ export function tryNormalizeBinary(
 	}
 }
 
-function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
+function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: NamedJsonEntry, rhs: NamedJsonEntry): RFunctionCall | RBinaryOp | RPipe {
 	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
 	const parsedLhs = normalizeSingleNode(data, lhs)
 	const parsedRhs = normalizeSingleNode(data, rhs)
 
 	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
-		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
+		throw new ParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
 	}
 
 	const operationName = retrieveOpName(operator)

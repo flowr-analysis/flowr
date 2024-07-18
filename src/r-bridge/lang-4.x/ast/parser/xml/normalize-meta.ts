@@ -1,27 +1,26 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../input-format'
-import { nameKey , contentKey , attributesKey , getKeysGuarded, XmlParseError } from '../input-format'
+import type { JsonEntry, NamedJsonEntry } from '../json/format'
+import { ParseError } from './normalizer-data'
+import type { SourceRange } from '../../../../../util/range'
+import { rangeStartsCompletelyBefore , rangeFrom } from '../../../../../util/range'
 
-
-
-import type { SourceRange } from '../../../../../../util/range'
-import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
-import type { RawRType, RExpressionList, RNode } from '../../../model'
-import { RType } from '../../../model'
-import { guard } from '../../../../../../util/assert'
+import type { RawRType } from '../../model/type'
+import { RType } from '../../model/type'
+import type { RNode } from '../../model/model'
+import type { RExpressionList } from '../../model/nodes/r-expression-list'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
  */
-export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
+export function objectWithArrUnwrap(obj: JsonEntry[] | JsonEntry): JsonEntry {
 	if(Array.isArray(obj)) {
 		if(obj.length !== 1) {
-			throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
+			throw new ParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
 		}
 		return obj[0]
 	} else if(typeof obj === 'object') {
 		return obj
 	} else {
-		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
+		throw new ParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
 	}
 }
 
@@ -47,11 +46,6 @@ export function retrieveMetaStructure(entry: JsonEntry): {
 } {
 	const content = entry.text
 	const location = extractLocation(entry)
-	const unwrappedObj = objectWithArrUnwrap(obj)
-	const attributes = obj[attributesKey] as XmlBasedJson | undefined
-	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
-	const content = obj[contentKey] as string | undefined ?? ''
-	const location = extractLocation(attributes)
 	return {
 		entry,
 		location,
@@ -71,11 +65,11 @@ export function assureTokenType(token: string, expectedName: RawRType): void {
  *
  * @param content  - the json object to extract the token-type from
  */
-export function getTokenType(content: XmlBasedJson): RawRType {
-	return getKeysGuarded(content, nameKey) as RawRType
+export function getTokenType(content: JsonEntry): RawRType {
+	return content.token as RawRType
 }
 
-export function getWithTokenType(obj: XmlBasedJson[]) {
+export function getWithTokenType(obj: JsonEntry[]) {
 	return obj.map((content) => ({
 		name: getTokenType(content),
 		content

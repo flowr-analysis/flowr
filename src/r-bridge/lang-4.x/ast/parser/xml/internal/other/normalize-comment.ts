@@ -1,20 +1,16 @@
-import type { RComment } from '../../../../model'
-import { RType } from '../../../../model'
-import { retrieveMetaStructure } from '../meta'
-import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import { RType } from '../../../../model/type'
 import type { RComment } from '../../../../model/nodes/r-comment'
 import type { JsonEntry } from '../../../json/format'
+import type { NormalizerData } from '../../normalizer-data'
 
 /**
  * Normalize the given object as an R comment.
  * This requires you to check the corresponding name beforehand.
  *
  * @param data  - The data used by the parser (see {@link NormalizerData})
- * @param entry - The json entry to extract the meta-information from
+ * @param obj - The json entry to extract the meta-information from
  */
 export function normalizeComment(data: NormalizerData, obj: JsonEntry): RComment {
 	const { location, content } = retrieveMetaStructure(obj)

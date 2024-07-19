@@ -9,12 +9,12 @@ export const RootId = 0
  * These include position, token, and text.
  */
 interface Entry extends Record<string, unknown> {
-	line1: number,
-	col1:  number,
-	line2: number,
-	col2:  number,
-	token: string,
-	text:  string
+	readonly line1: number,
+	readonly col1:  number,
+	readonly line2: number,
+	readonly col2:  number,
+	readonly token: string,
+	readonly text:  string
 }
 
 /**
@@ -22,10 +22,10 @@ interface Entry extends Record<string, unknown> {
  * Contains construction information - whether we deal with a terminal, IDs, and children.
  */
 export interface CsvEntry extends Entry {
-	id:        number,
-	parent:    number,
-	terminal:  boolean,
-	children?: CsvEntry[]
+	readonly id:       number,
+	readonly parent:   number,
+	readonly terminal: boolean,
+	children?:         CsvEntry[]
 }
 
 /**
@@ -33,7 +33,7 @@ export interface CsvEntry extends Entry {
  * Has Children (empty list indicates no children).
  */
 export interface JsonEntry extends Entry {
-	children: JsonEntry[]
+	readonly children: JsonEntry[]
 }
 
 /**
@@ -85,10 +85,10 @@ export function convertPreparedParsedData(roots: CsvEntry[]): JsonEntry {
 
 	// Construct CsvEntry for the root, handling empty input.
 	const csvParent: CsvEntry = {
-		line1:    start ? start.line1 : 1,
-		col1:     start ? start.col1  : 1,
-		line2:    end ? end.line2 : 1,
-		col2:     end ? end.col2: 1,
+		line1:    start?.line1 ?? 1,
+		col1:     start?.col1 ?? 1,
+		line2:    end?.line2 ?? 1,
+		col2:     end?.col2 ?? 1,
 		token:    RawRType.ExpressionList,
 		text:     '',
 		id:       RootId,
@@ -101,18 +101,10 @@ export function convertPreparedParsedData(roots: CsvEntry[]): JsonEntry {
 }
 
 function convertEntry(csvEntry: CsvEntry): JsonEntry {
-	// check and recursively iterate children
-	const children = csvEntry.children ?
-		csvEntry.children.sort(orderOf).map(convertEntry) : []
-
 	return {
-		line1: csvEntry.line1,
-		line2: csvEntry.line2,
-		col1:  csvEntry.col1,
-		col2:  csvEntry.col2,
-		text:  csvEntry.text,
-		token: csvEntry.token,
-		children
+		...csvEntry,
+		// check and recursively iterate children
+		children: csvEntry.children?.sort(orderOf).map(convertEntry) ?? []
 	}
 }
 

@@ -16,12 +16,12 @@ import type { RSymbol } from '../../../../model/nodes/r-symbol'
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
  * Probably directly called by the function call parser as otherwise, we do not expect to find arguments.
  *
- * @param data    - The data used by the parser (see {@link NormalizerData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[expr]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToNormalizeArgument(data: NormalizerData, objs: NamedJsonEntry[]): RArgument | undefined {
+export function tryToNormalizeArgument(data: NormalizerData, objs: readonly NamedJsonEntry[]): RArgument | undefined {
 	parseLog.debug('[argument]')
 
 	if(objs.length < 1 || objs.length > 3) {
@@ -73,7 +73,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: NamedJsonEntr
 	}
 }
 
-function parseWithValue(data: NormalizerData, objs: NamedJsonEntry[]): RNode | RDelimiter | undefined | null {
+function parseWithValue(data: NormalizerData, objs: readonly NamedJsonEntry[]): RNode | RDelimiter | undefined | null {
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
 	return objs[2] ? normalizeSingleNode(data, objs[2]) : null

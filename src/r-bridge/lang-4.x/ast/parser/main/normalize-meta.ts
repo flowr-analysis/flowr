@@ -9,22 +9,6 @@ import type { RNode } from '../../model/model'
 import type { RExpressionList } from '../../model/nodes/r-expression-list'
 
 /**
- * if the passed object is an array with only one element, remove the array wrapper
- */
-export function objectWithArrUnwrap(obj: JsonEntry[] | JsonEntry): JsonEntry {
-	if(Array.isArray(obj)) {
-		if(obj.length !== 1) {
-			throw new ParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
-		}
-		return obj[0]
-	} else if(typeof obj === 'object') {
-		return obj
-	} else {
-		throw new ParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
-	}
-}
-
-/**
  * given a xml element, extract the source location of the corresponding element in the R-ast
  */
 export function extractLocation(ast: JsonEntry): SourceRange {
@@ -36,20 +20,17 @@ export function extractLocation(ast: JsonEntry): SourceRange {
  * This function extracts the meta-information and returns it.
  *
  * @param entry - The json object to extract the meta-information from
+ * @returns An object containing the passed entry, the location of the corresponding R-ast element, and the content of the passed entry
  */
 export function retrieveMetaStructure(entry: JsonEntry): {
-	/** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
 	entry:    JsonEntry
-	/** location information of the corresponding R-ast element */
 	location: SourceRange
 	content:  string
 } {
-	const content = entry.text
-	const location = extractLocation(entry)
 	return {
 		entry,
-		location,
-		content
+		location: extractLocation(entry),
+		content:  entry.text
 	}
 }
 

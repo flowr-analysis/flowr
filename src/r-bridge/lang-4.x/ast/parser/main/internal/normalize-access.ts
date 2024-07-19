@@ -13,7 +13,7 @@ import { normalizeExpressions } from './structure/normalize-expressions'
 import type { RArgument } from '../../../model/nodes/r-argument'
 import type { NamedJsonEntry } from '../../json/format'
 
-function normalizeAbstractArgument(x: NamedJsonEntry[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
+function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: NormalizerData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
 	if(x.length === 0) {
 		return EmptyArgument
 	} else if(x.length !== 1 || x[0].name === RawRType.Expression) {

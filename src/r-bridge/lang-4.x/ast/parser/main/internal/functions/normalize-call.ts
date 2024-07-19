@@ -57,7 +57,7 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: N
 	}
 }
 
-function parseArguments(mappedWithName: NamedJsonEntry[], data: NormalizerData): (RArgument | undefined)[] {
+function parseArguments(mappedWithName: readonly NamedJsonEntry[], data: NormalizerData): (RArgument | undefined)[] {
 	const argContainer = mappedWithName.slice(1)
 	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, 'expected args in parenthesis')
 	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)

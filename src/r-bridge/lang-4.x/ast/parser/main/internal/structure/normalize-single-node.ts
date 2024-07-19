@@ -2,7 +2,7 @@ import type { NormalizerData } from '../../normalizer-data'
 import { ParseError } from '../../normalizer-data'
 import type { NamedJsonEntry } from '../../../json/format'
 import { guard } from '../../../../../../../util/assert'
-import { RawRType, RType } from '../../../../model/type'
+import { RawRType } from '../../../../model/type'
 import { normalizeComment } from '../other/normalize-comment'
 import { normalizeExpression } from '../expression/normalize-expression'
 import { normalizeNumber } from '../values/normalize-number'
@@ -12,21 +12,9 @@ import { normalizeNext } from '../loops/normalize-next'
 import { tryNormalizeSymbol } from '../values/normalize-symbol'
 import type { RNode } from '../../../../model/model'
 import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
-import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
+import { getWithTokenType } from '../../normalize-meta'
 import { normalizeLineDirective } from '../other/normalize-line-directive'
-
-function normalizeDelimiter(elem: NamedJsonEntry): RDelimiter {
-	const {
-		location,
-		content
-	} = retrieveMetaStructure(elem.content)
-	return {
-		type:    RType.Delimiter,
-		location,
-		lexeme:  content,
-		subtype: elem.name
-	}
-}
+import { normalizeDelimiter } from './normalize-delimiter'
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)

@@ -64,9 +64,9 @@ jobs:
           force: true
 
       - name: Check the README for broken links
-        uses: becheran/mlc@v0.17.0
+        uses: becheran/mlc@v0.18.0
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" README.md
 
       - name: Publish the Wiki
         uses: Andrew-Chen-Wang/github-wiki-action@v4
@@ -77,7 +77,7 @@ jobs:
           token: ${{ secrets.GH_DEPLOY_WIKI }}
 
       - name: Check the Wiki pages for broken links
-        uses: becheran/mlc@v0.17.0
+        uses: becheran/mlc@v0.18.0
         if: ${{ always() && !failure() }}
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/

@@ -77,24 +77,40 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	return roots
 }
 
-export function convertPreparedParsedData(roots: CsvEntry[]): JsonEntry {
+export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry {
+	const partialEntry = {
+		token:  RawRType.ExpressionList,
+		text:   '',
+		id:     RootId,
+		parent: RootId
+	}
+
+	// if we don't have children, this is simple
+	if(roots.length <= 0){
+		return {
+			...partialEntry,
+			line1:    1,
+			col1:     1,
+			line2:    1,
+			col2:     1,
+			children: []
+		}
+	}
+
 	// Locate start, end of source file (order children in advance).
-	const rootEntries = roots.sort(orderOf)
+	const rootEntries = [...roots].sort(orderOf)
 	const start = rootEntries[0]
 	const end = rootEntries[rootEntries.length - 1]
 
 	// Construct CsvEntry for the root, handling empty input.
 	const csvParent: CsvEntry = {
+		...partialEntry,
 		line1:    start?.line1 ?? 1,
 		col1:     start?.col1 ?? 1,
 		line2:    end?.line2 ?? 1,
 		col2:     end?.col2 ?? 1,
-		token:    RawRType.ExpressionList,
-		text:     '',
-		id:       RootId,
-		parent:   RootId,
-		terminal: false,
 		children: rootEntries,
+		terminal: false
 	}
 	// Return actual value.
 	return convertEntry(csvParent)
@@ -110,13 +126,13 @@ function convertEntry(csvEntry: CsvEntry): JsonEntry {
 
 /**
  * we sort children the same way xmlparsedata does (by line, by column, by inverse end line, by inverse end column, by terminal state, by combined "start" tiebreaker value)
- * (https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L153C72-L153C78)
+ * (https://github.com/r-lib/xmlparsedata/blob/v1.0.5/R/package.R#L120)
  */
 function orderOf(c1: CsvEntry, c2: CsvEntry): number {
 	return c1.line1 - c2.line1 || c1.col1 - c2.col1 || c2.line2 - c1.line2 || c2.col2 - c1.col2 || Number(c1.terminal) - Number(c2.terminal) || sortTiebreak(c1) - sortTiebreak(c2)
 }
 
-function sortTiebreak(entry: CsvEntry) {
-	// see https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L110C5-L110C11
-	return entry.line1 * (Math.max(entry.col1, entry.col2) + 1) + entry.col1
+function sortTiebreak({ line1, col1, col2 }: CsvEntry) {
+	// see https://github.com/r-lib/xmlparsedata/blob/v1.0.5/R/package.R#L86
+	return line1 * (Math.max(col1, col2) + 1) + col1
 }

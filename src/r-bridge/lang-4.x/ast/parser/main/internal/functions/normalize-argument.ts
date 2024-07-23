@@ -1,7 +1,6 @@
 import type { NamedJsonEntry } from '../../../json/format'
 import type { RArgument } from '../../../../model/nodes/r-argument'
 import { parseLog } from '../../../json/parser'
-import { log } from '../../../../../../../util/log'
 import type { NormalizerData } from '../../normalizer-data'
 import type { RNode } from '../../../../model/model'
 import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter'
@@ -25,7 +24,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 	parseLog.debug('[argument]')
 
 	if(objs.length < 1 || objs.length > 3) {
-		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
+		parseLog.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
 		return undefined
 	}
 

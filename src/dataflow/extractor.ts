@@ -55,7 +55,6 @@ export function produceDataFlowGraph<OtherInfo>(
 ): DataflowInformation {
 	const multifile = Array.isArray(request)
 	let firstRequest: RParseRequest
-	/* TODO: in case of multiple files tart with the first and then continue file by file to inoke source */
 	if(multifile) {
 		firstRequest = request[0] as RParseRequest
 	} else {

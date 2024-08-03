@@ -1,12 +1,13 @@
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
+import {DataflowInformation, initializeCleanDataflowInformation} from '../../../../../info'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
 import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
-import type {
+import {
+	deterministicPrefixIdGenerator,
 	IdGenerator,
 	NormalizedAst,
 	ParentInformation
@@ -33,13 +34,21 @@ export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: {
+		/** should this produce an explicit source function call in the graph? */
+		includeFunctionCall?: boolean,
+		/** should this function call be followed, even when the configuratio disables it? */
+		forceFollow?:         boolean
+	}
 ): DataflowInformation {
-	const information = processKnownFunctionCall({ name, args, rootId, data }).information
+	const information = config.includeFunctionCall ?
+			processKnownFunctionCall({ name, args, rootId, data }).information
+			: initializeCleanDataflowInformation(rootId, data)
 
 	const sourceFile = args[0]
 
-	if(getConfig().ignoreSourceCalls) {
+	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
 		dataflowLogger.info(`Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
 		return information
 	}
@@ -90,4 +99,29 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 		data.completeAst.idMap.set(k, v)
 	}
 	return newInformation
+}
+
+
+export function standaloneSourceFile<OtherInfo>(
+	path: string,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	uniqueSourceId: string,
+	information: DataflowInformation
+): DataflowInformation {
+	const request = sourceProvider.createRequest(path)
+	const fingerprint = requestFingerprint(request)
+
+
+	// check if the sourced file has already been dataflow analyzed, and if so, skip it
+	if(data.referenceChain.includes(fingerprint)) {
+		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
+		return information
+	}
+
+	return sourceRequest(request, {
+		...data,
+		currentRequest: request,
+		environment:    information.environment,
+		referenceChain: [...data.referenceChain, fingerprint]
+	}, information, deterministicPrefixIdGenerator(path + '-' + uniqueSourceId))
 }

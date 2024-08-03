@@ -126,7 +126,7 @@ export class FlowRServerConnection {
 				})
 			})
 
-		// this is a weird function name that means "I am a callback that removes a file" - so this deletes the file
+		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
 		tempFile.removeCallback()
 	}
 
@@ -168,8 +168,14 @@ export class FlowRServerConnection {
 			// we store the code in a temporary file in case it's too big for the shell to handle
 			fs.writeFileSync(tempFile, message.content ?? '')
 			request = { request: 'file', content: tempFile }
+		} else if(message.filepath !== undefined) {
+			if(typeof message.filepath === 'string') {
+				request = { request: 'file', content: message.filepath }
+			} else {
+				request = { request: 'files', content: message.filepath }
+			}
 		} else {
-			request = { request: 'file', content: message.filepath as string }
+			throw new Error('Either content or filepath must be defined.')
 		}
 
 		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {

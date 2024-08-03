@@ -14,14 +14,35 @@ export const fileProtocol = 'file://'
 
 export interface RParseRequestFromFile {
 	readonly request:  'file';
-	/** The path to the file (absolute paths are probably best here) */
-	readonly  content: string;
+	/**
+	 * The path to the file (an absolute path is probably best here).
+	 * See {@link RParseRequestFromFiles} for multiple files.
+	 */
+	readonly content:  string;
+}
+
+export interface RParseRequestFromFiles {
+	readonly request:  'files';
+	/**
+	 * The path to all files (absolute paths are probably best here).
+	 * The files are loaded in order, as if they would be sourced one by the other.
+	 */
+	readonly content:  readonly string[];
 }
 
 export interface RParseRequestFromText {
 	readonly request: 'text'
-	/* Source code to parse (not a file path) */
+	/**
+	 * Source code to parse (not a file path).
+	 * If you want to parse multiple files as one, either use {@link RParseRequestFromFiles},
+	 * a higher request as a {@link FileAnalysisRequestMessage},
+	 * or concatenate their contents to pass them with this request.
+	 */
 	readonly content: string
+}
+
+export function isMultifileRequest(request: RParseRequest): request is RParseRequestFromFiles {
+	return request.request === 'files' && Array.isArray(request.content)
 }
 
 /**
@@ -34,7 +55,9 @@ export interface RParseRequestProvider {
 /**
  * A request that can be passed along to {@link retrieveParseDataFromRCode}.
  */
-export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText)
+export type RParseRequest = RParseRequestFromFile
+						  | RParseRequestFromFiles
+						  | RParseRequestFromText
 
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: string): RParseRequestFromText
@@ -42,7 +65,7 @@ export function requestFromInput(input: string): RParseRequestFromText
 /**
  * Creates a {@link RParseRequest} from a given input.
  */
-export function requestFromInput(input: `${typeof fileProtocol}${string}` | string): RParseRequest {
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string): RParseRequestFromFile | RParseRequestFromText  {
 	const file = input.startsWith(fileProtocol)
 	return {
 		request: file ? 'file' : 'text',
@@ -76,20 +99,30 @@ export function requestFingerprint(request: RParseRequest): string {
 	return objectHash(request)
 }
 
+export function isEmptyRequest(request: RParseRequest): boolean {
+	if(isMultifileRequest(request)) {
+		return request.content.length === 0 || request.content.every(c => c.trim() === '')
+	}
+	return request.content.trim() === ''
+}
+
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  * <p>
  * Throws if the file could not be parsed.
- * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
+ * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
-	if(request.content.trim() === '') {
+	if(isEmptyRequest(request)) {
 		return Promise.resolve('')
 	}
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(request.content)}${suffix})`
+	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
+		/* TODO: maybe handle them here as well? */
+		isMultifileRequest(request) ? request.content[0] : request.content
+	)}${suffix})`
 
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request)

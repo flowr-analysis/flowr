@@ -12,7 +12,7 @@ import { modifyLabelName , decorateLabelContext } from './label'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
 import { RShell } from '../../../src/r-bridge/shell'
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
-import type {fileProtocol, RParseRequests} from '../../../src/r-bridge/retriever'
+import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever'
 import { requestFromInput } from '../../../src/r-bridge/retriever'
 import type {
 	AstIdMap, IdGenerator,
@@ -191,7 +191,7 @@ function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | 
  */
 export function assertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	if(typeof input !== 'string') {
-		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
+		throw new Error('Currently, we have no support for expecting the output of arbitrary requests')
 	}
 	const effectiveName = decorateLabelContext(name, ['output'])
 	it(`${effectiveName} (input: ${input})`, async function() {

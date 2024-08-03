@@ -13,7 +13,7 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range'
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
-import type {RParseRequest, RParseRequests} from '../r-bridge/retriever'
+import type { RParseRequest, RParseRequests } from '../r-bridge/retriever'
 import { requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'

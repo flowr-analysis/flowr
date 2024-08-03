@@ -32,7 +32,7 @@ import type { DeepPartial } from 'ts-essentials'
 import { DataflowGraph } from '../../../dataflow/graph/graph'
 import * as tmp from 'tmp'
 import fs from 'fs'
-import type {RParseRequest, RParseRequests} from '../../../r-bridge/retriever'
+import type { RParseRequests } from '../../../r-bridge/retriever'
 
 /**
  * Each connection handles a single client, answering to its requests.

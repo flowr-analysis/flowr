@@ -5,7 +5,7 @@ import { initializeCleanDataflowInformation } from '../../../../../info'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
-import type {RParseRequests, RParseRequestProvider, RParseRequest} from '../../../../../../r-bridge/retriever'
+import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
 import type {
 	IdGenerator,

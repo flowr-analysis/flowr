@@ -5,7 +5,7 @@ import { PipelineStepStage } from '../../pipeline-step'
 import type { DeepReadonly } from 'ts-essentials'
 import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 import type { RShell } from '../../../../r-bridge/shell'
-import type {RParseRequest, RParseRequests} from '../../../../r-bridge/retriever'
+import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
 
 export interface ParseRequiredInput {

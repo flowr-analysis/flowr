@@ -44,11 +44,11 @@ export const baseMessage: MessageDefinition<IdMessageBase> = {
  * This is the main message type that should be used to represent a message in *flowR*
  */
 export type FlowrMessage = FlowrHelloResponseMessage
-								 | FileAnalysisRequestMessage 
-								 | FileAnalysisResponseMessageJson
-								 | ExecuteRequestMessage 
-								 | ExecuteIntermediateResponseMessage 
-								 | ExecuteEndMessage
-								 | SliceRequestMessage 
-								 | SliceResponseMessage
-								 | FlowrErrorMessage
+                         | FileAnalysisRequestMessage
+                         | FileAnalysisResponseMessageJson
+                         | ExecuteRequestMessage
+                         | ExecuteIntermediateResponseMessage
+                         | ExecuteEndMessage
+                         | SliceRequestMessage
+                         | SliceResponseMessage
+                         | FlowrErrorMessage

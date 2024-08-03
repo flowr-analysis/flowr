@@ -13,14 +13,10 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range'
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
-import {isMultifileRequest, RParseRequest} from '../r-bridge/retriever'
-import { requestFingerprint } from '../r-bridge/retriever'
+import type { RParseRequest } from '../r-bridge/retriever'
+import { isMultifileRequest , requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
-import {
-	processSourceCall,
-	sourceRequest,
-	standaloneSourceFile
-} from "./internal/process/functions/call/built-in/built-in-source";
+import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -57,8 +53,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	request: RParseRequest,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const multifile = isMultifileRequest(request);
-	let firstRequest = request;
+	const multifile = isMultifileRequest(request)
+	let firstRequest = request
 	/* TODO: in case of multiple files tart with the first and then continue file by file to inoke source */
 	if(multifile) {
 		firstRequest = {
@@ -82,5 +78,5 @@ export function produceDataFlowGraph<OtherInfo>(
 		}
 	}
 
-	return df;
+	return df
 }

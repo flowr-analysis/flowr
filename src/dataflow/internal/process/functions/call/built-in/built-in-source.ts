@@ -1,18 +1,20 @@
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
-import {DataflowInformation, initializeCleanDataflowInformation} from '../../../../../info'
+import type { DataflowInformation } from '../../../../../info'
+import { initializeCleanDataflowInformation } from '../../../../../info'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
 import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
-import {
-	deterministicPrefixIdGenerator,
+import type {
 	IdGenerator,
 	NormalizedAst,
 	ParentInformation
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import {
+	deterministicPrefixIdGenerator
+	,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
@@ -43,8 +45,8 @@ export function processSourceCall<OtherInfo>(
 	}
 ): DataflowInformation {
 	const information = config.includeFunctionCall ?
-			processKnownFunctionCall({ name, args, rootId, data }).information
-			: initializeCleanDataflowInformation(rootId, data)
+		processKnownFunctionCall({ name, args, rootId, data }).information
+		: initializeCleanDataflowInformation(rootId, data)
 
 	const sourceFile = args[0]
 

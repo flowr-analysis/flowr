@@ -13,21 +13,21 @@ import { RawRType } from './lang-4.x/ast/model/type'
 export const fileProtocol = 'file://'
 
 export interface RParseRequestFromFile {
-	readonly request:  'file';
+	readonly request: 'file';
 	/**
 	 * The path to the file (an absolute path is probably best here).
 	 * See {@link RParseRequestFromFiles} for multiple files.
 	 */
-	readonly content:  string;
+	readonly content: string;
 }
 
 export interface RParseRequestFromFiles {
-	readonly request:  'files';
+	readonly request: 'files';
 	/**
 	 * The path to all files (absolute paths are probably best here).
 	 * The files are loaded in order, as if they would be sourced one by the other.
 	 */
-	readonly content:  readonly string[];
+	readonly content: readonly string[];
 }
 
 export interface RParseRequestFromText {
@@ -56,8 +56,8 @@ export interface RParseRequestProvider {
  * A request that can be passed along to {@link retrieveParseDataFromRCode}.
  */
 export type RParseRequest = RParseRequestFromFile
-						  | RParseRequestFromFiles
-						  | RParseRequestFromText
+                          | RParseRequestFromFiles
+                          | RParseRequestFromText
 
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: string): RParseRequestFromText

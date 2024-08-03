@@ -1,20 +1,26 @@
+import type { ReplCommand } from './main'
+import type { OutputFormatter } from '../../../util/ansi'
+import { FontStyles } from '../../../util/ansi'
+import { PipelineExecutor } from '../../../core/pipeline-executor'
+import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import type { XmlBasedJson } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { attributesKey, contentKey, childrenKey, getKeyGuarded } from '../../../r-bridge/lang-4.x/ast/parser/xml/input-format'
+import { RawRType } from '../../../r-bridge/lang-4.x/ast/model/type'
 import {
 	extractLocation,
 	getTokenType,
-} from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta'
+	objectWithArrUnwrap
+} from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
 import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
-import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
-import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
-import type { OutputFormatter } from '../../../util/ansi'
-import { FontStyles } from '../../../util/ansi'
-import type { ReplCommand } from './main'
-import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever'
 
-type DepthList = { depth: number, node: JsonEntry, leaf: boolean }[]
+type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
-function toDepthMap(xml: JsonEntry): DepthList {
-	const visit: { depth: number, node: JsonEntry }[] = [ { depth: 0, node: xml } ]
+function toDepthMap(xml: XmlBasedJson): DepthList {
+	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	
+	const visit: { depth: number, node: XmlBasedJson }[] = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 
 	while(visit.length > 0) {
@@ -23,7 +29,8 @@ function toDepthMap(xml: JsonEntry): DepthList {
 			continue
 		}
 
-		const children = current.node.children
+		const children = current.node[childrenKey] as unknown as XmlBasedJson[] | undefined ?? []
+		
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -68,7 +75,7 @@ function initialIndentation(i: number, depth: number, deadDepths: Set<number>, n
 	return result
 }
 
-function retrieveLocationString(locationRaw: JsonEntry) {
+function retrieveLocationString(locationRaw: XmlBasedJson) {
 	const extracted = extractLocation(locationRaw)
 	if(extracted[0] === extracted[2] && extracted[1] === extracted[3]) {
 		return ` (${extracted[0]}:${extracted[1]})`
@@ -90,9 +97,13 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 
 		result += f.reset()
 
-		const content = node.text
+		const raw = objectWithArrUnwrap(node)
+		const content = raw[contentKey] as string | undefined
+		const locationRaw = raw[attributesKey] as XmlBasedJson | undefined
 		let location = ''
-		location = retrieveLocationString(node)
+		if(locationRaw !== undefined) {
+			location = retrieveLocationString(locationRaw)
+		}
 
 		const type = getTokenType(node)
 

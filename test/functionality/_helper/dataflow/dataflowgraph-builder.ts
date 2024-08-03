@@ -2,12 +2,8 @@ import { deepMergeObject } from '../../../../src/util/objects'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
-import type {
-	DataflowFunctionFlowInformation,
-	FunctionArgument } from '../../../../src/dataflow/graph/graph'
-import {
-	isPositionalArgument
-	, DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import { isPositionalArgument, DataflowGraph } from '../../../../src/dataflow/graph/graph'
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
 import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'
@@ -131,7 +127,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineVariable(id: NodeId, name: string,
+	public defineVariable(id: NodeId, name?: string,
 		info?: { controlDependencies?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
 		this.addVertex({
 			tag:                 VertexType.VariableDefinition,
@@ -156,7 +152,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
-	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({
 			tag:                 VertexType.Use,
 			id:                  normalizeIdToNumberIfPossible(id),

@@ -17,4 +17,8 @@ describe('Processing of Elements', () => {
 	describe('Loops', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'loops'))
 	)
+
+	describe('Multiple Files', () =>
+		requireAllTestsInFolder(path.join(__dirname, 'multiple-files'))
+	)
 })

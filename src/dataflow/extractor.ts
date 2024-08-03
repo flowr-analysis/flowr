@@ -13,9 +13,10 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range'
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
-import type { RParseRequest } from '../r-bridge/retriever'
+import type { RParseRequest, RParseRequests } from '../r-bridge/retriever'
 import { requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
+import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -48,13 +49,32 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
 }
 
-export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {
-	return processDataflowFor<OtherInfo>(ast.ast, {
+export function produceDataFlowGraph<OtherInfo>(
+	request: RParseRequests,
+	ast:     NormalizedAst<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const multifile = Array.isArray(request)
+	let firstRequest: RParseRequest
+	if(multifile) {
+		firstRequest = request[0] as RParseRequest
+	} else {
+		firstRequest = request as RParseRequest
+	}
+	const dfData = {
 		completeAst:         ast,
 		environment:         initializeCleanEnvironments(),
 		processors,
-		currentRequest:      request,
+		currentRequest:      firstRequest,
 		controlDependencies: undefined,
-		referenceChain:      [requestFingerprint(request)]
-	})
+		referenceChain:      [requestFingerprint(firstRequest)]
+	}
+	let df = processDataflowFor<OtherInfo>(ast.ast, dfData)
+
+	if(multifile) {
+		for(let i = 1; i < request.length; i++) {
+			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df)
+		}
+	}
+
+	return df
 }

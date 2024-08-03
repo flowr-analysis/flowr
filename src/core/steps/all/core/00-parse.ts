@@ -5,18 +5,23 @@ import { PipelineStepStage } from '../../pipeline-step'
 import type { DeepReadonly } from 'ts-essentials'
 import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 import type { RShell } from '../../../../r-bridge/shell'
-import type { RParseRequest } from '../../../../r-bridge/retriever'
+import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} or {@link RShellExecutor} connection to be used to obtain the original parses AST of the R code */
 	readonly shell:   RShell | RShellExecutor
 	/** The request which essentially indicates the input to extract the AST from */
-	readonly request: RParseRequest
+	readonly request: RParseRequests
 }
 
 function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
-	return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
+	/* in the future, we want to expose all cases */
+	if(Array.isArray(input.request)) {
+		return retrieveParseDataFromRCode(input.request[0] as RParseRequest, input.shell as RShell)
+	} else {
+		return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
+	}
 }
 
 export const PARSE_WITH_R_SHELL_STEP = {

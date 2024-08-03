@@ -61,15 +61,27 @@ export type RParseRequest = RParseRequestFromFile
 
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: string): RParseRequestFromText
+export function requestFromInput(input: readonly (`${typeof fileProtocol}${string}`)[]): RParseRequestFromFiles
 
 /**
  * Creates a {@link RParseRequest} from a given input.
+ * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.
+ * Giving an array, you can **not** mix file paths and text content (mixed content should be concatenated).
+ *
  */
-export function requestFromInput(input: `${typeof fileProtocol}${string}` | string): RParseRequestFromFile | RParseRequestFromText  {
-	const file = input.startsWith(fileProtocol)
+export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly (`${typeof fileProtocol}${string}`)[]): RParseRequest  {
+	if(Array.isArray(input)) {
+		guard(input.every(i => i.startsWith(fileProtocol)), () => `expected all inputs to start with ${fileProtocol}, but got: ${JSON.stringify(input)}`)
+		return {
+			request: 'files',
+			content: input.map(i => i.slice(7))
+		}
+	}
+	const content = input as string
+	const file = content.startsWith(fileProtocol)
 	return {
 		request: file ? 'file' : 'text',
-		content: file ? input.slice(7) : input
+		content: file ? content.slice(7) : content
 	}
 }
 
@@ -106,6 +118,10 @@ export function isEmptyRequest(request: RParseRequest): boolean {
 	return request.content.trim() === ''
 }
 
+
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string>
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
@@ -113,7 +129,7 @@ export function isEmptyRequest(request: RParseRequest): boolean {
  * Throws if the file could not be parsed.
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string> {
 	if(isEmptyRequest(request)) {
 		return Promise.resolve('')
 	}

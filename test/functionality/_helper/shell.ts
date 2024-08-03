@@ -12,7 +12,7 @@ import { modifyLabelName , decorateLabelContext } from './label'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
 import { RShell } from '../../../src/r-bridge/shell'
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
-import type { fileProtocol } from '../../../src/r-bridge/retriever'
+import type {fileProtocol, RParseRequest} from '../../../src/r-bridge/retriever'
 import { requestFromInput } from '../../../src/r-bridge/retriever'
 import type {
 	AstIdMap, IdGenerator,
@@ -214,7 +214,7 @@ function handleAssertOutput(name: string | TestLabel, shell: RShell, input: stri
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
-	input: string,
+	input: string | RParseRequest,
 	expected: DataflowGraph,
 	userConfig?: Partial<TestConfigurationWithOutput>,
 	startIndexForDeterministicIds = 0

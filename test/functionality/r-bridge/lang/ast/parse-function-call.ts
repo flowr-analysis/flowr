@@ -2,8 +2,8 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { label } from '../../../_helper/label'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 
 describe('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {

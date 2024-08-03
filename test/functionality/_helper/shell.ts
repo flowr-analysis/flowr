@@ -12,7 +12,7 @@ import { modifyLabelName , decorateLabelContext } from './label'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
 import { RShell } from '../../../src/r-bridge/shell'
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
-import type {fileProtocol, RParseRequest} from '../../../src/r-bridge/retriever'
+import type {fileProtocol, RParseRequests} from '../../../src/r-bridge/retriever'
 import { requestFromInput } from '../../../src/r-bridge/retriever'
 import type {
 	AstIdMap, IdGenerator,
@@ -189,7 +189,10 @@ function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | 
 /**
  * Assert that the given input code produces the expected output in R. Trims by default.
  */
-export function assertOutput(name: string | TestLabel, shell: RShell, input: string, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+export function assertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+	if(typeof input !== 'string') {
+		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
+	}
 	const effectiveName = decorateLabelContext(name, ['output'])
 	it(`${effectiveName} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -204,7 +207,7 @@ export function assertOutput(name: string | TestLabel, shell: RShell, input: str
 	})
 }
 
-function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string, userConfig?: Partial<TestConfigurationWithOutput>): void {
+function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	const e = userConfig?.expectedOutput
 	if(e) {
 		assertOutput(modifyLabelName(name, n => `[output] ${n}`), shell, input, e, userConfig)
@@ -214,7 +217,7 @@ function handleAssertOutput(name: string | TestLabel, shell: RShell, input: stri
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
-	input: string | RParseRequest,
+	input: string | RParseRequests,
 	expected: DataflowGraph,
 	userConfig?: Partial<TestConfigurationWithOutput>,
 	startIndexForDeterministicIds = 0
@@ -225,7 +228,7 @@ export function assertDataflow(
 
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			shell,
-			request: requestFromInput(input),
+			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
@@ -240,7 +243,7 @@ export function assertDataflow(
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
-				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
+				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
 
 			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast))

@@ -5,7 +5,7 @@ import { initializeCleanDataflowInformation } from '../../../../../info'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
-import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever'
+import type {RParseRequests, RParseRequestProvider, RParseRequest} from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
 import type {
 	IdGenerator,
@@ -105,14 +105,15 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 
 
 export function standaloneSourceFile<OtherInfo>(
-	path: string,
+	inputRequest: RParseRequest,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	uniqueSourceId: string,
 	information: DataflowInformation
 ): DataflowInformation {
-	const request = sourceProvider.createRequest(path)
+	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-'
+	/* this way we can still pass content */
+	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest
 	const fingerprint = requestFingerprint(request)
-
 
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.includes(fingerprint)) {
@@ -125,5 +126,5 @@ export function standaloneSourceFile<OtherInfo>(
 		currentRequest: request,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, fingerprint]
-	}, information, deterministicPrefixIdGenerator(path + '-' + uniqueSourceId))
+	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId))
 }

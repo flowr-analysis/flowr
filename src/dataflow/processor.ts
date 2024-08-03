@@ -8,7 +8,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { REnvironmentInformation } from './environments/environment'
-import type { RParseRequest } from '../r-bridge/retriever'
+import type {RParseRequest, RParseRequests} from '../r-bridge/retriever'
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 
 export interface DataflowProcessorInformation<OtherInfo> {
@@ -26,11 +26,11 @@ export interface DataflowProcessorInformation<OtherInfo> {
    */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
-	 * The {@link RParseRequest} that is currently being parsed
+	 * The {@link RParseRequests} that is currently being parsed
 	 */
 	readonly currentRequest:      RParseRequest
 	/**
-	 * The chain of {@link RParseRequest} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
+	 * The chain of {@link RParseRequests} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
 	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
 	 */
 	readonly referenceChain:      string[]

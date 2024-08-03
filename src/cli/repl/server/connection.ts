@@ -32,7 +32,7 @@ import type { DeepPartial } from 'ts-essentials'
 import { DataflowGraph } from '../../../dataflow/graph/graph'
 import * as tmp from 'tmp'
 import fs from 'fs'
-import type { RParseRequest } from '../../../r-bridge/retriever'
+import type {RParseRequest, RParseRequests} from '../../../r-bridge/retriever'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -163,7 +163,7 @@ export class FlowRServerConnection {
 	}
 
 	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
-		let request: RParseRequest
+		let request: RParseRequests
 		if(message.content !== undefined){
 			// we store the code in a temporary file in case it's too big for the shell to handle
 			fs.writeFileSync(tempFile, message.content ?? '')
@@ -172,7 +172,7 @@ export class FlowRServerConnection {
 			if(typeof message.filepath === 'string') {
 				request = { request: 'file', content: message.filepath }
 			} else {
-				request = { request: 'files', content: message.filepath }
+				request = message.filepath.map(fp => ({ request: 'file', content: fp }))
 			}
 		} else {
 			throw new Error('Either content or filepath must be defined.')

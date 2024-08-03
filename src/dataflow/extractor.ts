@@ -13,8 +13,8 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import { rangeFrom } from '../util/range'
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
-import type { RParseRequest } from '../r-bridge/retriever'
-import { isMultifileRequest , requestFingerprint } from '../r-bridge/retriever'
+import type {RParseRequest, RParseRequests} from '../r-bridge/retriever'
+import { requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'
 
@@ -50,17 +50,16 @@ export const processors: DataflowProcessors<ParentInformation> = {
 }
 
 export function produceDataFlowGraph<OtherInfo>(
-	request: RParseRequest,
+	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const multifile = isMultifileRequest(request)
-	let firstRequest = request
+	const multifile = Array.isArray(request)
+	let firstRequest: RParseRequest
 	/* TODO: in case of multiple files tart with the first and then continue file by file to inoke source */
 	if(multifile) {
-		firstRequest = {
-			request: 'file',
-			content: request.content[0]
-		}
+		firstRequest = request[0] as RParseRequest
+	} else {
+		firstRequest = request as RParseRequest
 	}
 	const dfData = {
 		completeAst:         ast,
@@ -73,8 +72,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	let df = processDataflowFor<OtherInfo>(ast.ast, dfData)
 
 	if(multifile) {
-		for(let i = 1; i < request.content.length; i++) {
-			df = standaloneSourceFile(request.content[i], dfData, `root-request-${i}`, df)
+		for(let i = 1; i < request.length; i++) {
+			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df)
 		}
 	}
 

@@ -2,12 +2,8 @@ import { deepMergeObject } from '../../../../src/util/objects'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
-import type {
-	DataflowFunctionFlowInformation,
-	FunctionArgument } from '../../../../src/dataflow/graph/graph'
-import {
-	isPositionalArgument
-	, DataflowGraph } from '../../../../src/dataflow/graph/graph'
+import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph'
+import { isPositionalArgument, DataflowGraph } from '../../../../src/dataflow/graph/graph'
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
 import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'

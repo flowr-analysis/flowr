@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22.1-alpine3.19 AS builder
+FROM node:22.6-alpine3.19 AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 RUN npm ci && npm run build
 
 
-FROM node:22.1-alpine3.19 AS flowR
+FROM node:22.6-alpine3.19 AS flowR
 
 LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 

@@ -10,13 +10,14 @@ import os from 'os'
 import path from 'path'
 import fs from 'fs'
 import { splitAtEscapeSensitive } from '../../util/args'
-import { bold } from '../../util/ansi'
+import { ColorEffect, Colors, FontStyles } from '../../util/ansi'
 import { getCommand, getCommandNames } from './commands/commands'
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info'
 import { fileProtocol } from '../../r-bridge/retriever'
 import type { ReplOutput } from './commands/main'
 import { standardReplOutput } from './commands/main'
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell'
+import { MergeableRecord } from '../../util/objects';
 
 let _replCompleterKeywords: string[] | undefined = undefined
 function replCompleterKeywords() {
@@ -73,38 +74,50 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	completer:               replCompleter
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell) {
+async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
+		let bold = (s: string) => output.formatter.format(s, {style: FontStyles.Bold})
 		if(processor) {
 			try {
 				await processor.fn(output, shell, statement.slice(command.length + 2).trim())
 			} catch(e){
-				console.log(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.`)
+				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`)
 			}
 		} else {
-			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
+			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`)
 		}
-	} else {
+	} else if(allowRSessionAccess) {
 		await executeRShellCommand(output, shell, statement)
+	} else {
+		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })}  flag. Please be careful of the security implications of this action.`)
 	}
 }
 
 /**
  * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
  *
- * @param output   - Defines two methods that every function in the repl uses to output its data.
- * @param expr     - The expression to process.
- * @param shell    - The {@link RShell} to use (see {@link repl}).
+ * @param output              - Defines two methods that every function in the repl uses to output its data.
+ * @param expr                - The expression to process.
+ * @param shell               - The {@link RShell} to use (see {@link repl}).
+ * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  */
-export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell): Promise<void> {
+export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(expr, false, ';')
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, shell)
+		await replProcessStatement(output, statement, shell, allowRSessionAccess)
 	}
+}
+
+export interface FlowrReplOptions extends MergeableRecord {
+	readonly shell?:               RShell
+	readonly rl?:                  readline.Interface
+	readonly output?:              ReplOutput
+	readonly historyFile?:         string
+	readonly allowRSessionAccess?: boolean
 }
 
 /**
@@ -114,17 +127,24 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
- * @param shell     - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
- * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
- *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
- *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
- * @param output    - Defines two methods that every function in the repl uses to output its data.
- * @param historyFile - The file to use for persisting the repl's history. Passing undefined causes history not to be saved.
- *
+ * @param shell               - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
+ * @param rl                  - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
+ *                              If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
+ *                              For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
+ * @param output              - Defines two methods that every function in the repl uses to output its data.
+ * @param historyFile         - The file to use for persisting the repl's history. Passing undefined causes history not to be saved.
+ * @param allowRSessionAccess - If true, allows the execution of arbitrary R code. This is a security risk, as it allows the execution of arbitrary R code.
+ * 
  * For the execution, this function makes use of {@link replProcessAnswer}
  *
  */
-export async function repl(shell = new RShell({ revive: RShellReviveOptions.Always }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput, historyFile: string | undefined = defaultHistoryFile) {
+export async function repl({
+	shell = new RShell({ revive: RShellReviveOptions.Always }), 
+	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), 
+	output = standardReplOutput, 
+	historyFile = defaultHistoryFile,
+	allowRSessionAccess = false
+}: FlowrReplOptions) {
 	if(historyFile) {
 		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }))
 	}
@@ -135,7 +155,7 @@ export async function repl(shell = new RShell({ revive: RShellReviveOptions.Alwa
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
 				rl.pause()
-				replProcessAnswer(output, answer, shell).then(() => {
+				replProcessAnswer(output, answer, shell, allowRSessionAccess).then(() => {
 					rl.resume()
 					resolve()
 				}).catch(reject)

@@ -82,7 +82,7 @@ Independent of your way of launching *flowr*, we will write simply `flowr` for e
 ### The Read-Eval-Print Loop (REPL)
 
 Once you launched *flowR*, you should see a small&nbsp;`R>` prompt. Use `:help` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
-In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell. The following GIF showcases a simple example session:
+In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start *flowR* with `--r-session-access` to allow this). The following GIF showcases a simple example session:
 
 ![Example of a simple REPL session](gif/repl-demo.gif)
 

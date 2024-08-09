@@ -39,10 +39,11 @@ import type { RParseRequests } from '../../../r-bridge/retriever'
  * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
  */
 export class FlowRServerConnection {
-	private readonly socket: Socket
-	private readonly shell:  RShell
-	private readonly name:   string
-	private readonly logger: Logger<ILogObj>
+	private readonly socket:              Socket
+	private readonly shell:               RShell
+	private readonly name:                string
+	private readonly logger:              Logger<ILogObj>
+	private readonly allowRSessionAccess: boolean
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -51,13 +52,14 @@ export class FlowRServerConnection {
 	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, shell: RShell) {
+	constructor(socket: Socket, name: string, shell: RShell, allowRSessionAccess: boolean) {
 		this.socket = socket
 		this.shell = shell
 		this.name = name
 		this.logger = serverLog.getSubLogger({ name })
 		this.socket.on('data', data => this.handleData(String(data)))
 		this.socket.on('error', e => this.logger.error(`[${this.name}] Error while handling connection: ${String(e)}`))
+		this.allowRSessionAccess = allowRSessionAccess
 	}
 
 	private currentMessageBuffer = ''
@@ -259,7 +261,9 @@ export class FlowRServerConnection {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, request.expression, this.shell).then(() => {
+		}, request.expression, this.shell,
+		this.allowRSessionAccess
+		).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {
 				type: 'end-repl-execution',
 				id:   request.id

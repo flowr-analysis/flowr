@@ -2670,6 +2670,10 @@ The semantics of the error message are similar. If, for example, the slicing cri
 
 ### The REPL Request
 
+> [!WARNING]
+> To execute arbitrary R commands with a request, the server has to be started explicitly with `--r-session-access`.
+> Please be aware, that this introduces a security risk.
+
 <details open>
 <summary>Sequence Diagram</summary>
 
@@ -2703,7 +2707,7 @@ You only have to pass the command you want to execute in the `expression` field.
 We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
 > [!WARNING]
-> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful.
+> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful (and do not use `--r-session-access`).
 
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
@@ -2715,6 +2719,7 @@ The semantics of the error message are similar to that of the other messages.
     <summary>Example Request</summary>
 
 *Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+For this request to work, you have to start the server with the `--r-session-access` flag.
 
 ```json
 {
@@ -2754,6 +2759,10 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 </details>
 
 ## 💻 Using the REPL
+
+> [!NOTE]
+> To execute arbitrary R commands with a repl request, *flowR* has to be started explicitly with `--r-session-access`.
+> Please be aware, that this introduces a security risk.
 
 Although primarily meant for users to explore, there is nothing which forbids simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 

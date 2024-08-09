@@ -18,18 +18,20 @@ export const serverLog = new FlowrLogger({ name: 'server' })
  * thereon be handled by a {@link FlowRServerConnection}.
  */
 export class FlowRServer {
-	private readonly server:    Server
-	private readonly shell:     RShell
-	private versionInformation: VersionInformation | undefined
+	private readonly server:     Server
+	private readonly shell:      RShell
+	private versionInformation:  VersionInformation | undefined
+	private allowRSessionAccess: boolean = false
 
 	/** maps names to the respective connection */
 	private connections = new Map<string, FlowRServerConnection>()
 	private nameCounter = 0
 
-	constructor(shell: RShell, server: Server = new NetServer()) {
+	constructor(shell: RShell, allowRSessionAccess: boolean, server: Server = new NetServer()) {
 		this.server = server
 		this.server.onConnect(c => this.onConnect(c))
 		this.shell = shell
+		this.allowRSessionAccess = allowRSessionAccess
 	}
 
 	public async start(port: number) {
@@ -46,7 +48,7 @@ export class FlowRServer {
 		const name = `client-${this.nameCounter++}`
 		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`)
 
-		this.connections.set(name, new FlowRServerConnection(c, name, this.shell))
+		this.connections.set(name, new FlowRServerConnection(c, name, this.shell, this.allowRSessionAccess))
 		helloClient(c, name, this.versionInformation)
 		c.on('close', () => {
 			this.connections.delete(name)

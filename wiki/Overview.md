@@ -82,9 +82,36 @@ Independent of your way of launching *flowr*, we will write simply `flowr` for e
 ### The Read-Eval-Print Loop (REPL)
 
 Once you launched *flowR*, you should see a small&nbsp;`R>` prompt. Use `:help` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
-In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell. The following GIF showcases a simple example session:
+In general, all commands start with a colon (`:`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell (however, due to security concerns, you need to start *flowR* with `--r-session-access` to allow this). The following GIF showcases a simple example session:
 
 ![Example of a simple REPL session](gif/repl-demo.gif)
+
+<!--
+# Use https://github.com/charmbracelet/vhs
+Output repl-demo.gif
+
+Set FontSize 30
+Set Width 1600
+Set Height 850
+Set WindowBar Colorful
+Set CursorBlink false
+Set PlaybackSpeed 3.0
+Set TypingSpeed 0.15
+
+Type "docker run -it --rm eagleoutice/flowr"
+Sleep 200ms
+Enter
+Sleep 4000ms
+
+Type ":slicer -c '11@prod' demo.R --diff"
+Sleep 400ms
+Enter
+Sleep 500ms
+Type ":quit"
+Sleep 400ms
+Enter
+Sleep 20000ms
+-->
 
 ### The Server
 

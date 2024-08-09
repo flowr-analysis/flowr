@@ -30,14 +30,14 @@ export class CriteriaParseError extends Error {
  */
 export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicingCriterion, decorated: NormalizedAst<OtherInfo & ParentInformation>): NodeId {
 	let resolved: NodeId | undefined
-	if(criterion.includes(':')) {
+	if(criterion.startsWith('$')) {
+		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId
+	} else if(criterion.includes(':')) {
 		const [line, column] = criterion.split(':').map(c => parseInt(c))
 		resolved = locationToId([line, column], decorated.idMap)
 	} else if(criterion.includes('@')) {
 		const [line, name] = criterion.split(/@(.*)/s) // only split at first occurrence
 		resolved = conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
-	} else if(criterion.startsWith('$')) {
-		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId
 	}
 
 	if(resolved === undefined) {

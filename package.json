@@ -13,6 +13,7 @@
   },
   "scripts": {
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
+    "flowr": "npm run main",
     "main-dev": "ts-node src/cli/flowr.ts",
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
     "release": "npx release-it --ci",

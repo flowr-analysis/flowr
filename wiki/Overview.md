@@ -86,6 +86,33 @@ In general, all commands start with a colon (`:`), everything else is interprete
 
 ![Example of a simple REPL session](gif/repl-demo.gif)
 
+<!--
+# Use https://github.com/charmbracelet/vhs
+Output repl-demo.gif
+
+Set FontSize 30
+Set Width 1600
+Set Height 850
+Set WindowBar Colorful
+Set CursorBlink false
+Set PlaybackSpeed 3.0
+Set TypingSpeed 0.15
+
+Type "docker run -it --rm eagleoutice/flowr"
+Sleep 200ms
+Enter
+Sleep 4000ms
+
+Type ":slicer -c '11@prod' demo.R --diff"
+Sleep 400ms
+Enter
+Sleep 500ms
+Type ":quit"
+Sleep 400ms
+Enter
+Sleep 20000ms
+-->
+
 ### The Server
 
 Instead of the REPL, you can start *flowR* in "([TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)) server-mode" using `flowr --server` (write `flowr --help` to find out more). Together with the server option, you can configure the port with `--port`.

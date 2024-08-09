@@ -263,7 +263,7 @@ export class FlowRServerConnection {
 			stderr:    msg => out('stderr', msg)
 		}, request.expression, this.shell,
 		this.allowRSessionAccess
-	).then(() => {
+		).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {
 				type: 'end-repl-execution',
 				id:   request.id

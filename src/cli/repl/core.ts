@@ -17,7 +17,7 @@ import { fileProtocol } from '../../r-bridge/retriever'
 import type { ReplOutput } from './commands/main'
 import { standardReplOutput } from './commands/main'
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell'
-import { MergeableRecord } from '../../util/objects';
+import type { MergeableRecord } from '../../util/objects'
 
 let _replCompleterKeywords: string[] | undefined = undefined
 function replCompleterKeywords() {
@@ -78,7 +78,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
-		let bold = (s: string) => output.formatter.format(s, {style: FontStyles.Bold})
+		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold })
 		if(processor) {
 			try {
 				await processor.fn(output, shell, statement.slice(command.length + 2).trim())

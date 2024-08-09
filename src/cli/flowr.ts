@@ -26,7 +26,7 @@ import { repl, replProcessAnswer } from './repl/core'
 import { printVersionInformation } from './repl/commands/version'
 import { printVersionRepl } from './repl/print-version'
 
-let _scriptsText: string | undefined;
+let _scriptsText: string | undefined
 
 function getScriptsText(){
 	if(_scriptsText === undefined) {
@@ -159,7 +159,7 @@ async function mainRepl() {
 		await replProcessAnswer(standardReplOutput, options.execute, shell, allowRSessionAccess)
 	} else {
 		await printVersionRepl(shell)
-		await repl({ shell, allowRSessionAccess})
+		await repl({ shell, allowRSessionAccess })
 	}
 	process.exit(0)
 }

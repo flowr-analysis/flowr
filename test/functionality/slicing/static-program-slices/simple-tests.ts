@@ -11,6 +11,7 @@ describe('Simple', withShell(shell => {
 			)
 		}
 	})
+	//if reconstruction needs more work to handle all cases
 	describe('Constant conditionals', () => {
 		assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(TRUE) { x <- 3 }\nx')
 		//if reconstruction needs more work to handle this
@@ -21,6 +22,8 @@ describe('Simple', withShell(shell => {
 		assertSliced(label('if(FALSE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
 			shell, 'if(FALSE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 4\nx')
 	})
+	//for is currently pretty printing
+	//this does not produce a stack trace??
 	describe('Independent Control-Flow', () => {
 		assertSliced(label('For-Loop', ['name-normal', 'for-loop', 'newlines', 'unnamed-arguments', 'numbers', 'built-in-sequencing', ...OperatorDatabase['<-'].capabilities, 'function-calls', ...OperatorDatabase['*'].capabilities, 'precedence']),
 			shell, `
@@ -67,14 +70,14 @@ x`, {
 		assertSliced(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting']),
 			shell, 'i <- 4\na <- list(1,2)\n b <- a[1:i,]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[1:i,]')
 		assertSliced(label('range assignment', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'built-in-sequencing', 'empty-arguments', 'single-bracket-access', 'subsetting', 'range-assignment']),
-			shell, 'a <- 1:10\na[1:5] <- 3\na', ['3@a'], 'a <- 1 : 10\na[1:5] <- 3\na')
+			shell, 'a <- 1:10\na[1:5] <- 3\na', ['3@a'], 'a <- 1:10\na[1:5] <- 3\na')
 		describe('Definitions', () => {
 			describe('[[', () => {
 				const code = '\na <- list(1,2)\na[[1]] = 2\na[[2]] = 3\nb[[4]] = 5\ncat(a)\na <- list(3,4)\ncat(a)\n'
 				//we get an added space in front of the access
-				assertSliced('Repeated named access and definition', shell, code, ['6@a'], 'a <- list(1,2)\na[[1]] = 2\na[[2]] = 3\ncat(a)')
+				assertSliced('Repeated named access and definition', shell, code, ['6@a'], 'a <- list(1,2)\na[[1]] = 2\na[[2]] = 3\na')
 				assertSliced('Full redefinitions still apply', shell, code, ['8@a'], `a <- list(3,4)
-cat(a)`)
+a`)
 				assertSliced(label('Repeated named access and definition', ['name-normal', 'numbers', 'double-bracket-access', 'unnamed-arguments', 'function-calls', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments']),
 					shell, code, ['6@a'], `a <- list(1,2)
 a[[1]] = 2
@@ -89,7 +92,7 @@ a`)
 				//we get an added space in front of the access
 				assertSliced('Repeated named access and definition', shell, codeB, ['6@a'], 'a <- list(a=1,b=2)\na$a = 2\na$b = 3\ncat(a)')
 				assertSliced('Full redefinitions still apply', shell, codeB, ['8@a'], `a <- list(a=3,b=4)
-cat(a)`)
+a`)
 				assertSliced(label('Repeated named access and definition', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'numbers']),
 					shell, codeB, ['6@a'], `a <- list(a=1,b=2)
 a$a = 2
@@ -173,7 +176,7 @@ N <- 10
 for (i in 1:(N-1)) {
   sum <- sum + i + w
 }
-cat("Sum:", sum, "\\n")`
+sum`
 		)
 
 		assertSliced(label('Product in call', capabilities),
@@ -183,7 +186,7 @@ N <- 10
 for (i in 1:(N-1)) {
   product <- product * i
 }
-cat("Product:", product, "\\n")`
+product`
 		)
 
 		assertSliced(label('Top by name', capabilities),

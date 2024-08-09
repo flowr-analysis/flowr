@@ -26,7 +26,15 @@ import { repl, replProcessAnswer } from './repl/core'
 import { printVersionInformation } from './repl/commands/version'
 import { printVersionRepl } from './repl/print-version'
 
-const scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')
+let _scriptsText: string | undefined;
+
+function getScriptsText(){
+	if(_scriptsText === undefined) {
+		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ')
+	}
+	return _scriptsText
+}
+
 
 export const toolName = 'flowr'
 
@@ -39,7 +47,7 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'port' ,                    type: Number,  description: 'The port to listen on, if --server is given.', defaultValue: 1042, typeLabel: '{underline port}' },
 	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
-	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
+	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${getScriptsText()})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
 	{ name: 'r-path', type: String, description: 'The path to the R executable to use. Defaults to your PATH.', multiple: false }
 ]
@@ -110,7 +118,7 @@ function retrieveShell(): RShell {
 async function mainRepl() {
 	if(options.script) {
 		let target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
-		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
+		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${getScriptsText()}.`)
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`)
 		target = `cli/${target}`
 		log.debug(`Script maps to "${target}"`)

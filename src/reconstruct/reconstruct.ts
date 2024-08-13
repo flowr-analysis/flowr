@@ -220,9 +220,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	)
 	console.log(JSON.stringify(when,jsonReplacer))
 
-	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {
-		console.log('we got here')
-		
+	if(otherwise.length > 0 && !(otherwise[0].linePart.length === 2)) {		
 		const hBody = out[out.length - 1].linePart
 		const elsePos = hBody[hBody.length - 1].loc
 		const fakeWhenBlock = when.length === 0 ? [{ linePart: [{ part: ' {} ', loc: [elsePos[0], elsePos[1] + 2] as SourcePosition }], indent: 0 }] : ([] as Code)

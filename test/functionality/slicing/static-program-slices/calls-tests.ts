@@ -32,7 +32,7 @@ foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)')
 		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
 			shell, `
-x. <- function (x) { x }
+x. <- function(x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
@@ -45,8 +45,8 @@ x <- 3
 c <- 4
 y <- 3
 f2(1,x)
-    `, ['7@f2'], `f1 <- function(a, b) { c }
-f2 <- function(...) { f1(...) }
+    `, ['7@f2'], `f1 <- function (a, b) { c }
+f2 <- function (...) { f1(...) }
 x <- 3
 c <- 4
 f2(1,x)`)
@@ -119,11 +119,9 @@ result`)
 f()
 `
 		assertSliced(label('Late bindings of parameter in body', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'implicit-return', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'call-normal', 'semicolons']),
-			shell, lateCode, ['2@f'], `f <- function(a=b, m=3) {
-        b <- 1
-        a + 1
-    }
-f()`)
+			shell, lateCode, ['2@f'], `f <- function(a=b, m=3) { b <- 1;          ; a + 1 }
+f()
+`)
 		const lateCodeB = `f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `
@@ -163,16 +161,9 @@ z <- 5
 u <- a()
 u()`
 			assertSliced(label('Must include function shell', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'return', 'newlines', 'call-normal', 'semicolons']),
-				shell, code, ['5@a'], `a <- function() {
-        x <- function() { }
-        return(x)
-    }
+				shell, code, ['5@a'], `a <- function() { x <- function() {       };          return(x) }
 a()`)
-			assertSliced(label('Must include function shell on call', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'return', 'call-normal']), shell, code, ['6@u'], `a <- function() {
-        x <- function() { z + y }
-        y <- 12
-        return(x)
-    }
+			assertSliced(label('Must include function shell on call', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'return', 'call-normal']), shell, code, ['6@u'], `a <- function() { x <- function() { z + y }; y <- 12; return(x) }
 z <- 5
 u <- a()
 u()`)
@@ -228,7 +219,7 @@ x <- a(function() 2 + 3)() + a(function() 7)()`)
 f <- function() { x <<- 3 }
 f()
 cat(x)
-    `, ['4@x'], `f <- function() x <<- 3
+    `, ['4@x'], `f <- function() { x <<- 3 }
 f()
 x`)
 
@@ -245,10 +236,10 @@ cat(x)
 }
 b <- f()
     `, ['8@b'], `f <- function() {
-        a <- function() { x }
-        x <- 2
-        a()
-    }
+  a <- function() { x }
+  x <- 2
+  a()
+}
 b <- f()`)
 		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
 		// however, this read edge should not apply when the call happens within the same scope
@@ -262,12 +253,12 @@ b <- f()`)
 }
 b <- f()
     `, ['9@b'], `f <- function() {
-        a <- function() { x }
-        x <- 3
-        b <- a()
-        x <- 2
-        b
-    }
+  a <- function() { x }
+  x <- 3
+  b <- a()
+  x <- 2
+  b
+}
 b <- f()`)
 	})
 	describe('Early return of function', () => {
@@ -282,12 +273,12 @@ b <- f()`)
 res <- x()`
 		assertSliced(label('Double return points', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'call-anonymous', 'normal-definition', 'implicit-return', 'numbers', 'if', 'return', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['9@res'], `
 x <- (function() {
-        g <- function() { y }
-        y <- 5
-        if(z) return(g)
-        y <- 3
-        g
-    })()
+  g <- function() { y }
+  y <- 5
+  if(z) return(g)
+  y <- 3
+  g
+})()
 res <- x()`.trim())
 	})
 	describe('Recursive functions', () => {
@@ -313,10 +304,7 @@ cat(x)`
 		const localCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
 		assertSliced(label('Local redefinition has no effect', localCaps), shell, localCode, ['5@x'], `x <- 3
 x`)
-		assertSliced(label('Local redefinition must be kept as part of call', localCaps), shell, localCode, ['4@a'], `a <- function() {
-        x = x + 5
-        cat(x)
-    }
+		assertSliced(label('Local redefinition must be kept as part of call', localCaps), shell, localCode, ['4@a'], `a <- function() { x = x + 5; cat(x) }
 x <- 3
 a()`)
 		const globalCode = `
@@ -324,7 +312,7 @@ a <- function() { x <<- x + 5; cat(x) }
 x <- 3
 a()
 x`
-		assertSliced(label('But the global redefinition remains', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'implicit-return', 'side-effects-in-function-call', 'return-value-of-assignments', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCode, ['5@x'], `a <- function() x <<- x + 5
+		assertSliced(label('But the global redefinition remains', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'implicit-return', 'side-effects-in-function-call', 'return-value-of-assignments', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5         }
 x <- 3
 a()
 x`)
@@ -333,7 +321,7 @@ a <- function() { x <<- 5; cat(x) }
 x <- 3
 a()
 x`
-		assertSliced(label('The local assignment is only needed if the global reads', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'function-definitions', ...OperatorDatabase['<<-'].capabilities, 'numbers', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCodeWithoutLocal, ['5@x'], `a <- function() x <<- 5
+		assertSliced(label('The local assignment is only needed if the global reads', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'function-definitions', ...OperatorDatabase['<<-'].capabilities, 'numbers', 'newlines', 'call-normal', 'unnamed-arguments', 'precedence']), shell, globalCodeWithoutLocal, ['5@x'], `a <- function() { x <<- x + 5         }
 a()
 x`)
 
@@ -360,7 +348,7 @@ x`)
 y <- 5
 x <- 2
 a()(y)
-cat(x)`, ['5@x'], `a <- function() { function(b) if(runif() > .5) { x <<- b } }
+cat(x)`, ['5@x'], `a <- function() { function(b) { if(runif() > .5) { x <<- b } } }
 y <- 5
 x <- 2
 a()(y)

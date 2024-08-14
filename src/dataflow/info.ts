@@ -6,13 +6,18 @@ import { DataflowGraph } from './graph/graph'
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff'
 
 export const enum ExitPointType {
+	/** The exit point is the implicit (last executed expression of a function/block) */
 	Default = 0,
+	/** The exit point is an explicit `return` call (or an alias of it) */
 	Return = 1,
+	/** The exit point is an explicit `break` call (or an alias of it) */
 	Break = 2,
+	/** The exit point is an explicit `next` call (or an alias of it) */
 	Next = 3
 }
 
 export interface ControlDependency {
+	/** The id of the node that causes the control dependency to be active (e.g., the condition of an if) */
 	readonly id:    NodeId,
 	/** when does this control dependency trigger (if the condition is true or false)? */
 	readonly when?: boolean
@@ -20,8 +25,11 @@ export interface ControlDependency {
 
 
 export interface ExitPoint {
+	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
 	readonly type:                ExitPointType,
+	/** The id of the node which causes the exit point! */
 	readonly nodeId:              NodeId,
+	/** Control dependencies which influence if the exit point triggers (e.g., if the `return` is contained within an `if` statement) */
 	readonly controlDependencies: ControlDependency[] | undefined
 }
 
@@ -29,9 +37,7 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly Exi
 	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default))
 }
 
-/**
- * The control flow information for the current {@link DataflowInformation}.
- */
+/** The control flow information for the current {@link DataflowInformation}. */
 export interface DataflowCfgInformation {
 	/**
 	 * The entry node into the subgraph

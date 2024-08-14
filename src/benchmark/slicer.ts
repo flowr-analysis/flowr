@@ -35,6 +35,9 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { getSizeOfDfGraph } from './stats/size-of'
 
+/**
+ * The logger to be used for benchmarking as a global object.
+ */
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
 /**

@@ -2,12 +2,6 @@ name: "Deploy Docker"
 
 'on':
   workflow_call:
-    inputs:
-      addToRelease:
-        description: "Should the docker image be added to the latest release?"
-        required: false
-        type: boolean
-        default: true
 
 
 concurrency:
@@ -56,7 +50,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add to release
-        if: ${{ github.event.inputs.addToRelease }}
         uses: alexellis/upload-assets@0.4.0
         env:
           GITHUB_TOKEN: ${{ github.token }}

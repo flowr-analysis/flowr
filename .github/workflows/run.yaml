@@ -6,7 +6,7 @@ name: "Run one of flowR's npm-actions with a specific version"
       node-version:
         description: "The node version to use"
         required: false
-        default: "18.15.x"
+        default: "21.6.x"
         type: string
       r-version:
         description: "The R version to use"

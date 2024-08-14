@@ -48,11 +48,4 @@ jobs:
           docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add to release
-        uses: alexellis/upload-assets@0.4.0
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          asset_paths: '["./flowr-*.tar.gz"]'
           

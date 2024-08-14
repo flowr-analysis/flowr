@@ -71,7 +71,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
   deploy-docker:
-    needs: ['performance-test']
+    needs: ['release']
     name: "Deploy Docker (only on main)"
     uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

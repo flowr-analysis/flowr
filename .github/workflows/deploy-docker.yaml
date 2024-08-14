@@ -19,15 +19,11 @@ jobs:
     name: "Build and Deploy the flowR Docker Container"
     runs-on: ubuntu-22.04
     steps:
-        - name: "Checkout Repository"
-          uses: Wandalen/wretry.action@master
-          with:
-            attempt_limit: 15
-            attempt_delay: 10000
-            action: actions/checkout@v4
-            with: |
-              lfs: false
-              submodules: true
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+          submodules: true
 
       - name: Do pull to ensure up-to-date
         run: git pull

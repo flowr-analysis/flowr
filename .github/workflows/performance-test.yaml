@@ -36,15 +36,11 @@ jobs:
     needs: [ performance-test ]
     steps:
       - name: "Checkout Repository"
-        uses: Wandalen/wretry.action@master
+        uses: actions/checkout@v4
         with:
-          attempt_limit: 15
-          attempt_delay: 10000
-          action: actions/checkout@v4
-          with: |
-            submodules: true
-            lfs:        true
-            token:      ${{ secrets.RELEASE_TOKEN }}
+          submodules: true
+          lfs:        true
+          token:      ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v4

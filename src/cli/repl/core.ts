@@ -112,11 +112,23 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
 	}
 }
 
+/**
+ * Options for the {@link repl} function.
+ */
 export interface FlowrReplOptions extends MergeableRecord {
+	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
 	readonly shell?:               RShell
+	/** 
+	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
+    * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
+    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}. 
+	 */
 	readonly rl?:                  readline.Interface
+	/** Defines two methods that every function in the repl uses to output its data. */
 	readonly output?:              ReplOutput
+	/** The file to use for persisting the repl's history. Passing undefined causes history not to be saved. */
 	readonly historyFile?:         string
+	/** If true, allows the execution of arbitrary R code. This is a security risk, as it allows the execution of arbitrary R code. */
 	readonly allowRSessionAccess?: boolean
 }
 
@@ -127,15 +139,9 @@ export interface FlowrReplOptions extends MergeableRecord {
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
- * @param shell               - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
- * @param rl                  - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
- *                              If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
- *                              For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
- * @param output              - Defines two methods that every function in the repl uses to output its data.
- * @param historyFile         - The file to use for persisting the repl's history. Passing undefined causes history not to be saved.
- * @param allowRSessionAccess - If true, allows the execution of arbitrary R code. This is a security risk, as it allows the execution of arbitrary R code.
- * 
- * For the execution, this function makes use of {@link replProcessAnswer}
+ * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
+ *
+ * For the execution, this function makes use of {@link replProcessAnswer}.
  *
  */
 export async function repl({

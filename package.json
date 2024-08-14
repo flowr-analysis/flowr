@@ -96,7 +96,7 @@
     ],
     "entryPoints": [
       "src",
-      "test/helper"
+      "test/functionality/_helper"
     ],
     "entryPointStrategy": "expand",
     "exclude": [

@@ -22,10 +22,18 @@ jobs:
         uses: flowr-analysis/flowr/.github/actions/setup@main
 
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: Wandalen/wretry.action@master
         with:
-          token: ${{ secrets.RELEASE_TOKEN }}
-          fetch-depth: 0
+          attempt_limit: 15
+          attempt_delay: 10000
+          action: actions/checkout@v4
+          with: |
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+            fetch-depth: 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Name and Email for Git (config)
         run: |

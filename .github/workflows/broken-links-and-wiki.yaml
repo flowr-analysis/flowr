@@ -22,11 +22,17 @@ jobs:
         uses: flowr-analysis/flowr/.github/actions/setup@main
 
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: Wandalen/wretry.action@master
         with:
-          lfs:        true
-          submodules: true
-          token:      ${{ secrets.RELEASE_TOKEN }}
+          attempt_limit: 15
+          attempt_delay: 10000
+          action: actions/checkout@v4
+          with: |
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Checkout LFS"
         run: git lfs checkout

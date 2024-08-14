@@ -16,9 +16,15 @@ runs:
   using: "composite"
   steps:
     - name: "Checkout Repository"
-      uses: actions/checkout@v4
+      uses: Wandalen/wretry.action@master
       with:
-        submodules: true
+        attempt_limit: 15
+        attempt_delay: 10000
+        action: actions/checkout@v4
+        with: |
+          submodules: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Use Node.js
       uses: actions/setup-node@v4

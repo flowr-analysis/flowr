@@ -36,9 +36,17 @@ jobs:
     needs: [ performance-test ]
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: Wandalen/wretry.action@master
         with:
-          token: ${{ secrets.RELEASE_TOKEN }}
+          attempt_limit: 15
+          attempt_delay: 10000
+          action: actions/checkout@v4
+          with: |
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v4

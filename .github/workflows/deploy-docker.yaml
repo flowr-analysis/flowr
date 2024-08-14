@@ -2,6 +2,12 @@ name: "Deploy Docker"
 
 'on':
   workflow_call:
+    inputs:
+      addToRelease:
+        description: "Should the docker image be added to the latest release?"
+        required: false
+        type: boolean
+        default: true
 
 
 concurrency:
@@ -41,3 +47,19 @@ jobs:
           docker images "$TAG"
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags
+          echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          
+      - name: Compress the image
+        run: |
+          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add to release
+        if: ${{ github.event.inputs.addToRelease }}
+        uses: alexellis/upload-assets@0.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["./flowr-*.tar.gz"]'
+          

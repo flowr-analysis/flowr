@@ -68,6 +68,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
+  deploy-docker:
+    needs: ['performance-test']
+    name: "Deploy Docker (only on main)"
+    uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
+    secrets: inherit
+
   performance-test:
     name: "Performance Test"
     needs: ['release']
@@ -79,10 +85,4 @@ jobs:
     with:
       push: true
       ref: refs/tags/v${{ needs.release.outputs.version }}
-    secrets: inherit
-
-  deploy-docker:
-    needs: ['performance-test']
-    name: "Deploy Docker (only on main)"
-    uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

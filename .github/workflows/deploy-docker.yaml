@@ -28,7 +28,7 @@ jobs:
             with: |
               lfs: false
               submodules: true
-          env:
+          secrets:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Do pull to ensure up-to-date

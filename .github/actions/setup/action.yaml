@@ -23,7 +23,7 @@ runs:
         action: actions/checkout@v4
         with: |
           submodules: true
-      env:
+      secrets:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Use Node.js

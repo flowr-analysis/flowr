@@ -32,8 +32,6 @@ jobs:
             lfs:        true
             token:      ${{ secrets.RELEASE_TOKEN }}
             fetch-depth: 0
-        secrets:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Name and Email for Git (config)
         run: |

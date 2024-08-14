@@ -45,8 +45,6 @@ jobs:
             submodules: true
             lfs:        true
             token:      ${{ secrets.RELEASE_TOKEN }}
-        secrets:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v4

@@ -48,7 +48,7 @@ const commentTriggerRegex = / flowr@(\w+)/
  * We support two formats:
  * - Line comments in the form of `# flowr@include_next_line` or `# flowr@include_this_line`.
  * - Block comments which start with `# flowr@include_start` and end with `# flowr@include_end`.
- *   This supports nesting.
+ *   This supports nesting, but they have to appear on a single line.
  *
  * Please note that these comments have to start exactly with this content to work.
  *
@@ -84,8 +84,6 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
          });
          guard(startLineStack.length === 0, `mismatched magic start and end at end of file (${JSON.stringify(startLineStack)})`);
       }
-      // TODO: why no mach?
-      console.log('XXXXXXX', lines)
       const loc = node.location ?? node.info.fullRange
 
       if(loc && lines.has(loc[0])) {

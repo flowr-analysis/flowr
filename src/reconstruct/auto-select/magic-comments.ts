@@ -1,41 +1,41 @@
-import { RNode } from "../../r-bridge/lang-4.x/ast/model/model";
-import { RComment } from "../../r-bridge/lang-4.x/ast/model/nodes/r-comment";
-import { NormalizedAst, ParentInformation } from "../../r-bridge/lang-4.x/ast/model/processing/decorate";
-import { visitAst } from "../../r-bridge/lang-4.x/ast/model/processing/visitor";
-import { RType } from "../../r-bridge/lang-4.x/ast/model/type";
-import { guard } from "../../util/assert";
-import { SourceRange } from "../../util/range";
-import { AutoSelectPredicate } from "./auto-select-defaults";
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
+import type { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment'
+import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
+import { guard } from '../../util/assert'
+import type { SourceRange } from '../../util/range'
+import type { AutoSelectPredicate } from './auto-select-defaults'
 
 function getLoc({ location, info: { fullRange } }: RNode): SourceRange {
-   const loc = location ?? fullRange
-   guard(loc !== undefined, 'TODO: support location-less nodes!')
-   return loc;
+	const loc = location ?? fullRange
+	guard(loc !== undefined, 'TODO: support location-less nodes!')
+	return loc
 }
 
 type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined
 
 const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
-   'include_next_line': (n: RComment) => {
-      return [getLoc(n)[0] + 1]
-   },
-   'include_this_line': (n: RComment) => {
-      return [getLoc(n)[0]]
-   },
-   'include_start': (n: RComment, stack: number[]) => {
-      stack.push(getLoc(n)[0] + 1)
-      return undefined
-   },
-   'include_end': (n: RComment, stack: number[]) => {
-      const to = getLoc(n)[0]
-      guard(stack.length >= 1, `mismatched magic start and end at ${to}`)
-      const from = stack.pop() as number
-      const ret = new Array(to - from - 1)
-      for(let i = from; i < to; i++) {
-         ret[i - from] = i;
-      }
-      return ret;
-   }
+	'include_next_line': (n: RComment) => {
+		return [getLoc(n)[0] + 1]
+	},
+	'include_this_line': (n: RComment) => {
+		return [getLoc(n)[0]]
+	},
+	'include_start': (n: RComment, stack: number[]) => {
+		stack.push(getLoc(n)[0] + 1)
+		return undefined
+	},
+	'include_end': (n: RComment, stack: number[]) => {
+		const to = getLoc(n)[0]
+		guard(stack.length >= 1, `mismatched magic start and end at ${to}`)
+		const from = stack.pop() as number
+		const ret = new Array<number>(to - from - 1)
+		for(let i = from; i < to; i++) {
+			ret[i - from] = i
+		}
+		return ret
+	}
 }
 
 const commentTriggerRegex = / flowr@(\w+)/
@@ -56,41 +56,41 @@ const commentTriggerRegex = / flowr@(\w+)/
  *              {@link doNotAutoSelect}.
  */
 export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPredicate {
-   let lines: Set<number> | undefined = undefined;
-   return (node: RNode<ParentInformation>, normalizedAst: NormalizedAst) => {
-      if(!lines) {
-         lines = new Set<number>()
-         const startLineStack: number[] = []
-         visitAst(normalizedAst.ast, n => {
-            const comments = n.info.additionalTokens
-            if (!comments) {
-               return;
-            }
-            for(const c of comments) {
-               if(c.type !== RType.Comment || !c.content.startsWith(' flowr@')) {
-                  continue
-               }
-               const match = commentTriggerRegex.exec(c.content);
-               guard(match !== null, `invalid magic comment: ${c.content}`);
-               const idMapper = magicCommentIdMapper[match[1]];
-               guard(idMapper !== undefined, `unknown magic comment: ${match[1]}`);
-               const ls = idMapper(c, startLineStack);
-               if (ls !== undefined) {
-                  for (const l of ls) {
-                     (lines as Set<number>).add(l)
-                  }
-               }
-            }
-         });
-         guard(startLineStack.length === 0, `mismatched magic start and end at end of file (${JSON.stringify(startLineStack)})`);
-      }
-      const loc = node.location ?? node.info.fullRange
+	let lines: Set<number> | undefined = undefined
+	return (node: RNode<ParentInformation>, normalizedAst: NormalizedAst) => {
+		if(!lines) {
+			lines = new Set<number>()
+			const startLineStack: number[] = []
+			visitAst(normalizedAst.ast, n => {
+				const comments = n.info.additionalTokens
+				if(!comments) {
+					return
+				}
+				for(const c of comments) {
+					if(c.type !== RType.Comment || !c.content.startsWith(' flowr@')) {
+						continue
+					}
+					const match = commentTriggerRegex.exec(c.content)
+					guard(match !== null, `invalid magic comment: ${c.content}`)
+					const idMapper = magicCommentIdMapper[match[1]]
+					guard(idMapper !== undefined, `unknown magic comment: ${match[1]}`)
+					const ls = idMapper(c, startLineStack)
+					if(ls !== undefined) {
+						for(const l of ls) {
+							(lines as Set<number>).add(l)
+						}
+					}
+				}
+			})
+			guard(startLineStack.length === 0, `mismatched magic start and end at end of file (${JSON.stringify(startLineStack)})`)
+		}
+		const loc = node.location ?? node.info.fullRange
 
-      if(loc && lines.has(loc[0])) {
-         return true;
-      }
-      return and?.(node, normalizedAst) ?? false;
-   }
+		if(loc && lines.has(loc[0])) {
+			return true
+		}
+		return and?.(node, normalizedAst) ?? false
+	}
 }
 
 

@@ -13,7 +13,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
-import type {NoInfo, RNode} from '../r-bridge/lang-4.x/ast/model/model'
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
@@ -30,7 +30,8 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { autoSelectLibrary, AutoSelectPredicate } from './auto-select/auto-select-defaults';
+import type { AutoSelectPredicate } from './auto-select/auto-select-defaults'
+import { autoSelectLibrary } from './auto-select/auto-select-defaults'
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {

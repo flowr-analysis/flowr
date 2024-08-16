@@ -32,7 +32,7 @@ import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
-import {AutoSelectPredicate} from "../../../src/reconstruct/auto-select/auto-select-defaults";
+import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -294,13 +294,13 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 
 
 export function assertSliced(
-		name: string | TestLabel,
-		shell: RShell,
-		input: string,
-		criteria: SlicingCriteria,
-		expected: string,
-		userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
-		getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
+	name: string | TestLabel,
+	shell: RShell,
+	input: string,
+	criteria: SlicingCriteria,
+	expected: string,
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): Mocha.Test {
 	const fullname = decorateLabelContext(name, ['slice'])
 
@@ -309,9 +309,9 @@ export function assertSliced(
 
 		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
 			getId,
-			request:   requestFromInput(input),
+			request:      requestFromInput(input),
 			shell,
-			criterion: criteria,
+			criterion:    criteria,
 			autoSelectIf: userConfig?.autoSelectIf
 		}).allRemainingSteps()
 

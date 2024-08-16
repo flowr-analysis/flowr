@@ -1,6 +1,6 @@
-import {NoInfo, RNode} from "../../r-bridge/lang-4.x/ast/model/model";
-import {type NormalizedAst, ParentInformation} from "../../r-bridge/lang-4.x/ast/model/processing/decorate";
-import { RType } from "../../r-bridge/lang-4.x/ast/model/type";
+import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model'
+import type { ParentInformation , type NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 /**
  * The structure of the predicate that should be used to determine

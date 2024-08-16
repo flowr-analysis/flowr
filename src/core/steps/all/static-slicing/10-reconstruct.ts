@@ -5,7 +5,7 @@ import type { DeepReadonly } from 'ts-essentials'
 import type { SliceResult } from '../../../../slicing/static/slicer-types'
 import { reconstructToCode } from '../../../../reconstruct/reconstruct'
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults';
+import type { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults'
 
 export interface ReconstructRequiredInput {
 	autoSelectIf?: AutoSelectPredicate

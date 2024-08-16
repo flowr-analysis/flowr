@@ -34,7 +34,7 @@ import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { getSizeOfDfGraph } from './stats/size-of'
-import {AutoSelectPredicate} from "../reconstruct/auto-select/auto-select-defaults";
+import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults'
 
 /**
  * The logger to be used for benchmarking as a global object.

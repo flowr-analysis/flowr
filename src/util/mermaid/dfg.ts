@@ -33,6 +33,9 @@ interface MermaidGraph {
 	rootGraph:           DataflowGraph
 }
 
+/**
+ * Prints a {@link SourceRange|range} as a human readable string.
+ */
 export function formatRange(range: SourceRange | undefined): string {
 	if(range === undefined) {
 		return '??-??'

@@ -13,7 +13,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
+import type {NoInfo, RNode} from '../r-bridge/lang-4.x/ast/model/model'
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
@@ -51,7 +51,7 @@ function getLexeme(n: RNodeWithParent) {
 }
 
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
-	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
+	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf, configuration.fullAst)
 	return selectionHasLeaf ? foldToConst(leaf) : []
 }
 
@@ -96,7 +96,7 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 }
 
 function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentInformation>) {
-	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
+	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n, configuration.fullAst)
 }
 
 function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
@@ -403,8 +403,9 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 /**
  * Options to use with {@link reconstructToCode}.
  */
-interface ReconstructionConfiguration extends MergeableRecord {
+interface ReconstructionConfiguration<Info = ParentInformation> extends MergeableRecord {
 	selection:    Selection
+	fullAst:      NormalizedAst<Info>
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
@@ -479,7 +480,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
  *
  * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
-export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}
@@ -487,7 +488,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
 	const linesWithAutoSelected = new Set<number>()
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
-		const result = autoSelectIf(node)
+		const result = autoSelectIf(node, ast)
 		if(result && node.location) {
 			for(let i = node.location[0]; i <= node.location[2]; i++){
 				linesWithAutoSelected.add(i)
@@ -497,7 +498,11 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	}
 
 	// fold of the normalized ast
-	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+	const result = foldAstStateful(
+		ast.ast,
+		{ selection, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
+		reconstructAstFolds
+	)
 
 	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`)
 

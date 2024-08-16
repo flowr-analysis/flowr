@@ -15,7 +15,6 @@ import type { RComment } from '../../../../model/nodes/r-comment'
 export function normalizeComment(data: NormalizerData, obj: XmlBasedJson): RComment {
 	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#'), 'comment must start with #')
-
 	return {
 		type:    RType.Comment,
 		location,

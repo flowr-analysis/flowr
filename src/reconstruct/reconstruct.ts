@@ -30,6 +30,7 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { autoSelectLibrary, AutoSelectPredicate } from './auto-select/auto-select-defaults';
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {
@@ -399,29 +400,14 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
-/** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
-export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
-
-
+/**
+ * Options to use with {@link reconstructToCode}.
+ */
 interface ReconstructionConfiguration extends MergeableRecord {
 	selection:    Selection
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
-
-export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
-	return false
-}
-
-const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
-
-export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-	if(node.type !== RType.FunctionCall || !node.named) {
-		return false
-	}
-	return libraryFunctionCall.test(node.functionName.content)
-}
-
 
 /**
  * The fold functions used to reconstruct the ast in {@link reconstructToCode}.

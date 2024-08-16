@@ -34,6 +34,7 @@ import { collectAllSlicingCriteria } from '../slicing/criterion/collect-all'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor'
 import { getSizeOfDfGraph } from './stats/size-of'
+import {AutoSelectPredicate} from "../reconstruct/auto-select/auto-select-defaults";
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -105,13 +106,14 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText) {
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, autoSelectIf?: AutoSelectPredicate) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
 		this.pipeline = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
 			shell:     this.shell,
 			request:   { ...request },
-			criterion: []
+			criterion: [],
+			autoSelectIf
 		})
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')

@@ -10,20 +10,25 @@ import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../
  * can slice the respective file given the respective criteria.
  */
 export interface SliceRequestMessage extends IdMessageBase {
-	type:      'request-slice',
+	type:             'request-slice',
 	/** The {@link FileAnalysisRequestMessage#filetoken} of the file/data to slice */
-	filetoken: string,
+	filetoken:        string,
 	/** The slicing criteria to use */
-	criterion: SlicingCriteria
+	criterion:        SlicingCriteria,
+	/**
+	 * Should the magic comments (force-including lines within the slice) be ignord?
+	 */
+	noMagicComments?: boolean
 }
 
 export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 	type:   'request-slice',
 	schema: Joi.object({
-		type:      Joi.string().valid('request-slice').required(),
-		id:        Joi.string().optional(),
-		filetoken: Joi.string().required(),
-		criterion: Joi.array().items(Joi.string().regex(/\d+:\d+|\d+@.*|\$\d+/)).min(0).required()
+		type:            Joi.string().valid('request-slice').required(),
+		id:              Joi.string().optional(),
+		filetoken:       Joi.string().required(),
+		criterion:       Joi.array().items(Joi.string().regex(/\d+:\d+|\d+@.*|\$\d+/)).min(0).required(),
+		noMagicComments: Joi.boolean().optional()
 	})
 }
 

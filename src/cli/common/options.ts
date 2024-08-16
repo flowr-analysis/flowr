@@ -51,15 +51,16 @@ export const exportQuadsOptions: OptionDefinition[] = [
 ]
 
 export const slicerOptions: OptionDefinition[] = [
-	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',         alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
-	{ name: 'input-is-text', alias: 'r', type: Boolean, description: 'Indicate, that the input is *not* a file, but R code to directly consume' },
-	{ name: 'diff',          alias: 'd', type: Boolean, description: 'This requires ansi-output and only works if the api option is not set. It visualizes the slice as a diff.' },
-	{ name: 'criterion',     alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'. If you do not want to slice but only process the file, pass an empty string.', multiple: false },
-	{ name: 'stats',         alias: 's', type: Boolean, description: 'Print stats and write them to {italic <output>.stats} (runtimes etc.)', multiple: false },
-	{ name: 'output',        alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
-	{ name: 'api',                      type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
+	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging' },
+	{ name: 'help',              alias: 'h', type: Boolean, description: 'Print this usage guide' },
+	{ name: 'input',             alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
+	{ name: 'input-is-text',     alias: 'r', type: Boolean, description: 'Indicate, that the input is *not* a file, but R code to directly consume' },
+	{ name: 'diff',              alias: 'd', type: Boolean, description: 'This requires ansi-output and only works if the api option is not set. It visualizes the slice as a diff.' },
+	{ name: 'criterion',         alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'. If you do not want to slice but only process the file, pass an empty string.', multiple: false },
+	{ name: 'stats',             alias: 's', type: Boolean, description: 'Print stats and write them to {italic <output>.stats} (runtimes etc.)', multiple: false },
+	{ name: 'output',            alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
+	{ name: 'no-magic-comments', alias: 'm', type: Boolean, description: 'Disable the effects of magic comments which force lines to be included.' },
+	{ name: 'api',                           type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
 ]
 
 const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')

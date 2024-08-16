@@ -11,17 +11,20 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteri
 import type { ReconstructionResult } from '../reconstruct/reconstruct'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { stats2string } from '../benchmark/stats/print'
+import {autoSelectLibrary} from "../reconstruct/auto-select/auto-select-defaults";
+import {makeMagicCommentHandler} from "../reconstruct/auto-select/magic-comments";
 
 export interface SlicerCliOptions {
-	verbose:         boolean
-	help:            boolean
-	input:           string | undefined
-	criterion:       string | undefined
-	output:          string | undefined
-	diff:            boolean
-	'input-is-text': boolean
-	stats:           boolean
-	api:             boolean
+	verbose:             boolean
+	help:                boolean
+	input:               string | undefined
+	criterion:           string | undefined
+	output:              string | undefined
+	diff:                boolean
+	'input-is-text':     boolean
+	stats:               boolean
+	api:                 boolean
+	'no-magic-comments': boolean
 }
 
 
@@ -41,7 +44,12 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given')
 	guard(options.criterion !== undefined, 'a slicing criterion must be given')
 
-	await slicer.init(options['input-is-text'] ? { request: 'text', content: options.input } : { request: 'file', content: options.input })
+	await slicer.init(
+		options['input-is-text']
+			? { request: 'text', content: options.input }
+			: { request: 'file', content: options.input },
+		options["no-magic-comments"] ? autoSelectLibrary : makeMagicCommentHandler(autoSelectLibrary)
+	)
 
 	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = []
 	let reconstruct: ReconstructionResult | undefined = undefined

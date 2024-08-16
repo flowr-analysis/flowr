@@ -1,5 +1,5 @@
 import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model'
-import type { ParentInformation , type NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 /**

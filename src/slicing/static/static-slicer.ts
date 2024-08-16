@@ -16,9 +16,14 @@ import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '..
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
 /**
- * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
+ * This returns the ids to include in the static backward slice, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
+ *
+ * @param graph     - The dataflow graph to conduct the slicing on.
+ * @param ast       - The normalized AST of the code (used to get static depth information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
+ * @param criteria  - The criteras to slice on.
+ * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
 export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')

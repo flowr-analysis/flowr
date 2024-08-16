@@ -36,22 +36,27 @@ interface PrettyPrintLine {
 	line:   string
 	indent: number
 }
-function plain(text: string): PrettyPrintLine[] {
+
+function plain(text: string): [PrettyPrintLine] {
 	return [{ line: text, indent: 0 }]
 }
+
 type Code = PrettyPrintLine[]
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
+function getLexeme(n: RNodeWithParent) {
+	return n.info.fullLexeme ?? n.lexeme ?? ''
+}
 
-const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
-
-const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
+function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
 	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
 	return selectionHasLeaf ? foldToConst(leaf) : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
+function foldToConst(n: RNodeWithParent): Code {
+	return plain(getLexeme(n))
+}
 
 function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))

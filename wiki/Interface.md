@@ -2806,6 +2806,8 @@ flowchart LR
 
 The graph returned for you may differ, depending on the evolution of *flowR*.
 
+For the slicing, you have access to the same [magic comments](#magic-comments) as with the server.
+
 ### Interfacing with the File System
 
 Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:

@@ -25,7 +25,7 @@ jobs:
       - name: "⬇️ Use Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: $ACTION_NODE_VERSION
+          node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
 
       - name: "👩‍🏫 Run linter"
@@ -71,7 +71,7 @@ jobs:
       - name: "⬇️ Use Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: $ACTION_NODE_VERSION
+          node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
       
       - name: "⬇️ Setup R"
@@ -116,13 +116,13 @@ jobs:
       - name: "⬇️ Use Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: $ACTION_NODE_VERSION
+          node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
       
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: $ACTION_R_VERSION
+          r-version: ${{ env.ACTION_R_VERSION }}
       
       - name: "📦 Install R Packages"
         shell: Rscript {0}
@@ -246,13 +246,13 @@ jobs:
       - name: "⬇️ Use Node.js"
         uses: actions/setup-node@v4
         with:
-          node-version: $ACTION_NODE_VERSION
+          node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
       
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: $ACTION_R_VERSION
+          r-version: ${{ env.ACTION_R_VERSION }}
       
       - name: "📦 Install R Packages"
         shell: Rscript {0}

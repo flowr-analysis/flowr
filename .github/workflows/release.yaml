@@ -87,7 +87,6 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
-        if: ${{ inputs.coverage }}
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

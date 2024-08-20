@@ -115,7 +115,7 @@ With WebStorm, you can set up Run and Debug configurations from the IDE to run t
 
 ## CI Pipeline
 
-We have several workflows defined in [.github/workflows](../.github/workflows/) (with the core setup of node and R being outsourced to [.github/actions/setup](../.github/actions/setup)).
+We have several workflows defined in [.github/workflows](../.github/workflows/).
 We explain the most important workflows in the following:
 
 - [qa.yaml](../.github/workflows/qa.yaml) is the main workflow which will run different steps depending on several factors. It is responsible for:

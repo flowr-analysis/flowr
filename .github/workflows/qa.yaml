@@ -38,11 +38,22 @@ jobs:
     name: "Debug"
     runs-on: ubuntu-latest
     steps:
-    - name: "Debug state"
-      run: |
-        echo "Event: ${{ github.event_name }}"
-        echo "Ref: ${{ github.ref }}"
-        echo "Base Ref: ${{ github.base_ref }}"
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "🔍 Debug state"
+        run: |
+          echo "::group::Versions"
+          echo "Node Version: $ACTION_NODE_VERSION"
+          echo "R Version: $ACTION_R_VERSION"
+          echo "::endgroup::"          
+          echo "::group::Git Info"
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Base Ref: ${{ github.base_ref }}"
+          echo "Head Commit: ${{ github.sha }}"
+          echo "::endgroup::"          
 
   lint:
     needs: [ debug ]
@@ -101,6 +112,7 @@ jobs:
     concurrency:
       group: doc-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
+
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
@@ -115,7 +127,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: $ACTION_NODE_VERSION
-          registry-url: 'https://registry.npmjs.org/'
+          registry-url: "https://registry.npmjs.org/"
       
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2

@@ -16,14 +16,21 @@ import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '..
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
 /**
- * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
+ * This returns the ids to include in the static backward slice, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
+ *
+ * @param graph     - The dataflow graph to conduct the slicing on.
+ * @param ast       - The normalized AST of the code (used to get static depth information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
+ * @param criteria  - The criteras to slice on.
+ * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
 export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
-	expensiveTrace(slicerLogger, () => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
+	expensiveTrace(slicerLogger, 
+		() => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
+	)
 
 	const queue = new VisitingQueue(threshold)
 
@@ -33,11 +40,11 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 	{
 		const emptyEnv = initializeCleanEnvironments()
 		const basePrint = envFingerprint(emptyEnv)
-		for(const startId of decodedCriteria) {
-			queue.add(startId.id, emptyEnv, basePrint, false)
+		for(const { id: startId } of decodedCriteria) {
+			queue.add(startId, emptyEnv, basePrint, false)
 			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
-			minDepth = Math.min(minDepth, ast.idMap.get(startId.id)?.info.depth ?? minDepth)
-			sliceSeedIds.add(startId.id)
+			minDepth = Math.min(minDepth, ast.idMap.get(startId)?.info.depth ?? minDepth)
+			sliceSeedIds.add(startId)
 		}
 	}
 

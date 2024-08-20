@@ -10,6 +10,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
       - [Using Netcat](#using-netcat)
       - [Using Python](#using-python)
   - [The Slice Request](#the-slice-request)
+    - [Magic Comments](#magic-comments)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
@@ -2597,6 +2598,8 @@ In order to slice, you have to send a file analysis request first. The `filetoke
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
 See the implementation of the request-slice message for more information.
 
+Additionally, you may pass `"noMagicComments": true` to disable the automatic selection of elements based on magic comments (see below).
+
 <details open>
     <summary>Example Request</summary>
 
@@ -2667,6 +2670,14 @@ The `results` field of the response contains two keys of importance:
 </details>
 
 The semantics of the error message are similar. If, for example, the slicing criterion is invalid or the `filetoken` is unknown, *flowR* will respond with an error.
+
+#### Magic Comments
+
+Within a document that is to be sliced, you can use magic comments to influence the slicing process:
+
+- `# flowr@include_next_line` will cause the next line to be included, independent of if it is important for the slice.
+- `# flowr@include_this_line` will cause the current line to be included, independent of if it is important for the slice.
+- `# flowr@include_start` and `# flowr@include_end` will cause the lines between them to be included, independent of if they are important for the slice. These magic comments can be nested but should appear on a separate line.
 
 ### The REPL Request
 
@@ -2794,6 +2805,8 @@ flowchart LR
 ```
 
 The graph returned for you may differ, depending on the evolution of *flowR*.
+
+For the slicing, you have access to the same [magic comments](#magic-comments) as with the server.
 
 ### Interfacing with the File System
 

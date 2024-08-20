@@ -30,28 +30,35 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { AutoSelectPredicate } from './auto-select/auto-select-defaults'
+import { autoSelectLibrary } from './auto-select/auto-select-defaults'
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {
 	line:   string
 	indent: number
 }
-function plain(text: string): PrettyPrintLine[] {
+
+function plain(text: string): [PrettyPrintLine] {
 	return [{ line: text, indent: 0 }]
 }
+
 type Code = PrettyPrintLine[]
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
+function getLexeme(n: RNodeWithParent) {
+	return n.info.fullLexeme ?? n.lexeme ?? ''
+}
 
-const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
-
-const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
-	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
+function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
+	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf, configuration.fullAst)
 	return selectionHasLeaf ? foldToConst(leaf) : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
+function foldToConst(n: RNodeWithParent): Code {
+	return plain(getLexeme(n))
+}
 
 function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
@@ -90,7 +97,7 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 }
 
 function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentInformation>) {
-	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
+	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n, configuration.fullAst)
 }
 
 function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
@@ -394,29 +401,15 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
-/** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
-export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
-
-
-interface ReconstructionConfiguration extends MergeableRecord {
+/**
+ * Options to use with {@link reconstructToCode}.
+ */
+interface ReconstructionConfiguration<Info = ParentInformation> extends MergeableRecord {
 	selection:    Selection
+	fullAst:      NormalizedAst<Info>
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
-
-export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
-	return false
-}
-
-const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
-
-export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-	if(node.type !== RType.FunctionCall || !node.named) {
-		return false
-	}
-	return libraryFunctionCall.test(node.functionName.content)
-}
-
 
 /**
  * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
@@ -488,7 +481,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
  *
  * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
-export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}
@@ -496,7 +489,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	// we use a wrapper to count the number of lines for which the autoSelectIf predicate triggered
 	const linesWithAutoSelected = new Set<number>()
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
-		const result = autoSelectIf(node)
+		const result = autoSelectIf(node, ast)
 		if(result && node.location) {
 			for(let i = node.location[0]; i <= node.location[2]; i++){
 				linesWithAutoSelected.add(i)
@@ -506,7 +499,11 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	}
 
 	// fold of the normalized ast
-	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+	const result = foldAstStateful(
+		ast.ast,
+		{ selection, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
+		reconstructAstFolds
+	)
 
 	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`)
 

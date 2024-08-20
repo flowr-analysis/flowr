@@ -33,6 +33,8 @@ import { DataflowGraph } from '../../../dataflow/graph/graph'
 import * as tmp from 'tmp'
 import fs from 'fs'
 import type { RParseRequests } from '../../../r-bridge/retriever'
+import { autoSelectLibrary } from '../../../reconstruct/auto-select/auto-select-defaults'
+import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -216,7 +218,11 @@ export class FlowRServerConnection {
 			return
 		}
 
-		fileInformation.pipeline.updateRequest({ criterion: request.criterion })
+		fileInformation.pipeline.updateRequest({
+			criterion:    request.criterion,
+			autoSelectIf: request.noMagicComments ? autoSelectLibrary : makeMagicCommentHandler(autoSelectLibrary)
+		})
+
 		void fileInformation.pipeline.allRemainingSteps(true).then(results => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',

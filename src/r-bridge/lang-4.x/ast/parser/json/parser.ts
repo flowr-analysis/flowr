@@ -15,7 +15,6 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 export function normalize(jsonString: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined }
 	const object = convertPreparedParsedData(prepareParsedData(jsonString))
-
 	return decorateAst(normalizeRootObjToAst(data, object), getId)
 }
 

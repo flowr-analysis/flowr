@@ -266,7 +266,7 @@ jobs:
           path: test/performance/results/
 
     performance-test-upload:
-      name: "Upload Performance Test Results"
+      name: "⬆️ Upload Performance Test Results"
       runs-on: ubuntu-22.04
       needs: [ performance-test ]
       steps:

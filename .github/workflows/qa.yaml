@@ -175,7 +175,7 @@ jobs:
           path: test/performance/results/
 
   performance-test-upload:
-    name: "Upload Performance Test Results"
+    name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
     needs: [ performance-test ]
     steps:
@@ -244,7 +244,7 @@ jobs:
         
   deploy-doc:
     needs: [ test, performance-test ]
-    name: "Build and Deploy Documentation (only on main)"
+    name: "🚀 Build and Deploy Documentation (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

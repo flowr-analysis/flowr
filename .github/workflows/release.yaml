@@ -1,4 +1,4 @@
-name: "Release"
+name: "Release Action"
 
 'on':
   push:
@@ -6,22 +6,102 @@ name: "Release"
       - main
 
 jobs:
-  full-test:
-    name: "Run Full Test Suite (Release)"
+  lint:
+    name: "👩‍🏫 Linting (Full)"
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
-      startsWith(github.event.head_commit.message, '[release:major]') ||
-      startsWith(github.event.head_commit.message, '[release:patch]')
-    uses: flowr-analysis/flowr/.github/workflows/full-test.yaml@main
-
-  release:
-    name: "Release"
-    runs-on: ubuntu-latest
-    needs: ['full-test']
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    runs-on: ubuntu-22.04
     steps:
-      - name: "Setup the Environment"
-        uses: flowr-analysis/flowr/.github/actions/setup@main
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
 
-      - name: "Checkout Repository"
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "👩‍🏫 Run linter"
+        run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
+
+  test-full:
+    name: "🧪 Test Suite (full)"
+    needs: ['lint']
+    if: ${{
+          startsWith(github.event.head_commit.message, '[release:minor]') ||
+          startsWith(github.event.head_commit.message, '[release:major]') ||
+          startsWith(github.event.head_commit.message, '[release:patch]') || (
+            always()
+            && !failure()
+            && (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
+          )
+        }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
+        os: [ ubuntu-latest ]
+        include:
+           - os: macos-latest
+             r-version: '4.4.0'
+           - os: windows-latest
+             r-version: '4.4.0'
+    runs-on: ${{ matrix.os }}
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
+      cancel-in-progress: true
+    steps: 
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+      
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.r-version }}
+      
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        
+      - name: "🧪 Run the Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
+
+      - name: "⬆️ Upload Coverage Reports to Codecov"
+        if: ${{ inputs.coverage }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+      
+  release:
+    name: "📦 Release"
+    runs-on: ubuntu-latest
+    needs: ['test-full']
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    steps:
+      - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -29,16 +109,35 @@ jobs:
           token:      ${{ secrets.RELEASE_TOKEN }}
           fetch-depth: 0
 
-      - name: Name and Email for Git (config)
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+      
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+      
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+
+      - name: "⚙️ Name and Email for Git (config) and update"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git pull
 
-      - name: Install Dependencies
+      - name: "📦 Install Dependencies"
         run: npm ci
 
-      - name: Release
+      - name: "🌟 Release"
         run: |
           step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
           title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
@@ -56,10 +155,10 @@ jobs:
           # (see https://github.com/flowr-analysis/flowr/security/code-scanning/29)
           MESSAGE: ${{ github.event.head_commit.message }}
 
-      - name: Ensure up-to-date Dependencies
+      - name: "🔁 Ensure up-to-date Dependencies"
         run: npm ci
 
-      - name: Publish on NPM
+      - name: "⬆️ Publish on NPM"
         # we use publish library because flowr itself is a runnable, and we do not want to publish something with extra
         # dist paths etc.
         # besides, we make dead-sure we have a clean directory to work on!
@@ -73,18 +172,181 @@ jobs:
   deploy-docker:
     needs: ['release']
     name: "Deploy Docker (only on main)"
-    uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
+    concurrency:
+      group: docker-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     secrets: inherit
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            lfs: false
+            submodules: true
+
+      - name: "🔁 Do pull to ensure up-to-date"
+        run: git pull
+
+      - name: "🛠️ Build the image"
+        run: docker build -t flowr -f scripts/Dockerfile .
+
+      - name: "🧪 Test that the image works"
+        timeout-minutes: 5
+        run: |
+          docker run --rm flowr --version
+
+      - name: "🚀 Deploy the image"
+        run: |
+          TAG="eagleoutice/flowr"
+          VERSION="$(date '+%Y%m%d')"
+          FLOWR_VERSION="$(docker run --rm flowr --version |  grep -oP 'flowR:\s*\K[^ ]+')"
+          docker tag flowr "${TAG}":"date-$VERSION"
+          docker tag flowr "${TAG}":"$FLOWR_VERSION"
+          docker tag flowr "${TAG}":latest
+          docker images "$TAG"
+          echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
+          docker push "$TAG" --all-tags
+          echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          
+      - name: "🗃️ Compress the image"
+        run: |
+          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: "⬆️ Upload the compressed image to the workflow"
+        uses: actions/upload-artifact@v4
+        with:
+          path: flowr-$THE_FLOWR_VERSION.tar.gz
 
   performance-test:
-    name: "Performance Test"
+    name: "⏱️ Performance Test"
     needs: ['release']
     # we do not run if the release workflow runs it with pushing
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
-    uses: flowr-analysis/flowr/.github/workflows/performance-test.yaml@main
-    with:
-      push: true
-      ref: refs/tags/v${{ needs.release.outputs.version }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 400
+    strategy:
+      fail-fast: true
+      matrix:
+        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
+        name: ['artificial', 'social-science']
     secrets: inherit
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+      
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+      
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        
+      - name: "⏱️ Run the performance benchmarks"
+        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}"
+
+      - name: "⬆️ Upload Benchmark Results"
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ matrix.name }}
+          path: test/performance/results/
+
+    performance-test-upload:
+      name: "Upload Performance Test Results"
+      runs-on: ubuntu-22.04
+      needs: [ performance-test ]
+      steps:
+        - name: "Checkout Repository"
+          uses: actions/checkout@v4
+          with:
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+  
+        - name: "⬇️ Get benchmark Artifacts (artificial)"
+          uses: actions/download-artifact@v4
+          with:
+            name: benchmark-results-artificial
+            path: benchmark-ai/
+  
+        - name: "⚙️ Name and Email for Git (config) and update"
+          # we pull just to be totally sure
+          run: |
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git pull
+  
+        # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
+        # Furthermore, you have to update the git reset command when pushing!
+        - name: "🥄 Merge and Produce Performance Results (artificial)"
+          uses: benchmark-action/github-action-benchmark@v1
+          with:
+            name: '"artificial" Benchmark Suite'
+            tool: 'customSmallerIsBetter'
+            output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            fail-on-alert: false
+            summary-always: false
+            comment-on-alert: true
+            comment-always: true
+            skip-fetch-gh-pages: true
+            max-items-in-chart: 100
+            ref: "refs/tags/v${{ needs.release.outputs.version }}"
+            gh-repository: ${{ github.repository }}
+            benchmark-data-dir-path: wiki/stats/benchmark/
+            auto-push: false
+  
+        - name: "⬇️ Get benchmark Artifacts (social-science)"
+          uses: actions/download-artifact@v4
+          with:
+            name: benchmark-results-social-science
+            path: benchmark-ss/
+  
+        - name: "🥄 Merge and Produce Performance Results (social-science)"
+          uses: benchmark-action/github-action-benchmark@v1
+          with:
+            name: '"social-science" Benchmark Suite'
+            tool: 'customSmallerIsBetter'
+            output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
+            github-token: ${{ secrets.GITHUB_TOKEN }}
+            fail-on-alert: false
+            summary-always: false
+            comment-on-alert: true
+            comment-always: true
+            skip-fetch-gh-pages: true
+            max-items-in-chart: 100
+            ref: "refs/tags/v${{ needs.release.outputs.version }}"
+            gh-repository: ${{ github.repository }}
+            benchmark-data-dir-path: wiki/stats/benchmark/
+            auto-push: false
+            
+        - name: "⬆️ Push benchmark results"
+            # we manipulate the name of the last commit message
+            run: |
+              git reset --soft HEAD~2
+              git add -f wiki/stats/benchmark/
+              git commit -m "[skip ci] doc: new benchmark data"
+    
+        - name: "⬆️ Push changes"
+          uses: ad-m/github-push-action@master
+          with:
+            branch: main
+            github_token: ${{ secrets.RELEASE_TOKEN }}
+            force: true
+    

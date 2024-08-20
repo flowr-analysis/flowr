@@ -23,7 +23,7 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 		type:      Joi.string().valid('request-slice').required(),
 		id:        Joi.string().optional(),
 		filetoken: Joi.string().required(),
-		criterion: Joi.array().items(Joi.string().regex(/\d+:\d+|\d+@.*|\$\d+/)).min(0).required()
+		criterion: Joi.array().items(Joi.string()).min(0).required()
 	})
 }
 

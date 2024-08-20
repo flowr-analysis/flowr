@@ -172,6 +172,7 @@ jobs:
   deploy-docker:
     needs: ['release']
     name: "Deploy Docker (only on main)"
+    runs-on: ubuntu-22.04
     concurrency:
       group: docker-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -265,86 +266,86 @@ jobs:
           name: benchmark-results-${{ matrix.name }}
           path: test/performance/results/
 
-    performance-test-upload:
-      name: "⬆️ Upload Performance Test Results"
-      runs-on: ubuntu-22.04
-      needs: [ performance-test ]
-      steps:
-        - name: "Checkout Repository"
-          uses: actions/checkout@v4
-          with:
-            submodules: true
-            lfs:        true
-            token:      ${{ secrets.RELEASE_TOKEN }}
-  
-        - name: "⬇️ Get benchmark Artifacts (artificial)"
-          uses: actions/download-artifact@v4
-          with:
-            name: benchmark-results-artificial
-            path: benchmark-ai/
-  
-        - name: "⚙️ Name and Email for Git (config) and update"
-          # we pull just to be totally sure
-          run: |
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git pull
-  
-        # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
-        # Furthermore, you have to update the git reset command when pushing!
-        - name: "🥄 Merge and Produce Performance Results (artificial)"
-          uses: benchmark-action/github-action-benchmark@v1
-          with:
-            name: '"artificial" Benchmark Suite'
-            tool: 'customSmallerIsBetter'
-            output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
-            github-token: ${{ secrets.GITHUB_TOKEN }}
-            fail-on-alert: false
-            summary-always: false
-            comment-on-alert: true
-            comment-always: true
-            skip-fetch-gh-pages: true
-            max-items-in-chart: 100
-            ref: "refs/tags/v${{ needs.release.outputs.version }}"
-            gh-repository: ${{ github.repository }}
-            benchmark-data-dir-path: wiki/stats/benchmark/
-            auto-push: false
-  
-        - name: "⬇️ Get benchmark Artifacts (social-science)"
-          uses: actions/download-artifact@v4
-          with:
-            name: benchmark-results-social-science
-            path: benchmark-ss/
-  
-        - name: "🥄 Merge and Produce Performance Results (social-science)"
-          uses: benchmark-action/github-action-benchmark@v1
-          with:
-            name: '"social-science" Benchmark Suite'
-            tool: 'customSmallerIsBetter'
-            output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
-            github-token: ${{ secrets.GITHUB_TOKEN }}
-            fail-on-alert: false
-            summary-always: false
-            comment-on-alert: true
-            comment-always: true
-            skip-fetch-gh-pages: true
-            max-items-in-chart: 100
-            ref: "refs/tags/v${{ needs.release.outputs.version }}"
-            gh-repository: ${{ github.repository }}
-            benchmark-data-dir-path: wiki/stats/benchmark/
-            auto-push: false
+  performance-test-upload:
+    name: "⬆️ Upload Performance Test Results"
+    runs-on: ubuntu-22.04
+    needs: [ performance-test ]
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs:        true
+          token:      ${{ secrets.RELEASE_TOKEN }}
 
-        - name: "⬆️ Push benchmark results"
-          # we manipulate the name of the last commit message
-          run: |
-            git reset --soft HEAD~2
-            git add -f wiki/stats/benchmark/
-            git commit -m "[skip ci] doc: new benchmark data"
-    
-        - name: "⬆️ Push changes"
-          uses: ad-m/github-push-action@master
-          with:
-            branch: main
-            github_token: ${{ secrets.RELEASE_TOKEN }}
-            force: true
+      - name: "⬇️ Get benchmark Artifacts (artificial)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-artificial
+          path: benchmark-ai/
+
+      - name: "⚙️ Name and Email for Git (config) and update"
+        # we pull just to be totally sure
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull
+
+      # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
+      # Furthermore, you have to update the git reset command when pushing!
+      - name: "🥄 Merge and Produce Performance Results (artificial)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"artificial" Benchmark Suite'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: "refs/tags/v${{ needs.release.outputs.version }}"
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (social-science)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-social-science
+          path: benchmark-ss/
+
+      - name: "🥄 Merge and Produce Performance Results (social-science)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"social-science" Benchmark Suite'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: "refs/tags/v${{ needs.release.outputs.version }}"
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬆️ Push benchmark results"
+        # we manipulate the name of the last commit message
+        run: |
+          git reset --soft HEAD~2
+          git add -f wiki/stats/benchmark/
+          git commit -m "[skip ci] doc: new benchmark data"
+  
+      - name: "⬆️ Push changes"
+        uses: ad-m/github-push-action@master
+        with:
+          branch: main
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          force: true
     

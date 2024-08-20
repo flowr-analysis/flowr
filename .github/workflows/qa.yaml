@@ -60,7 +60,7 @@ jobs:
 
   lint:
     needs: [ debug ]
-    name: "👩‍🏫 Linting (Local)"
+    name: "👩‍🏫 Linting (local)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     runs-on: ubuntu-22.04
     steps:

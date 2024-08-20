@@ -170,7 +170,7 @@ jobs:
 
   deploy-docker:
     needs: ['release']
-    name: "Deploy Docker (only on main)"
+    name: "🚀 Deploy Docker (only on main)"
     runs-on: ubuntu-22.04
     concurrency:
       group: docker-${{ github.workflow }}-${{ github.ref }}

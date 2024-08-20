@@ -241,7 +241,7 @@ jobs:
   deploy-doc:
     needs: [ test, performance-test ]
     name: "🚀 Build and Deploy Documentation (only on main)"
-    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+    if: ${{ always() && !failure() && (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

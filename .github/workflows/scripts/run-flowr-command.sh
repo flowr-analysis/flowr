@@ -44,7 +44,7 @@ function end_group {
 group "Ensure node dependencies are installed"
 npm ci
 
-if [ "$ACTION" -eq "doc" ]; then
+if [ "$ACTION" == "doc" ]; then
    group "Setup graphviz for documentation generation"
    sudo apt-get update
    sudo apt-get install -y graphviz
@@ -55,7 +55,7 @@ group "Run action $ACTION"
 npm run $ACTION
 end_group
 
-if [ "$ACTION" -eq "doc" ]; then
+if [ "$ACTION" == "doc" ]; then
    group "Create documentation commit"
    git config --local user.email "action@github.com"
    git config --local user.name "GitHub Action"

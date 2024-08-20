@@ -18,20 +18,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: "Setup the Environment"
-        uses: flowr-analysis/flowr/.github/actions/setup@main
-
-      - name: "Checkout Repository"
+      - name: "🛒 Checkout Repository (Release Perm.)"
         uses: actions/checkout@v4
         with:
             submodules: true
             lfs:        true
             token:      ${{ secrets.RELEASE_TOKEN }}
 
-      - name: "Checkout LFS"
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: $ACTION_NODE_VERSION
+          registry-url: "https://registry.npmjs.org/"
+      
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: $ACTION_R_VERSION
+      
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+            
+      - name: "🛒 Checkout LFS"
+        # just as a time-proven safety measure
         run: git lfs checkout
 
-      - name: Update the Capabilities Wiki Page
+      - name: "🛠️ Update the Capabilities Wiki Page"
         run: |
           npm ci
           # test if the file exists
@@ -55,7 +72,7 @@ jobs:
           # delete the old capabilities again
           rm wiki/Capabilities-Old.md
 
-      - name: Push changed capabilities
+      - name: "⬆️ Push changed capabilities"
         if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         uses: ad-m/github-push-action@master
         with:
@@ -63,12 +80,12 @@ jobs:
           github_token: ${{ secrets.RELEASE_TOKEN }}
           force: true
 
-      - name: Check the README for broken links
+      - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
 
-      - name: Publish the Wiki
+      - name: "⬆️ Publish the Wiki"
         uses: Andrew-Chen-Wang/github-wiki-action@v4
         # We do not need to republish if nothing changes. Furthermore, do not publish on PR as this should be done by the push on main!
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
@@ -76,7 +93,7 @@ jobs:
           path: "wiki/"
           token: ${{ secrets.GH_DEPLOY_WIKI }}
 
-      - name: Check the Wiki pages for broken links
+      - name: "🔎 Check the Wiki pages for broken links"
         uses: becheran/mlc@v0.18.0
         if: ${{ always() && !failure() }}
         with:

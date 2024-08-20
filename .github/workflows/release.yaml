@@ -333,13 +333,13 @@ jobs:
             gh-repository: ${{ github.repository }}
             benchmark-data-dir-path: wiki/stats/benchmark/
             auto-push: false
-            
+
         - name: "⬆️ Push benchmark results"
-            # we manipulate the name of the last commit message
-            run: |
-              git reset --soft HEAD~2
-              git add -f wiki/stats/benchmark/
-              git commit -m "[skip ci] doc: new benchmark data"
+          # we manipulate the name of the last commit message
+          run: |
+            git reset --soft HEAD~2
+            git add -f wiki/stats/benchmark/
+            git commit -m "[skip ci] doc: new benchmark data"
     
         - name: "⬆️ Push changes"
           uses: ad-m/github-push-action@master

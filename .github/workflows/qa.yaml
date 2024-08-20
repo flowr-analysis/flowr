@@ -38,6 +38,9 @@ jobs:
     name:    "🔍 Debug"
     runs-on: ubuntu-22.04
     steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh

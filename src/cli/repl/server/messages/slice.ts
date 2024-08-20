@@ -24,11 +24,10 @@ export interface SliceRequestMessage extends IdMessageBase {
 export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 	type:   'request-slice',
 	schema: Joi.object({
-		type:            Joi.string().valid('request-slice').required(),
-		id:              Joi.string().optional(),
-		filetoken:       Joi.string().required(),
-		criterion:       Joi.array().items(Joi.string().regex(/\d+:\d+|\d+@.*|\$\d+/)).min(0).required(),
-		noMagicComments: Joi.boolean().optional()
+		type:      Joi.string().valid('request-slice').required(),
+		id:        Joi.string().optional(),
+		filetoken: Joi.string().required(),
+		criterion: Joi.array().items(Joi.string()).min(0).required()
 	})
 }
 

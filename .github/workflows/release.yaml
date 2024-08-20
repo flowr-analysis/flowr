@@ -172,8 +172,51 @@ jobs:
   deploy-docker:
     needs: ['release']
     name: "Deploy Docker (only on main)"
-    uses: flowr-analysis/flowr/.github/workflows/deploy-docker.yaml@main
+    concurrency:
+      group: docker-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     secrets: inherit
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            lfs: false
+            submodules: true
+
+      - name: "🔁 Do pull to ensure up-to-date"
+        run: git pull
+
+      - name: "🛠️ Build the image"
+        run: docker build -t flowr -f scripts/Dockerfile .
+
+      - name: "🧪 Test that the image works"
+        timeout-minutes: 5
+        run: |
+          docker run --rm flowr --version
+
+      - name: "🚀 Deploy the image"
+        run: |
+          TAG="eagleoutice/flowr"
+          VERSION="$(date '+%Y%m%d')"
+          FLOWR_VERSION="$(docker run --rm flowr --version |  grep -oP 'flowR:\s*\K[^ ]+')"
+          docker tag flowr "${TAG}":"date-$VERSION"
+          docker tag flowr "${TAG}":"$FLOWR_VERSION"
+          docker tag flowr "${TAG}":latest
+          docker images "$TAG"
+          echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
+          docker push "$TAG" --all-tags
+          echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          
+      - name: "🗃️ Compress the image"
+        run: |
+          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: "⬆️ Upload the compressed image to the workflow"
+        uses: actions/upload-artifact@v4
+        with:
+          path: flowr-$THE_FLOWR_VERSION.tar.gz
 
   performance-test:
     name: "Performance Test"

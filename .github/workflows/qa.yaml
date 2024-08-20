@@ -170,6 +170,12 @@ jobs:
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}"
 
+      - name: "⬆️ Upload Benchmark Results"
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ matrix.name }}
+          path: test/performance/results/
+
   performance-test-upload:
     name: "Upload Performance Test Results"
     runs-on: ubuntu-22.04
@@ -195,8 +201,7 @@ jobs:
           git config --local user.name "GitHub Action"
           git pull
 
-      # currently we have a duplication, add your benchmark names here and in `performance-test`
-      # Furthermore, you have to update the git reset command when pushing (although the qa benchmark tests will not push)
+      # currently we have a duplication, add your benchmark names here and in `performance-test` and check the release.yaml
       - name: "🥄 Merge and Produce Performance Results (artificial)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -240,7 +245,7 @@ jobs:
           auto-push: false
         
   deploy-doc:
-    needs: [ test, full-test, performance-test ]
+    needs: [ test, performance-test ]
     name: "Build and Deploy Documentation (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest

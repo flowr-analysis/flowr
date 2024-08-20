@@ -31,7 +31,7 @@ export const helpCommand: ReplCommand = {
 	fn:           output => {
 		initCommandMapping()
 		output.stdout(`
-You can always just enter R expressions which get evaluated right away:
+If enabled, you can just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
 ${italic('[1] 2', output.formatter)}
 

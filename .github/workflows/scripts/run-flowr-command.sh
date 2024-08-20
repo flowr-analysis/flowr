@@ -24,7 +24,8 @@ fi
 if [[ -z "${1:-}" ]]; then
    error_message "The ACTION argument is required"
 fi
-ACTION="${1:-}"
+
+ACTION=$1
 
 set -eu
 

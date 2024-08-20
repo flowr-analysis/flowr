@@ -81,13 +81,44 @@ jobs:
 
   test:
     needs: [ debug ]
-    name: "Test Suite (coverage)"
+    name: "⚗️ Test Suite (coverage)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
-    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
-    with:
-      action: test-full -- --forbid-only
-      coverage: true
+    runs-on: ubuntu-22.04
     secrets: inherit
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: $ACTION_NODE_VERSION
+          registry-url: "https://registry.npmjs.org/"
+      
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: $ACTION_R_VERSION
+      
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+        
+      - name: "🧪 Run the Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
+
+      - name: "⬆️ Upload Coverage Reports to Codecov"
+        if: ${{ inputs.coverage }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
   performance-test:
     needs: [ test ]
@@ -149,7 +180,7 @@ jobs:
         with:
           r-version: $ACTION_R_VERSION
       
-      - name: "📦 Install R packages"
+      - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
         

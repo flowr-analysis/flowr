@@ -188,7 +188,7 @@ jobs:
           name: benchmark-results-artificial
           path: benchmark-ai/
 
-      - name: Name and Email for Git (config) and update
+      - name: "⚙️ Name and Email for Git (config) and update"
         # we pull just to be totally sure
         run: |
           git config --local user.email "action@github.com"
@@ -197,7 +197,7 @@ jobs:
 
       # currently we have a duplication, add your benchmark names here and in `performance-test`
       # Furthermore, you have to update the git reset command when pushing (although the qa benchmark tests will not push)
-      - name: "Merge and Produce Performance Results (artificial)"
+      - name: "🥄 Merge and Produce Performance Results (artificial)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: '"artificial" Benchmark Suite'
@@ -221,7 +221,7 @@ jobs:
           name: benchmark-results-social-science
           path: benchmark-ss/
 
-      - name: "Merge and Produce Performance Results (social-science)"
+      - name: "🥄 Merge and Produce Performance Results (social-science)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: '"social-science" Benchmark Suite'
@@ -239,16 +239,6 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
         
-  full-test:
-    needs: [ lint ]
-    name: "Full Test Suite"
-    if: ${{
-              always()
-          && !failure()
-          && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'))
-      }}
-    uses: flowr-analysis/flowr/.github/workflows/full-test.yaml@main
-
   deploy-doc:
     needs: [ test, full-test, performance-test ]
     name: "Build and Deploy Documentation (only on main)"

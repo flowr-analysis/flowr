@@ -80,11 +80,6 @@ jobs:
           github_token: ${{ secrets.RELEASE_TOKEN }}
           force: true
 
-      - name: "🔎 Check the README for broken links"
-        uses: becheran/mlc@v0.18.0
-        with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
-
       - name: "⬆️ Publish the Wiki"
         uses: Andrew-Chen-Wang/github-wiki-action@v4
         # We do not need to republish if nothing changes. Furthermore, do not publish on PR as this should be done by the push on main!
@@ -92,6 +87,11 @@ jobs:
         with:
           path: "wiki/"
           token: ${{ secrets.GH_DEPLOY_WIKI }}
+
+      - name: "🔎 Check the README for broken links"
+        uses: becheran/mlc@v0.18.0
+        with:
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
 
       - name: "🔎 Check the Wiki pages for broken links"
         uses: becheran/mlc@v0.18.0

@@ -252,6 +252,7 @@ jobs:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
         with:
+            token:      ${{ secrets.DOCUMENTATION_TOKEN }}
             submodules: true
 
       - name: "🌍 Load Versions to Use"

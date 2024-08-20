@@ -35,8 +35,8 @@ permissions:
 
 jobs:
   debug:
-    name: "Debug"
-    runs-on: ubuntu-latest
+    name:    "🔍 Debug"
+    runs-on: ubuntu-22.04
     steps:
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -57,12 +57,27 @@ jobs:
 
   lint:
     needs: [ debug ]
-    name: "Linting (Local)"
+    name: "👩‍🏫 Linting (Local)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
-    uses: flowr-analysis/flowr/.github/workflows/run.yaml@main
-    with:
-      r-version: ''
-      action:    lint-local
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: $ACTION_NODE_VERSION
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "👩‍🏫 Run linter"
+        run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 
   test:
     needs: [ debug ]

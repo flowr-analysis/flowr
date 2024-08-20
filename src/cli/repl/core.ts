@@ -91,7 +91,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
 	} else if(allowRSessionAccess) {
 		await executeRShellCommand(output, shell, statement)
 	} else {
-		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })}  flag. Please be careful of the security implications of this action.`)
+		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`)
 	}
 }
 

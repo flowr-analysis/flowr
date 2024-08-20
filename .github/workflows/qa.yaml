@@ -84,7 +84,6 @@ jobs:
     name: "⚗️ Test Suite (coverage)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     runs-on: ubuntu-22.04
-    secrets: inherit
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
@@ -141,7 +140,6 @@ jobs:
       matrix:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
         name: ['artificial', 'social-science']
-    secrets: inherit
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4

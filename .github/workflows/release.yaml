@@ -175,7 +175,6 @@ jobs:
     concurrency:
       group: docker-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
-    secrets: inherit
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
@@ -232,7 +231,6 @@ jobs:
       matrix:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
         name: ['artificial', 'social-science']
-    secrets: inherit
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4

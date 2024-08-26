@@ -119,10 +119,9 @@ function retrieveShell(): RShell {
 
 async function mainRepl() {
 	if(options.script) {
-		let target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
+		const target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${getScriptsText()}.`)
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`)
-		target = `cli/${target}`
 		log.debug(`Script maps to "${target}"`)
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true)
 		process.exit(0)

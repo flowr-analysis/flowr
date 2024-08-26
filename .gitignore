@@ -1,12 +1,15 @@
 *.heapsnapshot
+# docs can be generated from the sources and should not be commited
 doc/
 *-flowr.log.*
 statistics-out*/
+# output dumps that my be produced by flowr
 **/*.R.slice
 **/*.R.stats
 **/*.R*.dataflow
 tmp*log*
 temp*log*
+# benchmark results
 benchmark-*.json
 
 ### VisualStudioCode template

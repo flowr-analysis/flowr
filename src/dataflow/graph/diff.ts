@@ -96,8 +96,7 @@ function diff(ctx: DataflowDiffContext): void {
 function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	const lEdges = new Map([...ctx.left.edges()])
 	const rEdges = new Map([...ctx.right.edges()])
-	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph
-	  || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
+	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
 		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 
@@ -214,7 +213,6 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 	) {
 		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`)
 	}
-	/* TODO: iterate over rVert if subset relation is reversed, swap labels */
 	for(const [id, lInfo] of lVert) {
 		const rInfoMay = ctx.right.get(id)
 		if(rInfoMay === undefined) {
@@ -342,7 +340,7 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 	for(const [target, edge] of lEdges) {
 		const otherEdge = rEdges.get(target)
 		if(otherEdge === undefined) {
-				if(!ctx.config.rightIsSubgraph) {
+			if(!ctx.config.rightIsSubgraph) {
 				ctx.report.addComment(
 					`Target of ${id}->${target} in ${ctx.leftname} is not present in ${ctx.rightname}`,
 					{ tag: 'edge', from: id, to: target }

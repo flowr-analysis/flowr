@@ -26,7 +26,8 @@ import {
 	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines'
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
-import {DataflowDifferenceReport, diffOfDataflowGraphs, ProblematicDiffInfo} from '../../../src/dataflow/graph/diff'
+import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff'
+import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff'
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'

@@ -2,17 +2,18 @@ import { assert } from 'chai'
 import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder'
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg'
-import { GenericDiffConfiguration } from '../../../../src/util/diff';
-import {DataflowDifferenceReport, diffOfDataflowGraphs} from '../../../../src/dataflow/graph/diff';
+import type { GenericDiffConfiguration } from '../../../../src/util/diff'
+import type { DataflowDifferenceReport } from '../../../../src/dataflow/graph/diff'
+import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
-	let res: DataflowDifferenceReport | undefined = undefined;
+	let res: DataflowDifferenceReport | undefined = undefined
 	try {
 		res = diffOfDataflowGraphs({
-			name: 'left (a)',
+			name:  'left (a)',
 			graph: a
 		}, {
-			name: 'right (b)',
+			name:  'right (b)',
 			graph: b
 		}, config)
 		cmp(res.isEqual())
@@ -37,7 +38,7 @@ describe('Dataflow Graph Comparisons', () => {
 
 		describe('Positive', () => {
 			function eq(name: string, a: DataflowGraph, b: DataflowGraph) {
-				raw(name, a, b, 'should be equal', assert.isTrue)
+				raw(name, a, b, 'should be equal', k => assert.isTrue(k))
 			}
 
 			eq('Empty graphs', emptyGraph(), emptyGraph())
@@ -45,7 +46,7 @@ describe('Dataflow Graph Comparisons', () => {
 		})
 		describe('Negative', () => {
 			function neq(name: string, a: DataflowGraph, b: DataflowGraph) {
-				raw(name, a, b, 'should differ', assert.isFalse)
+				raw(name, a, b, 'should differ', k => assert.isFalse(k))
 			}
 			describe('More elements', () => {
 				neq('Additional root vertex', emptyGraph(), emptyGraph().use('0', 'x'))
@@ -74,14 +75,14 @@ describe('Dataflow Graph Comparisons', () => {
 		function raw(name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) {
 			return it(name, () => {
 				// as the comparison is relatively quick, we allow explicit checks for commutativity
-				test(cmp, a, b, 'a >= b -> ' + text, { rightIsSubgraph: true})
+				test(cmp, a, b, 'a >= b -> ' + text, { rightIsSubgraph: true })
 				test(cmp, b, a, 'b <= a -> ' + text, { leftIsSubgraph: true })
 			})
 		}
 
 		describe('Positive', () => {
 			function eq(name: string, a: DataflowGraph, b: DataflowGraph) {
-				raw(name, a, b, 'should hold', assert.isTrue)
+				raw(name, a, b, 'should hold', k => assert.isTrue(k))
 			}
 
 			eq('Empty graphs', emptyGraph(), emptyGraph())

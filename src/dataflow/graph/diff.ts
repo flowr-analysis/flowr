@@ -102,9 +102,13 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	}
 
 	for(const [id, edge] of lEdges) {
-		/* this has nothing to do with the subset relation as we verify this in the same graph */
+		/* This has nothing to do with the subset relation as we verify this in the same graph.
+		 * Yet we still do the check as a subgraph may not have to have all source vertices for edges.
+		 */
 		if(!ctx.left.hasVertex(id)) {
-			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			if(!ctx.config.leftIsSubgraph) {
+				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			}
 			continue
 		}
 		diffEdges(ctx, id, edge, rEdges.get(id))
@@ -112,13 +116,15 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	// just to make it both ways in case the length differs
 	for(const [id, edge] of rEdges) {
 		if(!ctx.right.hasVertex(id)) {
-			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			if(!ctx.config.rightIsSubgraph) {
+				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`)
+			}
 			continue
 		}
 		if(!ctx.config.leftIsSubgraph && !lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge)
 		}
-		/* otherwise we already cover the edge above */
+		/* otherwise, we already cover the edge above */
 	}
 }
 
@@ -294,7 +300,10 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Da
 
 export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
-		if(lEdges !== rEdges && (!ctx.config.leftIsSubgraph || !ctx.config.rightIsSubgraph)) {
+		if(
+			(lEdges === undefined && !ctx.config.leftIsSubgraph)
+			|| (rEdges === undefined && !ctx.config.rightIsSubgraph)
+		) {
 			ctx.report.addComment(
 				`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`,
 				{ tag: 'vertex', id }

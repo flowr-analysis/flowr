@@ -75,5 +75,10 @@ export function setDifference<T, Report extends WriteableDifferenceReport = Writ
 		message += lWithoutR.size > 0 ? ' and m' : 'M'
 		message += `ore in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`
 	}
-	info.report.addComment(message)
+	if(
+		(rWithoutL.size > 0 && !info.config.leftIsSubgraph)
+		|| (lWithoutR.size > 0 && !info.config.rightIsSubgraph)
+	) {
+		info.report.addComment(message)
+	}
 }

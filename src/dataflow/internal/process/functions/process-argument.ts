@@ -67,13 +67,11 @@ export function processFunctionArgument<OtherInfo>(
 		const functionCalls = [...graph.vertices(true)]
 			.filter(([_,info]) => info.tag === VertexType.FunctionCall)
 			.filter(([id]) => hasNoOutgoingCallEdge(graph, id)) as [NodeId, DataflowGraphVertexFunctionCall][]
-		console.log(argumentName, functionCalls, functionCalls.map(([id]) => graph.outgoingEdges(id)))
 		// try to resolve them against the current environment
 		for(const [id, info] of functionCalls) {
 			const resolved = resolveByName(info.name, data.environment) ?? []
 			/* first, only link a read ref */
 			for(const resolve of resolved) {
-				console.log(`Linking ${info.name} (${info.id}) to ${resolve.nodeId}`)
 				graph.addEdge(id, resolve.nodeId, { type: EdgeType.Reads })
 			}
 		}

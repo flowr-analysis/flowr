@@ -1,6 +1,6 @@
 import type { DataflowGraph, FunctionArgument, OutgoingEdges } from './graph'
 import { isNamedArgument } from './graph'
-import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff'
+import type { GenericDiffConfiguration, GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff'
 import { setDifference } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
 import { arrayEqual } from '../../util/arrays'
@@ -31,7 +31,7 @@ export class DataflowDifferenceReport implements WriteableDifferenceReport {
 	_comments:    string[] | undefined      = undefined
 	_problematic: ProblematicDiffInfo[] | undefined = undefined
 
-	addComment(comment: string, ...related: ProblematicDiffInfo[]): void {
+	addComment(comment: string, ...related: readonly ProblematicDiffInfo[]): void {
 		if(this._comments === undefined) {
 			this._comments = [comment]
 		} else {
@@ -65,26 +65,31 @@ export interface NamedGraph {
 }
 
 interface DataflowDiffContext extends GenericDifferenceInformation<DataflowDifferenceReport> {
-	left:  DataflowGraph
-	right: DataflowGraph
+	left:   DataflowGraph
+	right:  DataflowGraph
+	config: GenericDiffConfiguration
 }
 
-function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffContext {
+function initDiffContext(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): DataflowDiffContext {
 	return {
 		left:      left.graph,
 		leftname:  left.name,
 		right:     right.graph,
 		rightname: right.name,
 		report:    new DataflowDifferenceReport(),
-		position:  ''
+		position:  '',
+		config:    {
+			rightIsSubgraph: false,
+			leftIsSubgraph:  false,
+			...config
+		}
 	}
 }
 
-function diff(ctx: DataflowDiffContext): boolean {
+function diff(ctx: DataflowDiffContext): void {
 	diffRootVertices(ctx)
 	diffVertices(ctx)
 	diffOutgoingEdges(ctx)
-	return true
 }
 
 
@@ -119,11 +124,11 @@ function diffRootVertices(ctx: DataflowDiffContext): void {
 }
 
 
-export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): DataflowDifferenceReport {
+export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): DataflowDifferenceReport {
 	if(left.graph === right.graph) {
 		return new DataflowDifferenceReport()
 	}
-	const ctx = initDiffContext(left, right)
+	const ctx = initDiffContext(left, right, config)
 	diff(ctx)
 	return ctx.report
 }
@@ -147,7 +152,8 @@ export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionA
 		report:    new DataflowDifferenceReport(),
 		leftname:  'left',
 		rightname: 'right',
-		position:  ''
+		position:  '',
+		config:    {}
 	}
 	diffFunctionArguments(fn, a, b, ctx)
 	return ctx.report.isEqual()
@@ -194,7 +200,10 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 	// collect vertices from both sides
 	const lVert = [...ctx.left.vertices(true)].map(([id, info]) => ([id, info] as const))
 	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([id, info] as const))
-	if(lVert.length !== rVert.length) {
+	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
+		|| lVert.length > rVert.length && !ctx.config.rightIsSubgraph
+		// TODO: TODO: TODO: from here
+	) {
 		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`)
 	}
 	for(const [id, lInfo] of lVert) {

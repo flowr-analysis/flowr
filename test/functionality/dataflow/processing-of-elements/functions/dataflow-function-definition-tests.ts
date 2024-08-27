@@ -801,4 +801,11 @@ f(3)`, emptyGraph()
 				.constant('31')
 				.definesOnCall('31', '21'), { minRVersion: MIN_VERSION_LAMBDA })
 	})
+	describe('Failures in Practice', () => {
+		assertDataflow(label('linking within nested named arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-named', 'function-definitions', 'function-calls', 'logical']),
+			shell, 'f <- function(x) x\ng <- magic(.x = function(x) { c(N = f(3)) })',
+			/* we want to ensure that the function call to f is linked to the correct definition */
+			emptyGraph()
+		)
+	})
 }))

@@ -215,12 +215,16 @@ function handleAssertOutput(name: string | TestLabel, shell: RShell, input: stri
 	}
 }
 
+interface DataflowTestConfiguration extends TestConfigurationWithOutput {
+	expectSubgraph: boolean
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
 	expected: DataflowGraph,
-	userConfig?: Partial<TestConfigurationWithOutput>,
+	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])

@@ -241,8 +241,16 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		}
 		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` })
 
-		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
-
+		if(
+			(lInfo.environment === undefined && rInfo.environment !== undefined && !ctx.config.leftIsSubgraph)
+			|| (lInfo.environment !== undefined && rInfo.environment === undefined && !ctx.config.rightIsSubgraph)
+		) {
+			/* only diff them if specified at all */
+			diffEnvironmentInformation(lInfo.environment, rInfo.environment, {
+				...ctx,
+				position: `${ctx.position}Vertex ${id} differs in environment. `
+			})
+		}
 		if(lInfo.tag === VertexType.FunctionCall) {
 			if(rInfo.tag !== VertexType.FunctionCall) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
@@ -250,10 +258,15 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
 					ctx.report.addComment(`Vertex ${id} differs in onlyBuiltin. ${ctx.leftname}: ${lInfo.onlyBuiltin} vs ${ctx.rightname}: ${rInfo.onlyBuiltin}`, { tag: 'vertex', id })
 				}
-				diffFunctionArguments(lInfo.id, lInfo.args, rInfo.args, {
-					...ctx,
-					position: `${ctx.position}Vertex ${id} (function call) differs in arguments. `
-				})
+				if(
+					(lInfo.args.length === 0 && rInfo.args.length !== 0 && !ctx.config.leftIsSubgraph)
+					|| (lInfo.args.length !== 0 && rInfo.args.length === 0 && !ctx.config.rightIsSubgraph)
+				) {
+					diffFunctionArguments(lInfo.id, lInfo.args, rInfo.args, {
+						...ctx,
+						position: `${ctx.position}Vertex ${id} (function call) differs in arguments. `
+					})
+				}
 			}
 		}
 
@@ -267,11 +280,15 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 						{ tag: 'vertex', id }
 					)
 				}
-
-				diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, {
-					...ctx,
-					position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. `
-				})
+				if(
+					(lInfo.subflow.environment === undefined && rInfo.subflow.environment !== undefined && !ctx.config.leftIsSubgraph)
+					|| (lInfo.subflow.environment !== undefined && rInfo.subflow.environment === undefined && !ctx.config.rightIsSubgraph)
+				) {
+					diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, {
+						...ctx,
+						position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. `
+					})
+				}
 				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `

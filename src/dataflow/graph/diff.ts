@@ -96,11 +96,13 @@ function diff(ctx: DataflowDiffContext): void {
 function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	const lEdges = new Map([...ctx.left.edges()])
 	const rEdges = new Map([...ctx.right.edges()])
-	if(lEdges.size !== rEdges.size) {
+	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph
+	  || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
 		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 
 	for(const [id, edge] of lEdges) {
+		/* this has nothing to do with the subset relation as we verify this in the same graph */
 		if(!ctx.left.hasVertex(id)) {
 			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`)
 			continue
@@ -113,9 +115,10 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 			ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`)
 			continue
 		}
-		if(!lEdges.has(id)) {
+		if(!ctx.config.leftIsSubgraph && !lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge)
 		}
+		/* otherwise we already cover the edge above */
 	}
 }
 
@@ -202,14 +205,16 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([id, info] as const))
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
 		|| lVert.length > rVert.length && !ctx.config.rightIsSubgraph
-		// TODO: TODO: TODO: from here
 	) {
 		ctx.report.addComment(`Detected different number of vertices! ${ctx.leftname} has ${lVert.length}, ${ctx.rightname} has ${rVert.length}`)
 	}
+	/* TODO: iterate over rVert if subset relation is reversed, swap labels */
 	for(const [id, lInfo] of lVert) {
 		const rInfoMay = ctx.right.get(id)
 		if(rInfoMay === undefined) {
-			ctx.report.addComment(`Vertex ${id} is not present in ${ctx.rightname}`, { tag: 'vertex', id })
+			if(!ctx.config.rightIsSubgraph) {
+				ctx.report.addComment(`Vertex ${id} is not present in ${ctx.rightname}`, { tag: 'vertex', id })
+			}
 			continue
 		}
 		const [rInfo] = rInfoMay
@@ -222,8 +227,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			const lname = lInfo.name ?? recoverName(id, ctx.left.idMap) ?? '??'
 			const rname = rInfo.name ?? recoverName(id, ctx.right.idMap) ?? '??'
 			if(lname !== rname) {
-				// eslint-disable-next-line @typescript-eslint/no-base-to-string,@typescript-eslint/restrict-template-expressions
-				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lname} vs ${ctx.rightname}: ${rname}`, {
+				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
 					tag: 'vertex',
 					id
 				})
@@ -290,7 +294,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Da
 
 export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
-		if(lEdges !== rEdges) {
+		if(lEdges !== rEdges && (!ctx.config.leftIsSubgraph || !ctx.config.rightIsSubgraph)) {
 			ctx.report.addComment(
 				`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`,
 				{ tag: 'vertex', id }
@@ -299,7 +303,10 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 		return
 	}
 
-	if(lEdges.size !== rEdges.size) {
+	if(
+		lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph
+		|| lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph
+	) {
 		ctx.report.addComment(
 			`Vertex ${id} differs in number of outgoing edges. ${ctx.leftname}: [${[...lEdges.keys()].join(',')}] vs ${ctx.rightname}: [${[...rEdges.keys()].join(',')}] `,
 			{ tag: 'vertex', id }
@@ -309,10 +316,12 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 	for(const [target, edge] of lEdges) {
 		const otherEdge = rEdges.get(target)
 		if(otherEdge === undefined) {
-			ctx.report.addComment(
-				`Target of ${id}->${target} in ${ctx.leftname} is not present in ${ctx.rightname}`,
-				{ tag: 'edge', from: id, to: target }
-			)
+				if(!ctx.config.rightIsSubgraph) {
+				ctx.report.addComment(
+					`Target of ${id}->${target} in ${ctx.leftname} is not present in ${ctx.rightname}`,
+					{ tag: 'edge', from: id, to: target }
+				)
+			}
 			continue
 		}
 		diffEdge(edge, otherEdge, ctx, id, target)

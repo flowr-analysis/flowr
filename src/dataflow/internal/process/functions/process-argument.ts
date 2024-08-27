@@ -8,9 +8,12 @@ import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model'
 import type { IdentifierReference } from '../../../environments/identifier'
 import { DataflowGraph } from '../../../graph/graph'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
-import { EdgeType } from '../../../graph/edge'
+import { edgeIncludesType, EdgeType } from '../../../graph/edge'
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
+import type { DataflowGraphVertexFunctionCall } from '../../../graph/vertex'
 import { VertexType } from '../../../graph/vertex'
+import { resolveByName } from '../../../environments/resolve-by-name'
+import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
@@ -21,6 +24,20 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
 		graph.addEdge(root.info.id, ref, { type: EdgeType.Reads })
 	}
+}
+
+function hasNoOutgoingCallEdge(graph: DataflowGraph, id: NodeId): boolean {
+	const outgoings = graph.outgoingEdges(id)
+	if(outgoings === undefined) {
+		return true
+	}
+
+	for(const [_, edge] of outgoings) {
+		if(edgeIncludesType(edge.types, EdgeType.Calls)) {
+			return false
+		}
+	}
+	return true
 }
 
 export function processFunctionArgument<OtherInfo>(
@@ -44,6 +61,21 @@ export function processFunctionArgument<OtherInfo>(
 	}
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
+
+	/* potentially link all function calls here (as maybes with a maybe cd) as the called function may employ calling-env-semantics if unknown */
+	if(value) {
+		const functionCalls = [...graph.vertices(true)]
+			.filter(([_,info]) => info.tag === VertexType.FunctionCall)
+			.filter(([id]) => hasNoOutgoingCallEdge(graph, id)) as [NodeId, DataflowGraphVertexFunctionCall][]
+		// try to resolve them against the current environment
+		for(const [id, info] of functionCalls) {
+			const resolved = resolveByName(info.name, data.environment) ?? []
+			/* first, only link a read ref */
+			for(const resolve of resolved) {
+				graph.addEdge(id, resolve.nodeId, { type: EdgeType.Reads })
+			}
+		}
+	}
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
 		graph.addEdge(entryPoint, argument.value.info.id, { type: EdgeType.Reads })

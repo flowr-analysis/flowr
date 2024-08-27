@@ -27,6 +27,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines'
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff'
+import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff'
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
@@ -215,12 +216,16 @@ function handleAssertOutput(name: string | TestLabel, shell: RShell, input: stri
 	}
 }
 
+interface DataflowTestConfiguration extends TestConfigurationWithOutput {
+	expectIsSubgraph: boolean
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
 	expected: DataflowGraph,
-	userConfig?: Partial<TestConfigurationWithOutput>,
+	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
@@ -236,7 +241,13 @@ export function assertDataflow(
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(info.normalize.idMap)
 
-		const report: DataflowDifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
+		const report: DataflowDifferenceReport = diffOfDataflowGraphs(
+			{ name: 'expected', graph: expected },
+			{ name: 'got',      graph: info.dataflow.graph },
+			{
+				leftIsSubgraph: userConfig?.expectIsSubgraph
+			}
+		)
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)

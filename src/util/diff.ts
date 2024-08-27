@@ -44,6 +44,20 @@ export interface GenericDifferenceInformation<Report extends WriteableDifference
 	readonly report:    Report
 	/** A human-readable indication of where we are (the prefix of the information if the structures differ) */
 	readonly position:  string
+	readonly config:    GenericDiffConfiguration
+}
+
+
+export interface GenericDiffConfiguration {
+	/**
+	 * The left graph may contain more vertices and or edges than the right graph.
+	 * However, those which are the same (based on their ids) have to be equal
+	 */
+	readonly rightIsSubgraph?: boolean
+	/**
+	 * Similar to {@link rightIsSubgraph}, but for the left graph.
+	 */
+	readonly leftIsSubgraph?:  boolean
 }
 
 
@@ -54,12 +68,17 @@ export function setDifference<T, Report extends WriteableDifferenceReport = Writ
 		return
 	}
 	let message: string = info.position
-	if(lWithoutR.size > 0) {
+	if(lWithoutR.size > 0 && !info.config.rightIsSubgraph) {
 		message += ` More elements in ${info.leftname}: ${JSON.stringify([...lWithoutR])}`
 	}
-	if(rWithoutL.size > 0) {
+	if(rWithoutL.size > 0 && !info.config.leftIsSubgraph) {
 		message += lWithoutR.size > 0 ? ' and m' : 'M'
 		message += `ore in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`
 	}
-	info.report.addComment(message)
+	if(
+		(rWithoutL.size > 0 && !info.config.leftIsSubgraph)
+		|| (lWithoutR.size > 0 && !info.config.rightIsSubgraph)
+	) {
+		info.report.addComment(message)
+	}
 }

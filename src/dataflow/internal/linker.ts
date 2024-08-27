@@ -12,7 +12,11 @@ import { dataflowLogger } from '../logger'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge'
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../graph/vertex'
+import type {
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo
+} from '../graph/vertex'
 import { VertexType } from '../graph/vertex'
 import { resolveByName } from '../environments/resolve-by-name'
 import { BuiltIn } from '../environments/built-in'
@@ -95,11 +99,48 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 	linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
 }
 
+export function linkFunctionCallWithSingleTarget(
+	graph: DataflowGraph,
+	def: DataflowGraphVertexFunctionDefinition,
+	info: DataflowGraphVertexFunctionCall,
+	idMap: AstIdMap
+) {
+	const id = info.id
+	if(info.environment !== undefined) {
+		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
+		for(const ingoing of def.subflow.in) {
+			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined
+			if(defs === undefined) {
+				continue
+			}
+			for(const def of defs) {
+				graph.addEdge(id, def, { type: EdgeType.Reads })
+			}
+		}
+	}
 
-function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: AstIdMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
-	functionCall: NodeId;
-	called:       DataflowGraphVertexInfo[]
-}[]) {
+	const exitPoints = def.exitPoints
+	for(const exitPoint of exitPoints) {
+		graph.addEdge(id, exitPoint, { type: EdgeType.Returns })
+	}
+
+	const defName = recoverName(def.id, idMap)
+	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`)
+	graph.addEdge(id, def.id, { type: EdgeType.Calls })
+	linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph)
+}
+
+function linkFunctionCall(
+	graph: DataflowGraph,
+	id: NodeId,
+	info: DataflowGraphVertexFunctionCall,
+	idMap: AstIdMap,
+	thisGraph: DataflowGraph,
+	calledFunctionDefinitions: {
+		functionCall: NodeId;
+		called:       readonly DataflowGraphVertexInfo[]
+	}[]
+) {
 	const edges = graph.outgoingEdges(id)
 	if(edges === undefined) {
 		/* no outgoing edges */
@@ -115,29 +156,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 	for(const def of functionDefs.values()) {
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`)
-
-		if(info.environment !== undefined) {
-			// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
-			for(const ingoing of def.subflow.in) {
-				const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined
-				if(defs === undefined) {
-					continue
-				}
-				for(const def of defs) {
-					graph.addEdge(id, def, { type: EdgeType.Reads })
-				}
-			}
-		}
-
-		const exitPoints = def.exitPoints
-		for(const exitPoint of exitPoints) {
-			graph.addEdge(id, exitPoint, { type: EdgeType.Returns })
-		}
-
-		const defName = recoverName(def.id, idMap)
-		expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`)
-		graph.addEdge(id, def.id, { type: EdgeType.Calls })
-		linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph)
+		linkFunctionCallWithSingleTarget(graph, def, info, idMap)
 	}
 	if(thisGraph.isRoot(id)) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })
@@ -147,6 +166,10 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 /**
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
+ *
+ * @param graph     - The graph to use for search and resolution traversals (ideally a superset of the `thisGraph`)
+ * @param idMap     - The map to resolve ids to names
+ * @param thisGraph - The graph to search for function calls in
  */
 export function linkFunctionCalls(
 	graph: DataflowGraph,
@@ -162,7 +185,10 @@ export function linkFunctionCalls(
 	return calledFunctionDefinitions
 }
 
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: ReadonlySet<NodeId>, dataflowGraph: DataflowGraph): Set<DataflowGraphVertexInfo> {
+export function getAllLinkedFunctionDefinitions(
+	functionDefinitionReadIds: ReadonlySet<NodeId>,
+	dataflowGraph: DataflowGraph
+): Set<DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
 	const result = new Set<DataflowGraphVertexInfo>()

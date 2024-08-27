@@ -10,7 +10,11 @@ import { DataflowGraph } from '../../../graph/graph'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
 import { EdgeType } from '../../../graph/edge'
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
-import { VertexType } from '../../../graph/vertex'
+import {DataflowGraphVertexFunctionCall, VertexType} from '../../../graph/vertex'
+import {resolveByName} from "../../../environments/resolve-by-name";
+import {linkFunctionCalls} from "../../linker";
+import {overwriteEnvironment} from "../../../environments/overwrite";
+import {NodeId} from "../../../../r-bridge/lang-4.x/ast/model/processing/node-id";
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
@@ -44,6 +48,24 @@ export function processFunctionArgument<OtherInfo>(
 	}
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
+
+	/* potentially link all function calls here (as maybes with a maybe cd) as the called function may employ calling-env-semantics if unknown */
+	if(value) {
+		const functionCalls = [...graph.vertices(true)]
+			.filter(([_,info]) => info.tag === VertexType.FunctionCall) as [NodeId, DataflowGraphVertexFunctionCall][]
+			/** TODO: check fully unresolved */
+			// .filter(([id]) => graph.outgoingEdges(id)?.size === 0) as [NodeId, DataflowGraphVertexFunctionCall][]
+		console.log(argumentName, functionCalls, functionCalls.map(([id]) => graph.outgoingEdges(id)))
+		// try to resolve them against the current environment
+		for(const [id, info] of functionCalls) {
+			const resolved = resolveByName(info.name, data.environment) ?? []
+			/* first, only link a read ref */
+			for(const resolve of resolved) {
+				console.log(`Linking ${info.name} to ${resolve.name}`)
+				graph.addEdge(id, resolve.nodeId, { type: EdgeType.Reads })
+			}
+		}
+	}
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
 		graph.addEdge(entryPoint, argument.value.info.id, { type: EdgeType.Reads })

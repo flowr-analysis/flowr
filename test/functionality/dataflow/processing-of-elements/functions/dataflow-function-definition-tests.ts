@@ -806,6 +806,7 @@ f(3)`, emptyGraph()
 			shell, 'f <- function(x) x\ng <- magic(.x = function(x) { c(N = f(3)) })',
 			/* we want to ensure that the function call to f is linked to the correct definition */
 			emptyGraph()
+				// TODO: find the edge :D
 				.defineVariable('0', 'f')
 				.call('19', 'f', [], undefined, false)
 				.calls('19', '0'),

@@ -58,7 +58,7 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
       cancel-in-progress: true
-    steps: 
+    steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
         with:
@@ -73,16 +73,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.r-version }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-        
+
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
 
@@ -91,7 +91,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
-      
+
   release:
     name: "📦 Release"
     runs-on: ubuntu-latest
@@ -117,12 +117,12 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
@@ -205,13 +205,13 @@ jobs:
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags
           echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
-          
+
       - name: "🗃️ Compress the image"
         run: |
           docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v4
         with:
@@ -246,16 +246,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-        
+
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}"
 
@@ -298,7 +298,7 @@ jobs:
           name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
@@ -322,7 +322,7 @@ jobs:
           name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
           comment-on-alert: true
@@ -340,11 +340,10 @@ jobs:
           git reset --soft HEAD~2
           git add -f wiki/stats/benchmark/
           git commit -m "[skip ci] doc: new benchmark data"
-  
+
       - name: "⬆️ Push changes"
         uses: ad-m/github-push-action@master
         with:
           branch: main
           github_token: ${{ secrets.RELEASE_TOKEN }}
           force: true
-    

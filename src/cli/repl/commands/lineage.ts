@@ -25,7 +25,7 @@ async function getDfg(shell: RShell, remainingLine: string) {
 }
 
 function filterRelevantEdges(edge: DataflowGraphEdge) {
-	return edgeIncludesType(EdgeType.DefinedBy | EdgeType.Reads, edge.types)
+	return edgeIncludesType(EdgeType.DefinedBy | EdgeType.DefinedByOnCall | EdgeType.Returns | EdgeType.Reads, edge.types)
 }
 
 function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: OutgoingEdges) {

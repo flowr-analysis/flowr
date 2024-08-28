@@ -546,6 +546,7 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 				shell, code, ['12@Y'], 'Y')
 		})
 		describe('Functions in Unknown Call Contexts', () => {
+			// TODO: test labels
 			assertSliced(label('call in unknown foo', []), shell,
 `
 f <- function(y) { y + 3 }
@@ -555,9 +556,12 @@ foo(.x = f(3))`)
 			assertSliced(label('definition in unknown foo', []), shell,
 				`x <- 2;\nfoo(.x = function(y) { y + 3 })`, ['2@foo'],
 				`foo(.x = function(y) { y + 3 })`)
+			assertSliced(label('nested definition in unknown foo', []), shell,
+				`x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })`, ['2@foo'],
+				`x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })`)
 			assertSliced(label('nested definition in unknown foo with reference', []), shell,
-				`x <- function() { 3 };\nfoo(.x = function(y) { c(X = x()) })`, ['2@foo'],
-				`x <- function() { 3 };\nfoo(.x = function(y) { c(X = x()) })`)
+				`x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)`, ['3@foo'],
+				`x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)`)
 		})
 		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']

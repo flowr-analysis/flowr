@@ -6,16 +6,17 @@ import { envFingerprint } from './fingerprint'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import type {
 	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition
+	DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex'
 import type { REnvironmentInformation } from '../../dataflow/environments/environment'
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import { pushLocalEnvironment } from '../../dataflow/environments/scoping'
 import { overwriteEnvironment } from '../../dataflow/environments/overwrite'
-import type { DataflowGraph, OutgoingEdges } from '../../dataflow/graph/graph'
+import {DataflowGraph, FunctionArgument, getReferenceOfArgument, OutgoingEdges} from '../../dataflow/graph/graph'
 import { BuiltIn } from '../../dataflow/environments/built-in'
 import { resolveByName } from '../../dataflow/environments/resolve-by-name'
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
+import {NodeId} from "../../r-bridge/lang-4.x/ast/model/processing/node-id";
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
@@ -32,6 +33,51 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, 
 	}
 
 	return overwriteEnvironment(baseEnvironment, callerEnvironment)
+}
+
+function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironment: REnvironmentInformation, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
+	// todo: get all linked function definitions to include
+	const valueRoot = getReferenceOfArgument(arg)
+	if(!valueRoot) {
+		return
+	}
+	const callTargets = getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph)
+	linkCallTargets(
+		false,
+		callTargets,
+		baseEnvironment,
+		envFingerprint(baseEnvironment),
+		activeEnvironment,
+		envFingerprint(activeEnvironment),
+		queue
+	)
+}
+
+function linkCallTargets(
+	onlyForSideEffects: boolean,
+	functionCallTargets: ReadonlySet<DataflowGraphVertexInfo>,
+	baseEnvironment: REnvironmentInformation,
+	baseEnvPrint: Fingerprint,
+	activeEnvironment: REnvironmentInformation,
+	activeEnvironmentFingerprint: Fingerprint,
+	queue: VisitingQueue
+) {
+	for(const functionCallTarget of functionCallTargets) {
+		// all those linked within the scopes of other functions are already linked when exiting a function definition
+		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
+			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
+			if(defs === undefined) {
+				continue
+			}
+			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
+				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, onlyForSideEffects)
+			}
+		}
+
+		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects)
+		}
+	}
 }
 
 /** returns the new threshold hit count */
@@ -59,22 +105,18 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
-	for(const functionCallTarget of functionCallTargets) {
-		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
-			if(defs === undefined) {
-				continue
-			}
-			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
-				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
-			}
+	if(functionCallTargets.size === 0) {
+		/*
+		 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
+		 * hence, we add a new flag and add all argument values to the queue causing directly
+		 */
+		for(const arg of callerInfo.args) {
+			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowGraph)
 		}
-
-		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
-		}
+		return;
 	}
+
+	linkCallTargets(current.onlyForSideEffects, functionCallTargets, baseEnvironment, baseEnvPrint, activeEnvironment, activeEnvironmentFingerprint, queue)
 }
 
 /** Returns true if we found at least one return edge */

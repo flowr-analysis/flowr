@@ -69,10 +69,10 @@ The following sections explain how to use these features.
 
 *flowR* itself has two main ways to operate:
 
-- as a server which processes analysis and slicing requests (`--server` option)
-- as a read-eval-print loop (REPL) that can be accessed directly from the command line (default option)
+- as a **server** which processes analysis and slicing requests (`--server` option)
+- as a **read-eval-print loop** (REPL) that can be accessed directly from the command line (default option)
 
-Besides these, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use *flowR* directly from within the editor.
+Besides these two ways, there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use *flowR* directly from within the editor. Similarly, we offer an [Addin for RStudio](https://github.com/flowr-analysis/rstudio-addin-flowr), as well as an [R package](https://github.com/flowr-analysis/flowr-r-adapter).
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
 ⚒️ If you compile the *flowR* sources yourself, you can access *flowR* by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).

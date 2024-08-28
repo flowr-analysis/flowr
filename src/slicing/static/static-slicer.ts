@@ -28,7 +28,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
-	expensiveTrace(slicerLogger, 
+	expensiveTrace(slicerLogger,
 		() => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	)
 

@@ -215,7 +215,7 @@ jobs:
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v4
         with:
-          path: flowr-$THE_FLOWR_VERSION.tar.gz
+          path: flowr-${{ env.THE_FLOWR_VERSION }}.tar.gz
 
   performance-test:
     name: "⏱️ Performance Test"

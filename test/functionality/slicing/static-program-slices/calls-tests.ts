@@ -545,6 +545,20 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			assertSliced(label('Slice for variable in last filter', caps),
 				shell, code, ['12@Y'], 'Y')
 		})
+		describe('Functions in Unknown Call Contexts', () => {
+			assertSliced(label('call in unknown foo', []), shell,
+`
+f <- function(y) { y + 3 }
+foo(.x = f(3))
+`, ['3@foo'], `f <- function(y) { y + 3 }
+foo(.x = f(3))`)
+			assertSliced(label('definition in unknown foo', []), shell,
+				`x <- 2;\nfoo(.x = function(y) { y + 3 })`, ['2@foo'],
+				`foo(.x = function(y) { y + 3 })`)
+			assertSliced(label('nested definition in unknown foo with reference', []), shell,
+				`x <- function() { 3 };\nfoo(.x = function(y) { c(X = x()) })`, ['2@foo'],
+				`x <- function() { 3 };\nfoo(.x = function(y) { c(X = x()) })`)
+		})
 		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']
 			const code = `x <- 3

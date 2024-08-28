@@ -9,6 +9,7 @@ import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from
 import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
 import type { SliceRequestMessage, SliceResponseMessage } from './slice'
 import type { FlowrErrorMessage } from './error'
+import type { LineageRequestMessage, LineageResponseMessage } from './lineage'
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
@@ -51,4 +52,6 @@ export type FlowrMessage = FlowrHelloResponseMessage
                          | ExecuteEndMessage
                          | SliceRequestMessage
                          | SliceResponseMessage
+                         | LineageRequestMessage
+                         | LineageResponseMessage
                          | FlowrErrorMessage

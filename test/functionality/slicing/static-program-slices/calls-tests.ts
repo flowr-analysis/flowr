@@ -546,17 +546,20 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 				shell, code, ['12@Y'], 'Y')
 		})
 		describe('Functions in Unknown Call Contexts', () => {
-			// TODO: test labels
-			assertSliced(label('call in unknown foo', []), shell,
+			const capabilities: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities,
+				'numbers', 'unnamed-arguments', 'newlines', 'call-normal', 'resolve-arguments', 'named-arguments',
+			]
+			assertSliced(label('call in unknown foo', capabilities), shell,
 				`
 f <- function(y) { y + 3 }
 foo(.x = f(3))
 `, ['3@foo'], `f <- function(y) { y + 3 }
 foo(.x = f(3))`)
-			assertSliced(label('definition in unknown foo', []), shell,
+			assertSliced(label('definition in unknown foo', capabilities), shell,
 				'x <- 2;\nfoo(.x = function(y) { y + 3 })', ['2@foo'],
 				'foo(.x = function(y) { y + 3 })')
-			assertSliced(label('nested definition in unknown foo', []), shell,
+			assertSliced(label('nested definition in unknown foo', capabilities), shell,
 				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })', ['2@foo'],
 				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })')
 			assertSliced(label('nested definition in unknown foo with reference', []), shell,

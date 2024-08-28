@@ -111,8 +111,10 @@ f <- function(some_variable="hello") {
   result <- some::other(some_variable=some_variable)
   result
 }
-    `, ['4@result'], `result <- some::other(some_variable=some_variable)
-result`)
+    `, ['4@result'], `function(some_variable="hello") {
+    result <- some::other(some_variable=some_variable)
+    result
+}`)
 
 
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
@@ -548,7 +550,7 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 		describe('Functions in Unknown Call Contexts', () => {
 			const capabilities: SupportedFlowrCapabilityId[] = [
 				'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities,
-				'numbers', 'unnamed-arguments', 'newlines', 'call-normal', 'resolve-arguments', 'named-arguments',
+				'numbers', 'unnamed-arguments', 'newlines', 'call-normal', 'resolve-arguments', 'named-arguments', 'implicit-return', 'grouping', 'formals-named'
 			]
 			assertSliced(label('call in unknown foo', capabilities), shell,
 				`
@@ -565,6 +567,19 @@ foo(.x = f(3))`)
 			assertSliced(label('nested definition in unknown foo with reference', []), shell,
 				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)', ['3@foo'],
 				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)')
+		})
+		describe('Anonymous Function Recovery on Parameter', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'grouping',
+				'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'unnamed-arguments',
+				'formals-named'
+			]
+			assertSliced(label('Simple Anonymous Function', caps), shell,
+				'function(x, y=3) {\n    x\n   x + y\n   }', ['2@x'],
+				'function(x, y=3) x')
+			assertSliced(label('Simple Anonymous Function (both)', caps), shell,
+				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
+				'function(x, y=3) z <- x + y')
 		})
 		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']

@@ -12,11 +12,12 @@ import type { REnvironmentInformation } from '../../dataflow/environments/enviro
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment'
 import { pushLocalEnvironment } from '../../dataflow/environments/scoping'
 import { overwriteEnvironment } from '../../dataflow/environments/overwrite'
-import {DataflowGraph, FunctionArgument, getReferenceOfArgument, OutgoingEdges} from '../../dataflow/graph/graph'
+import type { DataflowGraph, FunctionArgument, OutgoingEdges } from '../../dataflow/graph/graph'
+import { getReferenceOfArgument } from '../../dataflow/graph/graph'
 import { BuiltIn } from '../../dataflow/environments/built-in'
 import { resolveByName } from '../../dataflow/environments/resolve-by-name'
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge'
-import {NodeId} from "../../r-bridge/lang-4.x/ast/model/processing/node-id";
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
@@ -113,7 +114,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		for(const arg of callerInfo.args) {
 			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowGraph)
 		}
-		return;
+		return
 	}
 
 	linkCallTargets(current.onlyForSideEffects, functionCallTargets, baseEnvironment, baseEnvPrint, activeEnvironment, activeEnvironmentFingerprint, queue)

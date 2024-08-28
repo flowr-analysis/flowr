@@ -15,8 +15,6 @@ import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '..
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
-// TODO: check if arguments are just unlinked because the function does not hat a reference pointer
-
 /**
  * This returns the ids to include in the static backward slice, when slicing with the given seed id's (must be at least one).
  * <p>

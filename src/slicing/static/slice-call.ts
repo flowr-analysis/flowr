@@ -37,7 +37,6 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, 
 }
 
 function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironment: REnvironmentInformation, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
-	// todo: get all linked function definitions to include
 	const valueRoot = getReferenceOfArgument(arg)
 	if(!valueRoot) {
 		return

@@ -823,10 +823,12 @@ f(3)`, emptyGraph()
       x <<- x + 1
 	}
 }`,  emptyGraph()
-				.defineVariable('2@x', undefined, undefined, false)
-				.defineVariable('4@x', undefined, undefined, false)
-				.use('4:13', undefined, undefined, false)
-				.reads('4:13', '2@x').reads('4:13', '4@x'),
+				.defineVariable('2@x')
+				.defineVariable('4@x')
+				.use('4:13')
+				.reads('4:13', '2@x')
+				.reads('4:13', '4@x')
+				.overwriteRootIds([]),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

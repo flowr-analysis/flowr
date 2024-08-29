@@ -97,7 +97,7 @@ export class DataflowGraph<
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
-	private rootVertices:      Set<NodeId> = new Set<NodeId>()
+	protected rootVertices:    Set<NodeId> = new Set<NodeId>()
 	/** All vertices in the complete graph (including those nested in function definition) */
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>()
 	/** All edges in the complete graph (including those nested in function definition) */

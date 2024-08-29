@@ -43,12 +43,12 @@ function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: 
  */
 export function getLineage(criterion: SingleSlicingCriterion, ast: NormalizedAst, dfg: DataflowInformation) {
 	const [vertex, outgoingEdges] = dfg.graph.get(slicingCriterionToId(criterion, ast)) as [DataflowGraphVertexInfo, OutgoingEdges]
-	const result: NodeId[] = [vertex.id]
+	const result: Set<NodeId> = new Set([vertex.id])
 	const edgeQueue = pushRelevantEdges([], outgoingEdges)
 
 	while(edgeQueue.length > 0) {
 		const [target] = edgeQueue.shift() as [NodeId, DataflowGraphEdge]
-		result.push(target)
+		result.add(target)
 
 		const outgoingEdges = dfg.graph.outgoingEdges(target)
 		if(outgoingEdges !== undefined) {
@@ -68,6 +68,6 @@ export const getLineageCommand: ReplCommand = {
 		const [criterion, rest] = splitAt(remainingLine, remainingLine.indexOf(' '))
 		const { dataflow: dfg, normalize: ast } = await getDfg(shell, rest)
 		const lineageIds = getLineage(criterion as SingleSlicingCriterion, ast, dfg)
-		output.stdout(lineageIds.join(', '))
+		output.stdout([...lineageIds].join('\n'))
 	}
 }

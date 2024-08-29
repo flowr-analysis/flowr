@@ -310,7 +310,7 @@ export class FlowRServerConnection {
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',
 			id:      request.id,
-			lineage: lineageIds
+			lineage: [...lineageIds]
 		})
 	}
 }

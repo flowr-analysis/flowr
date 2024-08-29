@@ -577,6 +577,7 @@ x <- 2
 f()()
 print(x)`, emptyGraph()
 				.use('6', 'x', undefined, false)
+				.reads('6', '5')
 				.use('10', 'x', undefined, false)
 				.reads('10', '5')
 				.use('23', 'x')
@@ -811,6 +812,44 @@ f(3)`, emptyGraph()
 				.calls('19', '5'),
 			{
 				expectIsSubgraph: true
+			}
+		)
+	})
+	describe('Reference escaping closures', () => {
+		assertDataflow(label('Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `function() { 
+	x <- 0;
+	f <- function() {
+      x <<- x + 1
+	}
+}`,  emptyGraph()
+				.defineVariable('2@x')
+				.defineVariable('4@x')
+				.use('4:13')
+				.reads('4:13', '2@x')
+				.reads('4:13', '4@x')
+				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('Nested Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `function() { function() { function() { function() {
+	x <- 0; 
+	f <- function() {
+      x <<- x + 1
+	}
+}}}}`,  emptyGraph()
+				.defineVariable('2@x')
+				.defineVariable('4@x')
+				.use('4:13')
+				.reads('4:13', '2@x')
+				.reads('4:13', '4@x')
+				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
 			}
 		)
 	})

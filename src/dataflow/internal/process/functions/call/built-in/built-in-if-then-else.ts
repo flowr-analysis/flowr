@@ -15,6 +15,7 @@ import { EdgeType } from '../../../../../graph/edge'
 import { appendEnvironment } from '../../../../../environments/append'
 import type { IdentifierReference } from '../../../../../environments/identifier'
 import { makeAllMaybe } from '../../../../../environments/environment'
+import { Ternary } from '../../../../../../util/logic'
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -51,24 +52,24 @@ export function processIfThenElse<OtherInfo>(
 	// we should defer this to the abstract interpretation
 	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false)
 	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true)
-	if(conditionIsFalse !== 'always') {
+	if(conditionIsFalse !== Ternary.Always) {
 		then = processDataflowFor(thenArg, data)
 		if(then.entryPoint) {
 			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns })
 		}
-		if(conditionIsTrue !== 'always') {
+		if(conditionIsTrue !== Ternary.Always) {
 			makeThenMaybe = true
 		}
 	}
 
 	let otherwise: DataflowInformation | undefined
 	let makeOtherwiseMaybe = false
-	if(otherwiseArg !== undefined && conditionIsTrue !== 'always') {
+	if(otherwiseArg !== undefined && conditionIsTrue !== Ternary.Always) {
 		otherwise = processDataflowFor(otherwiseArg, data)
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns })
 		}
-		if(conditionIsFalse !== 'always') {
+		if(conditionIsFalse !== Ternary.Always) {
 			makeOtherwiseMaybe = true
 		}
 	}

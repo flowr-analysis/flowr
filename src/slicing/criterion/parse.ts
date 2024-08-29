@@ -1,11 +1,8 @@
 import type { SourcePosition } from '../../util/range'
 import { expensiveTrace } from '../../util/log'
-import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model'
 import { normalizeIdToNumberIfPossible, type NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type {
 	AstIdMap,
-	NormalizedAst,
-	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { slicerLogger } from '../static/static-slicer'

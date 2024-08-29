@@ -138,7 +138,7 @@ print(x)`, emptyGraph()
 				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
 	})
 	describe('Escaped Identifiers Should Still Be Resolved', () => {
-		const distractor = `x <- 3\ny <- 4\nz <- 2\n`
+		const distractor = 'x <- 3\ny <- 4\nz <- 2\n'
 		assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, '`a` <- 2\na',
 			emptyGraph()

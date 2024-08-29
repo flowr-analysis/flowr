@@ -34,7 +34,7 @@ import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mer
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
-import {resolveDataflowGraph} from "./resolve-graph";
+import { resolveDataflowGraph } from './resolve-graph'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -221,7 +221,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/**
 	 * Specify just a subset of what the dataflow graph will actually be.
 	 */
-	expectIsSubgraph:     boolean,
+	expectIsSubgraph:      boolean,
 	/**
 	 * This changes the way the test treats the {@link NodeId}s in your expected graph.
 	 * Before running the verification, the test environment will transform the graph,

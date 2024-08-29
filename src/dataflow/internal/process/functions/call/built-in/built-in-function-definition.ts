@@ -82,8 +82,6 @@ export function processFunctionDefinition<OtherInfo>(
 		linkCircularRedefinitionsWithinALoop(body.graph, nameIdShares, globalBodyOut)
 	}
 
-
-
 	subgraph.mergeWith(body.graph)
 
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)

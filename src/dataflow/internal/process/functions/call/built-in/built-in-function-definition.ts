@@ -86,8 +86,6 @@ export function processFunctionDefinition<OtherInfo>(
 
 	subgraph.mergeWith(body.graph)
 
-	dataflowLogger.trace(`Function definition with id ${name.info.id} has ${remainingRead.length} remaining reads`)
-
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
 
 	for(const read of remainingRead) {

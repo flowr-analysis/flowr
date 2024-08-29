@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { ExitPointType } from '../../../../../info'
-import { linkInputs } from '../../../../linker'
+import {linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap} from '../../../../linker'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
@@ -18,8 +18,7 @@ import type { IdentifierReference } from '../../../../../environments/identifier
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import { VertexType } from '../../../../../graph/vertex'
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping'
-import type { REnvironmentInformation } from '../../../../../environments/environment'
-import { initializeCleanEnvironments } from '../../../../../environments/environment'
+import { makeAllMaybe, REnvironmentInformation, initializeCleanEnvironments } from '../../../../../environments/environment'
 import { resolveByName } from '../../../../../environments/resolve-by-name'
 import { EdgeType } from '../../../../../graph/edge'
 import { expensiveTrace } from '../../../../../../util/log'
@@ -67,6 +66,32 @@ export function processFunctionDefinition<OtherInfo>(
 	const readInBody = [...body.in, ...body.unknownReferences]
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
+
+	// functions can be called multiple times so if they have a global effect, we have to link them as if they would be executed a loop
+	const nameIdShares = produceNameSharedIdMap(remainingRead)
+
+	// TODO: TODO: TOOD:
+
+	for(const write of writtenVariable) {
+		nextGraph.addEdge(write.nodeId, vector.entryPoint, { type: EdgeType.DefinedBy })
+
+		const name = write.name
+		if(name) {
+			const readIdsToLink = nameIdShares.get(name)
+			for(const readId of readIdsToLink) {
+				nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads })
+			}
+			// now, we remove the name from the id shares as they are no longer necessary
+			nameIdShares.delete(name)
+			nextGraph.setDefinitionOfVertex(write)
+		}
+	}
+
+	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, true)]
+
+	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
+
+
 
 	subgraph.mergeWith(body.graph)
 

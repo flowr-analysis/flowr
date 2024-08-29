@@ -814,4 +814,22 @@ f(3)`, emptyGraph()
 			}
 		)
 	})
+	describe('Reference escaping closures', () => {
+		assertDataflow(label('Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+shell, `function() { 
+	x <- 0;
+	f <- function() {
+      x <<- x + 1
+	}
+}`,  emptyGraph()
+	.defineVariable('2@x', undefined, undefined, false)
+	.defineVariable('4@x', undefined, undefined, false)
+	.use('4:13', undefined, undefined, false)
+	.reads('4:13', '2@x').reads('4:13', '4@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+	})
 }))

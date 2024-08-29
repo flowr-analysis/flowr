@@ -48,6 +48,10 @@ export function getLineage(criterion: SingleSlicingCriterion, ast: NormalizedAst
 
 	while(edgeQueue.length > 0) {
 		const [target] = edgeQueue.shift() as [NodeId, DataflowGraphEdge]
+		if(result.has(target)) {
+			continue
+		}
+
 		result.add(target)
 
 		const outgoingEdges = dfg.graph.outgoingEdges(target)

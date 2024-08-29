@@ -82,7 +82,10 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  *
  * All methods return the modified graph to allow for chaining.
  */
-export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
+export class DataflowGraph<
+	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
+	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
 	private _idMap:                     AstIdMap | undefined
 	// this should be linked separately

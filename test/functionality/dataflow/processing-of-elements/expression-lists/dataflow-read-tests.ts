@@ -137,4 +137,27 @@ print(x)`, emptyGraph()
 				.constant('13')
 				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
 	})
+	describe('Quoted Identifiers Should Still Be Resolved', () => {
+		const distractor = `x <- 3\ny <- 4\nz <- 2`
+		assertDataflow(label('without distractors', [ ...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
+			shell, '`a` <- 2\na',
+			emptyGraph()
+				.use('2@a')
+				.reads('2@a', '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('one distractor', [ ...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
+			shell, `\`a\` <- 2\n${distractor}\na`,
+			emptyGraph()
+				.use('-1@a')
+				.reads('-1@a', '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+	})
 }))

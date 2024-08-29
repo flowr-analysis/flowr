@@ -34,6 +34,7 @@ import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mer
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
+import {resolveDataflowGraph} from "./resolve-graph";
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -217,7 +218,18 @@ function handleAssertOutput(name: string | TestLabel, shell: RShell, input: stri
 }
 
 interface DataflowTestConfiguration extends TestConfigurationWithOutput {
-	expectIsSubgraph: boolean
+	/**
+	 * Specify just a subset of what the dataflow graph will actually be.
+	 */
+	expectIsSubgraph:     boolean,
+	/**
+	 * This changes the way the test treats the {@link NodeId}s in your expected graph.
+	 * Before running the verification, the test environment will transform the graph,
+	 * resolving all Ids as if they are slicing criteria.
+	 * In other words, you can use the criteria `12@a` which will be resolved to the corresponding id before comparing.
+	 * Please be aware that this is currently a work in progress.
+	 */
+	resolveIdsAsCriterion: boolean
 }
 
 export function assertDataflow(
@@ -240,6 +252,10 @@ export function assertDataflow(
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(info.normalize.idMap)
+
+		if(userConfig?.resolveIdsAsCriterion) {
+			expected = resolveDataflowGraph(expected)
+		}
 
 		const report: DataflowDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },

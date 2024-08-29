@@ -232,6 +232,10 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	resolveIdsAsCriterion: boolean
 }
 
+function cropIfTooLong(str: string): string {
+	return str.length > 100 ? str.substring(0, 100) + '...' : str
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
@@ -241,7 +245,7 @@ export function assertDataflow(
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
-	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
+	it(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

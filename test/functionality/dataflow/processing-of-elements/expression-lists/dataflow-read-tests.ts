@@ -138,8 +138,8 @@ print(x)`, emptyGraph()
 				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
 	})
 	describe('Quoted Identifiers Should Still Be Resolved', () => {
-		const distractor = `x <- 3\ny <- 4\nz <- 2`
-		assertDataflow(label('without distractors', [ ...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
+		const distractor = `x <- 3\ny <- 4\nz <- 2\n`
+		assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
 			shell, '`a` <- 2\na',
 			emptyGraph()
 				.use('2@a')
@@ -149,11 +149,21 @@ print(x)`, emptyGraph()
 				resolveIdsAsCriterion: true
 			}
 		)
-		assertDataflow(label('one distractor', [ ...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
-			shell, `\`a\` <- 2\n${distractor}\na`,
+		assertDataflow(label('one distractor', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
+			shell, `\`a\` <- 2\n${distractor}a`,
 			emptyGraph()
-				.use('-1@a')
-				.reads('-1@a', '1@`a`'),
+				.use('5@a')
+				.reads('5@a', '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('one hundred distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines']),
+			shell, `\`a\` <- 2\n${distractor.repeat(100)}\na`,
+			emptyGraph()
+				.use(`${3 + 100 * 3}@a`)
+				.reads(`${3 + 100 * 3}@a`, '1@`a`'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

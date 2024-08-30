@@ -91,7 +91,6 @@ export class FlowRServerConnection {
 				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage)
 				break
 			case 'request-slice':
-				console.log(request.message)
 				this.handleSliceRequest(request.message as SliceRequestMessage)
 				break
 			case 'request-repl-execution':

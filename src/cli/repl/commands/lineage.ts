@@ -12,6 +12,7 @@ import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge'
 import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex'
 import type { DataflowInformation } from '../../../dataflow/info'
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { guard } from '../../../util/assert'
 
 function splitAt(str: string, idx: number) {
 	return [str.slice(0, idx), str.slice(idx)]
@@ -42,7 +43,9 @@ function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: 
  * @returns The lineage of the node represented as a list of node ids
  */
 export function getLineage(criterion: SingleSlicingCriterion, ast: NormalizedAst, dfg: DataflowInformation) {
-	const [vertex, outgoingEdges] = dfg.graph.get(slicingCriterionToId(criterion, ast)) as [DataflowGraphVertexInfo, OutgoingEdges]
+	const src = dfg.graph.get(slicingCriterionToId(criterion, ast))
+	guard(src !== undefined, 'The ID pointed to by the criterion does not exist in the dataflow graph')
+	const [vertex, outgoingEdges] = src
 	const result: Set<NodeId> = new Set([vertex.id])
 	const edgeQueue = pushRelevantEdges([], outgoingEdges)
 

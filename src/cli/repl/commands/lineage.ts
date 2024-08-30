@@ -40,8 +40,8 @@ function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: 
  * @param dfg       - The dataflow graph
  * @returns The lineage of the node represented as a list of node ids
  */
-export function getLineage(criterion: SingleSlicingCriterion, ast: NormalizedAst, dfg: DataflowInformation) {
-	const src = dfg.graph.get(slicingCriterionToId(criterion, ast))
+export function getLineage(criterion: SingleSlicingCriterion, { idMap } : NormalizedAst, dfg: DataflowInformation) {
+	const src = dfg.graph.get(slicingCriterionToId(criterion, idMap))
 	guard(src !== undefined, 'The ID pointed to by the criterion does not exist in the dataflow graph')
 	const [vertex, outgoingEdges] = src
 	const result: Set<NodeId> = new Set([vertex.id])

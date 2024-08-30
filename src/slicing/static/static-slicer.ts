@@ -46,6 +46,12 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 			minDepth = Math.min(minDepth, idMap.get(startId)?.info.depth ?? minDepth)
 			sliceSeedIds.add(startId)
 		}
+		/* additionally,
+		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
+		 */
+		for(const id of graph.unknownSideEffects) {
+			queue.add(id, emptyEnv, basePrint, true)
+		}
 	}
 
 	while(queue.nonEmpty()) {

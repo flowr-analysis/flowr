@@ -12,6 +12,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { wrapArgumentsUnnamed } from '../argument/make-argument'
 
 
+/* we currently do not mark this as an unknown side effect, as we can enable/disable this with a toggle */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],

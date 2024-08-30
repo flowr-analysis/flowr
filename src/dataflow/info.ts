@@ -78,7 +78,7 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 	}
 }
 
-export function happensInEveryBranch(controlDependencies: ControlDependency[] | undefined): boolean {
+export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
 	if(controlDependencies === undefined) {
 		/* the cds are unconstrained */
 		return true

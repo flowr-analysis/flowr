@@ -12,6 +12,7 @@ Although far from being as detailed as the in-depth explanation of [_flowR_](htt
   - [The Slice Request](#the-slice-request)
     - [Magic Comments](#magic-comments)
   - [The REPL Request](#the-repl-request)
+  - [The Lineage Request](#the-lineage-request)
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
   - [Interfacing with the File System](#interfacing-with-the-file-system)
@@ -60,7 +61,7 @@ See the implementation of the hello message for more information regarding the c
 <details open>
     <summary>Example Message</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 ```json
 {
@@ -102,7 +103,7 @@ sequenceDiagram
 </details>
 
 The request allows the server to analyze a file and prepare it for slicing.
-The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent slicing).
+The message can contain a `filetoken`, which is used to identify the file in later slice or lineage requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
 
 > [!IMPORTANT]
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
@@ -114,7 +115,7 @@ See the implementation of the request-file-analysis message for more information
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -130,7 +131,7 @@ See the implementation of the request-file-analysis message for more information
 <details>
     <summary>Example Response (Long)</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 The `results` field of the response effectively contains three keys of importance:
 
@@ -2256,7 +2257,7 @@ It contains a human-readable description *why* the analysis failed (see the erro
 <details>
     <summary>Example Error Message</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 ```json
 {
@@ -2277,7 +2278,7 @@ For this, the analysis request may add `cfg: true` to its list of options.
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -2294,7 +2295,7 @@ For this, the analysis request may add `cfg: true` to its list of options.
 <details>
     <summary>Example Response (Shortened)</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 The response is basically the same as the response sent without the `cfg` flag. The following only shows important additions. If you are interested in a visual representation of the control flow graph, see the [mermaid visualization](https://mermaid.live/edit#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjBbXCJgUlN5bWJvbCAoMClcbid4J2BcIl1cbiAgICBuMVtcImBSTnVtYmVyICgxKVxuJzEnYFwiXVxuICAgIG4yW1wiYFJCaW5hcnlPcCAoMilcbid4IDwtIDEnYFwiXVxuICAgIG4zW1wiYFJTeW1ib2wgKDMpXG4neCdgXCJdXG4gICAgbjRbXCJgUk51bWJlciAoNClcbicxJ2BcIl1cbiAgICBuNVtcImBSQmluYXJ5T3AgKDUpXG4neCArIDEnYFwiXVxuICAgIG4xIC0uLT58XCJGRFwifCBuMFxuICAgIG4wIC0uLT58XCJGRFwifCBuMlxuICAgIG41IC0uLT58XCJGRFwifCBuMVxuICAgIG40IC0uLT58XCJGRFwifCBuM1xuICAgIG4zIC0uLT58XCJGRFwifCBuNVxuIiwibWVybWFpZCI6e30sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0=) (although it is really simple).
 
@@ -2486,7 +2487,7 @@ The default response is formatted as JSON. However, by specifying `format: "n-qu
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -2505,7 +2506,7 @@ The default response is formatted as JSON. However, by specifying `format: "n-qu
 <details>
     <summary>Example Response (Long)</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 Please note, that the base message format is still JSON. Only the individual results get converted. While the context is derived from the `filename`, we currently offer no way to customize other configurations (please open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) if you require this).
 
@@ -2604,7 +2605,7 @@ Additionally, you may pass `"noMagicComments": true` to disable the automatic se
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 This request is the logical succession of the file analysis example above which uses the `filetoken`: `"x"`.
 
@@ -2629,7 +2630,7 @@ x + 1
 <details>
     <summary>Example Response</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 The `results` field of the response contains two keys of importance:
 
@@ -2730,7 +2731,7 @@ The semantics of the error message are similar to that of the other messages.
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 For this request to work, you have to start the server with the `--r-session-access` flag.
 
 ```json
@@ -2746,7 +2747,7 @@ For this request to work, you have to start the server with the `--r-session-acc
 <details>
     <summary>Example Response</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 Prompting with `1+1` only produces one `response-repl-execution` message:
 
@@ -2767,6 +2768,69 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
   "id":   "0"
 }
 ```
+
+</details>
+
+### The Lineage Request
+
+<details open>
+<summary>Sequence Diagram</summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant Server
+
+    Client->>+Server: request-lineage
+
+    alt
+        Server-->>Client: response-lineage
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+```
+
+</details>
+
+In order to retrieve the lineage of an object, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
+Besides that, you will need to add a [criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.
+
+<details open>
+<summary>Example Request</summary>
+
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+
+This request is the logical succession of the file analysis example above which uses the `filetoken`: `"x"`.
+
+```json
+{
+  "type":      "request-lineage",
+  "id":        "2",
+  "filetoken": "x",
+  "criterion": "2@x"
+}
+```
+
+</details>
+
+<details>
+<summary>Example Response</summary>
+
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+
+The response contains the lineage of the desired object in form of an array of IDs (as the representation of a set).
+
+```json
+{
+  "type": "response-lineage",
+  "id": "2",
+  "lineage": [3,0,1,2]
+}
+```
+
+If an error occurred, the server will set the responses `type` to `"error"` and provide a message in the `reason` field.
 
 </details>
 

@@ -670,5 +670,11 @@ x`)
 			'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
 			'seed <- 1234\nset.seed(seed)\nx'
 		)
+		assertSliced(label('Configuring options', [
+				'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
+			]), shell,
+			'options(seed)\nx', ['2@x'],
+			'options(seed)\nx'
+		)
 	})
 }))

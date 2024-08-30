@@ -664,6 +664,23 @@ x`)
 		'setwd("f/")\nx', ['2@x'],
 		'setwd("f/")\nx'
 		)
-
+		assertSliced(label('Setting a fixed seed', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
+		'seed <- 1234\nset.seed(seed)\nx'
+		)
+		assertSliced(label('Configuring options', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
+		]), shell,
+		'options(y=2)\nx', ['2@x'],
+		'options(y=2)\nx'
+		)
+		assertSliced(label('Exit hooks', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments', 'implicit-return', 'function-definitions'
+		]), shell,
+		'x\non.exit(function() 3)', ['1@x'],
+		'x\non.exit(function() 3)'
+		)
 	})
 }))

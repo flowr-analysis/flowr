@@ -7,6 +7,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { dataflowLogger } from '../../../../../logger'
 import { EdgeType } from '../../../../../graph/edge'
+import {ForceArguments} from "../common";
 
 
 export function processSpecialBinOp<OtherInfo>(
@@ -14,16 +15,16 @@ export function processSpecialBinOp<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { lazy: boolean, evalRhsWhen: boolean }
+	config: { lazy: boolean, evalRhsWhen: boolean } & ForceArguments
 ): DataflowInformation {
 	if(!config.lazy) {
 		return processKnownFunctionCall({ name, args, rootId, data }).information
 	} else if(args.length != 2) {
 		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information
 	}
 
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data,
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs,
 		patchData: (d, i) => {
 			if(i === 1) {
 				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: config.evalRhsWhen }] }

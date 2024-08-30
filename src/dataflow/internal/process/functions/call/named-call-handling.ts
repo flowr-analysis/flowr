@@ -34,7 +34,8 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
-	const call = processKnownFunctionCall({ name, args, rootId, data })
+	/* if we do not know where we land, we force! */
+	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: 'all' })
 	return mergeInformation(information, call.information)
 }
 

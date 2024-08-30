@@ -7,6 +7,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { IdentifierReference } from '../../../../../environments/identifier'
 import { EdgeType } from '../../../../../graph/edge'
+import {ForceArguments} from "../common";
 
 
 export function processQuote<OtherInfo>(
@@ -14,9 +15,9 @@ export function processQuote<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config?: { quoteArgumentsWithIndex?: number }
+	config: { quoteArgumentsWithIndex?: number } & ForceArguments
 ): DataflowInformation {
-	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data })
+	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
 
 	const inRefs: IdentifierReference[] = [fnRef]
 	const outRefs: IdentifierReference[] = []

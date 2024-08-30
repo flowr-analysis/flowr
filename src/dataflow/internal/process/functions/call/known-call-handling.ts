@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
 import { ExitPointType } from '../../../../info'
+import type { ForceArguments } from './common'
 import { processAllArguments } from './common'
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
@@ -14,7 +15,7 @@ import { EdgeType } from '../../../../graph/edge'
 import { dataflowLogger } from '../../../../logger'
 import { VertexType } from '../../../../graph/vertex'
 
-export interface ProcessKnownFunctionCallInput<OtherInfo> {
+export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:          RSymbol<OtherInfo & ParentInformation>
 	readonly args:          readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
 	readonly rootId:        NodeId
@@ -55,7 +56,7 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, patchData = d => d }: ProcessKnownFunctionCallInput<OtherInfo>
+	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d }: ProcessKnownFunctionCallInput<OtherInfo>
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data)
 
@@ -70,7 +71,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData })
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs })
 	markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
 
 	finalGraph.addVertex({

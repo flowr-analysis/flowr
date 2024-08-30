@@ -362,18 +362,20 @@ export class DataflowGraph<
 	}
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
-	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): void {
+	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
 		const vertex = this.getVertex(from, true)
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`)
 		vertex.controlDependencies ??= []
-		if(to) {
+		if(to && vertex.controlDependencies.every(({ id, when: cond }) => id !== to && when !== cond)) {
 			vertex.controlDependencies.push({ id: to, when })
 		}
+		return this
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId): void {
+	public markIdForUnknownSideEffects(id: NodeId): this {
 		this._unknownSideEffects.add(id)
+		return this
 	}
 }
 

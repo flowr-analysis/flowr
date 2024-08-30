@@ -25,16 +25,11 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { expensiveTrace } from '../../../../../../util/log'
-import type { DataflowGraph } from '../../../../../graph/graph'
 
 let sourceProvider = requestProviderFromFile()
 
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider
-}
-
-function markUnknownSourceCall(rootId: NodeId, graph: DataflowGraph): void {
-	graph.markIdForUnknownSideEffects(rootId)
 }
 
 export function processSourceCall<OtherInfo>(
@@ -57,7 +52,7 @@ export function processSourceCall<OtherInfo>(
 
 	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
-		markUnknownSourceCall(rootId, information.graph)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
 	}
 
@@ -68,14 +63,14 @@ export function processSourceCall<OtherInfo>(
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it
 		if(data.referenceChain.includes(requestFingerprint(request))) {
 			expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
-			markUnknownSourceCall(rootId, information.graph)
+			information.graph.markIdForUnknownSideEffects(rootId)
 			return information
 		}
 
 		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
 	} else {
 		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
-		markUnknownSourceCall(rootId, information.graph)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
 	}
 }
@@ -97,7 +92,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		})
 	} catch(e) {
 		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`)
-		markUnknownSourceCall(rootId, information.graph)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
 	}
 
@@ -133,7 +128,7 @@ export function standaloneSourceFile<OtherInfo>(
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.includes(fingerprint)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
-		markUnknownSourceCall(uniqueSourceId, information.graph)
+		information.graph.markIdForUnknownSideEffects(uniqueSourceId)
 		return information
 	}
 

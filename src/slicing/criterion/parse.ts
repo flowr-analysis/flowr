@@ -1,11 +1,8 @@
 import type { SourcePosition } from '../../util/range'
 import { expensiveTrace } from '../../util/log'
-import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model'
 import { normalizeIdToNumberIfPossible, type NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type {
 	AstIdMap,
-	NormalizedAst,
-	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { slicerLogger } from '../static/static-slicer'
@@ -28,16 +25,16 @@ export class CriteriaParseError extends Error {
 /**
  * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
  */
-export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicingCriterion, decorated: NormalizedAst<OtherInfo & ParentInformation>): NodeId {
+export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
 	let resolved: NodeId | undefined
 	if(criterion.startsWith('$')) {
 		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId
 	} else if(criterion.includes(':')) {
 		const [line, column] = criterion.split(':').map(c => parseInt(c))
-		resolved = locationToId([line, column], decorated.idMap)
+		resolved = locationToId([line, column], idMap)
 	} else if(criterion.includes('@')) {
 		const [line, name] = criterion.split(/@(.*)/s) // only split at first occurrence
-		resolved = conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
+		resolved = conventionalCriteriaToId(parseInt(line), name, idMap)
 	}
 
 	if(resolved === undefined) {
@@ -99,6 +96,6 @@ export interface DecodedCriterion {
 
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
 
-export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: NormalizedAst): DecodedCriteria {
+export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))
 }

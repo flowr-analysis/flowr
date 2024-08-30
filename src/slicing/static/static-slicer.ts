@@ -25,9 +25,9 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
  * @param criteria  - The criteras to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
-export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
+export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
-	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
+	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap)
 	expensiveTrace(slicerLogger,
 		() => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	)
@@ -43,7 +43,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false)
 			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
-			minDepth = Math.min(minDepth, ast.idMap.get(startId)?.info.depth ?? minDepth)
+			minDepth = Math.min(minDepth, idMap.get(startId)?.info.depth ?? minDepth)
 			sliceSeedIds.add(startId)
 		}
 	}
@@ -65,7 +65,7 @@ export function staticSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria
 		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
 			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
-				if(!topLevel || (ast.idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
+				if(!topLevel || (idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
 				}
 			}

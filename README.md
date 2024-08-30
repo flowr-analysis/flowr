@@ -16,7 +16,7 @@ You can enter `:help` to gain more information on its capabilities.
 
 <details>
 
-<summary>Example REPL session.</summary>
+<summary>Example REPL session</summary>
 
 ![Example of a simple REPL session](wiki/gif/repl-demo.gif)
 

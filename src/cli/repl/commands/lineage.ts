@@ -31,7 +31,6 @@ function filterRelevantEdges(edge: DataflowGraphEdge) {
 
 function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: OutgoingEdges) {
 	queue.push(...[...outgoingEdges].filter(([_, edge]) => filterRelevantEdges(edge)))
-	return queue
 }
 
 /**
@@ -47,7 +46,8 @@ export function getLineage(criterion: SingleSlicingCriterion, ast: NormalizedAst
 	guard(src !== undefined, 'The ID pointed to by the criterion does not exist in the dataflow graph')
 	const [vertex, outgoingEdges] = src
 	const result: Set<NodeId> = new Set([vertex.id])
-	const edgeQueue = pushRelevantEdges([], outgoingEdges)
+	const edgeQueue: [NodeId, DataflowGraphEdge][] = []
+	pushRelevantEdges(edgeQueue, outgoingEdges)
 
 	while(edgeQueue.length > 0) {
 		const [target] = edgeQueue.shift() as [NodeId, DataflowGraphEdge]

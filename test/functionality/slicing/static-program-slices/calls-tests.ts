@@ -508,8 +508,8 @@ print(y = x)`, ['4@y'], 'y=x')
 		assertSliced(label('redefine in local scope', [
 			'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities,
 			'numbers', 'name-escaped', 'call-normal', 'function-definitions', 'redefinition-of-built-in-functions-primitives'
-			]),
-			shell, `f <- function() {
+		]),
+		shell, `f <- function() {
    x <- 2
    \`<-\` <- \`*\`
    x <- 3

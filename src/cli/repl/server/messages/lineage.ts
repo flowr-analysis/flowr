@@ -23,6 +23,6 @@ export const requestLineageMessage: MessageDefinition<LineageRequestMessage> = {
 
 export interface LineageResponseMessage extends IdMessageBase {
 	type:    'response-lineage',
-	/** The lineage of the given criterion. The object pointed to by the criterion will be at the first position in the list. */
+	/** The lineage of the given criterion. With this being the representation of a set, there is no guarantee about order. */
 	lineage: NodeId[]
 }

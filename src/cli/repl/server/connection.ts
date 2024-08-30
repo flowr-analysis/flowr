@@ -308,8 +308,8 @@ export class FlowRServerConnection {
 		}
 
 		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true)
-		guard(dfg !== undefined, 'Dataflow graph must be present')
-		guard(ast !== undefined, 'AST must be present')
+		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`)
+		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`)
 		const lineageIds = getLineage(request.criterion, ast, dfg)
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',

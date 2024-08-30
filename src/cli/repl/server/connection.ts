@@ -38,6 +38,7 @@ import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-
 import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage'
 import { requestLineageMessage } from './messages/lineage'
 import { getLineage } from '../commands/lineage'
+import { guard } from '../../../util/assert'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -90,13 +91,14 @@ export class FlowRServerConnection {
 				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage)
 				break
 			case 'request-slice':
+				console.log(request.message)
 				this.handleSliceRequest(request.message as SliceRequestMessage)
 				break
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage)
 				break
 			case 'request-lineage':
-				void this.handleLineageRequest(request.message as LineageRequestMessage)
+				this.handleLineageRequest(request.message as LineageRequestMessage)
 				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -283,7 +285,7 @@ export class FlowRServerConnection {
 		})
 	}
 
-	private async handleLineageRequest(base: LineageRequestMessage) {
+	private handleLineageRequest(base: LineageRequestMessage) {
 		const requestResult = validateMessage(base, requestLineageMessage)
 
 		if(requestResult.type === 'error') {
@@ -305,10 +307,9 @@ export class FlowRServerConnection {
 			return
 		}
 
-		// FIXME: Well, this is only here, 'cause I did not find a way to execute the pipeline only up to the dataflow step
-		fileInformation.pipeline.updateRequest({ criterion: [request.criterion] })
-
-		const { dataflow: dfg, normalize: ast } = await fileInformation.pipeline.allRemainingSteps(true)
+		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true)
+		guard(dfg !== undefined, 'Dataflow graph must be present')
+		guard(ast !== undefined, 'AST must be present')
 		const lineageIds = getLineage(request.criterion, ast, dfg)
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',

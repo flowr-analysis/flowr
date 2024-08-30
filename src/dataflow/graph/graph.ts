@@ -82,7 +82,10 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  *
  * All methods return the modified graph to allow for chaining.
  */
-export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
+export class DataflowGraph<
+	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
+	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
 	private _idMap:                     AstIdMap | undefined
 	// this should be linked separately
@@ -94,7 +97,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
-	private rootVertices:      Set<NodeId> = new Set<NodeId>()
+	protected rootVertices:    Set<NodeId> = new Set<NodeId>()
 	/** All vertices in the complete graph (including those nested in function definition) */
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>()
 	/** All edges in the complete graph (including those nested in function definition) */

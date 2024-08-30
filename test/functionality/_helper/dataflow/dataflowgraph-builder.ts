@@ -266,4 +266,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall)
 	}
+
+
+	/**
+	 * explicitly overwrite the root ids of the graph,
+	 * this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags.
+	 */
+	public overwriteRootIds(ids: readonly NodeId[]) {
+		this.rootVertices = new Set(ids.map(normalizeIdToNumberIfPossible))
+		return this
+	}
 }

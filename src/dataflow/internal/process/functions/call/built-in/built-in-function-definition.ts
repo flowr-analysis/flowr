@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { ExitPointType } from '../../../../../info'
-import { linkInputs } from '../../../../linker'
+import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
@@ -68,9 +68,21 @@ export function processFunctionDefinition<OtherInfo>(
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
-	subgraph.mergeWith(body.graph)
+	// functions can be called multiple times,
+	// so if they have a global effect, we have to link them as if they would be executed a loop
+	/* theoretically, we should just check if there is a global effect-write somewhere within */
+	if(remainingRead.length > 0) {
+		const nameIdShares = produceNameSharedIdMap(remainingRead)
 
-	dataflowLogger.trace(`Function definition with id ${name.info.id} has ${remainingRead.length} remaining reads`)
+		const definedInLocalEnvironment = new Set([...bodyEnvironment.current.memory.values()].flat().map(d => d.nodeId))
+
+		// Everything that is in body.out but not within the local environment populated for the function scope is a potential escape ~> global definition
+		const globalBodyOut = body.out.filter(d => !definedInLocalEnvironment.has(d.nodeId))
+
+		linkCircularRedefinitionsWithinALoop(body.graph, nameIdShares, globalBodyOut)
+	}
+
+	subgraph.mergeWith(body.graph)
 
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
 

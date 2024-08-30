@@ -184,6 +184,12 @@ export const flowrCapabilities = {
 							description: '_Handle cases like `print <- function(x) x`, `` `for` <- function(a,b,c) a``, ..._ Currently, we can not handle all of them there are no tests. Still wip as part of desugaring'
 						},
 						{
+							name:        'Functions with global side effects',
+							id:          'functions-with-global-side-effects',
+							supported:   'partially',
+							description: '_Support functions like `setwd` which have an impact on the subsequent program._'
+						},
+						{
 							name:         'Index Access',
 							id:           'index-access',
 							capabilities: [

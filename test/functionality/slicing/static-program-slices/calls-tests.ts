@@ -48,6 +48,7 @@ y <- 3
 f2(1,x)
     `, ['7@f2'], `f1 <- function(a, b) { WW }
 f2 <- function(...) { f1(...) }
+x <- 3
 WW <- 4
 f2(1,x)`)
 	})
@@ -609,6 +610,16 @@ if(x == 3) {
     } else 
 { x <- y <- 3 }
 x`)
+		})
+		describe('Lapply Forcing the Map Function Body', () => {
+			assertSliced(label('Forcing Second Argument', []), shell,
+				'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
+				'res <- lapply(1:3, function(x) x + 1)'
+			)
+			assertSliced(label('Forcing Including Reference', []), shell,
+				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
+				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+			)
 		})
 	})
 	describe('Closures', () => {

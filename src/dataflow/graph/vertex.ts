@@ -89,7 +89,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 */
 	subflow:      DataflowFunctionFlowInformation
 	/**
-	 * All exist points of the function definitions.
+	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
 	exitPoints:   readonly NodeId[]
@@ -98,3 +98,25 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 
 export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
+
+
+export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphValue {
+	return vertex.tag === VertexType.Value
+}
+
+export function isUseVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
+	return vertex.tag === VertexType.Use
+}
+
+export function isFunctionCallVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
+	return vertex.tag === VertexType.FunctionCall
+}
+
+export function isVariableDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
+	return vertex.tag === VertexType.VariableDefinition
+}
+
+export function isFunctionDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
+	return vertex.tag === VertexType.FunctionDefinition
+}
+

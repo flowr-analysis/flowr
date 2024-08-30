@@ -21,6 +21,7 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import { VertexType } from '../../../../../graph/vertex'
 import { define } from '../../../../../environments/define'
 import { EdgeType } from '../../../../../graph/edge'
+import type { ForceArguments } from '../common'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -40,7 +41,7 @@ function getEffectiveOrder<T>(config: {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args
 }
 
-export interface AssignmentConfiguration {
+export interface AssignmentConfiguration extends ForceArguments {
 	readonly superAssignment?:     boolean
 	readonly swapSourceAndTarget?: boolean
 	/* Make maybe if assigned to symbol */
@@ -64,7 +65,7 @@ export function processAssignment<OtherInfo>(
 ): DataflowInformation {
 	if(args.length != 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>])
@@ -72,7 +73,7 @@ export function processAssignment<OtherInfo>(
 	const { type, named } = target
 
 	if(type === RType.Symbol) {
-		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget })
+		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs })
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
 			name,
@@ -97,7 +98,7 @@ export function processAssignment<OtherInfo>(
 	}
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
-	return processKnownFunctionCall({ name, args: effectiveArgs, rootId, data }).information
+	return processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
@@ -147,7 +148,8 @@ function processAssignmentToString<OtherInfo>(
 		args:         mappedArgs,
 		rootId,
 		data,
-		reverseOrder: !config.swapSourceAndTarget
+		reverseOrder: !config.swapSourceAndTarget,
+		forceArgs:    config.forceArgs
 	})
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

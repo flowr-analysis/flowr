@@ -305,6 +305,9 @@ export class FlowRServerConnection {
 			return
 		}
 
+		// FIXME: Well, this is only here, 'cause I did not find a way to execute the pipeline only up to the dataflow step
+		fileInformation.pipeline.updateRequest({ criterion: [request.criterion] })
+
 		const { dataflow: dfg, normalize: ast } = await fileInformation.pipeline.allRemainingSteps(true)
 		const lineageIds = getLineage(request.criterion, ast, dfg)
 		sendMessage<LineageResponseMessage>(this.socket, {

@@ -174,7 +174,7 @@ registerSimpleFunctions(
 registerBuiltInFunctions(true,  ['apply', 'lapply', 'sapply', 'tapply', 'mapply'], defaultBuiltInProcessor,   { forceArgs: [false, true] }                                                 )
 registerBuiltInFunctions(true,  ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
-registerBuiltInFunctions(true,  ['load', 'load_all', 'setwd'],                     defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
+registerBuiltInFunctions(true,  ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
 registerBuiltInFunctions(false, ['cat'],                                           defaultBuiltInProcessor,   { forceArgs: 'all' as const }                                                ) /* returns null */
 registerBuiltInFunctions(false, ['switch'],                                        defaultBuiltInProcessor,   {}                                                                           ) /* returns null */
 registerBuiltInFunctions(true,  ['return'],                                        defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }                         )

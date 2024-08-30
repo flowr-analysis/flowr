@@ -664,6 +664,11 @@ x`)
 		'setwd("f/")\nx', ['2@x'],
 		'setwd("f/")\nx'
 		)
-
+		assertSliced(label('Setting a fixed seed', [
+				'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
+			]), shell,
+			'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
+			'seed <- 1234\nset.seed(seed)\nx'
+		)
 	})
 }))

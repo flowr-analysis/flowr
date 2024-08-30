@@ -13,11 +13,14 @@ describe('source', withShell(shell => {
 	before(() => setSourceProvider(requestProviderFromText(sources)))
 	after(() => setSourceProvider(requestProviderFromFile()))
 
-	// these are incorrect - where is the content from the sourced file? (see https://github.com/flowr-analysis/flowr/issues/822)
 	assertSliced(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
-		shell, 'source("simple")\ncat(N)', ['2@N'], 'N')
+		shell, 'source("simple")\ncat(N)', ['2@N'], 'source("simple")\nN')
+	assertSliced(label('do not always include source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
+		shell, 'source("simple")\ncat(N)\nx <- 3', ['3@x'], 'x <- 3')
 	assertSliced(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
-		shell, 'source("closure1")\ng <- f()\nprint(g())', ['3@g'], 'g <- f()\ng()')
+		shell, 'source("closure1")\ng <- f()\nprint(g())', ['3@g'], 'source("closure1")\ng <- f()\ng()')
 	assertSliced(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
-		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', ['4@x'], 'f()\nx')
+		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', ['4@x'], 'source("closure2")\nf()\nx')
+	assertSliced(label('multiple sources', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
+		shell, 'source("simple")\nsource("closure1")\ncat(N + f())', ['2@cat'], 'source("simple")\nsource("closure1")\ncat(N + f())')
 }))

@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse'
 
-describe.only('Simple', withShell(shell => {
+describe('Simple', withShell(shell => {
 	describe('Base Dicing Cases', () => {
 		const testcases: [{ name: string, input: string, endCriterion: SlicingCriteria, startCriterion: SlicingCriteria, expected: string }] 
 		= [

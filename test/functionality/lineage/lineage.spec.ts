@@ -13,7 +13,7 @@ import { OperatorDatabase } from '../../../src/r-bridge/lang-4.x/ast/model/opera
 
 describe('Test lineage', withShell(shell => {
 
-	async function assertLineage(title: string | TestLabel, request: string, criterion: SingleSlicingCriterion, expected: NodeId[]) {
+	function assertLineage(title: string | TestLabel, request: string, criterion: SingleSlicingCriterion, expected: NodeId[]) {
 		const effectiveName = decorateLabelContext(title, ['lineage'])
 
 		return it(effectiveName, async() => {

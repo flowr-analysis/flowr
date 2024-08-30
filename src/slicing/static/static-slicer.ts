@@ -46,6 +46,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 			minDepth = Math.min(minDepth, idMap.get(startId)?.info.depth ?? minDepth)
 			sliceSeedIds.add(startId)
 		}
+
 		/* additionally,
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
@@ -56,6 +57,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 
 	while(queue.nonEmpty()) {
 		const current = queue.next()
+
 		const { baseEnvironment, id, onlyForSideEffects } = current
 		const baseEnvFingerprint = envFingerprint(baseEnvironment)
 

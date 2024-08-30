@@ -88,9 +88,7 @@ export class DataflowGraph<
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
 	private _idMap:                     AstIdMap | undefined
 	/* Set of vertices which have sideEffects that we do not know anything about */
-	private _unknownSideEffects:        Set<NodeId> = new Set<NodeId>()
-	// this should be linked separately
-	public readonly functionCache = new Map<NodeId, Set<DataflowGraphVertexInfo>>()
+	private _unknownSideEffects = new Set<NodeId>()
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments()
@@ -232,11 +230,11 @@ export class DataflowGraph<
 		// keep a clone of the original environment
 		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
 
-
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
 			environment
 		} as unknown as Vertex)
+
 		if(asRoot) {
 			this.rootVertices.add(vertex.id)
 		}
@@ -253,7 +251,7 @@ export class DataflowGraph<
 	 * Will insert a new edge into the graph,
 	 * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
 	 * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-	 * Please note, that this will never make edges to {@link BuiltIn} as they are not part of the graph.
+	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)

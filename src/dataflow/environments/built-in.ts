@@ -59,7 +59,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean }
+	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean, hasUnknownSideEffects?: boolean }
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
 	if(config.returnsNthArgument !== undefined) {
@@ -74,6 +74,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 				res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Reads })
 			}
 		}
+	}
+
+	if(config.hasUnknownSideEffects) {
+		res.graph.markIdForUnknownSideEffects(rootId)
 	}
 
 	if(config.cfg !== undefined) {
@@ -166,6 +170,8 @@ registerSimpleFunctions(
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
 registerBuiltInFunctions(true, ['print', '('], defaultBuiltInProcessor, { returnsNthArgument: 0 })
+
+registerBuiltInFunctions(true, ['load', 'load_all'], defaultBuiltInProcessor, { hasUnknownSideEffects: true })
 
 registerBuiltInFunctions(false, ['cat', 'switch'],                   defaultBuiltInProcessor,   {}) /* returns null */
 registerBuiltInFunctions(true,  ['return'],                          defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }                         )

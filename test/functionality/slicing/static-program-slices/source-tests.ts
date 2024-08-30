@@ -22,5 +22,7 @@ describe('source', withShell(shell => {
 	assertSliced(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', ['4@x'], 'source("closure2")\nf()\nx')
 	assertSliced(label('multiple sources', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
-		shell, 'source("simple")\nsource("closure1")\ncat(N + f())', ['2@cat'], 'source("simple")\nsource("closure1")\ncat(N + f())')
+		shell, 'source("simple")\nsource("closure1")\ncat(N + f())', ['3@cat'], 'source("simple")\nsource("closure1")\ncat(N + f())')
+	assertSliced(label('Include unresolved sources', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
+		shell, 'source("unknown")\ncat(N)', ['2@cat'], 'source("unknown")\ncat(N)')
 }))

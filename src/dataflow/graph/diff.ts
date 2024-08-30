@@ -129,6 +129,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
 	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
+	setDifference(ctx.left.unknownSideEffects, ctx.right.unknownSideEffects, { ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` })
 }
 
 

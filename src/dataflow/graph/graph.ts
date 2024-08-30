@@ -375,7 +375,7 @@ export class DataflowGraph<
 
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId): this {
-		this._unknownSideEffects.add(id)
+		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id))
 		return this
 	}
 }

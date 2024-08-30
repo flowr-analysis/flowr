@@ -61,19 +61,21 @@ describe('source', withShell(shell => {
 		.reads('10', 'simple-1:10-1:15-0')
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], controlDependencies: [{ id: '8', when: true }] })
 		.call('simple-1:10-1:15-2', '<-', [argumentInCall('simple-1:10-1:15-0'), argumentInCall('simple-1:10-1:15-1')], { returns: ['simple-1:10-1:15-0'], reads: [BuiltIn] })
-		.addControlDependency('simple-1:10-1:15-2', '10')
+		.addControlDependency('simple-1:10-1:15-2', '6')
 		.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [{ id: '8', when: true }] })
 		.call('8', 'if', [argumentInCall('0'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.call('12', 'cat', [argumentInCall('10')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('N', 'simple-1:10-1:15-0', 'simple-1:10-1:15-2') })
 		.constant('4')
 		.constant('simple-1:10-1:15-1')
 		.defineVariable('simple-1:10-1:15-0', 'N', { definedBy: ['simple-1:10-1:15-1', 'simple-1:10-1:15-2'] })
+		.addControlDependency('simple-1:10-1:15-0', '6')
 	)
 
 	// missing sources should just be ignored
 	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), shell, 'source("missing")', emptyGraph()
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 		.constant('1')
+		.markIdForUnknownSideEffects('3')
 	)
 
 	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
@@ -82,11 +84,14 @@ describe('source', withShell(shell => {
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
 		.call('recursive2-2:1-2:6-3', 'cat', [argumentInCall('recursive2-2:1-2:6-1')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+		.addControlDependency('recursive2-2:1-2:6-3', '6')
 		.call('recursive2-2:1-2:6-7', 'source', [argumentInCall('recursive2-2:1-2:6-5')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 		.constant('4')
 		.constant('recursive2-2:1-2:6-5')
+		/* indicate recursion */
+		.markIdForUnknownSideEffects('recursive2-2:1-2:6-7')
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
@@ -97,6 +102,7 @@ describe('source', withShell(shell => {
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] })
+		.markIdForUnknownSideEffects('6')
 	)
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
@@ -104,6 +110,7 @@ describe('source', withShell(shell => {
 			.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 			.argument('3', '1')
 			.call('closure1-1:1-1:6-8', '<-', [argumentInCall('closure1-1:1-1:6-0'), argumentInCall('closure1-1:1-1:6-7')], { returns: ['closure1-1:1-1:6-0'], reads: [BuiltIn] })
+			.addControlDependency('closure1-1:1-1:6-8', '3')
 			.argument('closure1-1:1-1:6-8', ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-0'])
 			.call('6', 'f', [], { returns: ['closure1-1:1-1:6-5'], reads: ['closure1-1:1-1:6-0'], environment: defaultEnv().defineFunction('f', 'closure1-1:1-1:6-0', 'closure1-1:1-1:6-8') })
 			.calls('6', 'closure1-1:1-1:6-7')
@@ -133,6 +140,7 @@ describe('source', withShell(shell => {
 				environment:       defaultEnv().pushEnv()
 			})
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
+			.addControlDependency('closure1-1:1-1:6-0', '3')
 			.defineVariable('4', 'g', { definedBy: ['6', '7'] }))
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
@@ -145,6 +153,7 @@ describe('source', withShell(shell => {
 			.call('closure2-2:1-2:6-5', '<<-', [argumentInCall('closure2-2:1-2:6-3'), argumentInCall('closure2-2:1-2:6-4')], { returns: ['closure2-2:1-2:6-3'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 			.argument('closure2-2:1-2:6-5', ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3'])
 			.call('closure2-2:1-2:6-8', '<-', [argumentInCall('closure2-2:1-2:6-0'), argumentInCall('closure2-2:1-2:6-7')], { returns: ['closure2-2:1-2:6-0'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+			.addControlDependency('closure2-2:1-2:6-8', '6')
 			.argument('closure2-2:1-2:6-8', ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-0'])
 			.call('8', 'f', [], { returns: ['closure2-2:1-2:6-5'], reads: ['closure2-2:1-2:6-0'], environment: defaultEnv().defineVariable('x', '0', '2').defineFunction('f', 'closure2-2:1-2:6-0', 'closure2-2:1-2:6-8') })
 			.calls('8', 'closure2-2:1-2:6-7')
@@ -164,5 +173,7 @@ describe('source', withShell(shell => {
 				graph:             new Set(['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5']),
 				environment:       defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5').pushEnv()
 			}, { environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5') })
-			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] }))
+			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
+			.addControlDependency('closure2-2:1-2:6-0', '6')
+	)
 }))

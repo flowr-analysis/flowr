@@ -673,8 +673,14 @@ x`)
 		assertSliced(label('Configuring options', [
 				'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
 			]), shell,
-			'options(seed)\nx', ['2@x'],
-			'options(seed)\nx'
+			'options(y=2)\nx', ['2@x'],
+			'options(y=2)\nx'
+		)
+		assertSliced(label('Exit hooks', [
+				'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments', 'implicit-return', 'function-definitions'
+			]), shell,
+			'x\non.exit(function() 3)', ['1@x'],
+			'x\non.exit(function() 3)'
 		)
 	})
 }))

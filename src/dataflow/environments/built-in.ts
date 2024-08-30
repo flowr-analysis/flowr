@@ -202,6 +202,7 @@ registerBuiltInFunctions(true,  ['for'],                                        
 registerBuiltInFunctions(true,  ['repeat'],                                        processRepeatLoop,         {}                                                                           )
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
 registerBuiltInFunctions(true,  ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
+registerBuiltInFunctions(true,  ['on.exit'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

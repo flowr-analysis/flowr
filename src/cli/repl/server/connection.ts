@@ -35,6 +35,10 @@ import fs from 'fs'
 import type { RParseRequests } from '../../../r-bridge/retriever'
 import { autoSelectLibrary } from '../../../reconstruct/auto-select/auto-select-defaults'
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments'
+import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage'
+import { requestLineageMessage } from './messages/lineage'
+import { getLineage } from '../commands/lineage'
+import { guard } from '../../../util/assert'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -91,6 +95,9 @@ export class FlowRServerConnection {
 				break
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage)
+				break
+			case 'request-lineage':
+				this.handleLineageRequest(request.message as LineageRequestMessage)
 				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -277,6 +284,38 @@ export class FlowRServerConnection {
 		})
 	}
 
+	private handleLineageRequest(base: LineageRequestMessage) {
+		const requestResult = validateMessage(base, requestLineageMessage)
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id)
+			return
+		}
+
+		const request = requestResult.message
+		this.logger.info(`[${this.name}] Received lineage request for criterion ${request.criterion}`)
+
+		const fileInformation = this.fileMap.get(request.filetoken)
+		if(!fileInformation) {
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `The file token ${request.filetoken} has never been analyzed.`
+			})
+			return
+		}
+
+		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true)
+		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`)
+		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`)
+		const lineageIds = getLineage(request.criterion, ast, dfg)
+		sendMessage<LineageResponseMessage>(this.socket, {
+			type:    'response-lineage',
+			id:      request.id,
+			lineage: [...lineageIds]
+		})
+	}
 }
 
 export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {

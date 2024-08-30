@@ -506,8 +506,11 @@ print(x)`, ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/)
 \`<-\` <- \`*\`
 x <- 3
 print(y = x)`, ['4@y'], 'y=x')
-		assertSliced(label('redefine in local scope', []),
-			shell, `f <- function() {
+		assertSliced(label('redefine in local scope', [
+			'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities,
+			'numbers', 'name-escaped', 'call-normal', 'function-definitions', 'redefinition-of-built-in-functions-primitives'
+		]),
+		shell, `f <- function() {
    x <- 2
    \`<-\` <- \`*\`
    x <- 3
@@ -565,7 +568,7 @@ foo(.x = f(3))`)
 			assertSliced(label('nested definition in unknown foo', capabilities), shell,
 				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })', ['2@foo'],
 				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })')
-			assertSliced(label('nested definition in unknown foo with reference', []), shell,
+			assertSliced(label('nested definition in unknown foo with reference', capabilities), shell,
 				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)', ['3@foo'],
 				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)')
 		})

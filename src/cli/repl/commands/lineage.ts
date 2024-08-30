@@ -9,7 +9,6 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { OutgoingEdges } from '../../../dataflow/graph/graph'
 import type { DataflowGraphEdge } from '../../../dataflow/graph/edge'
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge'
-import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex'
 import type { DataflowInformation } from '../../../dataflow/info'
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { guard } from '../../../util/assert'

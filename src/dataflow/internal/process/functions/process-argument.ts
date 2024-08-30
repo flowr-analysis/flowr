@@ -10,10 +10,16 @@ import { DataflowGraph } from '../../../graph/graph'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
 import { edgeIncludesType, EdgeType } from '../../../graph/edge'
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
-import type { DataflowGraphVertexFunctionCall } from '../../../graph/vertex'
+import {
+	DataflowGraphVertexFunctionDefinition,
+	isFunctionDefinitionVertex
+
+} from '../../../graph/vertex'
 import { VertexType } from '../../../graph/vertex'
 import { resolveByName } from '../../../environments/resolve-by-name'
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import {MergeableRecord} from "../../../../util/objects";
+import {REnvironmentInformation} from "../../../environments/environment";
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
@@ -26,23 +32,44 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	}
 }
 
-function hasNoOutgoingCallEdge(graph: DataflowGraph, id: NodeId): boolean {
+function hasNoOutgoingCallOrReadEdge(graph: DataflowGraph, id: NodeId): boolean {
 	const outgoings = graph.outgoingEdges(id)
 	if(outgoings === undefined) {
 		return true
 	}
 
 	for(const [_, edge] of outgoings) {
-		if(edgeIncludesType(edge.types, EdgeType.Calls)) {
+		if(edgeIncludesType(edge.types, EdgeType.Calls | EdgeType.Reads)) {
 			return false
 		}
 	}
 	return true
 }
 
+export interface FunctionArgumentConfiguration extends MergeableRecord {
+	readonly forceValue?: boolean
+}
+
+function forceVertexValueReferences(value: DataflowInformation, graph: DataflowGraph, env: REnvironmentInformation): void {
+	const ingoing = value.in;
+	const containedSubflowIn: readonly IdentifierReference[] = [...graph.vertices(true)]
+		.filter(([,info]) => isFunctionDefinitionVertex(info))
+		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in)
+	// try to resolve them against the current environment
+	for(const ref of [...ingoing, ...containedSubflowIn]) {
+		if(ref.name) {
+			const resolved = resolveByName(ref.name, env) ?? []
+			for (const resolve of resolved) {
+				graph.addEdge(ref.nodeId, resolve.nodeId, {type: EdgeType.Reads})
+			}
+		}
+	}
+}
+
 export function processFunctionArgument<OtherInfo>(
 	argument: RArgument<OtherInfo & ParentInformation>,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	{ forceValue = false }: FunctionArgumentConfiguration = {}
 ): DataflowInformation {
 	const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data)
 	const value = argument.value === undefined ? undefined : processDataflowFor(argument.value, data)
@@ -62,19 +89,13 @@ export function processFunctionArgument<OtherInfo>(
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 
-	/* potentially link all function calls here (as maybes with a maybe cd) as the called function may employ calling-env-semantics if unknown */
-	if(value) {
-		const functionCalls = [...graph.vertices(true)]
-			.filter(([_,info]) => info.tag === VertexType.FunctionCall)
-			.filter(([id]) => hasNoOutgoingCallEdge(graph, id)) as [NodeId, DataflowGraphVertexFunctionCall][]
-		// try to resolve them against the current environment
-		for(const [id, info] of functionCalls) {
-			const resolved = resolveByName(info.name, data.environment) ?? []
-			/* first, only link a read ref */
-			for(const resolve of resolved) {
-				graph.addEdge(id, resolve.nodeId, { type: EdgeType.Reads })
-			}
-		}
+	/*
+	 * Potentially link all references here (as maybes with a maybe cd) as the called function may employ calling-env-semantics if unknown.
+	 * Yet we still keep those references within the open ins in case the environment changes.
+	 */
+	if(forceValue && value) {
+		console.log('HEEEEEEEY')
+		forceVertexValueReferences(value, graph, data.environment)
 	}
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {

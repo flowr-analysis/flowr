@@ -319,6 +319,7 @@ f <- function() {
 }
 f()`,  emptyGraph()
 				.use('7', '"a"', undefined, false)
+				.reads('7', '0')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 				.argument('2', ['1', '0'])
 				.argument('9', '7')

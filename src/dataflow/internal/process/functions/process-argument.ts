@@ -10,13 +10,7 @@ import { DataflowGraph } from '../../../graph/graph'
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
 import { EdgeType } from '../../../graph/edge'
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
-import {
-	DataflowGraphVertexFunctionDefinition,
-	isFunctionDefinitionVertex,
-	VertexType
-} from '../../../graph/vertex'
-import { resolveByName } from '../../../environments/resolve-by-name'
-import {REnvironmentInformation} from "../../../environments/environment";
+import { VertexType } from '../../../graph/vertex'
 
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {

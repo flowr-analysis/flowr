@@ -25,6 +25,7 @@ describe('Simple Defs in Multiple Files', withShell(shell => {
 			.argument('-inline-@root-2-3', '-inline-@root-2-2')
 			.call('-inline-@root-2-3', '+', [argumentInCall('-inline-@root-2-1'), argumentInCall('-inline-@root-2-2')], { returns: [], reads: ['-inline-@root-2-1', '-inline-@root-2-2'], onlyBuiltIn: true })
 			.argument('-inline-@root-2-5', '-inline-@root-2-3')
+			.reads('-inline-@root-2-5', '-inline-@root-2-3')
 			.call('-inline-@root-2-5', 'print', [argumentInCall('-inline-@root-2-3')], { returns: ['-inline-@root-2-3'], reads: [], onlyBuiltIn: true })
 			.addControlDependency('-inline-@root-2-5', 'root-2')
 			.constant('1')

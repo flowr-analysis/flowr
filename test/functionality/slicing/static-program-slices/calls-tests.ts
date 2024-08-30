@@ -48,6 +48,7 @@ y <- 3
 f2(1,x)
     `, ['7@f2'], `f1 <- function(a, b) { WW }
 f2 <- function(...) { f1(...) }
+x <- 3
 WW <- 4
 f2(1,x)`)
 	})

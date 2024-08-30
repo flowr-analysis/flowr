@@ -607,6 +607,16 @@ if(x == 3) {
 { x <- y <- 3 }
 x`)
 		})
+		describe('Lapply Forcing the Map Function Body', () => {
+			assertSliced(label('Forcing Second Argument', []), shell,
+				`res <- lapply(1:3, function(x) x + 1)`, ['1@res'],
+				`res <- lapply(1:3, function(x) x + 1)`
+			)
+			assertSliced(label('Forcing Including Reference', []), shell,
+				`foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)`, ['2@res'],
+				`foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)`
+			)
+		});
 	})
 	describe('Closures', () => {
 		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),

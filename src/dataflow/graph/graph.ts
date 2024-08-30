@@ -15,7 +15,8 @@ import {
 import { arrayEqual } from '../../util/arrays'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier'
-import {NodeId, normalizeIdToNumberIfPossible} from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { REnvironmentInformation } from '../environments/environment'
 import { initializeCleanEnvironments } from '../environments/environment'
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
@@ -363,7 +364,7 @@ export class DataflowGraph<
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
 	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
-		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
+		to = to ? normalizeIdToNumberIfPossible(to) : undefined
 		const vertex = this.getVertex(from, true)
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`)
 		vertex.controlDependencies ??= []

@@ -614,15 +614,15 @@ x`)
 		describe('Lapply Forcing the Map Function Body', () => {
 			assertSliced(label('Forcing Second Argument', [
 				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
-				]), shell,
-				'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
-				'res <- lapply(1:3, function(x) x + 1)'
+			]), shell,
+			'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
+			'res <- lapply(1:3, function(x) x + 1)'
 			)
 			assertSliced(label('Forcing Including Reference', [
-					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
-				]), shell,
-				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
-				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+			]), shell,
+			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
+			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
 			)
 		})
 	})
@@ -659,10 +659,10 @@ x`)
 	})
 	describe('Calls with potential side effects', () => {
 		assertSliced(label('Changing the working directory', [
-				'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'
-			]), shell,
-			'setwd("f/")\nx', ['2@x'],
-			'setwd("f/")\nx'
+			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'setwd("f/")\nx', ['2@x'],
+		'setwd("f/")\nx'
 		)
 
 	})

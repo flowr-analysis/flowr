@@ -1,10 +1,8 @@
 import { guard } from '../../util/assert'
 import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
-
 import type { DataflowInformation } from '../info'
-import type { DataflowDifferenceReport } from './diff'
-import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
+import { equalFunctionArguments } from './diff'
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -18,6 +16,7 @@ import { arrayEqual } from '../../util/arrays'
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { REnvironmentInformation } from '../environments/environment'
 import { initializeCleanEnvironments } from '../environments/environment'
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
@@ -82,9 +81,14 @@ type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'type
  *
  * All methods return the modified graph to allow for chaining.
  */
-export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo, Edge extends DataflowGraphEdge = DataflowGraphEdge> {
+export class DataflowGraph<
+	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
+	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+> {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined
 	private _idMap:                     AstIdMap | undefined
+	/* Set of vertices which have sideEffects that we do not know anything about */
+	private _unknownSideEffects:        Set<NodeId> = new Set<NodeId>()
 	// this should be linked separately
 	public readonly functionCache = new Map<NodeId, Set<DataflowGraphVertexInfo>>()
 
@@ -94,7 +98,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	}
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
-	private rootVertices:      Set<NodeId> = new Set<NodeId>()
+	protected rootVertices:    Set<NodeId> = new Set<NodeId>()
 	/** All vertices in the complete graph (including those nested in function definition) */
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>()
 	/** All edges in the complete graph (including those nested in function definition) */
@@ -149,6 +153,13 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		return this._idMap
 	}
 
+	/**
+	 * Retrieves the set of vertices which have side effects that we do not know anything about.
+	 */
+	public get unknownSideEffects(): ReadonlySet<NodeId> {
+		return this._unknownSideEffects
+	}
+
 	/** Allows setting the id-map explicitly (which should only be used when, e.g., you plan to compare two dataflow graphs on the same AST-basis) */
 	public setIdMap(idMap: AstIdMap): void {
 		this._idMap = idMap
@@ -156,11 +167,11 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 
 	/**
-   * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
-   * @returns the ids of all toplevel vertices in the graph together with their vertex information
+	 * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
+	 * @returns the ids of all toplevel vertices in the graph together with their vertex information
 	 *
 	 * @see #edges
-   */
+	 */
 	public* vertices(includeDefinedFunctions: boolean): IterableIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries()
@@ -202,15 +213,15 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	}
 
 	/**
-   * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
-   *
+	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
+	 *
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
 	 *
-   * @see DataflowGraphVertexInfo
-   * @see DataflowGraphVertexArgument
-   */
+	 * @see DataflowGraphVertexInfo
+	 * @see DataflowGraphVertexArgument
+	 */
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
 		const oldVertex = this.vertexInformation.get(vertex.id)
 		if(oldVertex !== undefined) {
@@ -220,7 +231,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT
 		// keep a clone of the original environment
 		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment)
-
 
 
 		this.vertexInformation.set(vertex.id, {
@@ -240,11 +250,11 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this
 	/**
-   * Will insert a new edge into the graph,
-   * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
-   * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-	* Please note, that this will never make edges to {@link BuiltIn} as they are not part of the graph.
-   */
+	 * Will insert a new edge into the graph,
+	 * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
+	 * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
+	 * Please note, that this will never make edges to {@link BuiltIn} as they are not part of the graph.
+	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
 		const { type, ...rest } = edgeInfo
@@ -307,6 +317,10 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			}
 		}
 
+		for(const unknown of otherGraph.unknownSideEffects) {
+			this._unknownSideEffects.add(unknown)
+		}
+
 		for(const [id, info] of otherGraph.vertexInformation) {
 			const currentInfo = this.vertexInformation.get(id)
 			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info))
@@ -334,17 +348,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		}
 	}
 
-	public equals(other: DataflowGraph<Vertex, Edge>, diff: true, names?: { left: string, right: string }): DataflowDifferenceReport
-	public equals(other: DataflowGraph<Vertex, Edge>, diff?: false, names?: { left: string, right: string }): boolean
-	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DataflowDifferenceReport {
-		const report = diffOfDataflowGraphs({ name: names.left, graph: this }, { name: names.right, graph: other })
-		if(diff) {
-			return report
-		} else {
-			return report.isEqual()
-		}
-	}
-
 	/**
 	 * Marks a vertex in the graph to be a definition
 	 * @param reference - The reference to the vertex to mark as definition
@@ -357,6 +360,24 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: 'variable-definition' })
 		}
+	}
+
+	/** If you do not pass the `to` node, this will just mark the node as maybe */
+	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
+		to = to ? normalizeIdToNumberIfPossible(to) : undefined
+		const vertex = this.getVertex(from, true)
+		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`)
+		vertex.controlDependencies ??= []
+		if(to && vertex.controlDependencies.every(({ id, when: cond }) => id !== to && when !== cond)) {
+			vertex.controlDependencies.push({ id: to, when })
+		}
+		return this
+	}
+
+	/** Marks the given node as having unknown side effects */
+	public markIdForUnknownSideEffects(id: NodeId): this {
+		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id))
+		return this
 	}
 }
 

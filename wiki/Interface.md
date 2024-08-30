@@ -1,4 +1,4 @@
-Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/flowr-analysis/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
+Although far from being as detailed as the in-depth explanation of [_flowR_](https://github.com/flowr-analysis/flowr/wiki/Core), this wiki page explains how to interface with _flowR_ in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 <!-- TOC -->
 - [💬 Communicating with the Server](#-communicating-with-the-server)
@@ -16,6 +16,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
   - [Interfacing with the File System](#interfacing-with-the-file-system)
+- [⚙️ Using the Configuration File](#️-using-the-configuration-file)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing with R by Using the `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [The Pipeline Executor](#the-pipeline-executor)
@@ -34,7 +35,7 @@ Every message has to be given in a single line (i.e., without a newline in-betwe
 
 > [!NOTE]
 > The default `--server` uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-> connection. If you want *flowR* to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the `--ws` flag (i.e., `--server --ws`) when starting *flowR* from the command line.
+> connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the `--ws` flag (i.e., `--server --ws`) when starting _flowR_ from the command line.
 
 ### The Hello Message
 
@@ -53,7 +54,7 @@ sequenceDiagram
 ```
 </details>
 
-After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;*flowR* and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
+After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
 See the implementation of the hello message for more information regarding the contents of the message.
 
 
@@ -2271,7 +2272,7 @@ It contains a human-readable description *why* the analysis failed (see the erro
 
 #### Including the Control Flow Graph
 
-While *flowR* does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) for any bug you may encounter).
+While _flowR_ does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within _flowR_, it is tested significantly less - so please create a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) for any bug you may encounter).
 For this, the analysis request may add `cfg: true` to its list of options.
 
 <details open>
@@ -2670,7 +2671,7 @@ The `results` field of the response contains two keys of importance:
 
 </details>
 
-The semantics of the error message are similar. If, for example, the slicing criterion is invalid or the `filetoken` is unknown, *flowR* will respond with an error.
+The semantics of the error message are similar. If, for example, the slicing criterion is invalid or the `filetoken` is unknown, _flowR_ will respond with an error.
 
 #### Magic Comments
 
@@ -2836,10 +2837,10 @@ If an error occurred, the server will set the responses `type` to `"error"` and 
 ## 💻 Using the REPL
 
 > [!NOTE]
-> To execute arbitrary R commands with a repl request, *flowR* has to be started explicitly with `--r-session-access`.
+> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with `--r-session-access`.
 > Please be aware, that this introduces a security risk.
 
-Although primarily meant for users to explore, there is nothing which forbids simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
+Although primarily meant for users to explore, there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),
@@ -2868,21 +2869,38 @@ flowchart LR
     0 -->|"defined-by (always)"| 2
 ```
 
-The graph returned for you may differ, depending on the evolution of *flowR*.
+The graph returned for you may differ, depending on the evolution of _flowR_.
 
 For the slicing, you have access to the same [magic comments](#magic-comments) as with the server.
 
 ### Interfacing with the File System
 
-Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:
+Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the _flowR_ repository, the following should give you the parsed AST of the example file:
 
 ```shell
 R> :parse file://test/testfiles/example.R
 ```
 
+## ⚙️ Using the Configuration File
+
+When running flowR, you amy specify some behaviors with a dedicated configuration file. By default, flowR looks for a file named `flowr.json` in the current working directory (or any higher directory). You can also specify a different file with `--config-file`.
+There are two configurations available as of now:
+
+- `ignoreSourceCalls`: If set to `true`, flowR will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
+- `rPath`: The path to the R executable. If not set, flowR will try to find the R executable in the system's PATH.
+
+So you can configure _flowR_ by adding a file like the following:
+
+```json
+{
+  "ignoreSourceCalls": true,
+  "rPath": "/usr/bin/R"
+}
+```
+
 ## ⚒️ Writing Code
 
-*flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
+_flowR_ can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
 
 ### Interfacing with R by Using the `RShell`
 
@@ -2901,8 +2919,8 @@ Besides that, the command `RShell::tryToInjectHomeLibPath` may be of interest, a
 
 ### The Pipeline Executor
 
-Once, in the beginning, *flowR* was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
-With this, we restructured *flowR*'s *hardcoded* pipeline to be
+Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
+With this, we restructured _flowR_'s *hardcoded* pipeline to be
 far more flexible. Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and, what we call 'decorations' of these steps. In short, if you still "just want to slice", you can do it like this:
 
 ```typescript

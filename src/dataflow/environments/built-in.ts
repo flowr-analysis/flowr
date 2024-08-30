@@ -2,11 +2,10 @@ import type { DataflowProcessorInformation } from '../processor'
 import { ExitPointType } from '../info'
 import type { DataflowInformation  } from '../info'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
-import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else'
 import { processAssignment } from '../internal/process/functions/call/built-in/built-in-assignment'
-import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-logical-bin-op'
+import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op'
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe'
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop'
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop'
@@ -24,6 +23,7 @@ import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { EdgeType } from '../graph/edge'
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library'
+import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 
 export const BuiltIn = 'built-in'
 
@@ -59,7 +59,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean }
+	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean, hasUnknownSideEffects?: boolean }
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data })
 	if(config.returnsNthArgument !== undefined) {
@@ -76,6 +76,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 		}
 	}
 
+	if(config.hasUnknownSideEffects) {
+		res.graph.markIdForUnknownSideEffects(rootId)
+	}
+
 	if(config.cfg !== undefined) {
 		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }]
 	}
@@ -83,12 +87,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 }
 
 export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
-	both: boolean,
-	names: readonly Identifier[],
+	both:      boolean,
+	names:     readonly Identifier[],
 	processor: Proc,
-	config: Config
+	config:    Config
 ): void {
 	for(const name of names) {
+		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`)
 		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 		const d: IdentifierDefinition[] = [{
 			kind:                'built-in-function',
@@ -151,12 +156,12 @@ function registerBuiltInConstant<T>(both: boolean, name: Identifier, value: T): 
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>()
 export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>()
 
-registerBuiltInConstant(true, 'NULL', null)
-registerBuiltInConstant(true, 'NA', null)
-registerBuiltInConstant(true, 'TRUE', true)
-registerBuiltInConstant(true, 'T', true)
+registerBuiltInConstant(true, 'NULL',  null)
+registerBuiltInConstant(true, 'NA',    null)
+registerBuiltInConstant(true, 'TRUE',  true)
+registerBuiltInConstant(true, 'T',     true)
 registerBuiltInConstant(true, 'FALSE', false)
-registerBuiltInConstant(true, 'F', false)
+registerBuiltInConstant(true, 'F',     false)
 registerSimpleFunctions(
 	'~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', '%in%', ':', 'list', 'c',
 	'rep', 'seq', 'seq_len', 'seq_along', 'seq.int', 'gsub', 'which', 'class', 'dimnames', 'min', 'max',
@@ -165,9 +170,9 @@ registerSimpleFunctions(
 	'apply', 'lapply', 'sapply', 'tapply', 'mapply', 'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
-registerBuiltInFunctions(true, ['print', '('], defaultBuiltInProcessor, { returnsNthArgument: 0 })
-
-registerBuiltInFunctions(false, ['cat', 'switch'],                   defaultBuiltInProcessor,   {}) /* returns null */
+registerBuiltInFunctions(true,  ['print', '('],                      defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
+registerBuiltInFunctions(true,  ['load', 'load_all'],                defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['cat', 'switch'],                   defaultBuiltInProcessor,   {}                                                                           ) /* returns null */
 registerBuiltInFunctions(true,  ['return'],                          defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }                         )
 registerBuiltInFunctions(true,  ['break'],                           defaultBuiltInProcessor,   { cfg: ExitPointType.Break }                                                 )
 registerBuiltInFunctions(true,  ['next'],                            defaultBuiltInProcessor,   { cfg: ExitPointType.Next }                                                  )

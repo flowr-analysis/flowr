@@ -64,7 +64,7 @@ function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
-function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: Code[], config: ReconstructionConfiguration): Code {
+function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: readonly Code[], config: ReconstructionConfiguration): Code {
 	const subExpressions = expressions.filter(e => e.length > 0)
 	if(subExpressions.length === 0) {
 		if(isSelected(config, exprList)) {
@@ -266,7 +266,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	}
 }
 
-function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
+function reconstructParameters(parameters: readonly RParameter<ParentInformation>[]): string[] {
 	// const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
 	return parameters.map(p => {
 		if(p.defaultValue !== undefined) {
@@ -301,8 +301,8 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 
 
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: unknown, configuration: ReconstructionConfiguration): Code {
-	if(!isSelected(configuration, parameter)) {
-		return []
+	if(isSelected(configuration, parameter)) {
+		return plain(getLexeme(parameter))
 	}
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
@@ -314,8 +314,13 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 }
 
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: readonly Code[], body: Code, config: ReconstructionConfiguration): Code {
-	// if a definition is not selected, we only use the body - slicing will always select the definition
+function reconstructFunctionDefinition(
+	definition: RFunctionDefinition<ParentInformation>,
+	functionParameters: readonly Code[],
+	body: Code,
+	config: ReconstructionConfiguration
+): Code {
+	// if a definition is not selected, we only use the body - slicing will always select the definition if it is required
 	if(functionParameters.every(p => p.length === 0)) {
 		const empty = body === undefined || body.length === 0
 		const selected = isSelected(config, definition)
@@ -341,7 +346,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
-function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)[], call: RFunctionCall<ParentInformation>): Code {
+function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof EmptyArgument)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.named, `infix special call must be named, got: ${call.named}`)
 	const [lhs, rhs] = args
@@ -363,7 +368,12 @@ function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)
 	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
 }
 
-function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
+function reconstructFunctionCall(
+	call: RFunctionCall<ParentInformation>,
+	functionName: Code,
+	args: readonly (Code | typeof EmptyArgument)[],
+	configuration: ReconstructionConfiguration
+): Code {
 	const selected = isSelected(configuration, call)
 	if(!selected) {
 		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[]

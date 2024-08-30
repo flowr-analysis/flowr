@@ -1,6 +1,6 @@
 ***This wiki page is currently under construction***
 
-This wiki page should give the in-depth explanation of the inner workings of *flowR*. To avoid duplication it may often contain links to the internal code documentation (located here: <https://flowr-analysis.github.io/flowr/doc/>).
+This wiki page should give the in-depth explanation of the inner workings of _flowR_. To avoid duplication it may often contain links to the internal code documentation (located here: <https://flowr-analysis.github.io/flowr/doc/>).
 
 <!-- TOC -->
 - [The Slicing Process](#the-slicing-process)

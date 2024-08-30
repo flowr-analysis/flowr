@@ -24,7 +24,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { EdgeType } from '../graph/edge'
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library'
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
-import {ForceArguments} from "../internal/process/functions/call/common";
+import type { ForceArguments } from '../internal/process/functions/call/common'
 
 export const BuiltIn = 'built-in'
 

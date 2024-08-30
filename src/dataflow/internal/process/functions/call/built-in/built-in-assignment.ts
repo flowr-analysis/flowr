@@ -21,7 +21,7 @@ import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/m
 import { VertexType } from '../../../../../graph/vertex'
 import { define } from '../../../../../environments/define'
 import { EdgeType } from '../../../../../graph/edge'
-import {ForceArguments} from "../common";
+import type { ForceArguments } from '../common'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -149,7 +149,7 @@ function processAssignmentToString<OtherInfo>(
 		rootId,
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
-		forceArgs: config.forceArgs
+		forceArgs:    config.forceArgs
 	})
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

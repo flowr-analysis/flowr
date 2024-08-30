@@ -1,20 +1,21 @@
-import type {DataflowInformation} from '../../../../info'
-import type {DataflowProcessorInformation} from '../../../../processor'
-import {processDataflowFor} from '../../../../processor'
-import type {RNode} from '../../../../../r-bridge/lang-4.x/ast/model/model'
-import type {ParentInformation} from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type {RFunctionArgument} from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import {EmptyArgument} from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type {DataflowGraph, FunctionArgument} from '../../../../graph/graph'
-import type {NodeId} from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type {REnvironmentInformation} from '../../../../environments/environment'
-import type {IdentifierReference} from '../../../../environments/identifier'
-import {overwriteEnvironment} from '../../../../environments/overwrite'
-import {resolveByName} from '../../../../environments/resolve-by-name'
-import {RType} from '../../../../../r-bridge/lang-4.x/ast/model/type'
-import {DataflowGraphVertexFunctionDefinition, isFunctionDefinitionVertex, VertexType} from '../../../../graph/vertex'
-import type {RSymbol} from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import {EdgeType} from '../../../../graph/edge'
+import type { DataflowInformation } from '../../../../info'
+import type { DataflowProcessorInformation } from '../../../../processor'
+import { processDataflowFor } from '../../../../processor'
+import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model'
+import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph'
+import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
+import type { REnvironmentInformation } from '../../../../environments/environment'
+import type { IdentifierReference } from '../../../../environments/identifier'
+import { overwriteEnvironment } from '../../../../environments/overwrite'
+import { resolveByName } from '../../../../environments/resolve-by-name'
+import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type'
+import type { DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex'
+import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex'
+import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
+import { EdgeType } from '../../../../graph/edge'
 
 export interface ForceArguments {
 	/** which of the arguments should be forced? this may be all, e.g., if the function itself is unknown on encounter */
@@ -43,17 +44,17 @@ export interface ProcessAllArgumentResult {
 function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInformation, graph: DataflowGraph, env: REnvironmentInformation): void {
 	const valueVertex = graph.getVertex(value.entryPoint)
 	if(!valueVertex) {
-		return;
+		return
 	}
 	// link read if it is function definition directly and reference the exit point
 	if(valueVertex.tag !== VertexType.Value) {
 		if(valueVertex.tag === VertexType.FunctionDefinition) {
 			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit, {type: EdgeType.Reads})
+				graph.addEdge(rootId, exit, { type: EdgeType.Reads })
 			}
 		} else {
-			for (const exit of value.exitPoints) {
-				graph.addEdge(rootId, exit.nodeId, {type: EdgeType.Reads})
+			for(const exit of value.exitPoints) {
+				graph.addEdge(rootId, exit.nodeId, { type: EdgeType.Reads })
 			}
 		}
 	}
@@ -64,8 +65,8 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
 			const resolved = resolveByName(ref.name, env) ?? []
-			for (const resolve of resolved) {
-				graph.addEdge(ref.nodeId, resolve.nodeId, {type: EdgeType.Reads})
+			for(const resolve of resolved) {
+				graph.addEdge(ref.nodeId, resolve.nodeId, { type: EdgeType.Reads })
 			}
 		}
 	}

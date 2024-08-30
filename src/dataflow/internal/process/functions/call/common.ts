@@ -12,11 +12,16 @@ import type { IdentifierReference } from '../../../../environments/identifier'
 import { overwriteEnvironment } from '../../../../environments/overwrite'
 import { resolveByName } from '../../../../environments/resolve-by-name'
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type'
-import { VertexType } from '../../../../graph/vertex'
+import {DataflowGraphVertexFunctionDefinition, isFunctionDefinitionVertex, VertexType} from '../../../../graph/vertex'
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import { EdgeType } from '../../../../graph/edge'
 
-export interface ProcessAllArgumentInput<OtherInfo> {
+export interface ForceArguments {
+	/** which of the arguments should be forced? this may be all, e.g., if the function itself is unknown on encounter */
+	readonly forceArgs?: 'all' | readonly boolean[]
+}
+
+export interface ProcessAllArgumentInput<OtherInfo> extends ForceArguments {
 	readonly functionName:   DataflowInformation
 	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
 	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -35,8 +40,24 @@ export interface ProcessAllArgumentResult {
 	readonly processedArguments:  (DataflowInformation | undefined)[]
 }
 
+function forceVertexArgumentValueReferences(ingoing: readonly IdentifierReference[], graph: DataflowGraph, env: REnvironmentInformation): void {
+	const containedSubflowIn: readonly IdentifierReference[] = [...graph.vertices(true)]
+		.filter(([, info]) => isFunctionDefinitionVertex(info))
+		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in)
+	// try to resolve them against the current environment
+	for(const ref of [...ingoing, ...containedSubflowIn]) {
+		if(ref.name) {
+			const resolved = resolveByName(ref.name, env) ?? []
+			for (const resolve of resolved) {
+				graph.addEdge(ref.nodeId, resolve.nodeId, {type: EdgeType.Reads})
+			}
+		}
+	}
+}
+
+
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment
 	// arg env contains the environments with other args defined
@@ -55,6 +76,9 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		const processed = processDataflowFor(arg, { ...data, environment: argEnv })
+		if(arg.value && (forceArgs === 'all' || forceArgs[i])) {
+			forceVertexArgumentValueReferences([...processed.unknownReferences, ...processed.in], processed.graph, argEnv)
+		}
 		processedArguments.push(processed)
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment)

@@ -4,7 +4,7 @@ import { initializeCleanDataflowInformation } from '../../../../../info'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { expensiveTrace } from '../../../../../../util/log'
 import { processAssignment } from './built-in-assignment'
-import { processAllArguments } from '../common'
+import {ForceArguments, processAllArguments} from '../common'
 import { guard } from '../../../../../../util/assert'
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
@@ -18,11 +18,11 @@ import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg'
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	/** last one has to be the value */
+	/** The last one has to be the value */
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-' }
+	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-' } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`)
@@ -42,6 +42,7 @@ export function processReplacementFunction<OtherInfo>(
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
+		forceArgs:      config.forceArgs,
 	})
 	const fn = res.graph.getVertex(rootId, true)
 	guard(fn?.tag === VertexType.FunctionCall && fn.args.length === 2,

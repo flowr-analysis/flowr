@@ -12,7 +12,7 @@ import { dataflowLogger } from '../../../../../logger'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { EdgeType } from '../../../../../graph/edge'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment'
-import {ForceArguments} from "../common";
+import type { ForceArguments } from '../common'
 
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

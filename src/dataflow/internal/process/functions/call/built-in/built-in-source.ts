@@ -25,7 +25,6 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { expensiveTrace } from '../../../../../../util/log'
-import {ForceArguments} from "../common";
 
 let sourceProvider = requestProviderFromFile()
 

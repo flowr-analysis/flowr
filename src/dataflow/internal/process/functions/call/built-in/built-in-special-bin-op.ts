@@ -7,7 +7,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { dataflowLogger } from '../../../../../logger'
 import { EdgeType } from '../../../../../graph/edge'
-import {ForceArguments} from "../common";
+import type { ForceArguments } from '../common'
 
 
 export function processSpecialBinOp<OtherInfo>(

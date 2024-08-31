@@ -64,10 +64,7 @@ export function processAccess<OtherInfo>(
 		if(arg !== undefined) {
 			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })
 		}
-		if(config.treatIndicesAsString) {
-			// everything but the first is disabled here
-			break
-		}
+		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
 
 	return {

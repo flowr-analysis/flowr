@@ -63,6 +63,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.use('0', 'a', { controlDependencies: [] })
 					.argument('3', '0')
 					.argument('3', '1')
+					.reads('3', '1')
 					.call('3', '$', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: ['0',  BuiltIn], onlyBuiltIn: true })
 					.constant('1')
 			)
@@ -72,6 +73,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('3', '0')
 					.call('3', '@', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: ['0', BuiltIn], onlyBuiltIn: true })
 					.argument('3', '1')
+					.reads('3', '1')
 					.constant('1')
 			)
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
@@ -96,6 +98,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.argument('6', '3')
 					.call('6', '$', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: ['3', BuiltIn], onlyBuiltIn: true })
 					.argument('6', '4')
+					.reads('6', '4')
 					.constant('1')
 					.constant('4')
 			)

@@ -12,21 +12,21 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { wrapArgumentsUnnamed } from '../argument/make-argument'
 
 
-/* we currently do not mark this as an unknown side effect, as we can enable/disable this with a toggle */
 export function processLibrary<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
 	if(args.length !== 1) {
 		dataflowLogger.warn(`Currently only one-arg library-likes are allows (for ${name.content}), skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true }).information
 	}
 	const nameToLoad = unpackArgument(args[0])
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol) {
 		dataflowLogger.warn('No library name provided, skipping')
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true }).information
 	}
 
 	// treat as a function call but convert the first argument to a string
@@ -40,6 +40,8 @@ export function processLibrary<OtherInfo>(
 			str:    nameToLoad.content
 		}
 	}
-
-	return processKnownFunctionCall({ name, args: wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data }).information
+	return processKnownFunctionCall({
+		name, args:                 wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data,
+		hasUnknownSideEffect: true
+	}).information
 }

@@ -192,7 +192,6 @@ registerBuiltInFunctions(true,  ['if', 'ifelse'],                               
 registerBuiltInFunctions(true,  ['get'],                                           processGet,                {}                                                                           )
 registerBuiltInFunctions(false, ['library', 'require'],                            processLibrary,            {}                                                                           )
 registerBuiltInFunctions(true,  ['<-', '='],                                       processAssignment,         { canBeReplacement: true }                                                   )
-/* TODO: move := out */
 registerBuiltInFunctions(true,  [':=', 'assign'],                                  processAssignment,         {}                                                                           )
 registerBuiltInFunctions(true,  ['delayedAssign'],                                 processAssignment,         { quoteSource: true }                                                        )
 registerBuiltInFunctions(true,  ['<<-'],                                           processAssignment,         { superAssignment: true, canBeReplacement: true }                            )

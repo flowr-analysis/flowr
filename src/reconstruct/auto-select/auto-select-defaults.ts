@@ -1,6 +1,5 @@
-import type { NoInfo, RNode } from '../../r-bridge/lang-4.x/ast/model/model'
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
 import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
 
 /**
  * The structure of the predicate that should be used to determine
@@ -18,17 +17,4 @@ export type AutoSelectPredicate = (node: RNode<ParentInformation>, fullAst: Norm
  */
 export function doNotAutoSelect(_node: RNode): boolean {
 	return false
-}
-
-const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
-
-/**
- * A variant of the {@link AutoSelectPredicate} which does its best
- * to select any kind of library import automatically.
- */
-export function autoSelectLibrary<Info = NoInfo>(node: RNode<Info>): boolean {
-	if(node.type !== RType.FunctionCall || !node.named) {
-		return false
-	}
-	return libraryFunctionCall.test(node.functionName.content)
 }

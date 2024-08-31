@@ -31,7 +31,7 @@ import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/proce
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { AutoSelectPredicate } from './auto-select/auto-select-defaults'
-import { autoSelectLibrary } from './auto-select/auto-select-defaults'
+import { doNotAutoSelect } from './auto-select/auto-select-defaults'
 
 type Selection = ReadonlySet<NodeId>
 interface PrettyPrintLine {
@@ -491,7 +491,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesW
  *
  * @returns The number of lines for which `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
-export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf: AutoSelectPredicate = doNotAutoSelect): ReconstructionResult {
 	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}

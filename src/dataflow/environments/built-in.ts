@@ -186,7 +186,7 @@ registerBuiltInFunctions(true,  ['[', '[['],                                    
 registerBuiltInFunctions(true,  ['$', '@'],                                        processAccess,             { treatIndicesAsString: true }                                               )
 registerBuiltInFunctions(true,  ['if', 'ifelse'],                                  processIfThenElse,         {}                                                                           )
 registerBuiltInFunctions(true,  ['get'],                                           processGet,                {}                                                                           )
-registerBuiltInFunctions(false, ['library'],                                       processLibrary,            {}                                                                           )
+registerBuiltInFunctions(false, ['library', 'require'],                            processLibrary,            {}                                                                           )
 registerBuiltInFunctions(true,  ['<-', '='],                                       processAssignment,         { canBeReplacement: true }                                                   )
 registerBuiltInFunctions(true,  [':=', 'assign'],                                  processAssignment,         {}                                                                           )
 registerBuiltInFunctions(true,  ['delayedAssign'],                                 processAssignment,         { quoteSource: true }                                                        )
@@ -203,6 +203,12 @@ registerBuiltInFunctions(true,  ['repeat'],                                     
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
 registerBuiltInFunctions(true,  ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
 registerBuiltInFunctions(true,  ['on.exit', 'sys.on.exit'],                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+/* library and require is handled above */
+registerBuiltInFunctions(true,  ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                                         )
+/* downloader and installer functions (R, devtools, BiocManager) */
+registerBuiltInFunctions(true,  ['library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
+/* weird env attachments */
+registerBuiltInFunctions(true,  ['attach'],                                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

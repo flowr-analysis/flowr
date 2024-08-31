@@ -22,12 +22,14 @@ import { VertexType } from '../../../../../graph/vertex'
 import { define } from '../../../../../environments/define'
 import { EdgeType } from '../../../../../graph/edge'
 import type { ForceArguments } from '../common'
+import type { REnvironmentInformation } from '../../../../../environments/environment'
+import type { DataflowGraph } from '../../../../../graph/graph'
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
 		type:      RType.Symbol,
 		info:      target.info,
-		/* they are all mapped to <- in R, but we mark super as well */
+		/* they are all mapped to `<-` in R, but we mark super as well */
 		content:   `${prefix}${superAssignment ? '<<-' : '<-'}`,
 		lexeme:    target.lexeme,
 		location:  target.location,
@@ -76,13 +78,13 @@ export function processAssignment<OtherInfo>(
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs })
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
-			name,
+			nameOfAssignmentFunction: name.content,
 			source,
 			target,
-			args:        getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 			rootId,
 			data,
-			information: res.information,
+			information:              res.information,
 		})
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -154,13 +156,13 @@ function processAssignmentToString<OtherInfo>(
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 		...config,
-		name,
+		nameOfAssignmentFunction: name.content,
 		source,
-		target:      symbol,
-		args:        getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+		target:                   symbol,
+		args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 		rootId,
 		data,
-		information: res.information
+		information:              res.information
 	})
 }
 
@@ -169,20 +171,58 @@ function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
-	readonly name:        RSymbol<OtherInfo & ParentInformation>
-	readonly source:      RNode<OtherInfo & ParentInformation>
-	readonly args:        [DataflowInformation, DataflowInformation]
-	readonly target:      RSymbol<OtherInfo & ParentInformation>
-	readonly rootId:      NodeId
-	readonly data:        DataflowProcessorInformation<OtherInfo>
-	readonly information: DataflowInformation
+	readonly nameOfAssignmentFunction: string
+	readonly source:                   RNode<OtherInfo & ParentInformation>
+	readonly args:                     [DataflowInformation, DataflowInformation]
+	readonly target:                   RSymbol<OtherInfo & ParentInformation>
+	readonly rootId:                   NodeId
+	readonly data:                     DataflowProcessorInformation<OtherInfo>
+	readonly information:              DataflowInformation
+}
+
+/**
+ * Consider a call like `x <- v`
+ * @param information        - the information to define the assignment within
+ * @param nodeToDefine       - `x`
+ * @param sourceIds          - `v`
+ * @param rootIdOfAssignment - `<-`
+ * @param quoteSource        - whether to quote the source (i.e., define `x` without a direct reference to `v`)
+ * @param superAssignment    - whether this is a super assignment (i.e., `<<-`)
+ */
+export function markAsAssignment(
+	information: {
+		environment: REnvironmentInformation,
+		graph:       DataflowGraph
+	},
+	nodeToDefine: IdentifierDefinition,
+	sourceIds: readonly NodeId[],
+	rootIdOfAssignment: NodeId,
+	quoteSource?: boolean,
+	superAssignment?: boolean,
+) {
+	information.environment = define(nodeToDefine, superAssignment, information.environment)
+	information.graph.setDefinitionOfVertex(nodeToDefine)
+	if(!quoteSource) {
+		for(const sourceId of sourceIds) {
+			information.graph.addEdge(nodeToDefine, sourceId, { type: EdgeType.DefinedBy })
+		}
+	}
+	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, { type: EdgeType.DefinedBy })
+	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+	const out = information.graph.outgoingEdges(nodeToDefine.nodeId)
+	for(const [id,edge] of (out?? [])) {
+		edge.types &= ~EdgeType.Reads
+		if(edge.types == 0) {
+			out?.delete(id)
+		}
+	}
 }
 
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
 function processAssignmentToSymbol<OtherInfo>({
-	name,
+	nameOfAssignmentFunction,
 	source,
 	args: [targetArg, sourceArg],
 	target,
@@ -203,27 +243,14 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1)
-	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		information.environment = define(write, superAssignment, information.environment)
-		information.graph.setDefinitionOfVertex(write)
-		if(!quoteSource) {
-			information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })
-		}
-		information.graph.addEdge(write, rootId, { type: EdgeType.DefinedBy })
-		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-		const out = information.graph.outgoingEdges(write.nodeId)
-		for(const [id,edge] of (out?? [])) {
-			edge.types &= ~EdgeType.Reads
-			if(edge.types == 0) {
-				out?.delete(id)
-			}
-		}
+		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment)
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, { type: EdgeType.Returns })

@@ -13,6 +13,23 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { EdgeType } from '../../../../../graph/edge'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment'
 import type { ForceArguments } from '../common'
+import { BuiltIn } from '../../../../../environments/built-in'
+import { markAsAssignment } from './built-in-assignment'
+
+interface TableAssignmentProcessorMarker {
+	definitionRootNodes: NodeId[]
+}
+
+function tableAssignmentProcessor<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	outInfo: TableAssignmentProcessorMarker
+): DataflowInformation {
+	outInfo.definitionRootNodes.push(rootId)
+	return processKnownFunctionCall({ name, args, rootId, data }).information
+}
 
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -30,7 +47,30 @@ export function processAccess<OtherInfo>(
 
 	let fnCall: ProcessKnownFunctionCallResult
 	if(!config.treatIndicesAsString) {
+		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
+		// do we have a local definition that needs to be recovered?
+		const existing = data.environment.current.memory.get(':=')
+		const outInfo = { definitionRootNodes: [] }
+		data.environment.current.memory.set(':=', [{
+			kind:                'built-in-function',
+			definedAt:           BuiltIn,
+			controlDependencies: undefined,
+			processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+			name:                ':=',
+			nodeId:              BuiltIn
+		}])
 		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
+		/* recover the environment */
+		if(existing !== undefined) {
+			data.environment.current.memory.set(':=', existing)
+		}
+		if(head.value && outInfo.definitionRootNodes.length > 0) {
+			markAsAssignment(fnCall.information,
+				{ kind: 'variable', name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+				outInfo.definitionRootNodes,
+				rootId
+			)
+		}
 	} else {
 		const newArgs = [...args]
 		// if the argument is a symbol, we convert it to a string for this perspective

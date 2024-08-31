@@ -203,6 +203,10 @@ registerBuiltInFunctions(true,  ['repeat'],                                     
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
 registerBuiltInFunctions(true,  ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
 registerBuiltInFunctions(true,  ['on.exit', 'sys.on.exit'],                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+/* library is handled above */
+registerBuiltInFunctions(true,  ['require','requireNamespace', 'loadNamespace', 'attachNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
+/* downloader and installer functions (R, devtools, BiocManager) */
+registerBuiltInFunctions(true,  ['install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
 
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

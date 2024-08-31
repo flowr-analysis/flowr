@@ -682,5 +682,12 @@ x`)
 		'x\non.exit(function() 3)', ['1@x'],
 		'x\non.exit(function() 3)'
 		)
+		assertSliced(label('Library Loads and Installations', [
+			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines', 'library-loading'
+		]), shell,
+		/* w should be included as it defined the package to be loaded by the library call */
+		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")', ['1@v'],
+		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")'
+		)
 	})
 }))

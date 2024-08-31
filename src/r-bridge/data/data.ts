@@ -288,6 +288,12 @@ export const flowrCapabilities = {
 													description: '_Handle `x = 3`, `x$y := 3`, ..._'
 												},
 												{
+													name:        'Local Table Assignment',
+													id:          'local-table-assignment',
+													supported:   'fully',
+													description: '_Handle `x[,a:=3,]`, ..._'
+												},
+												{
 													name:        'Super Left Assignment',
 													id:          'super-left-assignment',
 													supported:   'fully',

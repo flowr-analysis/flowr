@@ -11,8 +11,8 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteri
 import type { ReconstructionResult } from '../reconstruct/reconstruct'
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { stats2string } from '../benchmark/stats/print'
-import { autoSelectLibrary } from '../reconstruct/auto-select/auto-select-defaults'
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments'
+import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults'
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -48,7 +48,7 @@ async function getSlice() {
 		options['input-is-text']
 			? { request: 'text', content: options.input }
 			: { request: 'file', content: options.input },
-		options['no-magic-comments'] ? autoSelectLibrary : makeMagicCommentHandler(autoSelectLibrary)
+		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 	)
 
 	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = []

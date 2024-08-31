@@ -33,12 +33,12 @@ import { DataflowGraph } from '../../../dataflow/graph/graph'
 import * as tmp from 'tmp'
 import fs from 'fs'
 import type { RParseRequests } from '../../../r-bridge/retriever'
-import { autoSelectLibrary } from '../../../reconstruct/auto-select/auto-select-defaults'
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments'
 import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage'
 import { requestLineageMessage } from './messages/lineage'
 import { getLineage } from '../commands/lineage'
 import { guard } from '../../../util/assert'
+import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -227,7 +227,7 @@ export class FlowRServerConnection {
 
 		fileInformation.pipeline.updateRequest({
 			criterion:    request.criterion,
-			autoSelectIf: request.noMagicComments ? autoSelectLibrary : makeMagicCommentHandler(autoSelectLibrary)
+			autoSelectIf: request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 		})
 
 		void fileInformation.pipeline.allRemainingSteps(true).then(results => {

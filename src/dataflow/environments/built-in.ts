@@ -25,6 +25,7 @@ import { EdgeType } from '../graph/edge'
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library'
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import type { ForceArguments } from '../internal/process/functions/call/common'
+import { processApply } from '../internal/process/functions/call/built-in/built-in-apply'
 
 export const BuiltIn = 'built-in'
 
@@ -171,7 +172,10 @@ registerSimpleFunctions(
 	'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
-registerBuiltInFunctions(true,  ['apply', 'lapply', 'sapply', 'tapply', 'mapply'], defaultBuiltInProcessor,   { forceArgs: [false, true] }                                                 )
+registerBuiltInFunctions(true,  ['lapply', 'sapply', 'vapply', 'mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+/* functool wrappers */
+registerBuiltInFunctions(true,  ['Lapply', 'Sapply', 'Vapply', 'Mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(true,  ['apply', 'tapply', 'Tapply'],                     processApply,              { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }                        )
 registerBuiltInFunctions(true,  ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
 registerBuiltInFunctions(true,  ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )

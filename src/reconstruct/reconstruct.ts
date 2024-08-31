@@ -284,6 +284,8 @@ function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[]): Code {
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
+	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
+		return accessed
 	}
 
 	return plain(getLexeme(node))

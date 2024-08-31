@@ -66,7 +66,7 @@ x`, {
 	})
 	describe('Access', () => {
 		assertSliced(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
-			shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')
+			shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na')
 		assertSliced(label('variable', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'i <- 4\na <- list(1,2)\nb <- a[i]', ['3@b'], 'i <- 4\na <- list(1,2)\nb <- a[i]')
 		assertSliced(label('subset sequence', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'empty-arguments', 'single-bracket-access', 'subsetting']),

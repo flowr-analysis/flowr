@@ -375,7 +375,7 @@ a(,3)`, emptyGraph()
 		const caps: SupportedFlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities]
 		/* TODO: for tapply this is the fun argument / the third! */
 		describe('no additional arguments', () => {
-			for(const applyFn of ['sapply', 'vapply', 'mapply']) {
+			for(const applyFn of ['sapply', 'vapply', 'mapply', 'lapply']) {
 				assertDataflow(label(applyFn + ' without arguments', caps), shell, `g <- function(x) { x * 2 }
 x <- 1:3
 ${applyFn}(x, g)`,

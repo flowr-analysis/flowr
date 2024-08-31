@@ -171,7 +171,10 @@ registerSimpleFunctions(
 	'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
-registerBuiltInFunctions(true,  ['apply', 'lapply', 'sapply', 'tapply', 'mapply'], defaultBuiltInProcessor,   { forceArgs: [false, true] }                                                 )
+registerBuiltInFunctions(true,  ['apply', 'lapply', 'sapply', 'vapply', 'mapply'], defaultBuiltInProcessor,   { forceArgs: [false, true] }                                                 )
+/* functool wrappers */
+registerBuiltInFunctions(true,  ['Lapply', 'Sapply', 'Vapply', 'Mapply'],          defaultBuiltInProcessor,   { forceArgs: [false, true] }                                                 )
+registerBuiltInFunctions(true,  ['tapply', 'Tapply'],                              defaultBuiltInProcessor,   { forceArgs: [false, true, true] }                                           )
 registerBuiltInFunctions(true,  ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
 registerBuiltInFunctions(true,  ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )

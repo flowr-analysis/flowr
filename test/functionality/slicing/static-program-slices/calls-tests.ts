@@ -313,7 +313,7 @@ a <- function() { x = x + 5; cat(x) }
 x <- 3
 a()
 cat(x)`
-		const localCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
+		const localCaps: readonly SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
 		assertSliced(label('Local redefinition has no effect', localCaps), shell, localCode, ['5@x'], `x <- 3
 x`)
 		assertSliced(label('Local redefinition must be kept as part of call', localCaps), shell, localCode, ['4@a'], `a <- function() {
@@ -584,6 +584,24 @@ foo(.x = f(3))`)
 			assertSliced(label('Simple Anonymous Function (both)', caps), shell,
 				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
 				'function(x, y=3) z <- x + y')
+		})
+		describe('Data Table Assignments', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase[':='].capabilities,
+				'strings', 'newlines', 'unnamed-arguments', 'call-normal'
+			]
+			assertSliced(label('Single occurrence', [...caps, 'single-bracket-access', 'functions-with-global-side-effects']), shell,
+				'load("x")\nm[,ii:=sample(yy),]\nprint(m)', ['3@print'],
+				'load("x")\nm[,ii:=sample(yy),]\nprint(m)')
+			assertSliced(label('Work with double brackets too', [...caps, 'double-bracket-access', 'functions-with-global-side-effects']), shell,
+				'load("x")\nm[[ii:=sample(yy)]]\nprint(m)', ['3@print'],
+				'load("x")\nm[[ii:=sample(yy)]]\nprint(m)')
+			assertSliced(label('Multiple occurrences', [...caps, 'single-bracket-access', 'access-with-argument-names', 'functions-with-global-side-effects', 'logical']), shell,
+				'load("x")\nm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nprint(m)', ['4@print'],
+				'load("x")\nm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nprint(m)')
+			assertSliced(label('Overwrites should still apply', [...caps, ...OperatorDatabase['<-'].capabilities, 'single-bracket-access', 'access-with-argument-names', 'numbers']), shell,
+				'm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nm <- 5\nprint(m)', ['4@print'],
+				'm <- 5\nprint(m)')
 		})
 		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']

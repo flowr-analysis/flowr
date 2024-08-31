@@ -304,8 +304,8 @@ a <- list(1,2,3,4)
 a[3]
 print(a[2])
     `
-		assertSliced(label('Must include function shell', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'single-bracket-access', 'newlines']), shell, code, ['3@a'], `a <- list(1,2,3,4)
-a`)
+		assertSliced(label('No function if not required', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'single-bracket-access', 'newlines']), shell, code, ['3@a'], `a <- list(1,2,3,4)
+a[3]`)
 	})
 	describe('Global vs. local definitions', () => {
 		const localCode = `

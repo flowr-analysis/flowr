@@ -29,7 +29,7 @@ describe('Simple', withShell(shell => {
 	describe('Access', () => {
 		for(const [code, id, expected, caps] of [
 			/* we are interested in 'a' not in the result of the access*/
-			['a[3]', 0, 'a', ['single-bracket-access', 'numbers', 'name-normal'] ],
+			['a[3]', 0, 'a[3]', ['single-bracket-access', 'numbers', 'name-normal'] ],
 			['a[x]', 1, 'x', ['single-bracket-access', 'name-normal'] ]
 		] as [string, number, string, SupportedFlowrCapabilityId[]][]) {
 			assertReconstructed(label(code, caps), shell, code, id, expected)
@@ -102,7 +102,7 @@ a <- foo({
 		const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator']
 		assertReconstructed(label('Reconstruct access in pipe (variable)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
-class(ls)`, 2, 'x')
+class(ls)`, 2, 'x[[1]]')
 		assertReconstructed(label('Reconstruct access in pipe (access)', caps), shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, 13, 'ls')

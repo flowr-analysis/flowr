@@ -14,6 +14,7 @@ import { DataflowGraph } from '../../../../graph/graph'
 import { EdgeType } from '../../../../graph/edge'
 import { dataflowLogger } from '../../../../logger'
 import { VertexType } from '../../../../graph/vertex'
+import { expensiveTrace } from '../../../../../util/log'
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -37,14 +38,11 @@ export interface ProcessKnownFunctionCallResult {
 }
 
 export function markNonStandardEvaluationEdges(
-	markAsNSE:  readonly number[] | undefined,
+	markAsNSE:  readonly number[],
 	callArgs:   readonly (DataflowInformation | undefined)[],
 	finalGraph: DataflowGraph,
 	rootId:     NodeId
 ) {
-	if(markAsNSE === undefined) {
-		return
-	}
 	for(const nse of markAsNSE) {
 		if(nse < callArgs.length) {
 			const arg = callArgs[nse]
@@ -64,7 +62,7 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap)
 	const functionCallName = name.content
-	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
+	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`)
 
 	const processArgs = reverseOrder ? [...args].reverse() : args
 
@@ -74,7 +72,9 @@ export function processKnownFunctionCall<OtherInfo>(
 		remainingReadInArgs,
 		processedArguments
 	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs })
-	markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
+	if(markAsNSE) {
+		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
+	}
 
 	finalGraph.addVertex({
 		tag:                 VertexType.FunctionCall,

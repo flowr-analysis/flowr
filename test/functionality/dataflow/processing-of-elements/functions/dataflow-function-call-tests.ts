@@ -382,7 +382,7 @@ ${applyFn}(x, g)`,
 				emptyGraph()
 					.defineVariable('1@g')
 					.call('3@g', 'g', [argumentInCall('3@x')], { returns: [], reads: [] })
-					.calls('3@g', '1@g'),
+					.reads('3@g', '1@g'),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true
@@ -403,7 +403,7 @@ ${applyFn}(x, g, k, u)`,
 						returns: [],
 						reads:   []
 					})
-					.calls('3@g', '1@g'),
+					.reads('3@g', '1@g'),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true

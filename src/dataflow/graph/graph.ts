@@ -360,6 +360,17 @@ export class DataflowGraph<
 		}
 	}
 
+	/**
+	 * Marks a vertex in the graph to be a function call with the new information
+	 * @param info - The information about the new function call node
+	 */
+	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
+		const vertex = this.getVertex(info.id, true)
+		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(info.id)} to update it to a function call`)
+		guard(vertex.tag === VertexType.Use, () => `node must be a use node for ${JSON.stringify(info.id)} to update it to a function call`)
+		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall })
+	}
+
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
 	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
 		to = to ? normalizeIdToNumberIfPossible(to) : undefined

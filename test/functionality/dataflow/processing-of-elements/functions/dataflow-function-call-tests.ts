@@ -274,4 +274,19 @@ a(,3)`,  emptyGraph()
 			.defineVariable('1', 'x', { definedBy: ['2', '3'] })
 		)
 	})
+	describe('*apply', () => {
+		for(const applyFn of ['sapply', 'vapply', 'mapply', 'tapply']) {
+			assertDataflow(label(applyFn, ['function-calls', 'unnamed-arguments', 'numbers', 'name-normal']), shell, `g <- function(x) { x * 2 }
+x <- 1:3
+${applyFn}(x, g)`,
+			emptyGraph()
+				.defineVariable('1@g')
+				.call('3@g', 'g', [argumentInCall('3@x')], { returns: [], reads: [] }),
+			{
+				resolveIdsAsCriterion: true,
+				expectIsSubgraph:      true
+			}
+			)
+		}
+	})
 }))

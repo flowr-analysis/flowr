@@ -122,14 +122,16 @@ export function registerReplacementFunctions(
 		for(const prefix of prefixes) {
 			const effectiveName = `${prefix}${assignment}`
 			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
-			BuiltInMemory.set(effectiveName, [{
+			const d: IdentifierDefinition[] = [{
 				kind:                'built-in-function',
 				definedAt:           BuiltIn,
 				processor:           (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
 				name:                effectiveName,
 				controlDependencies: undefined,
 				nodeId:              BuiltIn
-			}])
+			}]
+			BuiltInMemory.set(effectiveName, d)
+			EmptyBuiltInMemory.set(effectiveName, d)
 		}
 	}
 }
@@ -208,7 +210,7 @@ registerBuiltInFunctions(true,  ['while'],                                      
 registerBuiltInFunctions(true,  ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
 registerBuiltInFunctions(true,  ['on.exit', 'sys.on.exit'],                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 /* library and require is handled above */
-registerBuiltInFunctions(true,  ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                                         )
+registerBuiltInFunctions(true,  ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                          )
 /* downloader and installer functions (R, devtools, BiocManager) */
 registerBuiltInFunctions(true,  ['library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
 /* weird env attachments */

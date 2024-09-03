@@ -709,7 +709,11 @@ x`)
 		)
 	})
 	describe('Array Overwriting Loops', () => {
-		assertSliced(label('TODO', []), shell, `foo <- function(l,c){
+		assertSliced(label('Overwrite in For-Loop', [
+			'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'for-loop', 'newlines', 'unnamed-arguments', 'call-normal',
+			'built-in-sequencing', 'double-bracket-access', 'replacement-functions', 'return', 'special-operator', 'function-definitions',
+			'named-arguments'
+		]), shell, `foo <- function(l,c){
 \ttmp <- list()
 \tfor(i in 1:length(l)){
 \t\ttmp[[i]] <- l[[i]]%in%c[[i]]

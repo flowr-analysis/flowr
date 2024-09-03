@@ -129,7 +129,7 @@ export function registerReplacementFunctions(
 				name:                effectiveName,
 				controlDependencies: undefined,
 				nodeId:              BuiltIn
-			}];
+			}]
 			BuiltInMemory.set(effectiveName, d)
 			EmptyBuiltInMemory.set(effectiveName, d)
 		}

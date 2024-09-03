@@ -708,4 +708,19 @@ x`)
 		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")'
 		)
 	})
+	describe('Array Overwriting Loops', () => {
+		assertSliced(label('TODO', []), shell, `foo <- function(l,c){
+\ttmp <- list()
+\tfor(i in 1:length(l)){
+\t\ttmp[[i]] <- l[[i]]%in%c[[i]]
+\t}
+\treturn(tmp)
+}
+bar <- foo(l=x, c=y)`, ['8@bar'], `foo <- function(l, c) {
+        tmp <- list()
+        for(i in 1:length(l)) tmp[[i]] <- l[[i]] %in% c[[i]]
+        return(tmp)
+    }
+bar <- foo(l=x, c=y)`)
+	})
 }))

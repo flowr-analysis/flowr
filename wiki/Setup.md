@@ -67,7 +67,7 @@ If you want to develop for *flowR*, see the [core](https://github.com/flowr-anal
 For details on *how* to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
 
 -----
-<a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, *flowR* is only tested with R versions `4.x`.
+<a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, *flowR* is only tested with R versions `3.6.x`to `4.x`.
 
 <a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
 [git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository for more information).

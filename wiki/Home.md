@@ -1,6 +1,6 @@
 [![flowR Logo](img/flowR.png)](https://github.com/flowr-analysis/flowr)
 
-*flowR* is a static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) and [program slicer](https://github.com/flowr-analysis/flowr/wiki/Terminology#program-slice) for the [*R*](https://www.r-project.org/) programming language (currently tested for versions `4.x`), and you have stumbled upon its wiki pages!
+*flowR* is a static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) and [program slicer](https://github.com/flowr-analysis/flowr/wiki/Terminology#program-slice) for the [*R*](https://www.r-project.org/) programming language (currently tested for versions `3.6.x` to `4.x`), and you have stumbled upon its wiki pages!
 
 Overall, this wiki has three goals:
 

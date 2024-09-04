@@ -12,11 +12,13 @@ import type { DataflowGraph, FunctionArgument } from '../../../../src/dataflow/g
 import { isPositionalArgument } from '../../../../src/dataflow/graph/graph'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type {
-	DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertexUse
+	DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'
+import {
+	VertexType
 } from '../../../../src/dataflow/graph/vertex'
-import { VertexType } from '../../../../src/dataflow/graph/vertex'
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
 import type { ControlDependency } from '../../../../src/dataflow/info'
@@ -66,7 +68,7 @@ class DataflowBuilderPrinter {
 
 	private processUseInitial() {
 		for(const [id, vertex] of this.graph.vertices(true)) {
-			if(vertex.tag === 'use') {
+			if(vertex.tag === VertexType.Use) {
 				const res = this.processUseVertexInitial(id, vertex)
 				if(res) {
 					this.processEdges(id)

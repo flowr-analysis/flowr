@@ -12,7 +12,7 @@ import { modifyLabelName , decorateLabelContext } from './label'
 import { printAsBuilder } from './dataflow/dataflow-builder-printer'
 import { RShell } from '../../../src/r-bridge/shell'
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model'
-import type { fileProtocol } from '../../../src/r-bridge/retriever'
+import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever'
 import { requestFromInput } from '../../../src/r-bridge/retriever'
 import type {
 	AstIdMap, IdGenerator,
@@ -23,15 +23,18 @@ import {
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
 import {
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_RECONSTRUCT_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines'
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff'
+import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff'
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
+import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
+import { resolveDataflowGraph } from './resolve-graph'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -189,7 +192,10 @@ function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | 
 /**
  * Assert that the given input code produces the expected output in R. Trims by default.
  */
-export function assertOutput(name: string | TestLabel, shell: RShell, input: string, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+export function assertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
+	if(typeof input !== 'string') {
+		throw new Error('Currently, we have no support for expecting the output of arbitrary requests')
+	}
 	const effectiveName = decorateLabelContext(name, ['output'])
 	it(`${effectiveName} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -204,35 +210,64 @@ export function assertOutput(name: string | TestLabel, shell: RShell, input: str
 	})
 }
 
-function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string, userConfig?: Partial<TestConfigurationWithOutput>): void {
+function handleAssertOutput(name: string | TestLabel, shell: RShell, input: string | RParseRequests, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	const e = userConfig?.expectedOutput
 	if(e) {
 		assertOutput(modifyLabelName(name, n => `[output] ${n}`), shell, input, e, userConfig)
 	}
 }
 
+interface DataflowTestConfiguration extends TestConfigurationWithOutput {
+	/**
+	 * Specify just a subset of what the dataflow graph will actually be.
+	 */
+	expectIsSubgraph:      boolean,
+	/**
+	 * This changes the way the test treats the {@link NodeId}s in your expected graph.
+	 * Before running the verification, the test environment will transform the graph,
+	 * resolving all Ids as if they are slicing criteria.
+	 * In other words, you can use the criteria `12@a` which will be resolved to the corresponding id before comparing.
+	 * Please be aware that this is currently a work in progress.
+	 */
+	resolveIdsAsCriterion: boolean
+}
+
+function cropIfTooLong(str: string): string {
+	return str.length > 100 ? str.substring(0, 100) + '...' : str
+}
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
-	input: string,
+	input: string | RParseRequests,
 	expected: DataflowGraph,
-	userConfig?: Partial<TestConfigurationWithOutput>,
+	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
-	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
+	it(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			shell,
-			request: requestFromInput(input),
+			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(info.normalize.idMap)
 
-		const report: DataflowDifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
+		if(userConfig?.resolveIdsAsCriterion) {
+			expected = resolveDataflowGraph(expected)
+		}
+
+		const report: DataflowDifferenceReport = diffOfDataflowGraphs(
+			{ name: 'expected', graph: expected },
+			{ name: 'got',      graph: info.dataflow.graph },
+			{
+				leftIsSubgraph: userConfig?.expectIsSubgraph
+			}
+		)
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
@@ -240,7 +275,7 @@ export function assertDataflow(
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
-				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
+				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
 
 			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast))
@@ -289,17 +324,26 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 }
 
 
-export function assertSliced(name: string | TestLabel, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertSliced(
+	name: string | TestLabel,
+	shell: RShell,
+	input: string,
+	criteria: SlicingCriteria,
+	expected: string,
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
+): Mocha.Test {
 	const fullname = decorateLabelContext(name, ['slice'])
 
 	const t = it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const result = await new PipelineExecutor(DEFAULT_RECONSTRUCT_PIPELINE,{
+		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
 			getId,
-			request:   requestFromInput(input),
+			request:      requestFromInput(input),
 			shell,
-			criterion: criteria,
+			criterion:    criteria,
+			autoSelectIf: userConfig?.autoSelectIf
 		}).allRemainingSteps()
 
 		try {

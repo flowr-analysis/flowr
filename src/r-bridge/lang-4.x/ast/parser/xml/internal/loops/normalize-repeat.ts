@@ -10,9 +10,9 @@ import type { RRepeatLoop } from '../../../../model/nodes/r-repeat-loop'
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.
  *
- * @param data - The data used by the parser (see {@link NormalizerData})
+ * @param data        - The data used by the parser (see {@link NormalizerData})
  * @param repeatToken - Token which represents the `repeat` keyword
- * @param bodyToken - The `body` of the repeat-loop
+ * @param bodyToken   - The `body` of the repeat-loop
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */

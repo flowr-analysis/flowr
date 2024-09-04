@@ -14,7 +14,7 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	 * This is a unique token that you assign to subsequently slice the respective files.
 	 * If you pass the same token multiple times, previous results will be overwritten.
 	 *
-	 * If you do not pass a file token, the server will _not_ store the results!
+	 * If you do _not_ pass a file token, the server will _not_ store the results!
 	 */
 	filetoken?: string,
 	/**
@@ -22,10 +22,16 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	 * However, the name is only for debugging and bears no semantic meaning.
 	 */
 	filename?:  string,
-	/** The contents of the file, or an R expression itself (like `1 + 1`), give either this or the `filepath`. */
+	/** 
+	 * The contents of the file, or an R expression itself (like `1 + 1`), give either this or the `filepath`.
+	 * If you want to load multiple R files as one, either use `filepath` or concatenate the file-contents for this field.
+	 */
 	content?:   string
-	/** The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
-	filepath?:  string
+	/** 
+	 * The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content`.
+	 * If you want to load multiple R files as one, either use this or concatenate the file-contents for the `content`.
+	 */
+	filepath?:  string | readonly string[]
 	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
 	cfg?:       boolean
 	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
@@ -41,7 +47,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
 		filetoken: Joi.string().optional(),
 		filename:  Joi.string().optional(),
 		content:   Joi.string().optional(),
-		filepath:  Joi.string().optional(),
+		filepath:  Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).optional(),
 		cfg:       Joi.boolean().optional(),
 		format:    Joi.string().valid('json', 'n-quads').optional()
 	}).xor('content', 'filepath')
@@ -52,7 +58,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
  * It contains the results of the analysis in JSON format (guided by {@link FileAnalysisRequestMessage#format}).
  *
  * The `idMap` of the normalization step (see {@link NormalizedAst}) is not serialized as it would essentially
- * repeat the complete normalized AST.
+ * repeat the complete normalized AST, you have to re-create it yourself if you require it.
  *
  * @note The serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
  *

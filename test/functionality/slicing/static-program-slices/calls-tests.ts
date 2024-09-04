@@ -112,8 +112,10 @@ f <- function(some_variable="hello") {
   result <- some::other(some_variable=some_variable)
   result
 }
-    `, ['4@result'], `result <- some::other(some_variable=some_variable)
-result`)
+    `, ['4@result'], `function(some_variable="hello") {
+    result <- some::other(some_variable=some_variable)
+    result
+}`)
 
 
 		const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
@@ -302,7 +304,7 @@ a <- list(1,2,3,4)
 a[3]
 print(a[2])
     `
-		assertSliced(label('Must include function shell', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'single-bracket-access', 'newlines']), shell, code, ['3@a'], `a <- list(1,2,3,4)
+		assertSliced(label('No function if not required', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'unnamed-arguments', 'single-bracket-access', 'newlines']), shell, code, ['3@a'], `a <- list(1,2,3,4)
 a`)
 	})
 	describe('Global vs. local definitions', () => {
@@ -311,7 +313,7 @@ a <- function() { x = x + 5; cat(x) }
 x <- 3
 a()
 cat(x)`
-		const localCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
+		const localCaps: readonly SupportedFlowrCapabilityId[] = ['name-normal', 'lexicographic-scope', 'normal-definition', ...OperatorDatabase['='].capabilities, 'binary-operator', 'infix-calls', ...OperatorDatabase['+'].capabilities, 'semicolons', 'unnamed-arguments', 'newlines', 'call-normal', 'numbers', 'precedence']
 		assertSliced(label('Local redefinition has no effect', localCaps), shell, localCode, ['5@x'], `x <- 3
 x`)
 		assertSliced(label('Local redefinition must be kept as part of call', localCaps), shell, localCode, ['4@a'], `a <- function() {
@@ -504,8 +506,11 @@ print(x)`, ['4@x'], 'x <- 3\nx'/*, { expectedOutput: '[1] 2' }*/)
 \`<-\` <- \`*\`
 x <- 3
 print(y = x)`, ['4@y'], 'y=x')
-		assertSliced(label('redefine in local scope', []),
-			shell, `f <- function() {
+		assertSliced(label('redefine in local scope', [
+			'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities,
+			'numbers', 'name-escaped', 'call-normal', 'function-definitions', 'redefinition-of-built-in-functions-primitives'
+		]),
+		shell, `f <- function() {
    x <- 2
    \`<-\` <- \`*\`
    x <- 3
@@ -546,6 +551,58 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			assertSliced(label('Slice for variable in last filter', caps),
 				shell, code, ['12@Y'], 'Y')
 		})
+		describe('Functions in Unknown Call Contexts', () => {
+			const capabilities: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities,
+				'numbers', 'unnamed-arguments', 'newlines', 'call-normal', 'resolve-arguments', 'named-arguments', 'implicit-return', 'grouping', 'formals-named'
+			]
+			assertSliced(label('call in unknown foo', capabilities), shell,
+				`
+f <- function(y) { y + 3 }
+foo(.x = f(3))
+`, ['3@foo'], `f <- function(y) { y + 3 }
+foo(.x = f(3))`)
+			assertSliced(label('definition in unknown foo', capabilities), shell,
+				'x <- 2;\nfoo(.x = function(y) { y + 3 })', ['2@foo'],
+				'foo(.x = function(y) { y + 3 })')
+			assertSliced(label('nested definition in unknown foo', capabilities), shell,
+				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })', ['2@foo'],
+				'x <- function() { 3 }\nfoo(.x = function(y) { c(X = x()) })')
+			assertSliced(label('nested definition in unknown foo with reference', capabilities), shell,
+				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)', ['3@foo'],
+				'x <- function() { 3 }\ng = function(y) { c(X = x()) }\nfoo(.x = g)')
+		})
+		describe('Anonymous Function Recovery on Parameter', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'grouping',
+				'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'unnamed-arguments',
+				'formals-named'
+			]
+			assertSliced(label('Simple Anonymous Function', caps), shell,
+				'function(x, y=3) {\n    x\n   x + y\n   }', ['2@x'],
+				'function(x, y=3) x')
+			assertSliced(label('Simple Anonymous Function (both)', caps), shell,
+				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
+				'function(x, y=3) z <- x + y')
+		})
+		describe('Data Table Assignments', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase[':='].capabilities,
+				'strings', 'newlines', 'unnamed-arguments', 'call-normal'
+			]
+			assertSliced(label('Single occurrence', [...caps, 'single-bracket-access', 'functions-with-global-side-effects']), shell,
+				'load("x")\nm[,ii:=sample(yy),]\nprint(m)', ['3@print'],
+				'load("x")\nm[,ii:=sample(yy),]\nprint(m)')
+			assertSliced(label('Work with double brackets too', [...caps, 'double-bracket-access', 'functions-with-global-side-effects']), shell,
+				'load("x")\nm[[ii:=sample(yy)]]\nprint(m)', ['3@print'],
+				'load("x")\nm[[ii:=sample(yy)]]\nprint(m)')
+			assertSliced(label('Multiple occurrences', [...caps, 'single-bracket-access', 'access-with-argument-names', 'functions-with-global-side-effects', 'logical']), shell,
+				'load("x")\nm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nprint(m)', ['4@print'],
+				'load("x")\nm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nprint(m)')
+			assertSliced(label('Overwrites should still apply', [...caps, ...OperatorDatabase['<-'].capabilities, 'single-bracket-access', 'access-with-argument-names', 'numbers']), shell,
+				'm[,ii:=sample(yy),]\nm[,k:=sample(gg),what=TRUE]\nm <- 5\nprint(m)', ['4@print'],
+				'm <- 5\nprint(m)')
+		})
 		describe('if-then-else format', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'logical', 'binary-operator', 'infix-calls', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence']
 			const code = `x <- 3
@@ -571,6 +628,20 @@ if(x == 3) {
     } else 
 { x <- y <- 3 }
 x`)
+		})
+		describe('Lapply Forcing the Map Function Body', () => {
+			assertSliced(label('Forcing Second Argument', [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+			]), shell,
+			'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
+			'res <- lapply(1:3, function(x) x + 1)'
+			)
+			assertSliced(label('Forcing Including Reference', [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+			]), shell,
+			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
+			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+			)
 		})
 	})
 	describe('Closures', () => {
@@ -603,5 +674,57 @@ print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
 x <- 2
 f()()
 x`)
+	})
+	describe('Calls with potential side effects', () => {
+		assertSliced(label('Changing the working directory', [
+			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'setwd("f/")\nx', ['2@x'],
+		'setwd("f/")\nx'
+		)
+		assertSliced(label('Setting a fixed seed', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines'
+		]), shell,
+		'seed <- 1234\nset.seed(seed)\nx', ['3@x'],
+		'seed <- 1234\nset.seed(seed)\nx'
+		)
+		assertSliced(label('Configuring options', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments'
+		]), shell,
+		'options(y=2)\nx', ['2@x'],
+		'options(y=2)\nx'
+		)
+		assertSliced(label('Exit hooks', [
+			'functions-with-global-side-effects', 'name-normal', 'numbers', 'call-normal', 'unnamed-arguments', 'newlines', 'named-arguments', 'implicit-return', 'function-definitions'
+		]), shell,
+		'x\non.exit(function() 3)', ['1@x'],
+		'x\non.exit(function() 3)'
+		)
+		assertSliced(label('Library Loads and Installations', [
+			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines', 'library-loading'
+		]), shell,
+		/* w should be included as it defined the package to be loaded by the library call */
+		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")', ['1@v'],
+		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")'
+		)
+	})
+	describe('Array Overwriting Loops', () => {
+		assertSliced(label('Overwrite in For-Loop', [
+			'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'for-loop', 'newlines', 'unnamed-arguments', 'call-normal',
+			'built-in-sequencing', 'double-bracket-access', 'replacement-functions', 'return', 'special-operator', 'function-definitions',
+			'named-arguments'
+		]), shell, `foo <- function(l,c){
+\ttmp <- list()
+\tfor(i in 1:length(l)){
+\t\ttmp[[i]] <- l[[i]]%in%c[[i]]
+\t}
+\treturn(tmp)
+}
+bar <- foo(l=x, c=y)`, ['8@bar'], `foo <- function(l, c) {
+        tmp <- list()
+        for(i in 1:length(l)) tmp[[i]] <- l[[i]] %in% c[[i]]
+        return(tmp)
+    }
+bar <- foo(l=x, c=y)`)
 	})
 }))

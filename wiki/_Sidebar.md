@@ -1,4 +1,4 @@
-* [*flowR* Home](https://github.com/flowr-analysis/flowr/wiki)
+* [_flowR_ Home](https://github.com/flowr-analysis/flowr/wiki)
   * [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup)
   * [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview)
   * [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface)

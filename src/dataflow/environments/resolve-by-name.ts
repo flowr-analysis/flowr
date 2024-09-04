@@ -1,11 +1,6 @@
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from './environment'
-import {
-	BuiltInEnvironment
-} from './environment'
-import type { Ternary } from '../../util/logic'
+import type { IEnvironment, REnvironmentInformation } from './environment'
+import { BuiltInEnvironment } from './environment'
+import { Ternary } from '../../util/logic'
 import type { Identifier, IdentifierDefinition } from './identifier'
 
 
@@ -32,12 +27,12 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {
-		return 'never'
+		return Ternary.Never
 	}
 	const definition = resolveByName(name, environment)
 
 	if(definition === undefined) {
-		return 'never'
+		return Ternary.Never
 	}
 
 	let all = true
@@ -51,8 +46,8 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	}
 
 	if(all) {
-		return 'always'
+		return Ternary.Always
 	} else {
-		return some ? 'maybe' : 'never'
+		return some ? Ternary.Maybe : Ternary.Never
 	}
 }

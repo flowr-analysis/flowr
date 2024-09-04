@@ -14,7 +14,7 @@ Based on the explanations in my [master's thesis](http://dx.doi.org/10.18725/OPA
 
 ## Program Slicing
 
-For more information on different slicing variants, refer to Section&nbsp;2.1.3 of my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
+For more information on different slicing variants, refer to Section&nbsp;2.1.3 of the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
 
 <details>
 <summary>Overview of the classification used within the thesis</summary>

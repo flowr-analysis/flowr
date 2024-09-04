@@ -87,7 +87,7 @@ export function processForLoop<OtherInfo>(
 			for(const readId of readIdsToLink) {
 				nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads })
 			}
-			// now, we remove the name from the id shares as they are no longer needed
+			// now, we remove the name from the id shares as they are no longer necessary
 			nameIdShares.delete(name)
 			nextGraph.setDefinitionOfVertex(write)
 		}

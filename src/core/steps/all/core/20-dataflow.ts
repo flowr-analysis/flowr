@@ -9,7 +9,7 @@ import {
 } from '../../../print/dataflow-printer'
 import type { DeepReadonly } from 'ts-essentials'
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RParseRequest } from '../../../../r-bridge/retriever'
+import type { RParseRequests } from '../../../../r-bridge/retriever'
 import { produceDataFlowGraph } from '../../../../dataflow/extractor'
 
 const staticDataflowCommon = {
@@ -26,8 +26,8 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const
 
-function legacyProcessor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequest }) {
-	return produceDataFlowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
+function legacyProcessor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests }) {
+	return produceDataFlowGraph(input.request as RParseRequests, results.normalize as NormalizedAst)
 }
 
 export const STATIC_DATAFLOW = {

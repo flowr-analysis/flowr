@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
 import { ExitPointType } from '../../../../info'
+import type { ForceArguments } from './common'
 import { processAllArguments } from './common'
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
@@ -13,18 +14,21 @@ import { DataflowGraph } from '../../../../graph/graph'
 import { EdgeType } from '../../../../graph/edge'
 import { dataflowLogger } from '../../../../logger'
 import { VertexType } from '../../../../graph/vertex'
+import { expensiveTrace } from '../../../../../util/log'
 
-export interface ProcessKnownFunctionCallInput<OtherInfo> {
-	readonly name:          RSymbol<OtherInfo & ParentInformation>
-	readonly args:          readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
-	readonly rootId:        NodeId
-	readonly data:          DataflowProcessorInformation<OtherInfo & ParentInformation>
-	/* should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
-	readonly reverseOrder?: boolean
+export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
+	readonly name:                  RSymbol<OtherInfo & ParentInformation>
+	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	readonly rootId:                NodeId
+	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
+	/** should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
+	readonly reverseOrder?:         boolean
 	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
-	readonly markAsNSE?:    readonly number[]
-	/* allows passing a data processor in-between each argument */
-	readonly patchData?:    (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
+	readonly markAsNSE?:            readonly number[]
+	/** allows passing a data processor in-between each argument */
+	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
+	/** Does the call have a side effect that we do not know a lot about which may have further consequences? */
+	readonly hasUnknownSideEffect?: boolean
 }
 
 export interface ProcessKnownFunctionCallResult {
@@ -34,14 +38,11 @@ export interface ProcessKnownFunctionCallResult {
 }
 
 export function markNonStandardEvaluationEdges(
-	markAsNSE:  readonly number[] | undefined,
+	markAsNSE:  readonly number[],
 	callArgs:   readonly (DataflowInformation | undefined)[],
 	finalGraph: DataflowGraph,
 	rootId:     NodeId
 ) {
-	if(markAsNSE === undefined) {
-		return
-	}
 	for(const nse of markAsNSE) {
 		if(nse < callArgs.length) {
 			const arg = callArgs[nse]
@@ -55,13 +56,13 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, patchData = d => d }: ProcessKnownFunctionCallInput<OtherInfo>
+	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap)
 	const functionCallName = name.content
-	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
+	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`)
 
 	const processArgs = reverseOrder ? [...args].reverse() : args
 
@@ -70,8 +71,10 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData })
-	markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs })
+	if(markAsNSE) {
+		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
+	}
 
 	finalGraph.addVertex({
 		tag:                 VertexType.FunctionCall,
@@ -83,6 +86,10 @@ export function processKnownFunctionCall<OtherInfo>(
 		controlDependencies: data.controlDependencies,
 		args:                reverseOrder ? [...callArgs].reverse() : callArgs
 	})
+
+	if(hasUnknownSideEffect) {
+		finalGraph.markIdForUnknownSideEffects(rootId)
+	}
 
 	const inIds = remainingReadInArgs
 	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, call: true as const }

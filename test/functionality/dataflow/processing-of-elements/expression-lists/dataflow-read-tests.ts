@@ -113,6 +113,7 @@ print(x)`, emptyGraph()
 				.argument('14', ['13', '12'])
 				.definesOnCall('14', '1')
 				.argument('18', '16')
+				.reads('18', '16')
 				.call('18', 'print', [argumentInCall('16')], { returns: ['16'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '12', '14') })
 				.definesOnCall('18', '1')
 				.argument('19', '14')
@@ -120,6 +121,7 @@ print(x)`, emptyGraph()
 				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
 				.calls('19', '5')
 				.argument('23', '21')
+				.reads('23', '21')
 				.call('23', 'print', [argumentInCall('21')], { returns: ['21'], reads: [BuiltIn], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '12', '14') })
 				.defineVariable('1', '...', { definedBy: [] }, false)
 				.constant('3', undefined, false)
@@ -136,5 +138,38 @@ print(x)`, emptyGraph()
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				.constant('13')
 				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
+	})
+	describe('Escaped Identifiers Should Still Be Resolved', () => {
+		const distractor = 'x <- 3\ny <- 4\nz <- 2\n'
+		assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+			shell, '`a` <- 2\na',
+			emptyGraph()
+				.use('2@a')
+				.reads('2@a', '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('one distractor', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+			shell, `\`a\` <- 2\n${distractor}a`,
+			emptyGraph()
+				.use('5@a')
+				.reads('5@a', '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('one hundred distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+			shell, `\`a\` <- 2\n${distractor.repeat(100)}\na`,
+			emptyGraph()
+				.use(`${3 + 100 * 3}@a`)
+				.reads(`${3 + 100 * 3}@a`, '1@`a`'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
 	})
 }))

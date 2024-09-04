@@ -39,11 +39,11 @@ export function prepareParsedData(data: string): Entry[] {
 	// iterate a second time to set parent-child relations (since they may be out of order in the csv)
 	for(const entry of ret.values()) {
 		if(entry.parent != RootId) {
-			const parent = ret.get(entry.parent)
-			if(parent) {
-				parent.children ??= []
-				parent.children.push(entry)
-			}
+			/** it turns out that comments may return a negative id pair to their parent */
+			const parent = ret.get(Math.abs(entry.parent))
+			guard(parent !== undefined, () => `Could not find parent ${entry.parent} for entry ${entry.id}`)
+			parent.children ??= []
+			parent.children.push(entry)
 		} else {
 			roots.push(entry)
 		}

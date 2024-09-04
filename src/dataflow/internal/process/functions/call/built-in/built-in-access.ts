@@ -12,24 +12,65 @@ import { dataflowLogger } from '../../../../../logger'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { EdgeType } from '../../../../../graph/edge'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment'
+import type { ForceArguments } from '../common'
+import { BuiltIn } from '../../../../../environments/built-in'
+import { markAsAssignment } from './built-in-assignment'
+
+interface TableAssignmentProcessorMarker {
+	definitionRootNodes: NodeId[]
+}
+
+function tableAssignmentProcessor<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	outInfo: TableAssignmentProcessorMarker
+): DataflowInformation {
+	outInfo.definitionRootNodes.push(rootId)
+	return processKnownFunctionCall({ name, args, rootId, data }).information
+}
 
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { treatIndicesAsString: boolean }
+	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information
 	}
 	const head = args[0]
 	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
 
 	let fnCall: ProcessKnownFunctionCallResult
 	if(!config.treatIndicesAsString) {
-		fnCall = processKnownFunctionCall({ name, args, rootId, data })
+		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
+		// do we have a local definition that needs to be recovered?
+		const existing = data.environment.current.memory.get(':=')
+		const outInfo = { definitionRootNodes: [] }
+		data.environment.current.memory.set(':=', [{
+			kind:                'built-in-function',
+			definedAt:           BuiltIn,
+			controlDependencies: undefined,
+			processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+			name:                ':=',
+			nodeId:              BuiltIn
+		}])
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
+		/* recover the environment */
+		if(existing !== undefined) {
+			data.environment.current.memory.set(':=', existing)
+		}
+		if(head.value && outInfo.definitionRootNodes.length > 0) {
+			markAsAssignment(fnCall.information,
+				{ kind: 'variable', name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+				outInfo.definitionRootNodes,
+				rootId
+			)
+		}
 	} else {
 		const newArgs = [...args]
 		// if the argument is a symbol, we convert it to a string for this perspective
@@ -51,7 +92,7 @@ export function processAccess<OtherInfo>(
 				}
 			}
 		}
-		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data })
+		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs })
 	}
 
 	const info = fnCall.information
@@ -63,10 +104,7 @@ export function processAccess<OtherInfo>(
 		if(arg !== undefined) {
 			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })
 		}
-		if(config.treatIndicesAsString) {
-			// everything but the first is disabled here
-			break
-		}
+		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
 
 	return {

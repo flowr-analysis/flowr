@@ -106,7 +106,7 @@ export class FakeSocket implements Socket {
 export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<void>): () => Promise<void>  {
 	return async function() {
 		const net = new FakeServer()
-		const server = new FlowRServer(shell, net)
+		const server = new FlowRServer(shell, true, net)
 		await server.start(42)
 		const socket = new FakeSocket()
 		net.connectClient(socket)

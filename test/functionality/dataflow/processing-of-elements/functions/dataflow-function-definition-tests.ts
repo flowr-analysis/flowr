@@ -337,6 +337,7 @@ describe('Function Definition', withShell(shell => {
 			.use('7', '...', undefined, false)
 			.reads('7', '2')
 			.argument('9', '7')
+			.reads('9', '7')
 			.call('9', 'foo', [argumentInCall('7')], { returns: [], reads: [], environment: defaultEnv().pushEnv().defineParameter('a', '0', '1').defineParameter('...', '2', '3') }, false)
 			.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv().defineParameter('a', '0', '1').defineParameter('...', '2', '3') }, false)
 			.defineVariable('0', 'a', { definedBy: [] }, false)
@@ -473,6 +474,7 @@ print(g())`, emptyGraph()
 				.call('20', 'g', [], { returns: ['6'], reads: ['12'], environment: defaultEnv().defineFunction('f', '0', '11').defineVariable('g', '12', '17') })
 				.calls('20', '8')
 				.argument('22', '20')
+				.reads('22', '20')
 				.call('22', 'print', [argumentInCall('20')], { returns: ['20'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '11').defineVariable('g', '12', '17') })
 				.defineVariable('1', 'x', { definedBy: ['2'] }, false)
 				.constant('2', undefined, false)
@@ -531,6 +533,7 @@ print(g())`, emptyGraph()
 				.call('36', 'g', [], { returns: ['18'], reads: ['28'], environment: defaultEnv().defineFunction('f', '0', '27').defineVariable('g', '28', '33') })
 				.calls('36', '20')
 				.argument('38', '36')
+				.reads('38', '36')
 				.call('38', 'print', [argumentInCall('36')], { returns: ['36'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '27').defineVariable('g', '28', '33') })
 				.defineVariable('1', 'x', { definedBy: ['2'] }, false)
 				.constant('2', undefined, false)
@@ -577,6 +580,7 @@ x <- 2
 f()()
 print(x)`, emptyGraph()
 				.use('6', 'x', undefined, false)
+				.reads('6', '5')
 				.use('10', 'x', undefined, false)
 				.reads('10', '5')
 				.use('23', 'x')
@@ -601,6 +605,7 @@ print(x)`, emptyGraph()
 				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['11'], reads: ['20', '16'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.calls('21', ['20', '12'])
 				.argument('25', '23')
+				.reads('25', '23')
 				.call('25', 'print', [argumentInCall('23')], { returns: ['23'], reads: [BuiltIn], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '5', '9') })
 				.constant('7', undefined, false)
 				.defineVariable('5', 'x', { definedBy: ['8', '9'] }, false)
@@ -800,5 +805,56 @@ f(3)`, emptyGraph()
 				.definesOnCall('27', '10')
 				.constant('31')
 				.definesOnCall('31', '21'), { minRVersion: MIN_VERSION_LAMBDA })
+	})
+	describe('Failures in Practice', () => {
+		assertDataflow(label('linking within nested named arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-named', 'function-definitions', 'function-calls', 'logical']),
+			shell, 'f <- function(x) x\ng <- magic(.x = function(x) { c(N = f(3)) })',
+			/* we want to ensure that the function call to f is linked to the correct definition */
+			emptyGraph()
+				.defineVariable('0', 'f')
+				.call('19', 'f', [], undefined, false)
+				.calls('19', '5'),
+			{
+				expectIsSubgraph: true
+			}
+		)
+	})
+	describe('Reference escaping closures', () => {
+		assertDataflow(label('Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `function() { 
+	x <- 0;
+	f <- function() {
+      x <<- x + 1
+	}
+}`,  emptyGraph()
+				.defineVariable('2@x')
+				.defineVariable('4@x')
+				.use('4:13')
+				.reads('4:13', '2@x')
+				.reads('4:13', '4@x')
+				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
+		assertDataflow(label('Nested Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `function() { function() { function() { function() {
+	x <- 0; 
+	f <- function() {
+      x <<- x + 1
+	}
+}}}}`,  emptyGraph()
+				.defineVariable('2@x')
+				.defineVariable('4@x')
+				.use('4:13')
+				.reads('4:13', '2@x')
+				.reads('4:13', '4@x')
+				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		)
 	})
 }))

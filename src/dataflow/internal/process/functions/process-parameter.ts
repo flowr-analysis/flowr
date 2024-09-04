@@ -15,7 +15,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data)
 	const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph
 
-	const writtenNodes: IdentifierDefinition[] = name.unknownReferences.map(n => ({
+	const writtenNodes: readonly IdentifierDefinition[] = name.unknownReferences.map(n => ({
 		...n,
 		kind:      'parameter',
 		definedAt: parameter.info.id

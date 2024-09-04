@@ -3,9 +3,9 @@ import fs from 'fs'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
 import { log } from '../util/log'
-import { jsonReplacer, jsonRetriever } from '../util/json'
+import { jsonReplacer, jsonBigIntRetriever } from '../util/json'
 import { PipelineExecutor } from '../core/pipeline-executor'
-import type { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import type { RParseRequestFromFile, RParseRequestFromText, RParseRequest } from '../r-bridge/retriever'
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline'
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines'
 import type { RShell } from '../r-bridge/shell'
@@ -73,7 +73,7 @@ function initializeFeatureStatistics(): FeatureStatistics {
 	const result = {} as FeatureStatistics
 	for(const key of allFeatureNames) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue, jsonReplacer), jsonRetriever)
+		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue, jsonReplacer), jsonBigIntRetriever)
 	}
 	return result
 }

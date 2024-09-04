@@ -32,17 +32,24 @@ import type { DeepPartial } from 'ts-essentials'
 import { DataflowGraph } from '../../../dataflow/graph/graph'
 import * as tmp from 'tmp'
 import fs from 'fs'
-import type { RParseRequest } from '../../../r-bridge/retriever'
+import type { RParseRequests } from '../../../r-bridge/retriever'
+import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments'
+import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage'
+import { requestLineageMessage } from './messages/lineage'
+import { getLineage } from '../commands/lineage'
+import { guard } from '../../../util/assert'
+import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults'
 
 /**
  * Each connection handles a single client, answering to its requests.
  * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
  */
 export class FlowRServerConnection {
-	private readonly socket: Socket
-	private readonly shell:  RShell
-	private readonly name:   string
-	private readonly logger: Logger<ILogObj>
+	private readonly socket:              Socket
+	private readonly shell:               RShell
+	private readonly name:                string
+	private readonly logger:              Logger<ILogObj>
+	private readonly allowRSessionAccess: boolean
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -51,13 +58,14 @@ export class FlowRServerConnection {
 	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, shell: RShell) {
+	constructor(socket: Socket, name: string, shell: RShell, allowRSessionAccess: boolean) {
 		this.socket = socket
 		this.shell = shell
 		this.name = name
 		this.logger = serverLog.getSubLogger({ name })
 		this.socket.on('data', data => this.handleData(String(data)))
 		this.socket.on('error', e => this.logger.error(`[${this.name}] Error while handling connection: ${String(e)}`))
+		this.allowRSessionAccess = allowRSessionAccess
 	}
 
 	private currentMessageBuffer = ''
@@ -87,6 +95,9 @@ export class FlowRServerConnection {
 				break
 			case 'request-repl-execution':
 				this.handleRepl(request.message as ExecuteRequestMessage)
+				break
+			case 'request-lineage':
+				this.handleLineageRequest(request.message as LineageRequestMessage)
 				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -126,7 +137,7 @@ export class FlowRServerConnection {
 				})
 			})
 
-		// this is a weird function name that means "I am a callback that removes a file" - so this deletes the file
+		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
 		tempFile.removeCallback()
 	}
 
@@ -163,13 +174,19 @@ export class FlowRServerConnection {
 	}
 
 	private createPipelineExecutorForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
-		let request: RParseRequest
+		let request: RParseRequests
 		if(message.content !== undefined){
 			// we store the code in a temporary file in case it's too big for the shell to handle
 			fs.writeFileSync(tempFile, message.content ?? '')
 			request = { request: 'file', content: tempFile }
+		} else if(message.filepath !== undefined) {
+			if(typeof message.filepath === 'string') {
+				request = { request: 'file', content: message.filepath }
+			} else {
+				request = message.filepath.map(fp => ({ request: 'file', content: fp }))
+			}
 		} else {
-			request = { request: 'file', content: message.filepath as string }
+			throw new Error('Either content or filepath must be defined.')
 		}
 
 		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
@@ -208,7 +225,11 @@ export class FlowRServerConnection {
 			return
 		}
 
-		fileInformation.pipeline.updateRequest({ criterion: request.criterion })
+		fileInformation.pipeline.updateRequest({
+			criterion:    request.criterion,
+			autoSelectIf: request.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
+		})
+
 		void fileInformation.pipeline.allRemainingSteps(true).then(results => {
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
@@ -253,7 +274,9 @@ export class FlowRServerConnection {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, request.expression, this.shell).then(() => {
+		}, request.expression, this.shell,
+		this.allowRSessionAccess
+		).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {
 				type: 'end-repl-execution',
 				id:   request.id
@@ -261,6 +284,38 @@ export class FlowRServerConnection {
 		})
 	}
 
+	private handleLineageRequest(base: LineageRequestMessage) {
+		const requestResult = validateMessage(base, requestLineageMessage)
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id)
+			return
+		}
+
+		const request = requestResult.message
+		this.logger.info(`[${this.name}] Received lineage request for criterion ${request.criterion}`)
+
+		const fileInformation = this.fileMap.get(request.filetoken)
+		if(!fileInformation) {
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `The file token ${request.filetoken} has never been analyzed.`
+			})
+			return
+		}
+
+		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true)
+		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`)
+		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`)
+		const lineageIds = getLineage(request.criterion, ast, dfg)
+		sendMessage<LineageResponseMessage>(this.socket, {
+			type:    'response-lineage',
+			id:      request.id,
+			lineage: [...lineageIds]
+		})
+	}
 }
 
 export function sanitizeAnalysisResults(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>): DeepPartial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>> {

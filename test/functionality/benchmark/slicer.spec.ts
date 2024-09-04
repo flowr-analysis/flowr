@@ -135,8 +135,8 @@ cat(d)`
 				tokensNoComments:                  { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
 				normalizedTokens:                  { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
 				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
-				dataflowNodes:                     { min: 3,  max: 14, median: 6,  mean: (3+6+14)/3,         std: 4.642796092394707,  total: 23 },
-				linesWithAutoSelected:             { min: 1,  max: 1,  median: 1,  mean: 1,                  std: 0,                  total: 3  } // always select one library statement
+				dataflowNodes:                     { min: 5,  max: 16, median: 8,  mean: (5+8+16)/3,         std: 4.642796092394707,  total: 29 },
+				linesWithAutoSelected:             { min: 0,  max: 0,  median: 0,  mean: 0,                  std: 0,                  total: 0  }
 			}, statInfo)
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {

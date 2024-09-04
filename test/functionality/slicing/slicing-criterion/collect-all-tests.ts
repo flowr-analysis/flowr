@@ -19,10 +19,10 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 		const ast = await retrieveNormalizedAst(shell, input)
 		const decorated = decorateAst(ast)
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
+			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
 			.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme }))
 		const expectedMapped = expected
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
+			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
 
 		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`)
 	})

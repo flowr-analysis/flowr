@@ -61,7 +61,7 @@ describe('Constant Parsing',
 				assert.isRejected((retrieveParseDataFromRCode({
 					request: 'text',
 					content: '{'
-				}, shell) as Promise<string>))
+				}, shell)))
 			)
 			describe('numbers', () => {
 				for(const number of RNumberPool) {

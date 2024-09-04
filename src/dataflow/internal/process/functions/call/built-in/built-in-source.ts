@@ -1,10 +1,11 @@
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
+import { initializeCleanDataflowInformation } from '../../../../../info'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { processKnownFunctionCall } from '../known-call-handling'
-import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever'
+import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
 import type {
 	IdGenerator,
@@ -12,6 +13,7 @@ import type {
 	ParentInformation
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import {
+	deterministicPrefixIdGenerator,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
@@ -22,6 +24,7 @@ import { dataflowLogger } from '../../../../../logger'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
+import { expensiveTrace } from '../../../../../../util/log'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -33,42 +36,53 @@ export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: {
+		/** should this produce an explicit source function call in the graph? */
+		includeFunctionCall?: boolean,
+		/** should this function call be followed, even when the configuration disables it? */
+		forceFollow?:         boolean
+	}
 ): DataflowInformation {
-	const information = processKnownFunctionCall({ name, args, rootId, data }).information
+	const information = config.includeFunctionCall ?
+		processKnownFunctionCall({ name, args, rootId, data }).information
+		: initializeCleanDataflowInformation(rootId, data)
 
 	const sourceFile = args[0]
 
-	if(getConfig().ignoreSourceCalls) {
-		dataflowLogger.info(`Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
+	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
+		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
 	}
 
-	if(sourceFile !== EmptyArgument && sourceFile?.value?.type == RType.String) {
+	if(sourceFile !== EmptyArgument && sourceFile?.value?.type === RType.String) {
 		const path = removeRQuotes(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it
 		if(data.referenceChain.includes(requestFingerprint(request))) {
-			dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
+			expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
+			information.graph.markIdForUnknownSideEffects(rootId)
 			return information
 		}
 
-		return sourceRequest(request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
+		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
 	} else {
-		dataflowLogger.info(`Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
+		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
 	}
 }
 
-export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
 	const executor = new RShellExecutor()
 
 	// parse, normalize and dataflow the sourced file
 	let normalized: NormalizedAst<OtherInfo & ParentInformation>
 	let dataflow: DataflowInformation
 	try {
-		const parsed = retrieveParseDataFromRCode(request, executor) as string
+		const parsed = retrieveParseDataFromRCode(request, executor)
 		normalized = normalize(parsed, getId) as NormalizedAst<OtherInfo & ParentInformation>
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
@@ -78,7 +92,14 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 		})
 	} catch(e) {
 		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`)
+		information.graph.markIdForUnknownSideEffects(rootId)
 		return information
+	}
+
+	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
+	dataflow.graph.addControlDependency(dataflow.entryPoint, rootId)
+	for(const out of dataflow.out) {
+		dataflow.graph.addControlDependency(out.nodeId, rootId)
 	}
 
 	// update our graph with the sourced file's information
@@ -90,4 +111,31 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 		data.completeAst.idMap.set(k, v)
 	}
 	return newInformation
+}
+
+
+export function standaloneSourceFile<OtherInfo>(
+	inputRequest: RParseRequest,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	uniqueSourceId: string,
+	information: DataflowInformation
+): DataflowInformation {
+	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-'
+	/* this way we can still pass content */
+	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest
+	const fingerprint = requestFingerprint(request)
+
+	// check if the sourced file has already been dataflow analyzed, and if so, skip it
+	if(data.referenceChain.includes(fingerprint)) {
+		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
+		information.graph.markIdForUnknownSideEffects(uniqueSourceId)
+		return information
+	}
+
+	return sourceRequest(uniqueSourceId, request, {
+		...data,
+		currentRequest: request,
+		environment:    information.environment,
+		referenceChain: [...data.referenceChain, fingerprint]
+	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId))
 }

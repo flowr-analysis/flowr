@@ -13,6 +13,7 @@ import { italic , bold } from '../../../util/ansi'
 import { splitAtEscapeSensitive } from '../../../util/args'
 import { guard } from '../../../util/assert'
 import { scripts } from '../../common/scripts-info'
+import { getLineageCommand } from './lineage'
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter): string {
 	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`
@@ -31,7 +32,7 @@ export const helpCommand: ReplCommand = {
 	fn:           output => {
 		initCommandMapping()
 		output.stdout(`
-You can always just enter R expressions which get evaluated right away:
+If enabled, you can just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
 ${italic('[1] 2', output.formatter)}
 
@@ -66,7 +67,8 @@ const _commands: Record<string, ReplCommand> = {
 	'dataflow':     dataflowCommand,
 	'dataflow*':    dataflowStarCommand,
 	'controlflow':  controlflowCommand,
-	'controlflow*': controlflowStarCommand
+	'controlflow*': controlflowStarCommand,
+	'lineage':      getLineageCommand
 }
 let commandsInitialized = false
 

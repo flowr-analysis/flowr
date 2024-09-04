@@ -37,6 +37,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		data,
 		finalGraph,
 		functionRootId
+		/* we know the call is right there and fully resolved, there is no need to artificially force arguments as we identify them within the subtree */
 	})
 
 	finalGraph.addVertex({

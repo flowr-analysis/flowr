@@ -18,14 +18,15 @@ export function processLibrary<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
 	if(args.length !== 1) {
 		dataflowLogger.warn(`Currently only one-arg library-likes are allows (for ${name.content}), skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true }).information
 	}
 	const nameToLoad = unpackArgument(args[0])
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol) {
 		dataflowLogger.warn('No library name provided, skipping')
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true }).information
 	}
 
 	// treat as a function call but convert the first argument to a string
@@ -39,6 +40,8 @@ export function processLibrary<OtherInfo>(
 			str:    nameToLoad.content
 		}
 	}
-
-	return processKnownFunctionCall({ name, args: wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data }).information
+	return processKnownFunctionCall({
+		name, args:                 wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data,
+		hasUnknownSideEffect: true
+	}).information
 }

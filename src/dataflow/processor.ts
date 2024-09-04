@@ -26,11 +26,11 @@ export interface DataflowProcessorInformation<OtherInfo> {
    */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
-	 * The {@link RParseRequest} that is currently being parsed
+	 * The {@link RParseRequests} that is currently being parsed
 	 */
 	readonly currentRequest:      RParseRequest
 	/**
-	 * The chain of {@link RParseRequest} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
+	 * The chain of {@link RParseRequests} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
 	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
 	 */
 	readonly referenceChain:      string[]
@@ -54,11 +54,12 @@ export type DataflowProcessors<OtherInfo> = {
 /**
  * Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls
  * which require information regarding the calling *and* definition context. While this only is a problem for late bindings as they happen
- * with functions (and probably quote'd R-expressions) it is still a problem that must be dealt with.
+ * with functions (and probably quote'd R-expressions), it is still a problem that must be dealt with.
  * Therefore, the dataflow processor has no complete control over the traversal and merge strategy of the graph, with each processor being in
  * the position to call the other processors as needed for its children.
  * <p>
- * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you can not narrow down.
+ * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you cannot narrow down
+ * in type or context.
  *
  * @param current - The current node to start processing from
  * @param data    - The initial (/current) information to be passed down
@@ -67,5 +68,7 @@ export function processDataflowFor<OtherInfo>(
 	current: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	return (data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>)(current, data)
+	return (
+		data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>
+	)(current, data)
 }

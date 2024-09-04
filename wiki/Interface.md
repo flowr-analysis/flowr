@@ -1,4 +1,4 @@
-Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/flowr-analysis/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
+Although far from being as detailed as the in-depth explanation of [_flowR_](https://github.com/flowr-analysis/flowr/wiki/Core), this wiki page explains how to interface with _flowR_ in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 <!-- TOC -->
 - [💬 Communicating with the Server](#-communicating-with-the-server)
@@ -10,10 +10,13 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
       - [Using Netcat](#using-netcat)
       - [Using Python](#using-python)
   - [The Slice Request](#the-slice-request)
+    - [Magic Comments](#magic-comments)
   - [The REPL Request](#the-repl-request)
+  - [The Lineage Request](#the-lineage-request)
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
   - [Interfacing with the File System](#interfacing-with-the-file-system)
+- [⚙️ Using the Configuration File](#️-using-the-configuration-file)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing with R by Using the `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [The Pipeline Executor](#the-pipeline-executor)
@@ -32,7 +35,7 @@ Every message has to be given in a single line (i.e., without a newline in-betwe
 
 > [!NOTE]
 > The default `--server` uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-> connection. If you want *flowR* to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the `--ws` flag (i.e., `--server --ws`) when starting *flowR* from the command line.
+> connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the `--ws` flag (i.e., `--server --ws`) when starting _flowR_ from the command line.
 
 ### The Hello Message
 
@@ -51,14 +54,14 @@ sequenceDiagram
 ```
 </details>
 
-After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;*flowR* and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
+After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(🐳️), simply connecting should present you with a `hello` message, that amongst others should reveal the versions of&nbsp;_flowR_ and&nbsp;R running, using the [semver 2.0](https://semver.org/spec/v2.0.0.html) versioning scheme.
 See the implementation of the hello message for more information regarding the contents of the message.
 
 
 <details open>
     <summary>Example Message</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 ```json
 {
@@ -100,7 +103,7 @@ sequenceDiagram
 </details>
 
 The request allows the server to analyze a file and prepare it for slicing.
-The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent slicing).
+The message can contain a `filetoken`, which is used to identify the file in later slice or lineage requests (if you do not add one, the request will not be stored and therefore, it is not available for subsequent requests).
 
 > [!IMPORTANT]
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
@@ -112,7 +115,7 @@ See the implementation of the request-file-analysis message for more information
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -128,7 +131,7 @@ See the implementation of the request-file-analysis message for more information
 <details>
     <summary>Example Response (Long)</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 The `results` field of the response effectively contains three keys of importance:
 
@@ -2254,7 +2257,7 @@ It contains a human-readable description *why* the analysis failed (see the erro
 <details>
     <summary>Example Error Message</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 ```json
 {
@@ -2269,13 +2272,13 @@ It contains a human-readable description *why* the analysis failed (see the erro
 
 #### Including the Control Flow Graph
 
-While *flowR* does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within *flowR*, it is tested significantly less - so please create a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) for any bug you may encounter).
+While _flowR_ does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, the respective structure can still be exposed using the server (note that, as this feature is not needed within _flowR_, it is tested significantly less - so please create a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) for any bug you may encounter).
 For this, the analysis request may add `cfg: true` to its list of options.
 
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -2292,7 +2295,7 @@ For this, the analysis request may add `cfg: true` to its list of options.
 <details>
     <summary>Example Response (Shortened)</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 The response is basically the same as the response sent without the `cfg` flag. The following only shows important additions. If you are interested in a visual representation of the control flow graph, see the [mermaid visualization](https://mermaid.live/edit#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjBbXCJgUlN5bWJvbCAoMClcbid4J2BcIl1cbiAgICBuMVtcImBSTnVtYmVyICgxKVxuJzEnYFwiXVxuICAgIG4yW1wiYFJCaW5hcnlPcCAoMilcbid4IDwtIDEnYFwiXVxuICAgIG4zW1wiYFJTeW1ib2wgKDMpXG4neCdgXCJdXG4gICAgbjRbXCJgUk51bWJlciAoNClcbicxJ2BcIl1cbiAgICBuNVtcImBSQmluYXJ5T3AgKDUpXG4neCArIDEnYFwiXVxuICAgIG4xIC0uLT58XCJGRFwifCBuMFxuICAgIG4wIC0uLT58XCJGRFwifCBuMlxuICAgIG41IC0uLT58XCJGRFwifCBuMVxuICAgIG40IC0uLT58XCJGRFwifCBuM1xuICAgIG4zIC0uLT58XCJGRFwifCBuNVxuIiwibWVybWFpZCI6e30sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0=) (although it is really simple).
 
@@ -2484,7 +2487,7 @@ The default response is formatted as JSON. However, by specifying `format: "n-qu
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 ```json
 {
@@ -2503,7 +2506,7 @@ The default response is formatted as JSON. However, by specifying `format: "n-qu
 <details>
     <summary>Example Response (Long)</summary>
 
-*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these messages, they are sent as a single line, ending with a newline.
 
 Please note, that the base message format is still JSON. Only the individual results get converted. While the context is derived from the `filename`, we currently offer no way to customize other configurations (please open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) if you require this).
 
@@ -2597,10 +2600,12 @@ In order to slice, you have to send a file analysis request first. The `filetoke
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
 See the implementation of the request-slice message for more information.
 
+Additionally, you may pass `"noMagicComments": true` to disable the automatic selection of elements based on magic comments (see below).
+
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
 
 This request is the logical succession of the file analysis example above which uses the `filetoken`: `"x"`.
 
@@ -2625,7 +2630,7 @@ x + 1
 <details>
     <summary>Example Response</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 The `results` field of the response contains two keys of importance:
 
@@ -2666,9 +2671,21 @@ The `results` field of the response contains two keys of importance:
 
 </details>
 
-The semantics of the error message are similar. If, for example, the slicing criterion is invalid or the `filetoken` is unknown, *flowR* will respond with an error.
+The semantics of the error message are similar. If, for example, the slicing criterion is invalid or the `filetoken` is unknown, _flowR_ will respond with an error.
+
+#### Magic Comments
+
+Within a document that is to be sliced, you can use magic comments to influence the slicing process:
+
+- `# flowr@include_next_line` will cause the next line to be included, independent of if it is important for the slice.
+- `# flowr@include_this_line` will cause the current line to be included, independent of if it is important for the slice.
+- `# flowr@include_start` and `# flowr@include_end` will cause the lines between them to be included, independent of if they are important for the slice. These magic comments can be nested but should appear on a separate line.
 
 ### The REPL Request
+
+> [!WARNING]
+> To execute arbitrary R commands with a request, the server has to be started explicitly with `--r-session-access`.
+> Please be aware, that this introduces a security risk.
 
 <details open>
 <summary>Sequence Diagram</summary>
@@ -2703,7 +2720,7 @@ You only have to pass the command you want to execute in the `expression` field.
 We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
 > [!WARNING]
-> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful.
+> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful (and do not use `--r-session-access`).
 
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
@@ -2714,7 +2731,8 @@ The semantics of the error message are similar to that of the other messages.
 <details open>
     <summary>Example Request</summary>
 
-*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+For this request to work, you have to start the server with the `--r-session-access` flag.
 
 ```json
 {
@@ -2729,7 +2747,7 @@ The semantics of the error message are similar to that of the other messages.
 <details>
     <summary>Example Response</summary>
 
-*Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
 Prompting with `1+1` only produces one `response-repl-execution` message:
 
@@ -2753,9 +2771,76 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 
 </details>
 
+### The Lineage Request
+
+<details open>
+<summary>Sequence Diagram</summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant Server
+
+    Client->>+Server: request-lineage
+
+    alt
+        Server-->>Client: response-lineage
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+```
+
+</details>
+
+In order to retrieve the lineage of an object, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
+Besides that, you will need to add a [criterion](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.
+
+<details open>
+<summary>Example Request</summary>
+
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+
+This request is the logical succession of the file analysis example above which uses the `filetoken`: `"x"`.
+
+```json
+{
+  "type":      "request-lineage",
+  "id":        "2",
+  "filetoken": "x",
+  "criterion": "2@x"
+}
+```
+
+</details>
+
+<details>
+<summary>Example Response</summary>
+
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+
+The response contains the lineage of the desired object in form of an array of IDs (as the representation of a set).
+
+```json
+{
+  "type": "response-lineage",
+  "id": "2",
+  "lineage": [3,0,1,2]
+}
+```
+
+If an error occurred, the server will set the responses `type` to `"error"` and provide a message in the `reason` field.
+
+</details>
+
 ## 💻 Using the REPL
 
-Although primarily meant for users to explore, there is nothing which forbids simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
+> [!NOTE]
+> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with `--r-session-access`.
+> Please be aware, that this introduces a security risk.
+
+Although primarily meant for users to explore, there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),
@@ -2784,19 +2869,38 @@ flowchart LR
     0 -->|"defined-by (always)"| 2
 ```
 
-The graph returned for you may differ, depending on the evolution of *flowR*.
+The graph returned for you may differ, depending on the evolution of _flowR_.
+
+For the slicing, you have access to the same [magic comments](#magic-comments) as with the server.
 
 ### Interfacing with the File System
 
-Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:
+Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the _flowR_ repository, the following should give you the parsed AST of the example file:
 
 ```shell
 R> :parse file://test/testfiles/example.R
 ```
 
+## ⚙️ Using the Configuration File
+
+When running flowR, you amy specify some behaviors with a dedicated configuration file. By default, flowR looks for a file named `flowr.json` in the current working directory (or any higher directory). You can also specify a different file with `--config-file`.
+There are two configurations available as of now:
+
+- `ignoreSourceCalls`: If set to `true`, flowR will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
+- `rPath`: The path to the R executable. If not set, flowR will try to find the R executable in the system's PATH.
+
+So you can configure _flowR_ by adding a file like the following:
+
+```json
+{
+  "ignoreSourceCalls": true,
+  "rPath": "/usr/bin/R"
+}
+```
+
 ## ⚒️ Writing Code
 
-*flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
+_flowR_ can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
 
 ### Interfacing with R by Using the `RShell`
 
@@ -2815,8 +2919,8 @@ Besides that, the command `RShell::tryToInjectHomeLibPath` may be of interest, a
 
 ### The Pipeline Executor
 
-Once, in the beginning, *flowR* was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
-With this, we restructured *flowR*'s *hardcoded* pipeline to be
+Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
+With this, we restructured _flowR_'s *hardcoded* pipeline to be
 far more flexible. Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and, what we call 'decorations' of these steps. In short, if you still "just want to slice", you can do it like this:
 
 ```typescript

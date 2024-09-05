@@ -4,7 +4,7 @@ import { assert } from 'chai'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
-import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
+import { NAIVE_RECONSTRUCT_SLICED } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { guard } from '../../../src/util/assert'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import type { TestLabel } from './label'
@@ -23,6 +23,7 @@ import {
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
 import {
 	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_DICING_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines'
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
@@ -308,7 +309,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 			request: requestFromInput(input),
 			shell
 		}).allRemainingSteps()
-		const reconstructed = NAIVE_RECONSTRUCT.processor({
+		const reconstructed = NAIVE_RECONSTRUCT_SLICED.processor({
 			normalize: result.normalize,
 			slice:     {
 				decodedCriteria:   [],
@@ -350,6 +351,45 @@ export function assertSliced(
 			assert.strictEqual(
 				result.reconstruct.code, expected,
 				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+			)
+		} catch(e) {
+			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`)
+			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
+			throw e
+		}
+	})
+	handleAssertOutput(name, shell, input, userConfig)
+	return t
+}
+
+export function assertDiced(
+	name: string | TestLabel,
+	shell: RShell,
+	input: string,
+	startCriteria: SlicingCriteria,
+	endCriteria: SlicingCriteria,
+	expected: string,
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
+): Mocha.Test {
+	const fullname = decorateLabelContext(name, ['slice'])
+
+	const t = it(`${JSON.stringify(startCriteria)} to ${JSON.stringify(endCriteria)} ${fullname}`, async function() {
+		await ensureConfig(shell, this, userConfig)
+
+		const result = await new PipelineExecutor(DEFAULT_DICING_PIPELINE,{
+			getId,
+			request:           requestFromInput(input),
+			shell,
+			startingCriterion: startCriteria,
+			endCriterion:      endCriteria,
+			autoSelectIf:      userConfig?.autoSelectIf
+		}).allRemainingSteps()
+
+		try {
+			assert.strictEqual(
+				result.reconstruct.code, expected,
+				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(startCriteria)} to ${JSON.stringify(endCriteria)}`//: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			)
 		} catch(e) {
 			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`)

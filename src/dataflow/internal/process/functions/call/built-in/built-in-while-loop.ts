@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { alwaysExits , filterOutLoopExitPoints } from '../../../../../info'
 import {
+	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop, linkInputs,
 	produceNameSharedIdMap
 } from '../../../../linker'
@@ -63,7 +64,7 @@ export function processWhileLoop<OtherInfo>(
 		...makeAllMaybe(body.unknownReferences, information.graph, information.environment, false),
 		...makeAllMaybe(body.in, information.graph, information.environment, false)
 	], information.environment, [...condition.in, ...condition.unknownReferences], information.graph, true)
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(remainingInputs), body.out)
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out)
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(name.info.id, condition.entryPoint, { type: EdgeType.Reads })

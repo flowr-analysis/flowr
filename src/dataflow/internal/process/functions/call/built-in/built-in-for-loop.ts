@@ -3,6 +3,7 @@ import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { filterOutLoopExitPoints, alwaysExits } from '../../../../../info'
 import {
+	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
 	produceNameSharedIdMap
 } from '../../../../linker'
@@ -17,10 +18,9 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import { define } from '../../../../../environments/define'
 import { appendEnvironment } from '../../../../../environments/append'
-import { initializeCleanEnvironments, makeAllMaybe } from '../../../../../environments/environment'
+import { makeAllMaybe } from '../../../../../environments/environment'
 import { EdgeType } from '../../../../../graph/edge'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import { pushLocalEnvironment } from '../../../../../environments/scoping'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,41 +56,19 @@ export function processForLoop<OtherInfo>(
 		headEnvironments = define({ ...write, definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
 	}
 	data = { ...data, environment: headEnvironments }
-	/* process the body without any environment first, to retrieve all open references */
-	let environment = initializeCleanEnvironments(false)
-	while(headEnvironments.level > environment.level) {
-		environment = pushLocalEnvironment(environment)
-	}
-	const body = processDataflowFor(bodyArg, { ...data, environment })
+
+	const body = processDataflowFor(bodyArg, data)
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 	const outEnvironment = appendEnvironment(headEnvironments, body.environment)
 
-	// again within an if-then-else we consider all actives to be read
-	// currently I add it at the end, but is this correct?
-	const ingoing = [
-		...vector.in,
-		...makeAllMaybe(body.in, nextGraph, outEnvironment, false),
-		...vector.unknownReferences,
-		...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironment, false)
-	]
-
-	// now we have to bind all open reads with the given name to the locally defined writtenVariable!
-	const nameIdShares = produceNameSharedIdMap(ingoing)
+	// now we have to identify all reads that may be effected by a circular redefinition
+	// for this, we search for all reads with a non-local read resolve!
+	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph))
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, { type: EdgeType.DefinedBy })
-
-		const name = write.name
-		if(name) {
-			const readIdsToLink = nameIdShares.get(name)
-			for(const readId of readIdsToLink) {
-				nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads })
-			}
-			// now, we remove the name from the id shares as they are no longer necessary
-			nameIdShares.delete(name)
-			nextGraph.setDefinitionOfVertex(write)
-		}
+		nextGraph.setDefinitionOfVertex(write)
 	}
 
 	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment, true)]

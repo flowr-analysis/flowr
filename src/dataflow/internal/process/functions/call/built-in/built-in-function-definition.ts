@@ -38,7 +38,7 @@ export function processFunctionDefinition<OtherInfo>(
 	/* we remove the last argument, as it is the body */
 	const parameters = args.slice(0, -1)
 	const bodyArg = unpackArgument(args[args.length - 1])
-	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! Bad!`)
+	guard(bodyArg !== undefined, () => `Function Definition ${JSON.stringify(args)} has missing body! This is bad!`)
 
 	const originalEnvironment = data.environment
 	// within a function def we do not pass on the outer binds as they could be overwritten when called

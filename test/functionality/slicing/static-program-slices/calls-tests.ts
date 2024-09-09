@@ -629,19 +629,35 @@ if(x == 3) {
 { x <- y <- 3 }
 x`)
 		})
-		describe('Lapply Forcing the Map Function Body', () => {
-			assertSliced(label('Forcing Second Argument', [
-				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
-			]), shell,
-			'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
-			'res <- lapply(1:3, function(x) x + 1)'
-			)
-			assertSliced(label('Forcing Including Reference', [
-				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
-			]), shell,
-			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
-			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
-			)
+		describe('Apply Functions', () => {
+			describe('Lapply Forcing the Map Function Body', () => {
+				assertSliced(label('Forcing Second Argument', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				]), shell,
+				'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
+				'res <- lapply(1:3, function(x) x + 1)'
+				)
+				assertSliced(label('Force-Including Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				]), shell,
+				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
+				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+				)
+			})
+			describe('Mapply Forcing the Map Function Body in the first arg', () => {
+				assertSliced(label('Forcing First Argument', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				]), shell,
+				'res <- mapply(function(x) x + 1, 1:3)', ['1@res'],
+				'res <- mapply(function(x) x + 1, 1:3)'
+				)
+				assertSliced(label('Force-Including Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				]), shell,
+				'foo <- bar()\nres <- mapply(function(x) foo * 2, 1:3)', ['2@res'],
+				'foo <- bar()\nres <- mapply(function(x) foo * 2, 1:3)'
+				)
+			})
 		})
 		describe('Using built-in names as a variable', () => {
 			for(const [loop, loopLabel] of [['for(i in 1:length(l))', 'for-loop'], ['while(xx)', 'while-loop'], ['repeat', 'repeat-loop']] as const) {

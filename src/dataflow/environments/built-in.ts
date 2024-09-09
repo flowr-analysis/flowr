@@ -174,9 +174,10 @@ registerSimpleFunctions(
 	'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
-registerBuiltInFunctions(false, ['lapply', 'sapply', 'vapply', 'mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['mapply', 'Mapply'],                              processApply,              { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['lapply', 'sapply', 'vapply'],                    processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
 /* functool wrappers */
-registerBuiltInFunctions(false, ['Lapply', 'Sapply', 'Vapply', 'Mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['Lapply', 'Sapply', 'Vapply'],                    processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
 registerBuiltInFunctions(false, ['apply', 'tapply', 'Tapply'],                     processApply,              { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }                        )
 registerBuiltInFunctions(false, ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )

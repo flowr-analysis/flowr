@@ -91,7 +91,7 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...variable.in, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...variable.in, ...vector.in, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

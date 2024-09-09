@@ -5,7 +5,7 @@ import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type'
 import type { RNumberValue } from '../../../src/r-bridge/lang-4.x/convert-values'
 import type { RParameter } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter'
 
-const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined, depth: 0 }
+const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined, nesting: 0 }
 
 export function exprList(...children: RNode[]): RExpressionList {
 	return { type: RType.ExpressionList, children, lexeme: undefined, info: emptyInfo, grouping: undefined, location: undefined }

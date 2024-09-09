@@ -114,7 +114,7 @@ x`, emptyGraph()
 		.use('10', 'x', { controlDependencies: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])
 		.use('13', 'x', { controlDependencies: [{ id: '16', when: true }] })
-		/* TODO: we should try to narrow this */
+		/* we should try to narrow this */
 		.reads('13', ['0', '9', '12'])
 		.use('17', 'x')
 		.reads('17', ['0', '9', '12'])

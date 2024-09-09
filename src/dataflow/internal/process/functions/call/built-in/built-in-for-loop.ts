@@ -58,7 +58,6 @@ export function processForLoop<OtherInfo>(
 	}
 	data = { ...data, environment: headEnvironments }
 
-	/* TODO: port new semantics to while and repeat loop */
 	const body = processDataflowFor(bodyArg, data)
 
 	const nextGraph = headGraph.mergeWith(body.graph)

@@ -21,7 +21,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' })
  * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
  *
  * @param graph     - The dataflow graph to conduct the slicing on.
- * @param ast       - The normalized AST of the code (used to get static depth information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
+ * @param ast       - The normalized AST of the code (used to get static nesting information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
  * @param criteria  - The criteras to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
@@ -34,7 +34,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 
 	const queue = new VisitingQueue(threshold)
 
-	let minDepth = Number.MAX_SAFE_INTEGER
+	let minNesting = Number.MAX_SAFE_INTEGER
 	const sliceSeedIds = new Set<NodeId>()
 	// every node ships the call environment which registers the calling environment
 	{
@@ -42,8 +42,8 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		const basePrint = envFingerprint(emptyEnv)
 		for(const { id: startId } of decodedCriteria) {
 			queue.add(startId, emptyEnv, basePrint, false)
-			// retrieve the minimum depth of all nodes to only add control dependencies if they are "part" of the current execution
-			minDepth = Math.min(minDepth, idMap.get(startId)?.info.depth ?? minDepth)
+			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
+			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nesting ?? minNesting)
 			sliceSeedIds.add(startId)
 		}
 
@@ -69,11 +69,11 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 
 		const [currentVertex, currentEdges] = currentInfo
 
-		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same depth as the slicing seed
+		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
 		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id)
 			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
-				if(!topLevel || (idMap.get(cd.id)?.info.depth ?? 0) <= minDepth) {
+				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false)
 				}
 			}

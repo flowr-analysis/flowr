@@ -35,7 +35,7 @@ ${loop} {
    x <- 2;
    break
 }
-print(x)`, ['6@x'], loop == 'repeat' ? 'x <- 2\nx' : `x <- 1\n${loop} x <- 2\nx`)
+print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`)
 				assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 					shell, `x <- 1
 ${loop} {
@@ -43,7 +43,7 @@ ${loop} {
    if(foo) 
       break
 }
-print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 2\nx' :`x <- 1
+print(x)`, ['7@x'], `x <- 1
 ${loop} {
     x <- 2
     if(foo) break
@@ -56,7 +56,7 @@ ${loop} {
    next;
    x <- 3;
 }
-print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 2\nx' : `x <- 1\n${loop} {
+print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${loop} {
     x <- 2
     x <- 3
 }

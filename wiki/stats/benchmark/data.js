@@ -3351,7 +3351,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "4fb2496898322ccc8fcf217f590bb8341aeaffbd",
-          "message": "[release:patch] Link Closures in Unknown Calls",
+          "message": "[release:patch] Link Closures in Unknown Calls (Release v2.0.16)",
           "timestamp": "2024-08-28T20:12:41+02:00",
           "tree_id": "5931659ac2cd2e713c4ce2f761c19194ea694468",
           "url": "https://github.com/flowr-analysis/flowr/commit/4fb2496898322ccc8fcf217f590bb8341aeaffbd"
@@ -3454,7 +3454,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f7dd663f0b3028ec6b64733ed182c4a3c3cc29f7",
-          "message": "[release:patch] Forcing Arguments, Improved Side-Effect Detection, and Lineage Command",
+          "message": "[release:patch] Forcing Arguments, Improved Side-Effect Detection, and Lineage Command (Release v2.0.17)",
           "timestamp": "2024-08-30T16:22:32+02:00",
           "tree_id": "05ba0ba302b72ac649936ad42e3780fe5aa4be40",
           "url": "https://github.com/flowr-analysis/flowr/commit/f7dd663f0b3028ec6b64733ed182c4a3c3cc29f7"
@@ -3557,7 +3557,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f36fe912b408ebc8f8f524b31347e297fb15cea7",
-          "message": "[release:patch] Support Side Effects by Loads, Table Assignments, and *Apply",
+          "message": "[release:patch] Support Side Effects by Loads, Table Assignments, and *Apply (Release v2.0.18)",
           "timestamp": "2024-08-31T20:52:30+02:00",
           "tree_id": "837af1424ca334760308cee914c63b35dd901833",
           "url": "https://github.com/flowr-analysis/flowr/commit/f36fe912b408ebc8f8f524b31347e297fb15cea7"
@@ -3660,7 +3660,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "2ba4d77877fe53239f726a488ec64a2875a2d054",
-          "message": "[release:patch] Fix: Use of Replacement Functions in Function Definitions",
+          "message": "[release:patch] Fix: Use of Replacement Functions in Function Definitions (Release v2.0.19)",
           "timestamp": "2024-09-03T22:40:53+02:00",
           "tree_id": "484c952218196a6640f5665649fadc168fcefb30",
           "url": "https://github.com/flowr-analysis/flowr/commit/2ba4d77877fe53239f726a488ec64a2875a2d054"
@@ -3763,7 +3763,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "d6d97d3fea33e517ba14715d9fc2fbf476969926",
-          "message": "[release:patch] Fix: Overshadow Built-Ins in Loops",
+          "message": "[release:patch] Fix: Overshadow Built-Ins in Loops (Release v2.0.20)",
           "timestamp": "2024-09-09T10:17:42+02:00",
           "tree_id": "39481f7becc3c958ae8d9195b92f08ed9e6ef7c4",
           "url": "https://github.com/flowr-analysis/flowr/commit/d6d97d3fea33e517ba14715d9fc2fbf476969926"
@@ -7298,7 +7298,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "4fb2496898322ccc8fcf217f590bb8341aeaffbd",
-          "message": "[release:patch] Link Closures in Unknown Calls",
+          "message": "[release:patch] Link Closures in Unknown Calls (Release v2.0.16)",
           "timestamp": "2024-08-28T20:12:41+02:00",
           "tree_id": "5931659ac2cd2e713c4ce2f761c19194ea694468",
           "url": "https://github.com/flowr-analysis/flowr/commit/4fb2496898322ccc8fcf217f590bb8341aeaffbd"
@@ -7401,7 +7401,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f7dd663f0b3028ec6b64733ed182c4a3c3cc29f7",
-          "message": "[release:patch] Forcing Arguments, Improved Side-Effect Detection, and Lineage Command",
+          "message": "[release:patch] Forcing Arguments, Improved Side-Effect Detection, and Lineage Command (Release v2.0.17)",
           "timestamp": "2024-08-30T16:22:32+02:00",
           "tree_id": "05ba0ba302b72ac649936ad42e3780fe5aa4be40",
           "url": "https://github.com/flowr-analysis/flowr/commit/f7dd663f0b3028ec6b64733ed182c4a3c3cc29f7"
@@ -7504,7 +7504,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f36fe912b408ebc8f8f524b31347e297fb15cea7",
-          "message": "[release:patch] Support Side Effects by Loads, Table Assignments, and *Apply",
+          "message": "[release:patch] Support Side Effects by Loads, Table Assignments, and *Apply (Release v2.0.18)",
           "timestamp": "2024-08-31T20:52:30+02:00",
           "tree_id": "837af1424ca334760308cee914c63b35dd901833",
           "url": "https://github.com/flowr-analysis/flowr/commit/f36fe912b408ebc8f8f524b31347e297fb15cea7"
@@ -7607,7 +7607,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "2ba4d77877fe53239f726a488ec64a2875a2d054",
-          "message": "[release:patch] Fix: Use of Replacement Functions in Function Definitions",
+          "message": "[release:patch] Fix: Use of Replacement Functions in Function Definitions (Release v2.0.19)",
           "timestamp": "2024-09-03T22:40:53+02:00",
           "tree_id": "484c952218196a6640f5665649fadc168fcefb30",
           "url": "https://github.com/flowr-analysis/flowr/commit/2ba4d77877fe53239f726a488ec64a2875a2d054"
@@ -7710,7 +7710,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "d6d97d3fea33e517ba14715d9fc2fbf476969926",
-          "message": "[release:patch] Fix: Overshadow Built-Ins in Loops",
+          "message": "[release:patch] Fix: Overshadow Built-Ins in Loops (Release v2.0.20)",
           "timestamp": "2024-09-09T10:17:42+02:00",
           "tree_id": "39481f7becc3c958ae8d9195b92f08ed9e6ef7c4",
           "url": "https://github.com/flowr-analysis/flowr/commit/d6d97d3fea33e517ba14715d9fc2fbf476969926"

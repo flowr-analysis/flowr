@@ -688,6 +688,13 @@ print(res)`
 			assertSliced(label('Loop Re-Iterate', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'infix-calls', 'double-bracket-access', 'binary-operator', 'return', 'implicit-return']),
 				shell, code, ['7@print'], code)
 		})
+		describe('Nested dataframe assignments', () => {
+			const code = `df <- foo()
+df$a[x > 3] <- 5
+print(df)`
+			assertSliced(label('Simple reassignment', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'infix-calls', 'double-bracket-access', 'binary-operator', 'return', 'implicit-return']),
+				shell, code, ['3@print'], code)
+		})
 	})
 	describe('Closures', () => {
 		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),

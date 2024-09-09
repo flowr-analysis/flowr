@@ -137,6 +137,7 @@ jobs:
         run: npm ci
 
       - name: "🌟 Release"
+        id: release
         run: |
           step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
           title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
@@ -167,6 +168,8 @@ jobs:
           npm run publish-library
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+    outputs:
+      version: ${{ steps.release.outputs.version }}
 
   deploy-docker:
     needs: ['release']
@@ -264,6 +267,8 @@ jobs:
         with:
           name: benchmark-results-${{ matrix.name }}
           path: test/performance/results/
+    outputs:
+      version: ${{ needs.release.outputs.version }}
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
@@ -329,7 +334,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.release.outputs.version }}"
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

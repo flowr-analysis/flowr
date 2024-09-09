@@ -532,7 +532,7 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator', 'strings', ...OperatorDatabase['=='].capabilities]
-			const code =`x <- fun %>%
+			const code = `x <- fun %>%
 				filter(X == "green") %>%
 				dplyr::select(X, Y) %>%
 				mutate(Z = 5) %>%
@@ -660,6 +660,17 @@ bar <- foo(l=x, ${name}=y)`
 					}
 				})
 			}
+		})
+		describe('Loop iteration overwrites', () => {
+			const code = `x <- 20 : 30
+res <- 0
+for(i in 1:10) {
+    x.y.data <- x[x > 25 + i]
+    for(j in x.y.data) res <- res + 1
+}
+print(res)`
+			assertSliced(label('Loop Re-Iterate', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'infix-calls', 'double-bracket-access', 'binary-operator', 'return', 'implicit-return']),
+				shell, code, ['7@print'], code)
 		})
 	})
 	describe('Closures', () => {

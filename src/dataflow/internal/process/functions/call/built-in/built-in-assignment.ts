@@ -52,6 +52,18 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly canBeReplacement?:    boolean
 }
 
+function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
+	let current = node
+	while(current.type === RType.Access) {
+		current = current.accessed
+	}
+	if(current.type === RType.Symbol) {
+		return current
+	} else {
+		return undefined
+	}
+}
+
 /**
  * Processes an assignment, i.e., `<target> <- <source>`.
  * Handling it as a function call \`&lt;-\` `(<target>, <source>)`.
@@ -95,6 +107,29 @@ export function processAssignment<OtherInfo>(
 		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`)
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source])
+	} else if(type === RType.Access) {
+		const rootArg = findRootAccess(target)
+		if(rootArg) {
+			const res = processKnownFunctionCall({
+				name,
+				args: 			     [rootArg, source],
+				rootId,
+				data,
+				reverseOrder: !config.swapSourceAndTarget,
+				forceArgs:    config.forceArgs
+			})
+
+			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+				...config,
+				nameOfAssignmentFunction: name.content,
+				source,
+				target:                   rootArg,
+				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+				rootId,
+				data,
+				information:              res.information,
+			})
+		}
 	} else if(type === RType.String) {
 		return processAssignmentToString(target, args, name, rootId, data, config, source)
 	}
@@ -114,7 +149,7 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 }
 
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
-	return target.in.map(ref => ({
+	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
 		kind:                isFunctionDef ? 'function' : 'variable',
 		definedAt:           rootId,

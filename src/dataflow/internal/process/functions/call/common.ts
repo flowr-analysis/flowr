@@ -103,9 +103,6 @@ export function processAllArguments<OtherInfo>(
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
 			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv) : undefined
-			if(ingoing.name === 'c') {
-				console.log('tryToResolve', ingoing, tryToResolve, argEnv)
-			}
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing)
 			} else {

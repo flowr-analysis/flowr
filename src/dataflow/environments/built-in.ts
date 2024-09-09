@@ -174,24 +174,24 @@ registerSimpleFunctions(
 	'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 	'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 )
-registerBuiltInFunctions(true,  ['lapply', 'sapply', 'vapply', 'mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['lapply', 'sapply', 'vapply', 'mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
 /* functool wrappers */
-registerBuiltInFunctions(true,  ['Lapply', 'Sapply', 'Vapply', 'Mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
-registerBuiltInFunctions(true,  ['apply', 'tapply', 'Tapply'],                     processApply,              { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }                        )
-registerBuiltInFunctions(true,  ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
+registerBuiltInFunctions(false, ['Lapply', 'Sapply', 'Vapply', 'Mapply'],          processApply,              { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['apply', 'tapply', 'Tapply'],                     processApply,              { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }                        )
+registerBuiltInFunctions(false, ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
-registerBuiltInFunctions(true,  ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
+registerBuiltInFunctions(false, ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
 registerBuiltInFunctions(false, ['cat'],                                           defaultBuiltInProcessor,   { forceArgs: 'all' as const }                                                ) /* returns null */
 registerBuiltInFunctions(false, ['switch'],                                        defaultBuiltInProcessor,   {}                                                                           ) /* returns null */
 registerBuiltInFunctions(true,  ['return'],                                        defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }                         )
 registerBuiltInFunctions(true,  ['break'],                                         defaultBuiltInProcessor,   { cfg: ExitPointType.Break }                                                 )
 registerBuiltInFunctions(true,  ['next'],                                          defaultBuiltInProcessor,   { cfg: ExitPointType.Next }                                                  )
 registerBuiltInFunctions(true,  ['{'],                                             processExpressionList,     {}                                                                           )
-registerBuiltInFunctions(true,  ['source'],                                        processSourceCall,         { includeFunctionCall: true, forceFollow: false }                            )
+registerBuiltInFunctions(false, ['source'],                                        processSourceCall,         { includeFunctionCall: true, forceFollow: false }                            )
 registerBuiltInFunctions(true,  ['[', '[['],                                       processAccess,             { treatIndicesAsString: false }                                              )
 registerBuiltInFunctions(true,  ['$', '@'],                                        processAccess,             { treatIndicesAsString: true }                                               )
 registerBuiltInFunctions(true,  ['if', 'ifelse'],                                  processIfThenElse,         {}                                                                           )
-registerBuiltInFunctions(true,  ['get'],                                           processGet,                {}                                                                           )
+registerBuiltInFunctions(false, ['get'],                                           processGet,                {}                                                                           )
 registerBuiltInFunctions(false, ['library', 'require'],                            processLibrary,            {}                                                                           )
 registerBuiltInFunctions(true,  ['<-', '='],                                       processAssignment,         { canBeReplacement: true }                                                   )
 registerBuiltInFunctions(true,  [':=', 'assign'],                                  processAssignment,         {}                                                                           )
@@ -207,14 +207,14 @@ registerBuiltInFunctions(true,  ['quote', 'substitute', 'bquote'],              
 registerBuiltInFunctions(true,  ['for'],                                           processForLoop,            {}                                                                           )
 registerBuiltInFunctions(true,  ['repeat'],                                        processRepeatLoop,         {}                                                                           )
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
-registerBuiltInFunctions(true,  ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
-registerBuiltInFunctions(true,  ['on.exit', 'sys.on.exit'],                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
+registerBuiltInFunctions(false, ['on.exit', 'sys.on.exit'],                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 /* library and require is handled above */
-registerBuiltInFunctions(true,  ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                          )
+registerBuiltInFunctions(false, ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                          )
 /* downloader and installer functions (R, devtools, BiocManager) */
-registerBuiltInFunctions(true,  ['library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
+registerBuiltInFunctions(false, ['library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
 /* weird env attachments */
-registerBuiltInFunctions(true,  ['attach'],                                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['attach'],                                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

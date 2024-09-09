@@ -25,6 +25,36 @@ import type { REnvironmentInformation } from '../environments/environment'
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
+export function findNonLocalReads(graph: DataflowGraph): IdentifierReference[] {
+	const ids = new Set(
+		[...graph.vertices(true)]
+			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
+			.map(([id, _]) => id)
+	)
+	/* find all variable use ids which do not link to a given id */
+	const nonLocalReads: IdentifierReference[] = []
+	for(const id of ids) {
+		const outgoing = graph.outgoingEdges(id)
+		if(outgoing === undefined) {
+			continue
+		}
+		for(const [target, { types }] of outgoing) {
+			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
+				const name = recoverName(id, graph.idMap);
+				if(!name) {
+					dataflowLogger.warn('found non-local read without name for id ' + id)
+				}
+				nonLocalReads.push({
+					name: recoverName(id, graph.idMap),
+					nodeId: id,
+					controlDependencies: undefined
+				})
+			}
+		}
+	}
+	return nonLocalReads
+}
+
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<string, IdentifierReference[]>(() => [])
 	for(const reference of references) {
@@ -270,7 +300,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
  * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
  */
 export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[]): void {
-	// first we preprocess out so that only the last definition of a given identifier survives
+	// first, we preprocess out so that only the last definition of a given identifier survives
 	// this implicitly assumes that the outgoing references are ordered
 	const lastOutgoing = new Map<string, IdentifierReference>()
 	for(const out of outgoing) {

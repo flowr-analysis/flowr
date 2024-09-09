@@ -2,6 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { filterOutLoopExitPoints } from '../../../../../info'
 import {
+	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
 	produceNameSharedIdMap
 } from '../../../../linker'
@@ -32,14 +33,19 @@ export function processRepeatLoop<OtherInfo>(
 		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
+		patchData: (d, i) => {
+			if(i === 0) {
+				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id }] }
+			}
+			return d
+		},
 		markAsNSE: [0]
 	})
 
 	const body = processedArguments[0]
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`)
 
-	const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])
-	linkCircularRedefinitionsWithinALoop(information.graph, namedIdShares, body.out)
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out)
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints)
 

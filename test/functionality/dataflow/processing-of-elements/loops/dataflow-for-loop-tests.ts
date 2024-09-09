@@ -28,7 +28,7 @@ describe('for', withShell(shell => {
   x <- 3
 }
 x`, emptyGraph()
-				.use('5', 'z', { controlDependencies: [{ id: '13' }, { id: '8', when: true }]})
+				.use('5', 'z', { controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.use('14', 'x')
 				.reads('14', ['2', '9'])
 				.call('4', '<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [BuiltIn], controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
@@ -212,7 +212,7 @@ print(x)`, emptyGraph()
 					.call('17', 'print', [argumentInCall('15')], { returns: ['15'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '5', '7') })
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-					.constant('6', { controlDependencies: [{ id: '13' }, { id: '11', when: true }]})
+					.constant('6', { controlDependencies: [{ id: '13' }, { id: '11', when: true }] })
 					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '13' }, { id: '11', when: true }] }))
 			assertDataflow(label('Next', ['repeat-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1

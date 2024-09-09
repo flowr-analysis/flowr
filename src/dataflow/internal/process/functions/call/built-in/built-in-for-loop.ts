@@ -18,10 +18,9 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
 import { define } from '../../../../../environments/define'
 import { appendEnvironment } from '../../../../../environments/append'
-import { initializeCleanEnvironments, makeAllMaybe } from '../../../../../environments/environment'
+import { makeAllMaybe } from '../../../../../environments/environment'
 import { EdgeType } from '../../../../../graph/edge'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import { pushLocalEnvironment } from '../../../../../environments/scoping'
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

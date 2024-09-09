@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-06-02, 14:07:37 UTC summarizig flowR's current capabilities_
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-09-09, 09:52:15 UTC summarizig flowR's current capabilities_
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -66,7 +66,9 @@ Besides, we use colored bullets like this:
         :green_square: _Recognize and resolve calls like `x + y`, `x %>% f(y)`, ..._
          5. **Redefinition of Built-In Functions/primitives** (<a id='redefinition-of-built-in-functions-primitives'>`redefinition-of-built-in-functions-primitives`</a>)\
         :large_orange_diamond: _Handle cases like `print <- function(x) x`, `` `for` <- function(a,b,c) a``, ..._ Currently, we can not handle all of them there are no tests. Still wip as part of desugaring
-         6. **Index Access** (<a id='index-access'>`index-access`</a>)
+         6. **Functions with global side effects** (<a id='functions-with-global-side-effects'>`functions-with-global-side-effects`</a>)\
+        :large_orange_diamond: _Support functions like `setwd` which have an impact on the subsequent program._
+         7. **Index Access** (<a id='index-access'>`index-access`</a>)
              1. **Single Bracket Access** (<a id='single-bracket-access'>`single-bracket-access`</a>)\
           :green_square: _Detect calls like `x[i]`, `x[i, ,b]`, `x[3][y]`, ... This does not include the real separation of cells, which is handled extra._
              2. **Double Bracket Access** (<a id='double-bracket-access'>`double-bracket-access`</a>)\
@@ -81,7 +83,7 @@ Besides, we use colored bullets like this:
           :green_square: _Detect calls like `x[]`, `x[2,,42]`, ..._
              7. **Subsetting** (<a id='subsetting'>`subsetting`</a>)\
           :green_square: _Detect calls like `x[i > 3]`, `x[c(1,3)]`, ..._
-         7. **Operators** (<a id='operators'>`operators`</a>)
+         8. **Operators** (<a id='operators'>`operators`</a>)
              1. **Unary Operator** (<a id='unary-operator'>`unary-operator`</a>)\
           :green_square: _Recognize and resolve calls like `+3`, `-3`, ..._
              2. **Binary Operator** (<a id='binary-operator'>`binary-operator`</a>)\
@@ -97,21 +99,23 @@ Besides, we use colored bullets like this:
               :green_square: _Handle `3 -> x`, `3 -> x$y`, ..._
                      3. **Local Equal Assignment** (<a id='local-equal-assignment'>`local-equal-assignment`</a>)\
               :green_square: _Handle `x = 3`, `x$y := 3`, ..._
-                     4. **Super Left Assignment** (<a id='super-left-assignment'>`super-left-assignment`</a>)\
+                     4. **Local Table Assignment** (<a id='local-table-assignment'>`local-table-assignment`</a>)\
+              :green_square: _Handle `x[,a:=3,]`, ..._
+                     5. **Super Left Assignment** (<a id='super-left-assignment'>`super-left-assignment`</a>)\
               :green_square: _Handle `x <<- 42`, `x$y <<- 42`, ..._
-                     5. **Super Right Assignment** (<a id='super-right-assignment'>`super-right-assignment`</a>)\
+                     6. **Super Right Assignment** (<a id='super-right-assignment'>`super-right-assignment`</a>)\
               :green_square: _Handle `42 ->> x`, `42 ->> x$y`, ..._
-                     6. **Return Value of Assignments** (<a id='return-value-of-assignments'>`return-value-of-assignments`</a>)\
+                     7. **Return Value of Assignments** (<a id='return-value-of-assignments'>`return-value-of-assignments`</a>)\
               :green_square: _Handle `x <- 3` returning `3`, e.g., in `x <- y <- 3`_
-                     7. **Assignment Functions** (<a id='assignment-functions'>`assignment-functions`</a>)\
+                     8. **Assignment Functions** (<a id='assignment-functions'>`assignment-functions`</a>)\
               :large_orange_diamond: _Handle `assign(x, 3)`, `delayedAssign(x, 3)`, ..._ Currently we can not handle all of them and tests are rare.
-                     8. **Range Assignment** (<a id='range-assignment'>`range-assignment`</a>)\
+                     9. **Range Assignment** (<a id='range-assignment'>`range-assignment`</a>)\
               :green_square: _Handle `x[1:3] <- 3`, `x$y[1:3] <- 3`, ..._
-                     9. **Replacement Functions** (<a id='replacement-functions'>`replacement-functions`</a>)\
+                    10. **Replacement Functions** (<a id='replacement-functions'>`replacement-functions`</a>)\
               :large_orange_diamond: _Handle `x[i] <- 3`, `x$y <- 3`, ... as `` `[<-`(x, 3) ``, ..._ Currently work in progress as part of the desugaring but still untested.
-                    10. **Locked Bindings** (<a id='locked-bindings'>`locked-bindings`</a>)\
+                    11. **Locked Bindings** (<a id='locked-bindings'>`locked-bindings`</a>)\
               :red_circle: _Handle `lockBinding(x, 3)`, ..._
-         8. **Control-Flow** (<a id='control-flow'>`control-flow`</a>)
+         9. **Control-Flow** (<a id='control-flow'>`control-flow`</a>)
              1. **if** (<a id='if'>`if`</a>)\
           :green_square: _Handle `if (x) y else z`, `if (x) y`, ..._
              2. **for loop** (<a id='for-loop'>`for-loop`</a>)\
@@ -130,7 +134,7 @@ Besides, we use colored bullets like this:
           :green_square: _Handle `return(3)`, ... in function definitions_
              9. **exceptions** (<a id='exceptions'>`exceptions`</a>)\
           :red_circle: _Handle `try`, `stop`, ..._
-         9. **Function Definitions** (<a id='function-definitions'>`function-definitions`</a>)
+        10. **Function Definitions** (<a id='function-definitions'>`function-definitions`</a>)
              1. **Normal** (<a id='normal-definition'>`normal-definition`</a>)\
           :green_square: _Handle `function() 3`, ..._
              2. **Formals** (<a id='formals'>`formals`</a>)
@@ -146,7 +150,7 @@ Besides, we use colored bullets like this:
           :green_square: _Handle the return of `function() 3`, ..._
              4. **Lambda Syntax** (<a id='lambda-syntax'>`lambda-syntax`</a>)\
           :green_square: _Support `\(x) x`, ..._
-        10. **Important Built-Ins** (<a id='important-built-ins'>`important-built-ins`</a>)
+        11. **Important Built-Ins** (<a id='important-built-ins'>`important-built-ins`</a>)
              1. **Non-Strict Logical Operators** (<a id='non-strict-logical-operators'>`non-strict-logical-operators`</a>)\
           :green_square: _Handle `&&`, `||`, ..._
              2. **Pipe and Pipe-Bind** (<a id='built-in-pipe-and-pipe-bind'>`built-in-pipe-and-pipe-bind`</a>)\

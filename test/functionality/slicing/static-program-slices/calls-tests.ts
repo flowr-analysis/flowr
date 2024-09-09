@@ -643,6 +643,18 @@ x`)
 			'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
 			)
 		})
+		describe('Using c as a variable', () => {
+			const code = `foo <- function(l, c) {
+        tmp <- list()
+        for(i in 1:length(l)) tmp[[i]] <- l[[i]] %in% c[[i]]
+        return(tmp)
+    }
+    x <- list(1,2,3,4)
+    y <- c(1,2)
+    bar <- foo(l=x, c=y)`
+			assertSliced(label('Simple c', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'infix-calls', 'double-bracket-access', 'binary-operator', 'return', 'implicit-return']),
+				shell, code, ['8@bar'], code)
+		})
 	})
 	describe('Closures', () => {
 		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),

@@ -38,6 +38,7 @@ export function processAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
+	console.log('processAccess', args)
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information
@@ -60,6 +61,7 @@ export function processAccess<OtherInfo>(
 			nodeId:              BuiltIn
 		}])
 		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
+		console.log('got', fnCall.information)
 		/* recover the environment */
 		if(existing !== undefined) {
 			data.environment.current.memory.set(':=', existing)

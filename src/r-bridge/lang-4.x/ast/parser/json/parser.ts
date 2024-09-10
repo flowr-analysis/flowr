@@ -8,14 +8,31 @@ import type { NoInfo } from '../../model/model'
 import { normalizeRootObjToAst } from '../xml/internal/structure/normalize-root'
 import type { XmlBasedJson } from '../xml/input-format'
 import { childrenKey , contentKey , attributesKey, nameKey } from '../xml/input-format'
-import { RawRType } from '../../model/type'
+import { RawRType, RType } from '../../model/type'
+import type { RExpressionList } from '../../model/nodes/r-expression-list'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
-export function normalize(jsonString: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
-	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined }
-	const object = convertPreparedParsedData(prepareParsedData(jsonString))
-	return decorateAst(normalizeRootObjToAst(data, object), getId)
+export function normalize(jsonString: string | string[], getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+	if(typeof jsonString === 'string') {
+		jsonString = [jsonString]
+	}
+
+	const roots: RExpressionList[] = []
+	for(const string of jsonString) {
+		const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined }
+		const object = convertPreparedParsedData(prepareParsedData(string))
+		roots.push(normalizeRootObjToAst(data, object))
+	}
+	// TODO: unsure about the lexeme and the location
+	// Should the lexeme just be the content of all files, or do we not care about that
+	return decorateAst({
+		type:     RType.Files,
+		children: roots,
+		lexeme:   '',
+		info:     {},
+		location: [0,0,0,0]
+	}, getId)
 }
 
 export function convertPreparedParsedData(rootEntries: Entry[]): XmlBasedJson {

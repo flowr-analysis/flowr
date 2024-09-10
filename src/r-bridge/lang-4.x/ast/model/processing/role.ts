@@ -10,6 +10,7 @@ import type { AstIdMap, RNodeWithParent } from './decorate'
 export const enum RoleInParent {
 	/** has no parent */
 	Root = 'root',
+	RootInFile = 'root-in-file',
 	IfCondition = 'if-cond',
 	IfThen = 'if-then',
 	IfOtherwise = 'if-otherwise',

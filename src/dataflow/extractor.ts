@@ -17,6 +17,7 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever'
 import { requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'
+import { processFiles } from './internal/process/process-files'
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -46,7 +47,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 		lexeme:    n.grouping?.[0].lexeme ?? '{',
 		location:  n.location ?? rangeFrom(-1, -1, -1, -1),
 		namespace: n.grouping?.[0].content ? undefined : 'base'
-	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
+	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d),
+	[RType.Files]: processFiles
 }
 
 export function produceDataFlowGraph<OtherInfo>(

@@ -13,7 +13,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model'
+import type { RFiles, RNode } from '../r-bridge/lang-4.x/ast/model/model'
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op'
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
@@ -62,6 +62,15 @@ function foldToConst(n: RNodeWithParent): Code {
 
 function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
+}
+
+function reconstructFiles(_files: RFiles<ParentInformation>, children: Code[], _configuration: ReconstructionConfiguration): Code {
+	if(children.length === 0) {
+		return children[0]
+	}
+	return children
+		.flatMap((c, idx) => [plain(`# File ${idx + 1}`), c])
+		.flat()
 }
 
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, _grouping: [Code, Code] | undefined,  expressions: readonly Code[], config: ReconstructionConfiguration): Code {
@@ -438,7 +447,8 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 	foldUnaryOp:  reconstructUnaryOp,
 	other:        {
 		foldComment:       reconstructAsLeaf,
-		foldLineDirective: reconstructAsLeaf
+		foldLineDirective: reconstructAsLeaf,
+		foldFiles:	        reconstructFiles
 	},
 	loop: {
 		foldFor:    reconstructForLoop,

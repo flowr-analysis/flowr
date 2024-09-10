@@ -88,6 +88,9 @@ class NodeVisitor<OtherInfo = NoInfo> {
 			case RType.LineDirective:
 				// leafs
 				break
+			case RType.Files:
+				this.visit(node.children)
+				break
 			default:
 				assertUnreachable(type)
 		}

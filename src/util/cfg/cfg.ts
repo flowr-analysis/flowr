@@ -141,7 +141,8 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	foldUnaryOp:  cfgUnaryOp,
 	other:        {
 		foldComment:       cfgIgnore,
-		foldLineDirective: cfgIgnore
+		foldLineDirective: cfgIgnore,
+		foldFiles:         cfgFiles
 	},
 	loop: {
 		foldFor:    cfgFor,
@@ -534,6 +535,18 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Co
 		result.exitPoints = expression.exitPoints
 	}
 	return result
+}
+
+function cfgFiles(_node: RNodeWithParent, children: ControlFlowInformation[]): ControlFlowInformation {
+	const cfg = emptyControlFlowInformation()
+	for(const child of children) {
+		cfg.graph.merge(child.graph)
+		cfg.breaks.push(...child.breaks)
+		cfg.nexts.push(...child.nexts)
+		cfg.returns.push(...child.returns)
+		cfg.exitPoints.push(...child.exitPoints)
+	}
+	return cfg
 }
 
 function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {

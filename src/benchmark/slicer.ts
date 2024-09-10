@@ -86,7 +86,7 @@ export class BenchmarkSlicer {
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
-	private loadedXml:      string | undefined
+	private loadedXml:      string[] | string | undefined
 	private dataflow:       DataflowInformation | undefined
 	private normalizedAst:  NormalizedAst | undefined
 	private totalStopwatch: IStoppableStopwatch

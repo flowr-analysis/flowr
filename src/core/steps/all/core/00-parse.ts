@@ -18,7 +18,7 @@ export interface ParseRequiredInput {
 function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
 	/* in the future, we want to expose all cases */
 	if(Array.isArray(input.request)) {
-		return retrieveParseDataFromRCode(input.request[0] as RParseRequest, input.shell as RShell)
+		return Promise.all(input.request.map(request => retrieveParseDataFromRCode(request as RParseRequest, input.shell as RShell)))
 	} else {
 		return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
 	}
@@ -30,10 +30,11 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	description:       'Parse the given R code into an AST',
 	processor,
 	executed:          PipelineStepStage.OncePerFile,
+	// TODO: print all files
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     text => text,
-		[StepOutputFormat.RdfQuads]: parseToQuads
+		[StepOutputFormat.Json]:     text => text[0],
+		[StepOutputFormat.RdfQuads]: (text, config) => parseToQuads(text[0], config)
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput

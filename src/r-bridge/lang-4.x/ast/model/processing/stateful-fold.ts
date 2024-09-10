@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../../../../util/assert'
 import type { DeepReadonly } from 'ts-essentials'
 import { RType } from '../type'
-import type { RNode } from '../model'
+import type { RFiles, RNode } from '../model'
 import type { RNumber } from '../nodes/r-number'
 import type { RString } from '../nodes/r-string'
 import type { RLogical } from '../nodes/r-logical'
@@ -57,6 +57,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	other: {
 		foldComment:       (comment: RComment<Info>, down: Down) => Up;
 		foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
+		foldFiles:         (files: RFiles<Info>, childAsts: Up[], down: Down) => Up;
 	};
 	/** The `otherwise` argument is `undefined` if the `else` branch is missing */
 	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
@@ -122,6 +123,8 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
 		case RType.ExpressionList:
 			return folds.foldExprList(ast, ast.grouping ? [foldAstStateful(ast.grouping[0], down, folds), foldAstStateful(ast.grouping[1], down, folds)] : undefined ,  ast.children.map(expr => foldAstStateful(expr, down, folds)), down)
+		case RType.Files:
+			return folds.other.foldFiles(ast, ast.children.map(child => foldAstStateful(child, down, folds)), down)
 		default:
 			assertUnreachable(type)
 	}

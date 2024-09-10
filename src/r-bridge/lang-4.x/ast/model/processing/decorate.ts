@@ -155,7 +155,8 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
 		foldUnaryOp:  unaryOp,
 		other:        {
 			foldComment:       foldLeaf,
-			foldLineDirective: foldLeaf
+			foldLineDirective: foldLeaf,
+			foldFiles:         createFoldForFiles(info)
 		},
 		loop: {
 			foldFor:    createFoldForForLoop(info),
@@ -426,6 +427,22 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			valueInfo.parent = id
 			valueInfo.index = idx
 			valueInfo.role = RoleInParent.ArgumentValue
+		}
+		return decorated
+	}
+}
+
+function createFoldForFiles<OtherInfo>(info: FoldInfo<OtherInfo>) {
+	return (data: RNode<OtherInfo>, files: readonly RNodeWithParent<OtherInfo>[], depth: number): RNodeWithParent<OtherInfo> => {
+		const id = info.getId(data)
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, children: files } as RNodeWithParent<OtherInfo>
+		info.idMap.set(id, decorated)
+		let idx = 0
+		for(const file of files) {
+			const fileInfo = file.info
+			fileInfo.parent = id
+			fileInfo.index = idx++
+			fileInfo.role = RoleInParent.RootInFile
 		}
 		return decorated
 	}

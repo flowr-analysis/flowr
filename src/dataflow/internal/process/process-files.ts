@@ -1,21 +1,12 @@
-import { type DataflowInformation, ExitPointType } from '../../info'
+import { type DataflowInformation } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { DataflowGraph } from '../../graph/graph'
-import { VertexType } from '../../graph/vertex'
+import { processDataflowFor } from '../../processor'
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RFiles } from '../../../r-bridge/lang-4.x/ast/model/model'
+import { mergeInformation } from './functions/call/named-call-handling'
 
-export function processFiles<OtherInfo>(value: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
-	return {
-		unknownReferences: [],
-		in:                [{ nodeId: value.info.id, name: undefined, controlDependencies: data.controlDependencies }],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
-			tag:                 VertexType.Value,
-			id:                  value.info.id,
-			controlDependencies: data.controlDependencies
-		}),
-		exitPoints: [{ nodeId: value.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
-		entryPoint: value.info.id
-	}
+export function processFiles<OtherInfo>(value: RFiles<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+	return value.children
+		.map(file => processDataflowFor(file, data))
+		.reduce(mergeInformation)
 }

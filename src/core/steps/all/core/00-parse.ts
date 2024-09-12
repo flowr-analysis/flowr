@@ -7,6 +7,7 @@ import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 import type { RShell } from '../../../../r-bridge/shell'
 import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
+import type { QuadSerializationConfiguration } from '../../../../util/quads'
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} or {@link RShellExecutor} connection to be used to obtain the original parses AST of the R code */
@@ -34,7 +35,7 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
 		[StepOutputFormat.Json]:     text => text[0],
-		[StepOutputFormat.RdfQuads]: (text, config) => parseToQuads(text[0], config)
+		[StepOutputFormat.RdfQuads]: (text, config: QuadSerializationConfiguration) => parseToQuads(text[0], config)
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput

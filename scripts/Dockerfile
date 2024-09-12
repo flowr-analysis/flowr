@@ -13,7 +13,7 @@ COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 RUN npm ci && npm run build
 
 
-FROM node:22.6-alpine3.19 AS flowR
+FROM node:22.6-alpine3.19 AS flowr
 
 LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
@@ -34,4 +34,11 @@ COPY --from=builder /app/dist /app/dist
 
 RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts
 
-ENTRYPOINT ["node", "/app/dist/cli/flowr.js"]
+ENTRYPOINT [\
+    "node",\
+    # configure basic memory options
+    "--max-old-space-size=8192",\
+    "--stack-size=8192",\
+    "--max-semi-space-size=8192",\
+    "/app/dist/cli/flowr.js"\
+   ]

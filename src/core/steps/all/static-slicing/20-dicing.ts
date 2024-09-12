@@ -8,7 +8,7 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { staticDicing } from '../../../../slicing/static/dicer'
 
 export interface DiceRequiredInput {
-	/** The slicing criterion is only of interest if you actually want to Dice the R code */
+	/** The dicing criterion is only of interest if you actually want to Dice the R code */
 	readonly startingCriterion: SlicingCriteria,
     
     readonly endCriterion: SlicingCriteria,

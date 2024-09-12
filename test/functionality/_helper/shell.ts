@@ -377,6 +377,7 @@ export function assertDiced(
 	const t = it(`${JSON.stringify(startCriteria)} to ${JSON.stringify(endCriteria)} ${fullname}`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
+		console.log('input: %s\ncriteria: %s, %s', requestFromInput(input), JSON.stringify(startCriteria), JSON.stringify(endCriteria))
 		const result = await new PipelineExecutor(DEFAULT_DICING_PIPELINE,{
 			getId,
 			request:           requestFromInput(input),

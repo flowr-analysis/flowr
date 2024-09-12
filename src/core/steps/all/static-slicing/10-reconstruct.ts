@@ -15,6 +15,10 @@ function processor(results: { normalize?: NormalizedAst, slice?: SliceResult }, 
 	return reconstructToCode(results.normalize as NormalizedAst, (results.slice as SliceResult).result, input.autoSelectIf)
 }
 
+function diceProcessor(results: { normalize?: NormalizedAst, dice?: SliceResult }, input: Partial<ReconstructRequiredInput>) {
+	return reconstructToCode(results.normalize as NormalizedAst, (results.dice as SliceResult).result, input.autoSelectIf)
+}
+
 export const NAIVE_RECONSTRUCT_SLICED = {
 	name:              'reconstruct',
 	humanReadableName: 'static code reconstruction',
@@ -32,9 +36,10 @@ export const NAIVE_RECONSTRUCT_DICED = {
 	name:              'reconstruct',
 	humanReadableName: 'static code reconstruction',
 	description:       'Reconstruct R code from the static dice',
-	processor,
-	executed:          PipelineStepStage.OncePerRequest,
-	printer:           {
+
+	processor: diceProcessor,
+	executed:  PipelineStepStage.OncePerRequest,
+	printer:   {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'dice' ],

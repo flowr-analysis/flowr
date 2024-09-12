@@ -17,8 +17,9 @@ export interface NormalizeRequiredInput {
 	readonly getId?: IdGenerator<NoInfo>
 }
 
-function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as string, input.getId)
+function processor(results: { parse?: string | string[] }, input: Partial<NormalizeRequiredInput>) {
+	const parse = Array.isArray(results.parse) ? results.parse : [results.parse as string]
+	return normalize(parse, input.getId)
 }
 
 export const NORMALIZE = {

@@ -205,6 +205,8 @@ export const enum RType {
 	 * {@link Source#additionalTokens}.
 	 */
 	Delimiter = 'RDelimiter',
+	/** {@link RFiles} */
+	Files = 'RFiles',
 }
 
 

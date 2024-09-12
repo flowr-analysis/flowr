@@ -11,7 +11,7 @@ import { resolveByName } from '../../../../environments/resolve-by-name'
 import { VertexType } from '../../../../graph/vertex'
 
 
-function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
+export function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
 		return newInfo
 	}

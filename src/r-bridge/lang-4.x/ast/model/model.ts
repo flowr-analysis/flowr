@@ -146,6 +146,10 @@ export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<In
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
+/** This subtype of {@link RNode} wraps all files whose content is represented in th AST. */
+export interface RFiles<Info> extends WithChildren<Info, RNode<Info>>, Base<Info>, Location {
+	type: RType.Files
+}
 
 /**
  * The `RNode` type is the union of all possible nodes in the R-ast.
@@ -157,7 +161,7 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
  * can be used to restrict the kind of node. They do not have to be
  * exclusive, some nodes can appear in multiple subtypes.
  */
-export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
+export type RNode<Info = NoInfo>  = RFiles<Info> | RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>
 

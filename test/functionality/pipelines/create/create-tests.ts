@@ -5,7 +5,7 @@ import { allPermutations } from '../../../../src/util/arrays'
 import { NORMALIZE } from '../../../../src/core/steps/all/core/10-normalize'
 import { STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow'
 import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/00-slice'
-import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/10-reconstruct'
+import { NAIVE_RECONSTRUCT_SLICED } from '../../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { createPipeline } from '../../../../src/core/steps/pipeline/pipeline'
 
 describe('Create Pipeline (includes dependency checks)', () => {
@@ -92,7 +92,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 				NORMALIZE,
 				STATIC_DATAFLOW,
 				STATIC_SLICE,
-				NAIVE_RECONSTRUCT
+				NAIVE_RECONSTRUCT_SLICED
 			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'], 3)
 		})
 		describe('with decorators', () => {
@@ -157,7 +157,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 					decorates: 'dataflow'
 				},
 				STATIC_SLICE,
-				NAIVE_RECONSTRUCT
+				NAIVE_RECONSTRUCT_SLICED
 			], ['parse', 'normalize', 'dataflow', 'dataflow-decorator',  'slice', 'reconstruct'], 4)
 		})
 	})

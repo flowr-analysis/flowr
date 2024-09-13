@@ -182,6 +182,7 @@ registerBuiltInFunctions(false, ['apply', 'tapply', 'Tapply'],                  
 registerBuiltInFunctions(false, ['print'],                                         defaultBuiltInProcessor,   { returnsNthArgument: 0, forceArgs: 'all' as const }                         )
 registerBuiltInFunctions(true,  ['('],                                             defaultBuiltInProcessor,   { returnsNthArgument: 0 }                                                    )
 registerBuiltInFunctions(false, ['load', 'load_all', 'setwd', 'set.seed'],         defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
+registerBuiltInFunctions(false, ['eval', 'body', 'formals', 'environment'],        defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: [true] }                           )
 registerBuiltInFunctions(false, ['cat'],                                           defaultBuiltInProcessor,   { forceArgs: 'all' as const }                                                ) /* returns null */
 registerBuiltInFunctions(false, ['switch'],                                        defaultBuiltInProcessor,   {}                                                                           ) /* returns null */
 registerBuiltInFunctions(true,  ['return'],                                        defaultBuiltInProcessor,   { returnsNthArgument: 0, cfg: ExitPointType.Return }                         )
@@ -220,4 +221,4 @@ registerBuiltInFunctions(false, ['library.dynam', 'install.packages','install', 
 registerBuiltInFunctions(false, ['attach', 'detach', 'unname', 'rm', 'remove'],    defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* they are all mapped to `<-` but we separate super assignments */
-registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')
+registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals')

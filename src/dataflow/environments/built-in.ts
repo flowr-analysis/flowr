@@ -210,7 +210,7 @@ registerBuiltInFunctions(true,  ['for'],                                        
 registerBuiltInFunctions(true,  ['repeat'],                                        processRepeatLoop,         {}                                                                           )
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
 registerBuiltInFunctions(false, ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
-registerBuiltInFunctions(false, ['on.exit', 'sys.on.exit', 'par', 'dev.off' ],     defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['on.exit', 'sys.on.exit', 'par' ],                defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 registerBuiltInFunctions(false, ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr', 'sink' ],                         defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* library and require is handled above */

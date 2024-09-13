@@ -209,13 +209,15 @@ registerBuiltInFunctions(true,  ['for'],                                        
 registerBuiltInFunctions(true,  ['repeat'],                                        processRepeatLoop,         {}                                                                           )
 registerBuiltInFunctions(true,  ['while'],                                         processWhileLoop,          {}                                                                           )
 registerBuiltInFunctions(false, ['options'],                                       defaultBuiltInProcessor,   { hasUnknownSideEffects: true, forceArgs: 'all' as const }                   )
-registerBuiltInFunctions(false, ['on.exit', 'sys.on.exit', 'par'],                 defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['on.exit', 'sys.on.exit', 'par', 'dev.off' ],     defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr', 'sink' ],                         defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+
 /* library and require is handled above */
 registerBuiltInFunctions(false, ['requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                          )
 /* downloader and installer functions (R, devtools, BiocManager) */
 registerBuiltInFunctions(false, ['library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages'], defaultBuiltInProcessor, { hasUnknownSideEffects: true }                               )
 /* weird env attachments */
-registerBuiltInFunctions(false, ['attach'],                                        defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
+registerBuiltInFunctions(false, ['attach', 'detach', 'unname', 'rm', 'remove'],    defaultBuiltInProcessor,   { hasUnknownSideEffects: true }                                              )
 
 /* they are all mapped to `<-` but we separate super assignments */
 registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

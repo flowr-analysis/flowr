@@ -388,6 +388,17 @@ export class DataflowGraph<
 		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));
 		return this;
 	}
+
+	public static fromJson(data: {
+		rootVertices:      NodeId[],
+		vertexInformation: [NodeId, DataflowGraphVertexInfo][],
+		edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]}){
+		const graph = new DataflowGraph(undefined);
+		graph.rootVertices = new Set<NodeId>(data.rootVertices);
+		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
+		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
+		return graph;
+	}
 }
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {

@@ -1,10 +1,14 @@
 import { assert } from 'chai';
 import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder';
-import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
+import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
 import type { DataflowDifferenceReport } from '../../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff';
+import { jsonReplacer } from '../../../../src/util/json';
+import { argumentInCall } from '../../_helper/dataflow/environment-builder';
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
 	let res: DataflowDifferenceReport | undefined = undefined;
@@ -68,6 +72,22 @@ describe('Dataflow Graph Comparisons', () => {
 					neq('Type', emptyGraph().calls('0', '1'), rhs);
 				});
 			});
+		});
+
+		describe('JSON Data', () =>{
+			const graph = emptyGraph()
+				.use('0', 'a', { controlDependencies: [] })
+				.argument('3', '0')
+				.call('3', '[', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn, '0', '1'], onlyBuiltIn: true })
+				.argument('3', '1')
+				.argument('6', '3')
+				.call('6', '[', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: ['3', '4', BuiltIn], onlyBuiltIn: true })
+				.argument('6', '4')
+				.constant('1')
+				.constant('4');
+			const json = JSON.parse(JSON.stringify(graph, jsonReplacer)) as DataflowGraphJson;
+			const graph2 = DataflowGraph.fromJson(json);
+			raw('Equals', graph, graph2, 'should be equal', k => assert.isTrue(k));
 		});
 	});
 	describe('Subgraph Comparison', () => {

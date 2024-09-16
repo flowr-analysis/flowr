@@ -219,12 +219,12 @@ const validSymbolTypes = new Set([
 	RawRType.BraceLeft,
 	RawRType.BraceRight,
 	RawRType.Slot,
-])
+]);
 /**
  * Validates, whether the given type can be used as a symbol in R
  *
  * @see RawRType
  */
 export function isSymbol(type: string): boolean {
-	return validSymbolTypes.has(type as RawRType)
+	return validSymbolTypes.has(type as RawRType);
 }

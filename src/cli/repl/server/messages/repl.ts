@@ -1,5 +1,5 @@
-import type { IdMessageBase, MessageDefinition } from './messages'
-import * as Joi from 'joi'
+import type { IdMessageBase, MessageDefinition } from './messages';
+import * as Joi from 'joi';
 
 /**
  * Request the execution of the given expression as a REPL statement.
@@ -25,7 +25,7 @@ export const requestExecuteReplExpressionMessage: MessageDefinition<ExecuteReque
 		ansi:       Joi.boolean().optional(),
 		expression: Joi.string().required(),
 	})
-}
+};
 
 /**
  * This message may be sent multiple times, triggered for every "output" performed by the execution.

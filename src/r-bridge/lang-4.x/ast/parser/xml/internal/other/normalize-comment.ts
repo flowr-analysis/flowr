@@ -1,9 +1,9 @@
-import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
-import { retrieveMetaStructure } from '../../normalize-meta'
-import { guard } from '../../../../../../../util/assert'
-import { RType } from '../../../../model/type'
-import type { RComment } from '../../../../model/nodes/r-comment'
+import type { NormalizerData } from '../../normalizer-data';
+import type { XmlBasedJson } from '../../input-format';
+import { retrieveMetaStructure } from '../../normalize-meta';
+import { guard } from '../../../../../../../util/assert';
+import { RType } from '../../../../model/type';
+import type { RComment } from '../../../../model/nodes/r-comment';
 
 /**
  * Normalize the given object as an R comment.
@@ -13,8 +13,8 @@ import type { RComment } from '../../../../model/nodes/r-comment'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeComment(data: NormalizerData, obj: XmlBasedJson): RComment {
-	const { location, content } = retrieveMetaStructure(obj)
-	guard(content.startsWith('#'), 'comment must start with #')
+	const { location, content } = retrieveMetaStructure(obj);
+	guard(content.startsWith('#'), 'comment must start with #');
 	return {
 		type:    RType.Comment,
 		location,
@@ -25,5 +25,5 @@ export function normalizeComment(data: NormalizerData, obj: XmlBasedJson): RComm
 			additionalTokens: [],
 			fullLexeme:       content
 		}
-	}
+	};
 }

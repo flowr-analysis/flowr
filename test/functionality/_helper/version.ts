@@ -1,5 +1,5 @@
-import semver from 'semver/preload'
-import type { RShell } from '../../../src/r-bridge/shell'
+import semver from 'semver/preload';
+import type { RShell } from '../../../src/r-bridge/shell';
 
 /**
  * Automatically skip a test if it does not satisfy the given version pattern (for a [semver](https://www.npmjs.com/package/semver) version).
@@ -9,9 +9,9 @@ import type { RShell } from '../../../src/r-bridge/shell'
  * @param test 					   - The test to skip if the version does not satisfy the pattern
  */
 export const testRequiresRVersion = async(shell: RShell, versionToSatisfy: string, test: Mocha.Context): Promise<void> => {
-	const version = await shell.usedRVersion()
+	const version = await shell.usedRVersion();
 	if(version === null || !semver.satisfies(version, versionToSatisfy)) {
-		console.warn(`Skipping test because ${JSON.stringify(version?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`)
-		test.skip()
+		console.warn(`Skipping test because ${JSON.stringify(version?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`);
+		test.skip();
 	}
-}
+};

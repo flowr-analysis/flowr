@@ -2,95 +2,95 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
-import type { ElapsedTime, PerSliceMeasurements } from './stats'
-import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data'
-import { guard } from '../../util/assert'
-import type { SummarizedMeasurement } from '../../util/summarizer'
+import type { ElapsedTime, PerSliceMeasurements } from './stats';
+import type { Reduction, SummarizedPerSliceStats, SummarizedSlicerStats, UltimateSlicerStats } from '../summarizer/data';
+import { guard } from '../../util/assert';
+import type { SummarizedMeasurement } from '../../util/summarizer';
 
-const padSize = 15
+const padSize = 15;
 
 function pad<T>(string: T) {
-	return String(string).padStart(padSize, ' ')
+	return String(string).padStart(padSize, ' ');
 }
 
 export function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
-		return '??'
+		return '??';
 	} else if(!Number.isFinite(nanoseconds)) {
-		return nanoseconds > 0 ? '∞' : '-∞'
+		return nanoseconds > 0 ? '∞' : '-∞';
 	}
 
-	const wholeNanos = typeof nanoseconds === 'bigint' ? nanoseconds : BigInt(Math.round(nanoseconds))
-	const nanos = wholeNanos % BigInt(1e+6)
-	const wholeMillis = wholeNanos / BigInt(1e+6)
-	const millis = wholeMillis % BigInt(1000)
-	const wholeSeconds = wholeMillis / BigInt(1000)
+	const wholeNanos = typeof nanoseconds === 'bigint' ? nanoseconds : BigInt(Math.round(nanoseconds));
+	const nanos = wholeNanos % BigInt(1e+6);
+	const wholeMillis = wholeNanos / BigInt(1e+6);
+	const millis = wholeMillis % BigInt(1000);
+	const wholeSeconds = wholeMillis / BigInt(1000);
 	if(wholeSeconds > 0){
-		const nanoString = nanos > 0 ? `:${nanos}` : ''
-		return pad(`${wholeSeconds}.${String(millis).padStart(3, '0')}${nanoString} s`)
+		const nanoString = nanos > 0 ? `:${nanos}` : '';
+		return pad(`${wholeSeconds}.${String(millis).padStart(3, '0')}${nanoString} s`);
 	} else {
-		return pad(`${millis}:${String(nanos).padStart(6, '0')}ms`)
+		return pad(`${millis}:${String(nanos).padStart(6, '0')}ms`);
 	}
 }
 
 
 function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
-	const time = measurements.get(key)
-	guard(time !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
-	return formatNanoseconds(time)
+	const time = measurements.get(key);
+	guard(time !== undefined, `Measurement for ${JSON.stringify(key)} not found`);
+	return formatNanoseconds(time);
 }
 
 function formatSummarizedTimeMeasure(measure: SummarizedMeasurement | undefined) {
 	if(measure === undefined) {
-		return '??'
+		return '??';
 	}
-	return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
+	return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`;
 }
 
 function roundTo(num: number, digits = 4): number {
-	const factor = Math.pow(10, digits)
-	return Math.round(num * factor) / factor
+	const factor = Math.pow(10, digits);
+	return Math.round(num * factor) / factor;
 }
 
 function asPercentage(num: number): string {
 	if(isNaN(num)) {
-		return '??%'
+		return '??%';
 	}
-	return pad(`${roundTo(num * 100, 3)}%`)
+	return pad(`${roundTo(num * 100, 3)}%`);
 }
 
 function asFloat(num: number): string {
-	return pad(roundTo(num))
+	return pad(roundTo(num));
 }
 
 function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt: (num: number) => string = asFloat) {
 	if(measure === undefined) {
-		return '??'
+		return '??';
 	}
-	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`
+	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`;
 }
 
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
-	const measure = stats.measurements.get(key)
-	guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
-	return formatSummarizedTimeMeasure(measure)
+	const measure = stats.measurements.get(key);
+	guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`);
+	return formatSummarizedTimeMeasure(measure);
 }
 
 function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string {
-	const range = `${stats.min} - ${stats.max}`.padStart(padSize, ' ')
-	return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`
+	const range = `${stats.min} - ${stats.max}`.padStart(padSize, ' ');
+	return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`;
 }
 
-const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
 
 // based on https://stackoverflow.com/a/39906526
 function convertNumberToNiceBytes(x: number){
-	let n = Math.abs(x)
-	let l = 0
+	let n = Math.abs(x);
+	let l = 0;
 	while(n >= 1024 && ++l){
-		n = n/1024
+		n = n/1024;
 	}
-	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l])
+	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);
 }
 
 /**
@@ -113,7 +113,7 @@ Dataflow creation per R token:${formatNanoseconds(stats.dataflowTimePerToken.raw
 Total common time per token:  ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
 Total common time per R token:${formatNanoseconds(stats.totalCommonTimePerToken.raw)}
 
-Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`
+Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`;
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
   Total:                              ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
@@ -137,7 +137,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
     Normalized R tokens:                 ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
     Normalized R tokens (w/o comments):  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokensNoComments)}
     Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
-`
+`;
 	}
 
 	return `${result}
@@ -161,7 +161,7 @@ Dataflow:
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`
+  Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
@@ -178,7 +178,7 @@ export function ultimateStats2String(stats: UltimateSlicerStats): string {
   Failed to Re-Parse:                 ${pad(stats.failedToRepParse)}/${stats.totalSlices}
   Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
 ${reduction2String('Reductions', stats.reduction)}
-${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}` : 'No slices'
+${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}` : 'No slices';
 
 	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
 	return `
@@ -219,7 +219,7 @@ Dataflow:
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
   Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
-`
+`;
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {
@@ -231,5 +231,5 @@ function reduction2String(title: string, reduction: Reduction<SummarizedMeasurem
     Number of non whitespace characters: ${formatSummarizedMeasure(reduction.numberOfNonWhitespaceCharacters, asPercentage)}
     Number of R tokens:                  ${formatSummarizedMeasure(reduction.numberOfRTokens, asPercentage)}
     Normalized R tokens:                 ${formatSummarizedMeasure(reduction.numberOfNormalizedTokens, asPercentage)}
-    Number of dataflow nodes:            ${formatSummarizedMeasure(reduction.numberOfDataflowNodes, asPercentage)}`
+    Number of dataflow nodes:            ${formatSummarizedMeasure(reduction.numberOfDataflowNodes, asPercentage)}`;
 }

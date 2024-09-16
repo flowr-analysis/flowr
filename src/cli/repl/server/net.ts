@@ -1,11 +1,11 @@
 /**
  * This is just a simple layer to allow me to mock the server's behavior in tests.
  */
-import net from 'net'
-import type WebSocket from 'ws'
-import { WebSocketServer } from 'ws'
-import type * as Buffer from 'buffer'
-import { serverLog } from './server'
+import net from 'net';
+import type WebSocket from 'ws';
+import { WebSocketServer } from 'ws';
+import type * as Buffer from 'buffer';
+import { serverLog } from './server';
 
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void
@@ -24,17 +24,17 @@ export interface Server {
 
 
 export class WebSocketServerWrapper implements Server {
-	private server:         WebSocket.Server | undefined
-	private connectHandler: ((c: Socket) => void) | undefined
+	private server:         WebSocket.Server | undefined;
+	private connectHandler: ((c: Socket) => void) | undefined;
 
 	public onConnect(handler: OnConnect) {
-		this.connectHandler = handler
+		this.connectHandler = handler;
 	}
 
 	start(port: number) {
-		this.server = new WebSocketServer({ port })
-		serverLog.info('WebSocket-Server wrapper is active!')
-		this.server.on('connection', c => this.connectHandler?.(new WebSocketWrapper(c)))
+		this.server = new WebSocketServer({ port });
+		serverLog.info('WebSocket-Server wrapper is active!');
+		this.server.on('connection', c => this.connectHandler?.(new WebSocketWrapper(c)));
 	}
 }
 
@@ -53,45 +53,45 @@ export interface Socket {
 }
 
 export class WebSocketWrapper implements Socket {
-	private readonly socket: WebSocket
+	private readonly socket: WebSocket;
 
-	public remoteAddress?: string
-	public remotePort?:    number
+	public remoteAddress?: string;
+	public remotePort?:    number;
 
 	constructor(socket: WebSocket) {
-		this.socket = socket
-		this.remoteAddress = socket.url
+		this.socket = socket;
+		this.remoteAddress = socket.url;
 	}
 
 	write(data: string) {
-		this.socket.send(data)
+		this.socket.send(data);
 	}
 
 	end() {
-		this.socket.close()
+		this.socket.close();
 	}
 
 	on(event: 'data' | 'close' | 'error', listener: (data: Buffer) => void) {
 		if(event === 'data') {
-			this.socket.on('message', listener)
+			this.socket.on('message', listener);
 		} else {
-			this.socket.on(event, listener)
+			this.socket.on(event, listener);
 		}
 	}
 }
 
 export class NetServer implements Server {
-	private readonly server: net.Server
+	private readonly server: net.Server;
 
 	constructor() {
-		this.server = net.createServer()
+		this.server = net.createServer();
 	}
 
 	public onConnect(handler: OnConnect) {
-		this.server.on('connection', handler)
+		this.server.on('connection', handler);
 	}
 
 	public start(port: number) {
-		this.server.listen(port)
+		this.server.listen(port);
 	}
 }

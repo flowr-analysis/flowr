@@ -3,13 +3,13 @@
  *
  * @module
  */
-import * as Joi from 'joi'
-import type { FlowrHelloResponseMessage } from './hello'
-import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis'
-import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
-import type { SliceRequestMessage, SliceResponseMessage } from './slice'
-import type { FlowrErrorMessage } from './error'
-import type { LineageRequestMessage, LineageResponseMessage } from './lineage'
+import * as Joi from 'joi';
+import type { FlowrHelloResponseMessage } from './hello';
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis';
+import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl';
+import type { SliceRequestMessage, SliceResponseMessage } from './slice';
+import type { FlowrErrorMessage } from './error';
+import type { LineageRequestMessage, LineageResponseMessage } from './lineage';
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
@@ -39,7 +39,7 @@ export const baseMessage: MessageDefinition<IdMessageBase> = {
 		type: Joi.string().required(),
 		id:   Joi.string().optional()
 	}).unknown(true)
-}
+};
 
 /**
  * This is the main message type that should be used to represent a message in *flowR*

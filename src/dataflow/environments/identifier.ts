@@ -1,6 +1,6 @@
-import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { ControlDependency } from '../info'
+import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ControlDependency } from '../info';
 
 export type Identifier = string & { __brand?: 'identifier' }
 

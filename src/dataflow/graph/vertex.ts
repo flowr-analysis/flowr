@@ -1,8 +1,8 @@
-import type { MergeableRecord } from '../../util/objects'
-import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { REnvironmentInformation } from '../environments/environment'
-import type { ControlDependency } from '../info'
+import type { MergeableRecord } from '../../util/objects';
+import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { REnvironmentInformation } from '../environments/environment';
+import type { ControlDependency } from '../info';
 
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
@@ -101,22 +101,22 @@ export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
 
 
 export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphValue {
-	return vertex.tag === VertexType.Value
+	return vertex.tag === VertexType.Value;
 }
 
 export function isUseVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
-	return vertex.tag === VertexType.Use
+	return vertex.tag === VertexType.Use;
 }
 
 export function isFunctionCallVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
-	return vertex.tag === VertexType.FunctionCall
+	return vertex.tag === VertexType.FunctionCall;
 }
 
 export function isVariableDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
-	return vertex.tag === VertexType.VariableDefinition
+	return vertex.tag === VertexType.VariableDefinition;
 }
 
 export function isFunctionDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
-	return vertex.tag === VertexType.FunctionDefinition
+	return vertex.tag === VertexType.FunctionDefinition;
 }
 

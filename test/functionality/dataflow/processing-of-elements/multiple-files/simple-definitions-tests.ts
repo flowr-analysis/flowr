@@ -1,7 +1,7 @@
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { label } from '../../../_helper/label'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall } from '../../../_helper/dataflow/environment-builder'
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 
 describe('Simple Defs in Multiple Files', withShell(shell => {
 
@@ -33,5 +33,5 @@ describe('Simple Defs in Multiple Files', withShell(shell => {
 			.constant('-inline-@root-1-1')
 			.defineVariable('-inline-@root-1-0', 'y', { definedBy: ['-inline-@root-1-1', '-inline-@root-1-2'] })
 			.addControlDependency('-inline-@root-1-0', 'root-1')
-	)
-}))
+	);
+}));

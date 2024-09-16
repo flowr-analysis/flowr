@@ -3,65 +3,65 @@
  *
  * @module
  */
-import { prompt } from './prompt'
-import * as readline from 'readline'
-import { executeRShellCommand } from './commands/execute'
-import os from 'os'
-import path from 'path'
-import fs from 'fs'
-import { splitAtEscapeSensitive } from '../../util/args'
-import { ColorEffect, Colors, FontStyles } from '../../util/ansi'
-import { getCommand, getCommandNames } from './commands/commands'
-import { getValidOptionsForCompletion, scripts } from '../common/scripts-info'
-import { fileProtocol } from '../../r-bridge/retriever'
-import type { ReplOutput } from './commands/main'
-import { standardReplOutput } from './commands/main'
-import { RShell, RShellReviveOptions } from '../../r-bridge/shell'
-import type { MergeableRecord } from '../../util/objects'
+import { prompt } from './prompt';
+import * as readline from 'readline';
+import { executeRShellCommand } from './commands/execute';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+import { splitAtEscapeSensitive } from '../../util/args';
+import { ColorEffect, Colors, FontStyles } from '../../util/ansi';
+import { getCommand, getCommandNames } from './commands/commands';
+import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
+import { fileProtocol } from '../../r-bridge/retriever';
+import type { ReplOutput } from './commands/main';
+import { standardReplOutput } from './commands/main';
+import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
+import type { MergeableRecord } from '../../util/objects';
 
-let _replCompleterKeywords: string[] | undefined = undefined
+let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
 	if(_replCompleterKeywords === undefined) {
-		_replCompleterKeywords = Array.from(getCommandNames(), s => `:${s}`)
+		_replCompleterKeywords = Array.from(getCommandNames(), s => `:${s}`);
 	}
-	return _replCompleterKeywords
+	return _replCompleterKeywords;
 }
-const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
+const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory');
 
 /**
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
-	const splitLine = splitAtEscapeSensitive(line)
+	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
-	const startingNewArg = line.endsWith(' ')
+	const startingNewArg = line.endsWith(' ');
 
 	// if we typed a command fully already, autocomplete the arguments
 	if(splitLine.length > 1 || startingNewArg){
-		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k)
+		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k);
 		if(commandNameColon) {
-			const completions: string[] = []
+			const completions: string[] = [];
 
-			const commandName = commandNameColon.slice(1)
+			const commandName = commandNameColon.slice(1);
 			if(getCommand(commandName)?.script === true){
 				// autocomplete script arguments
-				const options = scripts[commandName as keyof typeof scripts].options
-				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `))
+				const options = scripts[commandName as keyof typeof scripts].options;
+				completions.push(...getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else {
 				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
-				completions.push(fileProtocol)
+				completions.push(fileProtocol);
 			}
 
 			// add an empty option so that it doesn't autocomplete the only defined option immediately
-			completions.push(' ')
+			completions.push(' ');
 
-			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1]
-			return [completions.filter(a => a.startsWith(currentArg)), currentArg]
+			const currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
+			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
 		}
 	}
 
 	// if no command is already typed, just return all commands that match
-	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line]
+	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
 export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
@@ -72,26 +72,26 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	history:                 loadReplHistory(defaultHistoryFile),
 	removeHistoryDuplicates: true,
 	completer:               replCompleter
-}
+};
 
 async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
-		const command = statement.slice(1).split(' ')[0].toLowerCase()
-		const processor = getCommand(command)
-		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold })
+		const command = statement.slice(1).split(' ')[0].toLowerCase();
+		const processor = getCommand(command);
+		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn(output, shell, statement.slice(command.length + 2).trim())
+				await processor.fn(output, shell, statement.slice(command.length + 2).trim());
 			} catch(e){
-				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`)
+				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 			}
 		} else {
-			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`)
+			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else if(allowRSessionAccess) {
-		await executeRShellCommand(output, shell, statement)
+		await executeRShellCommand(output, shell, statement);
 	} else {
-		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`)
+		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
 	}
 }
 
@@ -105,10 +105,10 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
  */
 export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(expr, false, ';')
+	const statements = splitAtEscapeSensitive(expr, false, ';');
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, shell, allowRSessionAccess)
+		await replProcessStatement(output, statement, shell, allowRSessionAccess);
 	}
 }
 
@@ -152,7 +152,7 @@ export async function repl({
 	allowRSessionAccess = false
 }: FlowrReplOptions) {
 	if(historyFile) {
-		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }))
+		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }));
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
@@ -160,19 +160,19 @@ export async function repl({
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
-				rl.pause()
+				rl.pause();
 				replProcessAnswer(output, answer, shell, allowRSessionAccess).then(() => {
-					rl.resume()
-					resolve()
-				}).catch(reject)
-			})
-		})
+					rl.resume();
+					resolve();
+				}).catch(reject);
+			});
+		});
 	}
 }
 
 export function loadReplHistory(historyFile: string): string[] | undefined {
 	if(!fs.existsSync(historyFile)) {
-		return undefined
+		return undefined;
 	}
-	return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n')
+	return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n');
 }

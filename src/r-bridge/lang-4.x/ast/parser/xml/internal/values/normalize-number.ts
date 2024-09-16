@@ -1,13 +1,13 @@
-import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
-import type { RNa } from '../../../../../convert-values'
-import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values'
-import { retrieveMetaStructure } from '../../normalize-meta'
-import type { RNumber } from '../../../../model/nodes/r-number'
-import type { RLogical } from '../../../../model/nodes/r-logical'
-import type { RSymbol } from '../../../../model/nodes/r-symbol'
-import type { NoInfo } from '../../../../model/model'
-import { RType } from '../../../../model/type'
+import type { NormalizerData } from '../../normalizer-data';
+import type { XmlBasedJson } from '../../input-format';
+import type { RNa } from '../../../../../convert-values';
+import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values';
+import { retrieveMetaStructure } from '../../normalize-meta';
+import type { RNumber } from '../../../../model/nodes/r-number';
+import type { RLogical } from '../../../../model/nodes/r-logical';
+import type { RSymbol } from '../../../../model/nodes/r-symbol';
+import type { NoInfo } from '../../../../model/model';
+import { RType } from '../../../../model/type';
 
 
 /**
@@ -19,7 +19,7 @@ import { RType } from '../../../../model/type'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeNumber(data: NormalizerData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
-	const { location, content } = retrieveMetaStructure(obj)
+	const { location, content } = retrieveMetaStructure(obj);
 	const common = {
 		location,
 		lexeme: content,
@@ -28,7 +28,7 @@ export function normalizeNumber(data: NormalizerData, obj: XmlBasedJson): RNumbe
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme
 		}
-	}
+	};
 
 	/* the special symbol */
 	if(isNA(content)) {
@@ -37,18 +37,18 @@ export function normalizeNumber(data: NormalizerData, obj: XmlBasedJson): RNumbe
 			namespace: undefined,
 			type:      RType.Symbol,
 			content
-		}
+		};
 	} else if(isBoolean(content)) {
 		return {
 			...common,
 			type:    RType.Logical,
 			content: boolean2ts(content)
-		}
+		};
 	} else {
 		return {
 			...common,
 			type:    RType.Number,
 			content: number2ts(content)
-		}
+		};
 	}
 }

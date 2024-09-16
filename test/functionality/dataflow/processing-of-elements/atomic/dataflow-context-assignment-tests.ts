@@ -1,7 +1,7 @@
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { label } from '../../../_helper/label'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
 
 describe('Context Assignments', withShell(shell => {
@@ -19,6 +19,6 @@ print(iris)
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
-			})
-	})
-}))
+			});
+	});
+}));

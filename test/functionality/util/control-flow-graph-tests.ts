@@ -1,7 +1,7 @@
-import { assert } from 'chai'
-import { withShell } from '../_helper/shell'
+import { assert } from 'chai';
+import { withShell } from '../_helper/shell';
 import type {
-	ControlFlowInformation } from '../../../src/util/cfg/cfg'
+	ControlFlowInformation } from '../../../src/util/cfg/cfg';
 import {
 	cfg2quads,
 	CfgVertexType,
@@ -9,45 +9,45 @@ import {
 	emptyControlFlowInformation,
 	equalCfg,
 	extractCFG
-} from '../../../src/util/cfg/cfg'
-import { defaultQuadIdGenerator } from '../../../src/util/quads'
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import { PipelineExecutor } from '../../../src/core/pipeline-executor'
-import { requestFromInput } from '../../../src/r-bridge/retriever'
-import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines'
-import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg'
-import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type'
-import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values'
+} from '../../../src/util/cfg/cfg';
+import { defaultQuadIdGenerator } from '../../../src/util/quads';
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { PipelineExecutor } from '../../../src/core/pipeline-executor';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
+import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 
 function normAllIds(ids: NodeId[]): NodeId[] {
-	return ids.map(normalizeIdToNumberIfPossible)
+	return ids.map(normalizeIdToNumberIfPossible);
 }
 
 describe('Control Flow Graph', withShell(shell => {
 	function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
 		// shallow copy is important to avoid killing the CFG :c
-		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected }
+		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 		return it(code, async()=> {
 			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				shell,
 				request: requestFromInput(code)
-			}).allRemainingSteps()
-			const cfg = extractCFG(result.normalize)
+			}).allRemainingSteps();
+			const cfg = extractCFG(result.normalize);
 
 			try {
-				assert.deepStrictEqual(normAllIds(cfg.entryPoints), normAllIds(expected.entryPoints), 'entry points differ')
-				assert.deepStrictEqual(normAllIds(cfg.exitPoints), normAllIds(expected.exitPoints), 'exit points differ')
-				assert.deepStrictEqual(normAllIds(cfg.breaks), normAllIds(expected.breaks), 'breaks differ')
-				assert.deepStrictEqual(normAllIds(cfg.nexts), normAllIds(expected.nexts), 'nexts differ')
-				assert.deepStrictEqual(normAllIds(cfg.returns), normAllIds(expected.returns), 'returns differ')
-				assert.isTrue(equalCfg(cfg.graph, expected.graph), 'graphs differ')
+				assert.deepStrictEqual(normAllIds(cfg.entryPoints), normAllIds(expected.entryPoints), 'entry points differ');
+				assert.deepStrictEqual(normAllIds(cfg.exitPoints), normAllIds(expected.exitPoints), 'exit points differ');
+				assert.deepStrictEqual(normAllIds(cfg.breaks), normAllIds(expected.breaks), 'breaks differ');
+				assert.deepStrictEqual(normAllIds(cfg.nexts), normAllIds(expected.nexts), 'nexts differ');
+				assert.deepStrictEqual(normAllIds(cfg.returns), normAllIds(expected.returns), 'returns differ');
+				assert.isTrue(equalCfg(cfg.graph, expected.graph), 'graphs differ');
 			} catch(e: unknown) {
-				console.error(`expected: ${cfgToMermaidUrl(expected, result.normalize)}`)
-				console.error(`actual: ${cfgToMermaidUrl(cfg, result.normalize)}`)
-				throw e
+				console.error(`expected: ${cfgToMermaidUrl(expected, result.normalize)}`);
+				console.error(`actual: ${cfgToMermaidUrl(cfg, result.normalize)}`);
+				throw e;
 			}
-		}).timeout('3min')
+		}).timeout('3min');
 	}
 
 	assertCfg('if(TRUE) 1', {
@@ -62,7 +62,7 @@ describe('Control Flow Graph', withShell(shell => {
 			.addEdge(1, 0, { label: 'CD', when: RTrue })
 			.addEdge('3-exit', 1, { label: 'FD' })
 			.addEdge('3-exit', 0, { label: 'CD', when: RFalse })
-	})
+	});
 
 	assertCfg('2 + 3', {
 		entryPoints: [ '2' ],
@@ -75,7 +75,7 @@ describe('Control Flow Graph', withShell(shell => {
 			.addEdge(0, 2, { label: 'FD' })
 			.addEdge(1, 0, { label: 'FD' })
 			.addEdge('2-exit', 1, { label: 'FD' })
-	})
+	});
 
 	assertCfg('f(2 + 3, x=3)', {
 		entryPoints: [ '8' ],
@@ -116,19 +116,19 @@ describe('Control Flow Graph', withShell(shell => {
 			.addEdge(6, '7-before-value', { label: 'FD' })
 			.addEdge('7-exit', 6, { label: 'FD' })
 			.addEdge('8-exit', '7-exit', { label: 'FD' })
-	})
+	});
 
 	it('Example Quad Export', async() => {
-		const domain = 'https://uni-ulm.de/r-ast/'
-		const context = 'test'
+		const domain = 'https://uni-ulm.de/r-ast/';
+		const context = 'test';
 
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			shell,
 			request: requestFromInput('if(TRUE) 1')
-		}).allRemainingSteps()
-		const cfg = extractCFG(result.normalize)
+		}).allRemainingSteps();
+		const cfg = extractCFG(result.normalize);
 
-		const content = cfg2quads(cfg, { context, domain, getId: defaultQuadIdGenerator() })
+		const content = cfg2quads(cfg, { context, domain, getId: defaultQuadIdGenerator() });
 
 		assert.strictEqual(content, `<${domain}${context}/0> <${domain}rootIds> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${domain}${context}/0> <${domain}rootIds> "3-exit" <${context}> .
@@ -172,6 +172,6 @@ describe('Control Flow Graph', withShell(shell => {
 <${domain}${context}/8> <${domain}when> "FALSE" <${context}> .
 <${domain}${context}/0> <${domain}entryPoints> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
-`)
-	})
-}))
+`);
+	});
+}));

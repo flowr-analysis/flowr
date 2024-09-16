@@ -1,12 +1,12 @@
-import type { SourceRange } from '../../../../../util/range'
-import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../util/range'
-import { guard } from '../../../../../util/assert'
-import type { NamedXmlBasedJson, XmlBasedJson } from './input-format'
-import { XmlParseError, attributesKey, contentKey, nameKey } from './input-format'
-import type { RawRType } from '../../model/type'
-import { RType } from '../../model/type'
-import type { RExpressionList } from '../../model/nodes/r-expression-list'
-import type { RNode } from '../../model/model'
+import type { SourceRange } from '../../../../../util/range';
+import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../util/range';
+import { guard } from '../../../../../util/assert';
+import type { NamedXmlBasedJson, XmlBasedJson } from './input-format';
+import { XmlParseError, attributesKey, contentKey, nameKey } from './input-format';
+import type { RawRType } from '../../model/type';
+import { RType } from '../../model/type';
+import type { RExpressionList } from '../../model/nodes/r-expression-list';
+import type { RNode } from '../../model/model';
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -14,13 +14,13 @@ import type { RNode } from '../../model/model'
 export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
 	if(Array.isArray(obj)) {
 		if(obj.length !== 1) {
-			throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
+			throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`);
 		}
-		return obj[0]
+		return obj[0];
 	} else if(typeof obj === 'object') {
-		return obj
+		return obj;
 	} else {
-		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
+		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`);
 	}
 }
 
@@ -33,7 +33,7 @@ export function extractLocation(ast: XmlBasedJson): SourceRange {
 		ast['col1'] as string,
 		ast['line2'] as string,
 		ast['col2'] as string
-	)
+	);
 }
 
 /**
@@ -49,22 +49,22 @@ export function retrieveMetaStructure(obj: XmlBasedJson): {
 	location:     SourceRange
 	content:      string
 } {
-	const unwrappedObj = objectWithArrUnwrap(obj)
-	const attributes = obj[attributesKey] as XmlBasedJson | undefined
-	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
-	const content = obj[contentKey] as string | undefined ?? ''
-	const location = extractLocation(attributes)
+	const unwrappedObj = objectWithArrUnwrap(obj);
+	const attributes = obj[attributesKey] as XmlBasedJson | undefined;
+	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`);
+	const content = obj[contentKey] as string | undefined ?? '';
+	const location = extractLocation(attributes);
 	return {
 		unwrappedObj,
 		location,
 		content
-	}
+	};
 }
 
 export function assureTokenType(obj: XmlBasedJson, expectedName: RawRType): void {
-	const name = getTokenType(obj)
+	const name = getTokenType(obj);
 	if(name !== expectedName) {
-		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
+		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`);
 	}
 }
 
@@ -75,21 +75,21 @@ export function assureTokenType(obj: XmlBasedJson, expectedName: RawRType): void
  * @param content  - the json object to extract the token-type from
  */
 export function getTokenType(content: XmlBasedJson): RawRType {
-	return content[nameKey] as RawRType
+	return content[nameKey] as RawRType;
 }
 
 export function getWithTokenType(obj: readonly XmlBasedJson[]) {
 	return obj.map(content => ({
 		name: getTokenType(content),
 		content
-	}))
+	}));
 }
 
 export function retrieveOpName(operator: NamedXmlBasedJson): string {
 	/*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-	return operator.content[contentKey] as string
+	return operator.content[contentKey] as string;
 }
 
 /**
@@ -99,10 +99,10 @@ export function retrieveOpName(operator: NamedXmlBasedJson): string {
  * @param second - the second child which should be the rhs
  */
 export function ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
-	const firstOtherLoc = extractLocation(first[attributesKey] as XmlBasedJson)
-	const secondOtherLoc = extractLocation(second[attributesKey] as XmlBasedJson)
+	const firstOtherLoc = extractLocation(first[attributesKey] as XmlBasedJson);
+	const secondOtherLoc = extractLocation(second[attributesKey] as XmlBasedJson);
 	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
-		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
+		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`);
 	}
 }
 
@@ -115,7 +115,7 @@ export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<I
 			info:     node.info,
 			lexeme:   undefined,
 			children: [node]
-		}
+		};
 	}
-	return node
+	return node;
 }

@@ -15,13 +15,13 @@ const replacements = {
 	'{':   '#123;',
 	'}':   '#125;',
 	'&':   '#38;'
-}
+};
 
 export function escapeMarkdown(text: string): string {
 	for(const [key, value] of Object.entries(replacements)) {
-		text = text.replaceAll(key, value)
+		text = text.replaceAll(key, value);
 	}
-	return text
+	return text;
 }
 
 /**
@@ -35,6 +35,6 @@ export function mermaidCodeToUrl(code: string, edit = false): string {
 		mermaid: {
 			autoSync: true
 		}
-	}
-	return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
+	};
+	return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`;
 }

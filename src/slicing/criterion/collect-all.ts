@@ -3,14 +3,14 @@
  * This module provides a function to collect all slicing criteria.
  * @module
  */
-import type { MergeableRecord } from '../../util/objects'
+import type { MergeableRecord } from '../../util/objects';
 
-import type { SingleSlicingCriterion, SlicingCriteria } from './parse'
-import { guard } from '../../util/assert'
-import { getUniqueCombinationsOfSize } from '../../util/arrays'
-import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { SingleSlicingCriterion, SlicingCriteria } from './parse';
+import { guard } from '../../util/assert';
+import { getUniqueCombinationsOfSize } from '../../util/arrays';
+import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
@@ -41,18 +41,18 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
  * If there are not enough matching nodes within the ast, this will return *no* slicing criteria!
  */
 export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
-	guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
-	guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
-	const potentialSlicingNodes = filter.collectAll(ast)
+	guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`);
+	guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`);
+	const potentialSlicingNodes = filter.collectAll(ast);
 
 	if(potentialSlicingNodes.length < filter.minimumSize) {
-		return
+		return;
 	}
 
 	for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
-		const c = combination.filter(n => n !== undefined && n !== EmptyArgument)
+		const c = combination.filter(n => n !== undefined && n !== EmptyArgument);
 		if(c.length > 0) {
-			yield c.map(n => `$${n}` as SingleSlicingCriterion)
+			yield c.map(n => `$${n}` as SingleSlicingCriterion);
 		}
 	}
 }

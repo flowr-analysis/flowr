@@ -1,20 +1,20 @@
-import type { DataflowProcessorInformation } from '../../../../processor'
-import { processDataflowFor } from '../../../../processor'
-import type { DataflowInformation } from '../../../../info'
-import { ExitPointType } from '../../../../info'
-import type { ForceArguments } from './common'
-import { processAllArguments } from './common'
-import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model'
-import type { IdentifierReference } from '../../../../environments/identifier'
-import { DataflowGraph } from '../../../../graph/graph'
-import { EdgeType } from '../../../../graph/edge'
-import { dataflowLogger } from '../../../../logger'
-import { VertexType } from '../../../../graph/vertex'
-import { expensiveTrace } from '../../../../../util/log'
+import type { DataflowProcessorInformation } from '../../../../processor';
+import { processDataflowFor } from '../../../../processor';
+import type { DataflowInformation } from '../../../../info';
+import { ExitPointType } from '../../../../info';
+import type { ForceArguments } from './common';
+import { processAllArguments } from './common';
+import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
+import type { IdentifierReference } from '../../../../environments/identifier';
+import { DataflowGraph } from '../../../../graph/graph';
+import { EdgeType } from '../../../../graph/edge';
+import { dataflowLogger } from '../../../../logger';
+import { VertexType } from '../../../../graph/vertex';
+import { expensiveTrace } from '../../../../../util/log';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -45,12 +45,12 @@ export function markNonStandardEvaluationEdges(
 ) {
 	for(const nse of markAsNSE) {
 		if(nse < callArgs.length) {
-			const arg = callArgs[nse]
+			const arg = callArgs[nse];
 			if(arg !== undefined) {
-				finalGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.NonStandardEvaluation })
+				finalGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.NonStandardEvaluation });
 			}
 		} else {
-			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`)
+			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`);
 		}
 	}
 }
@@ -58,22 +58,22 @@ export function markNonStandardEvaluationEdges(
 export function processKnownFunctionCall<OtherInfo>(
 	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>
 ): ProcessKnownFunctionCallResult {
-	const functionName = processDataflowFor(name, data)
+	const functionName = processDataflowFor(name, data);
 
-	const finalGraph = new DataflowGraph(data.completeAst.idMap)
-	const functionCallName = name.content
-	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`)
+	const finalGraph = new DataflowGraph(data.completeAst.idMap);
+	const functionCallName = name.content;
+	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`);
 
-	const processArgs = reverseOrder ? [...args].reverse() : args
+	const processArgs = reverseOrder ? [...args].reverse() : args;
 
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs })
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
 	if(markAsNSE) {
-		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId)
+		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}
 
 	finalGraph.addVertex({
@@ -85,15 +85,15 @@ export function processKnownFunctionCall<OtherInfo>(
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
 		args:                reverseOrder ? [...callArgs].reverse() : callArgs
-	})
+	});
 
 	if(hasUnknownSideEffect) {
-		finalGraph.markIdForUnknownSideEffects(rootId)
+		finalGraph.markIdForUnknownSideEffects(rootId);
 	}
 
-	const inIds = remainingReadInArgs
-	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, call: true as const }
-	inIds.push(fnRef)
+	const inIds = remainingReadInArgs;
+	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, call: true as const };
+	inIds.push(fnRef);
 
 	return {
 		information: {
@@ -108,5 +108,5 @@ export function processKnownFunctionCall<OtherInfo>(
 		},
 		processedArguments: reverseOrder ? [...processedArguments].reverse() : processedArguments,
 		fnRef
-	}
+	};
 }

@@ -1,11 +1,11 @@
-import type { DeepPartial, DeepRequired } from 'ts-essentials'
-import { jsonReplacer } from './json'
+import type { DeepPartial, DeepRequired } from 'ts-essentials';
+import { jsonReplacer } from './json';
 
 /**
  * checks if `item` is an object (it may be an array, ...)
  */
 export function isObjectOrArray(item: unknown): boolean {
-	return typeof item === 'object'
+	return typeof item === 'object';
 }
 
 export type MergeableRecord = Record<string, unknown>
@@ -23,54 +23,54 @@ export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
 	if(!base) {
-		return addon
+		return addon;
 	} else if(!addon) {
-		return base
+		return base;
 	} else if(typeof base !== 'object' || typeof addon !== 'object') {
 		// this case should be guarded by type guards, but in case we do not know
-		throw new Error('illegal types for deepMergeObject!')
+		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon)
+	assertSameType(base, addon);
 
-	const result: MergeableRecord = { ...base }
+	const result: MergeableRecord = { ...base };
 
-	const baseIsArray = Array.isArray(base)
-	const addonIsArray = Array.isArray(addon)
+	const baseIsArray = Array.isArray(base);
+	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, result)
+		deepMergeObjectWithResult(addon, base, result);
 	} else if(baseIsArray && addonIsArray) {
-		return [...base, ...addon]
+		return [...base, ...addon];
 	} else {
-		throw new Error('cannot merge object with array!')
+		throw new Error('cannot merge object with array!');
 	}
 
-	return result
+	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
 	for(const key of Object.keys(addon)) {
 		// values that are undefined (like from a partial object) should NOT be overwritten
 		if(addon[key] === undefined) {
-			continue
+			continue;
 		}
 
 		if(typeof addon[key] === 'object') {
 			if(key in base) {
-				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable)
+				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable);
 			} else {
-				result[key] = addon[key]
+				result[key] = addon[key];
 			}
 		} else {
-			assertSameType(result[key], addon[key])
-			result[key] = addon[key]
+			assertSameType(result[key], addon[key]);
+			result[key] = addon[key];
 		}
 	}
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
 	if(base !== undefined && addon !== undefined && typeof base !== typeof addon) {
-		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base, jsonReplacer)}) !== ${typeof addon} (${JSON.stringify(addon, jsonReplacer)})`)
+		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base, jsonReplacer)}) !== ${typeof addon} (${JSON.stringify(addon, jsonReplacer)})`);
 	}
 }

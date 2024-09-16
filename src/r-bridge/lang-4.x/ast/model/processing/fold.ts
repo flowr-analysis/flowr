@@ -1,11 +1,11 @@
-import type { DeepReadonly } from 'ts-essentials'
-import type { RNode } from '../model'
-import type { StatefulFoldFunctions } from './stateful-fold'
-import { foldAstStateful } from './stateful-fold'
+import type { DeepReadonly } from 'ts-essentials';
+import type { RNode } from '../model';
+import type { StatefulFoldFunctions } from './stateful-fold';
+import { foldAstStateful } from './stateful-fold';
 
 export type FoldFunctions<Info, Out> = Omit<StatefulFoldFunctions<Info, undefined, Out>, 'down'>
 
-const down = () => undefined
+const down = () => undefined;
 
 /**
  * Folds in old functional-fashion over the AST structure.
@@ -14,10 +14,10 @@ const down = () => undefined
  */
 export function foldAst<Info, T>(ast: RNode<Info>, folds: DeepReadonly<FoldFunctions<Info, T>>): T {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- just so we do not have to re-create
-	const statefulFolds: any = folds
+	const statefulFolds: any = folds;
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	statefulFolds.down = down
+	statefulFolds.down = down;
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-	return foldAstStateful(ast, undefined, statefulFolds)
+	return foldAstStateful(ast, undefined, statefulFolds);
 }
 

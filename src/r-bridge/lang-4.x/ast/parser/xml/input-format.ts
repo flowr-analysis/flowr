@@ -1,17 +1,17 @@
-import type { RawRType } from '../../model/type'
+import type { RawRType } from '../../model/type';
 
-export const attributesKey = 'a'
-export const childrenKey = 'c'
-export const contentKey = '@'
-export const nameKey = '#'
+export const attributesKey = 'a';
+export const childrenKey = 'c';
+export const contentKey = '@';
+export const nameKey = '#';
 
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */
 export class XmlParseError extends Error {
 	constructor(message: string) {
-		super(message)
-		this.name = 'XmlParseError'
+		super(message);
+		this.name = 'XmlParseError';
 	}
 }
 
@@ -36,14 +36,14 @@ export interface NamedXmlBasedJson {
 
 
 function error(key: string, obj: XmlBasedJson) {
-	throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
+	throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`);
 }
 
 /**
  * Single-key variant of {@link getKeysGuarded}. Will throw an {@link XmlParseError} if the key is not present.
  */
 export function getKeyGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T {
-	return (obj[key] ?? error(key, obj)) as T
+	return (obj[key] ?? error(key, obj)) as T;
 }
 
 /**
@@ -53,6 +53,6 @@ export function getKeyGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ke
  * @typeParam T - the type of the values to retrieve. Note, that this type is not checked at runtime.
  */
 export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...keys: readonly string[]): Record<string, T> {
-	return Object.fromEntries(keys.map(k => [k, getKeyGuarded(obj, k)] as const))
+	return Object.fromEntries(keys.map(k => [k, getKeyGuarded(obj, k)] as const));
 }
 

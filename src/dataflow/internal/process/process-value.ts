@@ -1,8 +1,8 @@
-import { type DataflowInformation, ExitPointType } from '../../info'
-import type { DataflowProcessorInformation } from '../../processor'
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { DataflowGraph } from '../../graph/graph'
-import { VertexType } from '../../graph/vertex'
+import { type DataflowInformation, ExitPointType } from '../../info';
+import type { DataflowProcessorInformation } from '../../processor';
+import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { DataflowGraph } from '../../graph/graph';
+import { VertexType } from '../../graph/vertex';
 
 export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
@@ -17,5 +17,5 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		}),
 		exitPoints: [{ nodeId: value.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
 		entryPoint: value.info.id
-	}
+	};
 }

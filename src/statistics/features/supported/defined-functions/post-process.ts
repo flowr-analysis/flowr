@@ -1,24 +1,24 @@
-import type { FeatureStatisticsWithMeta } from '../../feature'
-import path from 'path'
-import fs from 'fs'
+import type { FeatureStatisticsWithMeta } from '../../feature';
+import path from 'path';
+import fs from 'fs';
 import type {
 	FunctionDefinitionInfo,
 	SingleFunctionDefinitionInformation
-} from './defined-functions'
+} from './defined-functions';
 import {
 	AllDefinitionsFileBase
-} from './defined-functions'
-import type { SummarizedWithProject } from '../../post-processing'
-import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
+} from './defined-functions';
+import type { SummarizedWithProject } from '../../post-processing';
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 
-import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer'
-import type { SummarizedMeasurement } from '../../../../util/summarizer'
-import { summarizedMeasurement2CsvHeader , summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer'
-import type { MergeableRecord } from '../../../../util/objects'
-import { readLineByLineSync } from '../../../../util/files'
-import { date2string } from '../../../../util/time'
-import { array2bag } from '../../../../util/arrays'
-import type { StatisticsOutputFormat } from '../../../output/statistics-file'
+import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
+import type { SummarizedMeasurement } from '../../../../util/summarizer';
+import { summarizedMeasurement2CsvHeader , summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer';
+import type { MergeableRecord } from '../../../../util/objects';
+import { readLineByLineSync } from '../../../../util/files';
+import { date2string } from '../../../../util/time';
+import { array2bag } from '../../../../util/arrays';
+import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,
@@ -59,13 +59,13 @@ function getFnDefCsv(idx: number | string, info: FunctionDefinitionSummaryInform
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyExplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyImplicit.flat()))}`
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.exitPointsLinePercentageInDef.flat(2)))}`
-		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.linePercentageInFile.flat()))}\n`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.linePercentageInFile.flat()))}\n`;
 }
 
 function addToList(data: SummarizedWithProject, count: number, filepath: string, config: StatisticsSummarizerConfiguration) {
-	data.count.push(count)
+	data.count.push(count);
 	if(count > 0) {
-		recordFilePath(data, filepath, config)
+		recordFilePath(data, filepath, config);
 	}
 }
 
@@ -74,35 +74,35 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 	 * maps fn-name (including namespace) to several definition information
 	 * we use tuples to reduce the memory!
 	 */
-	const definitionsPerFile: FunctionDefinitionSummaryInformation<number[]>[] = []
-	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
+	const definitionsPerFile: FunctionDefinitionSummaryInformation<number[]>[] = [];
+	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary();
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>));
 
-	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
+	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`);
 
-	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-definitions.csv'))
+	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-definitions.csv'));
 
-	const prefixes = ['total', 'params', 'length-lines', 'length-chars', 'length-non-ws-chars', 'return-explicit', 'return-implicit', 'return-only-explicit', 'return-only-implicit', 'exit-points-line-crac', 'def-line-frac']
-	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
-	fnOutStream.write(`counter,${others}\n`)
+	const prefixes = ['total', 'params', 'length-lines', 'length-chars', 'length-non-ws-chars', 'return-explicit', 'return-implicit', 'return-only-explicit', 'return-only-implicit', 'exit-points-line-crac', 'def-line-frac'];
+	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',');
+	fnOutStream.write(`counter,${others}\n`);
 	for(const [idx, info] of definitionsPerFile.entries()) {
-		fnOutStream.write(getFnDefCsv(idx, info))
-		mergedSuperDefinitions.total.push(...info.total)
-		mergedSuperDefinitions.parameters.push(...info.parameters)
-		mergedSuperDefinitions.length.lines.push(...info.length.lines)
-		mergedSuperDefinitions.length.chars.push(...info.length.chars)
-		mergedSuperDefinitions.length.nonWhitespaceChars.push(...info.length.nonWhitespaceChars)
-		mergedSuperDefinitions.returns.onlyExplicit.push(...info.returns.onlyExplicit)
-		mergedSuperDefinitions.returns.onlyImplicit.push(...info.returns.onlyImplicit)
-		mergedSuperDefinitions.exitPointsLinePercentageInDef.push(...info.exitPointsLinePercentageInDef)
-		mergedSuperDefinitions.linePercentageInFile.push(...info.linePercentageInFile)
-		mergedSuperDefinitions.callsites.push(...info.callsites)
+		fnOutStream.write(getFnDefCsv(idx, info));
+		mergedSuperDefinitions.total.push(...info.total);
+		mergedSuperDefinitions.parameters.push(...info.parameters);
+		mergedSuperDefinitions.length.lines.push(...info.length.lines);
+		mergedSuperDefinitions.length.chars.push(...info.length.chars);
+		mergedSuperDefinitions.length.nonWhitespaceChars.push(...info.length.nonWhitespaceChars);
+		mergedSuperDefinitions.returns.onlyExplicit.push(...info.returns.onlyExplicit);
+		mergedSuperDefinitions.returns.onlyImplicit.push(...info.returns.onlyImplicit);
+		mergedSuperDefinitions.exitPointsLinePercentageInDef.push(...info.exitPointsLinePercentageInDef);
+		mergedSuperDefinitions.linePercentageInFile.push(...info.linePercentageInFile);
+		mergedSuperDefinitions.callsites.push(...info.callsites);
 	}
 	// now, write the ultimate summary at the end of the file
-	fnOutStream.write(getFnDefCsv('all', mergedSuperDefinitions))
-	fnOutStream.close()
+	fnOutStream.write(getFnDefCsv('all', mergedSuperDefinitions));
+	fnOutStream.close();
 }
 
 function retrieveMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
@@ -113,48 +113,48 @@ function retrieveMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, c
 		nestedFunctions:   emptySummarizedWithProject(),
 		recursive:         emptySummarizedWithProject(),
 		deepestNesting:    emptySummarizedWithProject()
-	}
+	};
 	for(const [filepath, meta] of info.entries()) {
-		const us = meta.definedFunctions as FunctionDefinitionInfo
-		addToList(data.total, us.total, filepath, config)
-		addToList(data.lambdasOnly, us.lambdasOnly, filepath, config)
-		addToList(data.assignedFunctions, us.assignedFunctions, filepath, config)
-		addToList(data.nestedFunctions, us.nestedFunctions, filepath, config)
-		addToList(data.recursive, us.recursive, filepath, config)
-		addToList(data.deepestNesting, us.deepestNesting, filepath, config)
+		const us = meta.definedFunctions as FunctionDefinitionInfo;
+		addToList(data.total, us.total, filepath, config);
+		addToList(data.lambdasOnly, us.lambdasOnly, filepath, config);
+		addToList(data.assignedFunctions, us.assignedFunctions, filepath, config);
+		addToList(data.nestedFunctions, us.nestedFunctions, filepath, config);
+		addToList(data.recursive, us.recursive, filepath, config);
+		addToList(data.deepestNesting, us.deepestNesting, filepath, config);
 	}
-	console.log(`    [${date2string(new Date())}] Defined functions metadata reading completed, summarizing and writing to file`)
+	console.log(`    [${date2string(new Date())}] Defined functions metadata reading completed, summarizing and writing to file`);
 
-	const out = fs.createWriteStream(path.join(outputPath, 'function-definitions-meta.csv'))
-	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	const out = fs.createWriteStream(path.join(outputPath, 'function-definitions-meta.csv'));
+	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`);
 	for(const [key, val] of Object.entries(data)) {
-		const data = val as SummarizedWithProject
-		out.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
+		const data = val as SummarizedWithProject;
+		out.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`);
 	}
-	out.close()
+	out.close();
 }
 
 function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSummarizerConfiguration, outputPath: string) {
-	const varNames = new Map<string, SummarizedWithProject>()
+	const varNames = new Map<string, SummarizedWithProject>();
 	readLineByLineSync(path.join(featureRoot, 'assignedFunctions.txt'), line => {
-		const parsed = JSON.parse(String(line)) as StatisticsOutputFormat<string[]>
-		const [hits, context] = parsed
-		const countsForFile = array2bag(hits)
+		const parsed = JSON.parse(String(line)) as StatisticsOutputFormat<string[]>;
+		const [hits, context] = parsed;
+		const countsForFile = array2bag(hits);
 		for(const [name, count] of countsForFile.entries()) {
-			let get = varNames.get(name)
+			let get = varNames.get(name);
 			if(!get) {
-				get = emptySummarizedWithProject()
-				varNames.set(name, get)
+				get = emptySummarizedWithProject();
+				varNames.set(name, get);
 			}
-			addToList(get, count, context ?? '', config)
+			addToList(get, count, context ?? '', config);
 		}
-	})
-	const varNamesOut = fs.createWriteStream(path.join(outputPath, 'function-definitions-var-names.csv'))
-	varNamesOut.write(`name,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	});
+	const varNamesOut = fs.createWriteStream(path.join(outputPath, 'function-definitions-var-names.csv'));
+	varNamesOut.write(`name,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`);
 	for(const [key, val] of varNames.entries()) {
-		varNamesOut.write(`${JSON.stringify(key)},${val.uniqueProjects.size},${val.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(val.count))}\n`)
+		varNamesOut.write(`${JSON.stringify(key)},${val.uniqueProjects.size},${val.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(val.count))}\n`);
 	}
-	varNamesOut.close()
+	varNamesOut.close();
 }
 
 /**
@@ -162,11 +162,11 @@ function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSu
  */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
-	retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath)
+	retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath);
 
-	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
-	retrieveMetaInformation(info, config, outputPath)
-	retrieveAssignedFunctionNames(featureRoot, config, outputPath)
+	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`);
+	retrieveMetaInformation(info, config, outputPath);
+	retrieveAssignedFunctionNames(featureRoot, config, outputPath);
 }
 
 function emptyFunctionDefinitionSummary() {
@@ -187,36 +187,36 @@ function emptyFunctionDefinitionSummary() {
 		exitPointsLinePercentageInDef: [],
 		linePercentageInFile:          [],
 		callsites:                     []
-	}
+	};
 }
 
 function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>): void {
 	if(lineNumber % 2_500 === 0) {
-		console.log(`    [${date2string(new Date())}] Defined functions processed ${lineNumber} lines`)
+		console.log(`    [${date2string(new Date())}] Defined functions processed ${lineNumber} lines`);
 	}
-	const [hits, context] = line
+	const [hits, context] = line;
 
-	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
+	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary();
 
 	for(const { location, length, returns, numberOfParameters, callsites } of hits) {
-		const stats = info.get(context ?? '')?.stats.lines[0].length
+		const stats = info.get(context ?? '')?.stats.lines[0].length;
 
 		// we retrieve the first component fo the path
-		forFile.total.push(1)
-		forFile.parameters.push(numberOfParameters)
-		forFile.length.lines.push(length.lines)
-		forFile.length.chars.push(length.characters)
-		forFile.length.nonWhitespaceChars.push(length.nonWhitespaceCharacters)
-		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l/length.lines))
+		forFile.total.push(1);
+		forFile.parameters.push(numberOfParameters);
+		forFile.length.lines.push(length.lines);
+		forFile.length.chars.push(length.characters);
+		forFile.length.nonWhitespaceChars.push(length.nonWhitespaceCharacters);
+		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l/length.lines));
 
-		forFile.callsites.push(callsites.length)
+		forFile.callsites.push(callsites.length);
 
 		if(stats) {
-			forFile.linePercentageInFile.push(location[0] / stats)
+			forFile.linePercentageInFile.push(location[0] / stats);
 		}
 	}
 
 	// push all of that to main :D
-	forFile.total = [forFile.total.length]
-	data.push(forFile)
+	forFile.total = [forFile.total.length];
+	data.push(forFile);
 }

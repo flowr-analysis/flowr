@@ -1,15 +1,15 @@
-import { type DataflowInformation, ExitPointType } from '../../info'
-import type { DataflowProcessorInformation } from '../../processor'
-import { processValue } from './process-value'
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values'
-import { DataflowGraph } from '../../graph/graph'
-import { VertexType } from '../../graph/vertex'
+import { type DataflowInformation, ExitPointType } from '../../info';
+import type { DataflowProcessorInformation } from '../../processor';
+import { processValue } from './process-value';
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values';
+import { DataflowGraph } from '../../graph/graph';
+import { VertexType } from '../../graph/vertex';
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {
-		return processValue(symbol, data)
+		return processValue(symbol, data);
 	}
 
 	return {
@@ -24,5 +24,5 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		}),
 		entryPoint: symbol.info.id,
 		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
-	}
+	};
 }

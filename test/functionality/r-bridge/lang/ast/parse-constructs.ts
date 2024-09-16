@@ -1,13 +1,13 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import type { SourceRange } from '../../../../../src/util/range'
-import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get'
-import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
-import type { RExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list'
-import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import type { SourceRange } from '../../../../../src/util/range';
+import { addRanges, rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { RExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/normalize-meta';
 
 interface IfThenSpacing {
 	str:          string
@@ -84,7 +84,7 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 		end:          rangeFrom(5, 1, 5, 1),
 		capabilities: ['if', 'logical', 'numbers']
 	},
-]
+];
 
 function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpressionList {
 	return {
@@ -108,7 +108,7 @@ function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpress
 			location:  end
 		}],
 		children: [content]
-	}
+	};
 }
 
 const IfThenBraceVariants: IfThenSpacing[] = [{
@@ -141,7 +141,7 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	num:          1,
 	end:          rangeFrom(1, 15, 1, 15),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
-}]
+}];
 
 interface ElseSpacing {
 	str:          string
@@ -165,7 +165,7 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 	num:          9,
 	otherwise:    off => ({ type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '9', content: numVal(9), info: {} }),
 	capabilities: ['if', 'numbers']
-}]
+}];
 
 const ElsegroupingVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
@@ -188,7 +188,7 @@ const ElsegroupingVariants: ElseSpacing[] = [{
 	),
 	num:          42,
 	capabilities: ['if', 'numbers', 'grouping']
-}]
+}];
 
 describe('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
@@ -214,11 +214,11 @@ describe('Parse simple constructs', withShell(shell => {
 							then: ensureExpressionList(variant.then)
 						}), {
 							ignoreAdditionalTokens: true
-						})
+						});
 					}
-				})
+				});
 			}
-		})
+		});
 		describe('if-then-else', () => {
 			for(const elsePool of [{ name: 'grouping', variants: ElsegroupingVariants }, {
 				name:     'spacing',
@@ -231,7 +231,7 @@ describe('Parse simple constructs', withShell(shell => {
 					describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
 						for(const elseVariant of elsePool.variants) {
 							for(const ifThenVariant of ifThenPool.variants) {
-								const input = `${ifThenVariant.str}${elseVariant.str}`
+								const input = `${ifThenVariant.str}${elseVariant.str}`;
 								assertAst(label(JSON.stringify(input), [...ifThenVariant.capabilities, ...elseVariant.capabilities]), shell, input, exprList({
 									type:      RType.IfThenElse,
 									location:  rangeFrom(1, 1, 1, 2),
@@ -248,14 +248,14 @@ describe('Parse simple constructs', withShell(shell => {
 									otherwise: ensureExpressionList(elseVariant.otherwise(ifThenVariant.end))
 								}), {
 									ignoreAdditionalTokens: true
-								})
+								});
 							}
 						}
-					})
+					});
 				}
 			}
-		})
-	})
+		});
+	});
 	describe('loops', () => {
 		describe('for', () => {
 			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers']), shell, 'for(i in 1:42)2',
@@ -303,7 +303,7 @@ describe('Parse simple constructs', withShell(shell => {
 				}), {
 					ignoreAdditionalTokens: true
 				}
-			)
+			);
 			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'comments', 'newlines']), shell, `for(#a
 				i#b
 				in#c
@@ -353,8 +353,8 @@ describe('Parse simple constructs', withShell(shell => {
 			})	, {
 				ignoreAdditionalTokens: true
 			}
-			)
-		})
+			);
+		});
 		describe('repeat', () => {
 			assertAst(label('Single instruction repeat', ['repeat-loop', 'numbers']),
 				shell, 'repeat 2', exprList({
@@ -371,7 +371,7 @@ describe('Parse simple constructs', withShell(shell => {
 					})
 				}), {
 					ignoreAdditionalTokens: true
-				})
+				});
 			assertAst(label('Two Statement Repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
 				shell, 'repeat { x; y }', exprList({
 					type:     RType.RepeatLoop,
@@ -416,8 +416,8 @@ describe('Parse simple constructs', withShell(shell => {
 					}
 				}), {
 					ignoreAdditionalTokens: true
-				})
-		})
+				});
+		});
 		describe('while', () => {
 			assertAst(label('while (TRUE) 42', ['while-loop', 'logical', 'numbers']),
 				shell, 'while (TRUE) 42', exprList({
@@ -441,7 +441,7 @@ describe('Parse simple constructs', withShell(shell => {
 					})
 				}), {
 					ignoreAdditionalTokens: true
-				})
+				});
 
 			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping', 'semicolons']),
 				shell, 'while (FALSE) { x; y }', exprList({
@@ -494,8 +494,8 @@ describe('Parse simple constructs', withShell(shell => {
 					}
 				}), {
 					ignoreAdditionalTokens: true
-				})
-		})
+				});
+		});
 		describe('break', () => {
 			assertAst(label('while (TRUE) break', ['while-loop', 'logical', 'break']),
 				shell, 'while (TRUE) break', exprList({
@@ -517,8 +517,8 @@ describe('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				})
-			)
-		})
+			);
+		});
 		describe('next', () => {
 			assertAst(label('Next in while', ['while-loop', 'next']),
 				shell, 'while (TRUE) next', exprList({
@@ -540,7 +540,7 @@ describe('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				})
-			)
-		})
-	})
-}))
+			);
+		});
+	});
+}));

@@ -1,30 +1,30 @@
-import { assert } from 'chai'
-import type { DeepPartial } from 'ts-essentials'
-import path from 'path'
-import { jsonReplacer, jsonBigIntRetriever } from '../../../src/util/json'
-import type { TestConfiguration } from '../_helper/shell'
-import { ensureConfig } from '../_helper/shell'
-import { deepMergeObject } from '../../../src/util/objects'
-import { requireAllTestsInFolder } from '../_helper/collect-tests'
-import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics'
-import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature'
-import { ALL_FEATURES } from '../../../src/statistics/features/feature'
-import type { RShell } from '../../../src/r-bridge/shell'
-import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider'
-import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file'
+import { assert } from 'chai';
+import type { DeepPartial } from 'ts-essentials';
+import path from 'path';
+import { jsonReplacer, jsonBigIntRetriever } from '../../../src/util/json';
+import type { TestConfiguration } from '../_helper/shell';
+import { ensureConfig } from '../_helper/shell';
+import { deepMergeObject } from '../../../src/util/objects';
+import { requireAllTestsInFolder } from '../_helper/collect-tests';
+import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics';
+import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature';
+import { ALL_FEATURES } from '../../../src/statistics/features/feature';
+import type { RShell } from '../../../src/r-bridge/shell';
+import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider';
+import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file';
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
-	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
-	return results.features[feature] as FeatureValue<T>
+	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }));
+	return results.features[feature] as FeatureValue<T>;
 }
 
 async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>, map: DummyAppendMemoryMap, expectedMap: Map<AppendFnType, string[]> | undefined): Promise<void> {
-	const result = await requestFeature(shell, feature, code)
-	assert.deepStrictEqual(result, JSON.parse(JSON.stringify(expected, jsonReplacer), jsonBigIntRetriever), `counts, for feature ${feature} in ${code}`)
-	const keys = [...map.keys()]
-	assert.strictEqual(keys.length, expectedMap === undefined ? 0 : 1, 'written should contain only the given key')
-	const out = map.get(keys[0])
-	assert.deepStrictEqual(out, expectedMap, `written, for feature ${feature} in ${code}. Got:\n${JSON.stringify(out, jsonReplacer)}\nExpected:\n${JSON.stringify(expectedMap, jsonReplacer)}`)
+	const result = await requestFeature(shell, feature, code);
+	assert.deepStrictEqual(result, JSON.parse(JSON.stringify(expected, jsonReplacer), jsonBigIntRetriever), `counts, for feature ${feature} in ${code}`);
+	const keys = [...map.keys()];
+	assert.strictEqual(keys.length, expectedMap === undefined ? 0 : 1, 'written should contain only the given key');
+	const out = map.get(keys[0]);
+	assert.deepStrictEqual(out, expectedMap, `written, for feature ${feature} in ${code}. Got:\n${JSON.stringify(out, jsonReplacer)}\nExpected:\n${JSON.stringify(expectedMap, jsonReplacer)}`);
 }
 
 export interface StatisticsTest {
@@ -44,23 +44,23 @@ export interface StatisticsTest {
  * Each `tests.expected` will be merged with its corresponding initial value (so if you do not give a value, it is expected to be 0).
  */
 export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feature: T, tests: StatisticsTest[]) {
-	const featureInfo = ALL_FEATURES[feature]
+	const featureInfo = ALL_FEATURES[feature];
 	for(const test of tests) {
 		it(test.name, async function(){
 			await ensureConfig(shell, this, test.requirements ? {
 				...test.requirements,
 				needsPackages: ['xmlparsedata', ...(test.requirements.needsPackages ?? [])]
-			} : { needsPackages: ['xmlparsedata'] })
+			} : { needsPackages: ['xmlparsedata'] });
 			// create a new feature map to record to, this resets the state as well
-			const map: DummyAppendMemoryMap = new Map()
-			initDummyFileProvider(map)
-			const expected = deepMergeObject(featureInfo.initialValue, test.expected) as FeatureValue<T>
-			const expectedMap = test.written !== 'nothing' ? new Map(test.written.map(([fn, content]) => [fn, content.map(c => typeof c === 'string' ? c : JSON.stringify(c))])) : undefined
-			await expectFeature(shell, feature, test.code, expected, map, expectedMap)
-		})
+			const map: DummyAppendMemoryMap = new Map();
+			initDummyFileProvider(map);
+			const expected = deepMergeObject(featureInfo.initialValue, test.expected) as FeatureValue<T>;
+			const expectedMap = test.written !== 'nothing' ? new Map(test.written.map(([fn, content]) => [fn, content.map(c => typeof c === 'string' ? c : JSON.stringify(c))])) : undefined;
+			await expectFeature(shell, feature, test.code, expected, map, expectedMap);
+		});
 	}
 }
 
 describe('Statistics', () => {
-	requireAllTestsInFolder(path.join(__dirname, 'features'))
-})
+	requireAllTestsInFolder(path.join(__dirname, 'features'));
+});

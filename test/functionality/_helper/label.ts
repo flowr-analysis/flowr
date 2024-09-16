@@ -6,21 +6,21 @@
  */
 
 
-import { DefaultMap } from '../../../src/util/defaultmap'
-import type { MergeableRecord } from '../../../src/util/objects'
-import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get'
-import { getAllCapabilities } from '../../../src/r-bridge/data/get'
+import { DefaultMap } from '../../../src/util/defaultmap';
+import type { MergeableRecord } from '../../../src/util/objects';
+import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
+import { getAllCapabilities } from '../../../src/r-bridge/data/get';
 
 // map flowr ids to the capabilities
-const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => [])
+const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => []);
 
 const uniqueTestId = (() => {
-	let id = 0
-	return () => id++
-})()
+	let id = 0;
+	return () => id++;
+})();
 
 
-const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output', 'lineage'] as const
+const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output', 'lineage'] as const;
 export type TestLabelContext = typeof TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {
@@ -42,27 +42,27 @@ export interface TestLabel extends MergeableRecord {
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
-	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids)
+	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids);
 	const label: TestLabel = {
 		id:      uniqueTestId(),
 		name:    testname.toLowerCase(),
 		capabilities,
 		context: context === undefined ? new Set() : new Set(context)
-	}
+	};
 
 	for(const i of capabilities) {
-		TheGlobalLabelMap.get(i).push(label)
+		TheGlobalLabelMap.get(i).push(label);
 	}
 
 	if(context === undefined) {
-		return label
+		return label;
 	} else {
-		return getFullNameOfLabel(label)
+		return getFullNameOfLabel(label);
 	}
 }
 
 function getFullNameOfLabel(label: TestLabel): string {
-	return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`
+	return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`;
 }
 
 
@@ -71,13 +71,13 @@ export function modifyLabelName(label: string, nameModification: (name: string) 
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string
 export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string {
 	if(typeof label === 'string') {
-		return nameModification(label)
+		return nameModification(label);
 	}
 
 	return {
 		...label,
 		name: nameModification(label.name)
-	}
+	};
 }
 
 /**
@@ -85,105 +85,105 @@ export function modifyLabelName(label: TestLabel | string, nameModification: (na
  */
 export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[]): string {
 	if(typeof label === 'string') {
-		return label
+		return label;
 	}
 
 	for(const c of context) {
-		label.context.add(c)
+		label.context.add(c);
 	}
 
-	return getFullNameOfLabel(label)
+	return getFullNameOfLabel(label);
 }
 
 function printIdRange(start: number, last: number): string {
 	if(start === last) {
-		return `#${start}`
+		return `#${start}`;
 	} else {
-		return `#${start}-#${last}`
+		return `#${start}-#${last}`;
 	}
 }
 
 function mergeConsecutiveIds(ids: readonly number[]): string {
 	if(ids.length === 0) {
-		return ''
+		return '';
 	}
 
-	const sorted = [...ids].sort((a, b) => a - b)
-	const result: string[] = []
-	let start: number = sorted[0]
-	let last: number = start
+	const sorted = [...ids].sort((a, b) => a - b);
+	const result: string[] = [];
+	let start: number = sorted[0];
+	let last: number = start;
 
 	for(const id of sorted.slice(1)) {
 		if(id === last + 1) {
-			last = id
+			last = id;
 		} else {
-			result.push(printIdRange(start, last))
-			start = id
-			last = id
+			result.push(printIdRange(start, last));
+			start = id;
+			last = id;
 		}
 	}
-	result.push(printIdRange(start, last))
-	return `\x1b[36m${result.join('\x1b[m, \x1b[36m')}\x1b[m`
+	result.push(printIdRange(start, last));
+	return `\x1b[36m${result.join('\x1b[m, \x1b[36m')}\x1b[m`;
 }
 
 function printCapability(label: FlowrCapabilityWithPath, testNames: TestLabel[]) {
-	const supportClaim = label.supported ? ` (claim: ${label.supported} supported)` : ''
-	const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name}${supportClaim}`
-	const tests = testNames.length > 1 ? 'tests:' : 'test: '
+	const supportClaim = label.supported ? ` (claim: ${label.supported} supported)` : '';
+	const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name}${supportClaim}`;
+	const tests = testNames.length > 1 ? 'tests:' : 'test: ';
 	// we only have to warn if we claim to support but do not offer
 	if(testNames.length === 0) {
 		if(label.supported !== 'not' && label.supported !== undefined) {
-			console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`)
+			console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`);
 		} else {
-			console.log(`${paddedLabel}`)
+			console.log(`${paddedLabel}`);
 		}
-		return
+		return;
 	}
 
 	// group by contexts
-	const contextMap = new DefaultMap<TestLabelContext, TestLabel[]>(() => [])
+	const contextMap = new DefaultMap<TestLabelContext, TestLabel[]>(() => []);
 	for(const t of testNames) {
 		for(const c of t.context) {
-			contextMap.get(c).push(t)
+			contextMap.get(c).push(t);
 		}
 	}
-	let formattedTestNames = ''
+	let formattedTestNames = '';
 	for(const [context, tests] of contextMap.entries()) {
-		const formatted = mergeConsecutiveIds(tests.map(t => t.id))
-		formattedTestNames += `\n${' '.repeat(label.path.length * 2 - 2)}      - ${context} [${tests.length}]: ${formatted}`
+		const formatted = mergeConsecutiveIds(tests.map(t => t.id));
+		formattedTestNames += `\n${' '.repeat(label.path.length * 2 - 2)}      - ${context} [${tests.length}]: ${formatted}`;
 	}
 
-	console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`)
+	console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`);
 }
 
 function printLabelSummary(): void {
-	console.log('== Test Capability Coverage ' + '='.repeat(80))
+	console.log('== Test Capability Coverage ' + '='.repeat(80));
 	// only list those for which we have a support claim
-	const allCapabilities = [...getAllCapabilities()]
-	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
+	const allCapabilities = [...getAllCapabilities()];
+	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const);
 
 	for(const [capability, testNames] of entries) {
-		printCapability(capability, testNames)
+		printCapability(capability, testNames);
 	}
 
-	console.log('-- Tests-By-Context ' + '-'.repeat(80))
-	const contextMap = new DefaultMap<TestLabelContext, number>(() => 0)
-	const blockedIds = new Set<number>()
+	console.log('-- Tests-By-Context ' + '-'.repeat(80));
+	const contextMap = new DefaultMap<TestLabelContext, number>(() => 0);
+	const blockedIds = new Set<number>();
 	for(const testNames of TheGlobalLabelMap.values()) {
 		for(const t of testNames) {
 			if(blockedIds.has(t.id)) {
-				continue
+				continue;
 			}
-			blockedIds.add(t.id)
+			blockedIds.add(t.id);
 			for(const c of t.context) {
-				contextMap.set(c, contextMap.get(c) + 1)
+				contextMap.set(c, contextMap.get(c) + 1);
 			}
 		}
 	}
 	for(const [context, count] of contextMap.entries()) {
-		console.log(`- ${context}: ${count}`)
+		console.log(`- ${context}: ${count}`);
 	}
 }
 
-after(printLabelSummary)
-process.on('exit', printLabelSummary)
+after(printLabelSummary);
+process.on('exit', printLabelSummary);

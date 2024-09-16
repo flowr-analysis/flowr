@@ -1,13 +1,13 @@
-import { type DataflowProcessorInformation } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
-import { processKnownFunctionCall } from '../known-call-handling'
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { IdentifierReference } from '../../../../../environments/identifier'
-import { EdgeType } from '../../../../../graph/edge'
-import type { ForceArguments } from '../common'
+import { type DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowInformation } from '../../../../../info';
+import { processKnownFunctionCall } from '../known-call-handling';
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { IdentifierReference } from '../../../../../environments/identifier';
+import { EdgeType } from '../../../../../graph/edge';
+import type { ForceArguments } from '../common';
 
 
 export function processQuote<OtherInfo>(
@@ -17,20 +17,20 @@ export function processQuote<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { quoteArgumentsWithIndex?: number } & ForceArguments
 ): DataflowInformation {
-	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
+	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
 
-	const inRefs: IdentifierReference[] = [fnRef]
-	const outRefs: IdentifierReference[] = []
-	const unknownRefs: IdentifierReference[] = []
+	const inRefs: IdentifierReference[] = [fnRef];
+	const outRefs: IdentifierReference[] = [];
+	const unknownRefs: IdentifierReference[] = [];
 
 	for(let i = 0; i < args.length; i++) {
-		const processedArg = processedArguments[i]
+		const processedArg = processedArguments[i];
 		if(processedArg && i !== config?.quoteArgumentsWithIndex) {
-			inRefs.push(...processedArg.in)
-			outRefs.push(...processedArg.out)
-			unknownRefs.push(...processedArg.unknownReferences)
+			inRefs.push(...processedArg.in);
+			outRefs.push(...processedArg.out);
+			unknownRefs.push(...processedArg.unknownReferences);
 		} else if(processedArg) {
-			information.graph.addEdge(rootId, processedArg.entryPoint, { type: EdgeType.NonStandardEvaluation })
+			information.graph.addEdge(rootId, processedArg.entryPoint, { type: EdgeType.NonStandardEvaluation });
 		}
 	}
 
@@ -39,5 +39,5 @@ export function processQuote<OtherInfo>(
 		in:                inRefs,
 		out:               outRefs,
 		unknownReferences: unknownRefs
-	}
+	};
 }

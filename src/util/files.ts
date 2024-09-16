@@ -1,8 +1,8 @@
-import fs, { promises as fsPromise } from 'fs'
-import path from 'path'
-import { log } from './log'
-import LineByLine from 'n-readlines'
-import type { RParseRequestFromFile } from '../r-bridge/retriever'
+import fs, { promises as fsPromise } from 'fs';
+import path from 'path';
+import { log } from './log';
+import LineByLine from 'n-readlines';
+import type { RParseRequestFromFile } from '../r-bridge/retriever';
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -19,18 +19,18 @@ export interface Table {
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
 export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false })
+	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
 	for(const subEntries of entries) {
-		const res = path.resolve(dir, subEntries.name)
+		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			yield* getAllFiles(res, suffix)
+			yield* getAllFiles(res, suffix);
 		} else if(suffix.test(subEntries.name)) {
-			yield res
+			yield res;
 		}
 	}
 }
 
-const rFileRegex = /\.[rR]$/
+const rFileRegex = /\.[rR]$/;
 
 /**
  * Retrieves all R files in a given directory (asynchronously)
@@ -45,23 +45,23 @@ const rFileRegex = /\.[rR]$/
  * @see getAllFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
-	let count = 0
+	let count = 0;
 	if(fs.statSync(input).isFile()) {
 		if(rFileRegex.test(input)) {
-			yield { request: 'file', content: input }
-			return 1
+			yield { request: 'file', content: input };
+			return 1;
 		}
-		log.warn(`Input ${input} is not an R file`)
-		return 0
+		log.warn(`Input ${input} is not an R file`);
+		return 0;
 	}
 
 	for await (const f of getAllFiles(input, rFileRegex)) {
 		if(++count > limit) {
-			return count
+			return count;
 		}
-		yield { request: 'file', content: f }
+		yield { request: 'file', content: f };
 	}
-	return count
+	return count;
 }
 
 
@@ -75,21 +75,21 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
  * @see allRFiles
  */
 export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
-	limit ??= Number.MAX_VALUE
+	limit ??= Number.MAX_VALUE;
 	if(inputs.length === 0) {
-		log.info('No inputs given, nothing to do')
-		return 0
+		log.info('No inputs given, nothing to do');
+		return 0;
 	}
-	let count = 0
+	let count = 0;
 	for(const input of inputs) {
-		count += yield* allRFiles(input, limit - count)
+		count += yield* allRFiles(input, limit - count);
 	}
-	return count
+	return count;
 }
 
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
-	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
-	fs.writeFileSync(file, csv)
+	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline);
+	fs.writeFileSync(file, csv);
 }
 
 /**
@@ -99,14 +99,14 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
  * See {@link readLineByLineSync} for a synchronous version.
  */
 export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>): Promise<void> {
-	const reader = new LineByLine(filePath)
+	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer
+	let line: false | Buffer;
 
-	let counter = 0
+	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
 	while(line = reader.next()) {
-		await onLine(line, counter++)
+		await onLine(line, counter++);
 	}
 }
 
@@ -117,14 +117,14 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * See {@link readLineByLine} for an asynchronous version.
  */
 export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void): void {
-	const reader = new LineByLine(filePath)
+	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer
+	let line: false | Buffer;
 
-	let counter = 0
+	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
 	while(line = reader.next()) {
-		onLine(line, counter++)
+		onLine(line, counter++);
 	}
 }
 
@@ -135,5 +135,5 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
  */
 export function getParentDirectory(directory: string): string{
 	// apparently this is somehow the best way to do it in node, what
-	return directory.split(path.sep).slice(0, -1).join(path.sep)
+	return directory.split(path.sep).slice(0, -1).join(path.sep);
 }

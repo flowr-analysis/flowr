@@ -1,14 +1,14 @@
-import type { NormalizerData } from '../../normalizer-data'
-import type { XmlBasedJson } from '../../input-format'
-import { parseLog } from '../../../json/parser'
-import { retrieveMetaStructure } from '../../normalize-meta'
-import { guard } from '../../../../../../../util/assert'
-import { RType } from '../../../../model/type'
-import type { RLineDirective } from '../../../../model/nodes/r-line-directive'
-import type { RComment } from '../../../../model/nodes/r-comment'
+import type { NormalizerData } from '../../normalizer-data';
+import type { XmlBasedJson } from '../../input-format';
+import { parseLog } from '../../../json/parser';
+import { retrieveMetaStructure } from '../../normalize-meta';
+import { guard } from '../../../../../../../util/assert';
+import { RType } from '../../../../model/type';
+import type { RLineDirective } from '../../../../model/nodes/r-line-directive';
+import type { RComment } from '../../../../model/nodes/r-comment';
 
 
-const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
+const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/;
 
 /**
  * Normalize the given object as an R line directive (`#line <number> "<file>"`).
@@ -19,11 +19,11 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeLineDirective(data: NormalizerData, obj: XmlBasedJson): RLineDirective | RComment {
-	const { location, content } = retrieveMetaStructure(obj)
-	guard(content.startsWith('#line'), 'line directive must start with #line')
-	const match = LineDirectiveRegex.exec(content)
+	const { location, content } = retrieveMetaStructure(obj);
+	guard(content.startsWith('#line'), 'line directive must start with #line');
+	const match = LineDirectiveRegex.exec(content);
 	if(match === null) {
-		parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`)
+		parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`);
 		return {
 			type:   RType.Comment,
 			location,
@@ -34,7 +34,7 @@ export function normalizeLineDirective(data: NormalizerData, obj: XmlBasedJson):
 				fullLexeme:       content
 			},
 			content: content.slice(1)
-		}
+		};
 	} else {
 		return {
 			type:   RType.LineDirective,
@@ -47,6 +47,6 @@ export function normalizeLineDirective(data: NormalizerData, obj: XmlBasedJson):
 				additionalTokens: [],
 				fullLexeme:       content
 			}
-		}
+		};
 	}
 }

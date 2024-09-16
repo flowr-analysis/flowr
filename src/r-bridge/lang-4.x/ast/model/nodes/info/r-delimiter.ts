@@ -1,6 +1,6 @@
-import type { RawRType, RType } from '../../type'
-import type { Location } from '../../model'
-import type { MergeableRecord } from '../../../../../../util/objects'
+import type { RawRType, RType } from '../../type';
+import type { Location } from '../../model';
+import type { MergeableRecord } from '../../../../../../util/objects';
 
 
 /**

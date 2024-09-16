@@ -1,19 +1,19 @@
-import type { Feature, FeatureProcessorInput } from '../../feature'
-import type { Writable } from 'ts-essentials'
+import type { Feature, FeatureProcessorInput } from '../../feature';
+import type { Writable } from 'ts-essentials';
 import type {
-	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import {
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
-} from '../../common-syntax-probability'
-import { postProcess } from './post-process'
-import { getRangeStart } from '../../../../util/range'
-import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument'
-import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor'
-import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type'
-import { appendStatisticsFile } from '../../../output/statistics-file'
-import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge'
+} from '../../common-syntax-probability';
+import { postProcess } from './post-process';
+import { getRangeStart } from '../../../../util/range';
+import { unpackArgument } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
+import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
+import { appendStatisticsFile } from '../../../output/statistics-file';
+import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -26,11 +26,11 @@ const initialFunctionUsageInfo = {
 	nestedFunctionCalls: 0,
 	deepestNesting:      0,
 	unnamedCalls:        0
-}
+};
 
 export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
 
-export const AllCallsFileBase = 'all-calls'
+export const AllCallsFileBase = 'all-calls';
 
 
 export const usedFunctions: Feature<FunctionUsageInfo> = {
@@ -38,30 +38,30 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 	description: 'All functions called, split into various sub-categories',
 
 	process(existing: FunctionUsageInfo, input: FeatureProcessorInput): FunctionUsageInfo {
-		visitCalls(existing, input)
-		return existing
+		visitCalls(existing, input);
+		return existing;
 	},
 
 	initialValue: initialFunctionUsageInfo,
 	postProcess:  postProcess
-}
+};
 
 
 function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
 	if(args.length === 0) {
-		(existing[0] as unknown as number)++
-		return
+		(existing[0] as unknown as number)++;
+		return;
 	}
 
-	let i = 1
+	let i = 1;
 	for(const arg of args) {
 		if(arg === undefined) {
-			(existing[0] as unknown as number)++
-			continue
+			(existing[0] as unknown as number)++;
+			continue;
 		}
 
-		existing[i] = updateCommonSyntaxTypeCounts((existing[i] as CommonSyntaxTypeCounts | undefined) ?? emptyCommonSyntaxTypeCounts(), arg)
-		i++
+		existing[i] = updateCommonSyntaxTypeCounts((existing[i] as CommonSyntaxTypeCounts | undefined) ?? emptyCommonSyntaxTypeCounts(), arg);
+		i++;
 	}
 }
 
@@ -76,37 +76,37 @@ export type FunctionCallInformation = [
 ]
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
-	const calls: RNodeWithParent[] = []
-	const allCalls: FunctionCallInformation[] = []
+	const calls: RNodeWithParent[] = [];
+	const allCalls: FunctionCallInformation[] = [];
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.FunctionCall) {
-				return
+				return;
 			}
 
 			if(calls.length > 0) {
-				info.nestedFunctionCalls++
-				appendStatisticsFile(usedFunctions.name, 'nested-calls', [node.lexeme], input.filepath)
-				info.deepestNesting = Math.max(info.deepestNesting, calls.length)
+				info.nestedFunctionCalls++;
+				appendStatisticsFile(usedFunctions.name, 'nested-calls', [node.lexeme], input.filepath);
+				info.deepestNesting = Math.max(info.deepestNesting, calls.length);
 			}
 
-			const dataflowNode = input.dataflow.graph.get(node.info.id)
-			let hasCallsEdge = false
+			const dataflowNode = input.dataflow.graph.get(node.info.id);
+			let hasCallsEdge = false;
 			if(dataflowNode) {
-				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls))
+				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls));
 			}
 
 			if(!node.named) {
-				info.unnamedCalls++
-				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
+				info.unnamedCalls++;
+				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath);
 				allCalls.push([
 					undefined,
 					getRangeStart(node.location),
 					node.arguments.length,
 					'',
 					hasCallsEdge ? 1 : 0
-				])
+				]);
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
@@ -114,20 +114,20 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 					node.arguments.length,
 					node.functionName.namespace ?? '',
 					hasCallsEdge ? 1 : 0
-				])
+				]);
 			}
 
-			classifyArguments(node.arguments.map(unpackArgument), info.args)
+			classifyArguments(node.arguments.map(unpackArgument), info.args);
 
-			calls.push(node)
+			calls.push(node);
 		}, node => {
 			// drop again :D
 			if(node.type === RType.FunctionCall) {
-				calls.pop()
+				calls.pop();
 			}
 		}
-	)
+	);
 
-	info.allFunctionCalls += allCalls.length
-	appendStatisticsFile(usedFunctions.name, AllCallsFileBase, allCalls, input.filepath)
+	info.allFunctionCalls += allCalls.length;
+	appendStatisticsFile(usedFunctions.name, AllCallsFileBase, allCalls, input.filepath);
 }

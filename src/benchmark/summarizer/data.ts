@@ -1,11 +1,11 @@
-import type { SummarizedMeasurement } from '../../util/summarizer'
+import type { SummarizedMeasurement } from '../../util/summarizer';
 import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../stats/stats'
+} from '../stats/stats';
 
 
 export interface SliceSizeCollection {

@@ -1,18 +1,18 @@
-import type { NormalizerData } from '../../normalizer-data'
-import type { NamedXmlBasedJson } from '../../input-format'
-import { XmlParseError } from '../../input-format'
-import { parseLog } from '../../../json/parser'
-import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
-import { guard } from '../../../../../../../util/assert'
-import { expensiveTrace } from '../../../../../../../util/log'
-import { startAndEndsWith } from '../../../../../../../util/strings'
-import type { RNode } from '../../../../model/model'
-import { RawRType, RType } from '../../../../model/type'
-import { OperatorsInRAst } from '../../../../model/operators'
-import { normalizeSingleNode } from '../structure/normalize-single-node'
-import type { RFunctionCall } from '../../../../model/nodes/r-function-call'
-import type { RBinaryOp } from '../../../../model/nodes/r-binary-op'
-import type { RPipe } from '../../../../model/nodes/r-pipe'
+import type { NormalizerData } from '../../normalizer-data';
+import type { NamedXmlBasedJson } from '../../input-format';
+import { XmlParseError } from '../../input-format';
+import { parseLog } from '../../../json/parser';
+import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
+import { guard } from '../../../../../../../util/assert';
+import { expensiveTrace } from '../../../../../../../util/log';
+import { startAndEndsWith } from '../../../../../../../util/strings';
+import type { RNode } from '../../../../model/model';
+import { RawRType, RType } from '../../../../model/type';
+import { OperatorsInRAst } from '../../../../model/operators';
+import { normalizeSingleNode } from '../structure/normalize-single-node';
+import type { RFunctionCall } from '../../../../model/nodes/r-function-call';
+import type { RBinaryOp } from '../../../../model/nodes/r-binary-op';
+import type { RPipe } from '../../../../model/nodes/r-pipe';
 
 
 /**
@@ -23,33 +23,33 @@ export function tryNormalizeBinary(
 	data: NormalizerData,
 	[lhs, operator, rhs]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RNode | undefined {
-	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
+	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`);
 	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe) {
-		return parseBinaryOp(data, lhs, operator, rhs)
+		return parseBinaryOp(data, lhs, operator, rhs);
 	} else {
-		return undefined
+		return undefined;
 	}
 }
 
 function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
-	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
-	const parsedLhs = normalizeSingleNode(data, lhs)
-	const parsedRhs = normalizeSingleNode(data, rhs)
+	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content);
+	const parsedLhs = normalizeSingleNode(data, lhs);
+	const parsedRhs = normalizeSingleNode(data, rhs);
 
 	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
-		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
+		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`);
 	}
 
-	const operationName = retrieveOpName(operator)
+	const operationName = retrieveOpName(operator);
 
-	const { location, content } = retrieveMetaStructure(operator.content)
+	const { location, content } = retrieveMetaStructure(operator.content);
 
 	if(startAndEndsWith(operationName, '%')) {
-		const lhsLoc = parsedLhs.type === RType.ExpressionList ? parsedLhs.grouping?.[0].location : parsedLhs.location
-		const rhsLoc = parsedRhs.type === RType.ExpressionList ? parsedRhs.grouping?.[0].location : parsedRhs.location
+		const lhsLoc = parsedLhs.type === RType.ExpressionList ? parsedLhs.grouping?.[0].location : parsedLhs.location;
+		const rhsLoc = parsedRhs.type === RType.ExpressionList ? parsedRhs.grouping?.[0].location : parsedRhs.location;
 
 		guard(lhsLoc !== undefined && rhsLoc !== undefined,
-			() => `special op lhs and rhs must have a locations, but ${JSON.stringify(parsedLhs)} || ${JSON.stringify(lhsLoc)} and ${JSON.stringify(parsedRhs)} ||  || ${JSON.stringify(rhsLoc)})`)
+			() => `special op lhs and rhs must have a locations, but ${JSON.stringify(parsedLhs)} || ${JSON.stringify(lhsLoc)} and ${JSON.stringify(parsedRhs)} ||  || ${JSON.stringify(rhsLoc)})`);
 		// parse as infix function call!
 		return {
 			type:         RType.FunctionCall,
@@ -84,10 +84,10 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 				}
 			],
 			info: {}
-		}
+		};
 	} else if(operator.name === RawRType.Pipe) {
-		guard(parsedLhs.location !== undefined, () => `pipe lhs must have a location, but ${JSON.stringify(parsedLhs)})`)
-		guard(parsedLhs.lexeme !== undefined, () => `pipe lhs must have a full lexeme, but ${JSON.stringify(parsedLhs)})`)
+		guard(parsedLhs.location !== undefined, () => `pipe lhs must have a location, but ${JSON.stringify(parsedLhs)})`);
+		guard(parsedLhs.lexeme !== undefined, () => `pipe lhs must have a full lexeme, but ${JSON.stringify(parsedLhs)})`);
 		return {
 			type: RType.Pipe,
 			location,
@@ -106,7 +106,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme
 			}
-		}
+		};
 	} else {
 		return {
 			type:     RType.BinaryOp,
@@ -120,6 +120,6 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme
 			}
-		}
+		};
 	}
 }

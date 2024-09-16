@@ -44,55 +44,55 @@ export interface OutputFormatter {
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
 	public format(input: string): string {
-		return input
+		return input;
 	}
 
 	public getFormatString(_options?: FormatOptions): string {
-		return ''
+		return '';
 	}
 
 	public reset(): string {
-		return ''
+		return '';
 	}
-}()
+}();
 
 /**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight.
  */
 export function italic(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
-	return f.format(s, { style: FontStyles.Italic, ...options })
+	return f.format(s, { style: FontStyles.Italic, ...options });
 }
 
 /**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with an italic font shape.
  */
 export function bold(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
-	return f.format(s, { style: FontStyles.Bold, ...options })
+	return f.format(s, { style: FontStyles.Bold, ...options });
 }
 
-export const escape = '\x1b['
-const colorSuffix = 'm'
+export const escape = '\x1b[';
+const colorSuffix = 'm';
 export const ansiFormatter = {
 	reset(): string {
-		return `${escape}0${colorSuffix}`
+		return `${escape}0${colorSuffix}`;
 	},
 
 	format(input: string, options?: FormatOptions): string {
-		return `${this.getFormatString(options)}${input}${this.reset()}`
+		return `${this.getFormatString(options)}${input}${this.reset()}`;
 	},
 
 	getFormatString(options?: FormatOptions): string {
 		if(options === undefined) {
-			return ''
+			return '';
 		}
-		const colorString = 'color' in options ? `${options.effect + options.color}` : ''
-		const weightString = 'style' in options ? `${options.style}` : ''
-		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`
+		const colorString = 'color' in options ? `${options.effect + options.color}` : '';
+		const weightString = 'style' in options ? `${options.style}` : '';
+		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`;
 	}
-}
+};
 
-export let formatter: OutputFormatter = ansiFormatter
+export let formatter: OutputFormatter = ansiFormatter;
 
 export function setFormatter(setFormatter: OutputFormatter): void {
-	formatter = setFormatter
+	formatter = setFormatter;
 }

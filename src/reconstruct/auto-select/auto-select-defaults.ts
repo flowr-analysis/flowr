@@ -1,5 +1,5 @@
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
-import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /**
  * The structure of the predicate that should be used to determine
@@ -16,5 +16,5 @@ export type AutoSelectPredicate = (node: RNode<ParentInformation>, fullAst: Norm
  * A variant of the {@link AutoSelectPredicate} which does not select any additional statements (~&gt; false)
  */
 export function doNotAutoSelect(_node: RNode): boolean {
-	return false
+	return false;
 }

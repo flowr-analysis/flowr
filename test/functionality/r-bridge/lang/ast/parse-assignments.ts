@@ -1,17 +1,17 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { AssignmentOperators } from '../../../_helper/provider'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { AssignmentOperators } from '../../../_helper/provider';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('Parse simple assignments',
 	withShell(shell => {
 		describe('Constant assignments', () => {
 			for(const op of AssignmentOperators) {
-				const opOffset = op.length - 1
-				const data = OperatorDatabase[op]
+				const opOffset = op.length - 1;
+				const data = OperatorDatabase[op];
 				assertAst(label(`x ${op} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...data.capabilities]),
 					shell, `x ${op} 5`,exprList({
 						type:     RType.BinaryOp,
@@ -35,9 +35,9 @@ describe('Parse simple assignments',
 							info:     {}
 						},
 					})
-				)
+				);
 			}
-		})
+		});
 
 		// allow assignments to strings and function calls
 		describe('Assignments to strings', () => {
@@ -67,8 +67,8 @@ describe('Parse simple assignments',
 						info:     {}
 					},
 				})
-			)
-		})
+			);
+		});
 
 		describe('Assignment with an expression list', () => {
 			assertAst(label('x <- { 2 * 3 }', [...OperatorDatabase['*'].capabilities, 'function-calls', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers', 'grouping']),
@@ -131,7 +131,7 @@ describe('Parse simple assignments',
 				}), {
 					ignoreAdditionalTokens: true
 				}
-			)
-		})
+			);
+		});
 	})
-)
+);

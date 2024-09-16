@@ -1,19 +1,19 @@
-import type { DataflowProcessorInformation } from '../../../../processor'
-import type { DataflowInformation } from '../../../../info'
-import { initializeCleanDataflowInformation } from '../../../../info'
-import { processKnownFunctionCall } from './known-call-handling'
-import { appendEnvironment } from '../../../../environments/append'
-import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { resolveByName } from '../../../../environments/resolve-by-name'
-import { VertexType } from '../../../../graph/vertex'
+import type { DataflowProcessorInformation } from '../../../../processor';
+import type { DataflowInformation } from '../../../../info';
+import { initializeCleanDataflowInformation } from '../../../../info';
+import { processKnownFunctionCall } from './known-call-handling';
+import { appendEnvironment } from '../../../../environments/append';
+import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { resolveByName } from '../../../../environments/resolve-by-name';
+import { VertexType } from '../../../../graph/vertex';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
-		return newInfo
+		return newInfo;
 	}
 
 	return {
@@ -24,7 +24,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
 		exitPoints:        [...info.exitPoints, ...newInfo.exitPoints],
-	}
+	};
 }
 
 function processDefaultFunctionProcessor<OtherInfo>(
@@ -34,10 +34,10 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
-	const resolve = resolveByName(name.content, data.environment)
+	const resolve = resolveByName(name.content, data.environment);
 	/* if we do not know where we land, we force! */
-	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all' })
-	return mergeInformation(information, call.information)
+	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all' });
+	return mergeInformation(information, call.information);
 }
 
 export function processNamedCall<OtherInfo>(
@@ -46,31 +46,31 @@ export function processNamedCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const resolved = resolveByName(name.content, data.environment) ?? []
-	let defaultProcessor = resolved.length === 0
+	const resolved = resolveByName(name.content, data.environment) ?? [];
+	let defaultProcessor = resolved.length === 0;
 
-	let information: DataflowInformation | undefined = undefined
-	let builtIn = false
+	let information: DataflowInformation | undefined = undefined;
+	let builtIn = false;
 
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.kind === 'built-in-function') {
-			builtIn = true
-			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data))
+			builtIn = true;
+			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
 		} else {
-			defaultProcessor = true
+			defaultProcessor = true;
 		}
 	}
 
 	if(defaultProcessor) {
-		information = processDefaultFunctionProcessor(information, name, args, rootId, data)
+		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		const v = information.graph.getVertex(rootId)
+		const v = information.graph.getVertex(rootId);
 		if(v?.tag === VertexType.FunctionCall) {
-			v.onlyBuiltin = true
-			v.environment = undefined
+			v.onlyBuiltin = true;
+			v.environment = undefined;
 		}
 	}
 
-	return information ?? initializeCleanDataflowInformation(rootId, data)
+	return information ?? initializeCleanDataflowInformation(rootId, data);
 }

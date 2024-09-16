@@ -1,4 +1,4 @@
-import type { FlowrCapabilities } from './types'
+import type { FlowrCapabilities } from './types';
 
 export const flowrCapabilities = {
 	name:         'Capabilities of flowR',
@@ -760,4 +760,4 @@ export const flowrCapabilities = {
 			description: '_Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)'
 		}
 	]
-} as const satisfies FlowrCapabilities
+} as const satisfies FlowrCapabilities;

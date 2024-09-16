@@ -1,20 +1,20 @@
-import type { DataflowProcessorInformation } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
-import { guard } from '../../../../../../util/assert'
-import type { ProcessKnownFunctionCallResult } from '../known-call-handling'
-import { processKnownFunctionCall } from '../known-call-handling'
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { dataflowLogger } from '../../../../../logger'
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
-import { EdgeType } from '../../../../../graph/edge'
-import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment'
-import type { ForceArguments } from '../common'
-import { BuiltIn } from '../../../../../environments/built-in'
-import { markAsAssignment } from './built-in-assignment'
+import type { DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowInformation } from '../../../../../info';
+import { guard } from '../../../../../../util/assert';
+import type { ProcessKnownFunctionCallResult } from '../known-call-handling';
+import { processKnownFunctionCall } from '../known-call-handling';
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { dataflowLogger } from '../../../../../logger';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { EdgeType } from '../../../../../graph/edge';
+import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
+import type { ForceArguments } from '../common';
+import { BuiltIn } from '../../../../../environments/built-in';
+import { markAsAssignment } from './built-in-assignment';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -27,8 +27,8 @@ function tableAssignmentProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	outInfo: TableAssignmentProcessorMarker
 ): DataflowInformation {
-	outInfo.definitionRootNodes.push(rootId)
-	return processKnownFunctionCall({ name, args, rootId, data }).information
+	outInfo.definitionRootNodes.push(rootId);
+	return processKnownFunctionCall({ name, args, rootId, data }).information;
 }
 
 export function processAccess<OtherInfo>(
@@ -39,18 +39,18 @@ export function processAccess<OtherInfo>(
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
-		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information
+		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
 	}
-	const head = args[0]
-	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
+	const head = args[0];
+	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`);
 
-	let fnCall: ProcessKnownFunctionCallResult
+	let fnCall: ProcessKnownFunctionCallResult;
 	if(!config.treatIndicesAsString) {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
-		const existing = data.environment.current.memory.get(':=')
-		const outInfo = { definitionRootNodes: [] }
+		const existing = data.environment.current.memory.get(':=');
+		const outInfo = { definitionRootNodes: [] };
 		data.environment.current.memory.set(':=', [{
 			kind:                'built-in-function',
 			definedAt:           BuiltIn,
@@ -58,24 +58,24 @@ export function processAccess<OtherInfo>(
 			processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
 			name:                ':=',
 			nodeId:              BuiltIn
-		}])
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs })
+		}]);
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
 		/* recover the environment */
 		if(existing !== undefined) {
-			data.environment.current.memory.set(':=', existing)
+			data.environment.current.memory.set(':=', existing);
 		}
 		if(head.value && outInfo.definitionRootNodes.length > 0) {
 			markAsAssignment(fnCall.information,
 				{ kind: 'variable', name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
 				outInfo.definitionRootNodes,
 				rootId
-			)
+			);
 		}
 	} else {
-		const newArgs = [...args]
+		const newArgs = [...args];
 		// if the argument is a symbol, we convert it to a string for this perspective
 		for(let i = 1; i < newArgs.length; i++) {
-			const arg = newArgs[i]
+			const arg = newArgs[i];
 			if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
 				newArgs[i] = {
 					...arg,
@@ -89,20 +89,20 @@ export function processAccess<OtherInfo>(
 							str:    arg.value.lexeme
 						}
 					}
-				}
+				};
 			}
 		}
-		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs })
+		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
 	}
 
-	const info = fnCall.information
+	const info = fnCall.information;
 
-	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, { type: EdgeType.Returns })
+	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, { type: EdgeType.Returns });
 
 	/* access always reads all of its indices */
 	for(const arg of fnCall.processedArguments) {
 		if(arg !== undefined) {
-			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads })
+			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads });
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
@@ -125,10 +125,10 @@ export function processAccess<OtherInfo>(
 		/** it is, to be precise, the accessed element we want to map to maybe */
 		in:                info.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
-				return makeReferenceMaybe(ref, info.graph, info.environment, false)
+				return makeReferenceMaybe(ref, info.graph, info.environment, false);
 			} else {
-				return ref
+				return ref;
 			}
 		})
-	}
+	};
 }

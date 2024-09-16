@@ -1,6 +1,6 @@
-import path from 'path'
-import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
-import type { MergeableRecord } from '../../util/objects'
+import path from 'path';
+import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer';
+import type { MergeableRecord } from '../../util/objects';
 
 export interface SummarizedWithProject<Uniques=Set<string>, Count=number[]> {
 	uniqueProjects: Uniques
@@ -13,7 +13,7 @@ export function emptySummarizedWithProject(): SummarizedWithProject {
 		uniqueProjects: new Set(),
 		uniqueFiles:    new Set(),
 		count:          []
-	}
+	};
 }
 
 export type ReplaceKeysForSummary<Source, Target> = MergeableRecord & {
@@ -25,6 +25,6 @@ export function recordFilePath(
 	filepath: string,
 	config: StatisticsSummarizerConfiguration
 ): void {
-	summarize.uniqueFiles.add(filepath)
-	summarize.uniqueProjects.add(filepath.split(path.sep)[config.projectSkip] ?? '')
+	summarize.uniqueFiles.add(filepath);
+	summarize.uniqueProjects.add(filepath.split(path.sep)[config.projectSkip] ?? '');
 }

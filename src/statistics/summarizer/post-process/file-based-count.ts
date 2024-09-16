@@ -1,5 +1,5 @@
-import type { ClusterReport } from './clusterer'
-import fs from 'fs'
+import type { ClusterReport } from './clusterer';
+import fs from 'fs';
 
 export interface FileBasedTable {
 	header: string[]
@@ -14,41 +14,41 @@ export interface FileBasedTable {
  * @param report - the report to reformat
  */
 export function fileBasedCount(report: ClusterReport): FileBasedTable {
-	const values = report.valueInfoMap
-	const contexts = [...report.valueInfoMap.values()]
+	const values = report.valueInfoMap;
+	const contexts = [...report.valueInfoMap.values()];
 
-	const header = [...values.keys()].map(k => `"${k}"`)
-	const rows: string[][] = []
+	const header = [...values.keys()].map(k => `"${k}"`);
+	const rows: string[][] = [];
 	for(const id of report.contextIdMap.values()) {
-		rows.push(contexts.map(c => `${c.get(id)}`))
+		rows.push(contexts.map(c => `${c.get(id)}`));
 	}
 
 	return {
 		header: header,
 		rows:   rows
-	}
+	};
 }
 
 /**
  * The threshold will cap of values larger to the threshold.
  */
 export function writeFileBasedCountToFile(table: FileBasedTable, filepath: string): void {
-	const handle = fs.openSync(filepath, 'w')
-	const header = table.header.join('\t')
-	fs.writeSync(handle, `${header}\n`)
+	const handle = fs.openSync(filepath, 'w');
+	const header = table.header.join('\t');
+	fs.writeSync(handle, `${header}\n`);
 
-	let max = 0
+	let max = 0;
 
 	function processEntry(r: string) {
-		const val = Number(r)
-		max = Math.max(val, max)
-		return r
+		const val = Number(r);
+		max = Math.max(val, max);
+		return r;
 	}
 
 	for(const row of table.rows) {
-		fs.writeSync(handle, row.map(processEntry).join('\t') + '\n')
+		fs.writeSync(handle, row.map(processEntry).join('\t') + '\n');
 	}
 
-	fs.writeSync(handle, `%%% max: ${max}\n`)
-	fs.closeSync(handle)
+	fs.writeSync(handle, `%%% max: ${max}\n`);
+	fs.closeSync(handle);
 }

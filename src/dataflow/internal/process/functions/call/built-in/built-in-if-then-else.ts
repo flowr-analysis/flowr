@@ -1,21 +1,21 @@
-import type { DataflowProcessorInformation } from '../../../../../processor'
-import { processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
-import { alwaysExits } from '../../../../../info'
-import { processKnownFunctionCall } from '../known-call-handling'
-import { patchFunctionCall } from '../common'
-import { unpackArgument } from '../argument/unpack-argument'
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { dataflowLogger } from '../../../../../logger'
-import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-by-name'
-import { EdgeType } from '../../../../../graph/edge'
-import { appendEnvironment } from '../../../../../environments/append'
-import type { IdentifierReference } from '../../../../../environments/identifier'
-import { makeAllMaybe } from '../../../../../environments/environment'
-import { Ternary } from '../../../../../../util/logic'
+import type { DataflowProcessorInformation } from '../../../../../processor';
+import { processDataflowFor } from '../../../../../processor';
+import type { DataflowInformation } from '../../../../../info';
+import { alwaysExits } from '../../../../../info';
+import { processKnownFunctionCall } from '../known-call-handling';
+import { patchFunctionCall } from '../common';
+import { unpackArgument } from '../argument/unpack-argument';
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { dataflowLogger } from '../../../../../logger';
+import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-by-name';
+import { EdgeType } from '../../../../../graph/edge';
+import { appendEnvironment } from '../../../../../environments/append';
+import type { IdentifierReference } from '../../../../../environments/identifier';
+import { makeAllMaybe } from '../../../../../environments/environment';
+import { Ternary } from '../../../../../../util/logic';
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -24,64 +24,64 @@ export function processIfThenElse<OtherInfo>(
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
-		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const [condArg, thenArg, otherwiseArg] = args.map(unpackArgument)
+	const [condArg, thenArg, otherwiseArg] = args.map(unpackArgument);
 
 	if(condArg === undefined || thenArg === undefined) {
-		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`)
-		return processKnownFunctionCall({ name, args, rootId, data }).information
+		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const cond = processDataflowFor(condArg, data)
+	const cond = processDataflowFor(condArg, data);
 
 	if(alwaysExits(cond)) {
-		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`)
-		return cond
+		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`);
+		return cond;
 	}
 
-	const originalDependency = data.controlDependencies
+	const originalDependency = data.controlDependencies;
 	// currently we update the cd afterward :sweat:
-	data = { ...data, environment: cond.environment }
+	data = { ...data, environment: cond.environment };
 
-	let then: DataflowInformation | undefined
-	let makeThenMaybe = false
+	let then: DataflowInformation | undefined;
+	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false)
-	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true)
+	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false);
+	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true);
 	if(conditionIsFalse !== Ternary.Always) {
-		then = processDataflowFor(thenArg, data)
+		then = processDataflowFor(thenArg, data);
 		if(then.entryPoint) {
-			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns })
+			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns });
 		}
 		if(conditionIsTrue !== Ternary.Always) {
-			makeThenMaybe = true
+			makeThenMaybe = true;
 		}
 	}
 
-	let otherwise: DataflowInformation | undefined
-	let makeOtherwiseMaybe = false
+	let otherwise: DataflowInformation | undefined;
+	let makeOtherwiseMaybe = false;
 	if(otherwiseArg !== undefined && conditionIsTrue !== Ternary.Always) {
-		otherwise = processDataflowFor(otherwiseArg, data)
+		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
-			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns })
+			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns });
 		}
 		if(conditionIsFalse !== Ternary.Always) {
-			makeOtherwiseMaybe = true
+			makeOtherwiseMaybe = true;
 		}
 	}
 
-	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph)
-	const thenEnvironment = then?.environment ?? cond.environment
+	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph);
+	const thenEnvironment = then?.environment ?? cond.environment;
 
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
-	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment)
+	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
 
-	const cdTrue = { id: rootId, when: true }
-	const cdFalse = { id: rootId, when: false }
+	const cdTrue = { id: rootId, when: true };
+	const cdFalse = { id: rootId, when: false };
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [
 		...cond.in,
@@ -90,7 +90,7 @@ export function processIfThenElse<OtherInfo>(
 		...cond.unknownReferences,
 		...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment, false, cdTrue) : then?.unknownReferences ?? []),
 		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment, false, cdFalse) : otherwise?.unknownReferences ?? []),
-	]
+	];
 
 	// we assign all with a maybe marker
 	// we do not merge even if they appear in both branches because the maybe links will refer to different ids
@@ -98,7 +98,7 @@ export function processIfThenElse<OtherInfo>(
 		...cond.out,
 		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment, true, cdTrue) : then?.out ?? []),
 		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
-	]
+	];
 
 	patchFunctionCall({
 		nextGraph,
@@ -106,15 +106,15 @@ export function processIfThenElse<OtherInfo>(
 		name,
 		data:                  { ...data, controlDependencies: originalDependency },
 		argumentProcessResult: [cond, then, otherwise]
-	})
+	});
 
 	// as an if always evaluates its condition, we add a 'reads'-edge
-	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads })
+	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads });
 
 	const exitPoints = [
 		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies })),
 		...(otherwise?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeOtherwiseMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: false }] : e.controlDependencies }))
-	]
+	];
 
 	return {
 		unknownReferences: [],
@@ -124,5 +124,5 @@ export function processIfThenElse<OtherInfo>(
 		entryPoint:        rootId,
 		environment:       finalEnvironment,
 		graph:             nextGraph
-	}
+	};
 }

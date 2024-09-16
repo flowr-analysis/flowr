@@ -1,7 +1,7 @@
-import type { IEnvironment, REnvironmentInformation } from './environment'
-import { BuiltInEnvironment } from './environment'
-import { Ternary } from '../../util/logic'
-import type { Identifier, IdentifierDefinition } from './identifier'
+import type { IEnvironment, REnvironmentInformation } from './environment';
+import { BuiltInEnvironment } from './environment';
+import { Ternary } from '../../util/logic';
+import type { Identifier, IdentifierDefinition } from './identifier';
 
 
 /**
@@ -13,41 +13,41 @@ import type { Identifier, IdentifierDefinition } from './identifier'
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
-	let current: IEnvironment = environment.current
+	let current: IEnvironment = environment.current;
 	do{
-		const definition = current.memory.get(name)
+		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			return definition
+			return definition;
 		}
-		current = current.parent
-	} while(current.id !== BuiltInEnvironment.id)
+		current = current.parent;
+	} while(current.id !== BuiltInEnvironment.id);
 
-	return current.memory.get(name)
+	return current.memory.get(name);
 }
 
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {
-		return Ternary.Never
+		return Ternary.Never;
 	}
-	const definition = resolveByName(name, environment)
+	const definition = resolveByName(name, environment);
 
 	if(definition === undefined) {
-		return Ternary.Never
+		return Ternary.Never;
 	}
 
-	let all = true
-	let some = false
+	let all = true;
+	let some = false;
 	for(const def of definition) {
 		if(def.kind === 'built-in-value' && def.value === wantedValue) {
-			some = true
+			some = true;
 		} else {
-			all = false
+			all = false;
 		}
 	}
 
 	if(all) {
-		return Ternary.Always
+		return Ternary.Always;
 	} else {
-		return some ? Ternary.Maybe : Ternary.Never
+		return some ? Ternary.Maybe : Ternary.Never;
 	}
 }

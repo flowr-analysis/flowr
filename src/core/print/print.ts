@@ -1,6 +1,6 @@
-import type { IPipelineStep, StepProcessingFunction } from '../steps/pipeline-step'
-import type { TailOfArray } from '../../util/arrays'
-import { guard } from '../../util/assert'
+import type { IPipelineStep, StepProcessingFunction } from '../steps/pipeline-step';
+import type { TailOfArray } from '../../util/arrays';
+import { guard } from '../../util/assert';
 
 /**
  * Defines the output format of a step that you are interested in.
@@ -44,7 +44,7 @@ export const enum StepOutputFormat {
  * @see IPipelineStepPrinter
  */
 export function internalPrinter<Input>(input: Input): Input {
-	return input
+	return input;
 }
 
 /**
@@ -70,7 +70,7 @@ export function printStepResult<
 	Printer extends Step['printer'][Format],
 	AdditionalInput extends TailOfArray<Parameters<Printer>>,
 >(step: Step, data: Awaited<ReturnType<Processor>>, format: Format, ...additional: AdditionalInput): Promise<string> {
-	const printer = step.printer[format] as IPipelineStepPrinter<Processor, Format, AdditionalInput> | undefined
-	guard(printer !== undefined, `printer for ${step.name} does not support ${String(format)}`)
-	return printer(data, ...additional) as Promise<string>
+	const printer = step.printer[format] as IPipelineStepPrinter<Processor, Format, AdditionalInput> | undefined;
+	guard(printer !== undefined, `printer for ${step.name} does not support ${String(format)}`);
+	return printer(data, ...additional) as Promise<string>;
 }

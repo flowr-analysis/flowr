@@ -1,6 +1,6 @@
-import type { Base, Location, NoInfo, RNode } from '../model'
-import type { RType } from '../type'
-import type { RSymbol } from './r-symbol'
+import type { Base, Location, NoInfo, RNode } from '../model';
+import type { RType } from '../type';
+import type { RSymbol } from './r-symbol';
 
 /**
  * Represents a named or unnamed argument of a function definition in R.

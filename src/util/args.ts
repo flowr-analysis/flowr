@@ -17,41 +17,41 @@
  * @param split       - The **single** character to split on (can not be backslash or quote)
  */
 export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
-	const args = []
-	let current = ''
-	let inQuotes = false
-	let escaped = false
+	const args = [];
+	let current = '';
+	let inQuotes = false;
+	let escaped = false;
 
 	for(const c of inputString) {
 		if(escaped) {
-			escaped = false
+			escaped = false;
 			switch(c) {
-				case 'n': current += '\n'; break
-				case 't': current += '\t'; break
-				case 'r': current += '\r'; break
-				case 'v': current += '\v'; break
-				case 'f': current += '\f'; break
-				case 'b': current += '\b'; break
-				default: current += c
+				case 'n': current += '\n'; break;
+				case 't': current += '\t'; break;
+				case 'r': current += '\r'; break;
+				case 'v': current += '\v'; break;
+				case 'f': current += '\f'; break;
+				case 'b': current += '\b'; break;
+				default: current += c;
 			}
 		} else if(c === split && !inQuotes && current !== '') {
-			args.push(current)
-			current = ''
+			args.push(current);
+			current = '';
 		} else if(c === '"' || c === "'") {
-			inQuotes = !inQuotes
+			inQuotes = !inQuotes;
 			if(!escapeQuote) {
-				current += c
+				current += c;
 			}
 		} else if(c === '\\') {
-			escaped = true
+			escaped = true;
 		} else {
-			current += c
+			current += c;
 		}
 	}
 
 	if(current !== '') {
-		args.push(current)
+		args.push(current);
 	}
 
-	return args
+	return args;
 }

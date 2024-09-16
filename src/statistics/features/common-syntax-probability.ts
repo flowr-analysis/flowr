@@ -1,13 +1,13 @@
 /**
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
-import { bigint2number } from '../../util/numbers'
-import type { SummarizedMeasurement } from '../../util/summarizer'
-import { summarizeMeasurement } from '../../util/summarizer'
-import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values'
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type'
-import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument'
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model'
+import { bigint2number } from '../../util/numbers';
+import type { SummarizedMeasurement } from '../../util/summarizer';
+import { summarizeMeasurement } from '../../util/summarizer';
+import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -55,118 +55,118 @@ export function emptyCommonSyntaxTypeCounts<T=bigint>(init: () => T = () => 0n a
 		binOp:        {},
 		unaryOp:      {},
 		other:        {}
-	}
+	};
 }
 
 
 function incrementEntry<T extends string | number | symbol>(map: Record<T, bigint>, key: T): void {
-	map[key] = ((map[key] as bigint | undefined) ?? 0n) + 1n
+	map[key] = ((map[key] as bigint | undefined) ?? 0n) + 1n;
 }
 
 /**
  * Updates the given counts based on the type of the given node.
  */
 export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: (RNode| RArgument)[]): CommonSyntaxTypeCounts {
-	current.total++
+	current.total++;
 	if(nodes.length === 0) {
-		current.empty++
-		return current
+		current.empty++;
+		return current;
 	} else if(nodes.length > 1) {
-		current.multiple++
-		return current
+		current.multiple++;
+		return current;
 	}
 
-	let node: RNode | RArgument  = nodes[0]
+	let node: RNode | RArgument  = nodes[0];
 	if(node.type === RType.Argument) {
 		if(node.name !== undefined) {
-			current.withArgument++
+			current.withArgument++;
 		}
 		if(node.value !== undefined) {
-			node = node.value
+			node = node.value;
 		} else {
-			current.noValue++
-			return current
+			current.noValue++;
+			return current;
 		}
 	}
 	switch(node.type) {
 		case RType.String:
-			incrementEntry(current.string, node.content.str)
-			break
+			incrementEntry(current.string, node.content.str);
+			break;
 		case RType.Symbol:
-			incrementEntry(current.singleVar, node.content)
-			break
+			incrementEntry(current.singleVar, node.content);
+			break;
 		case RType.Logical:
-			incrementEntry(current.logical, node.content ? RTrue : RFalse)
-			break
+			incrementEntry(current.logical, node.content ? RTrue : RFalse);
+			break;
 		case RType.Number:
 			if(node.content.complexNumber) {
-				incrementEntry(current.complex, node.content.num)
+				incrementEntry(current.complex, node.content.num);
 			} else if(node.content.markedAsInt) {
-				incrementEntry(current.integer, node.content.num)
+				incrementEntry(current.integer, node.content.num);
 			} else {
-				incrementEntry(current.number, node.content.num)
+				incrementEntry(current.number, node.content.num);
 			}
-			break
+			break;
 		case RType.FunctionCall:
 			if(!node.named) {
-				current.unnamedCall++
+				current.unnamedCall++;
 			} else {
-				incrementEntry(current.call, node.functionName.content)
+				incrementEntry(current.call, node.functionName.content);
 			}
-			break
+			break;
 		case RType.BinaryOp:
-			incrementEntry(current.binOp, node.operator)
-			break
+			incrementEntry(current.binOp, node.operator);
+			break;
 		case RType.UnaryOp:
-			incrementEntry(current.unaryOp, node.operator)
-			break
+			incrementEntry(current.unaryOp, node.operator);
+			break;
 		default:
 			// for space reasons, we do not record the full lexeme!
 			if(node.lexeme) {
-				incrementEntry(current.other, node.lexeme)
+				incrementEntry(current.other, node.lexeme);
 			}
-			break
+			break;
 	}
 
-	return current
+	return current;
 }
 
 
 
 function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
 	for(const [key, val] of Object.entries(b)) {
-		const get = a[key]
+		const get = a[key];
 		// we guard with array, to guard against methods like `toString` which are given in js
 		if(!get || !Array.isArray(get)) {
-			a[key] = [[bigint2number(val)]]
-			continue
+			a[key] = [[bigint2number(val)]];
+			continue;
 		}
-		get.push([bigint2number(val)])
+		get.push([bigint2number(val)]);
 	}
 }
 
 export function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>, b: CommonSyntaxTypeCounts) {
-	a.total.push([bigint2number(b.total)])
-	a.empty.push([bigint2number(b.empty)])
-	a.multiple.push([bigint2number(b.multiple)])
-	a.withArgument.push([bigint2number(b.withArgument)])
-	a.noValue.push([bigint2number(b.noValue)])
-	a.unnamedCall.push([bigint2number(b.unnamedCall)])
-	appendRecord(a.singleVar, b.singleVar)
-	appendRecord(a.number, b.number)
-	appendRecord(a.integer, b.integer)
-	appendRecord(a.complex, b.complex)
-	appendRecord(a.string, b.string)
-	appendRecord(a.logical, b.logical)
-	appendRecord(a.call, b.call)
-	appendRecord(a.binOp, b.binOp)
-	appendRecord(a.unaryOp, b.unaryOp)
-	appendRecord(a.other, b.other)
+	a.total.push([bigint2number(b.total)]);
+	a.empty.push([bigint2number(b.empty)]);
+	a.multiple.push([bigint2number(b.multiple)]);
+	a.withArgument.push([bigint2number(b.withArgument)]);
+	a.noValue.push([bigint2number(b.noValue)]);
+	a.unnamedCall.push([bigint2number(b.unnamedCall)]);
+	appendRecord(a.singleVar, b.singleVar);
+	appendRecord(a.number, b.number);
+	appendRecord(a.integer, b.integer);
+	appendRecord(a.complex, b.complex);
+	appendRecord(a.string, b.string);
+	appendRecord(a.logical, b.logical);
+	appendRecord(a.call, b.call);
+	appendRecord(a.binOp, b.binOp);
+	appendRecord(a.unaryOp, b.unaryOp);
+	appendRecord(a.other, b.other);
 }
 
 
 function summarizeRecord(a: Record<string, number[][]>): Record<string, SummarizedMeasurement> {
-	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]))
+	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]));
 }
 
 export function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>): CommonSyntaxTypeCounts<SummarizedMeasurement> {
@@ -187,5 +187,5 @@ export function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<numbe
 		binOp:        summarizeRecord(a.binOp),
 		unaryOp:      summarizeRecord(a.unaryOp),
 		other:        summarizeRecord(a.other)
-	}
+	};
 }

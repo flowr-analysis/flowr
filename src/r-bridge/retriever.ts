@@ -1,16 +1,16 @@
-import { type RShell } from './shell'
-import { startAndEndsWith } from '../util/strings'
-import type { AsyncOrSync } from 'ts-essentials'
-import { guard } from '../util/assert'
-import { RShellExecutor } from './shell-executor'
-import objectHash from 'object-hash'
-import { normalize } from './lang-4.x/ast/parser/json/parser'
-import { ErrorMarker } from './init'
-import { ts2r } from './lang-4.x/convert-values'
-import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate'
-import { RawRType } from './lang-4.x/ast/model/type'
+import { type RShell } from './shell';
+import { startAndEndsWith } from '../util/strings';
+import type { AsyncOrSync } from 'ts-essentials';
+import { guard } from '../util/assert';
+import { RShellExecutor } from './shell-executor';
+import objectHash from 'object-hash';
+import { normalize } from './lang-4.x/ast/parser/json/parser';
+import { ErrorMarker } from './init';
+import { ts2r } from './lang-4.x/convert-values';
+import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
+import { RawRType } from './lang-4.x/ast/model/type';
 
-export const fileProtocol = 'file://'
+export const fileProtocol = 'file://';
 
 export interface RParseRequestFromFile {
 	readonly request: 'file';
@@ -58,14 +58,14 @@ export function requestFromInput(input: readonly string[]): RParseRequests
  */
 export function requestFromInput(input: `${typeof fileProtocol}${string}` | string | readonly string[]): RParseRequests  {
 	if(Array.isArray(input)) {
-		return input.flatMap(requestFromInput)
+		return input.flatMap(requestFromInput);
 	}
-	const content = input as string
-	const file = content.startsWith(fileProtocol)
+	const content = input as string;
+	const file = content.startsWith(fileProtocol);
 	return {
 		request: file ? 'file' : 'text',
 		content: file ? content.slice(7) : content
-	}
+	};
 }
 
 
@@ -75,9 +75,9 @@ export function requestProviderFromFile(): RParseRequestProvider {
 			return {
 				request: 'file',
 				content: path,
-			}
+			};
 		}
-	}
+	};
 }
 
 export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
@@ -86,17 +86,17 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 			return {
 				request: 'text',
 				content: text[path]
-			}
+			};
 		}
-	}
+	};
 }
 
 export function requestFingerprint(request: RParseRequest): string {
-	return objectHash(request)
+	return objectHash(request);
 }
 
 export function isEmptyRequest(request: RParseRequest): boolean {
-	return request.content.trim().length === 0
+	return request.content.trim().length === 0;
 }
 
 
@@ -112,20 +112,20 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  */
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string> {
 	if(isEmptyRequest(request)) {
-		return Promise.resolve('')
+		return Promise.resolve('');
 	}
-	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 	/* call the function with the request */
 	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
 		request.content
-	)}${suffix})`
+	)}${suffix})`;
 
 	if(shell instanceof RShellExecutor) {
-		return guardRetrievedOutput(shell.run(command), request)
+		return guardRetrievedOutput(shell.run(command), request);
 	} else {
 		return shell.sendCommandWithOutput(command).then(result =>
 			guardRetrievedOutput(result.join(shell.options.eol), request)
-		)
+		);
 	}
 }
 
@@ -134,8 +134,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
-	const data = await retrieveParseDataFromRCode(request, shell)
-	return normalize(data)
+	const data = await retrieveParseDataFromRCode(request, shell);
+	return normalize(data);
 }
 
 /**
@@ -143,9 +143,9 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, she
  */
 export function removeRQuotes(str: string): string {
 	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
-		return str.slice(1, -1)
+		return str.slice(1, -1);
 	} else {
-		return str
+		return str;
 	}
 }
 
@@ -153,14 +153,14 @@ export function removeRQuotes(str: string): string {
  * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreComments = false): Promise<number> {
-	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output'
-	const result = await shell.sendCommandWithOutput(`cat(nrow(${rows}),${ts2r(shell.options.eol)})`)
-	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
-	return Number(result[0])
+	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output';
+	const result = await shell.sendCommandWithOutput(`cat(nrow(${rows}),${ts2r(shell.options.eol)})`);
+	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`);
+	return Number(result[0]);
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
 	guard(output !== ErrorMarker,
-		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-	return output
+		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`);
+	return output;
 }

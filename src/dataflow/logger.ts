@@ -1,3 +1,3 @@
-import { log } from '../util/log'
+import { log } from '../util/log';
 
-export const dataflowLogger = log.getSubLogger({ name: 'dataflow' })
+export const dataflowLogger = log.getSubLogger({ name: 'dataflow' });

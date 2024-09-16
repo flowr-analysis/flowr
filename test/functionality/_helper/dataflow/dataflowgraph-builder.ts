@@ -1,20 +1,20 @@
-import { deepMergeObject } from '../../../../src/util/objects'
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph'
-import { isPositionalArgument, DataflowGraph } from '../../../../src/dataflow/graph/graph'
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment'
-import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
-import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex'
-import { VertexType } from '../../../../src/dataflow/graph/vertex'
-import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import { BuiltIn } from '../../../../src/dataflow/environments/built-in'
-import { EdgeType } from '../../../../src/dataflow/graph/edge'
-import type { ControlDependency } from '../../../../src/dataflow/info'
+import { deepMergeObject } from '../../../../src/util/objects';
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph';
+import { isPositionalArgument, DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
+import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
+import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex';
+import { VertexType } from '../../../../src/dataflow/graph/vertex';
+import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
+import { EdgeType } from '../../../../src/dataflow/graph/edge';
+import type { ControlDependency } from '../../../../src/dataflow/info';
 
 export function emptyGraph(idMap?: AstIdMap) {
-	return new DataflowGraphBuilder(idMap)
+	return new DataflowGraphBuilder(idMap);
 }
 
 export type DataflowGraphEdgeTarget = NodeId | (readonly NodeId[]);
@@ -53,7 +53,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			exitPoints:          exitPoints.map(normalizeIdToNumberIfPossible),
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment:         info?.environment
-		}, asRoot)
+		}, asRoot);
 	}
 
 	/**
@@ -75,7 +75,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			controlDependencies?: ControlDependency[]
 		},
 		asRoot: boolean = true) {
-		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
+		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn;
 		this.addVertex({
 			tag:                 VertexType.FunctionCall,
 			id:                  normalizeIdToNumberIfPossible(id),
@@ -84,36 +84,36 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			environment:         (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? initializeCleanEnvironments(),
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin:         info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false
-		}, asRoot)
-		this.addArgumentLinks(id, args)
+		}, asRoot);
+		this.addArgumentLinks(id, args);
 		if(info?.returns) {
 			for(const ret of info.returns) {
-				this.returns(id, ret)
+				this.returns(id, ret);
 			}
 		}
 		if(info?.reads) {
 			for(const call of info.reads) {
-				this.reads(id, call)
+				this.reads(id, call);
 			}
 		}
-		return this
+		return this;
 	}
 
 	/** automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
 			if(arg === EmptyArgument) {
-				continue
+				continue;
 			}
 			if(isPositionalArgument(arg)) {
-				this.argument(id, arg.nodeId)
+				this.argument(id, arg.nodeId);
 				if(typeof arg.nodeId === 'string' && arg.nodeId.endsWith('-arg')) {
-					const withoutSuffix = arg.nodeId.slice(0, -4)
-					this.reads(arg.nodeId, withoutSuffix)
+					const withoutSuffix = arg.nodeId.slice(0, -4);
+					this.reads(arg.nodeId, withoutSuffix);
 				}
 			} else if(!this.hasVertex(arg.nodeId, true)) {
-				this.use(arg.nodeId, arg.name, { controlDependencies: arg.controlDependencies })
-				this.argument(id, arg.nodeId)
+				this.use(arg.nodeId, arg.name, { controlDependencies: arg.controlDependencies });
+				this.argument(id, arg.nodeId);
 			}
 		}
 	}
@@ -134,13 +134,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:                  normalizeIdToNumberIfPossible(id),
 			name,
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
-		}, asRoot)
+		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
-				this.definedBy(id, def)
+				this.definedBy(id, def);
 			}
 		}
-		return this
+		return this;
 	}
 
 	/**
@@ -162,7 +162,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		}, {
 			...info,
 			controlDependencies: info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as Partial<DataflowGraphVertexUse>), asRoot)
+		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
 
@@ -180,17 +180,17 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			id:                  normalizeIdToNumberIfPossible(id),
 			controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			environment:         undefined
-		}, asRoot)
+		}, asRoot);
 	}
 
 	private edgeHelper(from: NodeId, to: DataflowGraphEdgeTarget, type: EdgeType) {
 		if(Array.isArray(to)) {
 			for(const t of to) {
-				this.edgeHelper(from, t as NodeId, type)
+				this.edgeHelper(from, t as NodeId, type);
 			}
-			return this
+			return this;
 		}
-		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), { type })
+		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), { type });
 	}
 
 	/**
@@ -200,7 +200,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param to   - see from
 	 */
 	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Reads)
+		return this.edgeHelper(from, to, EdgeType.Reads);
 	}
 
 	/**
@@ -210,7 +210,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public definedBy(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.DefinedBy)
+		return this.edgeHelper(from, to, EdgeType.DefinedBy);
 	}
 
 	/**
@@ -219,7 +219,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Calls)
+		return this.edgeHelper(from, to, EdgeType.Calls);
 	}
 
 	/**
@@ -228,7 +228,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public returns(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Returns)
+		return this.edgeHelper(from, to, EdgeType.Returns);
 	}
 
 	/**
@@ -237,7 +237,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.DefinesOnCall)
+		return this.edgeHelper(from, to, EdgeType.DefinesOnCall);
 	}
 
 	/**
@@ -246,7 +246,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Argument)
+		return this.edgeHelper(from, to, EdgeType.Argument);
 	}
 
 	/**
@@ -255,7 +255,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation)
+		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation);
 	}
 
 	/**
@@ -264,7 +264,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall)
+		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall);
 	}
 
 
@@ -273,7 +273,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags.
 	 */
 	public overwriteRootIds(ids: readonly NodeId[]) {
-		this.rootVertices = new Set(ids.map(normalizeIdToNumberIfPossible))
-		return this
+		this.rootVertices = new Set(ids.map(normalizeIdToNumberIfPossible));
+		return this;
 	}
 }

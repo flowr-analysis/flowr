@@ -1,5 +1,5 @@
-import type { MergeableRecord } from '../../../../../util/objects'
-import type { SourceRange } from '../../../../../util/range'
+import type { MergeableRecord } from '../../../../../util/objects';
+import type { SourceRange } from '../../../../../util/range';
 
 /**
  * Contains all information populated and present during parsing and normalization of the R AST.

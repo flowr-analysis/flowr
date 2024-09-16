@@ -1,5 +1,5 @@
-import { testForFeatureForInput } from '../statistics.spec'
-import { withShell } from '../../_helper/shell'
+import { testForFeatureForInput } from '../statistics.spec';
+import { withShell } from '../../_helper/shell';
 
 
 describe('Expression List', withShell(shell => {
@@ -34,5 +34,5 @@ describe('Expression List', withShell(shell => {
 			},
 			written: 'nothing'
 		}
-	])
-}))
+	]);
+}));

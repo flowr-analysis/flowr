@@ -1,15 +1,15 @@
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import {
 	UnnamedFunctionCallPrefix
-} from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
-import { label } from '../../../_helper/label'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get'
+} from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -49,7 +49,7 @@ describe('Function Call', withShell(shell => {
 					environment:       defaultEnv().pushEnv().defineParameter('x', '4', '5')
 				})
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
-		)
+		);
 
 		assertDataflow(label('Calling function a with an indirection', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'newlines', 'unnamed-arguments']), shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
@@ -95,7 +95,7 @@ describe('Function Call', withShell(shell => {
 				})
 				.defineVariable('3', 'a', { definedBy: ['10', '11'] })
 				.defineVariable('12', 'b', { definedBy: ['13', '14'] })
-		)
+		);
 
 		assertDataflow(label('Calling with a constant function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-named', 'implicit-return', 'unnamed-arguments']), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
@@ -148,8 +148,8 @@ a(i)`, emptyGraph()
 				environment:       defaultEnv().pushEnv().defineVariable('x', '11', '13')
 			})
 			.defineVariable('3', 'a', { definedBy: ['16', '17'] })
-		)
-	})
+		);
+	});
 
 	describe('Directly calling a function', () => {
 		const outGraph = emptyGraph()
@@ -180,15 +180,15 @@ a(i)`, emptyGraph()
 				environment:       defaultEnv().pushEnv().defineParameter('x', '2', '3')
 			})
 			.constant('12', undefined)
-			.definesOnCall('12', '2')
+			.definesOnCall('12', '2');
 
 		assertDataflow(label('Calling with constant argument using lambda', ['lambda-syntax', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...OperatorDatabase['+'].capabilities]), shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
-		)
+		);
 		assertDataflow(label('Calling with constant argument', ['formals-named', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...OperatorDatabase['+'].capabilities]), shell, '(function(x) { x + 1 })(2)',
 			outGraph
-		)
+		);
 
 		assertDataflow(label('Calling a function which returns another', ['name-normal', 'normal-definition', 'implicit-return', 'call-normal', 'numbers', 'closures']), shell, `a <- function() { function() { 42 } }
 a()()`, emptyGraph()
@@ -229,8 +229,8 @@ a()()`, emptyGraph()
 				environment:       defaultEnv().pushEnv()
 			})
 			.defineVariable('0', 'a', { definedBy: ['9', '10'] })
-		)
-	})
+		);
+	});
 
 	describe('Argument which is expression', () => {
 		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...OperatorDatabase['+'].capabilities]), shell, 'foo(1 + x)', emptyGraph()
@@ -240,8 +240,8 @@ a()()`, emptyGraph()
 			.call('5', 'foo', [argumentInCall('3')], { returns: [], reads: [] })
 			.reads('5', '3')
 			.constant('1')
-		)
-	})
+		);
+	});
 
 	describe('Argument which is anonymous function call', () => {
 		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), shell, 'f(function() { 3 })', emptyGraph()
@@ -261,8 +261,8 @@ a()()`, emptyGraph()
 				graph:             new Set(['3', '4']),
 				environment:       defaultEnv().pushEnv()
 			})
-		)
-	})
+		);
+	});
 
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow(label('Calling \'seq\'', ['function-calls', 'numbers', 'unnamed-arguments', 'named-arguments']), shell, 'seq(1, length(pkgnames), by = stepsize)',
@@ -279,8 +279,8 @@ a()()`, emptyGraph()
 				})
 				.argument('11', '10')
 				.constant('1')
-		)
-	})
+		);
+	});
 
 	describe('Late function bindings', () => {
 		assertDataflow(label('Late binding of y', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']), shell, 'a <- function() { y }\ny <- 12\na()', emptyGraph()
@@ -313,8 +313,8 @@ a()()`, emptyGraph()
 			.defineVariable('0', 'a', { definedBy: ['5', '6'] })
 			.constant('8')
 			.defineVariable('7', 'y', { definedBy: ['8', '9'] })
-		)
-	})
+		);
+	});
 
 	describe('Deal with empty calls', () => {
 		assertDataflow(label('Not giving first parameter', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'formals-default', 'implicit-return', 'newlines', 'empty-arguments', 'unnamed-arguments']), shell, `a <- function(x=3,y) { y }
@@ -347,8 +347,8 @@ a(,3)`, emptyGraph()
 			.defineVariable('0', 'a', { definedBy: ['10', '11'] })
 			.constant('13')
 			.definesOnCall('13', '4')
-		)
-	})
+		);
+	});
 	describe('Reuse parameters in call', () => {
 		assertDataflow(label('Not giving first argument', ['named-arguments', 'unnamed-arguments', 'numbers', 'name-normal']), shell, 'a(x=3, x)', emptyGraph()
 			.use('3', 'x')
@@ -358,8 +358,8 @@ a(,3)`, emptyGraph()
 			.reads('6', '4')
 			.argument('6', '3')
 			.constant('2')
-		)
-	})
+		);
+	});
 	describe('Define in parameters', () => {
 		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell, 'foo(x <- 3); x', emptyGraph()
 			.use('6', 'x')
@@ -369,10 +369,10 @@ a(,3)`, emptyGraph()
 			.reads('5', '3')
 			.constant('2')
 			.defineVariable('1', 'x', { definedBy: ['2', '3'] })
-		)
-	})
+		);
+	});
 	describe('*apply', () => {
-		const caps: SupportedFlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities]
+		const caps: SupportedFlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities];
 		describe('no additional arguments', () => {
 			for(const applyFn of ['sapply', 'vapply', 'lapply']) {
 				assertDataflow(label(applyFn + ' without arguments', caps), shell, `g <- function(x) { x * 2 }
@@ -386,9 +386,9 @@ ${applyFn}(x, g)`,
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true
 				}
-				)
+				);
 			}
-		})
+		});
 		describe('with additional arguments', () => {
 			for(const applyFn of ['sapply', 'vapply']) {
 				assertDataflow(label(applyFn + ' with arguments', caps), shell, `g <- function(x, y, z, a) { x * 2 }
@@ -407,8 +407,8 @@ ${applyFn}(x, g, k, u)`,
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true
 				}
-				)
+				);
 			}
-		})
-	})
-}))
+		});
+	});
+}));

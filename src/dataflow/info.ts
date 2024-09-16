@@ -1,9 +1,9 @@
-import type { DataflowProcessorInformation } from './processor'
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { IdentifierReference } from './environments/identifier'
-import type { REnvironmentInformation } from './environments/environment'
-import { DataflowGraph } from './graph/graph'
-import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff'
+import type { DataflowProcessorInformation } from './processor';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { IdentifierReference } from './environments/identifier';
+import type { REnvironmentInformation } from './environments/environment';
+import { DataflowGraph } from './graph/graph';
+import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
 
 export const enum ExitPointType {
 	/** The exit point is the implicit (last executed expression of a function/block) */
@@ -34,7 +34,7 @@ export interface ExitPoint {
 }
 
 export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly ExitPoint[]): void {
-	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default))
+	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default));
 }
 
 /** The control flow information for the current {@link DataflowInformation}. */
@@ -75,68 +75,68 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		graph:             new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
 		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
-	}
+	};
 }
 
 export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
 	if(controlDependencies === undefined) {
 		/* the cds are unconstrained */
-		return true
+		return true;
 	} else if(controlDependencies.length === 0) {
 		/* this happens only when we have no idea and require more analysis */
-		return false
+		return false;
 	}
 
-	const trues = []
-	const falseSet = new Set()
+	const trues = [];
+	const falseSet = new Set();
 
 	for(const { id, when } of controlDependencies) {
 		if(when) {
-			trues.push(id)
+			trues.push(id);
 		} else {
-			falseSet.add(id)
+			falseSet.add(id);
 		}
 	}
 
-	return trues.every(id => falseSet.has(id))
+	return trues.every(id => falseSet.has(id));
 }
 
 export function alwaysExits(data: DataflowInformation): boolean {
 	return data.exitPoints?.some(
 		e => e.type !== ExitPointType.Default && happensInEveryBranch(e.controlDependencies)
-	) ?? false
+	) ?? false;
 }
 
 export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
-	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default)
+	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default);
 }
 
 export function diffControlDependency<Report extends WriteableDifferenceReport>(a: ControlDependency | undefined, b: ControlDependency | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different control dependencies. ${info.leftname}: ${JSON.stringify(a)} vs. ${info.rightname}: ${JSON.stringify(b)}`)
+			info.report.addComment(`${info.position}Different control dependencies. ${info.leftname}: ${JSON.stringify(a)} vs. ${info.rightname}: ${JSON.stringify(b)}`);
 		}
-		return
+		return;
 	}
 	if(a.id !== b.id) {
-		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${a.id} vs. ${info.rightname}: ${b.id}`)
+		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${a.id} vs. ${info.rightname}: ${b.id}`);
 	}
 	if(a.when !== b.when) {
-		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`)
+		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
 	}
 }
 
 export function diffControlDependencies<Report extends WriteableDifferenceReport>(a: ControlDependency[] | undefined, b: ControlDependency[] | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different control dependencies: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`)
+			info.report.addComment(`${info.position}Different control dependencies: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`);
 		}
-		return
+		return;
 	}
 	if(a.length !== b.length) {
-		info.report.addComment(`${info.position}Different control dependency lengths: ${a.length} vs. ${b.length}`)
+		info.report.addComment(`${info.position}Different control dependency lengths: ${a.length} vs. ${b.length}`);
 	}
 	for(let i = 0; i < a.length; ++i) {
-		diffControlDependency(a[i], b[i], { ...info, position: `${info.position}Control dependency at index: ${i}: ` })
+		diffControlDependency(a[i], b[i], { ...info, position: `${info.position}Control dependency at index: ${i}: ` });
 	}
 }

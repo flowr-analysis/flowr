@@ -1,51 +1,51 @@
-import { guard } from '../../util/assert'
-import type { REnvironmentInformation, IEnvironment } from './environment'
-import { BuiltInEnvironment , Environment } from './environment'
-import type { IdentifierDefinition } from './identifier'
+import { guard } from '../../util/assert';
+import type { REnvironmentInformation, IEnvironment } from './environment';
+import { BuiltInEnvironment , Environment } from './environment';
+import type { IdentifierDefinition } from './identifier';
 
 function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
-		return true
+		return true;
 	}
 	for(const val of values) {
 		if(val.controlDependencies !== undefined) {
-			return true
+			return true;
 		}
 	}
-	return false
+	return false;
 }
 
 export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true): IEnvironment {
-	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
-	const map = new Map(base.memory)
+	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
+	const map = new Map(base.memory);
 	for(const [key, values] of next.memory) {
-		const hasMaybe = anyIsMaybeOrEmpty(values)
+		const hasMaybe = anyIsMaybeOrEmpty(values);
 		if(hasMaybe) {
-			const old = map.get(key)
+			const old = map.get(key);
 			// we need to make a copy to avoid side effects for old reference in other environments
-			const updatedOld: IdentifierDefinition[] = old ?? []
+			const updatedOld: IdentifierDefinition[] = old ?? [];
 			for(const v of values) {
-				const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+				const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
 				if(index < 0) {
-					updatedOld.push(v)
+					updatedOld.push(v);
 				}
 			}
-			map.set(key, [...updatedOld])
+			map.set(key, [...updatedOld]);
 		} else {
-			map.set(key, values)
+			map.set(key, values);
 		}
 	}
 
-	let parent: IEnvironment
+	let parent: IEnvironment;
 	if(includeParent) {
-		parent = base.parent.id === BuiltInEnvironment.id ? BuiltInEnvironment : overwriteIEnvironmentWith(base.parent, next.parent)
+		parent = base.parent.id === BuiltInEnvironment.id ? BuiltInEnvironment : overwriteIEnvironmentWith(base.parent, next.parent);
 	} else {
-		parent = base.parent
+		parent = base.parent;
 	}
 
-	const out = new Environment(parent)
-	out.memory = map
-	return out
+	const out = new Environment(parent);
+	out.memory = map;
+	return out;
 }
 
 
@@ -59,14 +59,14 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
  */
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
-		return next
+		return next;
 	} else if(next === undefined) {
-		return base
+		return base;
 	}
-	guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`)
+	guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`);
 
 	return {
 		current: overwriteIEnvironmentWith(base.current, next.current),
 		level:   base.level
-	}
+	};
 }

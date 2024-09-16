@@ -1,7 +1,7 @@
-import type { ReplCommand, ReplOutput } from './main'
-import { flowrVersion } from '../../../util/version'
-import { guard } from '../../../util/assert'
-import type { RShell } from '../../../r-bridge/shell'
+import type { ReplCommand, ReplOutput } from './main';
+import { flowrVersion } from '../../../util/version';
+import { guard } from '../../../util/assert';
+import type { RShell } from '../../../r-bridge/shell';
 
 type Version = `${number}.${number}.${number}`
 
@@ -15,22 +15,22 @@ export interface VersionInformation {
 	r:     Version | 'unknown'
 }
 
-const versionRegex = /^\d+\.\d+\.\d+/m
+const versionRegex = /^\d+\.\d+\.\d+/m;
 
 export async function retrieveVersionInformation(shell: RShell): Promise<VersionInformation> {
-	const flowr = flowrVersion().toString()
-	const r = (await shell.usedRVersion())?.format() ?? 'unknown'
+	const flowr = flowrVersion().toString();
+	const r = (await shell.usedRVersion())?.format() ?? 'unknown';
 
-	guard(versionRegex.test(flowr), `flowR version ${flowr} does not match the expected format!`)
-	guard(r === 'unknown' || versionRegex.test(r), `R version ${r} does not match the expected format!`)
+	guard(versionRegex.test(flowr), `flowR version ${flowr} does not match the expected format!`);
+	guard(r === 'unknown' || versionRegex.test(r), `R version ${r} does not match the expected format!`);
 
-	return { flowr: flowr as Version, r: r as Version }
+	return { flowr: flowr as Version, r: r as Version };
 }
 
 export async function printVersionInformation(output: ReplOutput, shell: RShell) {
-	const { flowr, r } = await retrieveVersionInformation(shell)
-	output.stdout(`flowR: ${flowr}`)
-	output.stdout(`R: ${r}`)
+	const { flowr, r } = await retrieveVersionInformation(shell);
+	output.stdout(`flowR: ${flowr}`);
+	output.stdout(`R: ${r}`);
 }
 
 
@@ -40,4 +40,4 @@ export const versionCommand: ReplCommand = {
 	usageExample: ':version',
 	script:       false,
 	fn:           (output, shell) => printVersionInformation(output, shell)
-}
+};

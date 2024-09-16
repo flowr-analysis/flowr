@@ -1,5 +1,5 @@
-import { testForFeatureForInput } from '../statistics.spec'
-import { withShell } from '../../_helper/shell'
+import { testForFeatureForInput } from '../statistics.spec';
+import { withShell } from '../../_helper/shell';
 
 describe('Assignments', withShell(shell => {
 	testForFeatureForInput(shell, 'assignments', [
@@ -25,5 +25,5 @@ describe('Assignments', withShell(shell => {
 			},
 			written: 'nothing'
 		}
-	])
-}))
+	]);
+}));

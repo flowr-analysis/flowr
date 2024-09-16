@@ -3,18 +3,18 @@
 export function jsonReplacer(key: any, value: any): any {
 	if(value instanceof Map || value instanceof Set) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return [...value]
+		return [...value];
 	} else if(typeof value === 'bigint') {
-		return `${value.toString()}n`
+		return `${value.toString()}n`;
 	} else {
-		return value
+		return value;
 	}
 }
 
 export function jsonBigIntRetriever(key: string, value: unknown): unknown {
 	if(typeof value === 'string' && value.endsWith('n')) {
-		return BigInt(value.slice(0, -1))
+		return BigInt(value.slice(0, -1));
 	} else {
-		return value
+		return value;
 	}
 }

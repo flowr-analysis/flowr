@@ -1,7 +1,7 @@
-import type { SingleSlicingCriterion } from '../../../../slicing/criterion/parse'
-import type { IdMessageBase, MessageDefinition } from './messages'
-import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import Joi from 'joi'
+import type { SingleSlicingCriterion } from '../../../../slicing/criterion/parse';
+import type { IdMessageBase, MessageDefinition } from './messages';
+import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import Joi from 'joi';
 
 export interface LineageRequestMessage extends IdMessageBase {
 	type:      'request-lineage',
@@ -19,7 +19,7 @@ export const requestLineageMessage: MessageDefinition<LineageRequestMessage> = {
 		filetoken: Joi.string().required(),
 		criterion: Joi.string().required()
 	})
-}
+};
 
 export interface LineageResponseMessage extends IdMessageBase {
 	type:    'response-lineage',

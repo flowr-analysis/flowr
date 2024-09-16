@@ -1,6 +1,6 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { REnvironmentInformation } from '../../dataflow/environments/environment'
-import type { DecodedCriteria } from '../criterion/parse'
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
+import type { DecodedCriteria } from '../criterion/parse';
 
 
 /**

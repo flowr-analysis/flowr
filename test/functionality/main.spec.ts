@@ -4,13 +4,13 @@
  * @module
  */
 
-import { LogLevel } from '../../src/util/log'
-import chai from 'chai'
-import { setMinLevelOfAllLogs } from './_helper/log'
+import { LogLevel } from '../../src/util/log';
+import chai from 'chai';
+import { setMinLevelOfAllLogs } from './_helper/log';
 
-chai.config.includeStack = true
-chai.config.showDiff = true
-chai.config.truncateThreshold = 0
+chai.config.includeStack = true;
+chai.config.showDiff = true;
+chai.config.truncateThreshold = 0;
 
-export const VERBOSE_TESTS = process.argv.includes('--verbose')
-before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS))
+export const VERBOSE_TESTS = process.argv.includes('--verbose');
+before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS));

@@ -1,37 +1,37 @@
-import { assert } from 'chai'
-import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process'
-import { BenchmarkSlicer } from '../../../src/benchmark/slicer'
-import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print'
-import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats'
+import { assert } from 'chai';
+import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
+import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
+import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
+import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
-	const { stats: rawStats } = slicer.finish()
-	const stats = await summarizeSlicerStats(rawStats)
-	const statInfo = stats2string(stats)
+	const { stats: rawStats } = slicer.finish();
+	const stats = await summarizeSlicerStats(rawStats);
+	const statInfo = stats2string(stats);
 
-	assert.strictEqual(stats.request, request, statInfo)
-	assert.sameMembers([...stats.commonMeasurements.keys()], [...CommonSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`)
-	assert.sameMembers([...stats.perSliceMeasurements.measurements.keys()], [...PerSliceMeasurements], `Must have all keys in per-slice measurements ${statInfo}`)
-	return { stats, statInfo }
+	assert.strictEqual(stats.request, request, statInfo);
+	assert.sameMembers([...stats.commonMeasurements.keys()], [...CommonSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
+	assert.sameMembers([...stats.perSliceMeasurements.measurements.keys()], [...PerSliceMeasurements], `Must have all keys in per-slice measurements ${statInfo}`);
+	return { stats, statInfo };
 }
 
 describe('Benchmark Slicer', () => {
 	it('Print times', () => {
-		assert.equal(formatNanoseconds(0).trim(), '0:000000ms')
-		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms')
-		assert.equal(formatNanoseconds(1e+9).trim(), '1.000 s')
-		assert.equal(formatNanoseconds(1.25e+9).trim(), '1.250 s')
-		assert.equal(formatNanoseconds(234892342839398).trim(), '234892.342:839398 s')
-	})
+		assert.equal(formatNanoseconds(0).trim(), '0:000000ms');
+		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms');
+		assert.equal(formatNanoseconds(1e+9).trim(), '1.000 s');
+		assert.equal(formatNanoseconds(1.25e+9).trim(), '1.250 s');
+		assert.equal(formatNanoseconds(234892342839398).trim(), '234892.342:839398 s');
+	});
 
 	describe('Stats by parsing text-based inputs', function() {
-		this.timeout('15min')
+		this.timeout('15min');
 		it('Simple slice for simple line', async() => {
-			const slicer = new BenchmarkSlicer()
-			const request = { request: 'text' as const, content: 'a <- b' }
-			await slicer.init(request)
-			await slicer.slice('1@a')
-			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
+			const slicer = new BenchmarkSlicer();
+			const request = { request: 'text' as const, content: 'a <- b' };
+			await slicer.init(request);
+			await slicer.slice('1@a');
+			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
 			assert.deepStrictEqual(stats.input, {
 				numberOfLines:                             1,
@@ -44,7 +44,7 @@ describe('Benchmark Slicer', () => {
 				numberOfRTokensNoComments:                 6,
 				numberOfNormalizedTokens:                  4,  // root expression list, assignment, lhs, rhs
 				numberOfNormalizedTokensNoComments:        4
-			}, statInfo)
+			}, statInfo);
 
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
@@ -52,9 +52,9 @@ describe('Benchmark Slicer', () => {
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
 				sizeOfObject:                380
-			}, statInfo)
+			}, statInfo);
 
-			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`)
+			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
@@ -70,7 +70,7 @@ describe('Benchmark Slicer', () => {
 				lines:                             { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
 				nonEmptyLines:                     { min: 1, max: 1, median: 1, mean: 1, std: 0, total: 1 },
 				linesWithAutoSelected:             { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 }
-			}, `sliced only once ${statInfo}`)
+			}, `sliced only once ${statInfo}`);
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {
 				min:    1,
@@ -79,11 +79,11 @@ describe('Benchmark Slicer', () => {
 				mean:   1,
 				std:    0,
 				total:  1
-			})
+			});
 
-		})
+		});
 		it('Slicing the same code three times', async() => {
-			const slicer = new BenchmarkSlicer()
+			const slicer = new BenchmarkSlicer();
 			const request = {
 				request: 'text' as const,
 				content: `library(x)
@@ -93,12 +93,12 @@ c <- 5
 d <- b + 5
 cat(c, d)
 cat(d)`
-			}
-			await slicer.init(request)
-			await slicer.slice('2@a')
-			await slicer.slice('2@a', '4@c')
-			await slicer.slice('7@d')
-			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
+			};
+			await slicer.init(request);
+			await slicer.slice('2@a');
+			await slicer.slice('2@a', '4@c');
+			await slicer.slice('7@d');
+			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
 			assert.deepStrictEqual(stats.input, {
 				numberOfLines:                             7,
@@ -112,16 +112,16 @@ cat(d)`
 				numberOfRTokensNoComments:                 56,
 				numberOfNormalizedTokens:                  31,
 				numberOfNormalizedTokensNoComments:        31
-			}, statInfo)
+			}, statInfo);
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
 				numberOfEdges:               29,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
 				sizeOfObject:                3053
-			}, statInfo)
+			}, statInfo);
 
-			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`)
+			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
@@ -137,7 +137,7 @@ cat(d)`
 				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
 				dataflowNodes:                     { min: 5,  max: 16, median: 8,  mean: (5+8+16)/3,         std: 4.642796092394707,  total: 29 },
 				linesWithAutoSelected:             { min: 0,  max: 0,  median: 0,  mean: 0,                  std: 0,                  total: 0  }
-			}, statInfo)
+			}, statInfo);
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {
 				min:    1,
@@ -146,8 +146,8 @@ cat(d)`
 				mean:   (1+2+1)/3,
 				std:    0.4714045207910317,
 				total:  4
-			}, statInfo)
+			}, statInfo);
 
-		})
-	})
-})
+		});
+	});
+});

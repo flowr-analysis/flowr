@@ -1,30 +1,30 @@
-import { type ILogObj, type ISettingsParam, Logger } from 'tslog'
-import { createStream, type Options } from 'rotating-file-stream'
+import { type ILogObj, type ISettingsParam, Logger } from 'tslog';
+import { createStream, type Options } from 'rotating-file-stream';
 
 export const expensiveTrace = (log: Logger<ILogObj>, supplier: () => string): void => {
 	if(log.settings.minLevel <= LogLevel.Trace) {
-		log.trace(supplier())
+		log.trace(supplier());
 	}
-}
+};
 
 export class FlowrLogger extends Logger<ILogObj> {
 	/** by keeping track of all children we can propagate updates of the settings (e.g., in tests) */
-	private readonly childLoggers: Logger<ILogObj>[] = []
+	private readonly childLoggers: Logger<ILogObj>[] = [];
 
 	public getSubLogger(
 		settings?: ISettingsParam<ILogObj>,
 		logObj?: ILogObj
 	): Logger<ILogObj> {
-		const newSubLogger = super.getSubLogger(settings, logObj)
-		this.childLoggers.push(newSubLogger)
-		return newSubLogger
+		const newSubLogger = super.getSubLogger(settings, logObj);
+		this.childLoggers.push(newSubLogger);
+		return newSubLogger;
 	}
 
 	public updateSettings(updater: (logger: Logger<ILogObj>) => void): void {
-		updater(this)
+		updater(this);
 		this.childLoggers.forEach((child) => {
-			updater(child)
-		})
+			updater(child);
+		});
 	}
 
 	/**
@@ -38,11 +38,11 @@ export class FlowrLogger extends Logger<ILogObj> {
 			compress: 'gzip',
 		}
 	): void {
-		const stream = createStream(filename, options)
+		const stream = createStream(filename, options);
 
 		log.attachTransport((logObj) => {
-			stream.write(`${JSON.stringify(logObj)}\n`)
-		})
+			stream.write(`${JSON.stringify(logObj)}\n`);
+		});
 	}
 }
 
@@ -71,7 +71,7 @@ function getActiveLog(): FlowrLogger {
 				'*': ['bold', 'black', 'dim']
 			}
 		}
-	})
+	});
 }
 
-export const log: FlowrLogger = getActiveLog()
+export const log: FlowrLogger = getActiveLog();

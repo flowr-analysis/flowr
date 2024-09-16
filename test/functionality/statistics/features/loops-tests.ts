@@ -1,6 +1,6 @@
-import { testForFeatureForInput } from '../statistics.spec'
-import { withShell } from '../../_helper/shell'
-import { RFalse, RTrue } from '../../../../src/r-bridge/lang-4.x/convert-values'
+import { testForFeatureForInput } from '../statistics.spec';
+import { withShell } from '../../_helper/shell';
+import { RFalse, RTrue } from '../../../../src/r-bridge/lang-4.x/convert-values';
 
 
 describe('Loops', withShell(shell => {
@@ -201,5 +201,5 @@ for(k in x:3) { repeat { } }
 				]]
 			]
 		}
-	])
-}))
+	]);
+}));

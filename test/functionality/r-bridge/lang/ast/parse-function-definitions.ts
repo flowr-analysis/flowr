@@ -1,9 +1,9 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal, parameter } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal, parameter } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
 describe('Parse function definitions', withShell(shell => {
 	describe('without parameters', () => {
@@ -39,7 +39,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
 			shell, 'function() { x + 2 * 3 }',exprList({
 				type:       RType.FunctionDefinition,
@@ -107,8 +107,8 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
-	})
+		);
+	});
 	describe('with unnamed parameters', () => {
 		assertAst(label('One parameter', ['normal-definition', 'formals-named', 'grouping']),
 			shell, 'function(x) { }', exprList({
@@ -142,7 +142,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 		assertAst(label('Multiple parameters', ['normal-definition', 'name-normal', 'formals-named', 'grouping']),
 			shell, 'function(a,the,b) { b }', exprList({
 				type:       RType.FunctionDefinition,
@@ -186,8 +186,8 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
-	})
+		);
+	});
 	describe('With Special Parameters (...)', () => {
 		assertAst(label('As Single Argument', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
 			shell, 'function(...) { }', exprList({
@@ -221,7 +221,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 
 		assertAst(label('As first arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named']),
 			shell, 'function(..., a) { }', exprList({
@@ -258,7 +258,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 
 		assertAst(label('As last arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named', 'name-normal']),
 			shell, 'function(a, the, ...) { ... }', exprList({
@@ -303,8 +303,8 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
-	})
+		);
+	});
 	describe('With Named Parameters', () => {
 		assertAst(label('One Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers']),
 			shell, 'function(x=3) { }', exprList({
@@ -346,7 +346,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 
 		assertAst(label('Multiple Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'name-normal', 'strings']),
 			shell, 'function(a, x=3, huhu="hehe") { x }', exprList({
@@ -403,7 +403,7 @@ describe('Parse function definitions', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
-	})
+		);
+	});
 })
-)
+);

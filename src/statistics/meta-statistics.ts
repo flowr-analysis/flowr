@@ -1,4 +1,4 @@
-import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
 
 /**
  * Statistics on skipped files, the time required, and more.
@@ -39,5 +39,5 @@ export function initialMetaStatistics(): MetaStatistics {
 		processingTimeMs:        [],
 		failedRequests:          [],
 		lines:                   []
-	}
+	};
 }

@@ -1,22 +1,22 @@
-import type { SlicingCriteriaFilter } from '../collect-all'
-import { isNotNull } from '../../../util/assert'
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { FoldFunctions } from '../../../r-bridge/lang-4.x/ast/model/processing/fold'
-import { foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold'
-import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import { isSpecialSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import type { SlicingCriteriaFilter } from '../collect-all';
+import { isNotNull } from '../../../util/assert';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { FoldFunctions } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
+import { foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
+import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { isSpecialSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,
 	maximumSize: 1,
 	collectAll:  defaultAllVariablesCollector
-}
+};
 
-const onLeaf = () => []
-const onBinary = (_: unknown, lhs: NodeId[], rhs: NodeId[]) => [...lhs, ...rhs]
+const onLeaf = () => [];
+const onBinary = (_: unknown, lhs: NodeId[], rhs: NodeId[]) => [...lhs, ...rhs];
 const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId[]> = {
 	foldNumber:   onLeaf,
 	foldString:   onLeaf,
@@ -42,18 +42,18 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 	functions:      {
 		foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(),...b],
 		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
-			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : [])
+			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : []);
 			if(c.named) {
-				return c.functionName.content === 'library' ? args.slice(1) : args
+				return c.functionName.content === 'library' ? args.slice(1) : args;
 			} else {
-				return [...a.filter(x => x !== EmptyArgument), ...args]
+				return [...a.filter(x => x !== EmptyArgument), ...args];
 			}
 		},
 		foldArgument:  (_: unknown, _a: unknown, b: NodeId[] | undefined) => b ?? [],
 		foldParameter: (_: unknown, _a: unknown, b: NodeId[] | undefined) => b ?? []
 	}
-}
+};
 
 function defaultAllVariablesCollector(ast: RNodeWithParent): NodeId[] {
-	return foldAst(ast, defaultAllVariablesCollectorFolds)
+	return foldAst(ast, defaultAllVariablesCollectorFolds);
 }

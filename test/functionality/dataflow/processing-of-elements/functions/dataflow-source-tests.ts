@@ -1,12 +1,12 @@
-import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { label } from '../../../_helper/label'
-import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { label } from '../../../_helper/label';
+import { requestProviderFromFile, requestProviderFromText } from '../../../../../src/r-bridge/retriever';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 describe('source', withShell(shell => {
 	const sources = {
@@ -15,9 +15,9 @@ describe('source', withShell(shell => {
 		recursive2: 'cat(x)\nsource("recursive1")',
 		closure1:   'f <- function() { function() 3 }',
 		closure2:   'f <- function() { x <<- 3 }'
-	}
-	before(() => setSourceProvider(requestProviderFromText(sources)))
-	after(() => setSourceProvider(requestProviderFromFile()))
+	};
+	before(() => setSourceProvider(requestProviderFromText(sources)));
+	after(() => setSourceProvider(requestProviderFromFile()));
 
 	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
@@ -31,7 +31,7 @@ describe('source', withShell(shell => {
 		.constant('simple-1:1-1:6-1')
 		.defineVariable('simple-1:1-1:6-0', 'N', { definedBy: ['simple-1:1-1:6-1', 'simple-1:1-1:6-2'] })
 		.addControlDependency('simple-1:1-1:6-0', '3')
-	)
+	);
 
 	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
 		.use('12', 'N')
@@ -55,7 +55,7 @@ describe('source', withShell(shell => {
 		.constant('simple-3:1-3:6-1')
 		.defineVariable('simple-3:1-3:6-0', 'N', { definedBy: ['simple-3:1-3:6-1', 'simple-3:1-3:6-2'] })
 		.addControlDependency('simple-3:1-3:6-0', '10')
-	)
+	);
 
 	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
 		.use('0', 'x')
@@ -72,14 +72,14 @@ describe('source', withShell(shell => {
 		.constant('simple-1:10-1:15-1')
 		.defineVariable('simple-1:10-1:15-0', 'N', { definedBy: ['simple-1:10-1:15-1', 'simple-1:10-1:15-2'] })
 		.addControlDependency('simple-1:10-1:15-0', '6')
-	)
+	);
 
 	// missing sources should just be ignored
 	assertDataflow(label('missing source', ['unnamed-arguments', 'strings', 'sourcing-external-files']), shell, 'source("missing")', emptyGraph()
 		.call('3', 'source', [argumentInCall('1')], { returns: [], reads: [BuiltIn] })
 		.constant('1')
 		.markIdForUnknownSideEffects('3')
-	)
+	);
 
 	assertDataflow(label('recursive source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
 		.use('recursive2-2:1-2:6-1', 'x')
@@ -96,7 +96,7 @@ describe('source', withShell(shell => {
 		.constant('recursive2-2:1-2:6-5')
 		/* indicate recursion */
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-7')
-	)
+	);
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
 	assertDataflow(label('non-constant source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
@@ -107,7 +107,7 @@ describe('source', withShell(shell => {
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 		.markIdForUnknownSideEffects('6')
-	)
+	);
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),
 		shell, 'source("closure1")\ng <- f()\nprint(g())', emptyGraph()
@@ -146,7 +146,7 @@ describe('source', withShell(shell => {
 			})
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
 			.addControlDependency('closure1-1:1-1:6-0', '3')
-			.defineVariable('4', 'g', { definedBy: ['6', '7'] }))
+			.defineVariable('4', 'g', { definedBy: ['6', '7'] }));
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
 			.use('10', 'x')
@@ -181,5 +181,5 @@ describe('source', withShell(shell => {
 			}, { environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5') })
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6')
-	)
-}))
+	);
+}));

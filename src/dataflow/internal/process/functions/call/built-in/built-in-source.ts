@@ -1,35 +1,35 @@
-import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
-import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
-import type { DataflowInformation } from '../../../../../info'
-import { initializeCleanDataflowInformation } from '../../../../../info'
-import { getConfig } from '../../../../../../config'
-import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
-import { processKnownFunctionCall } from '../known-call-handling'
-import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever'
-import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
+import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import type { DataflowInformation } from '../../../../../info';
+import { initializeCleanDataflowInformation } from '../../../../../info';
+import { getConfig } from '../../../../../../config';
+import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
+import { processKnownFunctionCall } from '../known-call-handling';
+import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever';
+import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever';
 import type {
 	IdGenerator,
 	NormalizedAst,
 	ParentInformation
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	deterministicPrefixIdGenerator,
 	sourcedDeterministicCountingIdGenerator
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id'
-import { dataflowLogger } from '../../../../../logger'
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
-import { overwriteEnvironment } from '../../../../../environments/overwrite'
-import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
-import { expensiveTrace } from '../../../../../../util/log'
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { dataflowLogger } from '../../../../../logger';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { overwriteEnvironment } from '../../../../../environments/overwrite';
+import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { expensiveTrace } from '../../../../../../util/log';
 
-let sourceProvider = requestProviderFromFile()
+let sourceProvider = requestProviderFromFile();
 
 export function setSourceProvider(provider: RParseRequestProvider): void {
-	sourceProvider = provider
+	sourceProvider = provider;
 }
 
 export function processSourceCall<OtherInfo>(
@@ -46,71 +46,71 @@ export function processSourceCall<OtherInfo>(
 ): DataflowInformation {
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data }).information
-		: initializeCleanDataflowInformation(rootId, data)
+		: initializeCleanDataflowInformation(rootId, data);
 
-	const sourceFile = args[0]
+	const sourceFile = args[0];
 
 	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
-		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
-		information.graph.markIdForUnknownSideEffects(rootId)
-		return information
+		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`);
+		information.graph.markIdForUnknownSideEffects(rootId);
+		return information;
 	}
 
 	if(sourceFile !== EmptyArgument && sourceFile?.value?.type === RType.String) {
-		const path = removeRQuotes(sourceFile.lexeme)
-		const request = sourceProvider.createRequest(path)
+		const path = removeRQuotes(sourceFile.lexeme);
+		const request = sourceProvider.createRequest(path);
 
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it
 		if(data.referenceChain.includes(requestFingerprint(request))) {
-			expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
-			information.graph.markIdForUnknownSideEffects(rootId)
-			return information
+			expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+			information.graph.markIdForUnknownSideEffects(rootId);
+			return information;
 		}
 
-		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
+		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location));
 	} else {
-		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
-		information.graph.markIdForUnknownSideEffects(rootId)
-		return information
+		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
+		information.graph.markIdForUnknownSideEffects(rootId);
+		return information;
 	}
 }
 
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
-	const executor = new RShellExecutor()
+	const executor = new RShellExecutor();
 
 	// parse, normalize and dataflow the sourced file
-	let normalized: NormalizedAst<OtherInfo & ParentInformation>
-	let dataflow: DataflowInformation
+	let normalized: NormalizedAst<OtherInfo & ParentInformation>;
+	let dataflow: DataflowInformation;
 	try {
-		const parsed = retrieveParseDataFromRCode(request, executor)
-		normalized = normalize(parsed, getId) as NormalizedAst<OtherInfo & ParentInformation>
+		const parsed = retrieveParseDataFromRCode(request, executor);
+		normalized = normalize(parsed, getId) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,
 			environment:    information.environment,
 			referenceChain: [...data.referenceChain, requestFingerprint(request)]
-		})
+		});
 	} catch(e) {
-		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`)
-		information.graph.markIdForUnknownSideEffects(rootId)
-		return information
+		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
+		information.graph.markIdForUnknownSideEffects(rootId);
+		return information;
 	}
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	dataflow.graph.addControlDependency(dataflow.entryPoint, rootId)
+	dataflow.graph.addControlDependency(dataflow.entryPoint, rootId);
 	for(const out of dataflow.out) {
-		dataflow.graph.addControlDependency(out.nodeId, rootId)
+		dataflow.graph.addControlDependency(out.nodeId, rootId);
 	}
 
 	// update our graph with the sourced file's information
-	const newInformation = { ...information }
-	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment)
-	newInformation.graph.mergeWith(dataflow.graph)
+	const newInformation = { ...information };
+	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);
+	newInformation.graph.mergeWith(dataflow.graph);
 	// this can be improved, see issue #628
 	for(const [k, v] of normalized.idMap) {
-		data.completeAst.idMap.set(k, v)
+		data.completeAst.idMap.set(k, v);
 	}
-	return newInformation
+	return newInformation;
 }
 
 
@@ -120,16 +120,16 @@ export function standaloneSourceFile<OtherInfo>(
 	uniqueSourceId: string,
 	information: DataflowInformation
 ): DataflowInformation {
-	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-'
+	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-';
 	/* this way we can still pass content */
-	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest
-	const fingerprint = requestFingerprint(request)
+	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest;
+	const fingerprint = requestFingerprint(request);
 
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.includes(fingerprint)) {
-		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
-		information.graph.markIdForUnknownSideEffects(uniqueSourceId)
-		return information
+		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+		information.graph.markIdForUnknownSideEffects(uniqueSourceId);
+		return information;
 	}
 
 	return sourceRequest(uniqueSourceId, request, {
@@ -137,5 +137,5 @@ export function standaloneSourceFile<OtherInfo>(
 		currentRequest: request,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, fingerprint]
-	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId))
+	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId));
 }

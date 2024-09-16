@@ -1,6 +1,6 @@
-import { ts2r } from './lang-4.x/convert-values'
+import { ts2r } from './lang-4.x/convert-values';
 
-export const ErrorMarker = 'err'
+export const ErrorMarker = 'err';
 
 /** Command(s) to be issued at the start of each shell */
 export function initCommand(eol: string): string {
@@ -16,5 +16,5 @@ export function initCommand(eol: string): string {
 		 */
 		+ 'cat(paste0(sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",flowr_output$line1,flowr_output$col1,flowr_output$line2,flowr_output$col2,flowr_output$id,flowr_output$parent,encodeString(flowr_output$token,quote="\\""),ifelse(flowr_output$terminal,"true","false"),encodeString(flowr_output$text,quote="\\"")),collapse=","))'
 		/* error handling (just produce the marker) */
-		+ `},error=function(e){cat("${ErrorMarker}")});cat(${ts2r(eol)})},options=compiler::setCompilerOptions(optimize=3));`
+		+ `},error=function(e){cat("${ErrorMarker}")});cat(${ts2r(eol)})},options=compiler::setCompilerOptions(optimize=3));`;
 }

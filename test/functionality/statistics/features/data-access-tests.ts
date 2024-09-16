@@ -1,6 +1,6 @@
-import { testForFeatureForInput } from '../statistics.spec'
-import { withShell } from '../../_helper/shell'
-import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
+import { testForFeatureForInput } from '../statistics.spec';
+import { withShell } from '../../_helper/shell';
+import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability';
 
 describe('Data Access', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
@@ -311,5 +311,5 @@ describe('Data Access', withShell(shell => {
 				['dataAccess', [['a$hello$"world"'], ['a@hello@"world"']]],
 			]
 		}
-	])
-}))
+	]);
+}));

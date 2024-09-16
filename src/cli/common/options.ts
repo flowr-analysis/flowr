@@ -1,7 +1,7 @@
-import type { OptionDefinition } from 'command-line-usage'
-import os from 'os'
-import { date2string } from '../../util/time'
-import { allFeatureNames } from '../../statistics/features/feature'
+import type { OptionDefinition } from 'command-line-usage';
+import os from 'os';
+import { date2string } from '../../util/time';
+import { allFeatureNames } from '../../statistics/features/feature';
 
 /**
  * This interface describes options, that every script *must* provide.
@@ -19,7 +19,7 @@ export interface CommonOptions {
 /**
  * This string contains a string representation of the loading time of this module.
  */
-const StartTimeString = date2string(new Date())
+const StartTimeString = date2string(new Date());
 
 export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
@@ -30,7 +30,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: `Directory to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline file}' }
-]
+];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
@@ -40,7 +40,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'run-num',      alias: 'r', type: Number, description: 'The n-th time that the file with the given file-id is being benchmarked' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
-]
+];
 
 export const exportQuadsOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -48,7 +48,7 @@ export const exportQuadsOptions: OptionDefinition[] = [
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
-]
+];
 
 export const slicerOptions: OptionDefinition[] = [
 	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -61,9 +61,9 @@ export const slicerOptions: OptionDefinition[] = [
 	{ name: 'output',            alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
 	{ name: 'no-magic-comments', alias: 'm', type: Boolean, description: 'Disable the effects of magic comments which force lines to be included.' },
 	{ name: 'api',                           type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
-]
+];
 
-const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
+const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ');
 export const statisticOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
@@ -74,7 +74,7 @@ export const statisticOptions: OptionDefinition[] = [
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
-]
+];
 
 export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -86,7 +86,7 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
-]
+];
 
 export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -98,4 +98,4 @@ export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark, the statistics, ...', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },
-]
+];

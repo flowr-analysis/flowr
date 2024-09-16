@@ -1,6 +1,6 @@
-import type { IPipelineStep, PipelineStepName, PipelineStepStage } from '../pipeline-step'
-import { verifyAndBuildPipeline } from './create-pipeline'
-import type { DeepReadonly, UnionToIntersection } from 'ts-essentials'
+import type { IPipelineStep, PipelineStepName, PipelineStepStage } from '../pipeline-step';
+import { verifyAndBuildPipeline } from './create-pipeline';
+import type { DeepReadonly, UnionToIntersection } from 'ts-essentials';
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.
@@ -67,5 +67,5 @@ export type PipelineOutput<P extends Pipeline> = {
  * @throws InvalidPipelineError If any of the constraints listed above are not satisfied.
  */
 export function createPipeline<T extends readonly IPipelineStep[]>(...steps: T): Pipeline<T[number]> {
-	return verifyAndBuildPipeline(steps)
+	return verifyAndBuildPipeline(steps);
 }

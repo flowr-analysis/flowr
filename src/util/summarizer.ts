@@ -1,5 +1,5 @@
-import type { MergeableRecord } from './objects'
-import { sum } from './arrays'
+import type { MergeableRecord } from './objects';
+import { sum } from './arrays';
 
 export const enum SummarizerType {
 	Benchmark	 = 'benchmark',
@@ -24,12 +24,12 @@ export interface SummarizedMeasurement<T = number> {
 }
 
 export abstract class Summarizer<Output, Configuration extends CommonSummarizerConfiguration> {
-	protected readonly config: Configuration
-	protected readonly log:    CommonSummarizerConfiguration['logger']
+	protected readonly config: Configuration;
+	protected readonly log:    CommonSummarizerConfiguration['logger'];
 
 	protected constructor(config: Configuration) {
-		this.config = config
-		this.log = this.config.logger
+		this.config = config;
+		this.log = this.config.logger;
 	}
 
 
@@ -49,24 +49,24 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 }
 
 export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
-	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`
+	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`;
 }
 
-const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total']
+const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total'];
 export function summarizedMeasurement2CsvHeader(prefix?: string): string {
-	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',')
+	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',');
 }
 
 export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification
-	const sorted = [...data].sort((a, b) => a - b)
-	const min = sorted[0]
-	const max = sorted[sorted.length - 1]
-	const median = sorted[Math.floor(sorted.length / 2)]
-	const total = sum(sorted)
-	const length = totalNumberOfDataPoints ?? sorted.length
-	const mean = total / length
+	const sorted = [...data].sort((a, b) => a - b);
+	const min = sorted[0];
+	const max = sorted[sorted.length - 1];
+	const median = sorted[Math.floor(sorted.length / 2)];
+	const total = sum(sorted);
+	const length = totalNumberOfDataPoints ?? sorted.length;
+	const mean = total / length;
 	// sqrt(sum(x-mean)^2 / n)
-	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / length)
-	return { min, max, median, mean, std, total }
+	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / length);
+	return { min, max, median, mean, std, total };
 }

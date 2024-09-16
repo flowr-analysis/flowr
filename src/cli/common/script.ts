@@ -3,12 +3,12 @@
  *
  * @module
  */
-import { scripts } from './scripts-info'
-import commandLineUsage from 'command-line-usage'
-import type { CommonOptions } from './options'
-import commandLineArgs from 'command-line-args'
-import { italic } from '../../util/ansi'
-import { log, LogLevel } from '../../util/log'
+import { scripts } from './scripts-info';
+import commandLineUsage from 'command-line-usage';
+import type { CommonOptions } from './options';
+import commandLineArgs from 'command-line-args';
+import { italic } from '../../util/ansi';
+import { log, LogLevel } from '../../util/log';
 
 /**
  * Just a helping data structure to allow the user to provide example usages of the respective script.
@@ -37,31 +37,31 @@ export function helpForOptions(script: keyof typeof scripts, content: HelpConten
 			header:     'Options',
 			optionList: scripts[script].options
 		}
-	])
+	]);
 }
 
 
 export function processCommandLineArgs<T extends CommonOptions>(script: keyof typeof scripts, requireAdditionally: (keyof T)[], help: HelpContent): T {
-	const options = commandLineArgs(scripts[script].options) as T
+	const options = commandLineArgs(scripts[script].options) as T;
 
 	if(options.help) {
-		console.log(helpForOptions(script, help))
-		process.exit(0)
+		console.log(helpForOptions(script, help));
+		process.exit(0);
 	} else if(requireAdditionally.length > 0) {
-		const keys = new Set(Object.keys(options))
+		const keys = new Set(Object.keys(options));
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- we know that they are not given if undefined
-		const missing = requireAdditionally.filter(k => !keys.has(k as string) || options[k] === undefined)
+		const missing = requireAdditionally.filter(k => !keys.has(k as string) || options[k] === undefined);
 		if(missing.length > 0) {
-			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`))
-			console.log(helpForOptions(script, help))
-			process.exit(0)
+			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`));
+			console.log(helpForOptions(script, help));
+			process.exit(0);
 		}
 	}
 
-	log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error)
+	log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 
 	if(options.verbose) {
-		log.info(`running with (debugging) options, ${JSON.stringify(options)}`)
+		log.info(`running with (debugging) options, ${JSON.stringify(options)}`);
 	}
-	return options
+	return options;
 }

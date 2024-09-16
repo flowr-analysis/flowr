@@ -1,6 +1,6 @@
-import type { MergeableRecord } from '../../../../util/objects'
-import { RawRType } from './type'
-import type { SupportedFlowrCapabilityId } from '../../../data/get'
+import type { MergeableRecord } from '../../../../util/objects';
+import { RawRType } from './type';
+import type { SupportedFlowrCapabilityId } from '../../../data/get';
 
 /**
  * Just a type-alias so that type declarations become more readable.
@@ -79,11 +79,11 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
 /* eslint-enable */
 
 function buildOperatorRAstCollection(operators: readonly string[]): Set<string> {
-	return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst))
+	return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst));
 }
 
-export const Operators: readonly string[] = Object.keys(OperatorDatabase)
+export const Operators: readonly string[] = Object.keys(OperatorDatabase);
 
 // '**' will be treated as '^'
-export const OperatorsInRAst = buildOperatorRAstCollection(Operators)
-export const UnaryOperatorsInRAst = buildOperatorRAstCollection(Operators.filter(op => OperatorDatabase[op].arity !== OperatorArity.Binary))
+export const OperatorsInRAst = buildOperatorRAstCollection(Operators);
+export const UnaryOperatorsInRAst = buildOperatorRAstCollection(Operators.filter(op => OperatorDatabase[op].arity !== OperatorArity.Binary));

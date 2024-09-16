@@ -1,11 +1,11 @@
 import type {
 	DummyAppendMemoryMap,
-	StatisticAppendProvider } from './file-provider'
+	StatisticAppendProvider } from './file-provider';
 import {
 	DummyAppendProvider,
 	StatisticFileProvider
-} from './file-provider'
-import { log } from '../../util/log'
+} from './file-provider';
+import { log } from '../../util/log';
 
 
 /**
@@ -14,29 +14,29 @@ import { log } from '../../util/log'
  * Returns the content of the node (i.e., the text content excluding the children)
  */
 export function extractNodeContent(node: Node): string {
-	let result = node.textContent
+	let result = node.textContent;
 
 	if(node.hasChildNodes()) {
-		const firstChild = node.childNodes.item(0)
+		const firstChild = node.childNodes.item(0);
 		if(firstChild.nodeType === 3 /* text node */) {
-			result = firstChild.textContent
+			result = firstChild.textContent;
 		}
 	}
 
-	return result?.trim()?.replaceAll('\n', '\\n') ?? '<unknown>'
+	return result?.trim()?.replaceAll('\n', '\\n') ?? '<unknown>';
 }
 
 
 /** by default, we do not write to anything */
-export let statisticsFileProvider: StatisticAppendProvider
-initDummyFileProvider()
+export let statisticsFileProvider: StatisticAppendProvider;
+initDummyFileProvider();
 
 /**
  * Make the statistics write to a given output directory.
  */
 export function initFileProvider(outputDirectory: string): void {
-	log.debug(`Initializing file provider for output directory ${outputDirectory}`)
-	statisticsFileProvider = new StatisticFileProvider(outputDirectory)
+	log.debug(`Initializing file provider for output directory ${outputDirectory}`);
+	statisticsFileProvider = new StatisticFileProvider(outputDirectory);
 }
 
 /**
@@ -45,7 +45,7 @@ export function initFileProvider(outputDirectory: string): void {
  * @param map - The map to write to, will not persist calls if no map is given
  */
 export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
-	statisticsFileProvider = new DummyAppendProvider(map)
+	statisticsFileProvider = new DummyAppendProvider(map);
 }
 
 /**
@@ -68,24 +68,24 @@ export type StatisticsOutputFormat<T=string> = [
  */
 export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string[] | Node[] | object[], context: string | undefined, unique = false) {
 	if(nodes.length === 0) {
-		return
+		return;
 	}
-	let values
+	let values;
 
 	if(typeof nodes[0] === 'string') {
-		values = nodes
+		values = nodes;
 	} else if('nodeType' in nodes[0]) {
-		values = (nodes as Node[]).map(extractNodeContent)
+		values = (nodes as Node[]).map(extractNodeContent);
 	} else {
-		values = nodes
+		values = nodes;
 	}
 
 
 	if(unique) {
-		values = [...new Set<string | object | Node>(values)]
+		values = [...new Set<string | object | Node>(values)];
 	}
 
-	values = values.map(value => JSON.stringify(context === undefined ? [value] : [value, context] as StatisticsOutputFormat))
+	values = values.map(value => JSON.stringify(context === undefined ? [value] : [value, context] as StatisticsOutputFormat));
 
-	statisticsFileProvider.append(name, fn, values.join('\n'))
+	statisticsFileProvider.append(name, fn, values.join('\n'));
 }

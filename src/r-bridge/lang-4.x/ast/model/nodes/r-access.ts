@@ -1,7 +1,7 @@
-import type { Base, Location, NoInfo, RNode } from '../model'
-import type { RType } from '../type'
-import type { RArgument, RUnnamedArgument } from './r-argument'
-import type { EmptyArgument } from './r-function-call'
+import type { Base, Location, NoInfo, RNode } from '../model';
+import type { RType } from '../type';
+import type { RArgument, RUnnamedArgument } from './r-argument';
+import type { EmptyArgument } from './r-function-call';
 
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.

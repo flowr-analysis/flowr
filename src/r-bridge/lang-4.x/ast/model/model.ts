@@ -1,29 +1,29 @@
-import type { SourceRange } from '../../../../util/range'
-import type { RType } from './type'
-import type { MergeableRecord } from '../../../../util/objects'
-import type { RNa, RNull } from '../../convert-values'
-import type { RNumber } from './nodes/r-number'
-import type { RString } from './nodes/r-string'
-import type { RLogical } from './nodes/r-logical'
-import type { RSymbol } from './nodes/r-symbol'
-import type { RComment } from './nodes/r-comment'
-import type { RBreak } from './nodes/r-break'
-import type { RNext } from './nodes/r-next'
-import type { RLineDirective } from './nodes/r-line-directive'
-import type { RForLoop } from './nodes/r-for-loop'
-import type { RRepeatLoop } from './nodes/r-repeat-loop'
-import type { RWhileLoop } from './nodes/r-while-loop'
-import type { RIfThenElse } from './nodes/r-if-then-else'
-import type { RFunctionDefinition } from './nodes/r-function-definition'
-import type { RFunctionCall } from './nodes/r-function-call'
-import type { RParameter } from './nodes/r-parameter'
-import type { RArgument } from './nodes/r-argument'
-import type { RExpressionList } from './nodes/r-expression-list'
-import type { RIndexAccess, RNamedAccess } from './nodes/r-access'
-import type { RUnaryOp } from './nodes/r-unary-op'
-import type { RBinaryOp } from './nodes/r-binary-op'
-import type { RPipe } from './nodes/r-pipe'
-import type { RDelimiter } from './nodes/info/r-delimiter'
+import type { SourceRange } from '../../../../util/range';
+import type { RType } from './type';
+import type { MergeableRecord } from '../../../../util/objects';
+import type { RNa, RNull } from '../../convert-values';
+import type { RNumber } from './nodes/r-number';
+import type { RString } from './nodes/r-string';
+import type { RLogical } from './nodes/r-logical';
+import type { RSymbol } from './nodes/r-symbol';
+import type { RComment } from './nodes/r-comment';
+import type { RBreak } from './nodes/r-break';
+import type { RNext } from './nodes/r-next';
+import type { RLineDirective } from './nodes/r-line-directive';
+import type { RForLoop } from './nodes/r-for-loop';
+import type { RRepeatLoop } from './nodes/r-repeat-loop';
+import type { RWhileLoop } from './nodes/r-while-loop';
+import type { RIfThenElse } from './nodes/r-if-then-else';
+import type { RFunctionDefinition } from './nodes/r-function-definition';
+import type { RFunctionCall } from './nodes/r-function-call';
+import type { RParameter } from './nodes/r-parameter';
+import type { RArgument } from './nodes/r-argument';
+import type { RExpressionList } from './nodes/r-expression-list';
+import type { RIndexAccess, RNamedAccess } from './nodes/r-access';
+import type { RUnaryOp } from './nodes/r-unary-op';
+import type { RBinaryOp } from './nodes/r-binary-op';
+import type { RPipe } from './nodes/r-pipe';
+import type { RDelimiter } from './nodes/info/r-delimiter';
 
 /** Simply an empty interface used to say that there are additional decorations (see {@link Base}). */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

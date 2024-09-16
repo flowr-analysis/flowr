@@ -1,9 +1,9 @@
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { label } from '../../../_helper/label'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
+import { label } from '../../../_helper/label';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
@@ -11,15 +11,15 @@ describe('Lists with variable references', withShell(shell => {
 			'x\nx', emptyGraph()
 				.use('0', 'x')
 				.use('1', 'x')
-		)
+		);
 
 		assertDataflow(label('multiple occurrences of same variable', ['name-normal', 'newlines']), shell,
 			'x\nx\nx', emptyGraph()
 				.use('0', 'x')
 				.use('1', 'x')
 				.use('2', 'x')
-		)
-	})
+		);
+	});
 	describe('def-def same variable', () => {
 		assertDataflow(label('directly together', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 2', emptyGraph()
@@ -29,7 +29,7 @@ describe('Lists with variable references', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.constant('4')
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
-		)
+		);
 
 		assertDataflow(label('multiple occurrences of same variable', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 3\n3\nx <- 9', emptyGraph()
@@ -43,8 +43,8 @@ describe('Lists with variable references', withShell(shell => {
 				.constant('6')
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
-		)
-	})
+		);
+	});
 	describe('def followed by read', () => {
 		assertDataflow(label('directly together', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx',  emptyGraph()
@@ -53,7 +53,7 @@ describe('Lists with variable references', withShell(shell => {
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-		)
+		);
 		assertDataflow(label('redefinition links correctly', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- 3; x',
 			emptyGraph()
@@ -65,7 +65,7 @@ describe('Lists with variable references', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.constant('4')
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
-		)
+		);
 		assertDataflow(label('multiple redefinition with circular definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell,
 			'x <- 2; x <- x; x',
 			emptyGraph()
@@ -78,7 +78,7 @@ describe('Lists with variable references', withShell(shell => {
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
-		)
+		);
 		assertDataflow(label('duplicate circular definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'semicolons']), shell,
 			'x <- x; x <- x;',
 			emptyGraph()
@@ -89,8 +89,8 @@ describe('Lists with variable references', withShell(shell => {
 				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
-		)
-	})
+		);
+	});
 	// potentially incorrect? redefinition appears correct in dataflow graph, but why is the {} still flagged up as an expression list?
 	describe('Redefining expression lists', () => {
 		assertDataflow(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
@@ -137,10 +137,10 @@ print(x)`, emptyGraph()
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				.constant('13')
-				.defineVariable('12', 'x', { definedBy: ['13', '14'] }))
-	})
+				.defineVariable('12', 'x', { definedBy: ['13', '14'] }));
+	});
 	describe('Escaped Identifiers Should Still Be Resolved', () => {
-		const distractor = 'x <- 3\ny <- 4\nz <- 2\n'
+		const distractor = 'x <- 3\ny <- 4\nz <- 2\n';
 		assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, '`a` <- 2\na',
 			emptyGraph()
@@ -150,7 +150,7 @@ print(x)`, emptyGraph()
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
 			}
-		)
+		);
 		assertDataflow(label('one distractor', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, `\`a\` <- 2\n${distractor}a`,
 			emptyGraph()
@@ -160,7 +160,7 @@ print(x)`, emptyGraph()
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
 			}
-		)
+		);
 		assertDataflow(label('one hundred distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
 			shell, `\`a\` <- 2\n${distractor.repeat(100)}\na`,
 			emptyGraph()
@@ -170,6 +170,6 @@ print(x)`, emptyGraph()
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
 			}
-		)
-	})
-}))
+		);
+	});
+}));

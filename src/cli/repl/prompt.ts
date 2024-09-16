@@ -1,5 +1,5 @@
-import { ColorEffect, Colors, formatter } from '../../util/ansi'
+import { ColorEffect, Colors, formatter } from '../../util/ansi';
 
-export const rawPrompt = 'R>'
+export const rawPrompt = 'R>';
 // is a function as the 'formatter' is configured only after the cli options have been read
-export const prompt = () => `${formatter.format(rawPrompt, { color: Colors.Cyan, effect: ColorEffect.Foreground })} `
+export const prompt = () => `${formatter.format(rawPrompt, { color: Colors.Cyan, effect: ColorEffect.Foreground })} `;

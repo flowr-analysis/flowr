@@ -1,27 +1,27 @@
-import { quitCommand } from './quit'
-import { stdioCaptureProcessor, waitOnScript } from '../execute'
-import type { ReplCommand } from './main'
-import { rawPrompt } from '../prompt'
-import { versionCommand } from './version'
-import { parseCommand } from './parse'
-import { executeCommand } from './execute'
-import { normalizeCommand, normalizeStarCommand } from './normalize'
-import { dataflowCommand, dataflowStarCommand } from './dataflow'
-import { controlflowCommand, controlflowStarCommand } from './cfg'
-import type { OutputFormatter } from '../../../util/ansi'
-import { italic , bold } from '../../../util/ansi'
-import { splitAtEscapeSensitive } from '../../../util/args'
-import { guard } from '../../../util/assert'
-import { scripts } from '../../common/scripts-info'
-import { getLineageCommand } from './lineage'
+import { quitCommand } from './quit';
+import { stdioCaptureProcessor, waitOnScript } from '../execute';
+import type { ReplCommand } from './main';
+import { rawPrompt } from '../prompt';
+import { versionCommand } from './version';
+import { parseCommand } from './parse';
+import { executeCommand } from './execute';
+import { normalizeCommand, normalizeStarCommand } from './normalize';
+import { dataflowCommand, dataflowStarCommand } from './dataflow';
+import { controlflowCommand, controlflowStarCommand } from './cfg';
+import type { OutputFormatter } from '../../../util/ansi';
+import { italic , bold } from '../../../util/ansi';
+import { splitAtEscapeSensitive } from '../../../util/args';
+import { guard } from '../../../util/assert';
+import { scripts } from '../../common/scripts-info';
+import { getLineageCommand } from './lineage';
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter): string {
-	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`
+	const base = `  ${bold(padCmd(':' + script[0]), f)}${script[1].description}`;
 	if(script[1].aliases.length === 0) {
-		return base
+		return base;
 	}
-	const aliases = script[1].aliases
-	return `${base} (alias${aliases.length > 1 ? 'es' : ''}: ${aliases.map(a => bold(':' + a, f)).join(', ')})`
+	const aliases = script[1].aliases;
+	return `${base} (alias${aliases.length > 1 ? 'es' : ''}: ${aliases.map(a => bold(':' + a, f)).join(', ')})`;
 }
 
 export const helpCommand: ReplCommand = {
@@ -30,7 +30,7 @@ export const helpCommand: ReplCommand = {
 	usageExample: ':help',
 	aliases:      [ 'h', '?' ],
 	fn:           output => {
-		initCommandMapping()
+		initCommandMapping();
 		output.stdout(`
 If enabled, you can just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
@@ -49,9 +49,9 @@ ${
 }
 
 You can combine commands by separating them with a semicolon ${bold(';',output.formatter)}.
-`)
+`);
 	}
-}
+};
 
 /**
  * All commands that should be available in the REPL.
@@ -69,23 +69,23 @@ const _commands: Record<string, ReplCommand> = {
 	'controlflow':  controlflowCommand,
 	'controlflow*': controlflowStarCommand,
 	'lineage':      getLineageCommand
-}
-let commandsInitialized = false
+};
+let commandsInitialized = false;
 
 function hasModule(path: string): boolean {
 	try {
-		require.resolve(path)
-		return true
+		require.resolve(path);
+		return true;
 	} catch(e) {
-		return false
+		return false;
 	}
 }
 
 function commands() {
 	if(commandsInitialized) {
-		return _commands
+		return _commands;
 	}
-	commandsInitialized = true
+	commandsInitialized = true;
 	for(const [script, { target, description, type }] of Object.entries(scripts)) {
 		if(type === 'master script') {
 			_commands[script] = {
@@ -95,24 +95,24 @@ function commands() {
 				usageExample: `:${script} --help`,
 				fn:           async(output, _s, remainingLine) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
-					let path = `${__dirname}/${target}`
+					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {
-						path = `${__dirname}/../../${target}`
+						path = `${__dirname}/../../${target}`;
 						if(!hasModule(path)) {
-							output.stderr(`Could not find the target script ${target} in the current directory or two directories up.`)
-							return
+							output.stderr(`Could not find the target script ${target} in the current directory or two directories up.`);
+							return;
 						}
 					}
 					await waitOnScript(
 						path,
 						splitAtEscapeSensitive(remainingLine),
 						stdio => stdioCaptureProcessor(stdio, msg => output.stdout(msg), msg => output.stderr(msg))
-					)
+					);
 				}
-			}
+			};
 		}
 	}
-	return _commands
+	return _commands;
 }
 
 
@@ -121,26 +121,26 @@ function commands() {
  */
 export function getCommandNames(): string[] {
 	if(commandNames === undefined) {
-		initCommandMapping()
+		initCommandMapping();
 	}
-	return commandNames as string[]
+	return commandNames as string[];
 }
-let commandNames: string[] | undefined = undefined
+let commandNames: string[] | undefined = undefined;
 // maps command names or aliases to the actual command name
-let commandMapping: Record<string, string> | undefined = undefined
+let commandMapping: Record<string, string> | undefined = undefined;
 
 function initCommandMapping() {
-	commandMapping = {}
-	commandNames = []
+	commandMapping = {};
+	commandNames = [];
 	for(const [command, { aliases }] of Object.entries(commands())) {
-		guard(commandMapping[command] as string | undefined === undefined, `Command ${command} is already registered!`)
-		commandMapping[command] = command
+		guard(commandMapping[command] as string | undefined === undefined, `Command ${command} is already registered!`);
+		commandMapping[command] = command;
 		for(const alias of aliases) {
-			guard(commandMapping[alias] as string | undefined === undefined, `Command (alias) ${alias} is already registered!`)
-			commandMapping[alias] = command
+			guard(commandMapping[alias] as string | undefined === undefined, `Command (alias) ${alias} is already registered!`);
+			commandMapping[alias] = command;
 		}
-		commandNames.push(command)
-		commandNames.push(...aliases)
+		commandNames.push(command);
+		commandNames.push(...aliases);
 	}
 }
 
@@ -150,27 +150,27 @@ function initCommandMapping() {
  */
 export function getCommand(command: string): ReplCommand | undefined {
 	if(commandMapping === undefined) {
-		initCommandMapping()
+		initCommandMapping();
 	}
-	return commands()[(commandMapping as Record<string, string>)[command]]
+	return commands()[(commandMapping as Record<string, string>)[command]];
 }
 
 export function asOptionName(argument: string): string{
 	if(argument.length == 1) {
-		return `-${argument}`
+		return `-${argument}`;
 	} else {
-		return `--${argument}`
+		return `--${argument}`;
 	}
 }
 
 
-let _longestCommandName: number | undefined = undefined
+let _longestCommandName: number | undefined = undefined;
 export function longestCommandName(): number {
 	if(_longestCommandName === undefined) {
-		_longestCommandName = Array.from(Object.keys(commands()), k => k.length).reduce((p, n) => Math.max(p, n), 0)
+		_longestCommandName = Array.from(Object.keys(commands()), k => k.length).reduce((p, n) => Math.max(p, n), 0);
 	}
-	return _longestCommandName
+	return _longestCommandName;
 }
 function padCmd<T>(string: T) {
-	return String(string).padEnd(longestCommandName() + 2, ' ')
+	return String(string).padEnd(longestCommandName() + 2, ' ');
 }

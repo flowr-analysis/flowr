@@ -1,10 +1,10 @@
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder'
-import { label } from '../../../_helper/label'
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { assertDataflow, withShell } from '../../../_helper/shell';
+import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
+import { label } from '../../../_helper/label';
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 describe('for', withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
@@ -17,7 +17,7 @@ describe('for', withShell(shell => {
 			.nse('4', '2')
 			.defineVariable('0', 'i', { definedBy: ['1'] })
 			.constant('1')
-	)
+	);
 
 	describe('Potential redefinition with break', () => {
 		assertDataflow(label('Potential redefinition inside the same loop', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'if', 'break']),
@@ -42,8 +42,8 @@ x`, emptyGraph()
 				.defineVariable('2', 'x', { definedBy: ['3', '4'], controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.constant('10', { controlDependencies: [{ id: '13' }, { id: '8', when: true }] })
 				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
-		)
-	})
+		);
+	});
 
 	assertDataflow(label('Read in for Loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 12\nfor(i in 1:10) x ', emptyGraph()
 		.use('7', 'x', { controlDependencies: [{ id: '9', when: true }] })
@@ -57,7 +57,7 @@ x`, emptyGraph()
 		.defineVariable('3', 'i', { definedBy: ['6'] })
 		.constant('4')
 		.constant('5')
-	)
+	);
 	assertDataflow(label('Read after for loop', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell, 'for(i in 1:10) { x <- 12 }\n x', emptyGraph()
 		.use('11', 'x')
 		.reads('11', '6')
@@ -71,7 +71,7 @@ x`, emptyGraph()
 		.constant('2')
 		.constant('7', { controlDependencies: [{ id: '10', when: true }] })
 		.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
-	)
+	);
 
 
 	assertDataflow(label('Read after for loop with outer def', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',  emptyGraph()
@@ -90,7 +90,7 @@ x`, emptyGraph()
 		.constant('5')
 		.constant('10', { controlDependencies: [{ id: '13', when: true }] })
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
-	)
+	);
 	assertDataflow(label('redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop']), shell, 'x <- 9\nfor(i in 1:10) { x <- x }\n x',  emptyGraph()
 		.use('10', 'x', { controlDependencies: [{ id: '13', when: true }] })
 		.reads('10', ['9', '0'])
@@ -108,7 +108,7 @@ x`, emptyGraph()
 		.constant('4')
 		.constant('5')
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
-	)
+	);
 
 	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
 		.use('10', 'x', { controlDependencies: [{ id: '16', when: true }] })
@@ -132,7 +132,7 @@ x`, emptyGraph()
 		.constant('5')
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
 		.defineVariable('12', 'x', { definedBy: ['13', '14'], controlDependencies: [] })
-	)
+	);
 
 	assertDataflow(label('loop-variable redefined within loop', ['name-normal', 'for-loop', 'semicolons', 'newlines', 'numbers']), shell, 'for(i in 1:10) { i; i <- 12 }\n i', emptyGraph()
 		.use('6', 'i', { controlDependencies: [{ id: '11', when: true }] })
@@ -149,7 +149,7 @@ x`, emptyGraph()
 		.constant('2')
 		.constant('8', { controlDependencies: [{ id: '11', when: true }] })
 		.defineVariable('7', 'i', { definedBy: ['8', '9'], controlDependencies: [] })
-	)
+	);
 
 	describe('Branch coverage', () => {
 		describe('repeat', () => {
@@ -180,7 +180,7 @@ print(x)`,  emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '10' }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '10' }] }))
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '10' }] }));
 			assertDataflow(label('Break in condition', ['repeat-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 repeat {
@@ -213,7 +213,7 @@ print(x)`, emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '13' }, { id: '11', when: true }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '13' }, { id: '11', when: true }] }))
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '13' }, { id: '11', when: true }] }));
 			assertDataflow(label('Next', ['repeat-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 repeat {
@@ -241,8 +241,8 @@ print(x)`,  emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '15' }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '15' }] }))
-		})
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '15' }] }));
+		});
 
 		describe('for', () => {
 			assertDataflow(label('Break immediately', ['for-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
@@ -278,7 +278,7 @@ print(x)`, emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '14', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }))
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }));
 			assertDataflow(label('Break in condition', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 for(i in 1:100) {
@@ -317,7 +317,7 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '17', when: true }, { id: '15', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }))
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }));
 			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 for(i in 1:100) {
@@ -355,8 +355,8 @@ print(x)`,  emptyGraph()
 					.constant('10', { controlDependencies: [{ id: '19', when: true }] })
 					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
 					.constant('15', { controlDependencies: [{ id: '19', when: true }] })
-					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] }))
-		})
+					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] }));
+		});
 
 		describe('while', () => {
 			assertDataflow(label('Break immediately', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
@@ -387,7 +387,7 @@ print(x)`,  emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7', { controlDependencies: [{ id: '11', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }))
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }));
 			assertDataflow(label('Break in condition', ['while-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 while(TRUE) {
@@ -421,7 +421,7 @@ print(x)`, emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7', { controlDependencies: [{ id: '14', when: true }, { id: '12', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }))
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }));
 			assertDataflow(label('Next', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
@@ -454,7 +454,7 @@ print(x)`, emptyGraph()
 					.constant('7', { controlDependencies: [{ id: '16', when: true }] })
 					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
 					.constant('12', { controlDependencies: [{ id: '16', when: true }] })
-					.defineVariable('11', 'x', { definedBy: ['12', '13'], controlDependencies: [] }))
-		})
-	})
-}))
+					.defineVariable('11', 'x', { definedBy: ['12', '13'], controlDependencies: [] }));
+		});
+	});
+}));

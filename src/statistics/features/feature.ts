@@ -6,23 +6,23 @@
  * @module
  */
 
-import type { EvalOptions } from 'xpath-ts2/src/parse-api'
-import type { MetaStatistics } from '../meta-statistics'
-import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer'
-import type { MergeableRecord } from '../../util/objects'
-import type { DataflowInformation } from '../../dataflow/info'
-import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { usedPackages } from './supported/used-packages/used-packages'
-import { comments } from './supported/comments/comments'
-import { definedFunctions } from './supported/defined-functions/defined-functions'
-import { usedFunctions } from './supported/used-functions/used-functions'
-import { values } from './supported/values/values'
-import { assignments } from './supported/assignments/assignments'
-import { loops } from './supported/loops/loops'
-import { controlflow } from './supported/control-flow/control-flow'
-import { dataAccess } from './supported/data-access/data-access'
-import { expressionList } from './supported/expression-list/expression-list'
-import { variables } from './supported/variables/variables'
+import type { EvalOptions } from 'xpath-ts2/src/parse-api';
+import type { MetaStatistics } from '../meta-statistics';
+import type { StatisticsSummarizerConfiguration } from '../summarizer/summarizer';
+import type { MergeableRecord } from '../../util/objects';
+import type { DataflowInformation } from '../../dataflow/info';
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { usedPackages } from './supported/used-packages/used-packages';
+import { comments } from './supported/comments/comments';
+import { definedFunctions } from './supported/defined-functions/defined-functions';
+import { usedFunctions } from './supported/used-functions/used-functions';
+import { values } from './supported/values/values';
+import { assignments } from './supported/assignments/assignments';
+import { loops } from './supported/loops/loops';
+import { controlflow } from './supported/control-flow/control-flow';
+import { dataAccess } from './supported/data-access/data-access';
+import { expressionList } from './supported/expression-list/expression-list';
+import { variables } from './supported/variables/variables';
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -96,7 +96,7 @@ export const ALL_FEATURES = {
 	dataAccess:       dataAccess,
 	expressionList:   expressionList,
 	variables:        variables
-} as const
+} as const;
 
 export type FeatureKey = keyof typeof ALL_FEATURES
 export type FeatureValue<K extends FeatureKey> = ReturnType<typeof ALL_FEATURES[K]['process']>
@@ -104,7 +104,7 @@ export type FeatureValue<K extends FeatureKey> = ReturnType<typeof ALL_FEATURES[
 /** If the user passes `all`, this should be every feature present in {@link ALL_FEATURES} (see {@link allFeatureNames})*/
 export type FeatureSelection = Set<FeatureKey>
 
-export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(ALL_FEATURES) as FeatureKey[])
+export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(ALL_FEATURES) as FeatureKey[]);
 
 export type FeatureStatistics = {
 	[K in FeatureKey]: FeatureInfo

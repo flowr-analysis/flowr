@@ -1,9 +1,9 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import { label } from '../../../_helper/label'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('Parse Pipes', withShell(shell => {
 	assertAst(label('x |> f()', ['name-normal', 'built-in-pipe-and-pipe-bind', 'call-normal']),
@@ -45,7 +45,7 @@ describe('Parse Pipes', withShell(shell => {
 			}
 		}),
 		{ minRVersion: MIN_VERSION_PIPE }
-	)
+	);
 	assertAst(label('x |> f() |> g()', ['name-normal', 'built-in-pipe-and-pipe-bind', 'call-normal']),
 		shell, 'x |> f() |> g()', exprList({
 			type:     RType.Pipe,
@@ -114,6 +114,6 @@ describe('Parse Pipes', withShell(shell => {
 			}
 		}),
 		{ minRVersion: MIN_VERSION_PIPE }
-	)
-}))
+	);
+}));
 

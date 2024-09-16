@@ -1,13 +1,13 @@
-import { guard } from '../util/assert'
-import type { PipelineStepName } from './steps/pipeline-step'
-import { PipelineStepStage } from './steps/pipeline-step'
+import { guard } from '../util/assert';
+import type { PipelineStepName } from './steps/pipeline-step';
+import { PipelineStepStage } from './steps/pipeline-step';
 import type {
 	Pipeline,
 	PipelineInput,
 	PipelineOutput, PipelinePerRequestInput,
 	PipelineStepNames,
 	PipelineStepOutputWithName
-} from './steps/pipeline/pipeline'
+} from './steps/pipeline/pipeline';
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -93,13 +93,13 @@ import type {
  * @see PipelineExecutor#nextStep
  */
 export class PipelineExecutor<P extends Pipeline> {
-	private readonly pipeline: P
-	private readonly length:   number
+	private readonly pipeline: P;
+	private readonly length:   number;
 
-	private input:  PipelineInput<P>
-	private output: PipelineOutput<P> = {} as PipelineOutput<P>
-	private currentExecutionStage = PipelineStepStage.OncePerFile
-	private stepCounter = 0
+	private input:  PipelineInput<P>;
+	private output: PipelineOutput<P> = {} as PipelineOutput<P>;
+	private currentExecutionStage = PipelineStepStage.OncePerFile;
+	private stepCounter = 0;
 
 	/**
 	 * Construct a new pipeline executor.
@@ -109,9 +109,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
 	 */
 	constructor(pipeline: P, input: PipelineInput<P>) {
-		this.pipeline = pipeline
-		this.length = pipeline.order.length
-		this.input = input
+		this.pipeline = pipeline;
+		this.length = pipeline.order.length;
+		this.input = input;
 	}
 
 	/**
@@ -122,7 +122,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @see PipelineStepStage
 	 */
 	public getCurrentStage(): PipelineStepStage {
-		return this.currentExecutionStage
+		return this.currentExecutionStage;
 	}
 
 	/**
@@ -135,9 +135,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @see getCurrentStage
 	 */
 	public switchToRequestStage(): void {
-		guard(this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching')
-		guard(this.currentExecutionStage === PipelineStepStage.OncePerFile, 'Cannot switch to next stage, already in per-request stage.')
-		this.currentExecutionStage = PipelineStepStage.OncePerRequest
+		guard(this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching');
+		guard(this.currentExecutionStage === PipelineStepStage.OncePerFile, 'Cannot switch to next stage, already in per-request stage.');
+		this.currentExecutionStage = PipelineStepStage.OncePerRequest;
 	}
 
 
@@ -152,8 +152,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * 		 completed, although the typing system then can not guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<P>   {
-		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.')
-		return this.output
+		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.');
+		return this.output;
 	}
 
 	/**
@@ -163,7 +163,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 */
 	public hasNextStep(): boolean {
 		return (this.stepCounter < this.length && this.currentExecutionStage !== PipelineStepStage.OncePerFile)
-			|| this.stepCounter < this.pipeline.firstStepPerRequest
+			|| this.stepCounter < this.pipeline.firstStepPerRequest;
 	}
 
 	/**
@@ -180,27 +180,27 @@ export class PipelineExecutor<P extends Pipeline> {
 		name:   typeof expectedStepName extends undefined ? PipelineStepName : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
-		const [step, result] = this._doNextStep(expectedStepName)
-		const awaitedResult = await result
+		const [step, result] = this._doNextStep(expectedStepName);
+		const awaitedResult = await result;
 
-		this.output[step as PipelineStepNames<P>] = awaitedResult
-		this.stepCounter++
+		this.output[step as PipelineStepNames<P>] = awaitedResult;
+		this.stepCounter++;
 
-		return { name: step as PassedName, result: awaitedResult }
+		return { name: step as PassedName, result: awaitedResult };
 	}
 
 	private _doNextStep(expectedStepName: Readonly<PipelineStepName | undefined>): [
 		step:   PipelineStepName,
 		result: Promise<PipelineStepOutputWithName<P, PipelineStepName>>
 	] {
-		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
-		guard(step !== undefined, () => `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
+		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter]);
+		guard(step !== undefined, () => `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`);
 
 		if(expectedStepName !== undefined) {
-			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`)
+			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, PipelineStepName>]
+		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**
@@ -210,16 +210,16 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @param newRequestData - Data for the new request
 	 */
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
-		const requestStep = this.pipeline.firstStepPerRequest
-		guard(this.stepCounter >= requestStep, 'Cannot reset request prior to once-per-request stage')
+		const requestStep = this.pipeline.firstStepPerRequest;
+		guard(this.stepCounter >= requestStep, 'Cannot reset request prior to once-per-request stage');
 		this.input = {
 			...(this.input as object),
 			...newRequestData
-		} as PipelineInput<P>
-		this.stepCounter = requestStep
+		} as PipelineInput<P>;
+		this.stepCounter = requestStep;
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
 		for(let i = requestStep; i < this.length; i++) {
-			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, PipelineStepName>
+			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, PipelineStepName>;
 		}
 	}
 
@@ -240,16 +240,16 @@ export class PipelineExecutor<P extends Pipeline> {
 	 */
 	public async allRemainingSteps(canSwitchStage = true): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>> {
 		while(this.hasNextStep()) {
-			await this.nextStep()
+			await this.nextStep();
 		}
 
 		if(canSwitchStage && this.stepCounter < this.length && this.currentExecutionStage === PipelineStepStage.OncePerFile) {
-			this.switchToRequestStage()
+			this.switchToRequestStage();
 			while(this.hasNextStep()) {
-				await this.nextStep()
+				await this.nextStep();
 			}
 		}
 
-		return this.stepCounter < this.length ? this.getResults(true) : this.getResults()
+		return this.stepCounter < this.length ? this.getResults(true) : this.getResults();
 	}
 }

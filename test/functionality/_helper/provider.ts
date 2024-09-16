@@ -2,10 +2,10 @@
 
 
 // maps a string to the expected R number parse value
-import type { RNumberValue, RStringValue } from '../../../src/r-bridge/lang-4.x/convert-values'
-import { RNa, RNull } from '../../../src/r-bridge/lang-4.x/convert-values'
-import type { NamespaceIdentifier } from '../../../src/r-bridge/lang-4.x/ast/model/model'
-import { OperatorArity, OperatorDatabase, Operators } from '../../../src/r-bridge/lang-4.x/ast/model/operators'
+import type { RNumberValue, RStringValue } from '../../../src/r-bridge/lang-4.x/convert-values';
+import { RNa, RNull } from '../../../src/r-bridge/lang-4.x/convert-values';
+import type { NamespaceIdentifier } from '../../../src/r-bridge/lang-4.x/ast/model/model';
+import { OperatorArity, OperatorDatabase, Operators } from '../../../src/r-bridge/lang-4.x/ast/model/operators';
 
 export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	// the default block
@@ -40,7 +40,7 @@ export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	{ str: '2i', val: { num: 2, complexNumber: true, markedAsInt: false } },
 	{ str: '4.1i', val: { num: 4.1, complexNumber: true, markedAsInt: false } },
 	{ str: '1e-2i', val: { num: 0.01, complexNumber: true, markedAsInt: false } }
-]
+];
 
 export const RStringPool: { val: RStringValue, str: string }[] = [
 	// the default block
@@ -85,7 +85,7 @@ export const RStringPool: { val: RStringValue, str: string }[] = [
 	{ str: '"\\u{AFFE}"', val: { str: '\\u{AFFE}', quotes: '"' } }, // unicode 2
 	{ str: '"\\U10AFFE"', val: { str: '\\U10AFFE', quotes: '"' } }, // unicode 3
 	{ str: '"\\U{10AFFE}"', val: { str: '\\U{10AFFE}', quotes: '"' } } // unicode 4
-]
+];
 
 export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number, internal?: boolean }[] = [
 	{ str: 'NA', val: RNa, namespace: undefined, symbolStart: 1 },
@@ -95,22 +95,22 @@ export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdenti
 	{ str: 'x::y', val: 'y', namespace: 'x', symbolStart: 4 },
 	// ::: for non-exported?
 	{ str: 'x:::y', val: 'y', namespace: 'x', symbolStart: 5, internal: true }
-]
+];
 
 function canBeABinaryOp(op: string) {
-	const arity = OperatorDatabase[op].arity
-	return arity === OperatorArity.Binary || arity === OperatorArity.Both
+	const arity = OperatorDatabase[op].arity;
+	return arity === OperatorArity.Binary || arity === OperatorArity.Both;
 }
 
 function canBeAUnaryOp(op: string): boolean {
-	const arity = OperatorDatabase[op].arity
-	return arity === OperatorArity.Unary || arity === OperatorArity.Both
+	const arity = OperatorDatabase[op].arity;
+	return arity === OperatorArity.Unary || arity === OperatorArity.Both;
 }
 
 
-export const BinaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeABinaryOp))
-export const BinaryNonAssignmentOperators: readonly string[] = [...BinaryOperatorPool].filter(op =>  OperatorDatabase[op].usedAs !== 'assignment')
+export const BinaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeABinaryOp));
+export const BinaryNonAssignmentOperators: readonly string[] = [...BinaryOperatorPool].filter(op =>  OperatorDatabase[op].usedAs !== 'assignment');
 
-export const UnaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeAUnaryOp))
+export const UnaryOperatorPool: ReadonlySet<string> = new Set(Operators.filter(canBeAUnaryOp));
 
-export const AssignmentOperators: readonly string[] = Operators.filter(op => OperatorDatabase[op].usedAs === 'assignment')
+export const AssignmentOperators: readonly string[] = Operators.filter(op => OperatorDatabase[op].usedAs === 'assignment');

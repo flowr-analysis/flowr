@@ -1,16 +1,16 @@
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
-import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier'
-import type { FunctionArgument } from '../../../../src/dataflow/graph/graph'
-import type { REnvironmentInformation , Environment } from '../../../../src/dataflow/environments/environment'
-import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment'
-import { define } from '../../../../src/dataflow/environments/define'
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping'
-import { appendEnvironment } from '../../../../src/dataflow/environments/append'
-import type { ControlDependency } from '../../../../src/dataflow/info'
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
+import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
+import type { REnvironmentInformation , Environment } from '../../../../src/dataflow/environments/environment';
+import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
+import { define } from '../../../../src/dataflow/environments/define';
+import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
+import { appendEnvironment } from '../../../../src/dataflow/environments/append';
+import type { ControlDependency } from '../../../../src/dataflow/info';
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined }
+	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined };
 }
 
 /**
@@ -19,15 +19,15 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependencies?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }
+	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) };
 }
 /**
  * The constant global environment with all pre-defined functions.
  */
 export const defaultEnv = () => {
-	const global = initializeCleanEnvironments()
-	return new EnvironmentBuilder(global.current, 0)
-}
+	const global = initializeCleanEnvironments();
+	return new EnvironmentBuilder(global.current, 0);
+};
 
 /**
  * EnvironmentBuilder extends REnvironmentInformation with builder pattern methods.
@@ -36,15 +36,15 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	/**
 	 * Use global environment.
 	 */
-	current: Environment
+	current: Environment;
 	/**
 	 * Level is 0.
 	 */
-	level:   number
+	level:   number;
 
 	constructor(env: Environment, level: number) {
-		this.current = env
-		this.level = level
+		this.current = env;
+		this.level = level;
 	}
 
 	/**
@@ -60,7 +60,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			name,
 			definedAt,
 			nodeId,
-			controlDependencies })
+			controlDependencies });
 	}
 
 	/**
@@ -77,7 +77,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt,
 			nodeId,
 			controlDependencies
-		})
+		});
 	}
 
 	/**
@@ -94,7 +94,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt,
 			nodeId,
 			controlDependencies
-		})
+		});
 	}
 
 	/**
@@ -111,7 +111,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt,
 			nodeId,
 			controlDependencies
-		})
+		});
 	}
 
 	/**
@@ -125,24 +125,24 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt:           normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:              normalizeIdToNumberIfPossible(def.nodeId),
 			controlDependencies: def.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition, superAssignment, this)
-		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level)
+		} as IdentifierDefinition, superAssignment, this);
+		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level);
 	}
 
 	/**
 	 * Adds a new, local environment on the environment stack and returns it.
 	 */
 	pushEnv(): EnvironmentBuilder {
-		const newEnvironment = pushLocalEnvironment(this)
-		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level)
+		const newEnvironment = pushLocalEnvironment(this);
+		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level);
 	}
 
 	/**
 	 * Pops the last environment (must be local) from the environment stack.
 	 */
 	popEnv(): EnvironmentBuilder {
-		const underlyingEnv = popLocalEnvironment(this)
-		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level)
+		const underlyingEnv = popLocalEnvironment(this);
+		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level);
 	}
 
 	/**
@@ -151,7 +151,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param other - The next environment.
 	 */
 	appendWritesOf(other: REnvironmentInformation) {
-		const appendedEnv = appendEnvironment(this, other)
-		return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level)
+		const appendedEnv = appendEnvironment(this, other);
+		return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level);
 	}
 }

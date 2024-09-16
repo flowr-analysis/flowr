@@ -1,8 +1,8 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 describe('Parse expression lists', withShell(shell => {
 	describe('Expression lists with newlines and braces', () => {
@@ -16,7 +16,7 @@ describe('Parse expression lists', withShell(shell => {
 				info:     {}
 			})
 
-		)
+		);
 		// the r standard does not seem to allow '\r\n' or '\n\r'
 		assertAst(label('two lines', ['name-normal', 'numbers', 'newlines']),
 			shell, '42\na',
@@ -37,7 +37,7 @@ describe('Parse expression lists', withShell(shell => {
 					info:      {}
 				}
 			)
-		)
+		);
 
 		assertAst(label('three lines', ['name-normal', 'numbers', 'newlines']),
 			shell, 'a\nb\nc',
@@ -67,7 +67,7 @@ describe('Parse expression lists', withShell(shell => {
 					info:      {}
 				},
 			)
-		)
+		);
 
 		assertAst(label('many lines', ['name-normal', 'numbers', 'newlines']),
 			shell, 'a\nb\nc\nd\nn2\nz\n',
@@ -121,7 +121,7 @@ describe('Parse expression lists', withShell(shell => {
 					info:      {}
 				}
 			)
-		)
+		);
 
 		assertAst(label('Two Lines With Braces', ['name-normal', 'numbers', 'grouping', 'newlines']),
 			shell, '{ 42\na }', exprList({
@@ -165,7 +165,7 @@ describe('Parse expression lists', withShell(shell => {
 					},
 				],
 			})
-		)
+		);
 
 		// { 42\na }{ x } seems to be illegal for R...
 		assertAst(label('Multiple Braces', ['name-normal', 'numbers', 'grouping', 'newlines']),
@@ -243,8 +243,8 @@ describe('Parse expression lists', withShell(shell => {
 					}]
 				}
 			)
-		)
-	})
+		);
+	});
 
 	describe('Expression lists with semicolons', () => {
 		assertAst(label('Two Elements in Same Line', ['numbers', 'name-normal', 'semicolons']),
@@ -272,7 +272,7 @@ describe('Parse expression lists', withShell(shell => {
 					}
 				]
 			}
-		)
+		);
 
 		assertAst(label('Empty split with semicolon', ['numbers', 'semicolons', 'grouping']),
 			shell, '{ 3; }', exprList({
@@ -306,7 +306,7 @@ describe('Parse expression lists', withShell(shell => {
 					info:     {}
 				}]
 			})
-		)
+		);
 
 
 		assertAst(label('Inconsistent split with semicolon', ['numbers', 'semicolons', 'newlines']),
@@ -344,7 +344,7 @@ describe('Parse expression lists', withShell(shell => {
 					}
 				]
 			}
-		)
-	})
+		);
+	});
 })
-)
+);

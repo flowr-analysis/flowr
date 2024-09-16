@@ -5,8 +5,8 @@
  * @module
  */
 
-import { setMinus } from './set'
-import type { MergeableRecord } from './objects'
+import { setMinus } from './set';
+import type { MergeableRecord } from './objects';
 
 /**
  * Unifies the shape of all difference reports.
@@ -62,23 +62,23 @@ export interface GenericDiffConfiguration {
 
 
 export function setDifference<T, Report extends WriteableDifferenceReport = WriteableDifferenceReport>(left: ReadonlySet<T>, right: ReadonlySet<T>, info: GenericDifferenceInformation<Report>): void {
-	const lWithoutR = setMinus(left, right)
-	const rWithoutL = setMinus(right, left)
+	const lWithoutR = setMinus(left, right);
+	const rWithoutL = setMinus(right, left);
 	if(lWithoutR.size === 0 && rWithoutL.size === 0) {
-		return
+		return;
 	}
-	let message: string = info.position
+	let message: string = info.position;
 	if(lWithoutR.size > 0 && !info.config.rightIsSubgraph) {
-		message += ` More elements in ${info.leftname}: ${JSON.stringify([...lWithoutR])}`
+		message += ` More elements in ${info.leftname}: ${JSON.stringify([...lWithoutR])}`;
 	}
 	if(rWithoutL.size > 0 && !info.config.leftIsSubgraph) {
-		message += lWithoutR.size > 0 ? ' and m' : 'M'
-		message += `ore in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`
+		message += lWithoutR.size > 0 ? ' and m' : 'M';
+		message += `ore in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`;
 	}
 	if(
 		(rWithoutL.size > 0 && !info.config.leftIsSubgraph)
 		|| (lWithoutR.size > 0 && !info.config.rightIsSubgraph)
 	) {
-		info.report.addComment(message)
+		info.report.addComment(message);
 	}
 }

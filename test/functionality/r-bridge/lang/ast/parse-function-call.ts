@@ -1,9 +1,9 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 describe('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
@@ -24,8 +24,8 @@ describe('Parse function calls', withShell(shell => {
 				},
 				arguments: [],
 			})
-		)
-	})
+		);
+	});
 	describe('functions with arguments', () => {
 		assertAst(label('f(1, 2)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers']),
 			shell, 'f(1, 2)', exprList({
@@ -72,7 +72,7 @@ describe('Parse function calls', withShell(shell => {
 					}
 				],
 			})
-		)
+		);
 		assertAst(label('f(1,)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers', 'empty-arguments']),
 			shell, 'f(1,)', exprList({
 				type:         RType.FunctionCall,
@@ -104,8 +104,8 @@ describe('Parse function calls', withShell(shell => {
 						}
 					}, EmptyArgument],
 			})
-		)
-	})
+		);
+	});
 	describe('functions with named arguments', () => {
 		assertAst(label('f(1, x=2, 4, y=3)', ['name-normal', 'call-normal', 'unnamed-arguments', 'named-arguments', 'numbers']),
 			shell, 'f(1, x=2, 4, y=3)', exprList({
@@ -192,7 +192,7 @@ describe('Parse function calls', withShell(shell => {
 					}
 				],
 			})
-		)
+		);
 		assertAst(label('string arguments', ['name-normal', 'call-normal', 'string-arguments', 'strings']),
 			shell,'f("a"=3,\'x\'=2)',
 			exprList({
@@ -253,8 +253,8 @@ describe('Parse function calls', withShell(shell => {
 						}
 					}
 				],
-			}))
-	})
+			}));
+	});
 	describe('directly called functions', () => {
 		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition', 'grouping']),
 			shell, '(function(x) { x })(2)', exprList({
@@ -354,7 +354,7 @@ describe('Parse function calls', withShell(shell => {
 			}), {
 				ignoreAdditionalTokens: true
 			}
-		)
+		);
 		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
 			shell, 'a(1)(2)', exprList({
 				type:           RType.FunctionCall,
@@ -408,8 +408,8 @@ describe('Parse function calls', withShell(shell => {
 					}
 				]
 			})
-		)
-	})
+		);
+	});
 	describe('functions with explicit namespacing', () => {
 		assertAst(label('x::f()', ['name-normal', 'call-normal', 'accessing-exported-names']),
 			shell, 'x::f()',
@@ -429,8 +429,8 @@ describe('Parse function calls', withShell(shell => {
 				},
 				arguments: [],
 			})
-		)
-	})
+		);
+	});
 	describe('functions which are called as string', () => {
 		assertAst(label("'f'()", ['name-quoted', 'call-normal']),
 			shell, "'f'()",
@@ -450,8 +450,8 @@ describe('Parse function calls', withShell(shell => {
 				},
 				arguments: [],
 			})
-		)
-	})
+		);
+	});
 	describe('Next and break as functions', () => {
 		assertAst(label('next()', ['name-normal', 'call-normal', 'next']),
 			shell, 'next()', exprList({
@@ -460,8 +460,8 @@ describe('Parse function calls', withShell(shell => {
 				lexeme:   'next',
 				info:     {}
 			})
-		)
-	})
+		);
+	});
 	assertAst(label('break()', ['name-normal', 'call-normal', 'break']),
 		shell, 'break()', exprList({
 			type:     RType.Break,
@@ -470,6 +470,6 @@ describe('Parse function calls', withShell(shell => {
 			info:     {}
 
 		})
-	)
+	);
 })
-)
+);

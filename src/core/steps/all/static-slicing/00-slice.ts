@@ -1,11 +1,11 @@
-import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import type { IPipelineStep } from '../../pipeline-step'
-import { PipelineStepStage } from '../../pipeline-step'
-import type { DeepReadonly } from 'ts-essentials'
-import type { DataflowInformation } from '../../../../dataflow/info'
-import type { SlicingCriteria } from '../../../../slicing/criterion/parse'
-import { staticSlicing } from '../../../../slicing/static/static-slicer'
-import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { internalPrinter, StepOutputFormat } from '../../../print/print';
+import type { IPipelineStep } from '../../pipeline-step';
+import { PipelineStepStage } from '../../pipeline-step';
+import type { DeepReadonly } from 'ts-essentials';
+import type { DataflowInformation } from '../../../../dataflow/info';
+import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
+import { staticSlicing } from '../../../../slicing/static/static-slicer';
+import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
@@ -15,7 +15,7 @@ export interface SliceRequiredInput {
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold)
+	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold);
 }
 
 export const STATIC_SLICE = {
@@ -29,4 +29,4 @@ export const STATIC_SLICE = {
 	},
 	dependencies:  [ 'dataflow' ],
 	requiredInput: undefined as unknown as SliceRequiredInput
-} as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>
+} as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>;

@@ -2,25 +2,25 @@
 
 /* istanbul ignore next */
 export function assertUnreachable(x: never): never {
-	throw new Error(`Unexpected object: ${JSON.stringify(x)}`)
+	throw new Error(`Unexpected object: ${JSON.stringify(x)}`);
 }
 
 export function isNotUndefined<T>(x: T | undefined): x is T {
-	return x !== undefined
+	return x !== undefined;
 }
 
 export function isUndefined<T>(x: T | undefined): x is undefined {
-	return x === undefined
+	return x === undefined;
 }
 
 export function isNotNull<T>(x: T | null): x is T {
-	return x !== null
+	return x !== null;
 }
 
 class GuardError extends Error {
 	constructor(message: string) {
-		super(message)
-		this.name = 'GuardError'
+		super(message);
+		this.name = 'GuardError';
 	}
 }
 
@@ -33,6 +33,6 @@ export type GuardMessage = string | (() => string)
  */
 export function guard(assertion: boolean | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
 	if(!assertion) {
-		throw new GuardError( typeof message === 'string' ? message : message())
+		throw new GuardError( typeof message === 'string' ? message : message());
 	}
 }

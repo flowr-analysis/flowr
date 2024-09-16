@@ -1,4 +1,4 @@
-import { log, LogLevel } from '../../../src/util/log'
+import { log, LogLevel } from '../../../src/util/log';
 
 /**
  * Update the minimum level of all flowr loggers.
@@ -7,11 +7,11 @@ import { log, LogLevel } from '../../../src/util/log'
  */
 export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
 	if(log2File) {
-		log.logToFile()
+		log.logToFile();
 	}
 	log.updateSettings(logger => {
-		logger.settings.minLevel = minLevel
-	})
+		logger.settings.minLevel = minLevel;
+	});
 }
 
 /**
@@ -19,6 +19,6 @@ export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
  */
 export function enableLog(minLevel: LogLevel = LogLevel.Trace) {
 	// we use a test hook as well to be more flexible
-	before(() => setMinLevelOfAllLogs(minLevel, false))
-	setMinLevelOfAllLogs(minLevel, false)
+	before(() => setMinLevelOfAllLogs(minLevel, false));
+	setMinLevelOfAllLogs(minLevel, false);
 }

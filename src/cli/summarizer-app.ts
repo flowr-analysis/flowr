@@ -6,12 +6,12 @@
  * @module
  */
 
-import { BenchmarkSummarizer } from '../benchmark/summarizer/summarizer'
-import { StatisticsSummarizer } from '../statistics/summarizer/summarizer'
-import { detectSummarizationType } from '../statistics/summarizer/auto-detect'
-import { SummarizerType } from '../util/summarizer'
-import { processCommandLineArgs } from './common/script'
-import { allFeatureNames } from '../statistics/features/feature'
+import { BenchmarkSummarizer } from '../benchmark/summarizer/summarizer';
+import { StatisticsSummarizer } from '../statistics/summarizer/summarizer';
+import { detectSummarizationType } from '../statistics/summarizer/auto-detect';
+import { SummarizerType } from '../util/summarizer';
+import { processCommandLineArgs } from './common/script';
+import { allFeatureNames } from '../statistics/features/feature';
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -31,10 +31,10 @@ const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['inp
 		'{italic benchmark.json}',
 		'{bold --help}'
 	]
-})
+});
 
-const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary')
-console.log(`Writing outputs to base ${outputBase}`)
+const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary');
+console.log(`Writing outputs to base ${outputBase}`);
 
 function getBenchmarkSummarizer() {
 	return new BenchmarkSummarizer({
@@ -43,7 +43,7 @@ function getBenchmarkSummarizer() {
 		intermediateOutputPath: outputBase,
 		outputPath:             `${outputBase}-ultimate.json`,
 		logger:                 console.log
-	})
+	});
 }
 
 function getStatisticsSummarizer() {
@@ -54,34 +54,34 @@ function getStatisticsSummarizer() {
 		projectSkip:            options['project-skip'],
 		featuresToUse:          allFeatureNames,
 		logger:                 console.log
-	})
+	});
 }
 
 
 async function retrieveSummarizer(): Promise<StatisticsSummarizer | BenchmarkSummarizer> {
-	const type = options.type === 'auto' ? await detectSummarizationType(options.input) : options.type
+	const type = options.type === 'auto' ? await detectSummarizationType(options.input) : options.type;
 	if(type === SummarizerType.Benchmark) {
-		console.log('Summarizing benchmark')
-		return getBenchmarkSummarizer()
+		console.log('Summarizing benchmark');
+		return getBenchmarkSummarizer();
 	} else if(type === SummarizerType.Statistics) {
-		console.log('Summarizing statistics')
-		return getStatisticsSummarizer()
+		console.log('Summarizing statistics');
+		return getStatisticsSummarizer();
 	} else {
-		console.error('Unknown type', type, 'either give "benchmark" or "statistics"')
-		process.exit(1)
+		console.error('Unknown type', type, 'either give "benchmark" or "statistics"');
+		process.exit(1);
 	}
 }
 
 async function run() {
-	const summarizer = await retrieveSummarizer()
+	const summarizer = await retrieveSummarizer();
 
 	if(!options['ultimate-only']) {
-		await summarizer.preparationPhase(options.categorize)
+		await summarizer.preparationPhase(options.categorize);
 	}
 
-	await summarizer.summarizePhase()
+	await summarizer.summarizePhase();
 }
 
 
 
-void run()
+void run();

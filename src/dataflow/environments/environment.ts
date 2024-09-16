@@ -4,44 +4,44 @@
  *
  * @module
  */
-import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
-import { BuiltInMemory, EmptyBuiltInMemory } from './built-in'
-import type { DataflowGraph } from '../graph/graph'
-import { resolveByName } from './resolve-by-name'
-import type { ControlDependency } from '../info'
-import { jsonReplacer } from '../../util/json'
+import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import { BuiltInMemory, EmptyBuiltInMemory } from './built-in';
+import type { DataflowGraph } from '../graph/graph';
+import { resolveByName } from './resolve-by-name';
+import type { ControlDependency } from '../info';
+import { jsonReplacer } from '../../util/json';
 
 
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
-	const node = graph.get(ref.nodeId, true)
+	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
+		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined;
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
 				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
-					definition.controlDependencies.push(defaultCd)
+					definition.controlDependencies.push(defaultCd);
 				} else {
-					definition.controlDependencies = defaultCd ? [defaultCd] : []
+					definition.controlDependencies = defaultCd ? [defaultCd] : [];
 				}
 			}
 		}
 	}
 	if(node) {
-		const [fst] = node
+		const [fst] = node;
 		if(fst.controlDependencies && defaultCd && !fst.controlDependencies.includes(defaultCd)) {
-			fst.controlDependencies.push(defaultCd)
+			fst.controlDependencies.push(defaultCd);
 		} else {
-			fst.controlDependencies = defaultCd ? [defaultCd] : []
+			fst.controlDependencies = defaultCd ? [defaultCd] : [];
 		}
 	}
-	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] }
+	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };
 }
 
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference[] {
 	if(references === undefined) {
-		return []
+		return [];
 	}
-	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd))
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, defaultCd));
 }
 
 export type EnvironmentMemory = Map<Identifier, IdentifierDefinition[]>
@@ -57,16 +57,16 @@ export interface IEnvironment {
 	memory:      EnvironmentMemory
 }
 
-let environmentIdCounter = 0
+let environmentIdCounter = 0;
 
 export class Environment implements IEnvironment {
-	readonly id = environmentIdCounter++
-	parent: IEnvironment
-	memory: Map<Identifier, IdentifierDefinition[]>
+	readonly id = environmentIdCounter++;
+	parent: IEnvironment;
+	memory: Map<Identifier, IdentifierDefinition[]>;
 
 	constructor(parent: IEnvironment) {
-		this.parent = parent
-		this.memory = new Map()
+		this.parent = parent;
+		this.memory = new Map();
 	}
 }
 
@@ -86,32 +86,32 @@ export interface REnvironmentInformation {
 
 
 /* the built-in environment is the root of all environments */
-export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment)
-BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory
+export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment);
+BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
 
 const EmptyBuiltInEnvironment: IEnvironment = {
 	id:     BuiltInEnvironment.id,
 	memory: undefined as unknown as EnvironmentMemory,
 	parent: undefined as unknown as IEnvironment
-}
+};
 
 
 export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
-	BuiltInEnvironment.memory ??= BuiltInMemory
-	EmptyBuiltInEnvironment.memory ??= EmptyBuiltInMemory
+	BuiltInEnvironment.memory ??= BuiltInMemory;
+	EmptyBuiltInEnvironment.memory ??= EmptyBuiltInMemory;
 	return {
 		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
 		level:   0
-	}
+	};
 }
 
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
 	if(v === BuiltInEnvironment) {
-		return '<BuiltInEnvironment>'
+		return '<BuiltInEnvironment>';
 	} else if(v === EmptyBuiltInEnvironment) {
-		return '<EmptyBuiltInEnvironment>'
+		return '<EmptyBuiltInEnvironment>';
 	} else {
-		return jsonReplacer(k, v)
+		return jsonReplacer(k, v);
 	}
 }
 

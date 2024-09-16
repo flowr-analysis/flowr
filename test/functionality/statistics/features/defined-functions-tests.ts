@@ -1,6 +1,6 @@
-import { testForFeatureForInput } from '../statistics.spec'
-import { withShell } from '../../_helper/shell'
-import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { testForFeatureForInput } from '../statistics.spec';
+import { withShell } from '../../_helper/shell';
+import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 
 
 describe('Defined Functions', withShell(shell => {
@@ -39,5 +39,5 @@ describe('Defined Functions', withShell(shell => {
 				}]]]
 			]
 		}
-	])
-}))
+	]);
+}));

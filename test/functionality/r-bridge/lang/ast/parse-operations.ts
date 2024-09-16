@@ -1,19 +1,19 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { startAndEndsWith } from '../../../../../src/util/strings'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
-import type { RShell } from '../../../../../src/r-bridge/shell'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { startAndEndsWith } from '../../../../../src/util/strings';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { RShell } from '../../../../../src/r-bridge/shell';
 
 describe('Parse simple operations', withShell(shell => {
 	describe('unary operations', () => {
 		for(const op of UnaryOperatorPool) {
-			const simpleInput = `${op}42`
-			const opOffset = op.length - 1
-			const opData = OperatorDatabase[op]
+			const simpleInput = `${op}42`;
+			const opOffset = op.length - 1;
+			const opData = OperatorDatabase[op];
 			assertAst(label(`${simpleInput}`, ['unary-operator', 'numbers', ...opData.capabilities]),
 				shell, simpleInput, exprList({
 					type:     RType.UnaryOp,
@@ -29,9 +29,9 @@ describe('Parse simple operations', withShell(shell => {
 						info:     {}
 					},
 				})
-			)
+			);
 		}
-	})
+	});
 	describe('? question', () => {
 		assertAst(label('? x', ['unary-operator', 'built-in-help', 'name-normal']),
 			shell, '? x', exprList({
@@ -49,12 +49,12 @@ describe('Parse simple operations', withShell(shell => {
 					info:      {}
 				}
 			})
-		)
-	})
+		);
+	});
 
 	describe('Binary Operations', () => {
 		for(const op of [...BinaryOperatorPool].filter(op => !startAndEndsWith(op, '%'))) {
-			describePrecedenceTestsForOp(op, shell)
+			describePrecedenceTestsForOp(op, shell);
 		}
 
 		describe('Intermixed with comments', () => {
@@ -101,8 +101,8 @@ describe('Parse simple operations', withShell(shell => {
 				}, {
 					ignoreAdditionalTokens: false
 				}
-			)
-		})
+			);
+		});
 		describe('Using unknown special infix operator', () => {
 			assertAst(label('1 %xx% 2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'special-operator']),
 				shell, '1 %xx% 2', exprList({
@@ -150,19 +150,19 @@ describe('Parse simple operations', withShell(shell => {
 						}
 					]
 				})
-			)
-		})
-	})
+			);
+		});
+	});
 })
-)
+);
 
 function describePrecedenceTestsForOp(op: string, shell: RShell): void {
-	const comparisonPrecedenceOperators = new Set(['<', '<=', '>', '>=', '==', '!=', '', '=='])
+	const comparisonPrecedenceOperators = new Set(['<', '<=', '>', '>=', '==', '!=', '', '==']);
 
 	describe(`${op}`, () => {
-		const simpleInput = `1 ${op} 1`
-		const opOffset = op.length - 1
-		const opData = OperatorDatabase[op]
+		const simpleInput = `1 ${op} 1`;
+		const opOffset = op.length - 1;
+		const opData = OperatorDatabase[op];
 		assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...opData.capabilities]),
 			shell, simpleInput, exprList({
 				type:     RType.BinaryOp,
@@ -185,10 +185,10 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					info:     {}
 				}
 			}
-			))
+			));
 
 		if(!comparisonPrecedenceOperators.has(op)) {
-			let [offsetL, offsetC, offsetR] = [1, 2, 2]
+			let [offsetL, offsetC, offsetR] = [1, 2, 2];
 
 			assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 				shell, `(1 ${op} 1) ${op} 42`, exprList({
@@ -250,7 +250,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					ignoreAdditionalTokens: true
 				});
 
-			([offsetL, offsetC, offsetR] = [1, 2, 3])
+			([offsetL, offsetC, offsetR] = [1, 2, 3]);
 			assertAst(label('Multiple Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 				shell, `(1 ${op} 1) ${op} (42)`, exprList({
 					type:     RType.BinaryOp,
@@ -330,11 +330,11 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					}
 				}), {
 					ignoreAdditionalTokens: true
-				})
+				});
 
 			// exponentiation and assignments has a different behavior when nested without parenthesis
 			if(op !== '^' && op !== '**' && !AssignmentOperators.includes(op)) {
-				[offsetL, offsetC, offsetR] = [0, 0, 0]
+				[offsetL, offsetC, offsetR] = [0, 0, 0];
 
 				assertAst(label('No Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 					shell, `1 ${op} 1 ${op} 42`, exprList({
@@ -373,7 +373,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						}
 					}), {
 						ignoreAdditionalTokens: true
-					})
+					});
 			}
 
 			assertAst(label('Invert precedence', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
@@ -434,7 +434,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					}
 				}), {
 					ignoreAdditionalTokens: true
-				})
+				});
 		}
-	})
+	});
 }

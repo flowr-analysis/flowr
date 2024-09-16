@@ -1,10 +1,10 @@
-import { assertAst, withShell } from '../../../_helper/shell'
-import { exprList, numVal } from '../../../_helper/ast-builder'
-import { rangeFrom } from '../../../../../src/util/range'
-import { label } from '../../../_helper/label'
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type'
-import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators'
-import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call'
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { rangeFrom } from '../../../../../src/util/range';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
@@ -25,7 +25,7 @@ describe('Parse value access', withShell(shell => {
 				},
 				access: []
 			})
-		)
+		);
 		assertAst(label('One Constant', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[1]', exprList({
 				type:     RType.Access,
@@ -56,7 +56,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('One Variable', ['name-normal', 'single-bracket-access']),
 			shell, 'a[x]', exprList({
 				type:     RType.Access,
@@ -88,7 +88,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', ...OperatorDatabase['-'].capabilities]),
 			shell, 'a[x + 3]', exprList({
 				type:     RType.Access,
@@ -134,7 +134,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Multiple Access', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[3,2]', exprList({
 				type:     RType.Access,
@@ -178,7 +178,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Multiple with Empty', ['name-normal', 'single-bracket-access', 'numbers', 'access-with-empty']),
 			shell, 'a[,2,4]', exprList({
 				type:     RType.Access,
@@ -221,7 +221,7 @@ describe('Parse value access', withShell(shell => {
 						info:     {}
 					}
 				}]
-			}))
+			}));
 		assertAst(label('Named argument', ['name-normal', 'single-bracket-access', 'numbers', 'access-with-argument-names']),
 			shell, 'a[1,super=4]', exprList({
 				type:     RType.Access,
@@ -272,7 +272,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Chained', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[1][4]', exprList({
 				type:     RType.Access,
@@ -324,8 +324,8 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
-	})
+		);
+	});
 	describe('Double bracket', () => {
 		assertAst(label('Empty', ['name-normal', 'double-bracket-access', 'access-with-empty']),
 			shell, 'b[[]]', exprList({
@@ -344,7 +344,7 @@ describe('Parse value access', withShell(shell => {
 				},
 				access: []
 			})
-		)
+		);
 		assertAst(label('One Constant', ['name-normal', 'double-bracket-access']),
 			shell, 'b[[5]]', exprList({
 				type:     RType.Access,
@@ -375,7 +375,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Multiple', ['name-normal', 'double-bracket-access', 'numbers']),
 			shell, 'b[[5,3]]', exprList({
 				type:     RType.Access,
@@ -419,7 +419,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Multiple with empty', ['name-normal', 'double-bracket-access', 'numbers', 'access-with-empty']),
 			shell, 'b[[5,,]]', exprList({
 				type:     RType.Access,
@@ -450,8 +450,8 @@ describe('Parse value access', withShell(shell => {
 					}
 				}, EmptyArgument, EmptyArgument]
 			})
-		)
-	})
+		);
+	});
 	describe('Dollar and Slot', () => {
 		assertAst(label('Dollar access', ['name-normal', 'dollar-access']),
 			shell, 'c$x', exprList({
@@ -484,7 +484,7 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
+		);
 		assertAst(label('Slot based access', ['name-normal', 'slot-access']),
 			shell, 'd@y', exprList({
 				type:     RType.Access,
@@ -516,6 +516,6 @@ describe('Parse value access', withShell(shell => {
 					}
 				}]
 			})
-		)
-	})
-}))
+		);
+	});
+}));

@@ -9,7 +9,7 @@
  * @module
  */
 
-import type { NoInfo, RNode } from '../model'
+import type { NoInfo, RFiles, RNode } from '../model'
 import { guard } from '../../../../../util/assert'
 import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
@@ -443,9 +443,9 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFiles<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, files: readonly RNodeWithParent<OtherInfo>[], depth: number): RNodeWithParent<OtherInfo> => {
+	return (data: RFiles<OtherInfo>, files: readonly RNodeWithParent<OtherInfo>[], depth: number): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined, depth }, children: files } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined, nesting: depth }, children: files } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		let idx = 0
 		for(const file of files) {

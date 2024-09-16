@@ -131,8 +131,10 @@ export const parseCommand: ReplCommand = {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps()
 
-		const object = convertPreparedParsedData(prepareParsedData(result.parse))
-
-		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))
+		const parsedData = Array.isArray(result.parse) ? result.parse : [result.parse]
+		for(const data of parsedData) {
+			const object = convertPreparedParsedData(prepareParsedData(data))
+			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))
+		}
 	}
 }

@@ -70,6 +70,12 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 
 type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'types' | 'attribute'> & { type: EdgeType }
 
+export interface DataflowGraphJson {
+	readonly rootVertices:      NodeId[],
+	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],
+	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
+}
+
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
  * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
@@ -394,10 +400,7 @@ export class DataflowGraph<
 	 * This can be useful for data sent by the flowR server when analyzing it further.
 	 * @param data - The JSON data to construct the graph from
 	 */
-	public static fromJson(data: {
-		rootVertices:      NodeId[],
-		vertexInformation: [NodeId, DataflowGraphVertexInfo][],
-		edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]}){
+	public static fromJson(data: DataflowGraphJson): DataflowGraph {
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);

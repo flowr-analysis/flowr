@@ -1,13 +1,11 @@
 import { assert } from 'chai';
 import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder';
+import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
 import type { DataflowDifferenceReport } from '../../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexInfo } from '../../../../src/dataflow/graph/vertex';
-import type { DataflowGraphEdge } from '../../../../src/dataflow/graph/edge';
 import { jsonReplacer } from '../../../../src/util/json';
 import { argumentInCall } from '../../_helper/dataflow/environment-builder';
 import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
@@ -87,10 +85,7 @@ describe('Dataflow Graph Comparisons', () => {
 				.argument('6', '4')
 				.constant('1')
 				.constant('4');
-			const json = JSON.parse(JSON.stringify(graph, jsonReplacer)) as {
-				vertexInformation: [NodeId, DataflowGraphVertexInfo][],
-				edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][],
-				rootVertices:      NodeId[]};
+			const json = JSON.parse(JSON.stringify(graph, jsonReplacer)) as DataflowGraphJson;
 			const graph2 = DataflowGraph.fromJson(json);
 			raw('Equals', graph, graph2, 'should be equal', k => assert.isTrue(k));
 		});

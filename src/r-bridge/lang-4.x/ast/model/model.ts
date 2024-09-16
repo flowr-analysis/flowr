@@ -146,7 +146,7 @@ export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<In
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
-/** This subtype of {@link RNode} wraps all files whose content is represented in th AST. */
+/** This artificial subtype of {@link RNode} wraps all files whose content is represented in the AST. */
 export interface RFiles<Info> extends WithChildren<Info, RNode<Info>>, Base<Info>, Location {
 	type: RType.Files
 }

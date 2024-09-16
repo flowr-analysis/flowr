@@ -16,10 +16,23 @@ export interface ParseRequiredInput {
 	readonly request: RParseRequests
 }
 
-function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
+async function parseSequentially(requests: ReadonlyArray<RParseRequest>, shell: RShell): Promise<string[]> {
+	const results = []
+	for(const request of requests) {
+		results.push(await retrieveParseDataFromRCode(request, shell))
+	}
+	return results
+}
+
+function processor(_results: unknown, input: Partial<ParseRequiredInput>): Promise<string | string[]> {
 	/* in the future, we want to expose all cases */
 	if(Array.isArray(input.request)) {
-		return Promise.all(input.request.map(request => retrieveParseDataFromRCode(request as RParseRequest, input.shell as RShell)))
+		/* parse sequentially by session */
+		return new Promise<string[]>((resolve, reject) => {
+			parseSequentially(input.request as RParseRequest[], input.shell as RShell)
+				.then(resolve)
+				.catch(reject)
+		})
 	} else {
 		return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
 	}
@@ -34,7 +47,7 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	// TODO: print all files
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     text => text[0],
+		[StepOutputFormat.Json]:     text => JSON.stringify(text),
 		[StepOutputFormat.RdfQuads]: (text, config: QuadSerializationConfiguration) => parseToQuads(text[0], config)
 	},
 	dependencies:  [],

@@ -13,7 +13,7 @@ import type { RExpressionList } from '../../model/nodes/r-expression-list'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
-export function normalize(jsonString: string | string[], getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+export function normalize(jsonString: string | readonly string[], getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	if(typeof jsonString === 'string') {
 		jsonString = [jsonString]
 	}
@@ -24,7 +24,7 @@ export function normalize(jsonString: string | string[], getId: IdGenerator<NoIn
 		const object = convertPreparedParsedData(prepareParsedData(string))
 		roots.push(normalizeRootObjToAst(data, object))
 	}
-	// TODO: unsure about the lexeme and the location
+	// TODO: unsure about the lexeme and the location => it should have neither similar to root expr lists
 	// Should the lexeme just be the content of all files, or do we not care about that
 	return decorateAst({
 		type:     RType.Files,

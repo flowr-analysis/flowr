@@ -215,7 +215,7 @@ export class DataflowGraph<
 	 *
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
-	 *                 This is probably only of use, when you construct dataflow graphs for tests.
+	 *                 This is probably only of use when you construct dataflow graphs for tests.
 	 *
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument

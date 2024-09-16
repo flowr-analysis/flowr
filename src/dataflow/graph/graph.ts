@@ -389,6 +389,11 @@ export class DataflowGraph<
 		return this;
 	}
 
+	/**
+	 * Constructs a dataflow graph instance from the given JSON data and returns the result.
+	 * This can be useful for data sent by the flowR server when analyzing it further.
+	 * @param data - The JSON data to construct the graph from
+	 */
 	public static fromJson(data: {
 		rootVertices:      NodeId[],
 		vertexInformation: [NodeId, DataflowGraphVertexInfo][],

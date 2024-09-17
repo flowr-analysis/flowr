@@ -55,16 +55,17 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 			'setGeneric',
 			'R6Class'].map(name => [name, fs.createWriteStream(path.join(outputPath, `${name}.csv`))]));
 
-	for(const [, value] of importantFunctions) {
+	for (const [, value] of importantFunctions) {
 		value.write('filepath,location,namespace,inspected by,classification,notes\n');
 	}
 
 	// we collect only `all-calls`
 	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(functionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config, importantFunctions));
 
-	for(const [, value] of importantFunctions) {
+	for (const [, value] of importantFunctions) {
 		value.close();
 	}
+
 	importantFunctions.clear();
 
 	console.log(`    [${date2string(new Date())}] Used functions process completed, start to write out function info`);
@@ -78,7 +79,7 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 		const totalSum = summarizeMeasurement(total.flat(), info.size);
 		const argsSum = summarizeMeasurement(args.flat(), info.size);
 		const lineFracSum = summarizeMeasurement(lineFrac.flat());
-		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
+		// we write in csv style :), we escape the key in case it contains commas (with filenames) etc.
 		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`);
 	}
 	fnOutStream.close();

@@ -117,6 +117,10 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
  * See {@link readLineByLine} for an asynchronous version.
  */
 export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void): void {
+	if(!fs.existsSync(filePath)) {
+		log.warn(`File ${filePath} does not exist`);
+		return;
+	}
 	const reader = new LineByLine(filePath);
 
 	let line: false | Buffer;

@@ -59,8 +59,8 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'));
 	fnOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')}\n`);
-	for (const [key, val] of Object.entries(collected)) {
-		const {count, uniqueProjects, uniqueFiles, fracOfLines} = val as CommentsMeta;
+	for(const [key, val] of Object.entries(collected)) {
+		const { count, uniqueProjects, uniqueFiles, fracOfLines } = val as CommentsMeta;
 		const counts = summarizeMeasurement(count);
 		const lineFrac = summarizeMeasurement(fracOfLines);
 		fnOutStream.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)}\n`);

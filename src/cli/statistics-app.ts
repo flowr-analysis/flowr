@@ -1,7 +1,5 @@
-import { log } from '../util/log';
-import { setFormatter, voidFormatter } from '../util/ansi';
 import { processCommandLineArgs } from './common/script';
-import {flowrScriptGetStats} from "./script-core/statistics-core";
+import { flowrScriptGetStats } from './script-core/statistics-core';
 
 export interface StatsCliOptions {
 	readonly verbose:      boolean

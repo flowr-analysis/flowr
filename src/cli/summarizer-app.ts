@@ -7,7 +7,7 @@
  */
 
 import { processCommandLineArgs } from './common/script';
-import {flowrScriptSummarizer} from "./script-core/summarizer-core";
+import { flowrScriptSummarizer } from './script-core/summarizer-core';
 
 export interface SummarizerCliOptions {
 	verbose:         boolean

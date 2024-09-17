@@ -1,5 +1,5 @@
 import { processCommandLineArgs } from './common/script';
-import {getStatsForSingleFile} from "./script-core/statistics-helper-core";
+import { getStatsForSingleFile } from './script-core/statistics-helper-core';
 
 // apps should never depend on other apps when forking (otherwise, they are "run" whenever their root-files are loaded!)
 

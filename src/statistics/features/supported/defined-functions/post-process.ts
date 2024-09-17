@@ -87,7 +87,7 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 	const prefixes = ['total', 'params', 'length-lines', 'length-chars', 'length-non-ws-chars', 'return-explicit', 'return-implicit', 'return-only-explicit', 'return-only-implicit', 'exit-points-line-crac', 'def-line-frac'];
 	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',');
 	fnOutStream.write(`counter,${others}\n`);
-	for (const [idx, info] of definitionsPerFile.entries()) {
+	for(const [idx, info] of definitionsPerFile.entries()) {
 		fnOutStream.write(getFnDefCsv(idx, info));
 		mergedSuperDefinitions.total.push(...info.total);
 		mergedSuperDefinitions.parameters.push(...info.parameters);
@@ -127,7 +127,7 @@ function retrieveMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, c
 
 	const out = fs.createWriteStream(path.join(outputPath, 'function-definitions-meta.csv'));
 	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`);
-	for (const [key, val] of Object.entries(data)) {
+	for(const [key, val] of Object.entries(data)) {
 		const data = val as SummarizedWithProject;
 		out.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`);
 	}
@@ -151,7 +151,7 @@ function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSu
 	});
 	const varNamesOut = fs.createWriteStream(path.join(outputPath, 'function-definitions-var-names.csv'));
 	varNamesOut.write(`name,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`);
-	for (const [key, val] of varNames.entries()) {
+	for(const [key, val] of varNames.entries()) {
 		varNamesOut.write(`${JSON.stringify(key)},${val.uniqueProjects.size},${val.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(val.count))}\n`);
 	}
 	varNamesOut.close();

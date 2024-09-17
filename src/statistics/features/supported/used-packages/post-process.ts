@@ -77,8 +77,8 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	const output = path.join(outputPath, 'all-operators.csv');
 	const out = fs.createWriteStream(output);
 	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`);
-	for (const [key, val] of loadedLibraries.entries()) {
-		const {count, uniqueProjects, uniqueFiles} = val;
+	for(const [key, val] of loadedLibraries.entries()) {
+		const { count, uniqueProjects, uniqueFiles } = val;
 		const sum = summarizeMeasurement(count);
 		out.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(sum)}\n`);
 	}

@@ -135,6 +135,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 				this.log('    Collected!');
 			} catch(e) {
 				this.log(`    Failed to extract ${f}, skipping...`);
+				this.log('    Error: '  + JSON.stringify(e));
 				continue;
 			}
 			this.log('    Migrating files...');

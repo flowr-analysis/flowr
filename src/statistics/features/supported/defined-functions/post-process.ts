@@ -158,7 +158,7 @@ function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSu
 }
 
 /**
- * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
+ * Note: the summary does not contain a 0, for each function that `is _not_ called` by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
  */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file

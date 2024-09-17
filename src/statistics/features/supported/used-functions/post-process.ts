@@ -65,6 +65,7 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 	for(const [, value] of importantFunctions) {
 		value.close();
 	}
+
 	importantFunctions.clear();
 
 	console.log(`    [${date2string(new Date())}] Used functions process completed, start to write out function info`);
@@ -78,7 +79,7 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 		const totalSum = summarizeMeasurement(total.flat(), info.size);
 		const argsSum = summarizeMeasurement(args.flat(), info.size);
 		const lineFracSum = summarizeMeasurement(lineFrac.flat());
-		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
+		// we write in csv style :), we escape the key in case it contains commas (with filenames) etc.
 		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`);
 	}
 	fnOutStream.close();

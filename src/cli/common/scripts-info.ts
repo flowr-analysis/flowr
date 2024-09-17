@@ -16,10 +16,15 @@ import { asOptionName } from '../repl/commands/commands';
 
 
 interface BaseScriptInformation extends MergeableRecord {
+	/** name of the tool to present to the user */
 	toolName:     string
+	/** internal module name to fork/execute, make sure to use the correct path to it with the help of `__dirname` */
 	target:       string
+	/** description of the tool for the user */
 	description:  string
+	/** example usage */
 	usageExample: string
+	/** command line options that are available */
 	options:      OptionDefinition[]
 }
 

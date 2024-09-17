@@ -44,7 +44,7 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
  *                      the output of the script, see {@link stdioCaptureProcessor}.
  * @param exitOnError - If set to `true`, the process will exit with the exit code of the script.
  */
-export async function waitOnScript(module: string, args: string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
+export async function waitOnScript(module: string, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`);
 	const child = cp.fork(module, args, {
 		silent: io !== undefined

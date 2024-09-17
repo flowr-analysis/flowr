@@ -16,7 +16,7 @@ import type { FeatureStatistics, FeatureStatisticsWithMeta } from '../../feature
 import { ALL_FEATURES } from '../../features/feature';
 import type { MetaStatistics } from '../../meta-statistics';
 
-function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
+export function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
 	for(const featureName of config.featuresToUse) {
 		const featureInfo = ALL_FEATURES[featureName];
 		const targetPath = path.join(filepath, featureInfo.name);

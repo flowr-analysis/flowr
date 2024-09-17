@@ -18,7 +18,7 @@ async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, c
 	return results.features[feature] as FeatureValue<T>;
 }
 
-async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>, map: DummyAppendMemoryMap, expectedMap: Map<AppendFnType, string[]> | undefined): Promise<void> {
+export async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>, map: DummyAppendMemoryMap, expectedMap: Map<AppendFnType, string[]> | undefined): Promise<void> {
 	const result = await requestFeature(shell, feature, code);
 	assert.deepStrictEqual(result, JSON.parse(JSON.stringify(expected, jsonReplacer), jsonBigIntRetriever), `counts, for feature ${feature} in ${code}`);
 	const keys = [...map.keys()];

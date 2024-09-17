@@ -14,6 +14,7 @@ import {
 } from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
 import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines'
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever'
+import { ensureArray } from '../../../util/arrays'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
@@ -131,7 +132,7 @@ export const parseCommand: ReplCommand = {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps()
 
-		const parsedData = Array.isArray(result.parse) ? result.parse : [result.parse]
+		const parsedData = ensureArray(result.parse)
 		for(const data of parsedData) {
 			const object = convertPreparedParsedData(prepareParsedData(data))
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))

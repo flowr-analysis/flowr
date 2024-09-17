@@ -35,6 +35,7 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
 import { resolveDataflowGraph } from './resolve-graph'
+import { ensureArray } from '../../../src/util/arrays'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -299,7 +300,7 @@ function printIdMapping(ids: NodeId[], map: AstIdMap): string {
  * Please note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
 export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
-	const selectedIds = Array.isArray(ids) ? ids : [ids]
+	const selectedIds = ensureArray(ids)
 	const t = it(decorateLabelContext(name, ['slice']), async function() {
 		await ensureConfig(shell, this, userConfig)
 

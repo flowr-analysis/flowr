@@ -10,13 +10,12 @@ import type { XmlBasedJson } from '../xml/input-format'
 import { childrenKey , contentKey , attributesKey, nameKey } from '../xml/input-format'
 import { RawRType, RType } from '../../model/type'
 import type { RExpressionList } from '../../model/nodes/r-expression-list'
+import { ensureArray } from '../../../../../util/arrays'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 export function normalize(jsonString: string | readonly string[], getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
-	if(typeof jsonString === 'string') {
-		jsonString = [jsonString]
-	}
+	jsonString = ensureArray(jsonString)
 
 	const roots: RExpressionList[] = []
 	for(const string of jsonString) {

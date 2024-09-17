@@ -177,3 +177,13 @@ export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | und
 	}
 	return true
 }
+
+/**
+ * Ensures that the given value is an array.
+ * @param x - The value to ensure as an array
+ * @returns If `x` is already an array, it is returned as is, otherwise `[x]` is returned.
+ */
+export function ensureArray<T>(x: T | readonly T[]): readonly T[]
+export function ensureArray<T>(x: T | T[]): T[] {
+	return Array.isArray(x) ? x : [x]
+}

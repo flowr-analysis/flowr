@@ -6,11 +6,12 @@ import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder';
 
 describe('Graph Clustering', () => {
 	describe('Simple', () => {
-		describe('Positive', () => {
-			test('empty', emptyGraph(), []);
-			test('single vertex', emptyGraph().use(0, 'x'), [{ startNode: 0, members: [0] }]);
-			test('single edge', emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1), [{ startNode: 0, members: [0, 1] }]);
-		});
+		test('empty', emptyGraph(), []);
+		test('single vertex', emptyGraph().use(0, 'x'), [{ startNode: 0, members: [0] }]);
+		test('single edge', emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1), [{ startNode: 0, members: [0, 1] }]);
+		test('two single-edge',
+			emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1).use(2, 'z').use(3, 'w').reads(2, 3),
+			[{ startNode: 0, members: [0, 1] }, { startNode: 2, members: [2, 3] }]);
 	});
 });
 

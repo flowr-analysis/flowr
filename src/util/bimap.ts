@@ -18,7 +18,8 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 	}
 
 	public [Symbol.iterator](): MapIterator<[K, V]> {
-		return this.k2v[Symbol.iterator]();
+		/* return this.k2v[Symbol.iterator](); */
+		throw new Error('Currently, the typescript/eslint plugin is failing for a symbol iterator use. Yay.')
 	}
 
 	public clear(): void {

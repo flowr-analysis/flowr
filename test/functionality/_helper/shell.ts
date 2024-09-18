@@ -275,7 +275,7 @@ export function assertDataflow(
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
-				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
+				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') + '\n'
 			);
 
 			console.error('ast', normalizedAstToMermaidUrl(info.normalize.ast));

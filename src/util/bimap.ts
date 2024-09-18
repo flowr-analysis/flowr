@@ -17,7 +17,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		}
 	}
 
-	public [Symbol.iterator](): IterableIterator<[K, V]> {
+	public [Symbol.iterator](): MapIterator<[K, V]> {
 		return this.k2v[Symbol.iterator]();
 	}
 
@@ -38,7 +38,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return true;
 	}
 
-	public entries(): IterableIterator<[K, V]> {
+	public entries(): MapIterator<[K, V]> {
 		return this.k2v.entries();
 	}
 
@@ -62,7 +62,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return this.v2k.has(value);
 	}
 
-	public keys(): IterableIterator<K> {
+	public keys(): MapIterator<K> {
 		return this.k2v.keys();
 	}
 
@@ -73,7 +73,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return this;
 	}
 
-	public values(): IterableIterator<V> {
+	public values(): MapIterator<V> {
 		return this.k2v.values();
 	}
 }

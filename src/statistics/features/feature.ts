@@ -23,6 +23,7 @@ import { controlflow } from './supported/control-flow/control-flow';
 import { dataAccess } from './supported/data-access/data-access';
 import { expressionList } from './supported/expression-list/expression-list';
 import { variables } from './supported/variables/variables';
+import type { Document } from '@xmldom/xmldom';
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

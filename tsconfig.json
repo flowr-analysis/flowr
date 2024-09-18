@@ -11,7 +11,8 @@
     "sourceMap": true,
     "outDir": "./dist/",
     "strict": true,
-    "alwaysStrict": true
+    "alwaysStrict": true,
+    "noUncheckedSideEffectImports": true
   },
   "lib": [ "esnext", "dom" ],
   "exclude": [

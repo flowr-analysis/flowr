@@ -188,6 +188,7 @@
     "@eagleoutice/eslint-config-flowr": "^1.0.11",
     "@j-ulrich/release-it-regex-bumper": "^5.1.0",
     "@stylistic/eslint-plugin": "^2.1.0",
+    "@stylistic/eslint-plugin-js": "^2.8.0",
     "@stylistic/eslint-plugin-plus": "^2.1.0",
     "@stylistic/eslint-plugin-ts": "^2.1.0",
     "@types/chai": "^4.3.16",

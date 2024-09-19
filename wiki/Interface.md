@@ -17,6 +17,7 @@ Although far from being as detailed as the in-depth explanation of [_flowR_](htt
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
   - [Interfacing with the File System](#interfacing-with-the-file-system)
 - [⚙️ Using the Configuration File](#️-using-the-configuration-file)
+  - [Configure BuiltIn Semantics](#configure-builtin-semantics)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing with R by Using the `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [The Pipeline Executor](#the-pipeline-executor)
@@ -2884,19 +2885,42 @@ R> :parse file://test/testfiles/example.R
 ## ⚙️ Using the Configuration File
 
 When running flowR, you amy specify some behaviors with a dedicated configuration file. By default, flowR looks for a file named `flowr.json` in the current working directory (or any higher directory). You can also specify a different file with `--config-file`.
-There are two configurations available as of now:
+The following table summarizes our configuration:
 
 - `ignoreSourceCalls`: If set to `true`, flowR will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
 - `rPath`: The path to the R executable. If not set, flowR will try to find the R executable in the system's PATH.
+- `semantics`: allows to configure the way flowR handles `R`, although we currently only support `semantics/environment/overwriteBuiltIns`. You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 
 So you can configure _flowR_ by adding a file like the following:
 
 ```json
 {
   "ignoreSourceCalls": true,
-  "rPath": "/usr/bin/R"
+  "rPath": "/usr/bin/R",
+  "semantics": {
+    "environment": {
+        "overwriteBuiltIns": {
+          "definitions": [
+              { "type": "function", "names": ["foo"], "processor": "builtin:assignment", "config": {} }
+          ]
+        }
+    }
+  }
 }
 ```
+
+### Configure BuiltIn Semantics
+
+`semantics/environment/overwriteBuiltins` accepts two keys:
+
+- `loadDefaults` (boolean, initially `true`): If set to `true`, the default built-in definitions are loaded before applying the custom definitions. Setting this flag to `false` explicitly disables the loading of the default definitions.
+- `definitions` (array, initially empty): Allows to overwrite or define new built-in elements. Each object within must have a `type` which is one of the below. Furthermore, they may define a string array of `names` which specifies the identifiers to bind the definitions to. You may use `assumePrimitive` to specify whether _flowR_ should assume that this is a primitive non-library definition (so you probably just do not want to specify the key).
+
+  | Type          | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
+  | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+  | `constant`    | Additionally allows for a `value` this should resolve to.                                                                                                                                                                                                                                                | `{ type: 'constant', names: ['NULL', 'NA'],  value: null }`                                                |
+  | `function`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the `default-builtin-config.ts` or open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose). | `{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }` |
+  | `replacement` | A comfortable way to specify replacement functions like `$<-` or `names<-`. `suffixes` describes the... suffixes to attach automatically. | `{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }` |
 
 ## ⚒️ Writing Code
 

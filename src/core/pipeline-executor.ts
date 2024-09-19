@@ -8,9 +8,9 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
-import {getConfig} from "../config";
-import {BuiltInMemory, EmptyBuiltInMemory} from "../dataflow/environments/built-in";
-import {registerBuiltInDefinition, registerBuiltInDefinitions} from "../dataflow/environments/built-in-config";
+import { getConfig } from '../config';
+import { BuiltInMemory, EmptyBuiltInMemory } from '../dataflow/environments/built-in';
+import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-config';
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -115,7 +115,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
-		/* TODO: https://github.com/flowr-analysis/flowr/issues/988 */
 		const config = getConfig();
 		const builtIns = config.semantics.environment.overwriteBuiltIns;
 		if(!builtIns.loadDefaults) {

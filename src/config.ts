@@ -5,7 +5,7 @@ import fs from 'fs';
 import { log } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
-import {BuiltInDefinitions} from "./dataflow/environments/built-in-config";
+import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
@@ -25,7 +25,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 				/** Should the default configuration still be loaded? */
 				readonly loadDefaults: boolean
 				/** The definitions to load */
-				readonly definitions: BuiltInDefinitions
+				readonly definitions:  BuiltInDefinitions
 			}
 		}
 	}
@@ -38,7 +38,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		environment: {
 			overwriteBuiltIns: {
 				loadDefaults: true,
-				definitions: []
+				definitions:  []
 			}
 		}
 	}
@@ -49,10 +49,10 @@ const schema = Joi.object({
 	ignoreSourceCalls: Joi.boolean().optional(),
 	rPath:             Joi.string().optional(),
 	semantics:         Joi.object({
-		environment:   Joi.object({
+		environment: Joi.object({
 			overwriteBuiltIns: Joi.object({
-				loadDefaults:  Joi.boolean().optional(),
-				definitions:   Joi.array().items(Joi.object()).optional()
+				loadDefaults: Joi.boolean().optional(),
+				definitions:  Joi.array().items(Joi.object()).optional()
 			}).optional()
 		}).optional()
 	})

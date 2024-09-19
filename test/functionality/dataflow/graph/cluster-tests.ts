@@ -26,20 +26,8 @@ describe('Graph Clustering', () => {
 			[{ startNode: 0, members: [0, 1] }, { startNode: 2, members: [2, 3] }]);
 	});
 
-	function compareIds(a: NodeId | undefined, b: NodeId | undefined): number {
-		return String(a ?? '').localeCompare(String(b ?? ''));
-	}
-
-	function normalizeClusters(clusters: DataflowGraphClusters) {
-		/* sort order and the order members */
-		return clusters.map(c => ({
-			startNode: c.startNode,
-			members:   [...c.members].sort(compareIds)
-		})).sort((a, b) => compareIds(a.members[0], b.members[0]));
-	}
-
 	describe('Code Snippets', withShell(shell => {
-		function test(name: string, code: string, clusters: readonly SingleSlicingCriterion[][]) {
+		function test(name: string, code: string, clusters: readonly SingleSlicingCriterion[][]): void {
 			it(name, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 					shell,
@@ -50,11 +38,11 @@ describe('Graph Clustering', () => {
 				const graph = info.dataflow.graph;
 
 				// resolve all criteria
-				const resolved = normalizeClusters(clusters.map(c => ({
+				const resolved = clusters.map(c => ({
 					startNode: '',
 					members:   c.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap))
-				})));
-				const actual = normalizeClusters(findAllClusters(graph));
+				}));
+				const actual = findAllClusters(graph);
 				compareClusters(actual, resolved);
 			});
 		}
@@ -73,11 +61,26 @@ describe('Graph Clustering', () => {
 });
 
 function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphClusters): void {
+	actual = normalizeClusters(actual);
+	expected = normalizeClusters(expected);
+
 	assert.equal(actual.length, expected.length, `Different number of clusters: ${JSON.stringify(actual)} vs. wanted: ${JSON.stringify(expected)}`);
 	for(let i = 0; i < actual.length; i++) {
 		assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actual[i].members.toString()} vs ${expected[i].members.toString()}`);
 		for(let m = 0; m < actual[i].members.length; m++) {
 			assert.equal(actual[i].members[m], expected[i].members[m], `Member ${actual[i].members[m]} of cluster ${i} differs`);
 		}
+	}
+
+	function compareIds(a: NodeId | undefined, b: NodeId | undefined): number {
+		return String(a ?? '').localeCompare(String(b ?? ''));
+	}
+
+	function normalizeClusters(clusters: DataflowGraphClusters): DataflowGraphClusters {
+		/* sort order and the order members */
+		return clusters.map(c => ({
+			startNode: c.startNode,
+			members:   [...c.members].sort(compareIds)
+		})).sort((a, b) => compareIds(a.members[0], b.members[0]));
 	}
 }

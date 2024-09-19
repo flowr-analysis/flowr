@@ -14,7 +14,9 @@ import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
 import commandLineUsage from 'command-line-usage';
-import { setConfigFile } from '../config';
+import { parseConfig ,  setConfig, setConfigFile } from '../config';
+
+
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -40,6 +42,7 @@ export const toolName = 'flowr';
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'config-file',                   type: String,  description: 'The name of the configuration file to use', multiple: false },
+	{ name: 'config-json',                   type: String,  description: 'The flowR configuration to use, as a JSON string', multiple: false },
 	{ name: 'execute',           alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'help',              alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
 	{ name: 'no-ansi',                       type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
@@ -55,6 +58,7 @@ export const optionDefinitions: OptionDefinition[] = [
 
 export interface FlowrCliOptions {
 	'config-file':      string
+	'config-json':      string
 	'no-ansi':          boolean
 	'r-path':           string | undefined
 	'r-session-access': boolean
@@ -100,7 +104,18 @@ if(options['no-ansi']) {
 }
 
 export const defaultConfigFile = 'flowr.json';
-setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
+let usedConfig = false;
+if(options['config-json']) {
+	const config = parseConfig(options['config-json']);
+	if(config) {
+		log.info(`Using passed config ${JSON.stringify(config)}`);
+		setConfig(config);
+		usedConfig = true;
+	}
+}
+if(!usedConfig) {
+	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
+}
 
 function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)

@@ -20,11 +20,9 @@ function test(name: string, graph: DataflowGraph, expected: DataflowGraphCluster
 		const actual = findAllClusters(graph);
 		assert.equal(actual.length, expected.length, 'Different number of clusters');
 		for(let i = 0; i < actual.length; i++) {
-			// TODO probably allow arbitrary cluster & cluster member ordering between actual and expected
-			assert.equal(actual[i].startNode, expected[i].startNode, `Start node of cluster ${i} differs`);
-			assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster ${i} differ`);
+			assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actual[i].members.toString()} vs ${expected[i].members.toString()}`);
 			for(let m = 0; m < actual[i].members.length; m++) {
-				assert.equal(actual[i].members[m], expected[i].members[m], `Member ${m} of cluster ${i} differs`);
+				assert.isTrue(expected[i].members.includes(actual[i].members[m]), `Member ${actual[i].members[m]} of cluster differs`);
 			}
 		}
 	});

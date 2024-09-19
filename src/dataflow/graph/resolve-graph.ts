@@ -1,10 +1,10 @@
-import { DataflowGraph } from '../../../src/dataflow/graph/graph';
-import { type AstIdMap } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { guard } from '../../../src/util/assert';
-import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../src/slicing/criterion/parse';
-import { splitEdgeTypes } from '../../../src/dataflow/graph/edge';
+import { DataflowGraph } from './graph';
+import { type AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { guard } from '../../util/assert';
+import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
+import { slicingCriterionToId } from '../../slicing/criterion/parse';
+import { splitEdgeTypes } from './edge';
 
 /**
  * Resolves the dataflow graph ids from slicing criterion form to ids.

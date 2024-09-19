@@ -1,5 +1,5 @@
 import { assert } from 'chai';
-import { emptyGraph } from '../../_helper/dataflow/dataflowgraph-builder';
+import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';

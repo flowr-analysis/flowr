@@ -1,5 +1,5 @@
 import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';

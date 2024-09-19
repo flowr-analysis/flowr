@@ -96,6 +96,7 @@ function diff(ctx: DataflowDiffContext): void {
 function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	const lEdges = new Map([...ctx.left.edges()]);
 	const rEdges = new Map([...ctx.right.edges()]);
+
 	if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
 		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`);
 	}
@@ -107,8 +108,8 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 		if(!ctx.left.hasVertex(id)) {
 			if(!ctx.config.leftIsSubgraph) {
 				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`);
+				continue;
 			}
-			continue;
 		}
 		diffEdges(ctx, id, edge, rEdges.get(id));
 	}
@@ -117,8 +118,8 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 		if(!ctx.right.hasVertex(id)) {
 			if(!ctx.config.rightIsSubgraph) {
 				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`);
+				continue;
 			}
-			continue;
 		}
 		if(!ctx.config.leftIsSubgraph && !lEdges.has(id)) {
 			diffEdges(ctx, id, undefined, edge);
@@ -300,7 +301,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: DataflowDiffContext, id: NodeId, target: NodeId) {
 	const edgeTypes = splitEdgeTypes(edge.types);
 	const otherEdgeTypes = splitEdgeTypes(otherEdge.types);
-	if(edgeTypes.length !== otherEdgeTypes.length) {
+	if((edgeTypes.length < otherEdgeTypes.length && !ctx.config.leftIsSubgraph) || (edgeTypes.length > otherEdgeTypes.length && !ctx.config.rightIsSubgraph)) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in number of edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
 			{ tag: 'edge', from: id, to: target }

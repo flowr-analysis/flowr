@@ -34,7 +34,7 @@ import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mer
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
-import { resolveDataflowGraph } from './resolve-graph';
+import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

@@ -695,10 +695,11 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	});
 	describe('Get and assign', () => {
 		assertDataflow(label('simple assign', ['assignment-functions', 'strings', 'implicit-return', 'normal-definition', 'newlines', 'call-normal', 'numbers']),
+			/* TODO: update so that it defines the variable, not the string! */
 			shell, 'assign("a", function() 1)\na()', emptyGraph()
 				.call('9', 'a', [], { returns: ['3'], reads: ['1'], environment: defaultEnv().defineFunction('a', '1', '7') })
 				.calls('9', '5')
-				.defineVariable('1', '"a"', { definedBy: ['7', '5'] })
+				.defineVariable('1', 'a', { definedBy: ['7', '5'] })
 				.call('7', 'assign', [argumentInCall('1'), argumentInCall('5')], { returns: ['1'], onlyBuiltIn: true, reads: [BuiltIn] })
 				.defineFunction('5', ['3'], {
 					entryPoint:        '5',

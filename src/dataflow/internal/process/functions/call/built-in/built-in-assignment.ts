@@ -50,8 +50,6 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
-	/** convert a target string `assign("a", x)` into an assignment of the symbol `a` */
-	readonly symbolizeTargetString?: boolean
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -100,16 +98,6 @@ export function processAssignment<OtherInfo>(
 			data,
 			information:              res.information,
 		});
-	} else if(type === RType.String && config.symbolizeTargetString) {
-		const symbol: RSymbol<OtherInfo & ParentInformation> = {
-			type:      RType.Symbol,
-			info:      target.info,
-			content:   removeRQuotes(target.lexeme),
-			lexeme:    target.lexeme,
-			location:  target.location,
-			namespace: undefined
-		};
-		/** TODO: handle **/
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`);

@@ -56,7 +56,7 @@ Besides, we use colored bullets like this:
 `;
 }
 
-/** if we run this script, we want a markdown representation of the capabilities */
+/** if we run this script, we want a Markdown representation of the capabilities */
 if(require.main === module) {
 	console.log(getPreamble() + printAsMarkdown(flowrCapabilities.capabilities));
 }

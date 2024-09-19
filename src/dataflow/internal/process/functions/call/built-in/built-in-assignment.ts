@@ -44,12 +44,12 @@ function getEffectiveOrder<T>(config: {
 }
 
 export interface AssignmentConfiguration extends ForceArguments {
-	readonly superAssignment?:       boolean
-	readonly swapSourceAndTarget?:   boolean
-	/** Make maybe if assigned to symbol */
-	readonly makeMaybe?:             boolean
-	readonly quoteSource?:           boolean
-	readonly canBeReplacement?:      boolean
+	readonly superAssignment?:     boolean
+	readonly swapSourceAndTarget?: boolean
+	/* Make maybe if assigned to symbol */
+	readonly makeMaybe?:           boolean
+	readonly quoteSource?:         boolean
+	readonly canBeReplacement?:    boolean
 	/** convert a target string `assign("a", x)` into an assignment of the symbol `a` */
 	readonly symbolizeTargetString?: boolean
 }
@@ -104,12 +104,12 @@ export function processAssignment<OtherInfo>(
 		const symbol: RSymbol<OtherInfo & ParentInformation> = {
 			type:      RType.Symbol,
 			info:      target.info,
-			content:   target.content.str,
+			content:   removeRQuotes(target.lexeme),
 			lexeme:    target.lexeme,
 			location:  target.location,
 			namespace: undefined
 		};
-		return processAssignment(name, [toUnnamedArgument(symbol, data.completeAst.idMap), effectiveArgs[1]], rootId, data, { ...config, swapSourceAndTarget: false });
+		/** TODO: handle **/
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`);

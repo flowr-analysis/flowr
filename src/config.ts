@@ -5,21 +5,43 @@ import fs from 'fs';
 import { log } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
+import {BuiltInDefinitions} from "./dataflow/environments/built-in-config";
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
-	ignoreSourceCalls: boolean
+	readonly ignoreSourceCalls: boolean
 	/**
 	 * The path to the R executable to use. If this is undefined, {@link DEFAULT_R_PATH} will be used.
 	 */
-	rPath:             string | undefined
+	readonly rPath:             string | undefined
+	/** Configure language semantics and how flowR handles them */
+	readonly semantics: {
+		/** Semantics regarding the handlings of the environment */
+		readonly environment: {
+			/** Do you want to overwrite (parts) of the builtin definition? */
+			readonly overwriteBuiltIns: {
+				/** Should the default configuration still be loaded? */
+				readonly loadDefaults: boolean
+				/** The definitions to load */
+				readonly definitions: BuiltInDefinitions
+			}
+		}
+	}
 }
 
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false,
-	rPath:             undefined
+	rPath:             undefined,
+	semantics:         {
+		environment: {
+			overwriteBuiltIns: {
+				loadDefaults: true,
+				definitions: []
+			}
+		}
+	}
 };
 export const defaultConfigFile = 'flowr.json';
 

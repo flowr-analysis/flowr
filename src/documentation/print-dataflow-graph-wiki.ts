@@ -53,6 +53,7 @@ async function printDfGraphForCode(shell: RShell, code: string, mark?: ReadonlyS
 
 <summary>R Code of the Dataflow Graph</summary>
 
+${'' /* eslint-disable-next-line no-irregular-whitespace*/}
 The analysis required _${duration.toFixed(2)} ms_ (including parsing and normalization) within the generation environment.
 ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): ${[...mark].join(', ')}.` : ''}
 

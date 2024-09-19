@@ -374,8 +374,8 @@ ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 
 
-The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph $G = (V, E)$, differentiating between ${Object.values(VertexType).length} types of vertices $V$ and 
-${Object.values(EdgeType).length} types of edges $E$ allowing each vertex to have a single, and each edge to have multiple distinct types.
+The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${Object.values(VertexType).length} types of vertices V and 
+${Object.values(EdgeType).length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 <details open>
 
 <summary>Vertex Types</summary>
@@ -395,7 +395,7 @@ The following vertices types exist:
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form:
 
 1. ${Object.entries(EdgeType).filter(([,v]) => Number.isInteger(v)).map(
-		([k, v], index) => `[\`${k}\` ($${v}$)](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+		([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 	).join('\n1. ')}
 
 </details>

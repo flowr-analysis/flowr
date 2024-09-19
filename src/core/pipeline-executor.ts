@@ -122,7 +122,6 @@ export class PipelineExecutor<P extends Pipeline> {
 			BuiltInMemory.clear();
 			EmptyBuiltInMemory.clear();
 		}
-		/** TODO: allow to overwrite */
 		registerBuiltInDefinitions(builtIns.definitions);
 	}
 

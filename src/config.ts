@@ -52,7 +52,6 @@ const schema = Joi.object({
 		environment:   Joi.object({
 			overwriteBuiltIns: Joi.object({
 				loadDefaults:  Joi.boolean().optional(),
-				/* TODO: type def */
 				definitions:   Joi.array().items(Joi.object()).optional()
 			}).optional()
 		}).optional()

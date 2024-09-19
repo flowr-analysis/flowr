@@ -138,5 +138,4 @@ export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameter
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
-/** TODO: load with config */
 registerBuiltInDefinitions(DefaultBuiltinConfig);

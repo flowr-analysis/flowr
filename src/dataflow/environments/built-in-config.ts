@@ -9,7 +9,6 @@ import {
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { guard } from '../../util/assert';
 
-/** TODO: namespace */
 export interface BaseBuiltInDefinition {
     /** The type of the built-in configuration */
     readonly type:             string;
@@ -52,6 +51,9 @@ export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunctionDefinition<any> | BuiltInReplacementDefinition;
+/**
+ * @see DefaultBuiltinConfig
+ */
 export type BuiltInDefinitions = readonly BuiltInDefinition[];
 
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {

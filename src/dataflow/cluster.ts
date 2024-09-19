@@ -10,6 +10,7 @@ export interface DataflowGraphCluster {
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];
 	const notReached = new Set<NodeId>([...graph.vertices(true)].map(([id]) => id));
+	/* TODO: probably it is best to start from back to front ? */
 	while(notReached.size > 0){
 		const [startNode] = notReached;
 		notReached.delete(startNode);

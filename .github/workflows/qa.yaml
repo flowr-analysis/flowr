@@ -1,6 +1,6 @@
 name: "QA"
 # Runs on each push and tests flowR for the default configuration
-# Depending on the targets etc. this may perform many more checks!
+# Depending on the targets, etc. this may perform many more checks!
 
 'on':
   push:
@@ -102,16 +102,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-        
+
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
 
@@ -151,16 +151,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-        
+
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}"
 
@@ -237,7 +237,7 @@ jobs:
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
-        
+
   deploy-doc:
     needs: [ test, performance-test ]
     name: "🚀 Build and Deploy Documentation (only on main)"
@@ -264,16 +264,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-        
+
       - name: "🛠️ Build the documentation"
         run: bash .github/workflows/scripts/run-flowr-command.sh doc
 

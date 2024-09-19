@@ -46,7 +46,17 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 export const defaultConfigFile = 'flowr.json';
 
 const schema = Joi.object({
-	ignoreSourceCalls: Joi.boolean().optional()
+	ignoreSourceCalls: Joi.boolean().optional(),
+	rPath:             Joi.string().optional(),
+	semantics:         Joi.object({
+		environment:   Joi.object({
+			overwriteBuiltIns: Joi.object({
+				loadDefaults:  Joi.boolean().optional(),
+				/* TODO: type def */
+				definitions:   Joi.array().items(Joi.object()).optional()
+			}).optional()
+		}).optional()
+	})
 });
 
 let configWorkingDirectory = process.cwd();

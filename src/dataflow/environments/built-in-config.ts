@@ -56,7 +56,6 @@ export type BuiltInDefinitions = readonly BuiltInDefinition[];
 
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 	for(const name of names) {
-		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`);
 		const d: IdentifierDefinition[] = [{
 			kind:                'built-in-value',
 			definedAt:           BuiltIn,
@@ -79,7 +78,6 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 	guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`);
 		const d: IdentifierDefinition[] = [{
 			kind:                'built-in-function',
 			definedAt:           BuiltIn,
@@ -105,7 +103,6 @@ export function registerReplacementFunctions(
 	for(const assignment of names) {
 		for(const suffix of suffixes) {
 			const effectiveName = `${assignment}${suffix}`;
-			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`);
 			const d: IdentifierDefinition[] = [{
 				kind:                'built-in-function',
 				definedAt:           BuiltIn,

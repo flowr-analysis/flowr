@@ -97,7 +97,6 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 ): void {
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
-		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`);
 		const d: IdentifierDefinition[] = [{
 			kind:                'built-in-function',
 			definedAt:           BuiltIn,

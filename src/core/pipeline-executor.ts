@@ -161,7 +161,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
-	 * 		 completed, although the typing system then can not guarantee which of the steps have already happened.
+	 * 		 completed, although the typing system then cannot guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<P>   {
 		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.');

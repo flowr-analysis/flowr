@@ -15,16 +15,7 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
 		function test(name: string, graph: DataflowGraph, expected: DataflowGraphClusters): void {
-			it(name, () => {
-				const actual = findAllClusters(graph);
-				assert.equal(actual.length, expected.length, 'Different number of clusters');
-				for(let i = 0; i < actual.length; i++) {
-					assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actual[i].members.toString()} vs ${expected[i].members.toString()}`);
-					for(let m = 0; m < actual[i].members.length; m++) {
-						assert.isTrue(expected[i].members.includes(actual[i].members[m]), `Member ${actual[i].members[m]} of cluster differs`);
-					}
-				}
-			});
+			it(name, () => compareClusters(findAllClusters(graph), expected));
 		}
 
 		test('empty', emptyGraph(), []);
@@ -63,15 +54,8 @@ describe('Graph Clustering', () => {
 					startNode: '',
 					members:   c.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap))
 				})));
-
 				const actual = normalizeClusters(findAllClusters(graph));
-				assert.equal(actual.length, resolved.length, `Different number of clusters: ${JSON.stringify(actual)} vs. wanted: ${JSON.stringify(resolved)}`);
-				for(let i = 0; i < actual.length; i++) {
-					assert.equal(actual[i].members.length, resolved[i].members.length, `Member amounts of cluster differ: ${JSON.stringify(actual[i].members)} vs ${JSON.stringify(resolved[i])}`);
-					for(let m = 0; m < actual[i].members.length; m++) {
-						assert.isTrue(resolved[i].members.includes(actual[i].members[m]), `Member ${actual[i].members[m]} of cluster differs`);
-					}
-				}
+				compareClusters(actual, resolved);
 			});
 		}
 
@@ -87,3 +71,13 @@ describe('Graph Clustering', () => {
 		]);
 	}));
 });
+
+function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphClusters): void {
+	assert.equal(actual.length, expected.length, `Different number of clusters: ${JSON.stringify(actual)} vs. wanted: ${JSON.stringify(expected)}`);
+	for(let i = 0; i < actual.length; i++) {
+		assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actual[i].members.toString()} vs ${expected[i].members.toString()}`);
+		for(let m = 0; m < actual[i].members.length; m++) {
+			assert.equal(actual[i].members[m], expected[i].members[m], `Member ${actual[i].members[m]} of cluster ${i} differs`);
+		}
+	}
+}

@@ -19,7 +19,9 @@ export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriter
 	const backwardsSlice = staticSlicing(graph, ast, endCriteria, threshold)
 	const forwardSlice = forwardSlicing(graph, ast, startCriteria, threshold)
 
-	const dicingResult = { timesHitThreshold: backwardsSlice.timesHitThreshold + forwardSlice.timesHitThreshold, result: new Set([...backwardsSlice.result].filter(i => forwardSlice.result.has(i))), decodedCriteria: backwardsSlice.decodedCriteria.concat(forwardSlice.decodedCriteria) }
+	const diceResult = new Set([...backwardsSlice.result].filter(i => forwardSlice.result.has(i)))
+	//console.log(diceResult)
+	const dicingResult = { timesHitThreshold: backwardsSlice.timesHitThreshold + forwardSlice.timesHitThreshold, result: diceResult, decodedCriteria: backwardsSlice.decodedCriteria.concat(forwardSlice.decodedCriteria) }
 	return dicingResult
 }
 

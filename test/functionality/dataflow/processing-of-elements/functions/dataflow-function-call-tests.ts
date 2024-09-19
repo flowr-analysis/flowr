@@ -402,7 +402,7 @@ ${applyFn}(x, g, k, u)`,
 						returns: [],
 						reads:   []
 					})
-					.reads('3@g', '1@g'),
+					.reads('5@g', '1@g'),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true

@@ -1,17 +1,17 @@
-import { deepMergeObject } from '../../../../src/util/objects';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { DataflowFunctionFlowInformation, FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import { isPositionalArgument, DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
-import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
-import type { DataflowGraphVertexUse } from '../../../../src/dataflow/graph/vertex';
-import { VertexType } from '../../../../src/dataflow/graph/vertex';
-import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
-import { EdgeType } from '../../../../src/dataflow/graph/edge';
-import type { ControlDependency } from '../../../../src/dataflow/info';
+import { deepMergeObject } from '../../util/objects';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph';
+import { isPositionalArgument, DataflowGraph } from './graph';
+import type { REnvironmentInformation } from '../environments/environment';
+import { initializeCleanEnvironments } from '../environments/environment';
+import type { DataflowGraphVertexUse } from './vertex';
+import { VertexType } from './vertex';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { BuiltIn } from '../environments/built-in';
+import { EdgeType } from './edge';
+import type { ControlDependency } from '../info';
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);

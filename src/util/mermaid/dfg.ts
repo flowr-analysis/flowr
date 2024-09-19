@@ -20,13 +20,13 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 type MarkVertex = NodeId
 type MarkEdge = `${string}->${string}`
 
-type Mark = MarkVertex | MarkEdge
+export type MermaidMarkdownMark = MarkVertex | MarkEdge
 
 interface MermaidGraph {
 	nodeLines:           string[]
 	edgeLines:           string[]
 	includeEnvironments: boolean
-	mark:                ReadonlySet<Mark> | undefined
+	mark:                ReadonlySet<MermaidMarkdownMark> | undefined
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
 	// keep for sub-flows
@@ -65,6 +65,9 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 	});
 	mermaid.nodeLines.push(...subgraph.nodeLines);
 	mermaid.edgeLines.push(...subgraph.edgeLines);
+	for(const present of subgraph.presentEdges) {
+		mermaid.presentEdges.add(present);
+	}
 	for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.unknownReferences]]) {
 		for(const out of pool as IdentifierReference[]) {
 			if(!mermaid.mark?.has(out.nodeId)) {
@@ -76,6 +79,9 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 
 	mermaid.nodeLines.push('end');
 	mermaid.edgeLines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`);
+	/* mark edge as present */
+	const edgeId = encodeEdge(idPrefix + nodeId, subflowId, new Set(['function']));
+	mermaid.presentEdges.add(edgeId);
 }
 
 
@@ -101,7 +107,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
 }
-function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False'>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
 	return `${from}->${to}["${[...types].join(':')}"]`;
 }
 
@@ -197,7 +203,7 @@ interface MermaidGraphConfiguration {
 	prefix?:              string | null,
 	idPrefix?:            string,
 	includeEnvironments?: boolean,
-	mark?:                ReadonlySet<Mark>,
+	mark?:                ReadonlySet<MermaidMarkdownMark>,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>
 }
@@ -238,7 +244,7 @@ export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: bo
 export interface LabeledDiffGraph {
 	label: string
 	graph: DataflowGraph
-	mark?: Set<Mark>
+	mark?: Set<MermaidMarkdownMark>
 }
 
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */

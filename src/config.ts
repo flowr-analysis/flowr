@@ -21,19 +21,20 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false,
 	rPath:             undefined
 };
-export const defaultConfigFile = 'flowr.json';
 
 const schema = Joi.object({
-	ignoreSourceCalls: Joi.boolean().optional()
+	ignoreSourceCalls: Joi.boolean().optional(),
+	rPath:             Joi.string().optional()
 });
 
+// we don't load from a config file at all by default unless setConfigFile is called
+let configFile: string | undefined = undefined;
 let configWorkingDirectory = process.cwd();
-let configFile = defaultConfigFile;
 let currentConfig: FlowrConfigOptions | undefined;
 
-export function setConfigFile(workingDirectory = process.cwd(), file = defaultConfigFile, forceLoad = false) {
-	configWorkingDirectory = workingDirectory;
+export function setConfigFile(file: string | undefined, workingDirectory = process.cwd(), forceLoad = false) {
 	configFile = file;
+	configWorkingDirectory = workingDirectory;
 
 	// reset the config so it gets reloaded
 	currentConfig = undefined;
@@ -49,35 +50,37 @@ export function setConfig(config: FlowrConfigOptions) {
 export function getConfig(): FlowrConfigOptions {
 	// lazy-load the config based on the current settings
 	if(currentConfig === undefined) {
-		setConfig(parseConfigOptions(configWorkingDirectory, configFile));
+		setConfig(parseConfigOptions(configFile, configWorkingDirectory));
 	}
 	return currentConfig as FlowrConfigOptions;
 }
 
-function parseConfigOptions(workingDirectory: string, configFile: string): FlowrConfigOptions {
-	let searchPath = path.resolve(workingDirectory);
-	do{
-		const configPath = path.join(searchPath, configFile);
-		if(fs.existsSync(configPath)) {
-			try {
-				const text = fs.readFileSync(configPath,{ encoding: 'utf-8' });
-				const parsed = JSON.parse(text) as FlowrConfigOptions;
-				const validate = schema.validate(parsed);
-				if(!validate.error) {
+function parseConfigOptions(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
+	if(configFile !== undefined) {
+		let searchPath = path.resolve(workingDirectory);
+		do{
+			const configPath = path.join(searchPath, configFile);
+			if(fs.existsSync(configPath)) {
+				try {
+					const text = fs.readFileSync(configPath,{ encoding: 'utf-8' });
+					const parsed = JSON.parse(text) as FlowrConfigOptions;
+					const validate = schema.validate(parsed);
+					if(!validate.error) {
 					// assign default values to all config options except for the specified ones
-					const ret = deepMergeObject(defaultConfigOptions, parsed);
-					log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`);
-					return ret;
-				} else {
-					log.error(`Failed to validate config file at ${configPath}: ${validate.error.message}`);
+						const ret = deepMergeObject(defaultConfigOptions, parsed);
+						log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`);
+						return ret;
+					} else {
+						log.error(`Failed to validate config file at ${configPath}: ${validate.error.message}`);
+					}
+				} catch(e) {
+					log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`);
 				}
-			} catch(e) {
-				log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`);
 			}
-		}
-		// move up to parent directory
-		searchPath = getParentDirectory(searchPath);
-	} while(fs.existsSync(searchPath));
+			// move up to parent directory
+			searchPath = getParentDirectory(searchPath);
+		} while(fs.existsSync(searchPath));
+	}
 
 	log.info(`Using default config ${JSON.stringify(defaultConfigOptions)}`);
 	return defaultConfigOptions;

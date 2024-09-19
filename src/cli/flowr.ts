@@ -14,7 +14,7 @@ import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
 import commandLineUsage from 'command-line-usage';
-import { defaultConfigFile, setConfigFile } from '../config';
+import { setConfigFile } from '../config';
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -99,7 +99,8 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
-setConfigFile(undefined, options['config-file'] ?? defaultConfigFile, true);
+export const defaultConfigFile = 'flowr.json';
+setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 
 function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)

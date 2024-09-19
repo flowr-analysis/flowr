@@ -14,8 +14,8 @@ import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
 import commandLineUsage from 'command-line-usage';
-import type { FlowrConfigOptions } from '../config';
-import {  setConfig, setConfigFile } from '../config';
+import { parseConfig ,  setConfig, setConfigFile } from '../config';
+
 
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
@@ -106,13 +106,11 @@ if(options['no-ansi']) {
 export const defaultConfigFile = 'flowr.json';
 let usedConfig = false;
 if(options['config-json']) {
-	try {
-		const config = JSON.parse(options['config-json']) as FlowrConfigOptions;
+	const config = parseConfig(options['config-json']);
+	if(config) {
 		log.info(`Using passed config ${JSON.stringify(config)}`);
 		setConfig(config);
 		usedConfig = true;
-	} catch(e) {
-		log.error(`Failed to parse passed config: ${(e as Error).message}`);
 	}
 }
 if(!usedConfig) {

@@ -43,6 +43,22 @@ export function setConfigFile(file: string | undefined, workingDirectory = proce
 	}
 }
 
+export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
+	try {
+		const parsed = JSON.parse(jsonString) as FlowrConfigOptions;
+		const validate = schema.validate(parsed);
+		if(!validate.error) {
+			// assign default values to all config options except for the specified ones
+			return deepMergeObject(defaultConfigOptions, parsed);
+		} else {
+			log.error(`Failed to validate config ${jsonString}: ${validate.error.message}`);
+			return undefined;
+		}
+	} catch(e) {
+		log.error(`Failed to parse config ${jsonString}: ${(e as Error).message}`);
+	}
+}
+
 export function setConfig(config: FlowrConfigOptions) {
 	currentConfig = config;
 }
@@ -50,31 +66,22 @@ export function setConfig(config: FlowrConfigOptions) {
 export function getConfig(): FlowrConfigOptions {
 	// lazy-load the config based on the current settings
 	if(currentConfig === undefined) {
-		setConfig(parseConfigOptions(configFile, configWorkingDirectory));
+		setConfig(loadConfigFromFile(configFile, configWorkingDirectory));
 	}
 	return currentConfig as FlowrConfigOptions;
 }
 
-function parseConfigOptions(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
+function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {
 		let searchPath = path.resolve(workingDirectory);
 		do{
 			const configPath = path.join(searchPath, configFile);
 			if(fs.existsSync(configPath)) {
-				try {
-					const text = fs.readFileSync(configPath,{ encoding: 'utf-8' });
-					const parsed = JSON.parse(text) as FlowrConfigOptions;
-					const validate = schema.validate(parsed);
-					if(!validate.error) {
-					// assign default values to all config options except for the specified ones
-						const ret = deepMergeObject(defaultConfigOptions, parsed);
-						log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`);
-						return ret;
-					} else {
-						log.error(`Failed to validate config file at ${configPath}: ${validate.error.message}`);
-					}
-				} catch(e) {
-					log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`);
+				log.trace(`Found config at ${configPath}`);
+				const ret = parseConfig(fs.readFileSync(configPath,{ encoding: 'utf-8' }));
+				if(ret) {
+					log.info(`Using config ${JSON.stringify(ret)}`);
+					return ret;
 				}
 			}
 			// move up to parent directory

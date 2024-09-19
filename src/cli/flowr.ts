@@ -15,7 +15,7 @@ import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter,
 import commandLineArgs from 'command-line-args';
 import commandLineUsage from 'command-line-usage';
 import type { FlowrConfigOptions } from '../config';
-import {  defaultConfigFile, setConfig, setConfigFile } from '../config';
+import {  setConfig, setConfigFile } from '../config';
 
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
@@ -103,6 +103,7 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
+export const defaultConfigFile = 'flowr.json';
 let usedConfig = false;
 if(options['config-json']) {
 	try {
@@ -115,7 +116,7 @@ if(options['config-json']) {
 	}
 }
 if(!usedConfig) {
-	setConfigFile(undefined, options['config-file'] ?? defaultConfigFile, true);
+	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 
 function retrieveShell(): RShell {

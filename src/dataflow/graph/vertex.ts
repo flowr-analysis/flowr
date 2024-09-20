@@ -86,6 +86,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
+	 * This is the `body` of the function.
 	 */
 	subflow:      DataflowFunctionFlowInformation
 	/**

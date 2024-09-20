@@ -1,4 +1,4 @@
-import type { BaseQueryFormat } from '../base-query-format';
+import type { BaseQueryFormat, BaseQueryResult } from '../base-query-format';
 
 export const enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
@@ -37,5 +37,8 @@ interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 	readonly linkTo: LinkTo;
 }
 
+export interface CallContextQueryResult extends BaseQueryResult<CallContextQueryFormat> {
+	/* TODO: continue */
+}
 
 export type CallContextQueryFormat = DefaultCallContextQueryFormat | SubCallContextQueryFormat;

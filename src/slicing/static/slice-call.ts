@@ -120,16 +120,12 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 /** Returns true if we found at least one return edge */
 export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	const foundReturns: NodeId[] = [];
-	for(const [target, { types }] of currentEdges.entries()) {
-		if(edgeIncludesType(types, EdgeType.Returns)) {
-			foundReturns.push(target);
-		}
-	}
-	if(foundReturns.length === 0) {
+	const e = [...currentEdges.entries()];
+	const found = e.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Returns));
+	if(found.length === 0) {
 		return false;
 	}
-	for(const target of foundReturns) {
+	for(const [target,] of found) {
 		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 	}
 	for(const [target, edge] of currentEdges.entries()) {

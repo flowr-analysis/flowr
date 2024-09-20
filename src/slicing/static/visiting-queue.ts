@@ -39,7 +39,7 @@ export class VisitingQueue {
 		if(!this.seen.has(print)) {
 			this.idThreshold.set(target, idCounter + 1);
 			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects, envFingerprint: print });
+			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects });
 		}
 	}
 

@@ -22,7 +22,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  *
  * @param graph     - The dataflow graph to conduct the slicing on.
  * @param ast       - The normalized AST of the code (used to get static nesting information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
- * @param criteria  - The criteria to slice on.
+ * @param criteria  - The criteras to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
 export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
@@ -58,7 +58,8 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	while(queue.nonEmpty()) {
 		const current = queue.next();
 
-		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
+		const { baseEnvironment, id, onlyForSideEffects } = current;
+		const baseEnvFingerprint = envFingerprint(baseEnvironment);
 
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
@@ -71,8 +72,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
 		if(currentVertex.controlDependencies && currentVertex.controlDependencies.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
-			const cdsToTraverse = currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id));
-			for(const cd of cdsToTraverse) {
+			for(const cd of currentVertex.controlDependencies.filter(({ id }) => !queue.hasId(id))) {
 				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 				}

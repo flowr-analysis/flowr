@@ -3,7 +3,10 @@
   * [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview)
   * [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface)
   * [Core](https://github.com/flowr-analysis/flowr/wiki/Core)
+    * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
+    * [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
   * [Linting and Testing](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing)
+    * [Benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark)
 * Extra Information
   * [Terminology](https://github.com/flowr-analysis/flowr/wiki/Terminology)
   * [R's Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) & [Tokens](https://github.com/flowr-analysis/flowr/wiki/Tokens)

@@ -8,6 +8,9 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
+import { getConfig } from '../config';
+import { BuiltInMemory, EmptyBuiltInMemory } from '../dataflow/environments/built-in';
+import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-config';
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
@@ -112,6 +115,13 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
+		const config = getConfig();
+		const builtIns = config.semantics.environment.overwriteBuiltIns;
+		if(!builtIns.loadDefaults) {
+			BuiltInMemory.clear();
+			EmptyBuiltInMemory.clear();
+		}
+		registerBuiltInDefinitions(builtIns.definitions);
 	}
 
 	/**
@@ -149,7 +159,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
-	 * 		 completed, although the typing system then can not guarantee which of the steps have already happened.
+	 * 		 completed, although the typing system then cannot guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<P>   {
 		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.');

@@ -22,14 +22,16 @@ export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
 	readonly callTargets?: CallTargets;
 }
 
+/**
+ * Links the current call to the last call of the given kind.
+ * This way, you can link a call like `points` to the latest graphics plot etc.
+ * Please note that this may still result in a standalone, unlinked result
+ * if we are unable to find a call of the given kind.
+ */
 interface LinkToLastCall extends BaseQueryFormat {
 	readonly type:      'link-to-last-call';
 	/** Regex regarding the function name of the last call */
 	readonly callName?: RegExp;
-	/** kind that this should be linked to (i.e., last call of the given kind) */
-	readonly kind?:     string;
-	/** subkind that this should be linked to (i.e., last call of the given subkind) */
-	readonly subkind?:  string;
 }
 
 type LinkTo = LinkToLastCall;
@@ -40,16 +42,19 @@ interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 
 
 interface CallContextQuerySubKindResult {
-	readonly callName:  string;
-	readonly id:        NodeId;
+	readonly callName:   string;
+	readonly id:         NodeId;
+	/* ids of functions which are called by the respective function call */
+	readonly calls?:     readonly NodeId[];
 	/* ids attached by the linkTo query */
-	readonly linkedIds: readonly NodeId[];
+	readonly linkedIds?: readonly NodeId[];
 }
 
-export interface CallContextQueryResult extends BaseQueryResult<CallContextQueryFormat> {
-	readonly kind:     string;
-	/** maps each subkind to the results found */
-	readonly subkinds: Readonly<Record<string, readonly CallContextQuerySubKindResult[]>>
+export interface CallContextQueryResult extends BaseQueryResult<CallContextQuery> {
+	readonly kinds: Record<string, {
+		/** maps each subkind to the results found */
+		readonly subkinds: Record<string, readonly CallContextQuerySubKindResult[]>
+	}>
 }
 
-export type CallContextQueryFormat = DefaultCallContextQueryFormat | SubCallContextQueryFormat;
+export type CallContextQuery = DefaultCallContextQueryFormat | SubCallContextQueryFormat;

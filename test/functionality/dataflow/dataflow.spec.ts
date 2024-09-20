@@ -10,5 +10,9 @@ describe('Dataflow', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'graph'))
 	);
 
+	describe('Query', () =>
+		requireAllTestsInFolder(path.join(__dirname, 'query'))
+	);
+
 	require('./processing-of-elements/processing-of-elements');
 });

@@ -61,7 +61,8 @@ jobs:
             fi
             npm run $2 --silent > "wiki/$1.md"
             # test if the file changed, but ignore the first line which contains the time stamp
-            if ! diff -q <(tail -n +2 "wiki/$1.md") <(tail -n +2 "wiki/$1-Old.md"); then
+            # we additionally used sed to remove any measurement stamp for the comparison as they of course change
+            if ! diff -q <(tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g') <(tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g'); then
                 echo "$1 changed!"
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true

@@ -6,7 +6,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { label } from '../../../_helper/label';
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
 import { startAndEndsWith } from '../../../../../src/util/strings';

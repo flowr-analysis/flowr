@@ -88,13 +88,12 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 	// lift baseEnv on the same level
 	const baseEnvironment = current.baseEnvironment;
-	const baseEnvPrint = envFingerprint(baseEnvironment);
+	const baseEnvPrint = current.envFingerprint;
 
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
 	const name = callerInfo.name;
-	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
 	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
@@ -121,21 +120,26 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 /** Returns true if we found at least one return edge */
 export function handleReturns(queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	const e = [...currentEdges.entries()];
-	const found = e.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Returns));
-	if(found.length === 0) {
+	const foundReturns: NodeId[] = [];
+	for(const [target, { types }] of currentEdges.entries()) {
+		if(edgeIncludesType(types, EdgeType.Returns)) {
+			foundReturns.push(target);
+		}
+	}
+	if(foundReturns.length === 0) {
 		return false;
 	}
-	for(const [target,] of found) {
+	for(const target of foundReturns) {
 		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 	}
-	for(const [target, edge] of e) {
+	for(const [target, edge] of currentEdges.entries()) {
 		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 		} else if(edgeIncludesType(edge.types, EdgeType.Argument)) {
 			queue.potentialArguments.set(target, {
 				id:                 target,
 				baseEnvironment,
+				envFingerprint:     baseEnvFingerprint,
 				onlyForSideEffects: false
 			});
 		}

@@ -7,7 +7,7 @@ import type { ControlDependency } from '../info';
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
 
-export const enum VertexType {
+export enum VertexType {
 	Value              = 'value',
 	Use                = 'use',
 	FunctionCall       = 'function-call',

@@ -3,7 +3,6 @@ export interface BaseQueryFormat {
 	readonly type: string;
 }
 
-/* TODO: type result? */
 export interface BaseQueryResult<Query extends BaseQueryFormat> {
 	readonly queryType: Query['type'];
 }

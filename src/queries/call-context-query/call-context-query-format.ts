@@ -1,4 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../base-query-format';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export const enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
@@ -37,8 +38,18 @@ interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 	readonly linkTo: LinkTo;
 }
 
+
+interface CallContextQuerySubKindResult {
+	readonly callName:  string;
+	readonly id:        NodeId;
+	/* ids attached by the linkTo query */
+	readonly linkedIds: readonly NodeId[];
+}
+
 export interface CallContextQueryResult extends BaseQueryResult<CallContextQueryFormat> {
-	/* TODO: continue */
+	readonly kind:     string;
+	/** maps each subkind to the results found */
+	readonly subkinds: Readonly<Record<string, readonly CallContextQuerySubKindResult[]>>
 }
 
 export type CallContextQueryFormat = DefaultCallContextQueryFormat | SubCallContextQueryFormat;

@@ -11,6 +11,7 @@ import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-
 import { withShell } from '../../_helper/shell';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -36,24 +37,40 @@ describe('Graph Clustering', () => {
 				}).allRemainingSteps();
 
 				const graph = info.dataflow.graph;
+				console.log(dataflowGraphToMermaidUrl(info.dataflow));
 
 				// resolve all criteria
 				const resolved = clusters.map(c => ({
 					startNode: '',
-					members:   c.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap))
+					members:   c.map(s => {
+						const ret = slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap);
+						console.log(`Criterion ${s} -> id ${ret}`);
+						return ret;
+					})
 				}));
 				const actual = findAllClusters(graph);
 				compareClusters(actual, resolved);
 			});
 		}
 
-		test('assignment', 'x <- 3', [['1:1', '1:3', '1:6']]);
-		test('two independent assignments', 'x <- 3\ny <- 4', [['1:1', '1:3', '1:6'], ['2:1', '2:3', '2:6']]);
-		test('with a print call', 'x <- 3\nprint(x)', [['1:1', '1:3', '1:6', '2:1', '2:7']]);
-		test('late join of clusters', 'x <- 3\ny <- 4\nprint(x + y)', [['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '3:1', '3:7', '3:9', '3:11']]);
-		test('contain call target', 'y <- 42\nf <- function(x) { x * y }\nf(2)\nf(3)', [['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '2:15', '2:18', '2:20', '2:22', '2:24', '3:1', '3:3', '4:1', '4:3']]);
+		test('assignment', 'x <- 3', [
+			['1:1', '1:3', '1:6']
+		]);
+		test('two independent assignments', 'x <- 3\ny <- 4', [
+			['1:1', '1:3', '1:6'],
+			['2:1', '2:3', '2:6']
+		]);
+		test('with a print call', 'x <- 3\nprint(x)', [
+			['1:1', '1:3', '1:6', '2:1', '2:7']
+		]);
+		test('late join of clusters', 'x <- 3\ny <- 4\nprint(x + y)', [
+			['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '3:1', '3:7', '3:9', '3:11']
+		]);
+		test('contain call target', 'y <- 42\nf <- function(x) { x * y }\nf(2)\nf(3)', [
+			['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '2:15', '$11', '2:20', '2:22', '2:24', '3:1', '3:3', '4:1', '4:3']
+		]);
 		test('some odd ducklings', 'y <- 42\nz <- 5\nf <- function(x) { x * y }\nf(2)\nprint(z)\nf(3)\nu', [
-			['1:1', '1:3', '1:6', '3:1', '3:3', '3:6', '3:15', '3:18', '3:20', '3:22', '3:24', '3:1', '3:3', '6:1', '6:3'], /* call as before */
+			['1:1', '1:3', '1:6', '3:1', '3:3', '3:6', '3:15', '$14', '3:20', '3:22', '3:24', '4:1', '4:3', '6:1', '6:3'], /* call as before */
 			['2:1', '2:3', '2:6', '5:1', '5:7'], /* print & z */
 			['7:1'] /* u */
 		]);
@@ -64,11 +81,11 @@ function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphC
 	actual = normalizeClusters(actual);
 	expected = normalizeClusters(expected);
 
-	assert.equal(actual.length, expected.length, `Different number of clusters: ${JSON.stringify(actual)} vs. wanted: ${JSON.stringify(expected)}`);
+	assert.equal(actual.length, expected.length, `Different number of clusters: ${actualExpectedString()}`);
 	for(let i = 0; i < actual.length; i++) {
-		assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actual[i].members.toString()} vs ${expected[i].members.toString()}`);
+		assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actualExpectedString()}`);
 		for(let m = 0; m < actual[i].members.length; m++) {
-			assert.equal(actual[i].members[m], expected[i].members[m], `Member ${actual[i].members[m]} of cluster ${i} differs`);
+			assert.equal(actual[i].members[m], expected[i].members[m], `Member ${actual[i].members[m]} of cluster differs: ${actualExpectedString()}`);
 		}
 	}
 
@@ -82,5 +99,11 @@ function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphC
 			startNode: c.startNode,
 			members:   [...c.members].sort(compareIds)
 		})).sort((a, b) => compareIds(a.members[0], b.members[0]));
+	}
+
+	function actualExpectedString(): string {
+		return `
+actual   ${JSON.stringify(actual)}
+expected ${JSON.stringify(expected)}`;
 	}
 }

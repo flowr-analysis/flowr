@@ -21,12 +21,12 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 
 function cluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): NodeId[] {
 	const edges: NodeId[] = [];
-	// TODO do we only need outgoing edges?? help
-	for(const [to] of graph.outgoingEdges(from) ?? []) {
+	// TODO determine edge types that should actually be followed?
+	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		// TODO just deleting these is insufficient, examples like: edge(0, 1) + edge(1, 0)
-		if(notReached.delete(to)) {
-			edges.push(to);
-			edges.push(...cluster(graph, to, notReached));
+		if(notReached.delete(dest)) {
+			edges.push(dest);
+			edges.push(...cluster(graph, dest, notReached));
 		}
 	}
 	return edges;

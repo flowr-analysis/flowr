@@ -11,7 +11,7 @@ describe('Slicing', () => {
 	describe('Slicing-Criterion', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'slicing-criterion'))
 	})
-	describe('DIcing', () => {
+	describe('Dicing', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'dicing'))
 	})
 })

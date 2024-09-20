@@ -18,7 +18,10 @@ export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
 	readonly kind:         string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`) */
 	readonly subkind:      string;
-	/** call targets the function may have. This defaults to {@link CallTargets#Any}. */
+	/**
+	 * Call targets the function may have. This defaults to {@link CallTargets#Any}.
+	 * Request this specifically to gain all call targets we can resolve.
+	 */
 	readonly callTargets?: CallTargets;
 }
 
@@ -44,17 +47,23 @@ interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 interface CallContextQuerySubKindResult {
 	readonly callName:   string;
 	readonly id:         NodeId;
-	/* ids of functions which are called by the respective function call */
+	/**
+	 * Ids of functions which are called by the respective function call,
+	 * this will only be populated whenever you explicitly state the {@link DefaultCallContextQueryFormat#callTargets}.
+	 * An empty array means that the call targets only non-local functions.
+	 */
 	readonly calls?:     readonly NodeId[];
-	/* ids attached by the linkTo query */
+	/** ids attached by the linkTo query */
 	readonly linkedIds?: readonly NodeId[];
 }
 
+export type CallContextQueryKindResult = Record<string, {
+	/** maps each subkind to the results found */
+	readonly subkinds: Record<string, readonly CallContextQuerySubKindResult[]>
+}>
+
 export interface CallContextQueryResult extends BaseQueryResult<CallContextQuery> {
-	readonly kinds: Record<string, {
-		/** maps each subkind to the results found */
-		readonly subkinds: Record<string, readonly CallContextQuerySubKindResult[]>
-	}>
+	readonly kinds: CallContextQueryKindResult;
 }
 
 export type CallContextQuery = DefaultCallContextQueryFormat | SubCallContextQueryFormat;

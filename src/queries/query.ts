@@ -5,7 +5,6 @@ import { executeCallContextQueries } from './call-context-query/call-context-que
 import { guard } from '../util/assert';
 
 export type Query = CallContextQuery;
-export type Queries = Query[];
 
 type QueryWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -33,7 +32,7 @@ export function executeQueriesOfSameType<SpecificQuery extends Query>(graph: Dat
 	return executor(graph, queries) as QueryResult<SpecificQuery['type']>;
 }
 
-function groupQueriesByType(queries: Queries): Record<Query['type'], Query[]> {
+function groupQueriesByType<Base extends SupportedQueryTypes>(queries: readonly QueryWithType<Base>[]): Record<Query['type'], Query[]> {
 	const grouped: Record<Query['type'], Query[]> = {} as Record<Query['type'], Query[]>;
 	for(const query of queries) {
 		if(grouped[query.type] === undefined) {
@@ -44,11 +43,16 @@ function groupQueriesByType(queries: Queries): Record<Query['type'], Query[]> {
 	return grouped;
 }
 
-export function executeQueries<Base extends SupportedQueryTypes>(graph: DataflowGraph, queries: readonly [QueryWithType<Base>]): [QueryResult<Base>]
-export function executeQueries<Base extends SupportedQueryTypes>(graph: DataflowGraph, queries: readonly QueryWithType<Base>[]): QueryResult<Base>[]
-/* TODO: map query result to query type involved */
-export function executeQueries<Base extends SupportedQueryTypes>(graph: DataflowGraph, queries: readonly QueryWithType<Base>[]): QueryResult<Base>[] {
+/* a record mapping the query type present to its respective result */
+export type QueriesResult<Base extends SupportedQueryTypes> = {
+	[QueryType in Base]: QueryResult<QueryType>
+}
+
+export function executeQueries<Base extends SupportedQueryTypes>(graph: DataflowGraph, queries: readonly QueryWithType<Base>[]): QueriesResult<Base> {
 	const grouped = groupQueriesByType(queries);
-	return queries.map(query => executeQueriesOfSameType(graph, query));
-	/** TODO: test instrumentation */
+	const results: QueriesResult<Base> = {} as QueriesResult<Base>;
+	for(const type of Object.keys(grouped) as Base[]) {
+		results[type] = executeQueriesOfSameType(graph, ...grouped[type]) as QueryResult<typeof type>;
+	}
+	return results;
 }

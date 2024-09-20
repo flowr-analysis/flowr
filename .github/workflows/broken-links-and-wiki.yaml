@@ -34,45 +34,56 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
-      
+
       - name: "⬇️ Setup R"
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-      
+
       - name: "📦 Install R Packages"
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
-            
+
       - name: "🛒 Checkout LFS"
         # just as a time-proven safety measure
         run: git lfs checkout
 
-      - name: "🛠️ Update the Capabilities Wiki Page"
+      - name: "🛠️ Update the Generated Wiki Pages"
         run: |
           npm ci
-          # test if the file exists
-          if [ -f wiki/Capabilities.md ]; then
-              cp wiki/Capabilities.md wiki/Capabilities-Old.md
-          else
-              touch wiki/Capabilities-Old.md
-          fi
-          npm run capabilities-markdown --silent > wiki/Capabilities.md
-          # test if the file changed, but ignore the first line which contains the time stamp
-          if ! diff -q <(tail -n +2 wiki/Capabilities.md) <(tail -n +2 wiki/Capabilities-Old.md); then
-              echo "Capabilities changed!"
-              echo "CHANGED=true" >> $GITHUB_ENV
+          CHANGED_ANY=false
+          function update_wiki_page {
+            # test if the file exists
+            if [ -f "wiki/$1.md" ]; then
+                cp "wiki/$1.md" "wiki/$1-Old.md"
+            else
+                touch "wiki/$1-Old.md"
+            fi
+            npm run $2 --silent > "wiki/$1.md"
+            # test if the file changed, but ignore the first line which contains the time stamp
+            # we additionally used sed to remove any measurement stamp for the comparison as they of course change
+            if ! diff -q <(tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g') <(tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g'); then
+                echo "$1 changed!"
+                echo "CHANGED=true" >> $GITHUB_ENV
+                CHANGED_ANY=true
+                git add -f "wiki/$1.md"
+            else
+                echo "$1 did not change!"
+            fi
+            # delete the old file again
+            rm "wiki/$1-Old.md"
+          }
+          
+          update_wiki_page "Capabilities" capabilities-markdown
+          update_wiki_page "Dataflow Graph" df-graph-wiki-markdown 
+          
+          if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"
-              git add -f wiki/Capabilities.md
-              git commit -m "[skip ci] doc: update capabilities"
-          else
-              echo "Capabilities did not change!"
+              git commit -m "[skip ci] doc: update generated wiki pages"
           fi
-          # delete the old capabilities again
-          rm wiki/Capabilities-Old.md
 
-      - name: "⬆️ Push changed capabilities"
+      - name: "⬆️ Push changed Wiki pages"
         if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         uses: ad-m/github-push-action@master
         with:
@@ -90,11 +101,13 @@ jobs:
 
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0
+        continue-on-error: true
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
 
       - name: "🔎 Check the Wiki pages for broken links"
         uses: becheran/mlc@v0.18.0
+        continue-on-error: true
         if: ${{ always() && !failure() }}
         with:
           args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/

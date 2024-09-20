@@ -14,7 +14,7 @@ export interface DataflowGraphEdge {
  * The actual value is represented as a bitmask so use {@link edgeTypesToNames} to get something more human-readable.
  * Similarly, you can access {@link EdgeTypeName} to access the name counterpart.
  */
-export const enum EdgeType {
+export enum EdgeType {
 	/** The edge determines that source reads target */
 	Reads = 1,
 	/** The edge determines that source is defined by target */

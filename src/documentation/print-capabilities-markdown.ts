@@ -1,10 +1,13 @@
-import type { FlowrCapability } from './types';
-import { flowrCapabilities } from './data';
+import type { FlowrCapability } from '../r-bridge/data/types';
+import { flowrCapabilities } from '../r-bridge/data/data';
+import { flowrVersion } from '../util/version';
+import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
+import { LogLevel } from '../util/log';
 
 const supportedSymbolMap: Map<string, string> = new Map([
-	['not', ':red_circle:'],
+	['not',       ':red_circle:'          ],
 	['partially', ':large_orange_diamond:'],
-	['fully', ':green_square:']
+	['fully',     ':green_square:'        ]
 ]);
 
 function printSingleCapability(depth: number, index: number, capability: FlowrCapability) {
@@ -40,7 +43,7 @@ function printAsMarkdown(capabilities: readonly FlowrCapability[], depth = 0, li
 
 function getPreamble(): string {
 	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} summarizig flowR's current capabilities_
+	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} summarizig flowR's current capabilities (version: ${flowrVersion().format()})._
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -56,7 +59,8 @@ Besides, we use colored bullets like this:
 `;
 }
 
-/** if we run this script, we want a markdown representation of the capabilities */
+/** if we run this script, we want a Markdown representation of the capabilities */
 if(require.main === module) {
+	setMinLevelOfAllLogs(LogLevel.Fatal);
 	console.log(getPreamble() + printAsMarkdown(flowrCapabilities.capabilities));
 }

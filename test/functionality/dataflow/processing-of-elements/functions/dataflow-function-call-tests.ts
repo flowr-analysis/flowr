@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import {
 	UnnamedFunctionCallPrefix
@@ -402,7 +402,7 @@ ${applyFn}(x, g, k, u)`,
 						returns: [],
 						reads:   []
 					})
-					.reads('3@g', '1@g'),
+					.reads('5@g', '1@g'),
 				{
 					resolveIdsAsCriterion: true,
 					expectIsSubgraph:      true

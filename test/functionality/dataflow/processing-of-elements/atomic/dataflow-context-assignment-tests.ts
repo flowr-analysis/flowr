@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
-import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
 

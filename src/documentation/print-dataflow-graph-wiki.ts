@@ -97,9 +97,17 @@ interface ExplanationParameters {
 	readonly expectedSubgraph: DataflowGraph
 }
 
+function getAllVertices(): [string, VertexType][] {
+	return Object.entries(VertexType) as [string, VertexType][];
+}
+
+function getAllEdges(): [string, EdgeType][] {
+	return Object.entries(EdgeType).filter(([,v]) => Number.isInteger(v)) as [string, EdgeType][];
+}
+
 /** returns resolved expected df graph */
 async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
-	/* we verify, that we get what we want first! */
+	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
 		request: requestFromInput(code),
@@ -234,8 +242,8 @@ async function getVertexExplanations(shell: RShell): Promise<string> {
 
 	const results = [];
 	let i = 0;
-	for(const vertex of Object.values(VertexType)) {
-		const get = vertexExplanations.get(vertex as VertexType);
+	for(const [,vertex] of getAllVertices()) {
+		const get = vertexExplanations.get(vertex);
 		guard(get !== undefined, () => `No explanation for vertex type ${vertex}`);
 		const [expl, subExplanations] = get;
 		results.push(await explanation(expl, ++i, ...subExplanations));
@@ -351,8 +359,8 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 
 	const results = [];
 	let i = 0;
-	for(const edge of Object.values(EdgeType).filter(v => Number.isInteger(v))) {
-		const get = edgeExplanations.get(edge as EdgeType);
+	for(const [,edge] of getAllEdges()) {
+		const get = edgeExplanations.get(edge);
 		guard(get !== undefined, () => `No explanation for edge type ${edge}`);
 		const [expl, subExplanations] = get;
 		results.push(await explanation(expl, ++i, ...subExplanations));
@@ -374,15 +382,15 @@ ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 
 
-The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${Object.values(VertexType).length} types of vertices V and 
-${Object.values(EdgeType).length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
+The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and 
+${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 <details open>
 
 <summary>Vertex Types</summary>
 
 The following vertices types exist:
 
-1. ${Object.entries(VertexType).map(
+1. ${getAllVertices().map(
 		([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 	).join('\n1. ')}
 
@@ -394,7 +402,7 @@ The following vertices types exist:
 
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form:
 
-1. ${Object.entries(EdgeType).filter(([,v]) => Number.isInteger(v)).map(
+1. ${getAllEdges().map(
 		([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 	).join('\n1. ')}
 

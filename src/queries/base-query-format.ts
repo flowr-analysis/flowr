@@ -4,5 +4,6 @@ export interface BaseQueryFormat {
 }
 
 export interface BaseQueryResult<Query extends BaseQueryFormat> {
-	readonly queryType: Query['type'];
+	/** type of the query which produced this result */
+	readonly type: Query['type'];
 }

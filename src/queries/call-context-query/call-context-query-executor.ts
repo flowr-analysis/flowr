@@ -67,16 +67,16 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 	switch(callTarget) {
 		case CallTargets.Any:
 			return callTargets;
-		case CallTargets.Global:
+		case CallTargets.OnlyGlobal:
 			return callTargets.length === 0 ? callTargets : false;
-		case CallTargets.Local:
+		case CallTargets.OnlyLocal:
 			return callTargets.length > 0 ? callTargets : false;
 		default:
 			assertUnreachable(callTarget);
 	}
 }
 
-function makeReport(collector: TwoLayerCollector<string, string, [NodeId, string, NodeId[]] | [NodeId, string]>): CallContextQueryKindResult {
+function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {} as unknown as CallContextQueryKindResult;
 	for(const [kind, collected] of collector.store) {
 		const subkinds = {} as DeepWritable<CallContextQueryKindResult[string]['subkinds']>;
@@ -84,9 +84,8 @@ function makeReport(collector: TwoLayerCollector<string, string, [NodeId, string
 			subkinds[subkind] ??= [];
 			const collectIn = subkinds[subkind];
 			for(const value of values) {
-				const [id, name, calls] = value;
+				const [id, calls] = value;
 				collectIn.push({
-					callName: name,
 					id,
 					calls
 				});
@@ -108,8 +107,8 @@ function makeReport(collector: TwoLayerCollector<string, string, [NodeId, string
  * 3. Attach `linkTo` calls to the respective calls.
  */
 export function executeCallContextQueries(graph: DataflowGraph, queries: readonly CallContextQuery[]): CallContextQueryResult {
-	/* the node id, name, and call targets if present */
-	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, string, NodeId[]] | [NodeId, string]>();
+	/* the node id and call targets if present */
+	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>();
 
 	for(const [node, info] of graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {
@@ -124,9 +123,9 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 				}
 			}
 			if(targets === false) {
-				initialIdCollector.add(query.kind, query.subkind, [node, info.name]);
+				initialIdCollector.add(query.kind, query.subkind, [node]);
 			} else {
-				initialIdCollector.add(query.kind, query.subkind, [node, info.name, targets]);
+				initialIdCollector.add(query.kind, query.subkind, [node, targets]);
 			}
 		}
 	}
@@ -135,8 +134,8 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 	console.log(initialIdCollector.asciiSummary());
 
 	return {
-		queryType: 'call-context',
-		kinds:     makeReport(initialIdCollector)
+		type:  'call-context',
+		kinds: makeReport(initialIdCollector)
 	};
 }
 

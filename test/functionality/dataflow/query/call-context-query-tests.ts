@@ -1,6 +1,9 @@
 import type {
 	CallContextQuery,
 	CallContextQueryResult } from '../../../../src/queries/call-context-query/call-context-query-format';
+import {
+	CallTargets
+} from '../../../../src/queries/call-context-query/call-context-query-format';
 
 
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
@@ -12,7 +15,7 @@ import { executeQueries } from '../../../../src/queries/query';
 import { withShell } from '../../_helper/shell';
 import { assert } from 'chai';
 
-function test(name: string, shell: RShell, code: string, query: CallContextQuery, expected: CallContextQueryResult) {
+function test(name: string, shell: RShell, code: string, queries: readonly CallContextQuery[], expected: CallContextQueryResult) {
 	/* TODO: labels */
 	it(name, async() => {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -22,28 +25,28 @@ function test(name: string, shell: RShell, code: string, query: CallContextQuery
 		}).allRemainingSteps();
 
 		const graph = info.dataflow.graph;
-		const { 'call-context': result } = executeQueries(graph, [query]);
+		const { 'call-context': result } = executeQueries(graph, queries);
 		/* expect them to be deeply equal */
 		assert.deepStrictEqual(result, expected, 'The result of the call context query does not match the expected result');
 	});
 }
 
+/** TODO: check what happens if builtin if may be override */
 describe('Call Context Query', withShell(shell => {
-	test('Print calls', shell, 'print(1)', {
-		type:     'call-context',
-		callName: /print/,
-		kind:     'visualize',
-		subkind:  'print'
-	}, {
-		/** TODO: change to type */
-		queryType: 'call-context',
-		kinds:     {
+	test('Print calls', shell, 'print(1)', [{
+		type:        'call-context',
+		callName:    /print/,
+		kind:        'visualize',
+		subkind:     'print',
+		callTargets: CallTargets.OnlyGlobal
+	}], {
+		type:  'call-context',
+		kinds: {
 			'visualize': {
 				subkinds: {
 					'print': [{
-						/** TODO: show callName only if differs | there is a real regex */
-						callName: 'print',
-						id:       3
+						id:    3,
+						calls: []
 					}]
 				}
 			}

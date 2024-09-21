@@ -44,7 +44,6 @@ function r(results: readonly CallContextQuerySubKindResult[], kind = 'test-kind'
 	});
 }
 
-/* TODO: check what happens if builtin if may be override */
 // TODO: documentation
 describe('Call Context Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>) {
@@ -81,7 +80,7 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, BuiltIn] }]));
 	});
 	describe('Linked Calls', () => {
-		// with one finding its parent, and one that does not
+		// TODO: with one finding its parent, and one that does not
 	});
 	describe('Multiple Kinds', () => {
 		testQuery('Multiple Kinds', 'print(1); foo(2)', [q(/print/, { kind: 'print-kind' }), q(/foo/, { kind: 'foo-kind' })], baseResult({

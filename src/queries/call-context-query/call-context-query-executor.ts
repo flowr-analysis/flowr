@@ -2,9 +2,9 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
-	CallContextQueryResult } from './call-context-query-format';
-import {
-	CallTargets
+	CallContextQueryResult, SubCallContextQueryFormat
+} from './call-context-query-format';
+import { CallTargets
 } from './call-context-query-format';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -137,6 +137,31 @@ function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId
 	return result;
 }
 
+function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFormat {
+	return 'linkTo' in query;
+}
+
+function promoteQueryCallNames(queries: readonly CallContextQuery[]) {
+	return queries.map(q => {
+		if(isSubCallQuery(q)) {
+			return {
+				...q,
+				callName: new RegExp(q.callName),
+				linkTo:   {
+					...q.linkTo,
+					/* we have to add another promotion layer whenever we add something without this call name */
+					callName: new RegExp(q.linkTo.callName)
+				}
+			};
+		} else {
+			return {
+				...q,
+				callName: new RegExp(q.callName)
+			};
+		}
+	});
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -152,11 +177,7 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>();
 
 	/* promote all strings to regex patterns */
-	const promotedQueries = queries.map(q => ({
-		...q,
-		callName: new RegExp(q.callName)
-	}));
-
+	const promotedQueries = promoteQueryCallNames(queries);
 
 	for(const [node, info] of graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {

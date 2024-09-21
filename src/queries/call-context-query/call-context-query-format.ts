@@ -32,23 +32,21 @@ export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
 /**
  * Links the current call to the last call of the given kind.
  * This way, you can link a call like `points` to the latest graphics plot etc.
- * Please note that this may still result in a standalone, unlinked result
- * if we are unable to find a call of the given kind.
  */
 interface LinkToLastCall extends BaseQueryFormat {
-	readonly type:      'link-to-last-call';
-	/** Regex regarding the function name of the last call */
-	readonly callName?: RegExp;
+	readonly type:     'link-to-last-call';
+	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
+	readonly callName: RegExp | string;
 }
 
 type LinkTo = LinkToLastCall;
 
-interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
+export interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 	readonly linkTo: LinkTo;
 }
 
-
 export interface CallContextQuerySubKindResult {
+	/** The id of the call vertex identified within the supplied dataflow graph */
 	readonly id:         NodeId;
 	/**
 	 * Ids of functions which are called by the respective function call,

@@ -11,6 +11,8 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import { assertUnreachable } from '../../util/assert';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import type { DeepWritable } from 'ts-essentials';
+import { resolveByName } from '../../dataflow/environments/resolve-by-name';
+import { BuiltIn } from '../../dataflow/environments/built-in';
 
 class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Values> {
 	readonly store = new Map<Layer1, Map<Layer2, Values[]>>();
@@ -55,25 +57,40 @@ class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Values> {
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
-	if(callVertex === undefined) {
+	if(callVertex === undefined || callVertex[0].tag !== VertexType.FunctionCall) {
 		return 'no';
 	}
-	const [,outgoing] = callVertex;
-	const baseCallTargets = [...outgoing]
+	const [info,outgoing] = callVertex;
+	const callTargets = [...outgoing]
 		.filter(([, e]) => edgeIncludesType(e.types, EdgeType.Calls))
+		.map(([t]) => t)
 	;
 
-	console.log(baseCallTargets);
+	if(callTarget === CallTargets.Any) {
+		return callTargets;
+	} else if(info.environment === undefined) {
+		/* if there is no environment, we are a built-in only */
+		return callTarget === CallTargets.OnlyGlobal ? callTargets : 'no';
+	}
 
-	const callTargets = baseCallTargets.map(([t]) => t);
+	let builtIn = false;
+
+	/*
+	 * for performance and scoping reasons, flowR will not identify the global linkage,
+	 * including any potential built-in mapping.
+	 */
+	const reResolved = resolveByName(info.name, info.environment);
+	if(reResolved && reResolved.some(t => t.definedAt === BuiltIn)) {
+		builtIn = true;
+	}
+
+	console.log('builtIn', builtIn, callTargets);
 
 	switch(callTarget) {
-		case CallTargets.Any:
-			return callTargets;
 		case CallTargets.OnlyGlobal:
-			return callTargets.length === 0 ? callTargets : 'no';
+			return builtIn && callTargets.length === 0 ? callTargets : 'no';
 		case CallTargets.OnlyLocal:
-			return callTargets.length > 0 ? callTargets : 'no';
+			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		default:
 			assertUnreachable(callTarget);
 	}

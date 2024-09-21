@@ -9,7 +9,6 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
-import { EdgeType } from '../../../../graph/edge';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -57,11 +56,6 @@ export function processNamedCall<OtherInfo>(
 		if(resolvedFunction.kind === 'built-in-function') {
 			builtIn = true;
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
-			/* add the built-in resolve edge */
-			const vert = information.graph.getVertex(rootId);
-			if(vert && vert.tag === VertexType.FunctionCall) {
-				information.graph.addEdge(rootId, resolvedFunction.nodeId, { type: EdgeType.Calls });
-			}
 		} else {
 			defaultProcessor = true;
 		}

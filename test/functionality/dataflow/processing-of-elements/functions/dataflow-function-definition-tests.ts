@@ -818,6 +818,23 @@ f(3)`, emptyGraph()
 				expectIsSubgraph: true
 			}
 		);
+		assertDataflow(label('Potential overwrite with Scope Change', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-named', 'function-definitions', 'function-calls', 'if']),
+			shell, `function() { x <- 3
+function() { 
+		if(y) x <- 2
+		print(x) 
+}}
+			`,  emptyGraph()
+				.defineVariable('1@x', undefined, undefined, false)
+				.defineVariable('3@x', undefined, { controlDependencies: [{ id: 12, when: true }] }, false)
+				.reads('4@x', '1@x')
+				.reads('4@x', '3@x')
+			,
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		);
 	});
 	describe('Reference escaping closures', () => {
 		assertDataflow(label('Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),

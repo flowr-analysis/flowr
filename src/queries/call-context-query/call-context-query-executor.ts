@@ -70,7 +70,7 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 		return callTargets;
 	} else if(info.environment === undefined) {
 		/* if there is no environment, we are a built-in only */
-		return callTarget === CallTargets.OnlyGlobal ? callTargets : 'no';
+		return callTarget === CallTargets.OnlyGlobal || callTarget === CallTargets.MustIncludeGlobal ? callTargets : 'no';
 	}
 
 	let builtIn = false;
@@ -89,8 +89,12 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 	switch(callTarget) {
 		case CallTargets.OnlyGlobal:
 			return builtIn && callTargets.length === 0 ? callTargets : 'no';
+		case CallTargets.MustIncludeGlobal:
+			return builtIn ? callTargets : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
+		case CallTargets.MustIncludeLocal:
+			return callTargets.length > 0 ? callTargets : 'no';
 		default:
 			assertUnreachable(callTarget);
 	}

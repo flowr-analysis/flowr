@@ -4,8 +4,12 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 export const enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
 	OnlyGlobal = 'global',
+	/** call targets a function that is defined locally or globally, but must include a global function */
+	MustIncludeGlobal = 'must-include-global',
 	/** call targets a function that is defined locally  */
 	OnlyLocal = 'local',
+	/** call targets a function that is defined locally or globally, but must include a local function */
+	MustIncludeLocal = 'must-include-local',
 	/** call targets a function that is defined locally or globally */
 	Any = 'any'
 }

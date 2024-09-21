@@ -3,7 +3,7 @@
  * @module
  */
 import type { DataflowInformation, ExitPoint } from '../../../../../info';
-import { addNonDefaultExitPoints, alwaysExits, ExitPointType } from '../../../../../info';
+import { happensInEveryBranch , addNonDefaultExitPoints, alwaysExits, ExitPointType } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
@@ -34,7 +34,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const probableTarget = readName ? resolveByName(readName, environments) : undefined;
 
 	// record if at least one has not been defined
-	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
+	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.controlDependencies))) {
 		if(remainingRead.has(readName)) {
 			remainingRead.get(readName)?.push(read);
 		} else {

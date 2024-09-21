@@ -11,6 +11,7 @@ import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
+import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
 
 
 /** simple query shortcut */
@@ -51,29 +52,33 @@ describe('Call Context Query', withShell(shell => {
 	}
 	testQuery('No Call', '1', [q(/print/)], baseResult({}));
 	testQuery('No Call (Symbol)', 'print', [q(/print/)], baseResult({}));
-	testQuery('No Call (Symbol)', 'print <- 3', [q(/print/)], baseResult({}));
-	testQuery('No Wanted Call', 'cat()', [q(/print/)], baseResult({}));
+	testQuery('No Call (Symbol, Definition)', 'print <- 3', [q(/print/)], baseResult({}));
+	testQuery('Unwanted Call', 'cat()', [q(/print/)], baseResult({}));
+	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7 }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4] }]));
+		testQuery('Happy Foo(t) (incl. local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 7, calls: [4] }]));
 		testQuery('Happy Foo(t) (only global)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
+		testQuery('Happy Foo(t) (incl. global)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.MustIncludeGlobal })], baseResult({}));
 		testQuery('Happy Foo(t) (two local candidates)', 'if(x) { foo <- function(){} } else { foo <- function(){} }\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 21, calls: [16, 7] }]));
+		testQuery('Nested Calls', 'foo <- function() { bar <- function() {}; bar() }\nfoo()', [q(/bar/)], r([{ id: 10 }]));
 	});
 	describe('Global Targets', () => {
 		testQuery('Print calls', 'print(1)', [q(/print/)], r([{ id: 3 }]));
 		testQuery('Non-Alph calls', 'x <- 2', [q(/<-/)], r([{ id: 2 }]));
 		testQuery('Built-In calls', 'if(x) 3 else 2', [q(/if/)], r([{ id: 5 }]));
 		testQuery('Multiple wanted Calls', 'print(1); print(2)', [q(/print/)], r([{ id: 3 }, { id: 7 }]));
-		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [] }]));
+		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn] }]));
 		testQuery('Higher-Order Calls', 'lapply(c(1,2,3),print)', [q(/print/)], r([{ id: 10 }]));
 	});
-	/* TODO: normal test for maybe scope overshadow: x <- 3, f <- function() { if(y) { x <- 2; } print(x) }, f() */
-	// TODO: local and global; nested calls, using quote, ...
 	describe('Mixed Targets', () => {
 		const code = 'if(x) { print <- function() {} }\nprint()';
 		testQuery('May be local or global', code, [q(/print/)], r([{ id: 12 }]));
 		testQuery('May be local or global (only local)', code, [q(/print/, { callTargets: CallTargets.OnlyLocal })], baseResult({}));
+		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [7, BuiltIn] }]));
 		testQuery('May be local or global (only global)', code, [q(/print/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
+		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, BuiltIn] }]));
 	});
 	describe('Linked Calls', () => {
 		// with one finding its parent, and one that does not

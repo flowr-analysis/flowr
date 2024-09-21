@@ -66,38 +66,51 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 		.map(([t]) => t)
 	;
 
-	if(callTarget === CallTargets.Any) {
-		return callTargets;
-	} else if(info.environment === undefined) {
-		/* if there is no environment, we are a built-in only */
-		return callTarget === CallTargets.OnlyGlobal || callTarget === CallTargets.MustIncludeGlobal ? callTargets : 'no';
-	}
-
 	let builtIn = false;
 
-	/*
-	 * for performance and scoping reasons, flowR will not identify the global linkage,
-	 * including any potential built-in mapping.
-	 */
-	const reResolved = resolveByName(info.name, info.environment);
-	if(reResolved && reResolved.some(t => t.definedAt === BuiltIn)) {
+	if(info.environment === undefined) {
+		/* if we have a call with an unbound environment,
+		 * this only happens if we are sure of built-in relations and want to save references
+		 */
 		builtIn = true;
+	} else {
+		/*
+		 * for performance and scoping reasons, flowR will not identify the global linkage,
+		 * including any potential built-in mapping.
+		 */
+		const reResolved = resolveByName(info.name, info.environment);
+		if(reResolved && reResolved.some(t => t.definedAt === BuiltIn)) {
+			builtIn = true;
+		}
 	}
 
-	console.log('builtIn', builtIn, callTargets);
-
 	switch(callTarget) {
+		case CallTargets.Any:
+			return callTargets;
 		case CallTargets.OnlyGlobal:
-			return builtIn && callTargets.length === 0 ? callTargets : 'no';
+			return builtIn && callTargets.length === 0 ? [BuiltIn] : 'no';
 		case CallTargets.MustIncludeGlobal:
-			return builtIn ? callTargets : 'no';
+			return builtIn ? [...callTargets, BuiltIn] : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		case CallTargets.MustIncludeLocal:
-			return callTargets.length > 0 ? callTargets : 'no';
+			if(callTargets.length > 0) {
+				return builtIn ? [...callTargets, BuiltIn] : callTargets;
+			} else {
+				return 'no';
+			}
 		default:
 			assertUnreachable(callTarget);
 	}
+}
+
+/* if the node is effected by nse, we have an ingoing nse edge */
+function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
+	const vertex = graph.ingoingEdges(node);
+	if(vertex === undefined) {
+		return false;
+	}
+	return [...vertex.values()].some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>): CallContextQueryKindResult {
@@ -156,6 +169,10 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 				if(targets === 'no') {
 					continue;
 				}
+			}
+			if(isQuoted(node, graph)) {
+				/* if the call is quoted, we do not want to link to it */
+				continue;
 			}
 			if(targets) {
 				initialIdCollector.add(query.kind, query.subkind, [node, targets]);

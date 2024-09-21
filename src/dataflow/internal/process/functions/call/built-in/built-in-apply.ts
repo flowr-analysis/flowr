@@ -82,7 +82,12 @@ export function processApply<OtherInfo>(
 		args:                allOtherArguments,
 		environment:         data.environment,
 		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies
+		controlDependencies: data.controlDependencies,
+		/*
+		 * the call happens after all arguments complete, however,
+		 * as they are lazy the call is actually root-level for the FD edges, so we know nothing
+		 */
+		flowDependencies:    []
 	});
 
 	for(const arg of processedArguments) {

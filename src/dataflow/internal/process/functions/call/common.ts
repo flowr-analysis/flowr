@@ -95,6 +95,7 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		const processed = processDataflowFor(arg, { ...data, environment: argEnv });
+		/* is the argument to force? (inlined) */
 		if(arg.type === RType.Argument && arg.value && (forceArgs === 'all' || forceArgs[i]) && arg.value.type !== RType.Number && arg.value.type !== RType.String && arg.value.type !== RType.Logical) {
 			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, argEnv);
 		}
@@ -155,6 +156,7 @@ export function patchFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
+		flowDependencies:    [],
 		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined })
 	});
 	for(const arg of argumentProcessResult) {

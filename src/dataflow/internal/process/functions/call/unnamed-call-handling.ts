@@ -14,10 +14,11 @@ import { dataflowLogger } from '../../../../logger';
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
 
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
+	const functionRootId = functionCall.info.id;
+
+	const calledFunction = processDataflowFor(functionCall.calledFunction, { ...data, flowDependencies: [functionRootId] });
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
-	const functionRootId = functionCall.info.id;
 	const calledRootId = functionCall.calledFunction.info.id;
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`;
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`);
@@ -34,7 +35,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	} = processAllArguments({
 		functionName: calledFunction,
 		args:         functionCall.arguments,
-		data,
+		data:         { ...data, flowDependencies: [functionRootId] },
 		finalGraph,
 		functionRootId
 		/* we know the call is right there and fully resolved, there is no need to artificially force arguments as we identify them within the subtree */
@@ -48,6 +49,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		/* can never be a direct built-in-call */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
+		flowDependencies:    data.flowDependencies,
 		args:                callArgs // same reference
 	});
 

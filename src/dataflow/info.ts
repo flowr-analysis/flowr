@@ -42,11 +42,11 @@ export interface DataflowCfgInformation {
 	/**
 	 * The entry node into the subgraph
 	 */
-	entryPoint: NodeId,
+	readonly entryPoint: NodeId,
 	/**
 	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
 	 */
-	exitPoints: readonly ExitPoint[]
+	readonly exitPoints: readonly ExitPoint[]
 }
 
 /**

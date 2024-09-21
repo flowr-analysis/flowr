@@ -12,8 +12,8 @@ export const enum CallTargets {
 
 export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
 	readonly type:         'call-context';
-	/** Regex regarding the function name */
-	readonly callName:     RegExp;
+	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
+	readonly callName:     RegExp | string;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`) */
 	readonly kind:         string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`) */
@@ -44,7 +44,7 @@ interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
 }
 
 
-interface CallContextQuerySubKindResult {
+export interface CallContextQuerySubKindResult {
 	readonly id:         NodeId;
 	/**
 	 * Ids of functions which are called by the respective function call,

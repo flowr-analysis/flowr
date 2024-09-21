@@ -21,7 +21,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
-import { BuiltIn } from '../environments/built-in';
+import { jsonReplacer } from '../../util/json';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
@@ -257,13 +257,12 @@ export class DataflowGraph<
 	 * Will insert a new edge into the graph,
 	 * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
 	 * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to);
 		const { type, ...rest } = edgeInfo;
 
-		if(fromId === toId || toId === BuiltIn) {
+		if(fromId === toId) {
 			return this;
 		}
 
@@ -410,8 +409,8 @@ export class DataflowGraph<
 }
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
-	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`);
-	guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment');
+	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs ${JSON.stringify(next, jsonReplacer)}`);
+	guard(current.environment?.current.id === next.environment?.current.id, () => `nodes to be joined for the same id must have the same environment, but not for: ${JSON.stringify(current, jsonReplacer)} vs ${JSON.stringify(next, jsonReplacer)}`);
 
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');

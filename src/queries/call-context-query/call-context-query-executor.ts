@@ -53,24 +53,27 @@ class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Values> {
 	}
 }
 
-function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | false  {
+function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
 	if(callVertex === undefined) {
-		return false;
+		return 'no';
 	}
 	const [,outgoing] = callVertex;
-	const callTargets: NodeId[] = [...outgoing]
+	const baseCallTargets = [...outgoing]
 		.filter(([, e]) => edgeIncludesType(e.types, EdgeType.Calls))
-		.map(([t]) => t)
 	;
+
+	console.log(baseCallTargets);
+
+	const callTargets = baseCallTargets.map(([t]) => t);
 
 	switch(callTarget) {
 		case CallTargets.Any:
 			return callTargets;
 		case CallTargets.OnlyGlobal:
-			return callTargets.length === 0 ? callTargets : false;
+			return callTargets.length === 0 ? callTargets : 'no';
 		case CallTargets.OnlyLocal:
-			return callTargets.length > 0 ? callTargets : false;
+			return callTargets.length > 0 ? callTargets : 'no';
 		default:
 			assertUnreachable(callTarget);
 	}
@@ -85,10 +88,12 @@ function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId
 			const collectIn = subkinds[subkind];
 			for(const value of values) {
 				const [id, calls] = value;
-				collectIn.push({
-					id,
-					calls
-				});
+				if(calls) {
+					collectIn.push({ id, calls });
+				} else {
+					/* do not even provide the key! */
+					collectIn.push({ id });
+				}
 			}
 		}
 		result[kind] = {
@@ -112,22 +117,29 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 	/* the node id and call targets if present */
 	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>();
 
+	/* promote all strings to regex patterns */
+	const promotedQueries = queries.map(q => ({
+		...q,
+		callName: new RegExp(q.callName)
+	}));
+
+
 	for(const [node, info] of graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {
 			continue;
 		}
-		for(const query of queries.filter(q => q.callName.test(info.name))) {
-			let targets: NodeId[] | false = false;
+		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
+			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
 				targets = satisfiesCallTargets(node, graph, query.callTargets);
-				if(targets === false) {
+				if(targets === 'no') {
 					continue;
 				}
 			}
-			if(targets === false) {
-				initialIdCollector.add(query.kind, query.subkind, [node]);
-			} else {
+			if(targets) {
 				initialIdCollector.add(query.kind, query.subkind, [node, targets]);
+			} else {
+				initialIdCollector.add(query.kind, query.subkind, [node]);
 			}
 		}
 	}

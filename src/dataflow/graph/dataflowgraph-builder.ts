@@ -96,6 +96,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 				this.reads(id, call);
 			}
 		}
+		if(info?.onlyBuiltIn || onlyBuiltInAuto) {
+			this.calls(id, BuiltIn);
+		}
 		return this;
 	}
 

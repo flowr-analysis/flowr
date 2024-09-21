@@ -60,12 +60,13 @@ export interface IEnvironment {
 let environmentIdCounter = 0;
 
 export class Environment implements IEnvironment {
-	readonly id = environmentIdCounter++;
+	readonly id;
 	parent: IEnvironment;
 	memory: Map<Identifier, IdentifierDefinition[]>;
 
-	constructor(parent: IEnvironment) {
+	constructor(parent: IEnvironment, id?: number) {
 		this.parent = parent;
+		this.id = id ?? environmentIdCounter++;
 		this.memory = new Map();
 	}
 }

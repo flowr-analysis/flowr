@@ -66,7 +66,11 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 }
 
 function getFullNameOfLabel(label: TestLabel): string {
-	return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`;
+	if(label.capabilities.size === 0) {
+		return `#${label.id} ${label.name}`;
+	} else {
+		return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`;
+	}
 }
 
 

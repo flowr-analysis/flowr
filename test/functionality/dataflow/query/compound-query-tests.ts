@@ -24,9 +24,7 @@ describe('Compound Query', withShell(shell => {
 				kinds: {
 					'visualize': {
 						subkinds: {
-							'print': [{
-								id: 3,
-							}]
+							'print': [{ id: 3 }, { id: 7 }]
 						}
 					}
 				}

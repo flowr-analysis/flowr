@@ -70,22 +70,29 @@ function groupQueriesByType<
 }
 
 /* a record mapping the query type present to its respective result */
-export type QueriesResult<Base extends SupportedQueryTypes> = {
+export type QueryResults<Base extends SupportedQueryTypes> = {
 	readonly [QueryType in Base]: QueryResult<QueryType>
 } & BaseQueryResult
+
+
+type OmitFromValues<T, K extends string | number | symbol> = {
+	[P in keyof T]: Omit<T[P], K>
+}
+
+export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(graph: DataflowGraph, queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): QueriesResult<Base> {
+>(graph: DataflowGraph, queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): QueryResults<Base> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
-	const results = {} as Writable<QueriesResult<Base>>;
+	const results = {} as Writable<QueryResults<Base>>;
 	for(const type of Object.keys(grouped) as Base[]) {
-		results[type] = executeQueriesOfSameType(graph, ...grouped[type]) as QueriesResult<Base>[Base];
+		results[type] = executeQueriesOfSameType(graph, ...grouped[type]) as QueryResults<Base>[Base];
 	}
 	results['.meta'] = {
 		timing: Date.now() - now
 	};
-	return results as QueriesResult<Base>;
+	return results as QueryResults<Base>;
 }

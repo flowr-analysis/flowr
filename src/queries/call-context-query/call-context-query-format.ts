@@ -61,7 +61,7 @@ export type CallContextQueryKindResult = Record<string, {
 	readonly subkinds: Record<string, readonly CallContextQuerySubKindResult[]>
 }>
 
-export interface CallContextQueryResult extends BaseQueryResult<CallContextQuery> {
+export interface CallContextQueryResult extends BaseQueryResult {
 	readonly kinds: CallContextQueryKindResult;
 }
 

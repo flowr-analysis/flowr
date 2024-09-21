@@ -3,7 +3,10 @@ export interface BaseQueryFormat {
 	readonly type: string;
 }
 
-export interface BaseQueryResult<Query extends BaseQueryFormat> {
-	/** type of the query which produced this result */
-	readonly type: Query['type'];
+export interface BaseQueryMeta {
+	/** Duration in milliseconds */
+	readonly timing: number;
+}
+export interface BaseQueryResult {
+	readonly '.meta': BaseQueryMeta;
 }

@@ -107,6 +107,8 @@ function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId
  * 3. Attach `linkTo` calls to the respective calls.
  */
 export function executeCallContextQueries(graph: DataflowGraph, queries: readonly CallContextQuery[]): CallContextQueryResult {
+	/* omit performance page load */
+	const now = Date.now();
 	/* the node id and call targets if present */
 	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>();
 
@@ -134,7 +136,9 @@ export function executeCallContextQueries(graph: DataflowGraph, queries: readonl
 	console.log(initialIdCollector.asciiSummary());
 
 	return {
-		type:  'call-context',
+		'.meta': {
+			timing: Date.now() - now
+		},
 		kinds: makeReport(initialIdCollector)
 	};
 }

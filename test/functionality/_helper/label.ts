@@ -174,7 +174,7 @@ function printLabelSummary(): void {
 		printCapability(capability, testNames);
 	}
 
-	console.log('-- Tests-By-Context ' + '-'.repeat(80));
+	console.log('-- Tests-By-Context (Systematic Only)' + '-'.repeat(80));
 	const contextMap = new DefaultMap<TestLabelContext, number>(() => 0);
 	const blockedIds = new Set<number>();
 	for(const testNames of TheGlobalLabelMap.values()) {
@@ -188,7 +188,7 @@ function printLabelSummary(): void {
 			}
 		}
 	}
-	for(const [context, count] of contextMap.entries()) {
+	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))){
 		console.log(`- ${context}: ${count}`);
 	}
 }

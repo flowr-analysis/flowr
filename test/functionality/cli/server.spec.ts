@@ -18,6 +18,7 @@ import { extractCFG } from '../../../src/util/cfg/cfg';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
+import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 
 describe('flowr', () => {
 	describe('Server', withShell(shell => {
@@ -65,7 +66,7 @@ describe('flowr', () => {
 		}));
 
 
-		it('Allow to analyze a simple expression', withSocket(shell, async socket => {
+		it('Analyze a simple expression', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',
@@ -97,7 +98,7 @@ describe('flowr', () => {
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
 
-		it('Analyze with the CFG', withSocket(shell, async socket => {
+		it('Analyze the CFG', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',
@@ -115,6 +116,34 @@ describe('flowr', () => {
 			assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it');
 			const expectedCfg = extractCFG(response.results.normalize);
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
+		}));
+
+		it('Process a Query', withSocket(shell, async socket => {
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:      'request-file-analysis',
+				id:        '42',
+				filetoken: 'super-token',
+				filename:  'x',
+				content:   'print(17)'
+			});
+			await socket.waitForMessage('response-file-analysis');
+
+			/* request a query */
+			fakeSend<QueryRequestMessage>(socket, {
+				type:      'request-query',
+				id:        '21',
+				filetoken: 'super-token',
+				query:     [{ type: 'call-context', callName: 'print' }]
+			});
+
+			await socket.waitForMessage('response-query');
+			const messages = socket.getMessages(['hello', 'response-file-analysis', 'response-query']);
+			const response = messages[2] as QueryResponseMessage;
+
+			console.log(response.results);
+			assert.exists(response.results['call-context'], 'Expected the query to return at least one result');
+			assert.exists(response.results['.meta'], 'Expected the query to return at least one result');
+			assert.equal(response.results['call-context']['kinds']['.']['subkinds']['.'].length, 1, 'We should find one call to print!');
 		}));
 	}));
 });

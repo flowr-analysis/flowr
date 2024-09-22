@@ -10,6 +10,7 @@ import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequ
 import type { SliceRequestMessage, SliceResponseMessage } from './message-slice';
 import type { FlowrErrorMessage } from './message-error';
 import type { LineageRequestMessage, LineageResponseMessage } from './message-lineage';
+import type { QueryRequestMessage, QueryResponseMessage } from './message-query';
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
@@ -54,4 +55,6 @@ export type FlowrMessage = FlowrHelloResponseMessage
                          | SliceResponseMessage
                          | LineageRequestMessage
                          | LineageResponseMessage
+                         | QueryRequestMessage
+                         | QueryResponseMessage
                          | FlowrErrorMessage

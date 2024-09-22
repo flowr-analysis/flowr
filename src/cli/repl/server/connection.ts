@@ -39,6 +39,9 @@ import { requestLineageMessage } from './messages/message-lineage';
 import { getLineage } from '../commands/repl-lineage';
 import { guard } from '../../../util/assert';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
+import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
+import { requestQueryMessage } from './messages/message-query';
+import { executeQueries } from '../../../queries/query';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -98,6 +101,9 @@ export class FlowRServerConnection {
 				break;
 			case 'request-lineage':
 				this.handleLineageRequest(request.message as LineageRequestMessage);
+				break;
+			case 'request-query':
+				this.handleQueryRequest(request.message as QueryRequestMessage);
 				break;
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -314,6 +320,39 @@ export class FlowRServerConnection {
 			type:    'response-lineage',
 			id:      request.id,
 			lineage: [...lineageIds]
+		});
+	}
+
+	private handleQueryRequest(base: QueryRequestMessage) {
+		const requestResult = validateMessage(base, requestQueryMessage);
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id);
+			return;
+		}
+
+		const request = requestResult.message;
+		this.logger.info(`[${this.name}] Received query request for query ${JSON.stringify(request.query)}`);
+
+		const fileInformation = this.fileMap.get(request.filetoken);
+		if(!fileInformation) {
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `The file token ${request.filetoken} has never been analyzed.`
+			});
+			return;
+		}
+
+		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
+		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
+		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
+		const results = executeQueries({ graph: dfg.graph, ast }, request.query);
+		sendMessage<QueryResponseMessage>(this.socket, {
+			type: 'response-query',
+			id:   request.id,
+			results
 		});
 	}
 }

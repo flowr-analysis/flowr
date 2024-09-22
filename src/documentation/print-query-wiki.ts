@@ -5,11 +5,13 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { executeQueries } from '../queries/query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
-import { showQuery } from './doc-util/doc-query';
+import { explainQueries, registerQueryDocumentation, showQuery, tocForQueryType } from './doc-util/doc-query';
 import { CallTargets } from '../queries/call-context-query/call-context-query-format';
 import { describeSchema } from '../util/schema';
 import { QueriesSchema } from '../queries/query-schema';
 import { markdownFormatter } from '../util/ansi';
+import { executeCallContextQueries } from '../queries/call-context-query/call-context-query-executor';
+import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 
 const fileCode = `
 library(ggplot)
@@ -20,20 +22,125 @@ library(readr)
 data <- read_csv('data.csv')
 data2 <- read_csv('data2.csv')
 
-mean <- mean(data$x) 
-print(mean)
+m <- mean(data$x) 
+print(m)
 
 data %>%
 	ggplot(aes(x = x, y = y)) +
 	geom_point()
 	
+plot(data2$x, data2$y)
+points(data2$x, data2$y)
+	
 print(mean(data2$k))
 `.trim();
+
+
+registerQueryDocumentation('call-context', {
+	name:             'Call-Context Query',
+	type:             'active',
+	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
+	functionName:     executeCallContextQueries.name,
+	functionFile:     '../queries/call-context-query/call-context-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+Call context queries may be used to identify calls to specific functions that match criteria of your interest.
+For now, we support two criteria:
+
+1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
+2. **Call Targets**  (\`callTargets\`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
+
+Besides this we provide three ways to automatically categorize and link identified invocations:
+
+1. **Kind**         (\`kind\`): This is a general category that can be used to group calls together. For example, you may want to link all calls to \`plot\` to \`visualize\`.
+2. **Subkind**      (\`subkind\`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to \`ggplot\` to \`plot\`.
+3. **Linked Calls** (\`linkTo\`): This links the current call to the last call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
+   For now, we _only_offer support for linking to the last call_ as the current flow dependency over-approximation is not stable.
+
+Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,
+all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:
+
+${
+	await showQuery(shell, fileCode, [
+		{ type: 'call-context', callName: '^mean$', kind: 'visualize', subkind: 'text' },
+		{ type: 'call-context', callName: '^read_', kind: 'input', subkind: 'csv-file', callTargets: CallTargets.OnlyGlobal },
+		{ type: 'call-context', callName: '^points$', kind: 'visualize', subkind: 'plot', linkTo: { type: 'link-to-last-call', callName: '^plot$' } }
+	], { showCode: false })
+}
+
+As you can see, all kinds and subkinds with the same name are grouped together.
+Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
+See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose. 
+
+		`;
+	}
+});
+
+registerQueryDocumentation('compound', {
+	name:             'Compound Query',
+	type:             'virtual',
+	shortDescription: 'Combines multiple queries of the same type into one, specifying common arguments.',
+	functionName:     executeCompoundQueries.name,
+	functionFile:     '../queries/virtual-query/compound-query.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+A compound query comes in use, whenever we want to state multiple queries of the same type with a set of common arguments.
+It offers the following properties of interest:
+
+1. **Query** (\`query\`): the type of the query that is to be combined.
+2. **Common Arguments** (\`commonArguments\`): The arguments that are to be used as defaults for all queries (i.e., any argument the query may have).
+3. **Arguments** (\`arguments\`): The other arguments for the individual queries that are to be combined.
+
+For example, consider the following compound query that combines two call-context queries for \`mean\` and \`print\`, both of which are to be
+assigned to the kind \`visualize\` and the subkind \`text\` (using the example code from above):
+
+${
+	await showQuery(shell, fileCode, [{
+		type:            'compound',
+		query:           'call-context',
+		commonArguments: { kind: 'visualize', subkind: 'text' },
+		arguments:       [
+			{ callName: '^mean$' },
+			{ callName: '^print$' }
+		]
+	}], { showCode: false })
+}
+
+Of course, in this specific scenario, the following query would be equivalent:
+
+${
+	await showQuery(shell, fileCode, [
+		{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }
+	], { showCode: false, collapseResult: true })
+}
+
+However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
+Additionally, you can still overwrite default arguments. 
+In the following, we (by default) want all calls to not resolve to a local definition, except for those to \`print\` for which we explicitly
+want to resolve to a local definition:
+
+${
+	await showQuery(shell, fileCode, [{
+		type:            'compound',
+		query:           'call-context',
+		commonArguments: { kind: 'visualize', subkind: 'text', callTargets: CallTargets.OnlyGlobal },
+		arguments:       [
+			{ callName: '^mean$' },
+			{ callName: '^print$', callTargets: CallTargets.OnlyLocal }
+		]
+	}], { showCode: false })
+}
+
+Now, the results no longer contain calls to \`plot\` that are not defined locally. 
+
+		`;
+	}
+});
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} presenting an overview of flowR's dataflow graph (version: ${flowrVersion().format()}, samples generated with R version ${rversion})._
+	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} presenting an overview of flowR's dataflow graph (version: ${flowrVersion().format()}, samples are generated with R version ${rversion})._
 
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API (TODO TODO TODO).
@@ -70,36 +177,34 @@ ${await showQuery(shell, fileCode, [{ type: 'call-context', callName: '^read_csv
 ## The Query Format
 
 Queries are JSON arrays of query objects, each of which uses a \`type\` property to specify the query type.
-	
-The following query types are currently supported:
+In general, we separate two types of queries:
 
-${'' /* TODO: automate */}
-1. [Call-Context Query](#call-context-query)	
-2. [Compound Query (virtual)](#compound-query)
+1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](#call-context-query)). They fetch information from the dataflow graph.
+2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](#compound-query)). 
 
-TODO TOOD TODO get thef format to work
+We separate these from a concept perspective. 
+For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
 
+${tocForQueryType('active')}
+
+Similarly, we support the following **virtual** queries: 
+
+${tocForQueryType('virtual')}
 
 <details>
 
 
-<summary>Detailed Query Format</summary>
+<summary>Detailed Query Format (Automatically Generated)</summary>
 
-${
-	describeSchema(QueriesSchema, markdownFormatter)
-}
+Although it is probably better to consult the detailed explanations below, if you want to have a look at the scehma, here is its description:
+
+${describeSchema(QueriesSchema, markdownFormatter)}
 
 </details>
 
-### Supported Queries
+${await explainQueries(shell, 'active')}
 
-#### Call-Context Query
-
-### Supported Virtual Queries
-
-#### Compound Query
-
-
+${await explainQueries(shell, 'virtual')}
 
 `;
 }

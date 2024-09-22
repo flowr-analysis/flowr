@@ -21,7 +21,6 @@ export interface BasicQueryData {
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
 export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
-
 type SupportedQueries = {
 	[QueryType in Query['type']]: QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
 }

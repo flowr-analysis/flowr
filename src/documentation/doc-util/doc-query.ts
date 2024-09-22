@@ -1,5 +1,5 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, SupportedQueryTypes } from '../../queries/query';
+import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
 import { executeQueries } from '../../queries/query';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
@@ -8,13 +8,19 @@ import { printAsMs } from './doc-ms';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/ansi';
 import { asciiSummaryOfQueryResult } from '../../cli/repl/commands/repl-query';
-import { FlowrWikiBaseRef } from './doc-files';
+import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
+import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
+import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 
 export interface ShowQueryOptions {
-	readonly showCode?: boolean;
+	readonly showCode?:       boolean;
+	readonly collapseResult?: boolean;
 }
 
-export async function showQuery(shell: RShell, code: string, queries: Queries<SupportedQueryTypes>, { showCode }: ShowQueryOptions = {}): Promise<string> {
+export async function showQuery<
+	Base extends SupportedQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+>(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult }: ShowQueryOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -35,12 +41,13 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 ${JSON.stringify(queries, jsonReplacer, 2)}
 \`\`\`
 
-Results (prettified and summarized):
+${collapseResult ? ' <details> <summary>Show Results</summary>' : ''}
+
+_Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<'call-context'>, analysis)
 }
-
 
 <details> <summary>Show Detailed Results as Json</summary>
 
@@ -67,6 +74,69 @@ ${code}
 
 </details>
 
+${collapseResult ? '</details>' : ''}
+
 	`;
 
+}
+
+export interface QueryDocumentation {
+	readonly name:             string;
+	readonly type:             'virtual' | 'active';
+	readonly shortDescription: string;
+	readonly functionName:     string;
+	readonly functionFile:     string;
+	readonly buildExplanation: (shell: RShell) => Promise<string>;
+}
+
+export const RegisteredQueries = {
+	'active':  new Map<string, QueryDocumentation>(),
+	'virtual': new Map<string, QueryDocumentation>()
+};
+
+export function registerQueryDocumentation(query: SupportedQueryTypes | SupportedVirtualQueryTypes, doc: QueryDocumentation) {
+	const map = RegisteredQueries[doc.type];
+	if(map.has(query)) {
+		throw new Error(`Query ${query} already registered`);
+	}
+	map.set(query, doc);
+}
+
+function linkify(name: string) {
+	return name.toLowerCase().replace(/ /g, '-');
+}
+
+export function tocForQueryType(type: 'active' | 'virtual') {
+	const queries = RegisteredQueries[type];
+	const result: string[] = [];
+	for(const [id, { name, shortDescription }] of queries) {
+		result.push(`1. [${name}](#${linkify(name)}) (\`${id}\`):\\\n    ${shortDescription}`);
+	}
+	return result.join('\n');
+}
+
+async function explainQuery(shell: RShell, { name, functionName, functionFile, buildExplanation }: QueryDocumentation) {
+	return `
+### ${name}
+
+${await buildExplanation(shell)}
+
+<details> 
+
+<summary>Implementation Details</summary>
+
+Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
+
+</details>	
+
+`;
+}
+
+export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
+	const queries = RegisteredQueries[type];
+	const result: string[] = [];
+	for(const doc of queries.values()) {
+		result.push(await explainQuery(shell, doc));
+	}
+	return result.join('\n\n\n');
 }

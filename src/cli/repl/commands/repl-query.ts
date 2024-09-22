@@ -15,6 +15,8 @@ import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { BaseQueryMeta } from '../../../queries/base-query-format';
 import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltIn } from '../../../dataflow/environments/built-in';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -66,7 +68,18 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	};
 }
 
-function asciiCallContextSubHit(formatter: OutputFormatter, results: CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+function nodeString(id: NodeId, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+	if(id === BuiltIn) {
+		return italic('built-in', formatter);
+	}
+	const node = processed.normalize.idMap.get(id);
+	if(node === undefined) {
+		return `UNKNOWN: ${id}`;
+	}
+	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]})`;
+}
+
+function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 	for(const { id, calls = [], linkedIds = [] } of results) {
 		const node = processed.normalize.idMap.get(id);
@@ -74,12 +87,12 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: CallContext
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
 			continue;
 		}
-		let line = `${bold(node.lexeme ?? node.info.fullLexeme ?? 'UNKKNOWN', formatter)} (L.${node.location?.[0]})`;
+		let line = nodeString(id, formatter, processed);
 		if(calls.length > 0) {
-			line += ` ${calls.length} calls`;
+			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, processed)).join(', ')})`;
 		}
 		if(linkedIds.length > 0) {
-			line += ` ${linkedIds.length} links`;
+			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, processed)).join(', ')})`;
 		}
 		result.push(line);
 	}
@@ -126,7 +139,7 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		result.push(`  - Took ${timing.toFixed(0)}ms`);
 	}
 
-	result.push(italic(`All queries together required ≈${results['.meta'].timing.toFixed(0)}ms (total ${totalInMs.toFixed(0)}ms)`, formatter));
+	result.push(italic(`All queries together required ≈${results['.meta'].timing.toFixed(0)}ms (1ms accuracy, total ${totalInMs.toFixed(0)}ms)`, formatter));
 	return formatter.format(result.join('\n'));
 }
 

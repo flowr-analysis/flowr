@@ -20,3 +20,5 @@ type SupportedVirtualQueries = {
 export const SupportedVirtualQueries = {
 	'compound': executeCompoundQueries
 } as const satisfies SupportedVirtualQueries;
+
+export type SupportedVirtualQueryTypes = keyof typeof SupportedVirtualQueries;

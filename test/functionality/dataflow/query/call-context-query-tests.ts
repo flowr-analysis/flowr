@@ -44,8 +44,6 @@ function r(results: CallContextQuerySubKindResult[], kind = 'test-kind', subkind
 	});
 }
 
-// TODO: documentation
-// TODO: add REPL and message
 describe('Call Context Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>) {
 		assertQuery(label(name), shell, code, query, expected);
@@ -71,7 +69,9 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('Multiple wanted Calls', 'print(1); print(2)', [q(/print/)], r([{ id: 3 }, { id: 7 }]));
 		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn] }]));
 		testQuery('Higher-Order Calls', 'lapply(c(1,2,3),print)', [q(/print/)], r([{ id: 10 }]));
-		testQuery('Print calls (global)', 'read_csv(x)', [q(/read_csv/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [] }]));
+		testQuery('Reading non-built-ins', 'read_csv(x)', [q(/read_csv/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [] }]));
+		testQuery('Built-In in Argument', 'print(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 4, calls: [BuiltIn] }]));
+		testQuery('Multiple Built-In in Argument', 'mean(y)\nprint(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn] }, { id: 8, calls: [BuiltIn] }]));
 	});
 	describe('Mixed Targets', () => {
 		const code = 'if(x) { print <- function() {} }\nprint()';

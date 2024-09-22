@@ -34,6 +34,15 @@ export function genericDescription(level: number, formatter: OutputFormatter, na
 				);
 			}
 			break;
+		case 'array':
+			if('items' in desc) {
+				lines.push({ text: 'Valid item types:', level: level });
+				lines.push(
+					...(desc['items'] as Joi.Description[])
+						.flatMap(desc => genericDescription(level + 1, formatter, '.', desc))
+				);
+			}
+			break;
 		default:
 			/* specific support for others if needed */
 			break;

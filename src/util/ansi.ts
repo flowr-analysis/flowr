@@ -67,6 +67,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 				throw new Error(`Unsupported font style: ${options.style}`);
 			}
 		}
+
 		return input.replaceAll(/\n/g, '\\\n').replaceAll(/ /g, '&nbsp;');
 	}
 

@@ -1,3 +1,4 @@
+/** two layer map abstraction */
 export class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Values> {
 	readonly store = new Map<Layer1, Map<Layer2, Values[]>>();
 

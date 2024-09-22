@@ -80,7 +80,10 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, BuiltIn] }]));
 	});
 	describe('Linked Calls', () => {
-		// TODO: with one finding its parent, and one that does not
+		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7] }]));
+		testQuery('Link to Self', 'plot(x)\nplot(y)', [q(/plot/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 3, linkedIds: [] }, { id: 7, linkedIds: [3] }]));
+		testQuery('Link to Meet', 'if(k) { plot(a) } else { plot(x) }\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 19, linkedIds: [13, 6] }]));
+		testQuery('Link to Loop Closure ', 'for(i in v) { points(a); plots(b) }', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 7, linkedIds: [11] }]));
 	});
 	describe('Multiple Kinds', () => {
 		testQuery('Multiple Kinds', 'print(1); foo(2)', [q(/print/, { kind: 'print-kind' }), q(/foo/, { kind: 'foo-kind' })], baseResult({

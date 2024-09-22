@@ -2,7 +2,8 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
-	CallContextQueryResult, SubCallContextQueryFormat
+	CallContextQueryResult, CallContextQuerySubKindResult,
+	SubCallContextQueryFormat
 } from './call-context-query-format';
 import { CallTargets
 } from './call-context-query-format';
@@ -10,50 +11,13 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex';
 import { assertUnreachable } from '../../util/assert';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
-import type { DeepWritable } from 'ts-essentials';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { BuiltIn } from '../../dataflow/environments/built-in';
-
-class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Values> {
-	readonly store = new Map<Layer1, Map<Layer2, Values[]>>();
-
-	public add(layer1: Layer1, layer2: Layer2, value: Values) {
-		let layer2Map = this.store.get(layer1);
-		if(layer2Map === undefined) {
-			layer2Map = new Map<Layer2, Values[]>();
-			this.store.set(layer1, layer2Map);
-		}
-		let values = layer2Map.get(layer2);
-		if(values === undefined) {
-			values = [];
-			layer2Map.set(layer2, values);
-		}
-		values.push(value);
-	}
-
-	public get(layer1: Layer1, layer2: Layer2): Values[] | undefined {
-		return this.store.get(layer1)?.get(layer2);
-	}
-
-	public outerKeys(): Iterable<Layer1> {
-		return this.store.keys();
-	}
-
-	public innerKeys(layer1: Layer1): Iterable<Layer2> {
-		return this.store.get(layer1)?.keys() ?? [];
-	}
-
-	public asciiSummary() {
-		let result = '';
-		for(const [layer1, layer2Map] of this.store) {
-			result += `${JSON.stringify(layer1)}\n`;
-			for(const [layer2, values] of layer2Map) {
-				result += ` ╰ ${JSON.stringify(layer2)}: ${JSON.stringify(values)}\n`;
-			}
-		}
-		return result;
-	}
-}
+import type { ControlFlowInformation } from '../../util/cfg/cfg';
+import { extractCFG } from '../../util/cfg/cfg';
+import { TwoLayerCollector } from '../two-layer-collector';
+import type { BasicQueryData } from '../query';
+import { compactRecord } from '../../util/objects';
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -113,21 +77,15 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 	return [...vertex.values()].some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
 }
 
-function makeReport(collector: TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>): CallContextQueryKindResult {
+function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {} as unknown as CallContextQueryKindResult;
 	for(const [kind, collected] of collector.store) {
-		const subkinds = {} as DeepWritable<CallContextQueryKindResult[string]['subkinds']>;
+		const subkinds = {} as CallContextQueryKindResult[string]['subkinds'];
 		for(const [subkind, values] of collected) {
 			subkinds[subkind] ??= [];
 			const collectIn = subkinds[subkind];
 			for(const value of values) {
-				const [id, calls] = value;
-				if(calls) {
-					collectIn.push({ id, calls });
-				} else {
-					/* do not even provide the key! */
-					collectIn.push({ id });
-				}
+				collectIn.push(value);
 			}
 		}
 		result[kind] = {
@@ -141,9 +99,11 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 	return 'linkTo' in query;
 }
 
-function promoteQueryCallNames(queries: readonly CallContextQuery[]) {
-	return queries.map(q => {
+function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promotedQueries: CallContextQuery<RegExp>[], requiresCfg: boolean } {
+	let requiresCfg = false;
+	const promotedQueries = queries.map(q => {
 		if(isSubCallQuery(q)) {
+			requiresCfg = true;
 			return {
 				...q,
 				callName: new RegExp(q.callName),
@@ -160,6 +120,13 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]) {
 			};
 		}
 	});
+
+	return { promotedQueries, requiresCfg };
+}
+
+function identifyLinkToRelation(cfg: ControlFlowInformation): NodeId[] {
+	/* TODO: */
+	return [];
 }
 
 /**
@@ -170,36 +137,46 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]) {
  *    This happens during the main resolution!
  * 3. Attach `linkTo` calls to the respective calls.
  */
-export function executeCallContextQueries(graph: DataflowGraph, queries: readonly CallContextQuery[]): CallContextQueryResult {
+export function executeCallContextQueries({ graph, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
 	/* omit performance page load */
 	const now = Date.now();
 	/* the node id and call targets if present */
-	const initialIdCollector = new TwoLayerCollector<string, string, [NodeId, NodeId[]] | [NodeId]>();
+	const initialIdCollector = new TwoLayerCollector<string, string, CallContextQuerySubKindResult>();
 
 	/* promote all strings to regex patterns */
-	const promotedQueries = promoteQueryCallNames(queries);
+	const { promotedQueries, requiresCfg } = promoteQueryCallNames(queries);
 
-	for(const [node, info] of graph.vertices(true)) {
+	let cfg = undefined;
+	if(requiresCfg) {
+		cfg = extractCFG(ast);
+	}
+
+	for(const [nodeId, info] of graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {
 			continue;
 		}
 		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
-				targets = satisfiesCallTargets(node, graph, query.callTargets);
+				targets = satisfiesCallTargets(nodeId, graph, query.callTargets);
 				if(targets === 'no') {
 					continue;
 				}
 			}
-			if(isQuoted(node, graph)) {
+			if(isQuoted(nodeId, graph)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			}
-			if(targets) {
-				initialIdCollector.add(query.kind, query.subkind, [node, targets]);
-			} else {
-				initialIdCollector.add(query.kind, query.subkind, [node]);
+			let linkedIds: NodeId[] | undefined = undefined;
+			if(cfg && isSubCallQuery(query)) {
+				/* if we have a linkTo query, we have to find the last call */
+				const lastCall = identifyLinkToRelation(cfg);
+				if(lastCall) {
+					linkedIds = lastCall;
+				}
 			}
+
+			initialIdCollector.add(query.kind, query.subkind, compactRecord({ id: nodeId, calls: targets, linkedIds }));
 		}
 	}
 

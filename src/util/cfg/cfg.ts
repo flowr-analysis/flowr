@@ -164,8 +164,6 @@ export function extractCFG<Info=ParentInformation>(ast: NormalizedAst<Info>): Co
 	return foldAst(ast.ast, cfgFolds);
 }
 
-
-
 function cfgLeaf(type: CfgVertexType): (leaf: RNodeWithParent) => ControlFlowInformation {
 	return (leaf: RNodeWithParent) => {
 		const graph = new ControlFlowGraph();

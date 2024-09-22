@@ -34,7 +34,7 @@ function baseResult(kinds: CallContextQueryKindResult): QueryResultsWithoutMeta<
 }
 
 /** simple result shortcut */
-function r(results: readonly CallContextQuerySubKindResult[], kind = 'test-kind', subkind = 'test-subkind'): QueryResultsWithoutMeta<CallContextQuery> {
+function r(results: CallContextQuerySubKindResult[], kind = 'test-kind', subkind = 'test-subkind'): QueryResultsWithoutMeta<CallContextQuery> {
 	return baseResult({
 		[kind]: {
 			subkinds: {

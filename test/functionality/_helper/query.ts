@@ -56,8 +56,7 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();
 
-		const graph = info.dataflow.graph;
-		const result = executeQueries<Queries['type'], VirtualArguments>(graph, queries);
+		const result = executeQueries<Queries['type'], VirtualArguments>({ graph: info.dataflow.graph, ast: info.normalize }, queries);
 
 		// TODO: demote to logger
 		console.log(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);

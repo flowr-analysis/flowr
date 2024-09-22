@@ -14,10 +14,10 @@ export const enum CallTargets {
 	Any = 'any'
 }
 
-export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
+export interface DefaultCallContextQueryFormat<CallName extends RegExp | string> extends BaseQueryFormat {
 	readonly type:         'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
-	readonly callName:     RegExp | string;
+	readonly callName:     CallName;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`) */
 	readonly kind:         string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`) */
@@ -32,17 +32,19 @@ export interface DefaultCallContextQueryFormat extends BaseQueryFormat {
 /**
  * Links the current call to the last call of the given kind.
  * This way, you can link a call like `points` to the latest graphics plot etc.
+ * For now, this uses the static Control-Flow-Graph produced by flowR as the FD over-approximation is still not stable (see #1005).
+ * In short, this means that we are unable to detect origins over function call boundaries but plan on being more precise in the future.
  */
-interface LinkToLastCall extends BaseQueryFormat {
+interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
 	readonly type:     'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
-	readonly callName: RegExp | string;
+	readonly callName: CallName;
 }
 
-type LinkTo = LinkToLastCall;
+type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
 
-export interface SubCallContextQueryFormat extends DefaultCallContextQueryFormat {
-	readonly linkTo: LinkTo;
+export interface SubCallContextQueryFormat<CallName extends RegExp | string = RegExp | string> extends DefaultCallContextQueryFormat<CallName> {
+	readonly linkTo: LinkTo<CallName>;
 }
 
 export interface CallContextQuerySubKindResult {
@@ -59,12 +61,12 @@ export interface CallContextQuerySubKindResult {
 }
 
 export type CallContextQueryKindResult = Record<string, {
-	/** maps each subkind to the results found */
-	readonly subkinds: Record<string, readonly CallContextQuerySubKindResult[]>
+	/** maps each subkind to the results found, to be freely in the result form, this is mutable */
+	subkinds: Record<string, CallContextQuerySubKindResult[]>
 }>
 
 export interface CallContextQueryResult extends BaseQueryResult {
 	readonly kinds: CallContextQueryKindResult;
 }
 
-export type CallContextQuery = DefaultCallContextQueryFormat | SubCallContextQueryFormat;
+export type CallContextQuery<CallName extends RegExp | string = RegExp | string> = DefaultCallContextQueryFormat<CallName> | SubCallContextQueryFormat<CallName>;

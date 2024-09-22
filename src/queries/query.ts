@@ -7,13 +7,19 @@ import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-quer
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export type Query = CallContextQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
+export interface BasicQueryData {
+	readonly ast:   NormalizedAst;
+	readonly graph: DataflowGraph;
+}
+
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
-export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (graph: DataflowGraph, query: readonly Query[]) => Result;
+export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
 
 type SupportedQueries = {
@@ -28,13 +34,13 @@ export const SupportedQueries = {
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
 export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]>;
 
-export function executeQueriesOfSameType<SpecificQuery extends Query>(graph: DataflowGraph, ...queries: SpecificQuery[]): QueryResult<SpecificQuery['type']> {
+export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
 	const executor = SupportedQueries[queries[0].type];
 	guard(executor !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return executor(graph, queries) as QueryResult<SpecificQuery['type']>;
+	return executor(data, queries) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<
@@ -84,12 +90,12 @@ export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(graph: DataflowGraph, queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): QueryResults<Base> {
+>(data: BasicQueryData, queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): QueryResults<Base> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
 	const results = {} as Writable<QueryResults<Base>>;
 	for(const type of Object.keys(grouped) as Base[]) {
-		results[type] = executeQueriesOfSameType(graph, ...grouped[type]) as QueryResults<Base>[Base];
+		results[type] = executeQueriesOfSameType(data, ...grouped[type]) as QueryResults<Base>[Base];
 	}
 	results['.meta'] = {
 		timing: Date.now() - now

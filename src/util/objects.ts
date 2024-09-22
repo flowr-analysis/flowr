@@ -74,3 +74,19 @@ function assertSameType(base: unknown, addon: unknown): void {
 		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base, jsonReplacer)}) !== ${typeof addon} (${JSON.stringify(addon, jsonReplacer)})`);
 	}
 }
+
+type Defined<T> = Exclude<T, undefined>;
+type DefinedRecord<T> = {
+	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
+}
+
+/** from a record take only the keys that are not undefined */
+export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T> {
+	const result: Partial<Record<string, unknown>> = {};
+	for(const key of Object.keys(record)) {
+		if(record[key] !== undefined) {
+			result[key] = record[key];
+		}
+	}
+	return result as DefinedRecord<T>;
+}

@@ -191,15 +191,13 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 				}
 			}
 
-			initialIdCollector.add(query.kind, query.subkind, compactRecord({ id: nodeId, calls: targets, linkedIds }));
+			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, calls: targets, linkedIds }));
 		}
 	}
 
-	console.log(initialIdCollector.asciiSummary());
-
 	return {
 		'.meta': {
-			timing: Date.now() - now
+			timing: Date.now() - now,
 		},
 		kinds: makeReport(initialIdCollector)
 	};

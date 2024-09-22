@@ -1,4 +1,5 @@
 import type { CallContextQuery } from './call-context-query/call-context-query-format';
+import { CallContextQuerySchema } from './call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
 import { executeCallContextQueries } from './call-context-query/call-context-query-executor';
@@ -8,6 +9,7 @@ import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import Joi from 'joi';
 
 export type Query = CallContextQuery;
 
@@ -30,6 +32,9 @@ export const SupportedQueries = {
 	'call-context': executeCallContextQueries
 } as const satisfies SupportedQueries;
 
+export const SupportedQueriesSchema = Joi.array().items(Joi.alternatives(
+	CallContextQuerySchema
+));
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
 export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]>;

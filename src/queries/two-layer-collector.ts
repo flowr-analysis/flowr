@@ -27,15 +27,4 @@ export class TwoLayerCollector<Layer1 extends string, Layer2 extends string, Val
 	public innerKeys(layer1: Layer1): Iterable<Layer2> {
 		return this.store.get(layer1)?.keys() ?? [];
 	}
-
-	public asciiSummary() {
-		let result = '';
-		for(const [layer1, layer2Map] of this.store) {
-			result += `${JSON.stringify(layer1)}\n`;
-			for(const [layer2, values] of layer2Map) {
-				result += ` ╰ ${JSON.stringify(layer2)}: ${JSON.stringify(values)}\n`;
-			}
-		}
-		return result;
-	}
 }

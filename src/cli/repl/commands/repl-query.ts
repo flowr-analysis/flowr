@@ -5,7 +5,16 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
 import type { OutputFormatter } from '../../../util/ansi';
-import { italic , bold  } from '../../../util/ansi';
+import { bold, italic } from '../../../util/ansi';
+
+import type { CallContextQuerySubKindResult } from '../../../queries/call-context-query/call-context-query-format';
+import { CallContextQuerySchema } from '../../../queries/call-context-query/call-context-query-format';
+import { describeSchema } from '../../../util/schema';
+import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
+import { executeQueries, SupportedQueriesSchema } from '../../../queries/query';
+import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import type { BaseQueryMeta } from '../../../queries/base-query-format';
+import { jsonReplacer } from '../../../util/json';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -14,70 +23,138 @@ async function getDataflow(shell: RShell, remainingLine: string) {
 	}).allRemainingSteps();
 }
 
-interface QueryPattern {
-	readonly description: string;
-	readonly pattern:     string;
-	/* TODO: result */
-	readonly call:        (formatter: OutputFormatter, args: readonly string[]) => Promise<void>;
+
+function printHelp(output: ReplOutput) {
+	output.stderr(`Format: ${italic(':query "<query>" <code>', output.formatter)}`);
+	output.stdout('The query is an array of query objects to represent multiple queries. Each query object may have the following properties:');
+	output.stdout(describeSchema(CallContextQuerySchema, output.formatter));
+	output.stdout(`The example ${italic(':query "[{\\"type\\": \\"call-context\\", \\"callName\\": \\"mean\\" }]" mean(1:10)', output.formatter)} would return the call context of the mean function.`);
+	output.stdout('As a convenience, we interpret any (non-help) string not starting with \'[\' as a regex for the simple call-context query.');
+	output.stdout(`Hence, ${italic(':query "mean" mean(1:10)', output.formatter)} is equivalent to the above example.`);
 }
 
-function trimWithIndent(str: string, length: number, indent: number): string {
-	// split str into lines of length max length, then join them with the given indent
-	const lines = [];
-	const effictveLength = Math.max(Math.min(length , length - indent), 50);
-	for(let i = 0; i < str.length; i += effictveLength) {
-		lines.push(str.slice(i, i + effictveLength));
-	}
-	return lines.join('\n' + ' '.repeat(indent));
-}
-
-const AvailableQueries = {
-	'help': {
-		description: 'Get help on the available queries',
-		pattern:     ':query help',
-		// eslint-disable-next-line @typescript-eslint/require-await
-		call:        async f => {
-			console.log('Available queries:');
-			for(const [query, { description, pattern }] of Object.entries(AvailableQueries)) {
-				console.log(`- [${bold(query, f)}] ${italic(pattern, f)}\n${' '.repeat(query.length + 5)}${trimWithIndent(description, 120, query.length + 5)}`);
-			}
-		}
-	},
-	'call': {
-		description: 'Call-Context Query (retrieve all calls matching your criteria). The criteria is to be a regex of the callName you are interested in. ',
-		pattern:     ':query  <code>',
-		// eslint-disable-next-line @typescript-eslint/require-await
-		call:        async(f, args) => {
-			console.log('Call-Context Query:', args);
-		}
-	},
-} as const satisfies Record<string, QueryPattern>;
-
-async function processQueryArgs(line: string, shell: RShell, output: ReplOutput): Promise<void> {
+async function processQueryArgs(line: string, shell: RShell, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
 	if(!query) {
-		output.stderr('No query provided, use \':query help\' to get more information.');
+		output.stderr(`No query provided, use ':query help' to get more information.`);
+		return;
+	}
+	if(query === 'help') {
+		printHelp(output);
 		return;
 	}
 
-	const queryPattern = AvailableQueries[query as keyof typeof AvailableQueries];
-	if(!queryPattern) {
-		output.stderr(`Unknown query: ${query}, use ':query help' to get more information.`);
-		return;
+	let parsedQuery: Query[] = [];
+	if(query.startsWith('[')) {
+		parsedQuery = JSON.parse(query) as Query[];
+		const validationResult = SupportedQueriesSchema.validate(parsedQuery);
+		if(validationResult.error) {
+			output.stderr(`Invalid query: ${validationResult.error.message}`);
+			printHelp(output);
+			return;
+		}
+	} else {
+		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	return await queryPattern.call(output.formatter, args);
+	const processed = await getDataflow(shell, args.join(' '));
+	return {
+		query: executeQueries({ graph: processed.dataflow.graph, ast: processed.normalize }, parsedQuery),
+		processed
+	};
+}
+
+/*
+	public asciiSummary() {
+		let result = '';
+		for(const [layer1, layer2Map] of this.store) {
+			result += `${JSON.stringify(layer1)}\n`;
+			for(const [layer2, values] of layer2Map) {
+				result += ` ╰ ${JSON.stringify(layer2)}: ${JSON.stringify(values)}\n`;
+			}
+		}
+		return result;
+	}
+ */
+
+function asciiCallContextSubHit(formatter: OutputFormatter, results: CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+	const result: string[] = [];
+	for(const { id, calls = [], linkedIds = [] } of results) {
+		const node = processed.normalize.idMap.get(id);
+		if(node === undefined) {
+			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
+			continue;
+		}
+		let line = `${bold(node.lexeme ?? node.info.fullLexeme ?? 'UNKKNOWN', formatter)} (L.${node.location?.[0]})`;
+		if(calls.length > 0) {
+			line += ` ${calls.length} calls`;
+		}
+		if(linkedIds.length > 0) {
+			line += ` ${linkedIds.length} links`;
+		}
+		result.push(line);
+	}
+	return result.join(', ');
+}
+
+function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+	/* traverse over 'kinds' and within them 'subkinds' */
+	const result: string[] = [];
+	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
+		result.push(`   ╰ ${bold(kind, formatter)}`);
+		for(const [subkind, values] of Object.entries(subkinds)) {
+			result.push(`     ╰ ${bold(subkind, formatter)}: ${asciiCallContextSubHit(formatter, values, processed)}`);
+		}
+	}
+	return result.join('\n');
+}
+
+function asciiSummary(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+	const result: string[] = [];
+
+	for(const [query, queryResults] of Object.entries(results)) {
+		if(query === '.meta') {
+			continue;
+		}
+		if(query === 'call-context') {
+			const out = queryResults as QueryResults<'call-context'>['call-context'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(asciiCallContext(formatter, out, processed));
+			continue;
+		}
+
+		result.push(`Query: ${bold(query, formatter)}`);
+
+		let timing = -1;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		for(const [key, value] of Object.entries(queryResults)) {
+			if(key === '.meta') {
+				timing = (value as BaseQueryMeta).timing;
+				continue;
+			}
+			result.push(` ╰ ${key}: ${JSON.stringify(value)}`);
+		}
+		result.push(`  - Took ${timing.toFixed(0)}ms`);
+	}
+
+	result.push(italic(`All queries together required ≈${results['.meta'].timing.toFixed(0)}ms (total ${totalInMs.toFixed(0)}ms)`, formatter));
+	return result.join('\n');
 }
 
 export const queryCommand: ReplCommand = {
-	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. Use the 'help' query to get more information!`,
-	usageExample: ':query <query> <code>',
+	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
+	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		await processQueryArgs(remainingLine, shell, output);
+		const totalStart = Date.now();
+		const results = await processQueryArgs(remainingLine, shell, output);
+		const totalEnd = Date.now();
+		if(results) {
+			output.stdout(asciiSummary(output.formatter, totalEnd - totalStart, results.query, results.processed));
+		}
 	}
 };
 
@@ -87,7 +164,9 @@ export const queryStarCommand: ReplCommand = {
 	aliases:      [ ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		/* TODO */
-		await processQueryArgs(remainingLine, shell, output);
+		const results = await processQueryArgs(remainingLine, shell, output);
+		if(results) {
+			output.stdout(JSON.stringify(results.query, jsonReplacer));
+		}
 	}
 };

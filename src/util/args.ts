@@ -9,7 +9,7 @@
  *
  * Given an input string like `a "b c" d`, with a space character as split, and escapeQuote set to true,
  * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
- * 
+ *
  * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
  *
  * @param inputString - The string to split
@@ -42,7 +42,7 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 			if(!escapeQuote) {
 				current += c;
 			}
-		} else if(c === '\\') {
+		} else if(c === '\\' && escapeQuote) {
 			escaped = true;
 		} else {
 			current += c;

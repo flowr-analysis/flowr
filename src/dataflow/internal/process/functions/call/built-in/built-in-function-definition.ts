@@ -86,8 +86,6 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment);
 
-	/* TODO: continue flow dependencies foll all vertices + make it so call trace the exit points of the function ~> write specific tests ~> use for linkto */
-
 	for(const read of remainingRead) {
 		if(read.name) {
 			subgraph.addVertex({

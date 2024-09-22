@@ -107,7 +107,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
 }
-function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'FD' | 'function'>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
 	return `${from}->${to}["${[...types].join(':')}"]`;
 }
 
@@ -177,9 +177,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const edges = mermaid.rootGraph.get(id, true);
 	guard(edges !== undefined, `node ${id} must be found`);
-	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False' | 'FD'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
-	const artificialFdEdges = (info.flowDependencies ?? []).map(x => [x, { types: new Set<EdgeType | 'CD-True' | 'CD-False' | 'FD'>(['FD']) }] as const);
-	for(const [target, edge] of [...edges[1], ...artificialCdEdges, ...artificialFdEdges]) {
+	const artificialCdEdges = (info.controlDependencies ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
+	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
@@ -189,7 +188,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`);
 			}
-			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False') || edgeTypes.has('FD')) {
+			if(edgeTypes.has('CD-True')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
 			}
 		}

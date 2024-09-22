@@ -71,7 +71,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data: { ...data, flowDependencies: [rootId] }, finalGraph, functionRootId: rootId, patchData, forceArgs });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
 	if(markAsNSE) {
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}
@@ -84,8 +84,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
-		args:                reverseOrder ? [...callArgs].reverse() : callArgs,
-		flowDependencies:    data.flowDependencies
+		args:                reverseOrder ? [...callArgs].reverse() : callArgs
 	});
 
 	if(hasUnknownSideEffect) {

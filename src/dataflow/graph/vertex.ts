@@ -39,11 +39,6 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * See {@link IdentifierReference}
 	 */
 	controlDependencies: ControlDependency[] | undefined
-	/**
-	 * This is propagated by the active {@link DataflowInformation}
-	 * and contains all nodes that are potential dataflow predecessors of the current node.
-	 */
-	flowDependencies:    NodeId[] | undefined
 }
 
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
@@ -73,10 +68,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 */
 	readonly name: string
 	args:          FunctionArgument[]
-	/**
-	 * This is a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached.
-	 * Do not rely on it for informational value, it may over-approximate.
-	 */
+	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:   boolean
 	environment:   REnvironmentInformation | undefined
 }

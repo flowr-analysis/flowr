@@ -38,11 +38,9 @@ export function processFunctionArgument<OtherInfo>(
 		graph.addVertex({
 			tag:                 VertexType.Use,
 			id:                  argument.info.id,
-			controlDependencies: data.controlDependencies,
-			flowDependencies:    data.flowDependencies
+			controlDependencies: data.controlDependencies
 		});
 		entryPoint = argument.info.id;
-		data = { ...data, flowDependencies: [argument.info.id] };
 	}
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])];

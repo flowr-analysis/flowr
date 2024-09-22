@@ -10,7 +10,6 @@ import type {
 import type { REnvironmentInformation } from './environments/environment';
 import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**
@@ -36,18 +35,9 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly referenceChain:      string[]
 	/**
-	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
+	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g. of known ifs).
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
-	/**
-	 * Contains all node ids that are potential control flow predecessors of the entry point that we are currently able to identify.
-	 * In general, this represents the flow dependency of a CFG.
-	 * Every handler for an inner fold has to handle the predecessor property.
-	 * Additionally, calls have to update the predecessor linkage of the call entry point.
-	 * In short, this may be incomplete (e.g., in case of function calls).
-	 * There is no intention of creating a total order with the FDs, in general we try to approximate the order of execution using a partial order.
-	 */
-	readonly flowDependencies:    NodeId[]
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

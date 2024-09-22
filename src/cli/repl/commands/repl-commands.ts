@@ -1,20 +1,20 @@
-import { quitCommand } from './quit';
+import { quitCommand } from './repl-quit';
 import { stdioCaptureProcessor, waitOnScript } from '../execute';
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import { rawPrompt } from '../prompt';
-import { versionCommand } from './version';
-import { parseCommand } from './parse';
-import { executeCommand } from './execute';
-import { normalizeCommand, normalizeStarCommand } from './normalize';
-import { dataflowCommand, dataflowStarCommand } from './dataflow';
-import { controlflowCommand, controlflowStarCommand } from './cfg';
+import { versionCommand } from './repl-version';
+import { parseCommand } from './repl-parse';
+import { executeCommand } from './repl-execute';
+import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
+import { dataflowCommand, dataflowStarCommand } from './repl-dataflow';
+import { controlflowCommand, controlflowStarCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/ansi';
 import { italic , bold } from '../../../util/ansi';
 import { splitAtEscapeSensitive } from '../../../util/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
-import { lineageCommand } from './lineage';
-import { queryCommand, queryStarCommand } from './query';
+import { lineageCommand } from './repl-lineage';
+import { queryCommand, queryStarCommand } from './repl-query';
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, starredVersion?: ReplCommand): string {
 	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '') 

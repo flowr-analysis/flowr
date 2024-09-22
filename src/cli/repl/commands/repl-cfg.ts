@@ -1,4 +1,4 @@
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { extractCFG } from '../../../util/cfg/cfg';
 import type { RShell } from '../../../r-bridge/shell';

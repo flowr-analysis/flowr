@@ -1,5 +1,5 @@
-import type { VersionInformation } from '../commands/version';
-import { retrieveVersionInformation } from '../commands/version';
+import type { VersionInformation } from '../commands/repl-version';
+import { retrieveVersionInformation } from '../commands/repl-version';
 import { FlowRServerConnection } from './connection';
 import { getUnnamedSocketName, sendMessage } from './send';
 import type { FlowrHelloResponseMessage } from './messages/hello';

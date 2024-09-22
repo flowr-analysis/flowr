@@ -2,7 +2,7 @@ import { assert } from 'chai';
 import { withShell } from '../_helper/shell';
 import { fakeSend, withSocket } from '../_helper/net';
 import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello';
-import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version';
+import { retrieveVersionInformation } from '../../../src/cli/repl/commands/repl-version';
 import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,

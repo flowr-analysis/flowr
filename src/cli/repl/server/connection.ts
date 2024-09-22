@@ -36,7 +36,7 @@ import type { RParseRequests } from '../../../r-bridge/retriever';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage';
 import { requestLineageMessage } from './messages/lineage';
-import { getLineage } from '../commands/lineage';
+import { getLineage } from '../commands/repl-lineage';
 import { guard } from '../../../util/assert';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 

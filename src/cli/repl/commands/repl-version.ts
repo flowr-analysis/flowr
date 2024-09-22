@@ -1,4 +1,4 @@
-import type { ReplCommand, ReplOutput } from './main';
+import type { ReplCommand, ReplOutput } from './repl-main';
 import { flowrVersion } from '../../../util/version';
 import { guard } from '../../../util/assert';
 import type { RShell } from '../../../r-bridge/shell';

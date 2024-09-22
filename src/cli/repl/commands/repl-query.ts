@@ -2,7 +2,7 @@ import type { RShell } from '../../../r-bridge/shell';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
-import type { ReplCommand, ReplOutput } from './main';
+import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
 import type { OutputFormatter } from '../../../util/ansi';
 import { italic , bold  } from '../../../util/ansi';

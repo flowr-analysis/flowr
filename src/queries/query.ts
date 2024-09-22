@@ -1,5 +1,4 @@
 import type { CallContextQuery } from './call-context-query/call-context-query-format';
-import { CallContextQuerySchema } from './call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
 import { executeCallContextQueries } from './call-context-query/call-context-query-executor';
@@ -9,7 +8,6 @@ import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import Joi from 'joi';
 
 export type Query = CallContextQuery;
 
@@ -31,10 +29,6 @@ type SupportedQueries = {
 export const SupportedQueries = {
 	'call-context': executeCallContextQueries
 } as const satisfies SupportedQueries;
-
-export const SupportedQueriesSchema = Joi.array().items(Joi.alternatives(
-	CallContextQuerySchema
-));
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
 export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]>;
@@ -92,10 +86,15 @@ type OmitFromValues<T, K extends string | number | symbol> = {
 
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 
+export type Queries<
+	Base extends SupportedQueryTypes,
+	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
+> = readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[];
+
 export function executeQueries<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(data: BasicQueryData, queries: readonly (QueryArgumentsWithType<Base> | VirtualQueryArgumentsWithType<Base, VirtualArguments>)[]): QueryResults<Base> {
+>(data: BasicQueryData, queries: Queries<Base, VirtualArguments>): QueryResults<Base> {
 	const now = Date.now();
 	const grouped = groupQueriesByType(queries);
 	const results = {} as Writable<QueryResults<Base>>;

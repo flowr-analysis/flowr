@@ -4,12 +4,12 @@
  * @module
  */
 import * as Joi from 'joi';
-import type { FlowrHelloResponseMessage } from './hello';
-import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis';
-import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl';
-import type { SliceRequestMessage, SliceResponseMessage } from './slice';
-import type { FlowrErrorMessage } from './error';
-import type { LineageRequestMessage, LineageResponseMessage } from './lineage';
+import type { FlowrHelloResponseMessage } from './message-hello';
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './message-analysis';
+import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './message-repl';
+import type { SliceRequestMessage, SliceResponseMessage } from './message-slice';
+import type { FlowrErrorMessage } from './message-error';
+import type { LineageRequestMessage, LineageResponseMessage } from './message-lineage';
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.

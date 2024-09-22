@@ -14,7 +14,10 @@ export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatte
 	return lines.map(line => `${indent.repeat(line.level - 1)}${line.text}`).join('\n');
 }
 
-export function genericDescription(level: number, formatter: OutputFormatter, name: string, desc: Joi.Description): SchemaLine[] {
+export function genericDescription(level: number, formatter: OutputFormatter, name: string, desc: Joi.Description | undefined): SchemaLine[] {
+	if(!desc) {
+		return [];
+	}
 	const lines = [...headerLine(level, formatter, name, desc.type ?? 'unknown', desc.flags)];
 	if('allow' in desc) {
 		lines.push({ level: level + 1, text: `Allows only the values: ${(desc['allow'] as string[]).map(v => "'" + v + "'").join(', ')}` });
@@ -22,6 +25,14 @@ export function genericDescription(level: number, formatter: OutputFormatter, na
 	switch(desc.type) {
 		case 'object':
 			lines.push(...describeObject(level, formatter, desc));
+			break;
+		case 'alternatives':
+			if('matches' in desc) {
+				lines.push(
+					...(desc['matches'] as { schema: Joi.Description }[])
+						.flatMap(({ schema }) => genericDescription(level + 1, formatter, '.', schema))
+				);
+			}
 			break;
 		default:
 			/* specific support for others if needed */
@@ -38,7 +49,7 @@ function printFlags(flags: object | undefined): string {
 	if('presence' in flags) {
 		flagText += flags['presence'] === 'required' ? 'required' : 'optional';
 	}
-	return '[' + flagText + ']';
+	return flagText.trim().length > 0 ? '[' + flagText + ']' : '';
 }
 
 export function headerLine(level: number, formatter: OutputFormatter, name: string, type: string, flags: object | undefined): SchemaLine[] {

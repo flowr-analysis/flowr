@@ -1,17 +1,17 @@
 import { assert } from 'chai';
 import { withShell } from '../_helper/shell';
 import { fakeSend, withSocket } from '../_helper/net';
-import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello';
+import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/message-hello';
 import { retrieveVersionInformation } from '../../../src/cli/repl/commands/repl-version';
 import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
 	ExecuteRequestMessage
-} from '../../../src/cli/repl/server/messages/repl';
+} from '../../../src/cli/repl/server/messages/message-repl';
 import type {
 	FileAnalysisRequestMessage,
 	FileAnalysisResponseMessageJson
-} from '../../../src/cli/repl/server/messages/analysis';
+} from '../../../src/cli/repl/server/messages/message-analysis';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
 import { extractCFG } from '../../../src/util/cfg/cfg';

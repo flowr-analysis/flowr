@@ -71,6 +71,7 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('Multiple wanted Calls', 'print(1); print(2)', [q(/print/)], r([{ id: 3 }, { id: 7 }]));
 		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn] }]));
 		testQuery('Higher-Order Calls', 'lapply(c(1,2,3),print)', [q(/print/)], r([{ id: 10 }]));
+		testQuery('Print calls (global)', 'read_csv(x)', [q(/read_csv/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [] }]));
 	});
 	describe('Mixed Targets', () => {
 		const code = 'if(x) { print <- function() {} }\nprint()';

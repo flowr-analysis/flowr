@@ -66,19 +66,6 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	};
 }
 
-/*
-	public asciiSummary() {
-		let result = '';
-		for(const [layer1, layer2Map] of this.store) {
-			result += `${JSON.stringify(layer1)}\n`;
-			for(const [layer2, values] of layer2Map) {
-				result += ` ╰ ${JSON.stringify(layer2)}: ${JSON.stringify(values)}\n`;
-			}
-		}
-		return result;
-	}
- */
-
 function asciiCallContextSubHit(formatter: OutputFormatter, results: CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 	for(const { id, calls = [], linkedIds = [] } of results) {
@@ -111,7 +98,7 @@ function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'cal
 	return result.join('\n');
 }
 
-function asciiSummary(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
@@ -140,7 +127,7 @@ function asciiSummary(formatter: OutputFormatter, totalInMs: number, results: Qu
 	}
 
 	result.push(italic(`All queries together required ≈${results['.meta'].timing.toFixed(0)}ms (total ${totalInMs.toFixed(0)}ms)`, formatter));
-	return result.join('\n');
+	return formatter.format(result.join('\n'));
 }
 
 export const queryCommand: ReplCommand = {
@@ -153,7 +140,7 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, shell, output);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummary(output.formatter, totalEnd - totalStart, results.query, results.processed));
+			output.stdout(asciiSummaryOfQueryResult(output.formatter, totalEnd - totalStart, results.query, results.processed));
 		}
 	}
 };

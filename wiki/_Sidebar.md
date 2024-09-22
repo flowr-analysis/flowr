@@ -2,6 +2,7 @@
   * [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup)
   * [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview)
   * [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface)
+    * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)
   * [Core](https://github.com/flowr-analysis/flowr/wiki/Core)
     * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
     * [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)

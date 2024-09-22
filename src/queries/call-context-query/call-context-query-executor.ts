@@ -53,9 +53,13 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 		case CallTargets.Any:
 			return callTargets;
 		case CallTargets.OnlyGlobal:
-			return builtIn && callTargets.length === 0 ? [BuiltIn] : 'no';
+			if(callTargets.length === 0) {
+				return builtIn ? [BuiltIn] : [];
+			} else {
+				return 'no';
+			}
 		case CallTargets.MustIncludeGlobal:
-			return builtIn ? [...callTargets, BuiltIn] : 'no';
+			return builtIn || callTargets.length === 0 ? [...callTargets, BuiltIn] : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		case CallTargets.MustIncludeLocal:

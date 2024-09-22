@@ -65,7 +65,7 @@ export function getLineage(criterion: SingleSlicingCriterion, { idMap } : Normal
 	return result;
 }
 
-export const getLineageCommand: ReplCommand = {
+export const lineageCommand: ReplCommand = {
 	description:  'Get the lineage of an R object',
 	usageExample: ':lineage',
 	aliases:      ['lin'],

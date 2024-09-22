@@ -25,8 +25,8 @@ export const normalizeCommand: ReplCommand = {
 };
 
 export const normalizeStarCommand: ReplCommand = {
-	description:  `Get a mermaid url of the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
-	usageExample: ':normalize',
+	description:  'Returns the URL to mermaid.live',
+	usageExample: ':normalize*',
 	aliases:      [ 'n*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {

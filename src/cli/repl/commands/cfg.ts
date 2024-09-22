@@ -27,8 +27,8 @@ export const controlflowCommand: ReplCommand = {
 };
 
 export const controlflowStarCommand: ReplCommand = {
-	description:  `Get a mermaid url of the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
-	usageExample: ':controlflow',
+	description:  'Returns the URL to mermaid.live',
+	usageExample: ':controlflow*',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {

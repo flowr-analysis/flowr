@@ -12,6 +12,7 @@ import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
+import { log } from '../../../src/util/log';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -58,8 +59,8 @@ export function assertQuery<
 
 		const result = executeQueries<Queries['type'], VirtualArguments>({ graph: info.dataflow.graph, ast: info.normalize }, queries);
 
-		// TODO: demote to logger
-		console.log(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
+		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
+
 		const normalized = normalizeResults(result);
 
 		/* expect them to be deeply equal */

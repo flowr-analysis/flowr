@@ -1,4 +1,5 @@
 import type { DataflowInformation } from '../../../../info';
+import { happensInEveryBranch } from '../../../../info';
 import type { DataflowProcessorInformation } from '../../../../processor';
 import { processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -61,6 +62,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	const containedSubflowIn: readonly DataflowGraphVertexFunctionDefinition[] = [...graph.vertices(true)]
 		.filter(([, info]) => isFunctionDefinitionVertex(info))
 		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition));
+
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
@@ -106,8 +108,16 @@ export function processAllArguments<OtherInfo>(
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
+				/* maybe all targets are not definitely of the current scope and should be still kept */
+				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
+					if(happensInEveryBranch(resolved.controlDependencies)) {
+						assumeItMayHaveAHigherTarget = false;
+					}
 					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads });
+				}
+				if(assumeItMayHaveAHigherTarget) {
+					remainingReadInArgs.push(ingoing);
 				}
 			}
 		}

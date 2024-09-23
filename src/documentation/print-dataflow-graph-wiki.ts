@@ -1,94 +1,25 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
 import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
-import { graphToMermaid } from '../util/mermaid/dfg';
-import { flowrVersion } from '../util/version';
-import { PipelineExecutor } from '../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import { requestFromInput } from '../r-bridge/retriever';
 import { RShell } from '../r-bridge/shell';
 import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
-import { deterministicCountingIdGenerator } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { resolveDataflowGraph } from '../dataflow/graph/resolve-graph';
-import type { DataflowDifferenceReport } from '../dataflow/graph/diff';
-import { diffOfDataflowGraphs } from '../dataflow/graph/diff';
 import { guard } from '../util/assert';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
+import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
+import { getFilePathMd } from './doc-util/doc-files';
+import { autoGenHeader } from './doc-util/doc-auto-gen';
 
-
-const baseRef = 'https://github.com/flowr-analysis/flowr/tree/main/';
-
-function getFilePathMd(path: string): string {
-	const fullpath = require.resolve(path);
-	const relative = fullpath.replace(process.cwd(), '.');
-	/* remove project prefix */
-	return `[\`${relative}\`](${baseRef}${relative})`;
-}
-
-function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
-	return `
-\`\`\`mermaid
-${graphToMermaid({
-		graph,
-		prefix: 'flowchart LR',
-		mark
-	}).string}
-\`\`\`
-	`;
-}
-
-async function printDfGraphForCode(shell: RShell, code: string, mark?: ReadonlySet<MermaidMarkdownMark>) {
-	const now = performance.now();
-	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
-		request: requestFromInput(code)
-	}).allRemainingSteps();
-	const duration = performance.now() - now;
-
-	return '\n\n' + '-'.repeat(42) + '\n' + printDfGraph(result.dataflow.graph, mark) + `
-<details>
-
-<summary>R Code of the Dataflow Graph</summary>
-
-${'' /* eslint-disable-next-line no-irregular-whitespace*/}
-The analysis required _${duration.toFixed(2)} ms_ (including parsing and normalization) within the generation environment.
-${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): ${[...mark].join(', ')}.` : ''}
-
-\`\`\`r
-${code}
-\`\`\`
-
-<details>
-
-<summary>Mermaid Code (without markings)</summary>
-
-\`\`\`
-${graphToMermaid({
-		graph:  result.dataflow.graph,
-		prefix: 'flowchart LR'
-	}).string}
-\`\`\`
-
-</details>
-
-</details>
-
-${'-'.repeat(42)}
-
-	`;
-}
-
-interface SubExplanationParameters {
+export interface SubExplanationParameters {
 	readonly name:             string,
 	readonly description:      string,
 	readonly code:             string,
 	readonly expectedSubgraph: DataflowGraph
 }
 
-interface ExplanationParameters {
+export interface ExplanationParameters {
 	readonly shell:            RShell,
 	readonly name:             string,
 	readonly type:             VertexType | EdgeType,
@@ -105,28 +36,6 @@ function getAllEdges(): [string, EdgeType][] {
 	return Object.entries(EdgeType).filter(([,v]) => Number.isInteger(v)) as [string, EdgeType][];
 }
 
-/** returns resolved expected df graph */
-async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
-	/* we verify that we get what we want first! */
-	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
-		request: requestFromInput(code),
-		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
-
-	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);
-	const report: DataflowDifferenceReport = diffOfDataflowGraphs(
-		{ name: 'expected', graph: expectedSubgraph },
-		{ name: 'got',      graph: info.dataflow.graph },
-		{
-			leftIsSubgraph: true
-		}
-	);
-
-	guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
-	return expectedSubgraph;
-}
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -142,7 +51,7 @@ async function subExplanation(shell: RShell, { description, code, expectedSubgra
 	}
 
 	return `
-${await printDfGraphForCode(shell, code, new Set(marks))}
+${await printDfGraphForCode(shell, code, { mark: new Set(marks) })}
 
 ${description}`;
 
@@ -371,8 +280,7 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} presenting an overview of flowR's dataflow graph (version: ${flowrVersion().format()}, samples generated with R version ${rversion})._
+	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
 This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
@@ -430,6 +338,7 @@ if(require.main === module) {
 	const shell = new RShell();
 	void getText(shell).then(str => {
 		console.log(str);
+	}).finally(() => {
 		shell.close();
 	});
 }

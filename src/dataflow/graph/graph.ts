@@ -21,6 +21,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
+import { jsonReplacer } from '../../util/json';
 import { BuiltIn } from '../environments/built-in';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
@@ -410,8 +411,8 @@ export class DataflowGraph<
 }
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
-	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`);
-	guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment');
+	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs ${JSON.stringify(next, jsonReplacer)}`);
+	guard(current.environment?.current.id === next.environment?.current.id, () => `nodes to be joined for the same id must have the same environment, but not for: ${JSON.stringify(current, jsonReplacer)} vs ${JSON.stringify(next, jsonReplacer)}`);
 
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');

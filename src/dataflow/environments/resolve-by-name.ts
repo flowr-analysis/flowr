@@ -2,6 +2,7 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
+import { happensInEveryBranch } from '../info';
 
 
 /**
@@ -14,15 +15,26 @@ import type { Identifier, IdentifierDefinition } from './identifier';
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;
+	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			return definition;
+			if(definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+				return definition;
+			} else {
+				definitions ??= [];
+				definitions.push(...definition);
+			}
 		}
 		current = current.parent;
 	} while(current.id !== BuiltInEnvironment.id);
 
-	return current.memory.get(name);
+	const builtIns = current.memory.get(name);
+	if(definitions) {
+		return builtIns === undefined ? definitions : [...definitions, ...builtIns];
+	} else {
+		return builtIns;
+	}
 }
 
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {

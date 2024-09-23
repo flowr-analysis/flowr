@@ -2,7 +2,7 @@ import type * as Joi from 'joi';
 import { sendMessage } from './send';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from './messages/messages';
 import { baseMessage } from './messages/messages';
-import type { FlowrErrorMessage } from './messages/error';
+import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 
 export interface ValidationErrorResult { type: 'error', reason: Joi.ValidationError | Error }

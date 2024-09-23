@@ -23,9 +23,9 @@ import { scripts } from './common/scripts-info';
 import type { RShellOptions } from '../r-bridge/shell';
 import { RShell, RShellReviveOptions } from '../r-bridge/shell';
 import { waitOnScript } from './repl/execute';
-import { standardReplOutput } from './repl/commands/main';
+import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
-import { printVersionInformation } from './repl/commands/version';
+import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 
 let _scriptsText: string | undefined;

@@ -1,4 +1,4 @@
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../../../r-bridge/shell';
@@ -65,7 +65,7 @@ export function getLineage(criterion: SingleSlicingCriterion, { idMap } : Normal
 	return result;
 }
 
-export const getLineageCommand: ReplCommand = {
+export const lineageCommand: ReplCommand = {
 	description:  'Get the lineage of an R object',
 	usageExample: ':lineage',
 	aliases:      ['lin'],

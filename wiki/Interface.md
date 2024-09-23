@@ -12,6 +12,7 @@ Although far from being as detailed as the in-depth explanation of [_flowR_](htt
   - [The Slice Request](#the-slice-request)
     - [Magic Comments](#magic-comments)
   - [The REPL Request](#the-repl-request)
+  - [The Query Request](#the-query-request)
   - [The Lineage Request](#the-lineage-request)
 - [💻 Using the REPL](#-using-the-repl)
   - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
@@ -2721,7 +2722,7 @@ You only have to pass the command you want to execute in the `expression` field.
 We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
 
 > [!WARNING]
-> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful (and do not use `--r-session-access`).
+> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. Please be very careful (and do not use `--r-session-access` if you are unsure).
 
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
 You can detect the end of the execution by receiving the `end-repl-execution` message.
@@ -2771,6 +2772,116 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 ```
 
 </details>
+
+### The Query Request
+
+<details open>
+<summary>Sequence Diagram</summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client
+    participant Server
+
+    Client->>+Server: request-query
+
+    alt
+        Server-->>Client: response-query
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+```
+
+</details>
+
+In order to send queries, you have to send an [analysis request](#the-analysis-request) first. The `filetoken` you assign is of use here as you can re-use it to repeatedly query the same file.
+This message provides direct access to _flowR_'s Query API. Please consult the [Query API documentation](https://github.com/flowr-analysis/flowr/wiki/Query%20API.md) for more information.
+
+<details open>
+<summary>Example Request</summary>
+
+_Note:_ even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+
+This request is the logical succession of the file analysis example above which uses the `filetoken`: `"x"`.
+
+```json
+{
+  "type":      "request-query",
+  "id":        "2",
+  "filetoken": "x",
+  "query": [
+  {
+    "type": "compound",
+    "query": "call-context",
+    "commonArguments": {
+      "kind": "visualize",
+      "subkind": "text",
+      "callTargets": "global"
+    },
+    "arguments": [
+      {
+        "callName": "^mean$"
+      },
+      {
+        "callName": "^print$",
+        "callTargets": "local"
+      }
+    ]
+  }
+]
+}
+```
+
+</details>
+
+<details>
+<summary>Example Response</summary>
+
+_Note:_ even though we pretty-print these responses, they are sent as a single line, ending with a newline.
+
+```json
+{
+  "type": "response-query",
+  "id": "2",
+  "results": {
+    "call-context": {
+      ".meta": {
+        "timing": 0
+      },
+      "kinds": {
+        "visualize":  {
+          "subkinds": {
+            "text": [
+              {
+                "id": 31,
+                "calls": [
+                  "built-in"
+                ]
+              },
+              {
+                "id": 87,
+                "calls": [
+                  "built-in"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    ".meta": {
+      "timing": 0
+    }
+  }
+}
+```
+
+If an error occurred, the server will set the responses `type` to `"error"` and provide a message in the `reason` field.
+
+</details>
+
 
 ### The Lineage Request
 

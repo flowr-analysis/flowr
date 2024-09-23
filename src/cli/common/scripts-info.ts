@@ -12,7 +12,7 @@ import {
 	summarizerOptions
 } from './options';
 import type { MergeableRecord } from '../../util/objects';
-import { asOptionName } from '../repl/commands/commands';
+import { asOptionName } from '../repl/commands/repl-commands';
 
 
 interface BaseScriptInformation extends MergeableRecord {

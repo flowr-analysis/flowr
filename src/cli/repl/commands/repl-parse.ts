@@ -1,4 +1,4 @@
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import type { OutputFormatter } from '../../../util/ansi';
 import { FontStyles } from '../../../util/ansi';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
@@ -19,7 +19,7 @@ type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson): DepthList {
 	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList);
-	
+
 	const visit: { depth: number, node: XmlBasedJson }[] = [ { depth: 0, node: root } ];
 	const result: DepthList = [];
 
@@ -30,7 +30,7 @@ function toDepthMap(xml: XmlBasedJson): DepthList {
 		}
 
 		const children = current.node[childrenKey] as unknown as XmlBasedJson[] | undefined ?? [];
-		
+
 		result.push({ ...current, leaf: children.length === 0 });
 		children.reverse();
 

@@ -23,7 +23,6 @@ function cluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): N
 	const edges: NodeId[] = [];
 	// TODO determine edge types that should actually be followed?
 	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
-		// TODO just deleting these is insufficient, examples like: edge(0, 1) + edge(1, 0)
 		if(notReached.delete(dest)) {
 			edges.push(dest);
 			edges.push(...cluster(graph, dest, notReached));

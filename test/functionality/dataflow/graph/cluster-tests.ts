@@ -73,13 +73,13 @@ describe('Graph Clustering', () => {
 			describe('conditional', () => {
 				test('linked conditional', 'x <- 2\n if(runif(k) > j) {\nx <- 3\n} else {\nx <- 4 }\nprint(x)', [
 					['1:1', '1:3', '1:6'],
-					['2@if', '2@runif', '2@k', '2:14', '2@j', '3:1', '3:3', '3:6', '5:1', '5:3', '5:6', '6@print', '6@x']
+					['2@if', '2@runif', '2@k', '2:14', '2@j', '$14', '3:1', '3:3', '3:6', '$20', '5:1', '5:3', '5:6', '6@print', '6@x']
 				]);
 				test('unrelated conditional', 'if(x) y <- k\nprint(y)', [
 					['1@if', '1@x', '1@y', '1@<-', '1@k', '2@print', '2@y']
 				]);
 				test('unrelated nested conditional', 'if(x) {\nif(y) y <- k }\nprint(y)', [
-					['1@if', '1@x', '2@if', '2@y', '2@<-', '2@k', '3@print', '3@y']
+					['1@if', '1@x', '$9', '2@if', '2@y', '2:7', '2@<-', '2@k', '3@print', '3@y']
 				]);
 			});
 			describe('loops', () => {
@@ -110,15 +110,15 @@ describe('Graph Clustering', () => {
 				['1:1', '1:3', '1:6', '1:17', '1:19', '1:23', '2:1', '3:1', '3:7'],
 			]);
 			test('closures', 'f <- function() { function() 3 }\nx <- f()\nx()', [
-				['1:1', '1:3', '1:6', '1:17', '1:19', '1:30', '2:1', '2:3', '2:6', '3:1'],
+				['1:1', '1:3', '1:6', '$6', '1:19', '1:30', '2:1', '2:3', '2:6', '3:1'],
 			]);
 			test('uncalled closure with context ref', 'f <- function() { x <- 3\nfunction() x }\nx', [
-				['1@f', '1:3', '1:6', '1@x', '1:19', '1:22', '2:1', '2@x'],
+				['1@f', '1:3', '1:6', '1@x', '1:19', '1:23', '2:1', '2@x'],
 				['3@x']
 			]);
 			test('sub-function cluster', 'f <- function() { x <- 3\n4 }\nx', [
 				['1@f', '1:3', '1:6', '2:1' ],
-				['1@x', '1:19', '1:22'],
+				['1@x', '1:19', '1:23'],
 				['3@x']
 			]);
 		});

@@ -18,39 +18,40 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 		notReached.delete(startNode);
 		clusters.push({
 			startNode:             startNode,
-			members:               [startNode, ...makeCluster(graph, startNode, notReached)],
+			members:               [startNode, ...makeCluster(graph, startNode, notReached, clusters)],
 			hasUnknownSideEffects: graph.unknownSideEffects.has(startNode)
 		});
 	}
 	return clusters;
 }
 
-function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): NodeId[] {
+function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>, clusters: DataflowGraphClusters): NodeId[] {
 	const nodes: NodeId[] = [];
 
 	// cluster function def subflows
 	const info = graph.getVertex(from);
 	if(info && info.tag == 'function-definition') {
 		for(const sub of info.subflow.graph){
-			addNodeAndCluster(nodes, sub,graph, notReached);
+			addNodeAndCluster(nodes, sub,graph, notReached, clusters);
 		}
 	}
 
+	// TODO scopes (loops, function defs etc.) should be *included* in all clusters they reference, but not *join* them into one
 	// cluster adjacent edges
 	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 			continue;
 		}
-		addNodeAndCluster(nodes, dest, graph, notReached);
+		addNodeAndCluster(nodes, dest, graph, notReached, clusters);
 	}
 
 	return nodes;
 }
 
-function addNodeAndCluster(nodes: NodeId[], node: NodeId, graph: DataflowGraph, notReached: Set<NodeId>, force = false): boolean {
+function addNodeAndCluster(nodes: NodeId[], node: NodeId, graph: DataflowGraph, notReached: Set<NodeId>, clusters: DataflowGraphClusters, force = false): boolean {
 	if(force || notReached.delete(node)) {
 		nodes.push(node);
-		nodes.push(...makeCluster(graph, node, notReached));
+		nodes.push(...makeCluster(graph, node, notReached, clusters));
 		return true;
 	}
 	return false;

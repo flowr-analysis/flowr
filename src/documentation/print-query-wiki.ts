@@ -143,7 +143,7 @@ async function getText(shell: RShell) {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'query API', rVersion: rversion })}
 
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
-Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API (TODO TODO TODO).
+Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
 
 First, consider that you have a file like the following (of course, this is just a simple and artificial example):
 

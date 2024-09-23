@@ -1,6 +1,7 @@
 import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeIncludesType, EdgeType } from './graph/edge';
+import type { DataflowGraphVertexInfo } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -26,13 +27,16 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 }
 
 function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>, clusters: DataflowGraphClusters): NodeId[] {
+	const info = graph.getVertex(from) as DataflowGraphVertexInfo;
 	const nodes: NodeId[] = [];
 
 	// cluster function def subflows
-	const info = graph.getVertex(from);
-	if(info && info.tag == 'function-definition') {
+	if(info.tag == 'function-definition') {
 		for(const sub of info.subflow.graph){
-			addNodeAndCluster(nodes, sub,graph, notReached, clusters);
+			if(notReached.delete(sub)) {
+				nodes.push(sub);
+				nodes.push(...makeCluster(graph, sub, notReached, clusters));
+			}
 		}
 	}
 
@@ -42,17 +46,11 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 			continue;
 		}
-		addNodeAndCluster(nodes, dest, graph, notReached, clusters);
+		if(notReached.delete(dest)) {
+			nodes.push(dest);
+			nodes.push(...makeCluster(graph, dest, notReached, clusters));
+		}	
 	}
 
 	return nodes;
-}
-
-function addNodeAndCluster(nodes: NodeId[], node: NodeId, graph: DataflowGraph, notReached: Set<NodeId>, clusters: DataflowGraphClusters, force = false): boolean {
-	if(force || notReached.delete(node)) {
-		nodes.push(node);
-		nodes.push(...makeCluster(graph, node, notReached, clusters));
-		return true;
-	}
-	return false;
 }

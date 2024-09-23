@@ -11,7 +11,7 @@ import { LogLevel } from '../util/log';
 import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { getFilePathMd } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import {nth} from "../util/text";
+import { nth } from '../util/text';
 
 export interface SubExplanationParameters {
 	readonly name:             string,

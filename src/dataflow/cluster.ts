@@ -1,6 +1,6 @@
 import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeIncludesType, EdgeType } from './graph/edge';
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from './graph/edge';
 import type { DataflowGraphVertexInfo } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
@@ -30,9 +30,9 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	const info = graph.getVertex(from) as DataflowGraphVertexInfo;
 	const nodes: NodeId[] = [];
 
-	// cluster function def subflows
+	// cluster function def exit points
 	if(info.tag == 'function-definition') {
-		for(const sub of info.subflow.graph){
+		for(const sub of info.exitPoints){
 			if(notReached.delete(sub)) {
 				nodes.push(sub);
 				nodes.push(...makeCluster(graph, sub, notReached, clusters));
@@ -43,7 +43,13 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	// TODO scopes (loops, function defs etc.) should be *included* in all clusters they reference, but not *join* them into one
 	// cluster adjacent edges
 	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
+		// don't cluster for non-standard evaluation
 		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+			continue;
+		}
+		// TODO is this just a hard-coded special case? i don't know
+		// don't cluster for function content if it isn't returned
+		if(info.tag == 'function-call' && info.name == '{' && edgeDoesNotIncludeType(types, EdgeType.Returns)){
 			continue;
 		}
 		if(notReached.delete(dest)) {

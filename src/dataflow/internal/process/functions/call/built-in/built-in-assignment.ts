@@ -279,7 +279,6 @@ function processAssignmentToSymbol<OtherInfo>({
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten];
-	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten];
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment);
 
@@ -299,6 +298,6 @@ function processAssignmentToSymbol<OtherInfo>({
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,
-		out:               writeTargets
+		out:               [...writeNodes, ...readFromSourceWritten]
 	};
 }

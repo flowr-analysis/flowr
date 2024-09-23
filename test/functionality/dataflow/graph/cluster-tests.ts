@@ -1,8 +1,8 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import type { DataflowGraphClusters } from '../../../../src/dataflow/cluster';
+import type { DataflowGraphCluster, DataflowGraphClusters } from '../../../../src/dataflow/cluster';
 import { findAllClusters } from '../../../../src/dataflow/cluster';
 import { assert } from 'chai';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -20,15 +20,21 @@ describe('Graph Clustering', () => {
 		}
 
 		test('empty', emptyGraph(), []);
-		test('single vertex', emptyGraph().use(0, 'x'), [{ startNode: 0, members: [0] }]);
-		test('single edge', emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1), [{ startNode: 0, members: [0, 1] }]);
+		test('single vertex', emptyGraph().use(0, 'x'), [
+			{ startNode: 0, members: [0], hasUnknownSideEffects: false }
+		]);
+		test('single edge', emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1), [
+			{ startNode: 0, members: [0, 1], hasUnknownSideEffects: false }
+		]);
 		test('two single-edge',
-			emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1).use(2, 'z').use(3, 'w').reads(2, 3),
-			[{ startNode: 0, members: [0, 1] }, { startNode: 2, members: [2, 3] }]);
+			emptyGraph().use(0, 'x').use(1, 'y').reads(0, 1).use(2, 'z').use(3, 'w').reads(2, 3), [
+				{ startNode: 0, members: [0, 1], hasUnknownSideEffects: false },
+				{ startNode: 2, members: [2, 3], hasUnknownSideEffects: false }
+			]);
 	});
 
 	describe('Code Snippets', withShell(shell => {
-		function test(name: string, code: string, clusters: readonly SingleSlicingCriterion[][]): void {
+		function test(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
 			it(`${name} [${code.split('\n').join('; ')}]`, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 					shell,
@@ -40,14 +46,18 @@ describe('Graph Clustering', () => {
 				console.log(dataflowGraphToMermaidUrl(info.dataflow));
 
 				// resolve all criteria
-				const resolved = clusters.map(c => ({
-					startNode: '',
-					members:   c.map(s => {
-						const ret = slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap);
-						console.log(`Criterion ${s} -> id ${ret}`);
-						return ret;
-					})
-				}));
+				const resolved = clusters.map<DataflowGraphCluster>(c => {
+					const { members, hasUnknownSideEffects } = c instanceof Array ? { members: c, hasUnknownSideEffects: false } : c;
+					return {
+						startNode: '',
+						members:   members.map(s => {
+							const ret = slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap);
+							console.log(`Criterion ${s} -> id ${ret}`);
+							return ret;
+						}),
+						hasUnknownSideEffects
+					};
+				});
 				const actual = findAllClusters(graph);
 				compareClusters(actual, resolved);
 			});
@@ -167,13 +177,12 @@ cat(product)
 			});
 		});
 		describe('unknown side effects', () => {
-			/* TODO: please give those clusters special marks so we can exclude them from "we found XX separate clusters" */
 			test('unknown side effects should get their own cluster', 'library(dplyr)\nx', [
-				['1@library', '1@dplyr'],
+				{ members: ['1@library', '1@dplyr'], hasUnknownSideEffects: true },
 				['2@x']
 			]);
-			test('unknown side effects should get their own re-clustering', 'x <- vx\nrequire(vx)\nx', [
-				['1@x', '1@<-', '1@vx', '2@require', '2@vx'],
+			test('unknown side effects should be marked as such', 'x <- vx\nrequire(vx)\nx', [
+				{ members: ['2@require', '2@vx'], hasUnknownSideEffects: true },
 				['1@x', '1@<-', '1@vx', '3@x']
 			]);
 		});
@@ -186,6 +195,7 @@ function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphC
 
 	assert.equal(actual.length, expected.length, `Different number of clusters: ${actualExpectedString()}`);
 	for(let i = 0; i < actual.length; i++) {
+		assert.equal(actual[i].hasUnknownSideEffects, expected[i].hasUnknownSideEffects, `Unknown side effects of cluster differ: ${actualExpectedString()}`);
 		assert.equal(actual[i].members.length, expected[i].members.length, `Member amounts of cluster differ: ${actualExpectedString()}`);
 		for(let m = 0; m < actual[i].members.length; m++) {
 			assert.equal(actual[i].members[m], expected[i].members[m], `Member ${actual[i].members[m]} of cluster differs: ${actualExpectedString()}`);
@@ -199,8 +209,8 @@ function compareClusters(actual: DataflowGraphClusters, expected: DataflowGraphC
 	function normalizeClusters(clusters: DataflowGraphClusters): DataflowGraphClusters {
 		/* sort order and the order members */
 		return clusters.map(c => ({
-			startNode: c.startNode,
-			members:   [...c.members].sort(compareIds)
+			...c,
+			members: [...c.members].sort(compareIds)
 		})).sort((a, b) => compareIds(a.members[0], b.members[0]));
 	}
 

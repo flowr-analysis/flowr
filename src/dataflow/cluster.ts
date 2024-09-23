@@ -4,8 +4,9 @@ import { edgeIncludesType, EdgeType } from './graph/edge';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
-	readonly startNode: NodeId;
-	readonly members:   readonly NodeId[];
+	readonly startNode:             NodeId;
+	readonly members:               readonly NodeId[];
+	readonly hasUnknownSideEffects: boolean;
 }
 
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
@@ -15,19 +16,23 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	while(notReached.size > 0){
 		const [startNode] = notReached;
 		notReached.delete(startNode);
-		clusters.push({ startNode: startNode, members: [startNode, ...cluster(graph, startNode, notReached)] });
+		clusters.push({
+			startNode:             startNode,
+			members:               [startNode, ...makeCluster(graph, startNode, notReached)],
+			hasUnknownSideEffects: graph.unknownSideEffects.has(startNode)
+		});
 	}
 	return clusters;
 }
 
-function cluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): NodeId[] {
+function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): NodeId[] {
 	const nodes: NodeId[] = [];
 
 	// cluster function def subflows
 	const info = graph.getVertex(from);
 	if(info && info.tag == 'function-definition') {
 		for(const sub of info.subflow.graph){
-			pushNode(nodes, sub,graph, notReached);
+			addNodeAndCluster(nodes, sub,graph, notReached);
 		}
 	}
 
@@ -36,16 +41,16 @@ function cluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): N
 		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
 			continue;
 		}
-		pushNode(nodes, dest, graph, notReached);
+		addNodeAndCluster(nodes, dest, graph, notReached);
 	}
 
 	return nodes;
 }
 
-function pushNode(nodes: NodeId[], node: NodeId, graph: DataflowGraph, notReached: Set<NodeId>): boolean {
-	if(notReached.delete(node)) {
+function addNodeAndCluster(nodes: NodeId[], node: NodeId, graph: DataflowGraph, notReached: Set<NodeId>, force = false): boolean {
+	if(force || notReached.delete(node)) {
 		nodes.push(node);
-		nodes.push(...cluster(graph, node, notReached));
+		nodes.push(...makeCluster(graph, node, notReached));
 		return true;
 	}
 	return false;

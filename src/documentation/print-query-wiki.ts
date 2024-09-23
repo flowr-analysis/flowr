@@ -1,5 +1,4 @@
 import { RShell } from '../r-bridge/shell';
-import { flowrVersion } from '../util/version';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
@@ -12,7 +11,7 @@ import { QueriesSchema } from '../queries/query-schema';
 import { markdownFormatter } from '../util/ansi';
 import { executeCallContextQueries } from '../queries/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
-import {autoGenHeader} from "./doc-util/doc-auto-gen";
+import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 const fileCode = `
 library(ggplot)

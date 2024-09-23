@@ -1,6 +1,5 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
 import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
-import { flowrVersion } from '../util/version';
 import { RShell } from '../r-bridge/shell';
 import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType } from '../dataflow/graph/edge';
@@ -11,7 +10,7 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { getFilePathMd } from './doc-util/doc-files';
-import {autoGenHeader} from "./doc-util/doc-auto-gen";
+import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 export interface SubExplanationParameters {
 	readonly name:             string,

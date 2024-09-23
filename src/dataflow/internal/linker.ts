@@ -49,6 +49,7 @@ export function findNonLocalReads(graph: DataflowGraph): IdentifierReference[] {
 					nodeId:              id,
 					controlDependencies: undefined
 				});
+				break;
 			}
 		}
 	}

@@ -140,7 +140,6 @@ describe('flowr', () => {
 			const messages = socket.getMessages(['hello', 'response-file-analysis', 'response-query']);
 			const response = messages[2] as QueryResponseMessage;
 
-			console.log(response.results);
 			assert.exists(response.results['call-context'], 'Expected the query to return at least one result');
 			assert.exists(response.results['.meta'], 'Expected the query to return at least one result');
 			assert.equal(response.results['call-context']['kinds']['.']['subkinds']['.'].length, 1, 'We should find one call to print!');

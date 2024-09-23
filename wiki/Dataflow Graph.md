@@ -1,12 +1,14 @@
-_This document was generated automatically from '/home/happy-feet/git/phd/flowr-field/flowr/src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-23, 08:49:23 UTC presenting an overview of flowR's dataflow graph (version: 2.0.25, using R version 4.4.1)._
+_This document was generated automatically from '/home/happy-feet/git/phd/flowr-field/flowr/src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-23, 09:29:19 UTC presenting an overview of flowR's dataflow graph (version: 2.0.25, using R version 4.4.1)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
 This wiki page focuses on explaining what such a dataflow graph looks like!
 
+Please be aware that the accompanied [dataflow information](#dataflow-information) contains things besides the graph, 
+like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 
 
-------------------------------------------
+
 
 ```mermaid
 flowchart LR
@@ -56,9 +58,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _11.63 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _11.80 ms_ (including parsing and normalization) within the generation environment.
 
 
 ```r
@@ -69,7 +71,7 @@ y
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code </summary>
 
 ```
 flowchart LR
@@ -121,13 +123,13 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between 5 types of vertices V and 
 9 types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
-Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a 10th edge type).
+Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a 10th edge type although they are explicitly no data dependency).
 
 <details open>
 
@@ -176,7 +178,6 @@ Type: `value`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -189,9 +190,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.56 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.13 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 
 ```r
@@ -200,7 +201,7 @@ The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -214,7 +215,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Describes a constant value (numbers, logicals, strings, ...)
 
@@ -228,7 +229,6 @@ Type: `use`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -241,9 +241,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.42 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _0.94 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 
 ```r
@@ -252,7 +252,7 @@ x
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -266,7 +266,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Describes symbol/variable references
 
@@ -280,7 +280,6 @@ Type: `function-call`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -293,9 +292,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.43 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.05 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 1.
 
 ```r
@@ -304,7 +303,7 @@ foo()
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -318,7 +317,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Describes any kind of function call, these can happen implicitly as well! (see the notable cases)
 
@@ -331,7 +330,6 @@ Describes any kind of function call, these can happen implicitly as well! (see t
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -352,9 +350,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.32 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.72 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 3.
 
 ```r
@@ -363,7 +361,7 @@ if(TRUE) 1
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -385,7 +383,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Control structures like `if` are desugared into function calls (we omit the arguments of `if`(TRUE, 1) for simplicity).
 
@@ -400,7 +398,6 @@ Type: `variable-definition`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -423,9 +420,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.12 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.13 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 
 ```r
@@ -434,7 +431,7 @@ x <- 1
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -458,7 +455,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Describes a defined variable. Not just `<-` causes this!
 
@@ -471,7 +468,6 @@ Describes a defined variable. Not just `<-` causes this!
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -494,9 +490,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.70 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.06 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 
 ```r
@@ -505,7 +501,7 @@ x <<- 1
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -529,7 +525,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Are described similar within the dataflow graph, only the active environment differs.
 
@@ -544,7 +540,6 @@ Type: `function-definition`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -565,9 +560,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.02 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.60 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 2.
 
 ```r
@@ -576,7 +571,7 @@ function() 1
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -598,7 +593,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Describes a function definition. Are always anonymous at first; although they can be bound to a name, the id `0` refers to the `1` in the body. The presented subgraph refers to the body of the function, marking exit points and open references.
 
@@ -615,7 +610,6 @@ Type: `1`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -647,9 +641,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.96 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.14 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 4->0.
 
 ```r
@@ -659,7 +653,7 @@ print(x)
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -692,7 +686,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 The source vertex is usually a `use` that reads from the respective target definition.
 
@@ -705,7 +699,6 @@ The source vertex is usually a `use` that reads from the respective target defin
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -746,9 +739,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.84 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _3.63 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 7->0.
 
 ```r
@@ -758,7 +751,7 @@ foo()
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -800,14 +793,13 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Named calls are resolved too, linking to the symbol that holds the anonymous function definition (indirectly or directly)
 #### Reads Edge (Parameter)
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -849,9 +841,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.45 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.64 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 4->1.
 
 ```r
@@ -860,7 +852,7 @@ f <- function(x, y=x) {}
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -903,7 +895,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Parameters can read from each other as well.
 
@@ -918,7 +910,6 @@ Type: `2`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -942,9 +933,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.13 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _0.76 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0->1, 0->2.
 
 ```r
@@ -953,7 +944,7 @@ x <- y
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -977,7 +968,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 The source vertex is usually a `define variable` that is defined by the respective target use. However, nested definitions can carry it (in the nested case, `x` is defined by the return value of `<-`(y, z)). Additionally, we link the assignment.
 
@@ -990,7 +981,6 @@ The source vertex is usually a `define variable` that is defined by the respecti
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1026,9 +1016,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.26 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.16 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0->4, 0->3, 1->3.
 
 ```r
@@ -1037,7 +1027,7 @@ x <- y <- z
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1072,14 +1062,13 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Nested definitions can carry the `defined by` edge as well.
 #### DefinedBy Edge (Expression)
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1111,9 +1100,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.30 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.49 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 0->3.
 
 ```r
@@ -1122,7 +1111,7 @@ x <- y + z
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1155,7 +1144,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Here, we define by the result of the `+` expression.
 
@@ -1170,7 +1159,6 @@ Type: `4`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1211,9 +1199,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.41 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.15 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 7->4.
 
 ```r
@@ -1223,7 +1211,7 @@ foo()
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1265,7 +1253,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Link the function call to the (anonymous) function definition.
 
@@ -1279,7 +1267,6 @@ Type: `8`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1321,9 +1308,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.38 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.55 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 6->1.
 
 ```r
@@ -1333,7 +1320,7 @@ foo()
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1376,7 +1363,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Link the function call to the exit points of the target definition (this may incorporate the call-context).
 
@@ -1390,7 +1377,6 @@ Type: `16`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1446,9 +1432,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.53 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _2.98 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
 
 ```r
@@ -1458,7 +1444,7 @@ f(x=1)
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1514,7 +1500,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 **This edge is automatically joined with defined by on call!**
 
@@ -1530,7 +1516,6 @@ Type: `32`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1586,9 +1571,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.43 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _2.28 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
 
 ```r
@@ -1598,7 +1583,7 @@ f(x=1)
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1654,7 +1639,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 **This edge is automatically joined with defines on call!**
 
@@ -1670,7 +1655,6 @@ Type: `64`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1692,9 +1676,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.50 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.00 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 5->1, 5->3.
 
 ```r
@@ -1703,7 +1687,7 @@ f(x,y)
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1725,7 +1709,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Links a function call to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
 
@@ -1739,7 +1723,6 @@ Type: `128`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1801,9 +1784,9 @@ end
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.32 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _2.42 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 3->10.
 
 ```r
@@ -1813,7 +1796,7 @@ f()
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1876,7 +1859,7 @@ end
 
 </details>
 
-------------------------------------------
+
 
 Links a global side effect to an affected function call (e.g., a super definition within the function body)
 
@@ -1890,7 +1873,6 @@ Type: `256`
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1907,9 +1889,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.89 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _0.91 ms_ (including parsing and normalization) within the generation environment.
 The following marks are used in the graph to highlight sub-parts (uses ids): 3->1.
 
 ```r
@@ -1918,7 +1900,7 @@ quote(x)
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -1936,7 +1918,7 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate
 
@@ -1953,7 +1935,6 @@ As an example, consider the following dataflow graph:
 
 
 
-------------------------------------------
 
 ```mermaid
 flowchart LR
@@ -1981,9 +1962,9 @@ flowchart LR
 	
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment.
+The analysis required _1.32 ms_ (including parsing and normalization) within the generation environment.
 
 
 ```r
@@ -1992,7 +1973,7 @@ if(p) a else b
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code </summary>
 
 ```
 flowchart LR
@@ -2022,12 +2003,81 @@ flowchart LR
 
 </details>
 
-------------------------------------------
+
 
 Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a `CD` prefix, followed
 by the `when` flag.
 In the above example, both `a` and `b` depend on the `if`. Please note that they are _not_ linked to the result of
 the condition itself as this is the more general linkage point (and harmonizes with other control structures, especially those which are user-defined).
 
+## Dataflow Information
+
+Using _flowR's_ code interface (see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more), you can generate the dataflow information
+for a given piece of R code:
+
+```ts
+const shell = new RShell()
+const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+    shell,
+    request:   requestFromInput('x <- 1\nx + 1')
+}).allRemainingSteps();
+shell.close();
+```
+
+<details>
+
+<summary style="color:gray">Transpiled Code</summary>
+
+The actual code we are using in case the example above gets oudated:
+
+```ts
+async function dummyDataflow() {
+    const shell = new shell_1.RShell();
+    const result = await new pipeline_executor_1.PipelineExecutor(default_pipelines_1.DEFAULT_DATAFLOW_PIPELINE, {
+        shell,
+        request: (0, retriever_1.requestFromInput)('x <- 1\nx + 1')
+    }).allRemainingSteps();
+    shell.close();
+    return result;
+}
+```
+
+</details>
+
+
+Now, you can find the dataflow _information_ with `result.dataflow`. More specifically, the graph is stored in `result.dataflow.graph` and looks like this:
+
+
+```mermaid
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    3(["`#91;RSymbol#93; x
+      (3)
+      *2.1*`"])
+    4{{"`#91;RNumber#93; 1
+      (4)
+      *2.5*`"}}
+    5[["`#91;RBinaryOp#93; #43;
+      (5)
+      *2.1-5*
+    (3, 4)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    3 -->|"reads"| 0
+    5 -->|"reads, argument"| 3
+    5 -->|"reads, argument"| 4
+```
+	
 
 

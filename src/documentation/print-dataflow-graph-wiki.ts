@@ -8,10 +8,14 @@ import { guard } from '../util/assert';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import { getFilePathMd } from './doc-util/doc-files';
+import {printDfGraph, printDfGraphForCode, verifyExpectedSubgraph} from './doc-util/doc-dfg';
+import {FlowrWikiBaseRef, getFilePathMd} from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text';
+import {PipelineExecutor} from "../core/pipeline-executor";
+import {DEFAULT_DATAFLOW_PIPELINE} from "../core/steps/pipeline/default-pipelines";
+import {requestFromInput} from "../r-bridge/retriever";
+import {PipelineOutput} from "../core/steps/pipeline/pipeline";
 
 export interface SubExplanationParameters {
 	readonly name:             string,
@@ -278,6 +282,15 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 	return results.join('\n');
 }
 
+async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
+	const shell = new RShell()
+	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+		shell,
+		request:   requestFromInput('x <- 1\nx + 1')
+	}).allRemainingSteps();
+	shell.close();
+	return result;
+}
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -286,6 +299,9 @@ async function getText(shell: RShell) {
 This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
 This wiki page focuses on explaining what such a dataflow graph looks like!
+
+Please be aware that the accompanied [dataflow information](#dataflow-information) contains things besides the graph, 
+like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
@@ -347,6 +363,41 @@ by the \`when\` flag.
 In the above example, both \`a\` and \`b\` depend on the \`if\`. Please note that they are _not_ linked to the result of
 the condition itself as this is the more general linkage point (and harmonizes with other control structures, especially those which are user-defined).
 
+## Dataflow Information
+
+Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
+for a given piece of R code:
+
+\`\`\`ts
+const shell = new RShell()
+const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+    shell,
+    request:   requestFromInput('x <- 1\\nx + 1')
+}).allRemainingSteps();
+shell.close();
+\`\`\`
+
+<details>
+
+<summary style="color:gray">Transpiled Code</summary>
+
+The actual code we are using in case the example above gets oudated:
+
+\`\`\`ts
+${dummyDataflow.toString()}
+\`\`\`
+
+</details>
+
+
+Now, you can find the dataflow _information_ with \`result.dataflow\`. More specifically, the graph is stored in \`result.dataflow.graph\` and looks like this:
+
+${
+await (async () => {
+	const result = await dummyDataflow();
+	return printDfGraph(result.dataflow.graph)
+})()
+}
 
 `;
 }

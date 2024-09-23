@@ -11,6 +11,7 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { getFilePathMd } from './doc-util/doc-files';
+import {autoGenHeader} from "./doc-util/doc-auto-gen";
 
 export interface SubExplanationParameters {
 	readonly name:             string,
@@ -280,8 +281,7 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} presenting an overview of flowR's dataflow graph (version: ${flowrVersion().format()}, samples are generated with R version ${rversion})._
+	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
 This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.

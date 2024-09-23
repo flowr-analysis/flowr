@@ -12,6 +12,7 @@ import { QueriesSchema } from '../queries/query-schema';
 import { markdownFormatter } from '../util/ansi';
 import { executeCallContextQueries } from '../queries/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
+import {autoGenHeader} from "./doc-util/doc-auto-gen";
 
 const fileCode = `
 library(ggplot)
@@ -139,8 +140,7 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	return `_This document was generated automatically from '${module.filename}' on ${currentDateAndTime} presenting an overview of flowR's dataflow graph (version: ${flowrVersion().format()}, samples are generated with R version ${rversion})._
+	return `${autoGenHeader({ filename: module.filename, purpose: 'query API', rVersion: rversion })}
 
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API (TODO TODO TODO).

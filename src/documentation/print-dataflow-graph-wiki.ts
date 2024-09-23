@@ -454,7 +454,7 @@ In the following graph, _flowR_ realizes that it is unable to correctly handle t
 
 ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}
 
-In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query API)) to handle these cases
+In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
 	`;
 	

@@ -68,6 +68,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 			}
 		}
 
+		input = input.replaceAll(/\\/g, '\\\\');
 		return input.replaceAll(/\n/g, '\\\n').replaceAll(/ /g, '&nbsp;');
 	}
 

@@ -11,8 +11,9 @@ import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import { printAsMs } from './doc-ms';
+import { jsonReplacer } from '../../util/json';
 
-function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
+export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
 	return `
 \`\`\`mermaid
 ${graphToMermaid({
@@ -38,13 +39,13 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing and normalization) within the generation environment.`;
 
-	return '\n\n' + '-'.repeat(42) + '\n' + printDfGraph(result.dataflow.graph, mark) + (showCode ? `
+	return '\n\n' + printDfGraph(result.dataflow.graph, mark) + (showCode ? `
 <details>
 
-<summary>R Code of the Dataflow Graph</summary>
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-${metaInfo}
-${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): ${[...mark].join(', ')}.` : ''}
+${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): ${[...mark].join(', ')}.` : ''}
+We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + JSON.stringify(result.dataflow.graph.unknownSideEffects, jsonReplacer) + ')' : 'no unknown side effects'} during the analysis.
 
 \`\`\`r
 ${code}
@@ -52,7 +53,7 @@ ${code}
 
 <details>
 
-<summary>Mermaid Code (without markings)</summary>
+<summary style="color:gray">Mermaid Code ${(mark?.size ?? 0) > 0 ? '(without markings)' : ''}</summary>
 
 \`\`\`
 ${graphToMermaid({
@@ -65,8 +66,7 @@ ${graphToMermaid({
 
 </details>
 
-` : '\n(' + metaInfo + ')\n\n') +
-		'-'.repeat(42)
+` : '\n(' + metaInfo + ')\n\n')
 	;
 }
 

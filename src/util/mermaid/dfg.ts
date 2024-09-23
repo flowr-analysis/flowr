@@ -131,7 +131,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 	return { open, close };
 }
 
-function printIdentifier(id: IdentifierDefinition): string {
+export function printIdentifier(id: IdentifierDefinition): string {
 	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
@@ -173,6 +173,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}\`"${close}`);
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `);
+	}
+	if(mermaid.rootGraph.unknownSideEffects.has(id)) {
+		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 
 	const edges = mermaid.rootGraph.get(id, true);

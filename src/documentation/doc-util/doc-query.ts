@@ -41,7 +41,7 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 ${JSON.stringify(queries, jsonReplacer, 2)}
 \`\`\`
 
-${collapseResult ? ' <details> <summary>Show Results</summary>' : ''}
+${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary>' : ''}
 
 _Results (prettified and summarized):_
 
@@ -49,7 +49,7 @@ ${
 	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<'call-context'>, analysis)
 }
 
-<details> <summary>Show Detailed Results as Json</summary>
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
 ${metaInfo}	
 
@@ -62,7 +62,7 @@ ${resultAsString}
 
 ${
 	showCode ? `
-<details> <summary>Original Code</summary>
+<details> <summary style="color:gray">Original Code</summary>
 
 \`\`\`r
 ${code}
@@ -123,7 +123,7 @@ ${await buildExplanation(shell)}
 
 <details> 
 
-<summary>Implementation Details</summary>
+<summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the ${name} query is \`${functionName}\` in ${getFilePathMd(functionFile)}.
 

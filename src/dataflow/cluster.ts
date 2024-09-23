@@ -1,6 +1,6 @@
 import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from './graph/edge';
+import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
 import type { DataflowGraphVertexInfo } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
@@ -44,7 +44,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	// cluster adjacent edges
 	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		// don't cluster for non-standard evaluation
-		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+		if(types == EdgeType.NonStandardEvaluation) {
 			continue;
 		}
 		// TODO is this just a hard-coded special case? i don't know

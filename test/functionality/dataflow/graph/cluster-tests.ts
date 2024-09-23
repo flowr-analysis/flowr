@@ -164,7 +164,7 @@ cat(product)
 					['1@if', '1@x', '1@b', '1@=', '1@vb', '3@print', '3@b']
 				]);
 				test('the "zeitschleife"', 'x <- vx\nwhile(TRUE) {\nx <- v + vi\n v <- x } ', [ /* or: interdependence should be maintained */
-					['1@x', '1@<-', '1@vx', '2@while', '2@TRUE', '3@x', '3@v', '3@+', '3@vi', '4@v', '4@<-', '4@x']
+					['1@x', '1@<-', '1@vx', '2@while', '2@TRUE', '$14', '3@x', '3@<-', '3@v', '3@+', '3@vi', '4@v', '4@<-', '4@x']
 				]);
 				test('re-cluster function calls', 'f <- function() vf\nf()\nf()\nf()', [
 					['1@f', '1@<-', '1@function', '1@vf', '2@f'],

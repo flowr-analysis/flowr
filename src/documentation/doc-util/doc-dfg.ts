@@ -28,7 +28,7 @@ export interface PrintDataflowGraphOptions {
 	readonly mark?:     ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?: boolean;
 }
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode }: PrintDataflowGraphOptions = {}) {
+export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true }: PrintDataflowGraphOptions = {}) {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -65,7 +65,7 @@ ${graphToMermaid({
 
 </details>
 
-	` : '\n(' + metaInfo + ')\n\n') +
+` : '\n(' + metaInfo + ')\n\n') +
 		'-'.repeat(42)
 	;
 }

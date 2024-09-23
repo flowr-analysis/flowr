@@ -11,6 +11,7 @@ import { LogLevel } from '../util/log';
 import { printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { getFilePathMd } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { nth } from '../util/text';
 
 export interface SubExplanationParameters {
 	readonly name:             string,
@@ -292,6 +293,8 @@ ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and 
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
+Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type although they are explicitly no data dependency).
+
 <details open>
 
 <summary>Vertex Types</summary>
@@ -328,6 +331,23 @@ ${await getVertexExplanations(shell)}
 ## Edges
 
 ${await getEdgesExplanations(shell)}
+
+## Control Dependencies
+
+Each vertex may have a list of active control dependencies.
+They hold the \`id\` of all nodes that effect if the current vertex is part of the execution or not,
+and a boolean flag \`when\` to indicate if the control dependency is active when the condition is \`true\` or \`false\`.
+
+As an example, consider the following dataflow graph:
+
+${await printDfGraphForCode(shell,'if(p) a else b')}
+
+Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a \`CD\` prefix, followed
+by the \`when\` flag.
+In the above example, both \`a\` and \`b\` depend on the \`if\`. Please note that they are _not_ linked to the result of
+the condition itself as this is the more general linkage point (and harmonizes with other control structures, especially those which are user-defined).
+
+
 `;
 }
 

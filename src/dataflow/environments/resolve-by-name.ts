@@ -5,7 +5,6 @@ import type { Identifier, IdentifierDefinition } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
-// TODO: cache this! => promote environments to classes
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  *
@@ -20,7 +19,6 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			/* TODO: guard for other control dependencies which are set? */
 			if(definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
 			} else {

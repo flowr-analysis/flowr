@@ -11,7 +11,7 @@ import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import { printAsMs } from './doc-ms';
-import {jsonReplacer} from "../../util/json";
+import { jsonReplacer } from '../../util/json';
 
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
 	return `

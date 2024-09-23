@@ -1,5 +1,5 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
-import {MermaidMarkdownMark} from '../util/mermaid/dfg';
+import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
 import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType } from '../dataflow/graph/edge';
@@ -8,16 +8,16 @@ import { guard } from '../util/assert';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import {printDfGraph, printDfGraphForCode, verifyExpectedSubgraph} from './doc-util/doc-dfg';
-import {FlowrWikiBaseRef, getFilePathMd} from './doc-util/doc-files';
+import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
+import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text';
-import {PipelineExecutor} from "../core/pipeline-executor";
-import {DEFAULT_DATAFLOW_PIPELINE} from "../core/steps/pipeline/default-pipelines";
-import {requestFromInput} from "../r-bridge/retriever";
-import {PipelineOutput} from "../core/steps/pipeline/pipeline";
-import {jsonReplacer} from "../util/json";
-import {printEnvironmentToMarkdown} from "./doc-util/doc-env";
+import { PipelineExecutor } from '../core/pipeline-executor';
+import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { requestFromInput } from '../r-bridge/retriever';
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
+import { jsonReplacer } from '../util/json';
+import { printEnvironmentToMarkdown } from './doc-util/doc-env';
 
 export interface SubExplanationParameters {
 	readonly name:             string,
@@ -285,10 +285,10 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 }
 
 async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
-	const shell = new RShell()
+	const shell = new RShell();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
-		request:   requestFromInput('x <- 1\nx + 1')
+		request: requestFromInput('x <- 1\nx + 1')
 	}).allRemainingSteps();
 	shell.close();
 	return result;
@@ -396,11 +396,11 @@ ${dummyDataflow.toString()}
 Now, you can find the dataflow _information_ with \`result.dataflow\`. More specifically, the graph is stored in \`result.dataflow.graph\` and looks like this:
 
 ${
-await (async () => {
-	const result = await dummyDataflow();
-	const dfGraphString = printDfGraph(result.dataflow.graph)
+	await (async() => {
+		const result = await dummyDataflow();
+		const dfGraphString = printDfGraph(result.dataflow.graph);
 
-	return `
+		return `
 ${dfGraphString}
 
 However, the dataflow information contains more, quite a lot of information in fact.
@@ -417,7 +417,9 @@ ${JSON.stringify(result.dataflow, jsonReplacer, 2)}
 
 So let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
 
-${ (() => { guard(Object.keys(result.dataflow).length === 7, () => 'Update Dataflow Documentation!'); return ''; })() }
+${ (() => {
+			guard(Object.keys(result.dataflow).length === 7, () => 'Update Dataflow Documentation!'); return ''; 
+		})() }
 
 There are three sets of references.
 **in** (ids: ${JSON.stringify(new Set(result.dataflow.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.dataflow.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
@@ -432,16 +434,16 @@ A summarized version of the produced environment looks like this:
 
 ${
 		printEnvironmentToMarkdown(result.dataflow.environment.current)
-}
+		}
 
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.dataflow.entryPoint)
-	}) and a set of **exit points** (${
-		JSON.stringify(result.dataflow.exitPoints.map(e => e.nodeId))
-	}). 
+		}) and a set of **exit points** (${
+			JSON.stringify(result.dataflow.exitPoints.map(e => e.nodeId))
+		}). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
 
 ### Unknown Side Effects
@@ -454,9 +456,9 @@ ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query API)) to handle these cases
 as they see fit.
-	`
+	`;
 	
-})()
+	})()
 }
 
 `;

@@ -6,7 +6,7 @@ import type { DeepReadonly } from 'ts-essentials'
 import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 import type { RShell } from '../../../../r-bridge/shell'
 import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever'
-import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
+import { isMultiFileRequest, retrieveParseDataFromRCode } from '../../../../r-bridge/retriever'
 import type { QuadSerializationConfiguration } from '../../../../util/quads'
 
 export interface ParseRequiredInput {
@@ -26,7 +26,7 @@ async function parseSequentially(requests: ReadonlyArray<RParseRequest>, shell: 
 
 function processor(_results: unknown, input: Partial<ParseRequiredInput>): Promise<string | string[]> {
 	/* in the future, we want to expose all cases */
-	if(Array.isArray(input.request)) {
+	if(isMultiFileRequest(input.request)) {
 		/* parse sequentially by session */
 		return new Promise<string[]>((resolve, reject) => {
 			parseSequentially(input.request as RParseRequest[], input.shell as RShell)

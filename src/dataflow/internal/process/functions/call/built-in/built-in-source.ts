@@ -12,10 +12,7 @@ import type {
 	NormalizedAst,
 	ParentInformation
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import {
-	deterministicPrefixIdGenerator,
-	sourcedDeterministicCountingIdGenerator
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
+import { sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
@@ -75,7 +72,7 @@ export function processSourceCall<OtherInfo>(
 	}
 }
 
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
+function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
 	const executor = new RShellExecutor()
 
 	// parse, normalize and dataflow the sourced file
@@ -111,31 +108,4 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		data.completeAst.idMap.set(k, v)
 	}
 	return newInformation
-}
-
-
-export function standaloneSourceFile<OtherInfo>(
-	inputRequest: RParseRequest,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	uniqueSourceId: string,
-	information: DataflowInformation
-): DataflowInformation {
-	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-'
-	/* this way we can still pass content */
-	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest
-	const fingerprint = requestFingerprint(request)
-
-	// check if the sourced file has already been dataflow analyzed, and if so, skip it
-	if(data.referenceChain.includes(fingerprint)) {
-		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
-		information.graph.markIdForUnknownSideEffects(uniqueSourceId)
-		return information
-	}
-
-	return sourceRequest(uniqueSourceId, request, {
-		...data,
-		currentRequest: request,
-		environment:    information.environment,
-		referenceChain: [...data.referenceChain, fingerprint]
-	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId))
 }

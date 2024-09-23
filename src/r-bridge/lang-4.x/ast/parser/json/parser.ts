@@ -23,6 +23,11 @@ export function normalize(jsonString: string | readonly string[], getId: IdGener
 		const object = convertPreparedParsedData(prepareParsedData(string))
 		roots.push(normalizeRootObjToAst(data, object))
 	}
+
+	if(roots.length === 1) {
+		return decorateAst(roots[0], getId)
+	}
+
 	// TODO: unsure about the lexeme and the location => it should have neither similar to root expr lists
 	// Should the lexeme just be the content of all files, or do we not care about that
 	return decorateAst({

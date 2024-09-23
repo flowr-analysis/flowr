@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info'
-import type { DataflowProcessors } from './processor'
+import type { DataflowProcessorInformation, DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf'
 import { processSymbol } from './internal/process/process-symbol'
@@ -14,9 +14,8 @@ import { rangeFrom } from '../util/range'
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate'
 import { RType } from '../r-bridge/lang-4.x/ast/model/type'
 import type { RParseRequest, RParseRequests } from '../r-bridge/retriever'
-import { requestFingerprint } from '../r-bridge/retriever'
+import { isMultiFileRequest , requestFingerprint } from '../r-bridge/retriever'
 import { initializeCleanEnvironments } from './environments/environment'
-import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source'
 import { processFiles } from './internal/process/process-files'
 
 export const processors: DataflowProcessors<ParentInformation> = {
@@ -55,28 +54,20 @@ export function produceDataFlowGraph<OtherInfo>(
 	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const multifile = Array.isArray(request)
+	const multifile = isMultiFileRequest(request)
 	let firstRequest: RParseRequest
 	if(multifile) {
-		firstRequest = request[0] as RParseRequest
+		firstRequest = request[0]
 	} else {
-		firstRequest = request as RParseRequest
+		firstRequest = request
 	}
 	const dfData = {
 		completeAst:         ast,
 		environment:         initializeCleanEnvironments(),
 		processors,
-		currentRequest:      firstRequest,
+		currentRequest:      request,
 		controlDependencies: undefined,
-		referenceChain:      [requestFingerprint(firstRequest)]
-	}
-	let df = processDataflowFor<OtherInfo>(ast.ast, dfData)
-
-	if(multifile) {
-		for(let i = 1; i < request.length; i++) {
-			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df)
-		}
-	}
-
-	return df
+		referenceChain:      [requestFingerprint(firstRequest)] // TODO: is it okay to only use the first request here?
+	} as DataflowProcessorInformation<OtherInfo & ParentInformation>
+	return processDataflowFor<OtherInfo & ParentInformation>(ast.ast, dfData)
 }

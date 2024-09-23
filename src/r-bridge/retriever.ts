@@ -45,6 +45,14 @@ export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
  */
 export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 
+export function isSingleRequest(requests?: RParseRequests): requests is RParseRequest {
+	return !Array.isArray(requests)
+}
+
+export function isMultiFileRequest(requests?: RParseRequests): requests is ReadonlyArray<RParseRequest> {
+	return Array.isArray(requests)
+}
+
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText

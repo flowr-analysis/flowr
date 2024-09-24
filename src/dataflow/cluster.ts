@@ -2,6 +2,8 @@ import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
 import type { DataflowGraphVertexInfo } from './graph/vertex';
+import { resolveByName } from './environments/resolve-by-name';
+import { initializeCleanEnvironments } from './environments/environment';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -47,10 +49,12 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		if(types == EdgeType.NonStandardEvaluation) {
 			continue;
 		}
-		// TODO is this just a hard-coded special case? i don't know
 		// don't cluster for function content if it isn't returned
-		if(info.tag == 'function-call' && info.name == '{' && edgeDoesNotIncludeType(types, EdgeType.Returns)){
-			continue;
+		if(info.tag == 'function-call' && edgeDoesNotIncludeType(types, EdgeType.Returns)){
+			const defs = resolveByName(info.name, info.environment ?? initializeCleanEnvironments());
+			if(defs && defs.some(d => d.kind == 'built-in-function' && d.name == '{')) {
+				continue;
+			}
 		}
 		if(notReached.delete(dest)) {
 			nodes.push(dest);

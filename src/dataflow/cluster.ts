@@ -3,7 +3,6 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
 import type { DataflowGraphVertexInfo } from './graph/vertex';
 import { resolveByName } from './environments/resolve-by-name';
-import { initializeCleanEnvironments } from './environments/environment';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -21,23 +20,24 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 		notReached.delete(startNode);
 		clusters.push({
 			startNode:             startNode,
-			members:               [startNode, ...makeCluster(graph, startNode, notReached, clusters)],
+			members:               [...makeCluster(graph, startNode, notReached).add(startNode)],
 			hasUnknownSideEffects: graph.unknownSideEffects.has(startNode)
 		});
 	}
 	return clusters;
 }
 
-function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>, clusters: DataflowGraphClusters): NodeId[] {
+function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> {
 	const info = graph.getVertex(from) as DataflowGraphVertexInfo;
-	const nodes: NodeId[] = [];
+	const calledFunction = getCalledFunction(info);
+	const nodes = new Set<NodeId>();
 
 	// cluster function def exit points
 	if(info.tag == 'function-definition') {
 		for(const sub of info.exitPoints){
 			if(notReached.delete(sub)) {
-				nodes.push(sub);
-				nodes.push(...makeCluster(graph, sub, notReached, clusters));
+				nodes.add(sub);
+				makeCluster(graph, sub, notReached).forEach(n => nodes.add(n));
 			}
 		}
 	}
@@ -50,17 +50,25 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 			continue;
 		}
 		// don't cluster for function content if it isn't returned
-		if(info.tag == 'function-call' && edgeDoesNotIncludeType(types, EdgeType.Returns)){
-			const defs = resolveByName(info.name, info.environment ?? initializeCleanEnvironments());
-			if(defs && defs.some(d => d.kind == 'built-in-function' && d.name == '{')) {
-				continue;
-			}
+		if(edgeDoesNotIncludeType(types, EdgeType.Returns) && calledFunction == '{'){
+			continue;
 		}
 		if(notReached.delete(dest)) {
-			nodes.push(dest);
-			nodes.push(...makeCluster(graph, dest, notReached, clusters));
+			nodes.add(dest);
+			makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
 		}	
 	}
 
 	return nodes;
+}
+
+function getCalledFunction(info: DataflowGraphVertexInfo): string | undefined {
+	if(info.tag != 'function-call') {
+		return undefined;
+	}
+	if(!info.environment) {
+		return info.onlyBuiltin ? info.name : undefined;
+	}
+	const defs = resolveByName(info.name, info.environment)?.filter(d => d.kind == 'built-in-function');
+	return defs?.length == 1 ? defs[0].name : undefined;
 }

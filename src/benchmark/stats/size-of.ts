@@ -4,6 +4,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
+import { ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
@@ -21,7 +22,7 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 
 	const memory = new Map<Identifier, IdentifierDefinition[]>();
 	for(const [k, v] of env.memory) {
-		memory.set(k, v.filter(v => !v.kind.startsWith('built-in') && !('processor' in v)));
+		memory.set(k, v.filter(v => v.type !== ReferenceType.BuiltInFunction && v.type !== ReferenceType.BuiltInConstant && !('processor' in v)));
 	}
 
 	return {

@@ -3,7 +3,7 @@
  * @module
  */
 import type { DataflowInformation, ExitPoint } from '../../../../../info';
-import { happensInEveryBranch , addNonDefaultExitPoints, alwaysExits, ExitPointType } from '../../../../../info';
+import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
@@ -15,6 +15,7 @@ import { makeAllMaybe } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
@@ -31,7 +32,7 @@ const dotDotDotAccess = /\.\.\d+/;
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
 
-	const probableTarget = readName ? resolveByName(readName, environments) : undefined;
+	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.controlDependencies))) {
@@ -189,7 +190,7 @@ export function processExpressionList<OtherInfo>(
 	const withGroup = rootNode?.grouping;
 
 	if(withGroup) {
-		ingoing.push({ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies });
+		ingoing.push({ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 		patchFunctionCall({
 			nextGraph,
 			rootId,

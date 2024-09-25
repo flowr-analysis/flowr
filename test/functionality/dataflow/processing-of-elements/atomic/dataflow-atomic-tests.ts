@@ -16,6 +16,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -704,7 +705,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					entryPoint:        '5',
 					environment:       defaultEnv().pushEnv(),
 					graph:             new Set(['3']),
-					in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 					out:               [],
 					unknownReferences: []
 				})
@@ -721,7 +722,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					entryPoint:        '0',
 					environment:       defaultEnv().pushEnv(),
 					graph:             new Set(['1']),
-					in:                [{ nodeId: '9', name: 'get("a")', controlDependencies: [] }],
+					in:                [{ nodeId: '9', name: 'get("a")', controlDependencies: [], type: ReferenceType.Argument }],
 					out:               [],
 					unknownReferences: []
 				})

@@ -10,6 +10,7 @@ import { DataflowGraph } from '../../../../graph/graph';
 import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
+import { ReferenceType } from '../../../../environments/identifier';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
 
@@ -52,7 +53,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	});
 
 	const inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies });
+	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);

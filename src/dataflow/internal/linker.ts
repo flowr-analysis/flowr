@@ -4,6 +4,7 @@ import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../environments/identifier';
+import { ReferenceType } from '../environments/identifier';
 import type { DataflowGraph, FunctionArgument } from '../graph/graph';
 import { isNamedArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -41,13 +42,15 @@ export function findNonLocalReads(graph: DataflowGraph): IdentifierReference[] {
 		for(const [target, { types }] of outgoing) {
 			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
 				const name = recoverName(id, graph.idMap);
+				const origin = graph.getVertex(id, true);
 				if(!name) {
 					dataflowLogger.warn('found non-local read without name for id ' + id);
 				}
 				nonLocalReads.push({
 					name:                recoverName(id, graph.idMap),
 					nodeId:              id,
-					controlDependencies: undefined
+					controlDependencies: undefined,
+					type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
 				});
 				break;
 			}
@@ -140,7 +143,7 @@ export function linkFunctionCallWithSingleTarget(
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of def.subflow.in) {
-			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined;
+			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -273,7 +276,7 @@ export function getAllLinkedFunctionDefinitions(
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation) : undefined;
+		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {

@@ -12,6 +12,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -65,6 +66,7 @@ export function processApply<OtherInfo>(
 			return {
 				name:                counterpart.name.content,
 				controlDependencies: data.controlDependencies,
+				type:                ReferenceType.Argument,
 				nodeId:              arg.entryPoint
 			};
 		} else {

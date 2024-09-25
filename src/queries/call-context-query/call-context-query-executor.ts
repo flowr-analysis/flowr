@@ -2,11 +2,11 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
-	CallContextQueryResult, CallContextQuerySubKindResult,
+	CallContextQueryResult,
+	CallContextQuerySubKindResult,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { CallTargets
-} from './call-context-query-format';
+import { CallTargets } from './call-context-query-format';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { assertUnreachable } from '../../util/assert';
@@ -14,11 +14,12 @@ import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { BuiltIn } from '../../dataflow/environments/built-in';
 import type { ControlFlowGraph } from '../../util/cfg/cfg';
-import {  extractCFG } from '../../util/cfg/cfg';
+import { extractCFG } from '../../util/cfg/cfg';
 import { TwoLayerCollector } from '../two-layer-collector';
 import type { BasicQueryData } from '../query';
 import { compactRecord } from '../../util/objects';
 import { visitInReverseOrder } from '../../util/cfg/visitor';
+import { ReferenceType } from '../../dataflow/environments/identifier';
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -43,7 +44,7 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 		 * for performance and scoping reasons, flowR will not identify the global linkage,
 		 * including any potential built-in mapping.
 		 */
-		const reResolved = resolveByName(info.name, info.environment);
+		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
 		if(reResolved && reResolved.some(t => t.definedAt === BuiltIn)) {
 			builtIn = true;
 		}

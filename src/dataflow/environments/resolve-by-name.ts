@@ -1,29 +1,47 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { BuiltInEnvironment } from './environment';
+import {  BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
+import { ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
+
+const TargetTypePredicate = {
+	[ReferenceType.Unknown]:         () => true,
+	[ReferenceType.Argument]:        () => true,
+	[ReferenceType.Parameter]:       () => true,
+	[ReferenceType.Variable]:        t => t.type === ReferenceType.Variable || t.type === ReferenceType.Parameter || t.type === ReferenceType.Argument || t.type === ReferenceType.Unknown,
+	[ReferenceType.Function]:        t => t.type === ReferenceType.Function || t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown,
+	[ReferenceType.Constant]:        t => t.type === ReferenceType.Constant || t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
+	[ReferenceType.BuiltInConstant]: t => t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
+	[ReferenceType.BuiltInFunction]: t => t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown
+} as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  *
  * @param name         - The name of the identifier to resolve
  * @param environment  - The current environment used for name resolution
+ * @param target       - The target (meta) type of the identifier to resolve
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
+export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
+	const wantedType = TargetTypePredicate[target];
+	if(name === 'c') {
+		console.trace('resolve', name, target);
+	}
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			if(definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+			const filtered = definition.filter(wantedType);
+			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
-			} else {
+			} else if(filtered.length > 0) {
 				definitions ??= [];
-				definitions.push(...definition);
+				definitions.push(...filtered);
 			}
 		}
 		current = current.parent;
@@ -41,7 +59,7 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	if(name === undefined) {
 		return Ternary.Never;
 	}
-	const definition = resolveByName(name, environment);
+	const definition = resolveByName(name, environment, ReferenceType.Constant);
 
 	if(definition === undefined) {
 		return Ternary.Never;
@@ -50,7 +68,7 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	let all = true;
 	let some = false;
 	for(const def of definition) {
-		if(def.kind === 'built-in-value' && def.value === wantedValue) {
+		if(def.type === ReferenceType.BuiltInConstant && def.value === wantedValue) {
 			some = true;
 		} else {
 			all = false;

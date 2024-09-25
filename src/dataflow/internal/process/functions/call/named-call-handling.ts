@@ -9,6 +9,7 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
+import { ReferenceType } from '../../../../environments/identifier';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -34,7 +35,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
-	const resolve = resolveByName(name.content, data.environment);
+	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
 	/* if we do not know where we land, we force! */
 	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all' });
 	return mergeInformation(information, call.information);
@@ -46,14 +47,14 @@ export function processNamedCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const resolved = resolveByName(name.content, data.environment) ?? [];
+	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
 
 	for(const resolvedFunction of resolved) {
-		if(resolvedFunction.kind === 'built-in-function') {
+		if(resolvedFunction.type === ReferenceType.BuiltInFunction) {
 			builtIn = true;
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
 		} else {

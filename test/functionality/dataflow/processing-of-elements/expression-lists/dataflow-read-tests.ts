@@ -4,6 +4,7 @@ import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environmen
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
@@ -127,7 +128,7 @@ print(x)`, emptyGraph()
 				.constant('3', undefined, false)
 				.defineFunction('5', ['3'], {
 					out:               [],
-					in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['1', '3']),

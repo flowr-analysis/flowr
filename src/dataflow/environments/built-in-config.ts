@@ -1,12 +1,7 @@
-import type {
-	BuiltInMappingName,
-	ConfigOfBuiltInMappingName } from './built-in';
-import {
-	BuiltIn,
-	BuiltInMemory, BuiltInProcessorMapper,
-	EmptyBuiltInMemory
-} from './built-in';
+import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
+import { BuiltIn, BuiltInMemory, BuiltInProcessorMapper, EmptyBuiltInMemory } from './built-in';
 import type { Identifier, IdentifierDefinition } from './identifier';
+import { ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 
 export interface BaseBuiltInDefinition {
@@ -59,7 +54,7 @@ export type BuiltInDefinitions = readonly BuiltInDefinition[];
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 	for(const name of names) {
 		const d: IdentifierDefinition[] = [{
-			kind:                'built-in-value',
+			type:                ReferenceType.BuiltInConstant,
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			value,
@@ -81,7 +76,7 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const d: IdentifierDefinition[] = [{
-			kind:                'built-in-function',
+			type:                ReferenceType.BuiltInFunction,
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
@@ -106,7 +101,7 @@ export function registerReplacementFunctions(
 		for(const suffix of suffixes) {
 			const effectiveName = `${assignment}${suffix}`;
 			const d: IdentifierDefinition[] = [{
-				kind:                'built-in-function',
+				type:                ReferenceType.BuiltInFunction,
 				definedAt:           BuiltIn,
 				processor:           (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix }),
 				name:                effectiveName,

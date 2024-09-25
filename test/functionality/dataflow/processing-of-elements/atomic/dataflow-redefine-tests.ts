@@ -5,6 +5,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('Redefining builtins', withShell(shell => {
 	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
@@ -23,7 +24,7 @@ if(1)
 			.constant('3', undefined, false)
 			.defineFunction('5', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+				in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),
@@ -56,7 +57,7 @@ print(x)`, emptyGraph()
 			.constant('3', undefined, false)
 			.defineFunction('5', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '3', name: undefined, controlDependencies: [] }],
+				in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['1', '3']),

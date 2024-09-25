@@ -7,6 +7,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -17,7 +18,7 @@ describe('Function Definition', withShell(shell => {
 				.call('3', '{', [argumentInCall('2')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 				.defineFunction('4', ['3'], {
 					out:               [],
-					in:                [{ nodeId: '2', name: 'x', controlDependencies: [] }],
+					in:                [{ nodeId: '2', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['2', '3']),
@@ -117,7 +118,7 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineFunction('7', ['6'], {
 					out:               [],
-					in:                [{ nodeId: '5', name: 'x', controlDependencies: [] }],
+					in:                [{ nodeId: '5', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '6',
 					graph:             new Set(['5', '6']),
@@ -236,7 +237,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
 			.defineFunction('10', ['9'], {
 				out:               [],
-				in:                [{ nodeId: '6', name: 'x', controlDependencies: [] }],
+				in:                [{ nodeId: '6', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '9',
 				graph:             new Set(['6', '5', '7', '8', '9']),
@@ -274,7 +275,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('0', '...', { definedBy: [] }, false)
 			.defineFunction('6', ['5'], {
 				out:               [],
-				in:                [{ nodeId: '4', name: '..11', controlDependencies: [] }],
+				in:                [{ nodeId: '4', name: '..11', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['0', '4', '5']),
@@ -344,7 +345,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('2', '...', { definedBy: [] }, false)
 			.defineFunction('11', ['10'], {
 				out:               [],
-				in:                [{ nodeId: '9', name: 'foo', controlDependencies: [] }],
+				in:                [{ nodeId: '9', name: 'foo', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '10',
 				graph:             new Set(['0', '2', '7', '9', '10']),
@@ -391,7 +392,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('19', 'y', { definedBy: ['20', '21'], controlDependencies: [] }, false)
 			.defineFunction('24', ['23'], {
 				out:               [],
-				in:                [{ nodeId: '12', name: 'z', controlDependencies: [] }],
+				in:                [{ nodeId: '12', name: 'z', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '23',
 				graph:             new Set(['7', '2', '8', '10', '9', '11', '12', '14', '16', '18', '20', '19', '21', '22', '23']),
@@ -406,7 +407,7 @@ describe('Function Definition', withShell(shell => {
 			.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { returns: ['5'], reads: [BuiltIn] })
 			.defineFunction('4', ['3'], {
 				out:               [],
-				in:                [{ nodeId: '2', name: 'x', controlDependencies: [] }],
+				in:                [{ nodeId: '2', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['2', '3']),
@@ -434,7 +435,7 @@ describe('Function Definition', withShell(shell => {
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }, false)
 			.defineFunction('12', ['11'], {
 				out:               [],
-				in:                [{ nodeId: '9', name: 'b', controlDependencies: [] }],
+				in:                [{ nodeId: '9', name: 'b', controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        '11',
 				graph:             new Set(['4', '9', '8', '10', '11']),
@@ -559,7 +560,7 @@ print(g())`, emptyGraph()
 				}, { environment: defaultEnv().pushEnv() }, false)
 				.defineFunction('26', ['25'], {
 					out:               [],
-					in:                [{ nodeId: '24', name: `${UnnamedFunctionCallPrefix}24`, controlDependencies: [] }],
+					in:                [{ nodeId: '24', name: `${UnnamedFunctionCallPrefix}24`, controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '25',
 					graph:             new Set(['1', '2', '22', '23', '24', '25']),
@@ -612,7 +613,7 @@ print(x)`, emptyGraph()
 				.sideEffectOnCall('5', '21')
 				.defineFunction('12', ['11'], {
 					out:               [],
-					in:                [{ nodeId: '6', name: 'x', controlDependencies: [] }],
+					in:                [{ nodeId: '6', name: 'x', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '11',
 					graph:             new Set(['6', '7', '8', '5', '9', '10', '11']),
@@ -720,7 +721,7 @@ f(5)`, emptyGraph()
 				.constant('17', undefined, false)
 				.defineFunction('30', ['29'], {
 					out:               [],
-					in:                [{ nodeId: '10', name: 'k', controlDependencies: [] }],
+					in:                [{ nodeId: '10', name: 'k', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '29',
 					graph:             new Set(['1', '6', '7', '8', '5', '9', '10', '12', '14', '17', '19', '21', '29']),

@@ -4,16 +4,26 @@ import type { ControlDependency } from '../info';
 
 export type Identifier = string & { __brand?: 'identifier' }
 
-interface InGraphIdentifierDefinition extends IdentifierReference {
-	kind:      'function' | 'variable' | 'parameter' | 'argument'
-	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
-	definedAt: NodeId
+export const enum ReferenceType {
+	/** The identifier type is unknown */
+	Unknown,
+	/** The identifier is defined by a function (includes built-in function) */
+	Function,
+	/** The identifier is defined by a variable (includes parameter and argument) */
+	Variable,
+	/** The identifier is defined by a constant (includes built-in constant) */
+	Constant,
+	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
+	Parameter,
+	/** The identifier is defined by an argument (which we know nothing about at the moment) */
+	Argument,
+	/** The identifier is defined by a built-in value/constant */
+	BuiltInConstant,
+	/** The identifier is defined by a built-in function */
+	BuiltInFunction
 }
 
-/**
- * Stores the definition of an identifier within an {@link IEnvironment}
- */
-export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>
 
 /**
  * Something like `a` in `b <- a`.
@@ -25,9 +35,23 @@ export interface IdentifierReference {
 	readonly nodeId:     NodeId
 	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
 	readonly name:       Identifier | undefined
+	/** Type of the reference to be resolved */
+	readonly type:       ReferenceType;
 	/**
-	 * If the reference is only effective if, e.g. an if-then-else condition is true, this references the root of the `if`.
-	 * As a hackey intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
+	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
+	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
 	controlDependencies: ControlDependency[] | undefined
 }
+
+
+interface InGraphIdentifierDefinition extends IdentifierReference {
+	readonly type:      InGraphReferenceType
+	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
+	readonly definedAt: NodeId
+}
+
+/**
+ * Stores the definition of an identifier within an {@link IEnvironment}
+ */
+export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant

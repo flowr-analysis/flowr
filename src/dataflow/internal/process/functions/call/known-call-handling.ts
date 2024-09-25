@@ -10,6 +10,7 @@ import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { IdentifierReference } from '../../../../environments/identifier';
+import { ReferenceType } from '../../../../environments/identifier';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
@@ -92,7 +93,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	const inIds = remainingReadInArgs;
-	const fnRef = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, call: true as const };
+	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function };
 	inIds.push(fnRef);
 
 	return {

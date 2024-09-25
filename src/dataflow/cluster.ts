@@ -2,7 +2,6 @@ import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
 import type { DataflowGraphVertexInfo } from './graph/vertex';
-import { resolveByName } from './environments/resolve-by-name';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -29,7 +28,6 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 
 function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> {
 	const info = graph.getVertex(from) as DataflowGraphVertexInfo;
-	const calledFunction = getCalledFunction(info);
 	const nodes = new Set<NodeId>();
 
 	// cluster function def exit points
@@ -42,7 +40,6 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		}
 	}
 
-	// TODO scopes (loops, function defs etc.) should be *included* in all clusters they reference, but not *join* them into one
 	// cluster adjacent edges
 	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		// don't cluster for non-standard evaluation
@@ -50,25 +47,14 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 			continue;
 		}
 		// don't cluster for function content if it isn't returned
-		if(edgeDoesNotIncludeType(types, EdgeType.Returns) && calledFunction == '{'){
+		if(edgeDoesNotIncludeType(types, EdgeType.Returns) && info.onlyBuiltin && info.name == '{'){
 			continue;
 		}
 		if(notReached.delete(dest)) {
 			nodes.add(dest);
 			makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
-		}	
+		}
 	}
 
 	return nodes;
-}
-
-function getCalledFunction(info: DataflowGraphVertexInfo): string | undefined {
-	if(info.tag != 'function-call') {
-		return undefined;
-	}
-	if(!info.environment) {
-		return info.onlyBuiltin ? info.name : undefined;
-	}
-	const defs = resolveByName(info.name, info.environment)?.filter(d => d.kind == 'built-in-function');
-	return defs?.length == 1 ? defs[0].name : undefined;
 }

@@ -4,23 +4,30 @@ import type { ControlDependency } from '../info';
 
 export type Identifier = string & { __brand?: 'identifier' }
 
+/**
+ * Each reference only has exactly one reference type, stored as the respective number.
+ * However, wenn checking we may want to allow for one of several types,
+ * allowing the combination of the respective bitmasks.
+ * TODO: write checker functions and bit utility
+ * TODO: check size-of calculation, does it use the string form and not identify them as numeric?
+ */
 export const enum ReferenceType {
 	/** The identifier type is unknown */
-	Unknown,
+	Unknown = 1,
 	/** The identifier is defined by a function (includes built-in function) */
-	Function,
+	Function = 2,
 	/** The identifier is defined by a variable (includes parameter and argument) */
-	Variable,
+	Variable = 4,
 	/** The identifier is defined by a constant (includes built-in constant) */
-	Constant,
+	Constant = 8,
 	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
-	Parameter,
+	Parameter = 16,
 	/** The identifier is defined by an argument (which we know nothing about at the moment) */
-	Argument,
+	Argument = 32,
 	/** The identifier is defined by a built-in value/constant */
-	BuiltInConstant,
+	BuiltInConstant = 64,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction
+	BuiltInFunction = 128
 }
 
 export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>

@@ -1,18 +1,19 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import {  BuiltInEnvironment } from './environment';
+import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
+/* TODO: use bitmasks */
 const TargetTypePredicate = {
 	[ReferenceType.Unknown]:         () => true,
-	[ReferenceType.Argument]:        () => true,
-	[ReferenceType.Parameter]:       () => true,
+	[ReferenceType.Function]:        t => t.type === ReferenceType.Function || t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown || t.type === ReferenceType.Argument || t.type === ReferenceType.Parameter,
 	[ReferenceType.Variable]:        t => t.type === ReferenceType.Variable || t.type === ReferenceType.Parameter || t.type === ReferenceType.Argument || t.type === ReferenceType.Unknown,
-	[ReferenceType.Function]:        t => t.type === ReferenceType.Function || t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown,
 	[ReferenceType.Constant]:        t => t.type === ReferenceType.Constant || t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
+	[ReferenceType.Parameter]:       () => true,
+	[ReferenceType.Argument]:        () => true,
 	[ReferenceType.BuiltInConstant]: t => t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
 	[ReferenceType.BuiltInFunction]: t => t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
@@ -30,9 +31,6 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	let current: IEnvironment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
-	if(name === 'c') {
-		console.trace('resolve', name, target);
-	}
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {

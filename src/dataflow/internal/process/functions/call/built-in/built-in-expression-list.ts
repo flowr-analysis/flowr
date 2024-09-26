@@ -10,8 +10,13 @@ import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackArgument } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type { IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
-import { makeAllMaybe } from '../../../../../environments/environment';
+import type {
+	IEnvironment,
+	REnvironmentInformation
+} from '../../../../../environments/environment';
+import {
+	makeAllMaybe
+} from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -28,7 +33,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { dataflowLogger } from '../../../../../logger';
 
 
-const dotDotDotAccess = /\.\.\d+/;
+const dotDotDotAccess = /^\.\.\d+$/;
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
 

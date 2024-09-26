@@ -99,3 +99,8 @@ export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
 export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))
 }
+
+export interface DicingCriterion {
+	readonly type:     'union' | 'intersection' | 'symetrical difference';
+	readonly criteria: readonly SingleSlicingCriterion[];
+}

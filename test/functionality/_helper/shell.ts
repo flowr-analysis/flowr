@@ -32,10 +32,12 @@ import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff'
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg'
-import type { SlicingCriteria } from '../../../src/slicing/criterion/parse'
+import type { DicingCriterion, SlicingCriteria } from '../../../src/slicing/criterion/parse'
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast'
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults'
 import { resolveDataflowGraph } from './resolve-graph'
+import { jsonReplacer } from '../../../src/util/json'
+import { setEquals } from '../../../src/util/set'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -362,12 +364,54 @@ export function assertSliced(
 	return t
 }
 
+
+//make it check the ids primarily and not the reconstruction
+export function assertDicedIds(
+	name: string | TestLabel,
+	shell: RShell,
+	input: string,
+	startCriteria: DicingCriterion,
+	endCriteria: DicingCriterion,
+	expected: ReadonlySet<NodeId>,
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
+): Mocha.Test {
+	const fullname = decorateLabelContext(name, ['slice'])
+
+	const t = it(`${JSON.stringify(startCriteria)} to ${JSON.stringify(endCriteria)} ${fullname}`, async function() {
+		await ensureConfig(shell, this, userConfig)
+
+		console.log('input: %s\ncriteria: %s, %s', requestFromInput(input), JSON.stringify(startCriteria), JSON.stringify(endCriteria))
+		const result = await new PipelineExecutor(DEFAULT_DICING_PIPELINE,{
+			getId,
+			request:           requestFromInput(input),
+			shell,
+			startingCriterion: startCriteria,
+			endCriterion:      endCriteria,
+			autoSelectIf:      userConfig?.autoSelectIf
+		}).allRemainingSteps()
+
+		try {
+			assert.isTrue(
+				setEquals(result.dice.result, expected),
+				`got: ${JSON.stringify(result.dice.result, jsonReplacer)}, vs. expected: ${JSON.stringify(expected, jsonReplacer)}, for input ${input} (slice for ${JSON.stringify(startCriteria)} to ${JSON.stringify(endCriteria)}`//: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+			)
+		} catch(e) {
+			console.error(`got: ${JSON.stringify(result.dice.result, jsonReplacer)}, vs. expected: ${JSON.stringify(expected, jsonReplacer)}`)
+			console.error(normalizedAstToMermaidUrl(result.normalize.ast))
+			throw e
+		}
+	})
+	handleAssertOutput(name, shell, input, userConfig)
+	return t
+}
+
 export function assertDiced(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string,
-	startCriteria: SlicingCriteria,
-	endCriteria: SlicingCriteria,
+	startCriteria: DicingCriterion,
+	endCriteria: DicingCriterion,
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)

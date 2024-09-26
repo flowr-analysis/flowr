@@ -5,8 +5,9 @@ import { VertexType } from '../../dataflow/graph/vertex'
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { guard } from '../../util/assert'
+import { jsonReplacer } from '../../util/json'
 import { expensiveTrace } from '../../util/log'
-import { convertAllSlicingCriteriaToIds, type SlicingCriteria } from '../criterion/parse'
+import { convertAllSlicingCriteriaToIds, type DicingCriterion, type SlicingCriteria } from '../criterion/parse'
 import { envFingerprint } from './fingerprint'
 import { handleReturns, sliceForCall } from './slice-call'
 import type { SliceResult } from './slicer-types'
@@ -15,9 +16,84 @@ import { VisitingQueue } from './visiting-queue'
 
 
 
-export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriteria: SlicingCriteria, startCriteria: SlicingCriteria, threshold = 75):  Readonly<SliceResult> {
-	const backwardsSlice = staticSlicing(graph, ast, endCriteria, threshold)
-	const forwardSlice = forwardSlicing(graph, ast, startCriteria, threshold)
+export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriteria: DicingCriterion, startCriteria: DicingCriterion, threshold = 75):  Readonly<SliceResult> {
+	let backwardsSlice: Readonly<SliceResult> | undefined = undefined
+	let forwardSlice: Readonly<SliceResult> | undefined = undefined
+	
+	switch(endCriteria.type) {
+		case 'union': {
+			backwardsSlice = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
+			break
+		}
+		
+		case 'intersection': {
+			const slices: Readonly<SliceResult>[] = []
+			for(const criteria of endCriteria.criteria) {
+				slices.push(staticSlicing(graph, ast, [criteria], threshold))
+			}
+			backwardsSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+				return {
+					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+				}
+			})
+			break
+		}
+
+		case 'symetrical difference': {
+			backwardsSlice = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
+			break
+		}
+	}
+
+	switch(startCriteria.type) {
+		case 'union': {
+			forwardSlice = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
+			break
+		}
+		
+		case 'intersection': {
+			const slices: Readonly<SliceResult>[] = []
+			for(const criteria of startCriteria.criteria) {
+				const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
+				slices.push(partialSlice)
+			}
+			forwardSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+				return {
+					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+				}
+			})
+			break
+		}
+
+		case 'symetrical difference': {
+			const union = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
+
+			const slices: Readonly<SliceResult>[] = []
+			for(const criteria of startCriteria.criteria) {
+				const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
+				slices.push(partialSlice)
+			}
+			const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+				return {
+					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+				}
+			})
+
+			forwardSlice = {
+				timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
+				result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
+				decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
+			}
+			console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
+			break
+		}
+	}
 
 	const diceResult = new Set([...backwardsSlice.result].filter(i => forwardSlice.result.has(i)))
 	//console.log(diceResult)
@@ -81,6 +157,7 @@ function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: Slic
 			}
 		}
 
+		//add function definition (subflow)
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, graph, queue)

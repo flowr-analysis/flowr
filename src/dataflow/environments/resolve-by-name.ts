@@ -2,20 +2,25 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
-import { ReferenceType } from './identifier';
+import { isReferenceType , ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
-/* TODO: use bitmasks */
+const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
+const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
+const ConstantTargetTypes = ReferenceType.Constant | ReferenceType.BuiltInConstant | ReferenceType.Unknown;
+const BuiltInConstantTargetTypes = ReferenceType.BuiltInConstant | ReferenceType.Unknown;
+const BuiltInFunctionTargetTypes = ReferenceType.BuiltInFunction | ReferenceType.Unknown;
+
 const TargetTypePredicate = {
 	[ReferenceType.Unknown]:         () => true,
-	[ReferenceType.Function]:        t => t.type === ReferenceType.Function || t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown || t.type === ReferenceType.Argument || t.type === ReferenceType.Parameter,
-	[ReferenceType.Variable]:        t => t.type === ReferenceType.Variable || t.type === ReferenceType.Parameter || t.type === ReferenceType.Argument || t.type === ReferenceType.Unknown,
-	[ReferenceType.Constant]:        t => t.type === ReferenceType.Constant || t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
+	[ReferenceType.Function]:        ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
+	[ReferenceType.Variable]:        ({ type }: IdentifierDefinition) => isReferenceType(type, VariableTargetTypes),
+	[ReferenceType.Constant]:        ({ type }: IdentifierDefinition) => isReferenceType(type, ConstantTargetTypes),
 	[ReferenceType.Parameter]:       () => true,
 	[ReferenceType.Argument]:        () => true,
-	[ReferenceType.BuiltInConstant]: t => t.type === ReferenceType.BuiltInConstant || t.type === ReferenceType.Unknown,
-	[ReferenceType.BuiltInFunction]: t => t.type === ReferenceType.BuiltInFunction || t.type === ReferenceType.Unknown
+	[ReferenceType.BuiltInConstant]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInConstantTargetTypes),
+	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes)
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
 
 /**

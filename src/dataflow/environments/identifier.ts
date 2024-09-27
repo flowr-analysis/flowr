@@ -8,7 +8,6 @@ export type Identifier = string & { __brand?: 'identifier' }
  * Each reference only has exactly one reference type, stored as the respective number.
  * However, wenn checking we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
- * TODO: write checker functions and bit utility
  * TODO: check size-of calculation, does it use the string form and not identify them as numeric?
  */
 export const enum ReferenceType {
@@ -28,6 +27,13 @@ export const enum ReferenceType {
 	BuiltInConstant = 64,
 	/** The identifier is defined by a built-in function */
 	BuiltInFunction = 128
+}
+
+/**
+ * Check if the reference types have an overlapping type!
+ */
+export function isReferenceType(t: ReferenceType, target: ReferenceType): boolean {
+	return (t & target) !== 0;
 }
 
 export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>

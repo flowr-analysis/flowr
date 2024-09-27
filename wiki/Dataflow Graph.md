@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/happy-feet/git/phd/flowr-field/flowr/src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-23, 12:04:03 UTC presenting an overview of flowR's dataflow graph (version: 2.0.25, using R version 4.4.1)._
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-27, 07:13:54 UTC presenting an overview of flowR's dataflow graph (version: 2.0.25, using R version 4.4.0)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -61,7 +61,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _12.58 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _14.47 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -193,7 +193,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.12 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
+The analysis required _1.70 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -244,7 +244,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
+The analysis required _1.24 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -295,7 +295,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.03 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 1.
+The analysis required _1.45 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 1.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -353,7 +353,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.13 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3.
+The analysis required _1.37 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -423,7 +423,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.00 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
+The analysis required _1.31 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -493,7 +493,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.55 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
+The analysis required _1.14 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -563,7 +563,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.98 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 2.
+The analysis required _1.22 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 2.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -644,7 +644,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.67 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 4->0.
+The analysis required _1.42 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 4->0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -721,8 +721,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 121----------------------------------------
-    %%   foo: {foo (0, function, def. @5)}
+    %% 170----------------------------------------
+    %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -742,7 +742,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.87 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 7->0.
+The analysis required _1.64 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 7->0.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -774,8 +774,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 121----------------------------------------
-    %%   foo: {foo (0, function, def. @5)}
+    %% 170----------------------------------------
+    %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -844,7 +844,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.39 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 4->1.
+The analysis required _1.47 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 4->1.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -936,7 +936,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.03 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->1, 0->2.
+The analysis required _1.06 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->1, 0->2.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1019,7 +1019,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.31 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->4, 0->3, 1->3.
+The analysis required _1.22 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->4, 0->3, 1->3.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1103,7 +1103,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.02 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->3.
+The analysis required _1.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 0->3.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1181,8 +1181,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 242----------------------------------------
-    %%   foo: {foo (0, function, def. @5)}
+    %% 343----------------------------------------
+    %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -1202,7 +1202,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.62 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 7->4.
+The analysis required _1.58 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 7->4.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1234,8 +1234,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 242----------------------------------------
-    %%   foo: {foo (0, function, def. @5)}
+    %% 343----------------------------------------
+    %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -1290,8 +1290,8 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 275----------------------------------------
-    %%   foo: {foo (0, function, def. @4)}
+    %% 388----------------------------------------
+    %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
       *2.1-5*`"]]
@@ -1311,7 +1311,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.48 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 6->1.
+The analysis required _1.58 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 6->1.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1344,8 +1344,8 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 275----------------------------------------
-    %%   foo: {foo (0, function, def. @4)}
+    %% 388----------------------------------------
+    %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
       *2.1-5*`"]]
@@ -1408,8 +1408,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 318----------------------------------------
-    %%   f: {f (0, function, def. @7)}
+    %% 454----------------------------------------
+    %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -1435,7 +1435,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.36 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
+The analysis required _1.66 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1476,8 +1476,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 318----------------------------------------
-    %%   f: {f (0, function, def. @7)}
+    %% 454----------------------------------------
+    %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -1547,8 +1547,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 363----------------------------------------
-    %%   f: {f (0, function, def. @7)}
+    %% 520----------------------------------------
+    %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -1574,7 +1574,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.84 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
+The analysis required _1.63 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 11->1, 1->11.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1615,8 +1615,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 363----------------------------------------
-    %%   f: {f (0, function, def. @7)}
+    %% 520----------------------------------------
+    %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -1679,7 +1679,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.97 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 5->1, 5->3.
+The analysis required _1.10 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 5->1, 5->3.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1729,8 +1729,8 @@ Type: `128`
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 437----------------------------------------
-    %%   x: {x (3, variable, def. @5)}
+    %% 623----------------------------------------
+    %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
       *1.6-27*`"]
@@ -1760,8 +1760,8 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 443----------------------------------------
-    %%   f: {f (0, function, def. @8)}
+    %% 631----------------------------------------
+    %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
       *2.1-3*`"]]
@@ -1787,7 +1787,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.12 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3->10.
+The analysis required _1.68 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3->10.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1803,8 +1803,8 @@ f()
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 437----------------------------------------
-    %%   x: {x (3, variable, def. @5)}
+    %% 623----------------------------------------
+    %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
       *1.6-27*`"]
@@ -1834,8 +1834,8 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 443----------------------------------------
-    %%   f: {f (0, function, def. @8)}
+    %% 631----------------------------------------
+    %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
       *2.1-3*`"]]
@@ -1892,7 +1892,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.82 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3->1.
+The analysis required _1.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): 3->1.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1965,7 +1965,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.09 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.61 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2094,31 +2094,26 @@ However, the dataflow information contains more, quite a lot of information in f
   "in": [
     {
       "nodeId": 2,
-      "name": "<-"
+      "name": "<-",
+      "type": 2
     },
     {
       "nodeId": 5,
       "name": "+",
-      "call": true
+      "type": 2
     }
   ],
   "out": [
     {
       "nodeId": 0,
       "name": "x",
-      "kind": "variable",
-      "definedAt": 2
-    },
-    {
-      "nodeId": 0,
-      "name": "x",
-      "kind": "variable",
+      "type": 4,
       "definedAt": 2
     }
   ],
   "environment": {
     "current": {
-      "id": 464,
+      "id": 658,
       "parent": {
         "id": 0,
         "memory": [
@@ -2126,7 +2121,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "NULL",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": null,
                 "name": "NULL",
@@ -2138,7 +2133,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "NA",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": null,
                 "name": "NA",
@@ -2150,7 +2145,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "TRUE",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": true,
                 "name": "TRUE",
@@ -2162,7 +2157,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "T",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": true,
                 "name": "T",
@@ -2174,7 +2169,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "FALSE",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": false,
                 "name": "FALSE",
@@ -2186,7 +2181,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "F",
             [
               {
-                "kind": "built-in-value",
+                "type": 64,
                 "definedAt": "built-in",
                 "value": false,
                 "name": "F",
@@ -2198,7 +2193,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "~",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "~",
                 "nodeId": "built-in"
@@ -2209,7 +2204,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "+",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "+",
                 "nodeId": "built-in"
@@ -2220,7 +2215,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "-",
                 "nodeId": "built-in"
@@ -2231,7 +2226,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "*",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "*",
                 "nodeId": "built-in"
@@ -2242,7 +2237,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "/",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "/",
                 "nodeId": "built-in"
@@ -2253,7 +2248,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "^",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "^",
                 "nodeId": "built-in"
@@ -2264,7 +2259,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "!",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "!",
                 "nodeId": "built-in"
@@ -2275,7 +2270,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "?",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "?",
                 "nodeId": "built-in"
@@ -2286,7 +2281,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "**",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "**",
                 "nodeId": "built-in"
@@ -2297,7 +2292,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "==",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "==",
                 "nodeId": "built-in"
@@ -2308,7 +2303,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "!=",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "!=",
                 "nodeId": "built-in"
@@ -2319,7 +2314,7 @@ However, the dataflow information contains more, quite a lot of information in f
             ">",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": ">",
                 "nodeId": "built-in"
@@ -2330,7 +2325,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "<",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "<",
                 "nodeId": "built-in"
@@ -2341,7 +2336,7 @@ However, the dataflow information contains more, quite a lot of information in f
             ">=",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": ">=",
                 "nodeId": "built-in"
@@ -2352,7 +2347,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "<=",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "<=",
                 "nodeId": "built-in"
@@ -2363,7 +2358,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "%%",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "%%",
                 "nodeId": "built-in"
@@ -2374,7 +2369,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "%/%",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "%/%",
                 "nodeId": "built-in"
@@ -2385,7 +2380,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "%*%",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "%*%",
                 "nodeId": "built-in"
@@ -2396,7 +2391,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "%in%",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "%in%",
                 "nodeId": "built-in"
@@ -2407,7 +2402,7 @@ However, the dataflow information contains more, quite a lot of information in f
             ":",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": ":",
                 "nodeId": "built-in"
@@ -2418,7 +2413,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "list",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "list",
                 "nodeId": "built-in"
@@ -2429,7 +2424,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "c",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "c",
                 "nodeId": "built-in"
@@ -2440,7 +2435,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rep",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rep",
                 "nodeId": "built-in"
@@ -2451,7 +2446,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "seq",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "seq",
                 "nodeId": "built-in"
@@ -2462,7 +2457,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "seq_len",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "seq_len",
                 "nodeId": "built-in"
@@ -2473,7 +2468,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "seq_along",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "seq_along",
                 "nodeId": "built-in"
@@ -2484,7 +2479,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "seq.int",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "seq.int",
                 "nodeId": "built-in"
@@ -2495,7 +2490,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "gsub",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "gsub",
                 "nodeId": "built-in"
@@ -2506,7 +2501,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "which",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "which",
                 "nodeId": "built-in"
@@ -2517,7 +2512,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "class",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "class",
                 "nodeId": "built-in"
@@ -2528,7 +2523,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "dimnames",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "dimnames",
                 "nodeId": "built-in"
@@ -2539,7 +2534,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "min",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "min",
                 "nodeId": "built-in"
@@ -2550,7 +2545,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "max",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "max",
                 "nodeId": "built-in"
@@ -2561,7 +2556,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "intersect",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "intersect",
                 "nodeId": "built-in"
@@ -2572,7 +2567,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "subset",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "subset",
                 "nodeId": "built-in"
@@ -2583,7 +2578,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "match",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "match",
                 "nodeId": "built-in"
@@ -2594,7 +2589,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "sqrt",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "sqrt",
                 "nodeId": "built-in"
@@ -2605,7 +2600,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "abs",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "abs",
                 "nodeId": "built-in"
@@ -2616,7 +2611,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "round",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "round",
                 "nodeId": "built-in"
@@ -2627,7 +2622,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "floor",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "floor",
                 "nodeId": "built-in"
@@ -2638,7 +2633,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "ceiling",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "ceiling",
                 "nodeId": "built-in"
@@ -2649,7 +2644,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "signif",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "signif",
                 "nodeId": "built-in"
@@ -2660,7 +2655,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "trunc",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "trunc",
                 "nodeId": "built-in"
@@ -2671,7 +2666,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "log",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "log",
                 "nodeId": "built-in"
@@ -2682,7 +2677,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "log10",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "log10",
                 "nodeId": "built-in"
@@ -2693,7 +2688,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "log2",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "log2",
                 "nodeId": "built-in"
@@ -2704,7 +2699,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "sum",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "sum",
                 "nodeId": "built-in"
@@ -2715,7 +2710,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "mean",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "mean",
                 "nodeId": "built-in"
@@ -2726,7 +2721,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "unique",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "unique",
                 "nodeId": "built-in"
@@ -2737,7 +2732,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "paste",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "paste",
                 "nodeId": "built-in"
@@ -2748,7 +2743,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "paste0",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "paste0",
                 "nodeId": "built-in"
@@ -2759,7 +2754,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "read.csv",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "read.csv",
                 "nodeId": "built-in"
@@ -2770,7 +2765,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "stop",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "stop",
                 "nodeId": "built-in"
@@ -2781,7 +2776,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "is.null",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "is.null",
                 "nodeId": "built-in"
@@ -2792,7 +2787,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "plot",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "plot",
                 "nodeId": "built-in"
@@ -2803,7 +2798,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "numeric",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "numeric",
                 "nodeId": "built-in"
@@ -2814,7 +2809,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.character",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.character",
                 "nodeId": "built-in"
@@ -2825,7 +2820,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.integer",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.integer",
                 "nodeId": "built-in"
@@ -2836,7 +2831,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.logical",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.logical",
                 "nodeId": "built-in"
@@ -2847,7 +2842,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.numeric",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.numeric",
                 "nodeId": "built-in"
@@ -2858,7 +2853,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.matrix",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.matrix",
                 "nodeId": "built-in"
@@ -2869,7 +2864,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "do.call",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "do.call",
                 "nodeId": "built-in"
@@ -2880,7 +2875,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rbind",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rbind",
                 "nodeId": "built-in"
@@ -2891,7 +2886,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "nrow",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "nrow",
                 "nodeId": "built-in"
@@ -2902,7 +2897,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "ncol",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "ncol",
                 "nodeId": "built-in"
@@ -2913,7 +2908,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "tryCatch",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "tryCatch",
                 "nodeId": "built-in"
@@ -2924,7 +2919,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "expression",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "expression",
                 "nodeId": "built-in"
@@ -2935,7 +2930,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "factor",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "factor",
                 "nodeId": "built-in"
@@ -2946,7 +2941,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "missing",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "missing",
                 "nodeId": "built-in"
@@ -2957,7 +2952,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "as.data.frame",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "as.data.frame",
                 "nodeId": "built-in"
@@ -2968,7 +2963,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "data.frame",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "data.frame",
                 "nodeId": "built-in"
@@ -2979,7 +2974,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "na.omit",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "na.omit",
                 "nodeId": "built-in"
@@ -2990,7 +2985,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rownames",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rownames",
                 "nodeId": "built-in"
@@ -3001,7 +2996,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "names",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "names",
                 "nodeId": "built-in"
@@ -3012,7 +3007,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "order",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "order",
                 "nodeId": "built-in"
@@ -3023,7 +3018,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "length",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "length",
                 "nodeId": "built-in"
@@ -3034,7 +3029,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "any",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "any",
                 "nodeId": "built-in"
@@ -3045,7 +3040,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "dim",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "dim",
                 "nodeId": "built-in"
@@ -3056,7 +3051,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "matrix",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "matrix",
                 "nodeId": "built-in"
@@ -3067,7 +3062,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "cbind",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "cbind",
                 "nodeId": "built-in"
@@ -3078,7 +3073,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "nchar",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "nchar",
                 "nodeId": "built-in"
@@ -3089,7 +3084,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "t",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "t",
                 "nodeId": "built-in"
@@ -3100,7 +3095,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "options",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "options",
                 "nodeId": "built-in"
@@ -3111,7 +3106,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "mapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "mapply",
                 "nodeId": "built-in"
@@ -3122,7 +3117,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "Mapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "Mapply",
                 "nodeId": "built-in"
@@ -3133,7 +3128,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "lapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "lapply",
                 "nodeId": "built-in"
@@ -3144,7 +3139,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "sapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "sapply",
                 "nodeId": "built-in"
@@ -3155,7 +3150,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "vapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "vapply",
                 "nodeId": "built-in"
@@ -3166,7 +3161,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "Lapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "Lapply",
                 "nodeId": "built-in"
@@ -3177,7 +3172,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "Sapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "Sapply",
                 "nodeId": "built-in"
@@ -3188,7 +3183,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "Vapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "Vapply",
                 "nodeId": "built-in"
@@ -3199,7 +3194,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "apply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "apply",
                 "nodeId": "built-in"
@@ -3210,7 +3205,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "tapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "tapply",
                 "nodeId": "built-in"
@@ -3221,7 +3216,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "Tapply",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "Tapply",
                 "nodeId": "built-in"
@@ -3232,7 +3227,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "print",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "print",
                 "nodeId": "built-in"
@@ -3243,7 +3238,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "(",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "(",
                 "nodeId": "built-in"
@@ -3254,7 +3249,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "load",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "load",
                 "nodeId": "built-in"
@@ -3265,7 +3260,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "load_all",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "load_all",
                 "nodeId": "built-in"
@@ -3276,7 +3271,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setwd",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setwd",
                 "nodeId": "built-in"
@@ -3287,7 +3282,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "set.seed",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "set.seed",
                 "nodeId": "built-in"
@@ -3298,7 +3293,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "eval",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "eval",
                 "nodeId": "built-in"
@@ -3309,7 +3304,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "body",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "body",
                 "nodeId": "built-in"
@@ -3320,7 +3315,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "formals",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "formals",
                 "nodeId": "built-in"
@@ -3331,7 +3326,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "environment",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "environment",
                 "nodeId": "built-in"
@@ -3342,7 +3337,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "cat",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "cat",
                 "nodeId": "built-in"
@@ -3353,7 +3348,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "switch",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "switch",
                 "nodeId": "built-in"
@@ -3364,7 +3359,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "return",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "return",
                 "nodeId": "built-in"
@@ -3375,7 +3370,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "break",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "break",
                 "nodeId": "built-in"
@@ -3386,7 +3381,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "next",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "next",
                 "nodeId": "built-in"
@@ -3397,7 +3392,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "{",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "{",
                 "nodeId": "built-in"
@@ -3408,7 +3403,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "source",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "source",
                 "nodeId": "built-in"
@@ -3419,7 +3414,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[",
                 "nodeId": "built-in"
@@ -3430,7 +3425,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[[",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[[",
                 "nodeId": "built-in"
@@ -3441,7 +3436,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "$",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "$",
                 "nodeId": "built-in"
@@ -3452,7 +3447,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "@",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "@",
                 "nodeId": "built-in"
@@ -3463,7 +3458,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "if",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "if",
                 "nodeId": "built-in"
@@ -3474,7 +3469,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "ifelse",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "ifelse",
                 "nodeId": "built-in"
@@ -3485,7 +3480,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "get",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "get",
                 "nodeId": "built-in"
@@ -3496,7 +3491,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "library",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "library",
                 "nodeId": "built-in"
@@ -3507,7 +3502,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "require",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "require",
                 "nodeId": "built-in"
@@ -3518,7 +3513,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "<-",
                 "nodeId": "built-in"
@@ -3529,7 +3524,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "=",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "=",
                 "nodeId": "built-in"
@@ -3540,7 +3535,7 @@ However, the dataflow information contains more, quite a lot of information in f
             ":=",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": ":=",
                 "nodeId": "built-in"
@@ -3551,7 +3546,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "assign",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "assign",
                 "nodeId": "built-in"
@@ -3562,7 +3557,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "delayedAssign",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "delayedAssign",
                 "nodeId": "built-in"
@@ -3573,7 +3568,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "<<-",
                 "nodeId": "built-in"
@@ -3584,7 +3579,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "->",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "->",
                 "nodeId": "built-in"
@@ -3595,7 +3590,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "->>",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "->>",
                 "nodeId": "built-in"
@@ -3606,7 +3601,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "&&",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "&&",
                 "nodeId": "built-in"
@@ -3617,7 +3612,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "&",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "&",
                 "nodeId": "built-in"
@@ -3628,7 +3623,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "||",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "||",
                 "nodeId": "built-in"
@@ -3639,7 +3634,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "|",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "|",
                 "nodeId": "built-in"
@@ -3650,7 +3645,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "|>",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "|>",
                 "nodeId": "built-in"
@@ -3661,7 +3656,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "%>%",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "%>%",
                 "nodeId": "built-in"
@@ -3672,7 +3667,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "function",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "function",
                 "nodeId": "built-in"
@@ -3683,7 +3678,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "\\",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "\\",
                 "nodeId": "built-in"
@@ -3694,7 +3689,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "quote",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "quote",
                 "nodeId": "built-in"
@@ -3705,7 +3700,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "substitute",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "substitute",
                 "nodeId": "built-in"
@@ -3716,7 +3711,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "bquote",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "bquote",
                 "nodeId": "built-in"
@@ -3727,7 +3722,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "for",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "for",
                 "nodeId": "built-in"
@@ -3738,7 +3733,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "repeat",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "repeat",
                 "nodeId": "built-in"
@@ -3749,7 +3744,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "while",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "while",
                 "nodeId": "built-in"
@@ -3760,7 +3755,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "on.exit",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "on.exit",
                 "nodeId": "built-in"
@@ -3771,7 +3766,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "sys.on.exit",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "sys.on.exit",
                 "nodeId": "built-in"
@@ -3782,7 +3777,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "par",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "par",
                 "nodeId": "built-in"
@@ -3793,7 +3788,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setnames",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setnames",
                 "nodeId": "built-in"
@@ -3804,7 +3799,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setNames",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setNames",
                 "nodeId": "built-in"
@@ -3815,7 +3810,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setkey",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setkey",
                 "nodeId": "built-in"
@@ -3826,7 +3821,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setkeyv",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setkeyv",
                 "nodeId": "built-in"
@@ -3837,7 +3832,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setindex",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setindex",
                 "nodeId": "built-in"
@@ -3848,7 +3843,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setindexv",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setindexv",
                 "nodeId": "built-in"
@@ -3859,7 +3854,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "setattr",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "setattr",
                 "nodeId": "built-in"
@@ -3870,7 +3865,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "sink",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "sink",
                 "nodeId": "built-in"
@@ -3881,7 +3876,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "requireNamespace",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "requireNamespace",
                 "nodeId": "built-in"
@@ -3892,7 +3887,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "loadNamespace",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "loadNamespace",
                 "nodeId": "built-in"
@@ -3903,7 +3898,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attachNamespace",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attachNamespace",
                 "nodeId": "built-in"
@@ -3914,7 +3909,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "asNamespace",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "asNamespace",
                 "nodeId": "built-in"
@@ -3925,7 +3920,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "library.dynam",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "library.dynam",
                 "nodeId": "built-in"
@@ -3936,7 +3931,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install.packages",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install.packages",
                 "nodeId": "built-in"
@@ -3947,7 +3942,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install",
                 "nodeId": "built-in"
@@ -3958,7 +3953,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_github",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_github",
                 "nodeId": "built-in"
@@ -3969,7 +3964,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_gitlab",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_gitlab",
                 "nodeId": "built-in"
@@ -3980,7 +3975,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_bitbucket",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_bitbucket",
                 "nodeId": "built-in"
@@ -3991,7 +3986,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_url",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_url",
                 "nodeId": "built-in"
@@ -4002,7 +3997,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_git",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_git",
                 "nodeId": "built-in"
@@ -4013,7 +4008,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_svn",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_svn",
                 "nodeId": "built-in"
@@ -4024,7 +4019,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_local",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_local",
                 "nodeId": "built-in"
@@ -4035,7 +4030,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "install_version",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "install_version",
                 "nodeId": "built-in"
@@ -4046,7 +4041,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "update_packages",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "update_packages",
                 "nodeId": "built-in"
@@ -4057,7 +4052,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attach",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attach",
                 "nodeId": "built-in"
@@ -4068,7 +4063,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "detach",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "detach",
                 "nodeId": "built-in"
@@ -4079,7 +4074,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "unname",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "unname",
                 "nodeId": "built-in"
@@ -4090,7 +4085,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rm",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rm",
                 "nodeId": "built-in"
@@ -4101,7 +4096,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "remove",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "remove",
                 "nodeId": "built-in"
@@ -4112,7 +4107,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[<-",
                 "nodeId": "built-in"
@@ -4123,7 +4118,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[<<-",
                 "nodeId": "built-in"
@@ -4134,7 +4129,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[[<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[[<-",
                 "nodeId": "built-in"
@@ -4145,7 +4140,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "[[<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "[[<<-",
                 "nodeId": "built-in"
@@ -4156,7 +4151,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "$<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "$<-",
                 "nodeId": "built-in"
@@ -4167,7 +4162,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "$<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "$<<-",
                 "nodeId": "built-in"
@@ -4178,7 +4173,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "@<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "@<-",
                 "nodeId": "built-in"
@@ -4189,7 +4184,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "@<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "@<<-",
                 "nodeId": "built-in"
@@ -4200,7 +4195,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "names<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "names<-",
                 "nodeId": "built-in"
@@ -4211,7 +4206,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "names<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "names<<-",
                 "nodeId": "built-in"
@@ -4222,7 +4217,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "dimnames<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "dimnames<-",
                 "nodeId": "built-in"
@@ -4233,7 +4228,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "dimnames<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "dimnames<<-",
                 "nodeId": "built-in"
@@ -4244,7 +4239,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attributes<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attributes<-",
                 "nodeId": "built-in"
@@ -4255,7 +4250,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attributes<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attributes<<-",
                 "nodeId": "built-in"
@@ -4266,7 +4261,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attr<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attr<-",
                 "nodeId": "built-in"
@@ -4277,7 +4272,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "attr<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "attr<<-",
                 "nodeId": "built-in"
@@ -4288,7 +4283,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "class<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "class<-",
                 "nodeId": "built-in"
@@ -4299,7 +4294,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "class<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "class<<-",
                 "nodeId": "built-in"
@@ -4310,7 +4305,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "levels<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "levels<-",
                 "nodeId": "built-in"
@@ -4321,7 +4316,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "levels<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "levels<<-",
                 "nodeId": "built-in"
@@ -4332,7 +4327,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rownames<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rownames<-",
                 "nodeId": "built-in"
@@ -4343,7 +4338,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "rownames<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "rownames<<-",
                 "nodeId": "built-in"
@@ -4354,7 +4349,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "colnames<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "colnames<-",
                 "nodeId": "built-in"
@@ -4365,7 +4360,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "colnames<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "colnames<<-",
                 "nodeId": "built-in"
@@ -4376,7 +4371,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "body<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "body<-",
                 "nodeId": "built-in"
@@ -4387,7 +4382,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "body<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "body<<-",
                 "nodeId": "built-in"
@@ -4398,7 +4393,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "environment<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "environment<-",
                 "nodeId": "built-in"
@@ -4409,7 +4404,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "environment<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "environment<<-",
                 "nodeId": "built-in"
@@ -4420,7 +4415,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "formals<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "formals<-",
                 "nodeId": "built-in"
@@ -4431,7 +4426,7 @@ However, the dataflow information contains more, quite a lot of information in f
             "formals<<-",
             [
               {
-                "kind": "built-in-function",
+                "type": 128,
                 "definedAt": "built-in",
                 "name": "formals<<-",
                 "nodeId": "built-in"
@@ -4447,7 +4442,7 @@ However, the dataflow information contains more, quite a lot of information in f
             {
               "nodeId": 0,
               "name": "x",
-              "kind": "variable",
+              "type": 4,
               "definedAt": 2
             }
           ]
@@ -5263,10 +5258,12 @@ However, the dataflow information contains more, quite a lot of information in f
           "onlyBuiltin": true,
           "args": [
             {
-              "nodeId": 0
+              "nodeId": 0,
+              "type": 32
             },
             {
-              "nodeId": 1
+              "nodeId": 1,
+              "type": 32
             }
           ]
         }
@@ -5294,10 +5291,12 @@ However, the dataflow information contains more, quite a lot of information in f
           "onlyBuiltin": true,
           "args": [
             {
-              "nodeId": 3
+              "nodeId": 3,
+              "type": 32
             },
             {
-              "nodeId": 4
+              "nodeId": 4,
+              "type": 32
             }
           ]
         }
@@ -5397,7 +5396,7 @@ A summarized version of the produced environment looks like this:
 
 | Name | Definitions |
 |------|-------------|
-| `x` | {x (0, variable, def. @2)} |
+| `x` | {x (0, 4, def. @2)} |
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
@@ -5454,7 +5453,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.20 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _2.60 ms_ (including parsing and normalization) within the generation environment. 
 We encountered unknown side effects (with ids: [3]) during the analysis.
 
 ```r

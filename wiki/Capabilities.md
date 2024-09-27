@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/r-bridge/data/print.ts' on 2024-09-09, 09:52:15 UTC summarizig flowR's current capabilities_
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/documentation/print-capabilities-markdown.ts' on 2024-09-27, 07:13:49 UTC summarizig flowR's current capabilities (version: 2.0.25)._
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -30,15 +30,17 @@ Besides, we use colored bullets like this:
         :red_circle: _For example, using `new.env` and friends_
          5. **Environment Sharing** (<a id='environment-sharing'>`environment-sharing`</a>)\
         :red_circle: _Handling side-effects by environments which are not copied when modified_
-         6. **Search Path** (<a id='search-path'>`search-path`</a>)\
+         6. **Search Type** (<a id='search-type'>`search-type`</a>)\
+        :green_square: _Separating the resolution for functions and symbols._
+         7. **Search Path** (<a id='search-path'>`search-path`</a>)\
         :red_circle: _Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there.
-         7. **Namespaces** (<a id='namespaces'>`namespaces`</a>)\
+         8. **Namespaces** (<a id='namespaces'>`namespaces`</a>)\
         :red_circle: _Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_
-         8. **Accessing Exported Names** (<a id='accessing-exported-names'>`accessing-exported-names`</a>)\
+         9. **Accessing Exported Names** (<a id='accessing-exported-names'>`accessing-exported-names`</a>)\
         :large_orange_diamond: _Resolving calls with `::` to their origin._ Accessing external files is allowed, although the name of packages etc. is not resolved correctly.
-         9. **Accessing Internal Names** (<a id='accessing-internal-names'>`accessing-internal-names`</a>)\
+        10. **Accessing Internal Names** (<a id='accessing-internal-names'>`accessing-internal-names`</a>)\
         :red_circle: _Similar to `::` but for internal names._
-        10. **Library Loading** (<a id='library-loading'>`library-loading`</a>)\
+        11. **Library Loading** (<a id='library-loading'>`library-loading`</a>)\
         :red_circle: _Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_
  2. **Expressions** (<a id='expressions'>`expressions`</a>)
      1. **Function Calls** (<a id='function-calls'>`function-calls`</a>)

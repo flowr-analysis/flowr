@@ -310,7 +310,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.release.outputs.version }}"
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

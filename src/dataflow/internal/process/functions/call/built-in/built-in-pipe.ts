@@ -11,6 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 
 export function processPipe<OtherInfo>(
@@ -43,7 +44,8 @@ export function processPipe<OtherInfo>(
 		functionCallNode.args.unshift({
 			name:                undefined,
 			nodeId:              argId,
-			controlDependencies: data.controlDependencies
+			controlDependencies: data.controlDependencies,
+			type:                ReferenceType.Function
 		});
 		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument });
 	}

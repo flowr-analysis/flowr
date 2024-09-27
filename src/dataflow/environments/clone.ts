@@ -16,7 +16,7 @@ function cloneEnvironment(environment: IEnvironment | undefined, recurseParents:
 		return BuiltInEnvironment;
 	}
 	/* make sure the clone has the same id */
-	const clone = new Environment(recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent, environment.id);
+	const clone = new Environment(recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent);
 	clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][]);
 	return clone;
 }

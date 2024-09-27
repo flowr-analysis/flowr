@@ -14,6 +14,7 @@ import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-b
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { Ternary } from '../../../../../../util/logic';
 
@@ -118,7 +119,7 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...ingoing],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...ingoing],
 		out:               outgoing,
 		exitPoints,
 		entryPoint:        rootId,

@@ -6,6 +6,7 @@ import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/pro
 import { RNa, RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
+import { ReferenceType } from '../../environments/identifier';
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {
@@ -13,7 +14,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	}
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies } ],
+		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, controlDependencies: data.controlDependencies, type: ReferenceType.Unknown } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,

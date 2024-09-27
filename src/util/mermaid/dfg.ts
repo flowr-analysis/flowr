@@ -132,7 +132,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 }
 
 export function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+	return `${id.name} (${id.nodeId}, ${id.type},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {

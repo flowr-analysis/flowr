@@ -3,6 +3,7 @@ import { wrap, wrapControlDependencies } from './printer';
 import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import { BuiltInEnvironment } from '../../../../src/dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
+import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
 	private env:   REnvironmentInformation;
@@ -33,9 +34,10 @@ export class EnvironmentBuilderPrinter {
 	}
 
 	private processDefinition(name: string, def: IdentifierDefinition) {
-		const kind = def.kind;
-		switch(kind) {
-			case 'variable':
+		const { type } = def;
+		switch(type) {
+			case ReferenceType.Unknown:
+			case ReferenceType.Variable:
 				this.recordFnCall('defineVariable', [
 					wrap(name),
 					wrap(def.nodeId),
@@ -43,7 +45,7 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
-			case 'function':
+			case ReferenceType.Function:
 				this.recordFnCall('defineFunction', [
 					wrap(name),
 					wrap(def.nodeId),
@@ -51,11 +53,13 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
-			case 'built-in-value':
-			case 'built-in-function':
+				/* shouldn't happen here :D */
+			case ReferenceType.Constant:
+			case ReferenceType.BuiltInFunction:
+			case ReferenceType.BuiltInConstant:
 				/* shouldn't happen, only we can define built-in stuff */
 				break;
-			case 'argument':
+			case ReferenceType.Argument:
 				this.recordFnCall('defineArgument', [
 					wrap(name),
 					wrap(def.nodeId),
@@ -63,7 +67,7 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
-			case 'parameter':
+			case ReferenceType.Parameter:
 				this.recordFnCall('defineParameter', [
 					wrap(name),
 					wrap(def.nodeId),
@@ -72,7 +76,7 @@ export class EnvironmentBuilderPrinter {
 				]);
 				break;
 			default:
-				assertUnreachable(kind);
+				assertUnreachable(type);
 		}
 	}
 

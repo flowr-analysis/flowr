@@ -1,12 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { filterOutLoopExitPoints, alwaysExits } from '../../../../../info';
-import {
-	findNonLocalReads,
-	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap
-} from '../../../../linker';
+import { alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
+import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { patchFunctionCall } from '../common';
@@ -21,6 +17,7 @@ import { appendEnvironment } from '../../../../../environments/append';
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -53,7 +50,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = [...variable.unknownReferences, ...variable.in];
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, kind: 'variable' }, false, headEnvironments);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable }, false, headEnvironments);
 	}
 	data = { ...data, environment: headEnvironments };
 
@@ -91,7 +88,7 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

@@ -51,7 +51,7 @@ describe('Benchmark Slicer', () => {
 				numberOfEdges:               4,  // the defined-by edge and the arguments
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                380
+				sizeOfObject:                196
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -118,7 +118,7 @@ cat(d)`
 				numberOfEdges:               29,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                3053
+				sizeOfObject:                1649
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);

@@ -1,4 +1,4 @@
-import type { VersionInformation } from '../../commands/version';
+import type { VersionInformation } from '../../commands/repl-version';
 import type { IdMessageBase } from './messages';
 
 /**

@@ -131,8 +131,8 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 	return { open, close };
 }
 
-function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+export function printIdentifier(id: IdentifierDefinition): string {
+	return `${id.name} (${id.nodeId}, ${id.type},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
@@ -174,6 +174,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `);
 	}
+	if(mermaid.rootGraph.unknownSideEffects.has(id)) {
+		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
+	}
 
 	const edges = mermaid.rootGraph.get(id, true);
 	guard(edges !== undefined, `node ${id} must be found`);
@@ -188,7 +191,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`);
 			}
-			if(edgeTypes.has('CD-True')) {
+			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
 			}
 		}

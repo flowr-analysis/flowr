@@ -6,6 +6,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of ['<-', '<<-', '=']) {
@@ -248,9 +249,9 @@ print(x)`,  emptyGraph()
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.constant('10')
-				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '27', when: true }] })
+				.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [{ id: '19', when: true }, { id: '27', when: true }] })
 				.constant('16')
-				.defineVariable('15', 'x', { definedBy: ['16', '17'], controlDependencies: [{ id: '27', when: true }] })
+				.defineVariable('15', 'x', { definedBy: ['16', '17'], controlDependencies: [{ id: '19', when: false }, { id: '27', when: true }] })
 				.constant('24')
 				.defineVariable('23', 'x', { definedBy: ['24', '25'], controlDependencies: [{ id: '27', when: false }] })
 		);
@@ -276,7 +277,7 @@ a()`,  emptyGraph()
 				.constant('1', undefined, false)
 				.defineFunction('3', ['1'], {
 					out:               [],
-					in:                [{ nodeId: '1', name: undefined, controlDependencies: [] }],
+					in:                [{ nodeId: '1', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '1',
 					graph:             new Set(['1']),
@@ -286,7 +287,7 @@ a()`,  emptyGraph()
 				.constant('11', undefined, false)
 				.defineFunction('13', ['11'], {
 					out:               [],
-					in:                [{ nodeId: '11', name: undefined, controlDependencies: [] }],
+					in:                [{ nodeId: '11', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '11',
 					graph:             new Set(['11']),
@@ -335,7 +336,7 @@ f()`,  emptyGraph()
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineFunction('11', ['10'], {
 					out:               [],
-					in:                [{ nodeId: '7', name: 'a', controlDependencies: [] }],
+					in:                [{ nodeId: '7', name: 'a', controlDependencies: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '10',
 					graph:             new Set(['7', '9', '10']),

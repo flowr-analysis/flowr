@@ -15,6 +15,7 @@ import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/en
 import type { ForceArguments } from '../common';
 import { BuiltIn } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -52,7 +53,7 @@ export function processAccess<OtherInfo>(
 		const existing = data.environment.current.memory.get(':=');
 		const outInfo = { definitionRootNodes: [] };
 		data.environment.current.memory.set(':=', [{
-			kind:                'built-in-function',
+			type:                ReferenceType.BuiltInFunction,
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
@@ -66,7 +67,7 @@ export function processAccess<OtherInfo>(
 		}
 		if(head.value && outInfo.definitionRootNodes.length > 0) {
 			markAsAssignment(fnCall.information,
-				{ kind: 'variable', name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+				{ type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
 				outInfo.definitionRootNodes,
 				rootId
 			);

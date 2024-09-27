@@ -6,6 +6,7 @@ import { log } from '../../../../util/log';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { IdentifierDefinition } from '../../../environments/identifier';
+import { ReferenceType } from '../../../environments/identifier';
 import { define } from '../../../environments/define';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../graph/edge';
@@ -17,7 +18,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	const writtenNodes: readonly IdentifierDefinition[] = name.unknownReferences.map(n => ({
 		...n,
-		kind:      'parameter',
+		type:      ReferenceType.Parameter,
 		definedAt: parameter.info.id
 	}));
 

@@ -6,7 +6,8 @@ import { envFingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
 import type {
 	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
@@ -18,6 +19,7 @@ import { BuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ReferenceType } from '../../dataflow/environments/identifier';
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment;
@@ -65,7 +67,7 @@ function linkCallTargets(
 	for(const functionCallTarget of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined;
+			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment, openIn.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -95,7 +97,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = resolveByName(name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? [];
+	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {

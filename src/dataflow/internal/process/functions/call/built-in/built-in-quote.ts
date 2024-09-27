@@ -31,6 +31,10 @@ export function processQuote<OtherInfo>(
 			unknownRefs.push(...processedArg.unknownReferences);
 		} else if(processedArg) {
 			information.graph.addEdge(rootId, processedArg.entryPoint, { type: EdgeType.NonStandardEvaluation });
+			/* nse actually affects _everything_ within that argument! */
+			for(const [vtx,] of processedArg.graph.vertices(true)) {
+				information.graph.addEdge(rootId, vtx, { type: EdgeType.NonStandardEvaluation });
+			}
 		}
 	}
 

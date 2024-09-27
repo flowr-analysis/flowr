@@ -528,6 +528,10 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]),
 			shell, 'x <- switch("a", a=1, b=2, c=3)', ['1@x'], 'x <- switch("a", a=1, b=2, c=3)');
 	});
+	describe('Separate Function Resolution', () => {
+		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
+			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
+	});
 	describe('Failures in Practice', () => {
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {

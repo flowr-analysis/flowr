@@ -56,6 +56,31 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	}
 }();
 
+export const markdownFormatter: OutputFormatter = new class implements OutputFormatter {
+	public format(input: string, options?: FormatOptions): string {
+		if(options && 'style' in options) {
+			if(options.style === FontStyles.Bold) {
+				input = `**${input}**`;
+			} else if(options.style === FontStyles.Italic) {
+				input = `_${input}_`;
+			} else {
+				throw new Error(`Unsupported font style: ${options.style}`);
+			}
+		}
+
+		input = input.replaceAll(/\\/g, '\\\\');
+		return input.replaceAll(/\n/g, '\\\n').replaceAll(/ /g, '&nbsp;');
+	}
+
+	public getFormatString(_options?: FormatOptions): string {
+		return '';
+	}
+
+	public reset(): string {
+		return '';
+	}
+}();
+
 /**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text with a bold font weight.
  */

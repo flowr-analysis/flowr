@@ -68,6 +68,12 @@ export const flowrCapabilities = {
 							description: '_Handling side-effects by environments which are not copied when modified_'
 						},
 						{
+							name:        'Search Type',
+							id:          'search-type',
+							supported:   'fully',
+							description: '_Separating the resolution for functions and symbols._'
+						},
+						{
 							name:        'Search Path',
 							id:          'search-path',
 							supported:   'not',

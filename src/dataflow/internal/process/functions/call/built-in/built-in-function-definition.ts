@@ -147,7 +147,7 @@ function updateNestedFunctionClosures<OtherInfo>(
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
-			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment) : undefined;
+			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, ingoing.type) : undefined;
 			if(resolved === undefined) {
 				remainingIn.push(ingoing);
 				continue;
@@ -183,7 +183,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	// first, we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
-		const resolved = read.name ? resolveByName(read.name, parameterEnvs) : undefined;
+		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
 				parameters.addEdge(read, ref, { type: EdgeType.Reads });

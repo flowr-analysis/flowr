@@ -5,6 +5,7 @@
  * @module
  */
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import { ReferenceType } from './identifier';
 import { BuiltInMemory, EmptyBuiltInMemory } from './built-in';
 import type { DataflowGraph } from '../graph/graph';
 import { resolveByName } from './resolve-by-name';
@@ -15,9 +16,9 @@ import { jsonReplacer } from '../../util/json';
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
-		const definitions = ref.name ? resolveByName(ref.name, environments) : undefined;
+		const definitions = ref.name ? resolveByName(ref.name, environments, ref.type) : undefined;
 		for(const definition of definitions ?? []) {
-			if(definition.kind !== 'built-in-function' && definition.kind !== 'built-in-value') {
+			if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant) {
 				if(definition.controlDependencies && defaultCd && !definition.controlDependencies.find(c => c.id === defaultCd.id)) {
 					definition.controlDependencies.push(defaultCd);
 				} else {

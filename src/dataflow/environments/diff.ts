@@ -48,8 +48,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`);
 			}
-			if(aVal.kind !== bVal.kind) {
-				info.report.addComment(`${info.position}Different kinds for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`);
+			if(aVal.type !== bVal.type) {
+				info.report.addComment(`${info.position}Different types for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.type} vs. ${info.rightname}: ${bVal.type}`);
 			}
 		}
 	}

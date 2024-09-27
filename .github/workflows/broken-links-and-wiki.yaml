@@ -75,7 +75,8 @@ jobs:
           }
           
           update_wiki_page "Capabilities" capabilities-markdown
-          update_wiki_page "Dataflow Graph" df-graph-wiki-markdown 
+          update_wiki_page "Dataflow Graph" wiki:df-graph
+          update_wiki_page "Query API" wiki:query-api
           
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"

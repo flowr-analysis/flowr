@@ -1,4 +1,4 @@
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { DEFAULT_NORMALIZE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../../../r-bridge/shell';
@@ -25,8 +25,8 @@ export const normalizeCommand: ReplCommand = {
 };
 
 export const normalizeStarCommand: ReplCommand = {
-	description:  `Get a mermaid url of the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
-	usageExample: ':normalize',
+	description:  'Returns the URL to mermaid.live',
+	usageExample: ':normalize*',
 	aliases:      [ 'n*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {

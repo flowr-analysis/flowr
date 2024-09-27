@@ -7,7 +7,7 @@ import {
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing';
-import type { ExpressionListInfo } from './expression-list';
+import type { ExpressionListInfo } from './statistics-expression-list';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';

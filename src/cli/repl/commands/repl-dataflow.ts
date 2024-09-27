@@ -1,4 +1,4 @@
-import type { ReplCommand } from './main';
+import type { ReplCommand } from './repl-main';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../../../r-bridge/shell';
@@ -25,7 +25,7 @@ export const dataflowCommand: ReplCommand = {
 };
 
 export const dataflowStarCommand: ReplCommand = {
-	description:  `Get a mermaid url of the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	description:  'Returns the URL to mermaid.live',
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,

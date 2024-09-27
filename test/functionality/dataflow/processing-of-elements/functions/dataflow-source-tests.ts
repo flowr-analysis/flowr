@@ -7,6 +7,7 @@ import { requestProviderFromFile, requestProviderFromText } from '../../../../..
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 
 describe('source', withShell(shell => {
 	const sources = {
@@ -130,7 +131,7 @@ describe('source', withShell(shell => {
 			.constant('closure1-1:1-1:6-3', undefined, false)
 			.defineFunction('closure1-1:1-1:6-5', ['closure1-1:1-1:6-3'], {
 				out:               [],
-				in:                [{ nodeId: 'closure1-1:1-1:6-3', name: undefined, controlDependencies: [] }],
+				in:                [{ nodeId: 'closure1-1:1-1:6-3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
 				unknownReferences: [],
 				entryPoint:        'closure1-1:1-1:6-3',
 				graph:             new Set(['closure1-1:1-1:6-3']),

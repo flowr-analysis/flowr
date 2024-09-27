@@ -1,9 +1,10 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits , filterOutLoopExitPoints } from '../../../../../info';
+import { alwaysExits, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
-	linkCircularRedefinitionsWithinALoop, linkInputs,
+	linkCircularRedefinitionsWithinALoop,
+	linkInputs,
 	produceNameSharedIdMap
 } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -18,6 +19,7 @@ import { dataflowLogger } from '../../../../../logger';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -71,7 +73,7 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency }, ...remainingInputs],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
 		out:               [...makeAllMaybe(body.out, information.graph, information.environment, true), ...condition.out],
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),

@@ -281,6 +281,8 @@ jobs:
           submodules: true
           lfs:        true
           token:      ${{ secrets.RELEASE_TOKEN }}
+          # check out the release ref so that the upload action finds the commit
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v4

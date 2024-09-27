@@ -2956,7 +2956,7 @@ Although primarily meant for users to explore, there is nothing which forbids si
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),
-which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (`:`).
+which is interpreted as an R&nbsp;expression by default but interpreted as a _command_ if it starts with a colon (`:`).
 The best command to get started with the REPL is `:help`.
 Besides, you can leave the REPL either with the command `:quit` or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
 

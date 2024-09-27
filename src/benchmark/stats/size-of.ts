@@ -6,6 +6,7 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import type { Identifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
+import { compactRecord } from '../../util/objects';
 
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
 function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
@@ -37,6 +38,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 	const verts = [];
 	for(const [, v] of df.vertices(true)) {
 		let vertex: DataflowGraphVertexInfo = v;
+
 		if(vertex.environment) {
 			vertex = {
 				...vertex,
@@ -60,11 +62,11 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		vertex = {
+		vertex = compactRecord({
 			...vertex,
 			/* shared anyway by using constants */
-			tag: 0 as unknown
-		} as DataflowGraphVertexInfo;
+			tag: undefined
+		}) as DataflowGraphVertexInfo;
 
 		verts.push(vertex);
 	}

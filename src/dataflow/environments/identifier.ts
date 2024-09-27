@@ -8,7 +8,6 @@ export type Identifier = string & { __brand?: 'identifier' }
  * Each reference only has exactly one reference type, stored as the respective number.
  * However, wenn checking we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
- * TODO: check size-of calculation, does it use the string form and not identify them as numeric?
  */
 export const enum ReferenceType {
 	/** The identifier type is unknown */

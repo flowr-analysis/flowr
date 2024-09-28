@@ -103,7 +103,7 @@ export class FakeSocket implements Socket {
 	}
 }
 
-export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<void>): () => Promise<void>  {
+export function withSocket<T = void>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T>): () => Promise<T>  {
 	return async function() {
 		const net = new FakeServer();
 		const server = new FlowRServer(shell, true, net);
@@ -111,6 +111,6 @@ export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeS
 		const socket = new FakeSocket();
 		net.connectClient(socket);
 		await socket.waitForMessage('hello');
-		await fn(socket, net);
+		return await fn(socket, net);
 	};
 }

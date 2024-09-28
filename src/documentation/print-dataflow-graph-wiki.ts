@@ -18,31 +18,14 @@ import { requestFromInput } from '../r-bridge/retriever';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-
-export interface SubExplanationParameters {
-	readonly name:             string,
-	readonly description:      string,
-	readonly code:             string,
-	readonly expectedSubgraph: DataflowGraph
-}
-
-export interface ExplanationParameters {
-	readonly shell:            RShell,
-	readonly name:             string,
-	readonly type:             VertexType | EdgeType,
-	readonly description:      string,
-	readonly code:             string,
-	readonly expectedSubgraph: DataflowGraph
-}
-
-function getAllVertices(): [string, VertexType][] {
-	return Object.entries(VertexType) as [string, VertexType][];
-}
-
-function getAllEdges(): [string, EdgeType][] {
-	return Object.entries(EdgeType).filter(([,v]) => Number.isInteger(v)) as [string, EdgeType][];
-}
-
+import type {
+	ExplanationParameters,
+	SubExplanationParameters
+} from './data/dfg/doc-data-dfg-util';
+import {
+	getAllEdges,
+	getAllVertices
+} from './data/dfg/doc-data-dfg-util';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);

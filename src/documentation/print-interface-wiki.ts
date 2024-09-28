@@ -94,6 +94,15 @@ In general, command line arguments and other options provide short descriptions 
 ## 💬 Communicating with the Server
 
 ${await explainServer(shell)}
+
+## 💻 Using the REPL
+
+TODO: outsource fn 
+
+> [!NOTE]
+> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with \`--r-session-access\`.
+> Please be aware, that this introduces a security risk.
+
 `;
 }
 

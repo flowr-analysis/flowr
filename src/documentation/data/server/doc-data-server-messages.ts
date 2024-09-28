@@ -14,12 +14,20 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
-import type {
-	ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
+import type { ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
 import {
 	requestExecuteReplExpressionMessage,
-	responseExecuteReplEndMessage, responseExecuteReplIntermediateMessage
+	responseExecuteReplEndMessage,
+	responseExecuteReplIntermediateMessage
 } from '../../../cli/repl/server/messages/message-repl';
+
+import {
+	requestQueryMessage,
+	responseQueryMessage
+} from '../../../cli/repl/server/messages/message-query';
+import { exampleQueryCode } from '../query/example-query-code';
+import { CallTargets } from '../../../queries/call-context-query/call-context-query-format';
+import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 
 export function documentAllMessages() {
 
@@ -48,7 +56,7 @@ ${codeBlock('json',
 }
 
 There are currently a few messages that you can send after the hello message.
-If you want to *slice* a piece of R code you first have to send an [analysis request](#message-request-analysis), so that you can send one or multiple slice requests afterward.
+If you want to _slice_ a piece of R code you first have to send an [analysis request](#message-request-file-analysis), so that you can send one or multiple slice requests afterward.
 Requests for the [REPL](#message-request-repl) are independent of that.
 	`;
 		}
@@ -252,7 +260,7 @@ ${
 		messageType: 'request-slice',
 		messages:    [{
 			type:        'request',
-			description: `Let's assume you want to slice the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}. For this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
+			description: `Let's assume you want to slice the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}.\n\n For this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
 			message:     {
 				type:      'request-file-analysis',
 				id:        '1',
@@ -307,7 +315,6 @@ Within a document that is to be sliced, you can use magic comments to influence 
 		}
 	});
 
-
 	documentServerMessage({
 		title:                  'REPL',
 		type:                   'request',
@@ -340,7 +347,7 @@ Within a document that is to be sliced, you can use magic comments to influence 
 
 
 The REPL execution message allows to send a REPL command to receive its output. 
-For more on the REPL, see the [introduction](${FlowrWikiBaseRef}/Overview#the-read-eval-print-loop-repl), or the [description below TODO TODO](#using-the-repl).
+For more on the REPL, see the [introduction](${FlowrWikiBaseRef}/Overview#the-read-eval-print-loop-repl), or the [description below](#using-the-repl).
 You only have to pass the command you want to execute in the \`expression\` field. 
 Furthermore, you can set the \`ansi\` field to \`true\` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
 We strongly recommend you to make use of the \`id\` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
@@ -393,4 +400,146 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
 		}
 	});
 
+	documentServerMessage({
+		title:                  'Query',
+		type:                   'request',
+		definitionPath:         '../cli/repl/server/messages/message-query.ts',
+		defRequest:             requestQueryMessage,
+		defResponse:            responseQueryMessage,
+		mermaidSequenceDiagram: `
+    Client->>+Server: request-query
+
+    alt
+        Server-->>Client: response-query
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+	`,
+		shortDescription: 'Query an analysis result for specific information.',
+		text:             async(shell: RShell) => {
+			return `
+To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
+This message provides direct access to _flowR_'s Query API. Please consult the [Query API documentation](${FlowrWikiBaseRef}/Query%20API) for more information.
+
+${
+	await documentServerMessageResponse({
+		shell,
+		messageType: 'request-query',
+		messages:    [{
+			type:        'request',
+			description: `Let's assume you want to query the following script:\n ${codeBlock('r', exampleQueryCode)}.\n\n For this we first request the analysis, using a dummy \`filetoken\` of \`x\` to slice the file in the next request.`,
+			message:     {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   exampleQueryCode
+			}
+		}, {
+			type:         'response',
+			expectedType: 'response-file-analysis',
+			description:  `
+See [above](#message-request-file-analysis) for the general structure of the response.
+			`
+		}, {
+			type:    'request',
+			message: {
+				type:      'request-query',
+				id:        '2',
+				filetoken: 'x',
+				query:     [
+					{
+						type:            'compound',
+						query:           'call-context',
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- otherwise we would have to carry generic typing information through the test infrastrcuture
+						commonArguments: {
+							kind:        'visualize',
+							subkind:     'text',
+							callTargets: CallTargets.OnlyGlobal,
+						} as never,
+						arguments: [
+							{
+								callName: '^mean$'
+							},
+							{
+								callName:    '^print$',
+								callTargets: CallTargets.OnlyLocal
+							}
+						]
+					} as const
+				]
+			},
+			mark: true
+		}, {
+			type:         'response',
+			expectedType: 'response-query'
+		}]
+	})
+}
+
+	`;
+		}
+	});
+
+	documentServerMessage({
+		title:                  'Lineage',
+		type:                   'request',
+		definitionPath:         '../cli/repl/server/messages/message-lineage.ts',
+		defRequest:             requestLineageMessage,
+		defResponse:            responseLineageMessage,
+		mermaidSequenceDiagram: `
+    Client->>+Server: request-lineage
+
+    alt
+        Server-->>Client: response-lineage
+    else
+        Server-->>Client: error
+    end
+    deactivate  Server
+	`,
+		shortDescription: 'Obtain the lineage of a given slicing criterion.',
+		text:             async(shell: RShell) => {
+			return `
+
+In order to retrieve the lineage of an object, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
+Besides that, you will need to add a [criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.
+
+${
+	await documentServerMessageResponse({
+		shell,
+		messageType: 'request-query',
+		messages:    [{
+			type:    'request',
+			message: {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   'x <- 1\nx + 1'
+			}
+		}, {
+			type:         'response',
+			expectedType: 'response-file-analysis',
+			description:  `
+See [above](#message-request-file-analysis) for the general structure of the response.
+			`
+		}, {
+			type:    'request',
+			message: {
+				type:      'request-lineage',
+				id:        '2',
+				filetoken: 'x',
+				criterion: '2@x'
+			},
+			mark: true
+		}, {
+			type:         'response',
+			expectedType: 'response-lineage',
+			description:  'The response contains the lineage of the desired object in form of an array of IDs (as the representation of a set).'
+		}]
+	})
+}
+
+	`;
+		}
+	});
 }

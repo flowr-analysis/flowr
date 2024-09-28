@@ -65,11 +65,18 @@ export class FakeSocket implements Socket {
 		this.dataHandler?.(Buffer.Buffer.from(`${data}\n`));
 	}
 
-	public async waitForMessage(type: IdMessageBase['type']): Promise<void> {
-		return new Promise(resolve => {
+	public async waitForMessage(type: IdMessageBase['type'], timeoutInS?: number): Promise<void> {
+		return new Promise((resolve, error) => {
+			let timeout: NodeJS.Timeout | undefined;
+			if(timeoutInS) {
+				timeout = setTimeout(() => {
+					error();
+				}, timeoutInS * 1000);
+			}
 			// check if the message was already sent (poor mans check)
 			for(const message of this.messages) {
 				if(message.type === type) {
+					clearTimeout(timeout);
 					resolve();
 					return;
 				}
@@ -77,6 +84,7 @@ export class FakeSocket implements Socket {
 			// otherwise wait
 			this.messageHandler = (message: IdMessageBase) => {
 				if(message.type === type) {
+					clearTimeout(timeout);
 					resolve();
 				}
 			};

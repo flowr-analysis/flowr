@@ -62,19 +62,22 @@ export interface MessagePingPongDocumentationArguments {
 	readonly messages:     readonly (ResponseMessageInPingPong | RequestMessageInPingPong)[],
 }
 
-function explainMsg(idx: number, msg: IdMessageBase, type: 'Request' | 'Response', desc = '', open = false): string {
+function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '', open = false): string {
 	const bold: (s: string) => string = open ? s => `<b>${s}</b>` : s => s;
+	const msgPrettyPrint = JSON.stringify(msg, null, 2);
 	return `
+<li> ${bold( '<code>' + msg.type + `</code> (${type})`)}
 <details${open ? ' open' : ''}> 
 
-<summary> (${idx}) ${type}: ${bold( '<code>' + msg.type + '</code> Message')}</summary>
+<summary> Show Details </summary>
 
 ${desc}
 
-${codeBlock('json', JSON.stringify(msg, null, 2))}
+${msgPrettyPrint.length > 5_000 ? 'As the message is pretty long, we inhibit pretty printing and syntax highlighting:' : ''}
+${codeBlock(msgPrettyPrint.length > 5_000 ? 'text' : 'json', msgPrettyPrint.length > 5_000 ? JSON.stringify(msg) : msgPrettyPrint)}
 
 </details>
-
+</li>
 `;
 }
 
@@ -92,20 +95,19 @@ function explainPingPong(
 	description: readonly (ResponseMessageInPingPong | RequestMessageInPingPong)[],
 	received: readonly IdMessageBase[]
 ) {
-	let result = `${explainMsg(0, received[0], 'Response', 'The first message is always a hello message.')}`;
+	let result = `<ol>${explainMsg(received[0], 'response', 'The first message is always a hello message.')}`;
 
 	let readReceived = 1;
-	let counter = 1;
 	/* we received one more than we sent (`hello` :D) */
 	for(const msg of description) {
 		if(msg.type === 'request') {
-			result += explainMsg(counter++, msg.message, 'Request', getDescriptionForMessage(msg.message, msg.description), msg.mark);
+			result += explainMsg(msg.message, 'request', getDescriptionForMessage(msg.message, msg.description), msg.mark);
 		} else {
 			const response = received[readReceived++];
-			result += explainMsg(counter++, response, 'Response', getDescriptionForMessage(response, msg.description), msg.mark);
+			result += explainMsg(response, 'response', getDescriptionForMessage(response, msg.description), msg.mark);
 		}
 	}
-	return result;
+	return result + '</ol>';
 }
 
 export async function documentServerMessageResponse({
@@ -117,7 +119,11 @@ export async function documentServerMessageResponse({
 			if(metaMessage.type === 'request') {
 				socket.send(JSON.stringify(metaMessage.message) + '\n');
 			} else {
-				await socket.waitForMessage(metaMessage.expectedType);
+				try {
+					await socket.waitForMessage(metaMessage.expectedType, 20);
+				} catch(e) {
+					console.error('Failed to receive message', metaMessage.expectedType, 'has', socket.getMessages());
+				}
 			}
 		}
 		return socket.getMessages();

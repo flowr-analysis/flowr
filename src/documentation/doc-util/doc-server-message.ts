@@ -41,15 +41,25 @@ export async function inServerContext<T>(shell: RShell, fn: (socket: FakeSocket,
 	})();
 }
 
+interface ResponseMessageInPingPong {
+	readonly type:         'response'
+	readonly expectedType: FlowrMessage['type']
+	readonly description?: string | ((msg: IdMessageBase) => string)
+	readonly mark?:        boolean
+}
+
+interface RequestMessageInPingPong {
+	readonly type:         'request'
+	readonly message:      FlowrMessage,
+	readonly description?: string | ((msg: IdMessageBase) => string)
+	readonly mark?:        boolean
+}
+
 export interface MessagePingPongDocumentationArguments {
-	readonly shell:                RShell,
-	readonly title?:               string,
-	readonly messageTypeToPresent: FlowrMessage['type'],
-	readonly messagesToSend:       readonly FlowrMessage[],
-	readonly documentResponses: readonly {
-		readonly expectedType: FlowrMessage['type'],
-		readonly description?: string
-	}[]
+	readonly shell:        RShell,
+	readonly title?:       string,
+	readonly messageType?: FlowrMessage['type'],
+	readonly messages:     readonly (ResponseMessageInPingPong | RequestMessageInPingPong)[],
 }
 
 function explainMsg(idx: number, msg: IdMessageBase, type: 'Request' | 'Response', desc = '', open = false): string {
@@ -68,34 +78,54 @@ ${codeBlock('json', JSON.stringify(msg, null, 2))}
 `;
 }
 
+function getDescriptionForMessage(msg: IdMessageBase, description?: string | ((msg: IdMessageBase) => string)): string {
+	if(description === undefined) {
+		return '';
+	} else if(typeof description === 'function') {
+		return description(msg);
+	} else {
+		return description ?? '';
+	}
+}
+
 function explainPingPong(
-	sent: readonly FlowrMessage[], received: readonly IdMessageBase[], receivedDescriptions: string[], messageTypeToPresent: FlowrMessage['type']
+	description: readonly (ResponseMessageInPingPong | RequestMessageInPingPong)[],
+	received: readonly IdMessageBase[]
 ) {
 	let result = `${explainMsg(0, received[0], 'Response', 'The first message is always a hello message.')}`;
 
-	let idx = 1;
+	let readReceived = 1;
+	let counter = 1;
 	/* we received one more than we sent (`hello` :D) */
-	for(let i = 1; i < received.length; i++) {
-		result += explainMsg(idx++, sent[i - 1], 'Request', '', sent[i - 1].type === messageTypeToPresent);
-		result += explainMsg(idx++, received[i], 'Response', receivedDescriptions[i - 1], received[i].type === messageTypeToPresent);
+	for(const msg of description) {
+		if(msg.type === 'request') {
+			result += explainMsg(counter++, msg.message, 'Request', getDescriptionForMessage(msg.message, msg.description), msg.mark);
+		} else {
+			const response = received[readReceived++];
+			result += explainMsg(counter++, response, 'Response', getDescriptionForMessage(response, msg.description), msg.mark);
+		}
 	}
 	return result;
 }
 
 export async function documentServerMessageResponse({
-	shell, messagesToSend, documentResponses, messageTypeToPresent, title
+	shell, title, messageType, messages
 }: MessagePingPongDocumentationArguments): Promise<string> {
 	const start = performance.now();
 	const response = await inServerContext(shell, async socket => {
-		let messageType = 0;
-		for(const message of messagesToSend) {
-			socket.send(JSON.stringify(message) + '\n');
-			await socket.waitForMessage(documentResponses[messageType++].expectedType);
+		for(const metaMessage of messages) {
+			if(metaMessage.type === 'request') {
+				socket.send(JSON.stringify(metaMessage.message) + '\n');
+			} else {
+				await socket.waitForMessage(metaMessage.expectedType);
+			}
 		}
 		return socket.getMessages();
 	});
 	const end = performance.now();
-	title ??= `Example of <code>${messageTypeToPresent}</code> Message`;
+
+	guard(title !== undefined || messageType !== undefined, 'Either a title or a message type must be given');
+	title ??= `Example of the <code>${messageType}</code> Message`;
 	return `
 <details>
 <summary>${title}</summary>
@@ -105,7 +135,7 @@ _Note:_ even though we pretty-print these messages, they are sent as a single li
 The following lists all messages that were sent and received in case you want to reproduce the scenario:
 
 ${
-	explainPingPong(messagesToSend, response, documentResponses.map(d => d.description ?? ''), messageTypeToPresent)
+	explainPingPong(messages, response)
 }
 
 The complete round-trip took ${printAsMs(end - start)} (including time required to validate the messages, start, and stop the internal mock server).

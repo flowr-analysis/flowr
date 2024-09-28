@@ -14,6 +14,8 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
+import type {
+	ExecuteIntermediateResponseMessage } from '../../../cli/repl/server/messages/message-repl';
 import {
 	requestExecuteReplExpressionMessage,
 	responseExecuteReplEndMessage, responseExecuteReplIntermediateMessage
@@ -85,9 +87,23 @@ See the implementation of the request-file-analysis message for more information
 ${
 	await documentServerMessageResponse({
 		shell,
-		documentResponses: [{
-			expectedType: 'response-file-analysis',
-			description:  `
+		messageType: 'request-file-analysis',
+		messages:    [
+			{
+				type:        'request',
+				description: `Let' suppose you simply want to analyze the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}\n For this, you can send the following request:`,
+				message:     {
+					type:      'request-file-analysis',
+					id:        '1',
+					filetoken: 'x',
+					content:   'x <- 1\nx + 1'
+				},
+				mark: true
+			},
+			{
+				type:         'response',
+				expectedType: 'response-file-analysis',
+				description:  `
 
 The \`results\` field of the response effectively contains three keys of importance:
 
@@ -95,14 +111,8 @@ The \`results\` field of the response effectively contains three keys of importa
 - \`normalize\`: which contains the normalized AST, including ids (see the \`info\` field and the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) wiki page).
 - \`dataflow\`: especially important is the \`graph\` field which contains the dataflow graph as a set of root vertices (see the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) wiki page).
 			`
-		}],
-		messagesToSend: [{
-			type:      'request-file-analysis',
-			id:        '1',
-			filetoken: 'x',
-			content:   'x <- 1\nx + 1'
-		}], 
-		messageTypeToPresent: 'request-file-analysis'
+			}
+		]
 	})
 }
 
@@ -112,17 +122,20 @@ It contains a human-readable description *why* the analysis failed (see the erro
 ${
 	await documentServerMessageResponse({
 		shell,
-		title:             'Example Error Message',
-		documentResponses: [{
+		title:    'Example Error Message',
+		messages: [{
+			type:    'request',
+			message: {
+				type:     'request-file-analysis',
+				id:       '1',
+				filename: 'sample.R',
+				content:  'x <-'
+			}
+		}, {
+			type:         'response',
 			expectedType: 'error',
-		}],
-		messagesToSend: [{
-			type:     'request-file-analysis',
-			id:       '1',
-			filename: 'sample.R',
-			content:  'x <-'
-		}],
-		messageTypeToPresent: 'error'
+			mark:         true
+		}]
 	})
 }
 
@@ -139,8 +152,19 @@ For this, the analysis request may add \`cfg: true\` to its list of options.
 ${
 	await documentServerMessageResponse({
 		shell,
-		title:             'Requesting a Control Flow Graph',
-		documentResponses: [{
+		title:    'Requesting a Control Flow Graph',
+		messages: [{
+			type:    'request',
+			message: {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   cfgSample,
+				cfg:       true
+			},
+			mark: true
+		}, {
+			type:         'response',
 			expectedType: 'response-file-analysis',
 			description:  `
 The response looks basically the same as a response sent without the \`cfg\` flag. However, additionally it contains a \`cfg\` field. 
@@ -152,15 +176,7 @@ If you are interested in a visual representation of the control flow graph, see 
 	})()
 }).
 			`
-		}],
-		messagesToSend: [{
-			type:      'request-file-analysis',
-			id:        '1',
-			filetoken: 'x',
-			content:   cfgSample,
-			cfg:       true
-		}],
-		messageTypeToPresent: 'request-file-analysis'
+		}]
 	})
 }
 
@@ -169,32 +185,35 @@ If you are interested in a visual representation of the control flow graph, see 
 <a id="analysis-format-n-quads"></a>
 **Retrieve the Output as RDF N-Quads**
 
-The default response is formatted as JSON. 
-However, by specifying \`format: "n-quads"\`, you can retrieve the individual results (e.g., the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), 
-as [RDF N-Quads](https://www.w3.org/TR/n-quads/). 
+The default response is formatted as JSON.
+However, by specifying \`format: "n-quads"\`, you can retrieve the individual results (e.g., the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)),
+as [RDF N-Quads](https://www.w3.org/TR/n-quads/).
 This works with and without the control flow graph as described [above](#analysis-include-cfg).
 
 ${
 	await documentServerMessageResponse({
 		shell,
-		title:             'Requesting RDF N-Quads',	
-		documentResponses: [{
+		title:    'Requesting RDF N-Quads',
+		messages: [{
+			type:    'request',
+			message: {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   'x <- 1\nx + 1',
+				format:    'n-quads',
+				cfg:       true
+			},
+			mark: true
+		}, {
+			type:         'response',
 			expectedType: 'response-file-analysis',
 			description:  `
 Please note, that the base message format is still JSON. Only the individual results get converted. 
 While the context is derived from the \`filename\`, we currently offer no way to customize other parts of the quads 
 (please open a [new issue](${NewIssueUrl}) if you require this).
 			`
-		}],
-		messagesToSend: [{
-			type:      'request-file-analysis',
-			id:        '1',
-			filetoken: 'x',
-			content:   'x <- 1\nx + 1',
-			format:    'n-quads',
-			cfg:       true
-		}],
-		messageTypeToPresent: 'request-file-analysis'
+		}]
 	})
 }
 	`;
@@ -230,37 +249,43 @@ Additionally, you may pass \`"noMagicComments": true\` to disable the automatic 
 ${
 	await documentServerMessageResponse({
 		shell,
-		documentResponses: [{
+		messageType: 'request-slice',
+		messages:    [{
+			type:        'request',
+			description: `Let's assume you want to slice the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}. For this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
+			message:     {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   'x <- 1\nx + 1'
+			}
+		}, {
+			type:         'response',
 			expectedType: 'response-file-analysis',
 			description:  `
 See [above](#message-request-file-analysis) for the general structure of the response.
 			`
 		}, {
+			type:        'request',
+			description: 'Of course, the second slice criterion `2:1` is redundant for the input, as they refer to the same variable. It is only for demonstration purposes.',
+			message:     {
+				type:      'request-slice',
+				id:        '2',
+				filetoken: 'x',
+				criterion: ['2@x', '2:1']
+			},
+			mark: true
+		}, {
+			type:         'response',
 			expectedType: 'response-slice',
 			description:  `
-The original request is the logical succession of the file analysis using the \`filetoken\`: \`"x"\`.
-Of course, the second slice criterion \`2:1\` is redundant for the input, as they refer to the same variable. It is only for demonstration purposes:
-
-
 The \`results\` field of the response contains two keys of importance:
 
 - \`slice\`: which contains the result of the slicing (e.g., the ids included in the slice in \`result\`).
 - \`reconstruct\`: contains the reconstructed code, as well as additional meta information. 
                    The automatically selected lines correspond to additional filters (e.g., magic comments) which force the unconditiojnal inclusion of certain elements.
 `
-		}],
-		messagesToSend: [{
-			type:      'request-file-analysis',
-			id:        '1',
-			filetoken: 'x',
-			content:   'x <- 1\nx + 1'
-		}, {
-			type:      'request-slice',
-			id:        '2',
-			filetoken: 'x',
-			criterion: ['2@x', '2:1']
-		}],
-		messageTypeToPresent: 'request-slice'
+		}]
 	})
 }
 
@@ -333,26 +358,35 @@ The semantics of the error message are similar to that of the other messages.
 ${
 	await documentServerMessageResponse({
 		shell,
-		documentResponses: [{
-			expectedType: 'response-file-analysis',
-			description:  `
-See [above](#message-request-file-analysis) for the general structure of the response.
-			`
+		messageType: 'request-slice',
+		messages:    [{
+			type:    'request',
+			message: {
+				type:       'request-repl-execution',
+				id:         '1',
+				expression: ':help',
+			},
+			mark: true
 		}, {
+			type:         'response',
 			expectedType: 'response-repl-execution',
-			description:  `
+			description:  msg => {
+				return `
 The \`stream\` field (either \`stdout\` or \`stderr\`) informs you of the output's origin: either the standard output or the standard error channel. After this message follows the end marker.
-`
+
+
+<details>
+<summary>Pretty-Printed Result</summary>
+
+${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
+
+</details>
+				`;
+			}
 		}, {
+			type:         'response',
 			expectedType: 'end-repl-execution',
-			description:  ''
-		}],
-		messagesToSend: [{
-			type:       'request-repl-execution',
-			id:         '1',
-			expression: ':help'
-		}],
-		messageTypeToPresent: 'request-slice'
+		}]
 	})
 }
 	`;

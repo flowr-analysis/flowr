@@ -67,7 +67,7 @@ export class FakeSocket implements Socket {
 
 	public async waitForMessage(type: IdMessageBase['type']): Promise<void> {
 		return new Promise(resolve => {
-			// check if the message was already sent
+			// check if the message was already sent (poor mans check)
 			for(const message of this.messages) {
 				if(message.type === type) {
 					resolve();

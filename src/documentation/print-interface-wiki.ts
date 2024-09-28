@@ -5,7 +5,11 @@ import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
-import { documentAllMessages } from './data/server/doc-server-messages';
+import { documentAllMessages } from './data/server/doc-data-server-messages';
+import { codeBlock } from './doc-util/doc-code';
+import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
+import { removeRQuotes } from '../r-bridge/retriever';
+import { DockerName } from './doc-util/doc-docker';
 
 async function explainServer(shell: RShell): Promise<string> {
 	documentAllMessages();
@@ -22,6 +26,43 @@ Every message has to be given in a single line (i.e., without a newline in-betwe
 > connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'server', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.
 
 ${await printServerMessages(shell)}
+
+### 📡 Ways of Connecting
+
+#### Using Netcat (without websocket)
+
+Suppose, you want to launch the server using a docker container. Then, start the server by (forwarding the internal default port):
+
+${codeBlock('shell', `docker run -p1042:1042 -it --rm ${DockerName} --server`)}
+
+Now, using a tool like [_netcat_](https://linux.die.net/man/1/nc) to connect:
+
+${codeBlock('shell', 'nc 127.0.0.1 1042')}
+
+Within the started session, type the following message (as a single line) and press enter to see the response:
+
+${codeBlock('json', removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
+
+#### Using Python (without websocket)
+
+In Python, a similar process would look like this. After starting the server as with using [netcat](#using-netcat-without-websocket), you can use the following script to connect.
+
+<details>
+<summary>Simple Example</summary>
+
+${codeBlock('python', `
+import socket
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect(('127.0.0.1', 1042))
+    print(s.recv(4096))  # for the hello message
+
+    s.send(b'${removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage))}\\n')
+
+    print(s.recv(65536))  # for the response (please use a more sophisticated mechanism)
+`)}
+
+</details>
 `;
 }
 

@@ -77,6 +77,14 @@ export interface FileAnalysisResponseMessageJson extends IdMessageBase {
 	cfg?:    ControlFlowInformation
 }
 
+const jsonSchema = Joi.object({
+	type:    Joi.string().valid('response-file-analysis').required().description('The type of the message.'),
+	id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
+	format:  Joi.string().valid('json').required().description('The format of the results in json format.'),
+	results: Joi.object().required().description('The results of the analysis (one field per step).'),
+	cfg:     Joi.object().optional().description('The control flow information of the file, only present if requested.')
+}).description('The response in JSON format.');
+
 /**
  * Similar to {@link FileAnalysisResponseMessageJson} but using n-quads as serialization format.
  */
@@ -94,3 +102,19 @@ export interface FileAnalysisResponseMessageNQuads extends IdMessageBase {
 	 */
 	cfg?: string
 }
+
+const nquadsSchema = Joi.object({
+	type:    Joi.string().valid('response-file-analysis').required().description('The type of the message.'),
+	id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
+	format:  Joi.string().valid('n-quads').required().description('The format of the results in n-quads format.'),
+	results: Joi.object().required().description('The results of the analysis (one field per step). Quads are presented as string.'),
+	cfg:     Joi.string().optional().description('The control flow information of the file, only present if requested.')
+}).description('The response as n-quads.');
+
+export const analysisResponseMessage: MessageDefinition<FileAnalysisResponseMessageJson | FileAnalysisResponseMessageNQuads> = {
+	type:   'response-file-analysis',
+	schema: Joi.alternatives(
+		jsonSchema,
+		nquadsSchema
+	).required().description('The response to a file analysis request (based on the `format` field).')
+};

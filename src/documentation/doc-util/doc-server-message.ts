@@ -27,11 +27,11 @@ export function documentServerMessage(description: ServerMessageDescription): vo
 }
 
 export async function printServerMessages(shell: RShell): Promise<string> {
-	let text = '';
+	let text = '<ul>';
 	for(const message of messages) {
-		text += await printServerMessage(message, shell) + '\n\n';
+		text += '<li>' + await printServerMessage(message, shell) + '</li>\n\n';
 	}
-	return text;
+	return text + '</ul>';
 }
 
 export async function inServerContext<T>(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<T> | T): Promise<T> {
@@ -131,7 +131,7 @@ async function printServerMessage({
 	const base = defRequest ?? defResponse;
 	guard(base !== undefined, 'At least one of the definitions must be given');
 	return `
-<a id="message-${base.type}"></a>
+<a id="message-${base.type}"></a> 
 <details>
 
 <summary> <b>${title}</b> Message (<code>${base.type}</code>, ${type}) <br/> <i><span style="color:gray">${shortDescription}</span></i> </summary>
@@ -152,10 +152,12 @@ sequenceDiagram
 
 ${await text(shell)}
 
-&nbsp;
+<hr>
 
 ${getSchema(definitionPath, defRequest)}
 ${getSchema(definitionPath, defResponse)}
+
+<hr>
 
 </details>	
 	`;

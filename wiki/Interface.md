@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/limerent/GitHub/phd/flowr/src/documentation/print-interface-wiki.ts' on 2024-09-28, 11:59:19 UTC presenting an overview of flowR's interfaces (version: 2.0.25, using R version 4.4.1)._
+_This document was generated automatically from '/home/limerent/GitHub/phd/flowr/src/documentation/print-interface-wiki.ts' on 2024-09-28, 12:05:06 UTC presenting an overview of flowR's interfaces (version: 2.0.25, using R version 4.4.1)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -21,10 +21,11 @@ Every message has to be given in a single line (i.e., without a newline in-betwe
 > connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the <span title="Description: Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.">`--server`</span> flag (i.e., <span title="Description: Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.">`--server`</span> <span title="Description: If the server flag is set, use websocket for messaging">`--ws`</span>) when starting _flowR_ from the command line.
 
 <ul><li>
-<a id="message-hello"></a> 
+<a id="message-hello"></a>
+<b>Hello</b> Message (<code>hello</code>, response) <br/> <i><span style="color:gray">The server informs the client about the successful connection and provides Meta-Information.</span></i> 
 <details>
 
-<summary> <b>Hello</b> Message (<code>hello</code>, response) <br/> <i><span style="color:gray">The server informs the client about the successful connection and provides Meta-Information.</span></i> </summary>
+<summary> View Details </summary>
 
 <details open>
 <summary>Sequence Diagram</summary>
@@ -95,10 +96,11 @@ For the definition of the hello message, please see it's implementation at [`./s
 	</li>
 
 <li>
-<a id="message-request-file-analysis"></a> 
+<a id="message-request-file-analysis"></a>
+<b>Analysis</b> Message (<code>request-file-analysis</code>, request) <br/> <i><span style="color:gray">The server builds the dataflow graph for a given input file (or a set of files).</span></i> 
 <details>
 
-<summary> <b>Analysis</b> Message (<code>request-file-analysis</code>, request) <br/> <i><span style="color:gray">The server builds the dataflow graph for a given input file (or a set of files).</span></i> </summary>
+<summary> View Details </summary>
 
 <details open>
 <summary>Sequence Diagram</summary>
@@ -2900,7 +2902,7 @@ The `results` field of the response effectively contains three keys of importanc
 
 
 
-The complete round-trip took 12.99 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 12.43 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -2966,7 +2968,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-85946-k5VRx6M4p0ag-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-88738-TE73Tok4JsRB-.R\"}}"
 }
 ```
 
@@ -2974,7 +2976,7 @@ The first message is always a hello message.
 
 
 
-The complete round-trip took 1.21 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.10 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -7770,7 +7772,7 @@ If you are interested in a visual representation of the control flow graph, see 
 
 
 
-The complete round-trip took 8.33 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 10.41 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -7862,7 +7864,7 @@ While the context is derived from the `filename`, we currently offer no way to c
 
 
 
-The complete round-trip took 7.37 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.13 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -7946,10 +7948,11 @@ For the definition of the hello message, please see it's implementation at [`./s
 	</li>
 
 <li>
-<a id="message-request-slice"></a> 
+<a id="message-request-slice"></a>
+<b>Slice</b> Message (<code>request-slice</code>, request) <br/> <i><span style="color:gray">The server informs the client about the successful connection and provides Meta-Information.</span></i> 
 <details>
 
-<summary> <b>Slice</b> Message (<code>request-slice</code>, request) <br/> <i><span style="color:gray">The server informs the client about the successful connection and provides Meta-Information.</span></i> </summary>
+<summary> View Details </summary>
 
 <details open>
 <summary>Sequence Diagram</summary>
@@ -10815,7 +10818,7 @@ The `results` field of the response contains two keys of importance:
 
 
 
-The complete round-trip took 6.23 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 5.69 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 

@@ -17,6 +17,7 @@ export interface ServerMessageDescription {
 	readonly definitionPath:         string
 	readonly defRequest?:            MessageDefinition<IdMessageBase>
 	readonly defResponse?:           MessageDefinition<IdMessageBase>
+	readonly additionalDefs?:        MessageDefinition<IdMessageBase>[]
 	readonly text:                   (shell: RShell) => Promise<string>
 }
 
@@ -126,19 +127,16 @@ ${describeSchema(def.schema, markdownFormatter)}
 }
 
 async function printServerMessage({
-	mermaidSequenceDiagram, text, title, type, shortDescription, definitionPath, defRequest, defResponse
+	mermaidSequenceDiagram, text, title, shortDescription, definitionPath, defRequest, defResponse, additionalDefs
 }: ServerMessageDescription, shell: RShell): Promise<string> {
 	const base = defRequest ?? defResponse;
 	guard(base !== undefined, 'At least one of the definitions must be given');
 	return `
 <a id="message-${base.type}"></a>
-<b>${title}</b> Message (<code>${base.type}</code>, ${type}) <br/> <i><span style="color:gray">${shortDescription}</span></i> 
+<b>${title}</b> Message (<code>${base.type}</code>) 
 <details>
 
-<summary> View Details </summary>
-
-<details open>
-<summary>Sequence Diagram</summary>
+<summary style="color:gray"> View Details. <i>${shortDescription}</i> </summary>
 
 \`\`\`mermaid
 sequenceDiagram
@@ -149,14 +147,13 @@ sequenceDiagram
     ${mermaidSequenceDiagram}
 \`\`\`
 
-</details>
-
 ${await text(shell)}
 
 <hr>
 
 ${getSchema(definitionPath, defRequest)}
 ${getSchema(definitionPath, defResponse)}
+${additionalDefs?.map(def => getSchema(definitionPath, def)).join('\n') ?? ''}
 
 <hr>
 

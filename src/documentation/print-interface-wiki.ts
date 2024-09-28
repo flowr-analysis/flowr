@@ -29,7 +29,14 @@ ${await printServerMessages(shell)}
 
 ### 📡 Ways of Connecting
 
-#### Using Netcat (without websocket)
+<ol>
+
+<li>
+<a id="using-netcat-without-websocket"></a>Using Netcat
+
+<details>
+
+<summary>Without Websocket</summary>
 
 Suppose, you want to launch the server using a docker container. Then, start the server by (forwarding the internal default port):
 
@@ -43,12 +50,14 @@ Within the started session, type the following message (as a single line) and pr
 
 ${codeBlock('json', removeRQuotes(JSON.stringify({ type: 'request-file-analysis', content: 'x <- 1', id: '1' } satisfies FileAnalysisRequestMessage)))}
 
-#### Using Python (without websocket)
+</details>
+</li>
 
-In Python, a similar process would look like this. After starting the server as with using [netcat](#using-netcat-without-websocket), you can use the following script to connect.
-
+<li> Using Python
 <details>
-<summary>Simple Example</summary>
+<summary>Without Websocket</summary>
+
+In Python, a similar process would look like this. After starting the server as with using [netcat](#using-netcat-without-websocket), you can use the following script to connect:
 
 ${codeBlock('python', `
 import socket
@@ -63,6 +72,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 `)}
 
 </details>
+</li>
+
+</ol>
+
 `;
 }
 

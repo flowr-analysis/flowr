@@ -14,6 +14,10 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
+import {
+	requestExecuteReplExpressionMessage,
+	responseExecuteReplEndMessage, responseExecuteReplIntermediateMessage
+} from '../../../cli/repl/server/messages/message-repl';
 
 export function documentAllMessages() {
 
@@ -213,7 +217,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
     end
     deactivate  Server
 	`,
-		shortDescription: 'The server informs the client about the successful connection and provides Meta-Information.',
+		shortDescription: 'The server slices a file based on the given criteria.',
 		text:             async(shell: RShell) => {
 			return `
 To slice, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly slice the same file.
@@ -274,7 +278,83 @@ Within a document that is to be sliced, you can use magic comments to influence 
 - \`# flowr@include_this_line\` will cause the current line to be included, independent of if it is important for the slice.
 - \`# flowr@include_start\` and \`# flowr@include_end\` will cause the lines between them to be included, independent of if they are important for the slice. These magic comments can be nested but should appear on a separate line.
 
+	`;
+		}
+	});
 
+
+	documentServerMessage({
+		title:                  'REPL',
+		type:                   'request',
+		definitionPath:         '../cli/repl/server/messages/message-repl.ts',
+		defRequest:             requestExecuteReplExpressionMessage,
+		defResponse:            responseExecuteReplIntermediateMessage,
+		additionalDefs:         [responseExecuteReplEndMessage],
+		mermaidSequenceDiagram: `
+    Client->>+Server: request-repl-execution
+
+    alt
+        Server-->>Client: error
+    else
+
+    loop
+        Server-->>Client: response-repl-execution
+    end
+        Server-->>Client: end-repl-execution
+
+    end
+
+    deactivate  Server
+	`,
+		shortDescription: 'Access the read evaluate print loop of flowR.',
+		text:             async(shell: RShell) => {
+			return `
+> [!WARNING]
+> To execute arbitrary R commands with a request, the server has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
+> Please be aware that this introduces a security risk.
+
+
+The REPL execution message allows to send a REPL command to receive its output. 
+For more on the REPL, see the [introduction](${FlowrWikiBaseRef}/Overview#the-read-eval-print-loop-repl), or the [description below TODO TODO](#using-the-repl).
+You only have to pass the command you want to execute in the \`expression\` field. 
+Furthermore, you can set the \`ansi\` field to \`true\` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
+We strongly recommend you to make use of the \`id\` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
+
+> [!WARNING]
+> There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine. 
+> Please be very careful (and do not use ${getCliLongOptionOf('flowr', 'r-session-access')} if you are unsure).
+
+
+The answer on such a request is different from the other messages as the \`response-repl-execution\` message may be sent multiple times. 
+This allows to better handle requests that require more time but already output intermediate results.
+You can detect the end of the execution by receiving the \`end-repl-execution\` message.
+
+The semantics of the error message are similar to that of the other messages.
+${
+	await documentServerMessageResponse({
+		shell,
+		documentResponses: [{
+			expectedType: 'response-file-analysis',
+			description:  `
+See [above](#message-request-file-analysis) for the general structure of the response.
+			`
+		}, {
+			expectedType: 'response-repl-execution',
+			description:  `
+The \`stream\` field (either \`stdout\` or \`stderr\`) informs you of the output's origin: either the standard output or the standard error channel. After this message follows the end marker.
+`
+		}, {
+			expectedType: 'end-repl-execution',
+			description:  ''
+		}],
+		messagesToSend: [{
+			type:       'request-repl-execution',
+			id:         '1',
+			expression: ':help'
+		}],
+		messageTypeToPresent: 'request-slice'
+	})
+}
 	`;
 		}
 	});

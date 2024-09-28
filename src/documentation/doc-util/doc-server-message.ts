@@ -131,10 +131,11 @@ async function printServerMessage({
 	const base = defRequest ?? defResponse;
 	guard(base !== undefined, 'At least one of the definitions must be given');
 	return `
-<a id="message-${base.type}"></a> 
+<a id="message-${base.type}"></a>
+<b>${title}</b> Message (<code>${base.type}</code>, ${type}) <br/> <i><span style="color:gray">${shortDescription}</span></i> 
 <details>
 
-<summary> <b>${title}</b> Message (<code>${base.type}</code>, ${type}) <br/> <i><span style="color:gray">${shortDescription}</span></i> </summary>
+<summary> View Details </summary>
 
 <details open>
 <summary>Sequence Diagram</summary>

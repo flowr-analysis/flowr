@@ -1718,7 +1718,6 @@ We currently offer the following commands (this with a `[*]` suffix are availabl
 
 </details>
 
-
 ### Example: Retrieving the Dataflow Graph
 
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 

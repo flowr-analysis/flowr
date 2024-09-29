@@ -1,6 +1,7 @@
 ***This wiki page is currently under construction***
 
 This wiki page provides an explanation of the inner workings of _flowR_.
+You can explore the output of these steps, by using similarly named commands in the REPL (`:parse`, `:normalize`, and `:dataflow`).
 
 <!-- TOC -->
 - [Dataflow Analysis](#dataflow-analysis)

@@ -174,6 +174,10 @@ The following summarizes the configuration options:
 
 So you can configure _flowR_ by adding a file like the following:
 
+<details>
+
+<summary>Example Configuration File</summary>
+
 ${codeBlock('json', JSON.stringify(
 		{
 			ignoreSourceCalls: true,
@@ -190,6 +194,8 @@ ${codeBlock('json', JSON.stringify(
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }
+
+</details>
 
 <details> 
 <a id='configure-builtin-semantics'></a>

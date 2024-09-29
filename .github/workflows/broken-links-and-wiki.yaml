@@ -77,6 +77,7 @@ jobs:
           update_wiki_page "Capabilities" capabilities-markdown
           update_wiki_page "Dataflow Graph" wiki:df-graph
           update_wiki_page "Query API" wiki:query-api
+          update_wiki_page "Interface" wiki:interface
           
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
@@ -99,6 +100,7 @@ jobs:
         with:
           path: "wiki/"
           token: ${{ secrets.GH_DEPLOY_WIKI }}
+          ignore: ''
 
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0

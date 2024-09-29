@@ -9,5 +9,6 @@ export interface AutoGenHeaderArguments {
 export function autoGenHeader(
 	{ rVersion, filename, purpose, currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC') }: AutoGenHeaderArguments
 ) {
-	return `_This document was generated automatically from '${filename}' on ${currentDateAndTime} presenting an overview of flowR's ${purpose} (version: ${flowrVersion().format()}${ rVersion ? ', using R version ' + rVersion : ''})._`;
+	const shortenFilename = filename.replace(/^.*src\//, 'src/');
+	return `_This document was generated from '${shortenFilename}' on ${currentDateAndTime} presenting an overview of flowR's ${purpose} (v${flowrVersion().format()}${ rVersion ? ', using R v' + rVersion : ''})._`;
 }

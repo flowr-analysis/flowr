@@ -17,8 +17,7 @@ import { lineageCommand } from './repl-lineage';
 import { queryCommand, queryStarCommand } from './repl-query';
 
 function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, starredVersion?: ReplCommand): string {
-	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '') 
-	), f)}${script[1].description}`;
+	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
 	if(starredVersion) {
 		base += ` (star: ${starredVersion.description})`;
 	}
@@ -31,7 +30,7 @@ function printHelpForScript(script: [string, ReplCommand], f: OutputFormatter, s
 
 function printCommandHelp(formatter: OutputFormatter) {
 	const scriptHelp = [];
-	const cmds = commands();
+	const cmds = getReplCommands();
 	for(const c of Object.entries(cmds)) {
 		if(c[1].script || c[0].endsWith('*')) {
 			continue;
@@ -63,7 +62,7 @@ ${
 
 Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help', output.formatter)} after the command.
 ${
-	Array.from(Object.entries(commands())).filter(([, { script }]) => script).map(
+	Array.from(Object.entries(getReplCommands())).filter(([, { script }]) => script).map(
 		([command, { description }]) => `  ${bold(padCmd(':' + command), output.formatter)}${description}`).sort().join('\n')
 }
 
@@ -102,7 +101,7 @@ function hasModule(path: string): boolean {
 	}
 }
 
-function commands() {
+export function getReplCommands() {
 	if(commandsInitialized) {
 		return _commands;
 	}
@@ -153,7 +152,7 @@ let commandMapping: Record<string, string> | undefined = undefined;
 function initCommandMapping() {
 	commandMapping = {};
 	commandNames = [];
-	for(const [command, { aliases }] of Object.entries(commands())) {
+	for(const [command, { aliases }] of Object.entries(getReplCommands())) {
 		guard(commandMapping[command] as string | undefined === undefined, `Command ${command} is already registered!`);
 		commandMapping[command] = command;
 		for(const alias of aliases) {
@@ -173,7 +172,7 @@ export function getCommand(command: string): ReplCommand | undefined {
 	if(commandMapping === undefined) {
 		initCommandMapping();
 	}
-	return commands()[(commandMapping as Record<string, string>)[command]];
+	return getReplCommands()[(commandMapping as Record<string, string>)[command]];
 }
 
 export function asOptionName(argument: string): string{
@@ -188,10 +187,10 @@ export function asOptionName(argument: string): string{
 let _longestCommandName: number | undefined = undefined;
 export function longestCommandName(): number {
 	if(_longestCommandName === undefined) {
-		_longestCommandName = Array.from(Object.keys(commands()), k => k.endsWith('*') ? k.length + 3 : k.length).reduce((p, n) => Math.max(p, n), 0);
+		_longestCommandName = Array.from(Object.keys(getReplCommands()), k => k.endsWith('*') ? k.length + 3 : k.length).reduce((p, n) => Math.max(p, n), 0);
 	}
 	return _longestCommandName;
 }
-function padCmd<T>(string: T) {
+export function padCmd<T>(string: T) {
 	return String(string).padEnd(longestCommandName() + 2, ' ');
 }

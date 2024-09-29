@@ -56,7 +56,7 @@ function printFlags(flags: object | undefined): string {
 	}
 	let flagText = '';
 	if('presence' in flags) {
-		flagText += flags['presence'] === 'required' ? 'required' : 'optional';
+		flagText += String(flags['presence']);
 	}
 	return flagText.trim().length > 0 ? '[' + flagText + ']' : '';
 }

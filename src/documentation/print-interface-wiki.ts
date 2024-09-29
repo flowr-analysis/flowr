@@ -1,14 +1,14 @@
 import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { FlowrWikiBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrNpmRef, FlowrWikiBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllMessages } from './data/server/doc-data-server-messages';
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
-import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retriever';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -17,6 +17,8 @@ import { flowrConfigFileSchema } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
+import { NewIssueUrl } from './doc-util/doc-issue';
+import { PipelineExecutor } from '../core/pipeline-executor';
 
 async function explainServer(shell: RShell): Promise<string> {
 	documentAllMessages();
@@ -36,8 +38,8 @@ ${await printServerMessages(shell)}
 
 ### 📡 Ways of Connecting
 
-If you are interested in clients that communicate with _flowR_, please check out the [R adapter](https://github.com/flowr-analysis/flowr-r-adapter)
-as well as the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr). 
+If you are interested in clients that communicate with _flowR_, please check out the [R adapter](${FlowrGithubBaseRef}/flowr-r-adapter)
+as well as the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr). 
 
 <ol>
 
@@ -202,7 +204,7 @@ ${codeBlock('json', JSON.stringify(
   | Type          | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
   | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
-  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose). | \`{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }\` |
+  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
 
 
@@ -219,59 +221,76 @@ ${describeSchema(flowrConfigFileSchema, markdownFormatter)}
 	`;
 }
 
-function explainWritingCode(): string {
+function explainWritingCode(shell: RShell): string {
 	return `
 
 
-_flowR_ can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page for more information).
+_flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classes and interfaces that are interesting for extension writers 
+(see the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the [core](${FlowrWikiBaseRef}/Core) wiki page for more information).
 
-### Interfacing with R by Using the \`RShell\`
+### Using the \`${RShell.name}\` to Interact with R
 
-The \`RShell\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
+The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
 For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
-> Each \`RShell\` controls a new instance of the R&nbsp;interpreter, make sure to call \`RShell::close()\` when you are done.
+> Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.
 
-You can start a new "session" simply by constructing a new object with \`new RShell()\`.
-However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the in-code *documentation* for more information.
+You can start a new "session" simply by constructing a new object with \`new ${RShell.name}()\`.
 
-With a shell object (let's call it \`shell\`), you can execute R code by using \`RShell::sendCommand\`, for example \`shell.sendCommand("1 + 1")\`. However, this does not return anything, so if you want to collect the output of your command, use \`RShell::sendCommandWithOutput\` instead.
+However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-Besides that, the command \`RShell::tryToInjectHomeLibPath\` may be of interest, as it enables all libraries available on the host system.
+With a shell object (let's call it \`shell\`), you can execute R code by using \`${RShell.name}::${shell.sendCommand.name}\`, 
+for example \`shell.${shell.sendCommand.name}("1 + 1")\`. 
+However, this does not return anything, so if you want to collect the output of your command, use \`${RShell.name}::${shell.sendCommandWithOutput.name}\` instead.
+
+Besides that, the command \`${RShell.name}::${shell.tryToInjectHomeLibPath.name}\` may be of interest, as it enables all libraries available on the host system.
 
 ### The Pipeline Executor
 
-Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
-With this, we restructured _flowR_'s *hardcoded* pipeline to be
-far more flexible. Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and, what we call 'decorations' of these steps. In short, if you still "just want to slice", you can do it like this:
+Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
+However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow&20Graph) repeatedly proves to be the more interesting part.
+With this, we restructured _flowR_'s originally *hardcoded* pipeline to be far more flexible. 
+Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and what we call 'decorations' of these steps. 
+In short, if you still "just want to slice" you can do it like this:
 
-\`\`\`typescript
-const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
-  shell:     new RShell(),
-  request:   requestFromInput('x <- 1\\nx + 1'),
+${
+	codeBlock('ts', `
+const slicer = new ${PipelineExecutor.name}(DEFAULT_SLICING_PIPELINE, {
+  shell:     new ${RShell.name}(),
+  request:   ${requestFromInput.name}('x <- 1\\nx + 1'),
   criterion: ['2@x']
 })
 const slice = await slicer.allRemainingSteps()
 // console.log(slice.reconstruct.code)
-\`\`\`
+`)
+}
 
-If you compare this, with what you would have done with the old (and removed) \`SteppingSlicer\`, this essentially just requires you to replace the \`SteppingSlicer\` with the \`PipelineExecutor\` and to pass the \`DEFAULT_SLICING_PIPELINE\` as the first argument.
-The \`PipelineExecutor\`...
+<details>
 
-1. allows to investigate the results of all intermediate steps
-2. can be executed step-by-step
-3. can repeat steps (e.g., to calculate multiple slices on the same input)
+<summary style='color:gray'>More Information</summary>
+
+If you compare this, with what you would have done with the old (and removed) \`SteppingSlicer\`, 
+this essentially just requires you to replace the \`SteppingSlicer\` with the \`${PipelineExecutor.name}\` 
+and to pass the \`DEFAULT_SLICING_PIPELINE\` as the first argument.
+The \`${PipelineExecutor.name}\`...
+
+1. allows investigating the results of all intermediate steps
+2. Can be executed step-by-step
+3. Can repeat steps (e.g., to calculate multiple slices on the same input)
 
 See the in-code documentation for more information.
 
+</details>
+
 ### Generate Statistics
 
-#### Extract Statistics with \`extractUsageStatistics()\`
 
-#### Adding a New Feature to Extract
+<details>
 
-In this example we construct a new feature to extract, with the name "*example*".
+<summary>Adding a New Feature to Extract</summary>
+
+In this example, we construct a new feature to extract, with the name "*example*".
 Whenever this name appears, you may substitute this with whatever name fits your feature best (as long as the name is unique).
 
 1. **Create a new file in \`src/statistics/features/supported\`**\\
@@ -332,9 +351,10 @@ Now we could do a lot of further processing, but for simplicity, we only record 
 appendStatisticsFile(example.name, 'comments', comments, input.filepath)
 \`\`\`
 
-We use \`example.name\` to avoid duplication with the name that we have assigned to the feature. It corresponds to the name of the folder in the statistics output.
+We use \`example.name\` to avoid duplication with the name that we’ve assigned to the feature. It corresponds to the name of the folder in the statistics output.
 \`'comments'\` refers to a freely chosen (but unique) name, that will be used as the name for the output file within the folder. The \`comments\` variable holds the result of the query, which is an array of nodes. Finally, we pass the \`filepath\` of the file that was analyzed (if known), so that it can be added to the statistics file (as additional information).
 
+</details>
 	`;
 }
 
@@ -371,7 +391,7 @@ ${explainConfigFile()}
 <a id='writing-code'></a>
 ## ⚒️ Writing Code
 
-${explainWritingCode()}
+${explainWritingCode(shell)}
 
 `;
 }

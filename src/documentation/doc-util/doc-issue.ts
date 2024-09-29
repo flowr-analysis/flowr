@@ -1,1 +1,3 @@
-export const NewIssueUrl = 'https://github.com/flowr-analysis/flowr/issues/new/choose';
+import { FlowrGithubBaseRef } from './doc-files';
+
+export const NewIssueUrl = `${FlowrGithubBaseRef}/flowr/issues/new/choose`;

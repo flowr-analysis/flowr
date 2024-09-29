@@ -162,7 +162,8 @@ function explainConfigFile(): string {
 
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory). 
-You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')}.
+You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+
 The following summarizes the configuration options:
 
 

@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-09-29, 09:37:05 UTC presenting an overview of flowR's interfaces (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-09-29, 09:38:30 UTC presenting an overview of flowR's interfaces (v2.0.25, using R v4.4.1)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -220,7 +220,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 15.94 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 13.20 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -297,7 +297,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-56795-fNl4GlwT3z45-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-57402-yyQUED37yPvN-.R\"}}"
 }
 ```
 
@@ -306,7 +306,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 3.05 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.29 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -399,7 +399,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 9.53 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.30 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -493,7 +493,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 7.43 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.25 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -769,7 +769,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 7.40 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.38 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1024,7 +1024,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.21 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.08 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1274,7 +1274,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 1
+        "timing": 0
       },
       "kinds": {
         "visualize": {
@@ -1309,7 +1309,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 24.27 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 19.05 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1554,7 +1554,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 4.89 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 4.88 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1769,7 +1769,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.01 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _2.02 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1984,7 +1984,7 @@ exprlist
 
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
 By default, flowR looks for a file named `flowr.json` in the current working directory (or any higher directory). 
-You can also specify a different file with <span title="Description (Command Line Argument): The name of the configuration file to use">`--config-file`</span>.
+You can also specify a different file with <span title="Description (Command Line Argument): The name of the configuration file to use">`--config-file`</span> or pass the configuration inline using <span title="Description (Command Line Argument): The flowR configuration to use, as a JSON string">`--config-json`</span>.
 The following summarizes the configuration options:
 
 

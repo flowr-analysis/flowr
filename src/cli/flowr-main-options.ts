@@ -84,3 +84,5 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 	},
 	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' }
 ];
+
+export const defaultConfigFile = 'flowr.json';

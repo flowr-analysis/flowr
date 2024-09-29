@@ -73,7 +73,7 @@ function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '',
 
 ${desc}
 
-${msgPrettyPrint.length > 5_000 ? 'As the message is pretty long, we inhibit pretty printing and syntax highlighting:' : ''}
+${msgPrettyPrint.length > 5_000 ? '_As the message is pretty long, we inhibit pretty printing and syntax highlighting:_' : ''}
 ${codeBlock(msgPrettyPrint.length > 5_000 ? 'text' : 'json', msgPrettyPrint.length > 5_000 ? JSON.stringify(msg) : msgPrettyPrint)}
 
 </details>

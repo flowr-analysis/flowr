@@ -1,1 +1,1 @@
-export const DockerName = 'eagleoutpost/flowr';
+export const DockerName = 'eagleoutice/flowr';

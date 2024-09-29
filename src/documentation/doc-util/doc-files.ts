@@ -1,3 +1,4 @@
+import fs from 'fs';
 
 export const RemoteFlowrFilePathBaseRef = 'https://github.com/flowr-analysis/flowr/tree/main/';
 export const FlowrWikiBaseRef = 'https://github.com/flowr-analysis/flowr/wiki/';
@@ -10,3 +11,7 @@ export function getFilePathMd(path: string): string {
 	return `[\`${relative}\`](${RemoteFlowrFilePathBaseRef}${relative})`;
 }
 
+export function getFileContentFromRoot(path: string): string {
+	const fullpath = require.resolve('../../../' + path);
+	return fs.readFileSync(fullpath, 'utf-8');
+}

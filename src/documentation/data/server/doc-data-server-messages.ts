@@ -260,7 +260,7 @@ ${
 		messageType: 'request-slice',
 		messages:    [{
 			type:        'request',
-			description: `Let's assume you want to slice the following script:\n ${codeBlock('r', 'x <- 1\nx + 1')}.\n\n For this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
+			description: `Let's assume you want to slice the following script:\n${codeBlock('r', 'x <- 1\nx + 1')}\n\nFor this we first request the analysis, using a \`filetoken\` of \`x\` to slice the file in the next request.`,
 			message:     {
 				type:      'request-file-analysis',
 				id:        '1',
@@ -428,7 +428,7 @@ ${
 		messageType: 'request-query',
 		messages:    [{
 			type:        'request',
-			description: `Let's assume you want to query the following script:\n ${codeBlock('r', exampleQueryCode)}.\n\n For this we first request the analysis, using a dummy \`filetoken\` of \`x\` to slice the file in the next request.`,
+			description: `Let's assume you want to query the following script:\n${codeBlock('r', exampleQueryCode)}.\n\nFor this we first request the analysis, using a dummy \`filetoken\` of \`x\` to slice the file in the next request.`,
 			message:     {
 				type:      'request-file-analysis',
 				id:        '1',

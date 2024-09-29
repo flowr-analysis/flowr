@@ -26,7 +26,7 @@ import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
 import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
-import { flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 
 export const toolName = 'flowr';
 
@@ -77,7 +77,6 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
-export const defaultConfigFile = 'flowr.json';
 let usedConfig = false;
 if(options['config-json']) {
 	const config = parseConfig(options['config-json']);

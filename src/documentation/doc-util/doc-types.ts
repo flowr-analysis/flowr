@@ -4,6 +4,7 @@ import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
 import path from 'path';
 import { escapeMarkdown } from '../../util/mermaid/mermaid';
+import {codeBlock} from "./doc-code";
 
 /* basics generated */
 
@@ -60,6 +61,20 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
 }
 
+export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
+	// if the type is required, partial, ... we need to follow the generic reference
+	const node = type.typeName;
+	if(ts.isQualifiedName(node)) {
+		return [node.right.getText(sourceFile) ?? ''];
+	}
+	const args = type.typeArguments?.map(arg => arg.getText(sourceFile)) ?? [];
+	const nodeLexeme = node.getText(sourceFile) ?? ''
+	if(['Pick', 'Partial', 'Required', 'Readonly'].map(s => nodeLexeme.startsWith(s))) {
+		return args
+	}
+	return [nodeLexeme, ...args];
+}
+
 function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
@@ -93,7 +108,6 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			});
 		} else if(ts.isTypeAliasDeclaration(node)) {
 			const typeName = node.name?.getText(sourceFile) ?? '';
-
 			let baseTypes: string[] = [];
 			if(ts.isIntersectionTypeNode(node.type) || ts.isUnionTypeNode(node.type)) {
 				baseTypes = node.type.types
@@ -101,7 +115,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					.map(typeNode => (typeNode)?.getText(sourceFile) ?? '')
 					.map(dropGenericsFromType);
 			} else if(ts.isTypeReferenceNode(node.type)) {
-				baseTypes = [node.type.getText(sourceFile) ?? ''];
+				baseTypes = [...followTypeReference(node.type, sourceFile)];
 			}
 
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
@@ -192,7 +206,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 
 function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption) {
 	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeName, options);
-	return `
+	return nodeLines.length === 0 && edgeLines.length === 0 ? '' : `
 classDiagram
 direction RL
 ${nodeLines.join('\n')}
@@ -206,7 +220,7 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 	program: ts.Program
 } {
 	const { files, program } = getSourceFiles(fileNames);
-	guard(files.length > 0, 'No source files found');
+	guard(files.length > 0, () => `No source files found for ${JSON.stringify(fileNames)}`);
 	const withProgram = { ...options, program };
 	const hierarchyList = collectHierarchyInformation(files, withProgram);
 	return {
@@ -217,7 +231,8 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 }
 
 export interface GetTypesAsMermaidOption {
-	readonly rootFolder:   string;
+	readonly rootFolder?:  string;
+	readonly files?:       readonly string[];
 	readonly typeName:     string;
 	readonly inlineTypes?: readonly string[]
 }
@@ -226,18 +241,35 @@ interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
 	readonly program: ts.Program;
 }
 
-export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): {
+export interface MermaidTypeReport {
 	text:    string,
 	info:    TypeElementInSource[],
 	program: ts.Program
-} {
-	const files = [];
-	for(const fileBuff of fs.readdirSync(options.rootFolder, { recursive: true })) {
-		const file = fileBuff.toString();
-		if(file.endsWith('.ts')) {
-			files.push(path.join(options.rootFolder, file));
+}
+
+export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): MermaidTypeReport {
+	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
+	const files = [...options.files ?? []];
+	if(options.rootFolder) {
+		for (const fileBuff of fs.readdirSync(options.rootFolder, {recursive: true})) {
+			const file = fileBuff.toString();
+			if (file.endsWith('.ts')) {
+				files.push(path.join(options.rootFolder, file));
+			}
 		}
 	}
 	return getTypesFromFileAsMermaid(files, options);
 }
 
+
+export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, nesting = 0): string {
+	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
+	const indent = ' '.repeat(nesting * 2);
+	const bold = node.kind === 'interface' ? '**' : '';
+	const sep = node.comments ? '\n\n' : '\n';
+
+	let text = node.comments?.join('\n') ?? '';
+	const code = node.node.getText(program.getSourceFile(node.node.getSourceFile().fileName));
+	text += `\n<details><summary style="color:gray">Implemented at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	return `${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+}

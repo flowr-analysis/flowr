@@ -27,6 +27,12 @@ import {
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
+import {getTypesFromFolderAsMermaid, implSnippet, MermaidTypeReport} from "./doc-util/doc-types";
+import {block, details} from "./doc-util/doc-structure";
+import {codeBlock} from "./doc-util/doc-code";
+import path from "path";
+import {prefixLines} from "./doc-util/doc-general";
+import {recoverName} from "../r-bridge/lang-4.x/ast/model/processing/node-id";
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -81,7 +87,7 @@ ${subExplanations.length > 0 ? await printAllSubExplanations(shell, subExplanati
 	`;
 }
 
-async function getVertexExplanations(shell: RShell): Promise<string> {
+async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
 	/* we use the map to ensure order easily :D */
 	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
 
@@ -89,7 +95,37 @@ async function getVertexExplanations(shell: RShell): Promise<string> {
 		shell:            shell,
 		name:             'Value Vertex',
 		type:             VertexType.Value,
-		description:      'Describes a constant value (numbers, logicals, strings, ...)',
+		description:      `
+Describes a constant value (numbers, booleans/logicals, strings, ...).
+In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
+
+${
+			implSnippet(
+				vertexType.info.find(e => e.name === 'DataflowGraphValue'), vertexType.program
+			)
+		}
+
+${
+			block({
+				type: 'NOTE',
+				content: `
+The value is not stored in the vertex itself, but in the normalized AST.
+To access the value, you can use the \`id\` of the vertex to access the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)
+and ask for the value associated with it.
+				`,
+				title: 'Retrieving the Values of Constants'
+			})
+		}
+		
+Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
+For example, an access operation like \`df$column\` will treat the column name as a constant value.
+
+${
+			details('Example: Semantics Create a Value',
+				'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant!\n' + 
+				await printDfGraphForCode(shell, 'df$column'))
+		}
+		`,
 		code:             '42',
 		expectedSubgraph: emptyGraph().constant('0')
 	}, []]);
@@ -280,6 +316,17 @@ async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_P
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
+	/* we collect type information on the graph */
+	const vertexType = getTypesFromFolderAsMermaid({
+		files: [path.resolve('./src/dataflow/graph/vertex.ts')],
+		typeName: 'DataflowGraphVertexInfo',
+		inlineTypes: ['MergeableRecord']
+	})
+	const edgeType = getTypesFromFolderAsMermaid({
+		files: [path.resolve('./src/dataflow/graph/edge.ts')],
+		typeName: 'EdgeType',
+		inlineTypes: ['MergeableRecord']
+	})
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
 This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
@@ -312,6 +359,8 @@ The following vertices types exist:
 		([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 	).join('\n1. ')}
 
+${vertexType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', vertexType.text)) : ''}
+
 </details>
 
 <details open>
@@ -324,6 +373,8 @@ The following edges types exist, internally we use bitmasks to represent multipl
 		([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 	).join('\n1. ')}
 
+${edgeType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', edgeType.text)) : ''}
+
 </details>
 
 
@@ -331,9 +382,17 @@ From an implementation perspective all of these types are represented by respect
 
 The following sections present details on the different types of vertices and edges, including examples and explanations.
 
+> [!NOTE] Linking the Dataflow Graph to the Normalized AST
+> Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST).
+> So if you want more information about the respective vertex, you can usually access more information 
+> using the \`${DataflowGraph.name}::idMap\` linked to the dataflow graph:
+${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
+> In case you just need the name (\`lexeme\`) of the respective vertex, ${recoverName.name} (defined in ${getFilePathMd('../r-bridge/lang-4.x/ast/model/processing/node-id.ts')}) can help you out:
+${prefixLines(codeBlock('ts', 'const name = recoverName(id, graph.idMap);'), '> ')}
+
 ## Vertices
 
-${await getVertexExplanations(shell)}
+${await getVertexExplanations(shell, vertexType)}
 
 ## Edges
 
@@ -437,7 +496,7 @@ Besides marking potential exits, the exit points also provide information about 
 ### Unknown Side Effects
 
 In case _flowR_ encounters a function call that it cannot handle, it marks the call as an unknown side effect.
-You can find these as part of the dataflow graph, specifically as \`unknownSideEffects\` (with a leading underscore if sesrialized as Json).
+You can find these as part of the dataflow graph, specifically as \`unknownSideEffects\` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the \`load\` call and therefore marks it as such (marked in bright red):
 
 ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}

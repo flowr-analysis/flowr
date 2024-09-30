@@ -44,7 +44,7 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): ${[...mark].join(', ')}.` : ''}
+${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): {${[...mark].join(', ')}}.` : ''}
 We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + JSON.stringify(result.dataflow.graph.unknownSideEffects, jsonReplacer) + ')' : 'no unknown side effects'} during the analysis.
 
 \`\`\`r

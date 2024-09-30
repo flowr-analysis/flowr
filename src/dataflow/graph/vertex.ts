@@ -41,6 +41,9 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	controlDependencies: ControlDependency[] | undefined
 }
 
+/**
+ * Marker vertex for a value in the dataflow of the program.
+ */
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */

@@ -4,7 +4,7 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import type { TypeElementInSource } from './doc-util/doc-types';
+import {implSnippet, TypeElementInSource} from './doc-util/doc-types';
 import { getTypePathLink, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
@@ -16,18 +16,11 @@ const hide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial'
 function printHierarchy(prg: ts.Program, hierarchy: TypeElementInSource[], root: string, nesting = 0): string {
 
 	const node = hierarchy.find(e => e.name === root);
-	const indent = ' '.repeat(nesting * 2);
 	if(!node) {
 		return '';
 	}
 
-	const bold = node.kind === 'interface' ? '**' : '';
-	const sep = node.comments ? '\n\n' : '\n';
-
-	let text = node.comments?.join('\n') ?? '';
-	const code = node.node.getText(prg.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n<details><summary style="color:gray">Implemented at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
-	const result = [`${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`];
+	const result = [implSnippet(node, prg, nesting)];
 
 	for(const baseType of node.extends) {
 		if(hide.includes(baseType)) {

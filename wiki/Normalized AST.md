@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 10:31:23 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 12:30:24 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -55,7 +55,7 @@ x"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _8.32 ms_ (including parsing) within the generation environment.
+The analysis required _14.93 ms_ (including parsing) within the generation environment.
 
 ```r
 x <- 2 * 3 + 1
@@ -148,12 +148,7 @@ class RFunctionDefinition~Info = NoInfo~
     RFunctionDefinition : type#58; RType.FunctionDefinition
     RFunctionDefinition : parameters#58; RParameter#60;Info#62;#91;#93;
     RFunctionDefinition : body#58; RNode#60;Info#62;
-click RFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L14" "#96;#96;#96;r function(#60;parameters#62;) #60;body#62;
-#96;#96;#96;
-or#58;
-#96;#96;#96;r
-#92;(#60;parameters#62;) #60;body#62;
-#96;#96;#96;"
+click RFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-function-definition.ts#L14" "#96;#96;#96;r function(#60;parameters#62;) #60;body#62; #96;#96;#96; or#58; #96;#96;#96;r #92;(#60;parameters#62;) #60;body#62; #96;#96;#96;"
     RFunctionDefinition : type#58; RType [from Base]
     RFunctionDefinition : lexeme#58; LexemeType [from Base]
     RFunctionDefinition : info#58; Info #38; Source [from Base]
@@ -214,8 +209,7 @@ class RComment~Info = NoInfo~
     <<interface>> RComment
     RComment : type#58; RType.Comment
     RComment : content#58; string
-click RComment href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9" "#96;#96;#96;r # I am a line comment
-#96;#96;#96;"
+click RComment href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-comment.ts#L9" "#96;#96;#96;r # I am a line comment #96;#96;#96;"
     RComment : location#58; SourceRange [from Location]
 class RLineDirective~Info = NoInfo~
     <<interface>> RLineDirective
@@ -238,8 +232,7 @@ class RForLoop~Info = NoInfo~
     RForLoop : variable#58; RSymbol#60;Info, string#62;
     RForLoop : vector#58; RNode#60;Info#62;
     RForLoop : body#58; RExpressionList#60;Info#62;
-click RForLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11" "#96;#96;#96;r for(#60;variable#62; in #60;vector#62;) #60;body#62;
-#96;#96;#96;"
+click RForLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts#L11" "#96;#96;#96;r for(#60;variable#62; in #60;vector#62;) #60;body#62; #96;#96;#96;"
     RForLoop : type#58; RType [from Base]
     RForLoop : lexeme#58; LexemeType [from Base]
     RForLoop : info#58; Info #38; Source [from Base]
@@ -248,8 +241,7 @@ class RRepeatLoop~Info = NoInfo~
     <<interface>> RRepeatLoop
     RRepeatLoop : type#58; RType.RepeatLoop
     RRepeatLoop : body#58; RExpressionList#60;Info#62;
-click RRepeatLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10" "#96;#96;#96;r repeat #60;body#62;
-#96;#96;#96;"
+click RRepeatLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop.ts#L10" "#96;#96;#96;r repeat #60;body#62; #96;#96;#96;"
     RRepeatLoop : type#58; RType [from Base]
     RRepeatLoop : lexeme#58; LexemeType [from Base]
     RRepeatLoop : info#58; Info #38; Source [from Base]
@@ -259,8 +251,7 @@ class RWhileLoop~Info = NoInfo~
     RWhileLoop : type#58; RType.WhileLoop
     RWhileLoop : condition#58; RNode#60;Info#62;
     RWhileLoop : body#58; RExpressionList#60;Info#62;
-click RWhileLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10" "#96;#96;#96;r while(#60;condition#62;) #60;body#62;
-#96;#96;#96;"
+click RWhileLoop href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-while-loop.ts#L10" "#96;#96;#96;r while(#60;condition#62;) #60;body#62; #96;#96;#96;"
     RWhileLoop : type#58; RType [from Base]
     RWhileLoop : lexeme#58; LexemeType [from Base]
     RWhileLoop : info#58; Info #38; Source [from Base]
@@ -271,8 +262,7 @@ class RIfThenElse~Info = NoInfo~
     RIfThenElse : condition#58; RNode#60;Info#62;
     RIfThenElse : then#58; RExpressionList#60;Info#62;
     RIfThenElse : otherwise#58; RExpressionList#60;Info#62;
-click RIfThenElse href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10" "#96;#96;#96;r if(#60;condition#62;) #60;then#62; #91;else #60;otherwise#62;#93;
-#96;#96;#96;"
+click RIfThenElse href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-if-then-else.ts#L10" "#96;#96;#96;r if(#60;condition#62;) #60;then#62; #91;else #60;otherwise#62;#93; #96;#96;#96;"
     RIfThenElse : type#58; RType [from Base]
     RIfThenElse : lexeme#58; LexemeType [from Base]
     RIfThenElse : info#58; Info #38; Source [from Base]
@@ -402,7 +392,7 @@ RPipe .. RNode
 ```
 
 
-_The generation of the class diagram required 550.14 ms._
+_The generation of the class diagram required 899.36 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -1139,7 +1129,7 @@ product"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _6.95 ms_ (including parsing) within the generation environment.
+The analysis required _13.57 ms_ (including parsing) within the generation environment.
 
 ```r
 sum <- 0

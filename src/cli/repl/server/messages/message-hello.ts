@@ -1,5 +1,5 @@
 import type { VersionInformation } from '../../commands/repl-version';
-import type { IdMessageBase, MessageDefinition } from './messages';
+import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
 
 /**

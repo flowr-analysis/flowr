@@ -1,4 +1,4 @@
-import type { IdMessageBase, MessageDefinition } from './messages';
+import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
 import { QueriesSchema } from '../../../../queries/query-schema';
 import type { Queries,  QueryResults, SupportedQueryTypes } from '../../../../queries/query';

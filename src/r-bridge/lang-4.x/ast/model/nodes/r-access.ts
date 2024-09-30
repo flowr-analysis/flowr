@@ -13,6 +13,9 @@ interface RAccessBase<Info = NoInfo> extends Base<Info>, Location {
 	operator:      '[' | '[[' | '$' | '@';
 }
 
+/**
+ * Represents an R named access operation with `$` or `@`, the field is a string.
+ */
 export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
 	operator: '$' | '@';
 	access:   [RUnnamedArgument<Info>];

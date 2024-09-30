@@ -2,7 +2,7 @@ import type { RShell } from '../../r-bridge/shell';
 import { getFilePathMd } from './doc-files';
 import { describeSchema } from '../../util/schema';
 import { markdownFormatter } from '../../util/ansi';
-import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/messages';
+import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
 import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
 import { withSocket } from '../../../test/functionality/_helper/net';
 import { codeBlock } from './doc-code';

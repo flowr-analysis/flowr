@@ -1,5 +1,5 @@
 import type { SingleSlicingCriterion } from '../../../../slicing/criterion/parse';
-import type { IdMessageBase, MessageDefinition } from './messages';
+import type { IdMessageBase, MessageDefinition } from './all-messages';
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import Joi from 'joi';
 

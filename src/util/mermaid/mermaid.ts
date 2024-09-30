@@ -14,7 +14,9 @@ const replacements = {
 	'_':   '#95;',
 	'{':   '#123;',
 	'}':   '#125;',
-	'&':   '#38;'
+	'&':   '#38;',
+	'\'':  '#39;',
+	':':   '#58;',
 };
 
 export function escapeMarkdown(text: string): string {

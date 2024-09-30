@@ -9,7 +9,7 @@ import { defaultEnv } from '../../test/functionality/_helper/dataflow/environmen
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text';
 import { PipelineExecutor } from '../core/pipeline-executor';
@@ -26,6 +26,7 @@ import {
 	getAllEdges,
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
+import { getReplCommand } from './doc-util/doc-cli-option';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -289,13 +290,17 @@ Please be aware that the accompanied [dataflow information](#dataflow-informatio
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
 Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.	
 
-${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
+> [!TIP]
+> If you want to investigate the dataflow graph, 
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')} 
+> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
 
+${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and 
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
-Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type although they are explicitly no data dependency).
+Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, although they are explicitly no data dependency).
 
 <details open>
 

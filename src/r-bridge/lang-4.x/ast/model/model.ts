@@ -1,7 +1,6 @@
 import type { SourceRange } from '../../../../util/range';
 import type { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
-import type { RNa, RNull } from '../../convert-values';
 import type { RNumber } from './nodes/r-number';
 import type { RString } from './nodes/r-string';
 import type { RLogical } from './nodes/r-logical';
@@ -121,7 +120,7 @@ export interface Namespace {
  * This subtype of {@link RNode} represents all types of constants
  * represented in the normalized AST.
  */
-export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
+export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>
 /**
  * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
  * normalized AST.

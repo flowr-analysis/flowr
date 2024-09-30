@@ -1,4 +1,4 @@
-import type { IdMessageBase, MessageDefinition } from './messages';
+import type { IdMessageBase, MessageDefinition } from './all-messages';
 import * as Joi from 'joi';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';

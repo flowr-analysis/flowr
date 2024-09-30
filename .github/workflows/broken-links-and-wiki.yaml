@@ -78,6 +78,7 @@ jobs:
           update_wiki_page "Dataflow Graph" wiki:df-graph
           update_wiki_page "Query API" wiki:query-api
           update_wiki_page "Interface" wiki:interface
+          update_wiki_page "Normalized AST" wiki:normalized-ast
           
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"

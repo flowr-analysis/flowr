@@ -3,7 +3,7 @@ import type { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
 /**
- * ```ts
+ * ```r
  * repeat <body>
  * ```
  */

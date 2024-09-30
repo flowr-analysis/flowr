@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-30, 13:37:36 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-30, 17:59:58 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -66,7 +66,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _12.95 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _11.26 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -159,11 +159,11 @@ direction RL
 class DataflowGraphVertexInfo
     <<type>> DataflowGraphVertexInfo
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L104" ""
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L108" ""
 class DataflowGraphVertexArgument
     <<type>> DataflowGraphVertexArgument
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L103" ""
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L107" ""
 class DataflowGraphVertexUse
     <<interface>> DataflowGraphVertexUse
     DataflowGraphVertexUse : tag#58; VertexType.Use
@@ -180,14 +180,14 @@ class DataflowGraphVertexVariableDefinition
     <<interface>> DataflowGraphVertexVariableDefinition
     DataflowGraphVertexVariableDefinition : tag#58; VertexType.VariableDefinition
     DataflowGraphVertexVariableDefinition : environment#58; undefined
-click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L82" "Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph."
+click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L85" "Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph."
 class DataflowGraphVertexFunctionDefinition
     <<interface>> DataflowGraphVertexFunctionDefinition
     DataflowGraphVertexFunctionDefinition : tag#58; VertexType.FunctionDefinition
     DataflowGraphVertexFunctionDefinition : subflow#58; DataflowFunctionFlowInformation
     DataflowGraphVertexFunctionDefinition : exitPoints#58; readonly NodeId#91;#93;
     DataflowGraphVertexFunctionDefinition : environment#58; REnvironmentInformation
-click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L87" ""
+click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L91" ""
 class DataflowGraphVertexFunctionCall
     <<interface>> DataflowGraphVertexFunctionCall
     DataflowGraphVertexFunctionCall : tag#58; VertexType.FunctionCall
@@ -195,7 +195,7 @@ class DataflowGraphVertexFunctionCall
     DataflowGraphVertexFunctionCall : args#58; FunctionArgument#91;#93;
     DataflowGraphVertexFunctionCall : onlyBuiltin#58; boolean
     DataflowGraphVertexFunctionCall : environment#58; REnvironmentInformation
-click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L64" "Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph."
+click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65" "Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph."
 class DataflowGraphVertexValue
     <<interface>> DataflowGraphVertexValue
     DataflowGraphVertexValue : tag#58; VertexType.Value
@@ -247,7 +247,7 @@ The following sections present details on the different types of vertices and ed
 
 > [!NOTE]
 > Every dataflow vertex holds an `id` which links it to the respective node in the [normalized AST](https://github.com/flowr-analysis/flowr/wiki//Normalized%20AST).
-> So if you want more information about the respective vertex, you can usually access more information 
+> So if you want more information about the respective vertex, you can usually access more information
 > using the `DataflowGraph::idMap` linked to the dataflow graph:
 > 
 > ```ts
@@ -264,6 +264,7 @@ The following sections present details on the different types of vertices and ed
 ## Vertices
 
 
+<a id='value-vertex'> </a>
 ### 1) Value Vertex
 
 Type: `value`
@@ -285,7 +286,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.15 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -317,7 +318,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
  * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)** 
 
    Marker vertex for a value in the dataflow of the program.
-   <details><summary style="color:gray">Implemented at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47">./src/dataflow/graph/vertex.ts#L47</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47">./src/dataflow/graph/vertex.ts#L47</a></summary>
    
    
    ```ts
@@ -340,7 +341,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
 > and ask for the value associated with it.
 > 				
 
-		
+
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
 For example, an access operation like `df$column` will treat the column name as a constant value.
 
@@ -372,7 +373,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.39 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _2.38 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -412,6 +413,7 @@ flowchart LR
 
 	
 
+<a id='use-vertex'> </a>
 ### 2) Use Vertex
 
 Type: `use`
@@ -433,7 +435,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.36 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.97 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -461,16 +463,19 @@ flowchart LR
 
 		
 Describes symbol/variable references which are read (or potentially read at a given position).
+Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
+you can see from the implementation.
 
  * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56)** 
 
    Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
-   <details><summary style="color:gray">Implemented at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56">./src/dataflow/graph/vertex.ts#L56</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56">./src/dataflow/graph/vertex.ts#L56</a></summary>
    
    
    ```ts
    export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Use
+       /** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
        readonly environment?: undefined
    }
    ```
@@ -480,9 +485,686 @@ Describes symbol/variable references which are read (or potentially read at a gi
    
 
 
+> [!NOTE]
+> 
+> The name of the symbol is not actually part of what we store in the dataflow graph,
+> as we have it within the normalized AST.
+> To access the name, you can use the `id` of the vertex:
+> 
+> 
+> ```ts
+> const name = recoverName(id, graph.idMap);
+> ```
+> 
+> 				
+
+
+Most often, you will see the _use_ vertex whenever a variable is read.
+However, similar to the [value vertex](#value-vertex), the _use_ vertex can also be the result of language semantics.
+Consider a case, in which we refer to a variable with a string, as in `get("x")`.
+
+
+<details><summary style="color:black">Example: Semantics Create a Symbol</summary>
+
+In the following graph, the original type printed by mermaid is still `RString` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! If you are unsure what `get` does, refer to the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/get). Please note, that the lexeme being printed as `"x"` may be misleading (after all it is recovered from the AST), the quotes are not part of the reference.
+
+
+
+```mermaid
+flowchart LR
+    1(["`#91;RString#93; #34;x#34;
+      (1)
+      *1.5-7*`"])
+    style 1 stroke:black,stroke-width:7px; 
+    3[["`#91;RFunctionCall#93; get
+      (3)
+      *1.1-8*
+    (1)`"]]
+    3 -->|"reads, argument"| 1
+```
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _1.97 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+We encountered no unknown side effects during the analysis.
+
+```r
+get("x")
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    1(["`#91;RString#93; #34;x#34;
+      (1)
+      *1.5-7*`"])
+    3[["`#91;RFunctionCall#93; get
+      (3)
+      *1.1-8*
+    (1)`"]]
+    3 -->|"reads, argument"| 1
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+But now to the interesting stuff: how do we actually know which values are read by the respective variable use?
+This usually involves a [variable definition](#variable-definition-vertex) and a [reads edge](#reads-edge) linking the two.
+
+
+<details><summary style="color:black">Example: Reads Edge Identifying a Single Definition</summary>
+
+In the following graph, the `x` is read from the definition `x <- 1`.
+
+
+
+```mermaid
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    4(["`#91;RSymbol#93; x
+      (4)
+      *2.7*`"])
+    6[["`#91;RFunctionCall#93; print
+      (6)
+      *2.1-8*
+    (4)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    4 -->|"reads"| 0
+    6 -->|"reads, returns, argument"| 4
+```
+	
+<details open>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _2.28 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+We encountered no unknown side effects during the analysis.
+
+```r
+x <- 1
+print(x)
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    4(["`#91;RSymbol#93; x
+      (4)
+      *2.7*`"])
+    6[["`#91;RFunctionCall#93; print
+      (6)
+      *2.1-8*
+    (4)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    4 -->|"reads"| 0
+    6 -->|"reads, returns, argument"| 4
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+In general, there may be many such edges, identifying every possible definition of the variable.
+
+
+<details><summary style="color:black">Example: Reads Edge Identifying Multiple Definitions (conditional)</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    3(["`#91;RSymbol#93; u
+      (3)
+      *2.4*`"])
+    5{{"`#91;RNumber#93; 2
+      (5)
+      *2.12*`"}}
+    4["`#91;RSymbol#93; x
+      (4, :may:8+)
+      *2.7*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6, :may:8+)
+      *2.7-12*
+    (4, 5)`"]]
+    8[["`#91;RIfThenElse#93; if
+      (8)
+      *2.1-12*
+    (3, 6, [empty])`"]]
+    10(["`#91;RSymbol#93; x
+      (10)
+      *3.7*`"])
+    style 10 stroke:black,stroke-width:7px; 
+    12[["`#91;RFunctionCall#93; print
+      (12)
+      *3.1-8*
+    (10)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    4 -->|"defined-by"| 5
+    4 -->|"defined-by"| 6
+    4 -->|"CD-True"| 8
+    linkStyle 6 stroke:gray,color:gray;
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 4
+    6 -->|"CD-True"| 8
+    linkStyle 9 stroke:gray,color:gray;
+    8 -->|"returns, argument"| 6
+    8 -->|"reads, argument"| 3
+    10 -->|"reads"| 4
+    linkStyle 12 stroke:black,color:black,stroke-width:4.2px;
+    10 -->|"reads"| 0
+    linkStyle 13 stroke:black,color:black,stroke-width:4.2px;
+    12 -->|"reads, returns, argument"| 10
+```
+	
+<details open>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _3.41 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+We encountered no unknown side effects during the analysis.
+
+```r
+x <- 1
+if(u) x <- 2
+print(x)
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    3(["`#91;RSymbol#93; u
+      (3)
+      *2.4*`"])
+    5{{"`#91;RNumber#93; 2
+      (5)
+      *2.12*`"}}
+    4["`#91;RSymbol#93; x
+      (4, :may:8+)
+      *2.7*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6, :may:8+)
+      *2.7-12*
+    (4, 5)`"]]
+    8[["`#91;RIfThenElse#93; if
+      (8)
+      *2.1-12*
+    (3, 6, [empty])`"]]
+    10(["`#91;RSymbol#93; x
+      (10)
+      *3.7*`"])
+    12[["`#91;RFunctionCall#93; print
+      (12)
+      *3.1-8*
+    (10)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    4 -->|"defined-by"| 5
+    4 -->|"defined-by"| 6
+    4 -->|"CD-True"| 8
+    linkStyle 6 stroke:gray,color:gray;
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 4
+    6 -->|"CD-True"| 8
+    linkStyle 9 stroke:gray,color:gray;
+    8 -->|"returns, argument"| 6
+    8 -->|"reads, argument"| 3
+    10 -->|"reads"| 4
+    10 -->|"reads"| 0
+    12 -->|"reads, returns, argument"| 10
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+<details><summary style="color:black">Example: Reads Edge Identifying Multiple Definitions (loop)</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    3["`#91;RSymbol#93; i
+      (3)
+      *2.5*`"]
+    4(["`#91;RSymbol#93; v
+      (4)
+      *2.10*`"])
+    6{{"`#91;RNumber#93; 2
+      (6, :may:9+)
+      *2.18*`"}}
+    5["`#91;RSymbol#93; x
+      (5, :may:)
+      *2.13*`"]
+    7[["`#91;RBinaryOp#93; #60;#45;
+      (7, :may:9+)
+      *2.13-18*
+    (5, 6)`"]]
+    9[["`#91;RForLoop#93; for
+      (9)
+      *2.1-18*
+    (3, 4, 7)`"]]
+    11(["`#91;RSymbol#93; x
+      (11)
+      *3.7*`"])
+    style 11 stroke:black,stroke-width:7px; 
+    13[["`#91;RFunctionCall#93; print
+      (13)
+      *3.1-8*
+    (11)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    3 -->|"defined-by"| 4
+    6 -->|"CD-True"| 9
+    linkStyle 5 stroke:gray,color:gray;
+    5 -->|"defined-by"| 6
+    5 -->|"defined-by"| 7
+    7 -->|"argument"| 6
+    7 -->|"returns, argument"| 5
+    7 -->|"CD-True"| 9
+    linkStyle 10 stroke:gray,color:gray;
+    9 -->|"reads, argument"| 3
+    9 -->|"reads, argument"| 4
+    9 -->|"argument, non-standard-evaluation"| 7
+    11 -->|"reads"| 0
+    linkStyle 14 stroke:black,color:black,stroke-width:4.2px;
+    11 -->|"reads"| 5
+    linkStyle 15 stroke:black,color:black,stroke-width:4.2px;
+    13 -->|"reads, returns, argument"| 11
+```
+	
+<details open>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _3.53 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+We encountered no unknown side effects during the analysis.
+
+```r
+x <- 1
+for(i in v) x <- 2
+print(x)
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.6*`"}}
+    0["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"]
+    2[["`#91;RBinaryOp#93; #60;#45;
+      (2)
+      *1.1-6*
+    (0, 1)`"]]
+    3["`#91;RSymbol#93; i
+      (3)
+      *2.5*`"]
+    4(["`#91;RSymbol#93; v
+      (4)
+      *2.10*`"])
+    6{{"`#91;RNumber#93; 2
+      (6, :may:9+)
+      *2.18*`"}}
+    5["`#91;RSymbol#93; x
+      (5, :may:)
+      *2.13*`"]
+    7[["`#91;RBinaryOp#93; #60;#45;
+      (7, :may:9+)
+      *2.13-18*
+    (5, 6)`"]]
+    9[["`#91;RForLoop#93; for
+      (9)
+      *2.1-18*
+    (3, 4, 7)`"]]
+    11(["`#91;RSymbol#93; x
+      (11)
+      *3.7*`"])
+    13[["`#91;RFunctionCall#93; print
+      (13)
+      *3.1-8*
+    (11)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"argument"| 1
+    2 -->|"returns, argument"| 0
+    3 -->|"defined-by"| 4
+    6 -->|"CD-True"| 9
+    linkStyle 5 stroke:gray,color:gray;
+    5 -->|"defined-by"| 6
+    5 -->|"defined-by"| 7
+    7 -->|"argument"| 6
+    7 -->|"returns, argument"| 5
+    7 -->|"CD-True"| 9
+    linkStyle 10 stroke:gray,color:gray;
+    9 -->|"reads, argument"| 3
+    9 -->|"reads, argument"| 4
+    9 -->|"argument, non-standard-evaluation"| 7
+    11 -->|"reads"| 0
+    11 -->|"reads"| 5
+    13 -->|"reads, returns, argument"| 11
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+<details><summary style="color:black">Example: Reads Edge Identifying Multiple Definitions (side-effect)</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    %% Environment of 5 [level: 0]:
+    %% Built-in
+    %% 104----------------------------------------
+    %%   x: {x (1, 4, def. @3)}
+    5["`#91;RFunctionDefinition#93; function
+      (5)
+      *1.6-23*`"]
+
+subgraph "flow-5" [function 5]
+    2{{"`#91;RNumber#93; 2
+      (2)
+      *1.23*`"}}
+    1["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"]
+    3[["`#91;RBinaryOp#93; #60;#60;#45;
+      (3)
+      *1.17-23*
+    (1, 2)`"]]
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6)
+      *1.1-23*
+    (0, 5)`"]]
+    8{{"`#91;RNumber#93; 2
+      (8)
+      *2.6*`"}}
+    7["`#91;RSymbol#93; x
+      (7)
+      *2.1*`"]
+    9[["`#91;RBinaryOp#93; #60;#45;
+      (9)
+      *2.1-6*
+    (7, 8)`"]]
+    10(["`#91;RSymbol#93; u
+      (10)
+      *3.4*`"])
+    %% Environment of 12 [level: 0]:
+    %% Built-in
+    %% 119----------------------------------------
+    %%   f: {f (0, 2, def. @6)}
+    %%   x: {x (7, 4, def. @9)}
+    12[["`#91;RFunctionCall#93; f
+      (12, :may:14+)
+      *3.7-9*`"]]
+    14[["`#91;RIfThenElse#93; if
+      (14)
+      *3.1-9*
+    (10, 12, [empty])`"]]
+    16(["`#91;RSymbol#93; x
+      (16)
+      *4.7*`"])
+    style 16 stroke:black,stroke-width:7px; 
+    18[["`#91;RFunctionCall#93; print
+      (18)
+      *4.1-8*
+    (16)`"]]
+    1 -->|"defined-by"| 2
+    1 -->|"defined-by"| 3
+    1 -->|"side-effect-on-call"| 12
+    3 -->|"argument"| 2
+    3 -->|"returns, argument"| 1
+5 -.-|function| flow-5
+
+    0 -->|"defined-by"| 5
+    0 -->|"defined-by"| 6
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 0
+    7 -->|"defined-by"| 8
+    7 -->|"defined-by"| 9
+    9 -->|"argument"| 8
+    9 -->|"returns, argument"| 7
+    12 -->|"reads"| 0
+    12 -->|"returns"| 3
+    12 -->|"calls"| 5
+    12 -->|"CD-True"| 14
+    linkStyle 17 stroke:gray,color:gray;
+    14 -->|"returns, argument"| 12
+    14 -->|"reads, argument"| 10
+    16 -->|"reads"| 7
+    linkStyle 20 stroke:black,color:black,stroke-width:4.2px;
+    16 -->|"reads"| 1
+    linkStyle 21 stroke:black,color:black,stroke-width:4.2px;
+    18 -->|"reads, returns, argument"| 16
+```
+	
+<details open>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _4.56 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+We encountered no unknown side effects during the analysis.
+
+```r
+f <- function() x <<- 2
+x <- 2
+if(u) f()
+print(x)
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    %% Environment of 5 [level: 0]:
+    %% Built-in
+    %% 104----------------------------------------
+    %%   x: {x (1, 4, def. @3)}
+    5["`#91;RFunctionDefinition#93; function
+      (5)
+      *1.6-23*`"]
+
+subgraph "flow-5" [function 5]
+    2{{"`#91;RNumber#93; 2
+      (2)
+      *1.23*`"}}
+    1["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"]
+    3[["`#91;RBinaryOp#93; #60;#60;#45;
+      (3)
+      *1.17-23*
+    (1, 2)`"]]
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6)
+      *1.1-23*
+    (0, 5)`"]]
+    8{{"`#91;RNumber#93; 2
+      (8)
+      *2.6*`"}}
+    7["`#91;RSymbol#93; x
+      (7)
+      *2.1*`"]
+    9[["`#91;RBinaryOp#93; #60;#45;
+      (9)
+      *2.1-6*
+    (7, 8)`"]]
+    10(["`#91;RSymbol#93; u
+      (10)
+      *3.4*`"])
+    %% Environment of 12 [level: 0]:
+    %% Built-in
+    %% 119----------------------------------------
+    %%   f: {f (0, 2, def. @6)}
+    %%   x: {x (7, 4, def. @9)}
+    12[["`#91;RFunctionCall#93; f
+      (12, :may:14+)
+      *3.7-9*`"]]
+    14[["`#91;RIfThenElse#93; if
+      (14)
+      *3.1-9*
+    (10, 12, [empty])`"]]
+    16(["`#91;RSymbol#93; x
+      (16)
+      *4.7*`"])
+    18[["`#91;RFunctionCall#93; print
+      (18)
+      *4.1-8*
+    (16)`"]]
+    1 -->|"defined-by"| 2
+    1 -->|"defined-by"| 3
+    1 -->|"side-effect-on-call"| 12
+    3 -->|"argument"| 2
+    3 -->|"returns, argument"| 1
+5 -.-|function| flow-5
+
+    0 -->|"defined-by"| 5
+    0 -->|"defined-by"| 6
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 0
+    7 -->|"defined-by"| 8
+    7 -->|"defined-by"| 9
+    9 -->|"argument"| 8
+    9 -->|"returns, argument"| 7
+    12 -->|"reads"| 0
+    12 -->|"returns"| 3
+    12 -->|"calls"| 5
+    12 -->|"CD-True"| 14
+    linkStyle 17 stroke:gray,color:gray;
+    14 -->|"returns, argument"| 12
+    14 -->|"reads, argument"| 10
+    16 -->|"reads"| 7
+    16 -->|"reads"| 1
+    18 -->|"reads, returns, argument"| 16
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+
 
 	
 
+<a id='function-call-vertex'> </a>
 ### 3) Function Call Vertex
 
 Type: `function-call`
@@ -504,7 +1186,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _6.53 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -529,7 +1211,44 @@ flowchart LR
 
 
 
-Describes any kind of function call, these can happen implicitly as well! (see the notable cases)
+
+Describes any kind of function call, including unnamed calls and those that happen implicitly!
+In general the vertex provides you with information about the name of the called function, the passed arguments, and the environment in which the call happens (if it is of importance).
+However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
+and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
+	 
+ * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65)** 
+
+   Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65">./src/dataflow/graph/vertex.ts#L65</a></summary>
+   
+   
+   ```ts
+   export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
+       readonly tag:  VertexType.FunctionCall
+       /**
+        * Effective name of the function call,
+        * Please be aware that this name can differ from the lexeme.
+        * For example, if the function is a replacement function, in this case, the actually called fn will
+        * have the compound name (e.g., `[<-`).
+        */
+       readonly name: string
+       /** The arguments of the function call, in order (as they are passed to the respective call if executed in R. */
+       args:          FunctionArgument[]
+       /** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
+       onlyBuiltin:   boolean
+       /** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
+       environment:   REnvironmentInformation | undefined
+   }
+   ```
+   
+   
+   </details>
+   
+ 
+ TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
+ 
+
 
 
 <details>
@@ -562,7 +1281,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
+The analysis required _1.25 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -601,6 +1320,7 @@ Control structures like `if` are desugared into function calls (we omit the argu
 </details>
 	
 
+<a id='variable-definition-vertex'> </a>
 ### 4) Variable Definition Vertex
 
 Type: `variable-definition`
@@ -632,7 +1352,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.68 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.15 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -702,7 +1422,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.12 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.21 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -743,6 +1463,7 @@ Are described similar within the dataflow graph, only the active environment dif
 </details>
 	
 
+<a id='function-definition-vertex'> </a>
 ### 5) Function Definition Vertex
 
 Type: `function-definition`
@@ -772,7 +1493,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.05 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -813,6 +1534,7 @@ Describes a function definition. Are always anonymous at first; although they ca
 ## Edges
 
 
+<a id='reads-edge'> </a>
 ### 1) Reads Edge
 
 Type: `1`
@@ -853,7 +1575,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.79 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.30 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -930,7 +1652,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 176----------------------------------------
+    %% 273----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -951,7 +1673,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.58 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.34 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -983,7 +1705,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 176----------------------------------------
+    %% 273----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -1053,7 +1775,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _1.34 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1113,6 +1835,7 @@ Parameters can read from each other as well.
 </details>
 	
 
+<a id='definedby-edge'> </a>
 ### 2) DefinedBy Edge
 
 Type: `2`
@@ -1145,7 +1868,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.23 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1228,7 +1951,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.94 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _1.42 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1312,7 +2035,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1362,6 +2085,7 @@ Here, we define by the result of the `+` expression.
 </details>
 	
 
+<a id='calls-edge'> </a>
 ### 3) Calls Edge
 
 Type: `4`
@@ -1390,7 +2114,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 349----------------------------------------
+    %% 443----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -1411,7 +2135,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.40 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.65 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1443,7 +2167,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 349----------------------------------------
+    %% 443----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -1470,6 +2194,7 @@ Link the function call to the (anonymous) function definition.
 
 	
 
+<a id='returns-edge'> </a>
 ### 4) Returns Edge
 
 Type: `8`
@@ -1499,7 +2224,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 394----------------------------------------
+    %% 485----------------------------------------
     %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -1520,7 +2245,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.14 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.59 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1553,7 +2278,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 394----------------------------------------
+    %% 485----------------------------------------
     %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -1580,6 +2305,7 @@ Link the function call to the exit points of the target definition (this may inc
 
 	
 
+<a id='definesoncall-edge'> </a>
 ### 5) DefinesOnCall Edge
 
 Type: `16`
@@ -1617,7 +2343,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 460----------------------------------------
+    %% 548----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -1644,7 +2370,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.63 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1685,7 +2411,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 460----------------------------------------
+    %% 548----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -1719,6 +2445,7 @@ end
 
 	
 
+<a id='definedbyoncall-edge'> </a>
 ### 6) DefinedByOnCall Edge
 
 Type: `32`
@@ -1756,7 +2483,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 526----------------------------------------
+    %% 611----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -1783,7 +2510,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.87 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.89 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1824,7 +2551,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 526----------------------------------------
+    %% 611----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -1858,6 +2585,7 @@ end
 
 	
 
+<a id='argument-edge'> </a>
 ### 7) Argument Edge
 
 Type: `64`
@@ -1888,7 +2616,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.74 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.37 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1926,6 +2654,7 @@ Links a function call to the entry point of its arguments. If we do not know the
 
 	
 
+<a id='sideeffectoncall-edge'> </a>
 ### 8) SideEffectOnCall Edge
 
 Type: `128`
@@ -1938,7 +2667,7 @@ Type: `128`
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 629----------------------------------------
+    %% 713----------------------------------------
     %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -1969,7 +2698,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 637----------------------------------------
+    %% 721----------------------------------------
     %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -1996,7 +2725,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.86 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2012,7 +2741,7 @@ f()
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 629----------------------------------------
+    %% 713----------------------------------------
     %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -2043,7 +2772,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 637----------------------------------------
+    %% 721----------------------------------------
     %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -2076,6 +2805,7 @@ Links a global side effect to an affected function call (e.g., a super definitio
 
 	
 
+<a id='nonstandardevaluation-edge'> </a>
 ### 9) NonStandardEvaluation Edge
 
 Type: `256`
@@ -2101,7 +2831,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.26 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.09 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2174,7 +2904,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.62 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.47 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2322,7 +3052,7 @@ However, the dataflow information contains more, quite a lot of information in f
   ],
   "environment": {
     "current": {
-      "id": 664,
+      "id": 748,
       "parent": {
         "id": 0,
         "memory": [
@@ -5662,7 +6392,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.23 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.62 ms_ (including parsing and normalization) within the generation environment. 
 We encountered unknown side effects (with ids: [3]) during the analysis.
 
 ```r

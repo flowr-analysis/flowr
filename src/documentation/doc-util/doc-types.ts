@@ -270,6 +270,6 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 
 	let text = node.comments?.join('\n') ?? '';
 	const code = node.node.getText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n<details><summary style="color:gray">Implemented at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	text += `\n<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	return `${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }

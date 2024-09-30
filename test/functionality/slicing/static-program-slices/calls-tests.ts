@@ -731,6 +731,12 @@ x <- 2
 f()()
 x`);
 	});
+	describe('Side Effects', () => {
+		assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+			shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+		assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+			shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
+	});
 	describe('Calls with potential side effects', () => {
 		assertSliced(label('Changing the working directory', [
 			'functions-with-global-side-effects', 'name-normal', 'strings', 'call-normal', 'unnamed-arguments', 'newlines'

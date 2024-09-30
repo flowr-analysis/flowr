@@ -55,6 +55,7 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
+	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
 	readonly environment?: undefined
 }
 
@@ -70,9 +71,11 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * have the compound name (e.g., `[<-`).
 	 */
 	readonly name: string
+	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R. */
 	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:   boolean
+	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
 	environment:   REnvironmentInformation | undefined
 }
 
@@ -81,6 +84,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.VariableDefinition
+	/** Does not require an environment, those are attached to the call */
 	readonly environment?: undefined
 }
 

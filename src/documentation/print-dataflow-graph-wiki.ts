@@ -78,6 +78,7 @@ async function explanation(
 
 
 	return `
+<a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 ### ${index}) ${name}
 
 Type: \`${type}\`
@@ -116,7 +117,7 @@ and ask for the value associated with it.
 				`
 	})
 }
-		
+
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
 For example, an access operation like \`df$column\` will treat the column name as a constant value.
 
@@ -137,11 +138,62 @@ ${
 		description: `
 		
 Describes symbol/variable references which are read (or potentially read at a given position).
+Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
+you can see from the implementation.
 
 ${
 	implSnippet(
 		vertexType.info.find(e => e.name === 'DataflowGraphVertexUse'), vertexType.program
 	)
+}
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+The name of the symbol is not actually part of what we store in the dataflow graph,
+as we have it within the normalized AST.
+To access the name, you can use the \`id\` of the vertex:
+
+${codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`)}
+				`
+	})
+}
+
+Most often, you will see the _use_ vertex whenever a variable is read.
+However, similar to the [value vertex](#value-vertex), the _use_ vertex can also be the result of language semantics.
+Consider a case, in which we refer to a variable with a string, as in \`get("x")\`.
+
+${
+	details('Example: Semantics Create a Symbol',
+		'In the following graph, the original type printed by mermaid is still `RString` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! ' +
+		'If you are unsure what `get` does, refer to the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/get). ' +
+		'Please note, that the lexeme being printed as `"x"` may be misleading (after all it is recovered from the AST), the quotes are not part of the reference.\n' +
+				await printDfGraphForCode(shell, 'get("x")', { mark: new Set([1]) }))
+}
+
+But now to the interesting stuff: how do we actually know which values are read by the respective variable use?
+This usually involves a [variable definition](#variable-definition-vertex) and a [reads edge](#reads-edge) linking the two.
+
+${
+	details('Example: Reads Edge Identifying a Single Definition',
+		'In the following graph, the `x` is read from the definition `x <- 1`.\n' +
+				await printDfGraphForCode(shell, 'x <- 1\nprint(x)', { mark: new Set([3, '0->3']), codeOpen: true }))
+}
+
+In general, there may be many such edges, identifying every possible definition of the variable.
+
+${
+	details('Example: Reads Edge Identifying Multiple Definitions (conditional)',
+		await printDfGraphForCode(shell, 'x <- 1\nif(u) x <- 2\nprint(x)', { mark: new Set([10, '10->0', '10->4']), codeOpen: true }))
+}
+${
+	details('Example: Reads Edge Identifying Multiple Definitions (loop)',
+		await printDfGraphForCode(shell, 'x <- 1\nfor(i in v) x <- 2\nprint(x)', { mark: new Set([11, '11->0', '11->5']), codeOpen: true }))
+}
+${
+	details('Example: Reads Edge Identifying Multiple Definitions (side-effect)',
+		await printDfGraphForCode(shell, 'f <- function() x <<- 2\nx <- 2\nif(u) f()\nprint(x)', { mark: new Set([16, '16->1', '16->7']), codeOpen: true }))
 }
 `,
 		code:             'x',
@@ -149,10 +201,25 @@ ${
 	}, []]);
 
 	vertexExplanations.set(VertexType.FunctionCall, [{
-		shell:            shell,
-		name:             'Function Call Vertex',
-		type:             VertexType.FunctionCall,
-		description:      'Describes any kind of function call, these can happen implicitly as well! (see the notable cases)',
+		shell:       shell,
+		name:        'Function Call Vertex',
+		type:        VertexType.FunctionCall,
+		description: `
+Describes any kind of function call, including unnamed calls and those that happen implicitly!
+In general the vertex provides you with information about the name of the called function, the passed arguments, and the environment in which the call happens (if it is of importance).
+However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
+and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
+	 
+${
+	implSnippet(
+		vertexType.info.find(e => e.name === 'DataflowGraphVertexFunctionCall'), vertexType.program
+	)
+}
+ 
+ TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
+ TODO: general node on calls and argument edges
+ 
+`,
 		code:             'foo()',
 		expectedSubgraph: emptyGraph().call('1@foo', 'foo', [])
 	}, [{
@@ -393,11 +460,11 @@ The following sections present details on the different types of vertices and ed
 
 > [!NOTE]
 > Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST).
-> So if you want more information about the respective vertex, you can usually access more information 
+> So if you want more information about the respective vertex, you can usually access more information
 > using the \`${DataflowGraph.name}::idMap\` linked to the dataflow graph:
 ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
 > In case you just need the name (\`lexeme\`) of the respective vertex, ${recoverName.name} (defined in ${getFilePathMd('../r-bridge/lang-4.x/ast/model/processing/node-id.ts')}) can help you out:
-${prefixLines(codeBlock('ts', 'const name = recoverName(id, graph.idMap);'), '> ')}
+${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
 
 ## Vertices
 
@@ -513,7 +580,7 @@ ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
 	`;
-	
+
 	})()
 }
 

@@ -164,6 +164,7 @@ export function linkFunctionCallWithSingleTarget(
 	linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph);
 }
 
+/* there is _a lot_ potential for optimization here */
 function linkFunctionCall(
 	graph: DataflowGraph,
 	id: NodeId,

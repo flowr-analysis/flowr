@@ -28,8 +28,9 @@ ${graphToMermaid({
 export interface PrintDataflowGraphOptions {
 	readonly mark?:     ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?: boolean;
+	readonly codeOpen?: boolean;
 }
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true }: PrintDataflowGraphOptions = {}) {
+export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false }: PrintDataflowGraphOptions = {}) {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -40,7 +41,7 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing and normalization) within the generation environment.`;
 
 	return '\n\n' + printDfGraph(result.dataflow.graph, mark) + (showCode ? `
-<details>
+<details${codeOpen ? ' open' : ''}>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 

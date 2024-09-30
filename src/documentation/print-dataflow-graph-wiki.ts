@@ -292,7 +292,7 @@ Additionally, you may be interested in the set of [Unknown Side Effects](#unknow
 
 > [!TIP]
 > If you want to investigate the dataflow graph, 
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or ${getReplCommand('dataflow*')} 
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}

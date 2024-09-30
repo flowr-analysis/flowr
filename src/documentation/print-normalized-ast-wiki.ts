@@ -74,7 +74,7 @@ ${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1')}
 
 > [!TIP]
 > If you want to investigate the normalized AST, 
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or ${getReplCommand('normalize*')} 
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
 
 Indicative is the root expression list node, which is present in every normalized AST.

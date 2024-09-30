@@ -149,7 +149,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	collect.nodeLines.push(`class ${node.name}${genericPart}`);
 	collect.nodeLines.push(`    <<${node.kind}>> ${node.name}`);
 	if(node.kind === 'type') {
-		collect.nodeLines.push(`style ${node.name} fill:#FAFAFA,stroke:#333`);
+		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
 	const writtenProperties = new Set<string>();
 	if(node.properties) {
@@ -235,3 +235,4 @@ export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): {
 	}
 	return getTypesFromFileAsMermaid(files, options);
 }
+

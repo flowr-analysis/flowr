@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 09:07:57 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 10:31:23 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -55,7 +55,7 @@ x"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _10.50 ms_ (including parsing) within the generation environment.
+The analysis required _8.32 ms_ (including parsing) within the generation environment.
 
 ```r
 x <- 2 * 3 + 1
@@ -103,7 +103,7 @@ x"])
 
 > [!TIP]
 > If you want to investigate the normalized AST, 
-> you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the normalized AST of R code, start with 'file://' to indicate a file (aliases: :n*)">`:normalize*`</span> 
+> you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or the <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the normalized AST of R code, start with 'file://' to indicate a file (aliases: :n*)">`:normalize*`</span> 
 > command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki//Interface) for more information). 
 
 Indicative is the root expression list node, which is present in every normalized AST.
@@ -128,7 +128,7 @@ classDiagram
 direction RL
 class RNode~Info = NoInfo~
     <<type>> RNode
-style RNode fill:#FAFAFA,stroke:#333
+style RNode opacity:.35,fill:#FAFAFA
 click RNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L159" ""
 class RExpressionList~Info = NoInfo~
     <<interface>> RExpressionList
@@ -141,7 +141,7 @@ click RExpressionList href "https://github.com/flowr-analysis/flowr/tree/main//s
     RExpressionList : info#58; Info #38; Source [from Base]
 class RFunctions~Info~
     <<type>> RFunctions
-style RFunctions fill:#FAFAFA,stroke:#333
+style RFunctions opacity:.35,fill:#FAFAFA
 click RFunctions href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L142" ""
 class RFunctionDefinition~Info = NoInfo~
     <<interface>> RFunctionDefinition
@@ -160,7 +160,7 @@ or#58;
     RFunctionDefinition : location#58; SourceRange [from Location]
 class RFunctionCall~Info = NoInfo~
     <<type>> RFunctionCall
-style RFunctionCall fill:#FAFAFA,stroke:#333
+style RFunctionCall opacity:.35,fill:#FAFAFA
 click RFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-function-call.ts#L39" ""
 class RNamedFunctionCall~Info = NoInfo~
     <<interface>> RNamedFunctionCall
@@ -208,7 +208,7 @@ click RArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/r-b
     RArgument : location#58; SourceRange [from Location]
 class ROther~Info~
     <<type>> ROther
-style ROther fill:#FAFAFA,stroke:#333
+style ROther opacity:.35,fill:#FAFAFA
 click ROther href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L147" ""
 class RComment~Info = NoInfo~
     <<interface>> RComment
@@ -226,11 +226,11 @@ click RLineDirective href "https://github.com/flowr-analysis/flowr/tree/main//sr
     RLineDirective : location#58; SourceRange [from Location]
 class RConstructs~Info~
     <<type>> RConstructs
-style RConstructs fill:#FAFAFA,stroke:#333
+style RConstructs opacity:.35,fill:#FAFAFA
 click RConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L137" ""
 class RLoopConstructs~Info~
     <<type>> RLoopConstructs
-style RLoopConstructs fill:#FAFAFA,stroke:#333
+style RLoopConstructs opacity:.35,fill:#FAFAFA
 click RLoopConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132" ""
 class RForLoop~Info = NoInfo~
     <<interface>> RForLoop
@@ -316,7 +316,7 @@ click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main//src/r-b
     RBinaryOp : location#58; SourceRange [from Location]
 class RSingleNode~Info~
     <<type>> RSingleNode
-style RSingleNode fill:#FAFAFA,stroke:#333
+style RSingleNode opacity:.35,fill:#FAFAFA
 click RSingleNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L128" ""
 class RSymbol~Info = NoInfo, T extends string = string~
     <<interface>> RSymbol
@@ -327,7 +327,7 @@ click RSymbol href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bri
     RSymbol : location#58; SourceRange [from Location]
 class RConstant~Info~
     <<type>> RConstant
-style RConstant fill:#FAFAFA,stroke:#333
+style RConstant opacity:.35,fill:#FAFAFA
 click RConstant href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L123" ""
 class RNumber~Info = NoInfo~
     <<interface>> RNumber
@@ -402,7 +402,7 @@ RPipe .. RNode
 ```
 
 
-_The generation of the class diagram required 570.26 ms._
+_The generation of the class diagram required 550.14 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -1139,7 +1139,7 @@ product"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _9.40 ms_ (including parsing) within the generation environment.
+The analysis required _6.95 ms_ (including parsing) within the generation environment.
 
 ```r
 sum <- 0

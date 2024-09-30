@@ -101,7 +101,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
 
 ${
 			implSnippet(
-				vertexType.info.find(e => e.name === 'DataflowGraphValue'), vertexType.program
+				vertexType.info.find(e => e.name === 'DataflowGraphVertexValue'), vertexType.program
 			)
 		}
 
@@ -121,8 +121,8 @@ For example, an access operation like \`df$column\` will treat the column name a
 
 ${
 			details('Example: Semantics Create a Value',
-				'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant!\n' + 
-				await printDfGraphForCode(shell, 'df$column'))
+				'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).\n' + 
+				await printDfGraphForCode(shell, 'df$column', { mark: new Set([1]) }))
 		}
 		`,
 		code:             '42',
@@ -133,7 +133,16 @@ ${
 		shell:            shell,
 		name:             'Use Vertex',
 		type:             VertexType.Use,
-		description:      'Describes symbol/variable references',
+		description:      `
+		
+Describes symbol/variable references which are read (or potentially read at a given position).
+
+${
+			implSnippet(
+				vertexType.info.find(e => e.name === 'DataflowGraphVertexUse'), vertexType.program
+			)
+		}
+`,
 		code:             'x',
 		expectedSubgraph: emptyGraph().use('1@x', 'x')
 	}, []]);

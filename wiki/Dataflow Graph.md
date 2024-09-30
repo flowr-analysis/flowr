@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-30, 13:09:25 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-30, 13:37:36 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -66,7 +66,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _15.65 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _12.95 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -196,11 +196,11 @@ class DataflowGraphVertexFunctionCall
     DataflowGraphVertexFunctionCall : onlyBuiltin#58; boolean
     DataflowGraphVertexFunctionCall : environment#58; REnvironmentInformation
 click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L64" "Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph."
-class DataflowGraphValue
-    <<interface>> DataflowGraphValue
-    DataflowGraphValue : tag#58; VertexType.Value
-    DataflowGraphValue : environment#58; undefined
-click DataflowGraphValue href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47" "Marker vertex for a value in the dataflow of the program."
+class DataflowGraphVertexValue
+    <<interface>> DataflowGraphVertexValue
+    DataflowGraphVertexValue : tag#58; VertexType.Value
+    DataflowGraphVertexValue : environment#58; undefined
+click DataflowGraphVertexValue href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47" "Marker vertex for a value in the dataflow of the program."
 DataflowGraphVertexArgument .. DataflowGraphVertexInfo
 DataflowGraphVertexUse .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexUse
@@ -210,8 +210,8 @@ DataflowGraphVertexFunctionDefinition .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexFunctionDefinition
 DataflowGraphVertexFunctionCall .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexFunctionCall
-DataflowGraphValue .. DataflowGraphVertexArgument
-DataflowGraphVertexBase <|-- DataflowGraphValue
+DataflowGraphVertexValue .. DataflowGraphVertexArgument
+DataflowGraphVertexBase <|-- DataflowGraphVertexValue
 ```
 
 
@@ -285,7 +285,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.15 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -314,14 +314,14 @@ flowchart LR
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
- * **[DataflowGraphValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)** 
+ * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)** 
 
    Marker vertex for a value in the dataflow of the program.
    <details><summary style="color:gray">Implemented at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47">./src/dataflow/graph/vertex.ts#L47</a></summary>
    
    
    ```ts
-   export interface DataflowGraphValue extends DataflowGraphVertexBase {
+   export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Value
        /* currently without containing the 'real' value as it is part of the normalized AST as well */
        readonly environment?: undefined
@@ -347,7 +347,7 @@ For example, an access operation like `df$column` will treat the column name as 
 
 <details><summary style="color:black">Example: Semantics Create a Value</summary>
 
-In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant!
+In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).
 
 
 
@@ -359,6 +359,7 @@ flowchart LR
     1{{"`#91;RSymbol#93; column
       (1)
       *1.1-9*`"}}
+    style 1 stroke:black,stroke-width:7px; 
     3[["`#91;RAccess#93; $
       (3)
       *1.1-9*
@@ -371,7 +372,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.07 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _3.39 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -380,7 +381,7 @@ df$column
 
 <details>
 
-<summary style="color:gray">Mermaid Code </summary>
+<summary style="color:gray">Mermaid Code (without markings)</summary>
 
 ```
 flowchart LR
@@ -432,7 +433,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.64 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.36 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -457,7 +458,27 @@ flowchart LR
 
 
 
-Describes symbol/variable references
+
+		
+Describes symbol/variable references which are read (or potentially read at a given position).
+
+ * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56)** 
+
+   Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+   <details><summary style="color:gray">Implemented at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56">./src/dataflow/graph/vertex.ts#L56</a></summary>
+   
+   
+   ```ts
+   export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
+       readonly tag:          VertexType.Use
+       readonly environment?: undefined
+   }
+   ```
+   
+   
+   </details>
+   
+
 
 
 	
@@ -483,7 +504,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _9.34 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _6.53 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -541,7 +562,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.45 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
+The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -611,7 +632,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.69 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.68 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -681,7 +702,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.52 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.12 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -751,7 +772,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.96 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _1.05 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -832,7 +853,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.10 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.79 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -930,7 +951,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.03 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.58 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1032,7 +1053,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _6.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _1.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1124,7 +1145,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.22 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1207,7 +1228,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.39 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _0.94 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1291,7 +1312,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.47 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1390,7 +1411,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.73 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.40 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1499,7 +1520,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.14 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1623,7 +1644,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.37 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.63 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1762,7 +1783,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.23 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _3.87 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1867,7 +1888,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.74 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1975,7 +1996,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.65 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2080,7 +2101,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.40 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.26 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2153,7 +2174,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.30 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _2.62 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5641,7 +5662,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.25 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _4.23 ms_ (including parsing and normalization) within the generation environment. 
 We encountered unknown side effects (with ids: [3]) during the analysis.
 
 ```r

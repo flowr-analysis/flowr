@@ -44,7 +44,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 /**
  * Marker vertex for a value in the dataflow of the program.
  */
-export interface DataflowGraphValue extends DataflowGraphVertexBase {
+export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 	readonly environment?: undefined
@@ -100,11 +100,11 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	environment?: REnvironmentInformation
 }
 
-export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue
+export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphVertexValue
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
 
 
-export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphValue {
+export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
 	return vertex.tag === VertexType.Value;
 }
 

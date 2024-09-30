@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 06:48:34 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-09-30, 07:05:10 UTC presenting an overview of flowR's normalized ast (v2.0.25, using R v4.4.1)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits. It...
@@ -52,7 +52,7 @@ x"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _11.15 ms_ (including parsing) within the generation environment.
+The analysis required _9.88 ms_ (including parsing) within the generation environment.
 
 ```r
 x <- 2 * 3 + 1
@@ -105,7 +105,12 @@ In general, we provide node types for:
 4. branches (e.g., `next` and `break`)
 5. operators (e.g. `+`, `-`, and `*`)
 
-The entry type into the structure is the  
+<details>
+
+<summary style="color:gray">Complete Class Diagram</summary>
+
+Every node is a link, which directly refers to the implementation in the source code.
+Grayed-out parts are used for structuring the AST, grouping together related nodes.
 
 
 ```mermaid
@@ -387,5 +392,12 @@ RPipe .. RNode
 ```
 
 
-TODO: type enum, TODO: comments about Leaf, Base, and the Info generic + say that it can be clicked
+_The generation of the class diagram took required 694.99 ms._
+</details>
+
+Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
+which is used to distinguish between different types of nodes.
+Additionally, every AST node is generic with respect to the `Info` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
+Most notably, the `info` field holds the `id` of the node, which is used to reference the node in the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph).
+
 

@@ -1,20 +1,20 @@
 import * as ts from 'typescript';
-import {guard} from "../../util/assert";
-import {RemoteFlowrFilePathBaseRef} from "./doc-files";
-import fs from "fs";
-import path from "path";
-import {escapeMarkdown} from "../../util/mermaid/mermaid";
+import { guard } from '../../util/assert';
+import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import fs from 'fs';
+import path from 'path';
+import { escapeMarkdown } from '../../util/mermaid/mermaid';
 
 /* basics generated */
 
 interface Hierarchy {
-	name:     string;
-	kind:     'interface' | 'type';
-	extends:  string[];
-	generics: string[];
-	filePath: string;
-	lineNumber: number;
-	comments?: string[];
+	name:                 string;
+	kind:                 'interface' | 'type';
+	extends:              string[];
+	generics:             string[];
+	filePath:             string;
+	lineNumber:           number;
+	comments?:            string[];
 	readonly properties?: string[];
 }
 
@@ -34,7 +34,7 @@ function dropGenericsFromType(type: string): string {
 
 function getTextualComments(node: ts.Node): string[] {
 	const comments = ts.getJSDocCommentsAndTags(node);
-	let out: string[] = []
+	const out: string[] = [];
 	for(const { comment } of comments) {
 		/* we may support others in the future */
 		if(typeof comment === 'string') {
@@ -50,7 +50,7 @@ function getStartLine(node: ts.Node, sourceFile: ts.SourceFile): number {
 }
 
 function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
-	const tryDirect = typeChecker.getTypeAtLocation(node)
+	const tryDirect = typeChecker.getTypeAtLocation(node);
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
 }
 
@@ -72,12 +72,12 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') || [];
 
 			hierarchyList.push({
-				name:    dropGenericsFromType(interfaceName),
-				kind:    'interface',
-				extends: baseTypes,
+				name:       dropGenericsFromType(interfaceName),
+				kind:       'interface',
+				extends:    baseTypes,
 				generics,
-				comments: getTextualComments(node),
-				filePath: sourceFile.fileName,
+				comments:   getTextualComments(node),
+				filePath:   sourceFile.fileName,
 				lineNumber: getStartLine(node, sourceFile),
 				properties: node.members.map(member => {
 					const name = member.name?.getText(sourceFile) ?? '';
@@ -100,17 +100,17 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
 
 			hierarchyList.push({
-				name:    dropGenericsFromType(typeName),
-				kind:    'type',
-				extends: baseTypes,
+				name:       dropGenericsFromType(typeName),
+				kind:       'type',
+				extends:    baseTypes,
 				generics,
-				filePath: sourceFile.fileName,
+				filePath:   sourceFile.fileName,
 				lineNumber: getStartLine(node, sourceFile),
 			});
 		}
 
 		ts.forEachChild(node, child => visit(child, sourceFile));
-	}
+	};
 
 	sourceFiles.forEach(sourceFile => {
 		visit(sourceFile, sourceFile);
@@ -148,7 +148,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} fill:#FAFAFA,stroke:#333`);
 	}
-	let writtenProperties = new Set<string>();
+	const writtenProperties = new Set<string>();
 	if(node.properties) {
 		for(const property of node.properties) {
 			collect.nodeLines.push(`    ${node.name} : ${property}`);
@@ -168,12 +168,12 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 					}
 				}
 			} else {
-				if (node.kind === 'type' || hierarchyList.find(h => h.name === baseType)?.kind === 'type') {
+				if(node.kind === 'type' || hierarchyList.find(h => h.name === baseType)?.kind === 'type') {
 					collect.edgeLines.push(`${baseType} .. ${node.name}`);
 				} else {
 					collect.edgeLines.push(`${baseType} <|-- ${node.name}`);
 				}
-				const {nodeLines, edgeLines} = generateMermaidClassDiagram(hierarchyList, baseType, options, visited);
+				const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, baseType, options, visited);
 				collect.nodeLines.push(...nodeLines);
 				collect.edgeLines.push(...edgeLines);
 			}
@@ -194,8 +194,8 @@ ${edgeLines.join('\n')}
 
 /* TODO: fetch attached comments */
 function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
-	text: string,
-	info: Hierarchy[],
+	text:    string,
+	info:    Hierarchy[],
 	program: ts.Program
 } {
 	const { files, program } = getSourceFiles(fileNames);
@@ -210,8 +210,8 @@ function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMerma
 }
 
 export interface GetTypesAsMermaidOption {
-	readonly rootFolder: string;
-	readonly typeName: string;
+	readonly rootFolder:   string;
+	readonly typeName:     string;
 	readonly inlineTypes?: readonly string[]
 }
 
@@ -220,14 +220,14 @@ interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
 }
 
 export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): {
-	text: string,
-	info: Hierarchy[],
+	text:    string,
+	info:    Hierarchy[],
 	program: ts.Program
 } {
-	let files = []
-	for (const fileBuff of fs.readdirSync(options.rootFolder, {recursive: true})) {
+	const files = [];
+	for(const fileBuff of fs.readdirSync(options.rootFolder, { recursive: true })) {
 		const file = fileBuff.toString();
-		if (file.endsWith('.ts')) {
+		if(file.endsWith('.ts')) {
 			files.push(path.join(options.rootFolder, file));
 		}
 	}

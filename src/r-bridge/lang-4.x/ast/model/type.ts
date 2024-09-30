@@ -5,7 +5,7 @@
  *
  * @see RType
  */
-export const enum RawRType {
+export enum RawRType {
 	/** T1 */
 	NullConst = 'NULL_CONST',
 	/** T2 */
@@ -156,7 +156,7 @@ export const enum RawRType {
  *
  * @see RawRType
  */
-export const enum RType {
+export enum RType {
 	/** {@link RAccess} */
 	Access = 'RAccess',
 	/** {@link RArgument} */

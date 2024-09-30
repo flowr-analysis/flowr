@@ -22,7 +22,7 @@ ${normalizedAstToMermaid(ast, prefix)}
 
 export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
-	readonly prefix?: string;
+	readonly prefix?:   string;
 }
 export async function printNormalizedAstForCode(shell: RShell, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();

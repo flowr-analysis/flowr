@@ -127,7 +127,7 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
-export function getTypePathLink({filePath, lineNumber}: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
+export function getTypePathLink({ filePath, lineNumber }: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
 	const fromSource = filePath.replace(/^.*\/src\//, 'src/');
 	return `${prefix}/${fromSource}#L${lineNumber}`;
 }
@@ -195,7 +195,6 @@ ${edgeLines.join('\n')}
 `;
 }
 
-/* TODO: fetch attached comments */
 function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
 	text:    string,
 	info:    TypeElementInSource[],

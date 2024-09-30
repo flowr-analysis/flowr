@@ -9,7 +9,7 @@ import { defaultEnv } from '../../test/functionality/_helper/dataflow/environmen
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import {FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd} from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text';
 import { PipelineExecutor } from '../core/pipeline-executor';
@@ -26,7 +26,7 @@ import {
 	getAllEdges,
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
-import {getReplCommand} from "./doc-util/doc-cli-option";
+import { getReplCommand } from './doc-util/doc-cli-option';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);

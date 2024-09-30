@@ -4,14 +4,15 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import {getTypePathLink, getTypesFromFolderAsMermaid, TypeElementInSource} from './doc-util/doc-types';
+import type { TypeElementInSource } from './doc-util/doc-types';
+import { getTypePathLink, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
-import {FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd} from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
 import { printAsMs } from './doc-util/doc-ms';
-import ts from "typescript";
-import {getReplCommand} from "./doc-util/doc-cli-option";
+import type ts from 'typescript';
+import { getReplCommand } from './doc-util/doc-cli-option';
 
-const hide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase']
+const hide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
 function printHierarchy(prg: ts.Program, hierarchy: TypeElementInSource[], root: string, nesting = 0): string {
 
 	const node = hierarchy.find(e => e.name === root);
@@ -21,12 +22,12 @@ function printHierarchy(prg: ts.Program, hierarchy: TypeElementInSource[], root:
 	}
 
 	const bold = node.kind === 'interface' ? '**' : '';
-	const sep = node.comments ? '\n\n' : '\n'
+	const sep = node.comments ? '\n\n' : '\n';
 
 	let text = node.comments?.join('\n') ?? '';
-	const code = node.node.getText(prg.getSourceFile(node.node.getSourceFile().fileName))
+	const code = node.node.getText(prg.getSourceFile(node.node.getSourceFile().fileName));
 	text += `\n<details><summary style="color:gray">Implemented at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
-	let result = [`${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`];
+	const result = [`${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`];
 
 	for(const baseType of node.extends) {
 		if(hide.includes(baseType)) {
@@ -105,8 +106,8 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${
-printHierarchy(types.program, types.info, 'RNode')
-	}
+	printHierarchy(types.program, types.info, 'RNode')
+}
 
 With this, the example file produced the following AST (shown from left to right for space reasons):
 

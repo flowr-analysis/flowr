@@ -3,8 +3,8 @@ import type { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
 /**
- * ```ts
- * while ( <condition> ) <body>
+ * ```r
+ * while(<condition>) <body>
  * ```
  */
 export interface RWhileLoop<Info = NoInfo> extends Base<Info>, Location {

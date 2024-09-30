@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { guard } from '../../util/assert';
 import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
@@ -7,8 +7,9 @@ import { escapeMarkdown } from '../../util/mermaid/mermaid';
 
 /* basics generated */
 
-interface Hierarchy {
+export interface TypeElementInSource {
 	name:                 string;
+	node:                 ts.Node;
 	kind:                 'interface' | 'type';
 	extends:              string[];
 	generics:             string[];
@@ -49,13 +50,13 @@ function getStartLine(node: ts.Node, sourceFile: ts.SourceFile): number {
 	return lineStart + 1;
 }
 
-function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
+export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	const tryDirect = typeChecker.getTypeAtLocation(node);
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): Hierarchy[] {
-	const hierarchyList: Hierarchy[] = [];
+function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
+	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
 		if(!node) {
@@ -73,6 +74,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 
 			hierarchyList.push({
 				name:       dropGenericsFromType(interfaceName),
+				node,
 				kind:       'interface',
 				extends:    baseTypes,
 				generics,
@@ -101,6 +103,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 
 			hierarchyList.push({
 				name:       dropGenericsFromType(typeName),
+				node,
 				kind:       'type',
 				extends:    baseTypes,
 				generics,
@@ -124,12 +127,12 @@ interface MermaidCompact {
 	edgeLines: string[]
 }
 
-function getFileLink(filePath: string, startLine: number): string {
+export function getTypePathLink({filePath, lineNumber}: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
 	const fromSource = filePath.replace(/^.*\/src\//, 'src/');
-	return `${RemoteFlowrFilePathBaseRef}/${fromSource}#L${startLine}`;
+	return `${prefix}/${fromSource}#L${lineNumber}`;
 }
 
-function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
+function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
 	const collect: MermaidCompact = { nodeLines: [], edgeLines: [] };
 	if(visited.has(rootName)) {
 		return collect;
@@ -155,7 +158,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 			writtenProperties.add(property);
 		}
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getFileLink(node.filePath, node.lineNumber)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/,' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/,' ') ?? '' )}"`);
 
 	if(node.extends.length > 0) {
 		for(const baseType of node.extends) {
@@ -182,7 +185,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 	return collect;
 }
 
-function visualizeMermaidClassDiagram(hierarchyList: readonly Hierarchy[], options: GetTypesWithProgramOption) {
+function visualizeMermaidClassDiagram(hierarchyList: readonly TypeElementInSource[], options: GetTypesWithProgramOption) {
 	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeName, options);
 	return `
 classDiagram
@@ -195,7 +198,7 @@ ${edgeLines.join('\n')}
 /* TODO: fetch attached comments */
 function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
 	text:    string,
-	info:    Hierarchy[],
+	info:    TypeElementInSource[],
 	program: ts.Program
 } {
 	const { files, program } = getSourceFiles(fileNames);
@@ -221,7 +224,7 @@ interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
 
 export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): {
 	text:    string,
-	info:    Hierarchy[],
+	info:    TypeElementInSource[],
 	program: ts.Program
 } {
 	const files = [];

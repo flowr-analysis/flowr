@@ -30,7 +30,12 @@ function getSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[],
 }
 
 function dropGenericsFromType(type: string): string {
-	return type.replace(/<.*>/, '');
+	let previous;
+	do {
+		previous = type;
+		type = type.replace(/<.*>/g, '');
+	} while (type !== previous);
+	return type;
 }
 
 function getTextualComments(node: ts.Node): string[] {

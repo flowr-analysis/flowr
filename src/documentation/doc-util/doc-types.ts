@@ -31,10 +31,10 @@ function getSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[],
 
 function dropGenericsFromType(type: string): string {
 	let previous;
-	do {
+	do{
 		previous = type;
 		type = type.replace(/<.*>/g, '');
-	} while (type !== previous);
+	} while(type !== previous);
 	return type;
 }
 
@@ -163,7 +163,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 			writtenProperties.add(property);
 		}
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/,' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
 
 	if(node.extends.length > 0) {
 		for(const baseType of node.extends) {

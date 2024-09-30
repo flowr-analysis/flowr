@@ -18,11 +18,10 @@ ${content}
 export interface BlockOptions {
     readonly type: 'NOTE' | 'WARNING' | 'INFO' | 'TIP';
     readonly content: string;
-    readonly title?: string;
 }
-export function block({ type, content, title = ''}: BlockOptions): string {
+export function block({ type, content }: BlockOptions): string {
     return `
-> [!${type}] ${title}
+> [!${type}]
 ${prefixLines(content, '> ')}
 `
 }

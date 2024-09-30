@@ -112,8 +112,7 @@ ${
 The value is not stored in the vertex itself, but in the normalized AST.
 To access the value, you can use the \`id\` of the vertex to access the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)
 and ask for the value associated with it.
-				`,
-				title: 'Retrieving the Values of Constants'
+				`
 			})
 		}
 		
@@ -382,7 +381,7 @@ From an implementation perspective all of these types are represented by respect
 
 The following sections present details on the different types of vertices and edges, including examples and explanations.
 
-> [!NOTE] Linking the Dataflow Graph to the Normalized AST
+> [!NOTE]
 > Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST).
 > So if you want more information about the respective vertex, you can usually access more information 
 > using the \`${DataflowGraph.name}::idMap\` linked to the dataflow graph:

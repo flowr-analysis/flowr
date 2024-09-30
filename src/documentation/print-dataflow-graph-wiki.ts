@@ -27,12 +27,13 @@ import {
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import {getTypesFromFolderAsMermaid, implSnippet, MermaidTypeReport} from "./doc-util/doc-types";
-import {block, details} from "./doc-util/doc-structure";
-import {codeBlock} from "./doc-util/doc-code";
-import path from "path";
-import {prefixLines} from "./doc-util/doc-general";
-import {recoverName} from "../r-bridge/lang-4.x/ast/model/processing/node-id";
+import type { MermaidTypeReport } from './doc-util/doc-types';
+import { getTypesFromFolderAsMermaid, implSnippet } from './doc-util/doc-types';
+import { block, details } from './doc-util/doc-structure';
+import { codeBlock } from './doc-util/doc-code';
+import path from 'path';
+import { prefixLines } from './doc-util/doc-general';
+import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -92,56 +93,56 @@ async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeRepor
 	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	vertexExplanations.set(VertexType.Value, [{
-		shell:            shell,
-		name:             'Value Vertex',
-		type:             VertexType.Value,
-		description:      `
+		shell:       shell,
+		name:        'Value Vertex',
+		type:        VertexType.Value,
+		description: `
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
 ${
-			implSnippet(
-				vertexType.info.find(e => e.name === 'DataflowGraphVertexValue'), vertexType.program
-			)
-		}
+	implSnippet(
+		vertexType.info.find(e => e.name === 'DataflowGraphVertexValue'), vertexType.program
+	)
+}
 
 ${
-			block({
-				type: 'NOTE',
-				content: `
+	block({
+		type:    'NOTE',
+		content: `
 The value is not stored in the vertex itself, but in the normalized AST.
 To access the value, you can use the \`id\` of the vertex to access the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)
 and ask for the value associated with it.
 				`
-			})
-		}
+	})
+}
 		
 Please be aware that such nodes may be the result from language semantics as well, and not just from constants directly in the source.
 For example, an access operation like \`df$column\` will treat the column name as a constant value.
 
 ${
-			details('Example: Semantics Create a Value',
-				'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).\n' + 
+	details('Example: Semantics Create a Value',
+		'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).\n' + 
 				await printDfGraphForCode(shell, 'df$column', { mark: new Set([1]) }))
-		}
+}
 		`,
 		code:             '42',
 		expectedSubgraph: emptyGraph().constant('0')
 	}, []]);
 
 	vertexExplanations.set(VertexType.Use, [{
-		shell:            shell,
-		name:             'Use Vertex',
-		type:             VertexType.Use,
-		description:      `
+		shell:       shell,
+		name:        'Use Vertex',
+		type:        VertexType.Use,
+		description: `
 		
 Describes symbol/variable references which are read (or potentially read at a given position).
 
 ${
-			implSnippet(
-				vertexType.info.find(e => e.name === 'DataflowGraphVertexUse'), vertexType.program
-			)
-		}
+	implSnippet(
+		vertexType.info.find(e => e.name === 'DataflowGraphVertexUse'), vertexType.program
+	)
+}
 `,
 		code:             'x',
 		expectedSubgraph: emptyGraph().use('1@x', 'x')
@@ -326,15 +327,15 @@ async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	/* we collect type information on the graph */
 	const vertexType = getTypesFromFolderAsMermaid({
-		files: [path.resolve('./src/dataflow/graph/vertex.ts')],
-		typeName: 'DataflowGraphVertexInfo',
+		files:       [path.resolve('./src/dataflow/graph/vertex.ts')],
+		typeName:    'DataflowGraphVertexInfo',
 		inlineTypes: ['MergeableRecord']
-	})
+	});
 	const edgeType = getTypesFromFolderAsMermaid({
-		files: [path.resolve('./src/dataflow/graph/edge.ts')],
-		typeName: 'EdgeType',
+		files:       [path.resolve('./src/dataflow/graph/edge.ts')],
+		typeName:    'EdgeType',
 		inlineTypes: ['MergeableRecord']
-	})
+	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
 This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.

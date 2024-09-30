@@ -4,7 +4,7 @@ import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
 import path from 'path';
 import { escapeMarkdown } from '../../util/mermaid/mermaid';
-import {codeBlock} from "./doc-code";
+import { codeBlock } from './doc-code';
 
 /* basics generated */
 
@@ -68,9 +68,9 @@ export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.S
 		return [node.right.getText(sourceFile) ?? ''];
 	}
 	const args = type.typeArguments?.map(arg => arg.getText(sourceFile)) ?? [];
-	const nodeLexeme = node.getText(sourceFile) ?? ''
+	const nodeLexeme = node.getText(sourceFile) ?? '';
 	if(['Pick', 'Partial', 'Required', 'Readonly'].map(s => nodeLexeme.startsWith(s))) {
-		return args
+		return args;
 	}
 	return [nodeLexeme, ...args];
 }
@@ -251,9 +251,9 @@ export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): M
 	guard(options.rootFolder !== undefined || options.files !== undefined, 'Either rootFolder or files must be provided');
 	const files = [...options.files ?? []];
 	if(options.rootFolder) {
-		for (const fileBuff of fs.readdirSync(options.rootFolder, {recursive: true})) {
+		for(const fileBuff of fs.readdirSync(options.rootFolder, { recursive: true })) {
 			const file = fileBuff.toString();
-			if (file.endsWith('.ts')) {
+			if(file.endsWith('.ts')) {
 				files.push(path.join(options.rootFolder, file));
 			}
 		}

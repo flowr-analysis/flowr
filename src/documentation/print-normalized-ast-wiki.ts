@@ -4,17 +4,11 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { getTypesFromFile } from './doc-util/doc-types';
+import {getTypesFromFolderAsMermaid} from './doc-util/doc-types';
+import path from "path";
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
-
-	getTypesFromFile([
-		'/home/limerent/GitHub/phd/flowr/src/r-bridge/lang-4.x/ast/model/model.ts',
-		/* TODO: collect folder */
-		'/home/limerent/GitHub/phd/flowr/src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts',
-		'/home/limerent/GitHub/phd/flowr/src/r-bridge/lang-4.x/ast/model/nodes/r-for-loop.ts',
-	], 'RNode');
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
 
@@ -44,7 +38,11 @@ In general, we provide node types for:
 
 The entry type into the structure is the  
 
-
+${codeBlock('mermaid', getTypesFromFolderAsMermaid({
+		rootFolder: path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
+		typeName: 'RNode',
+		inlineTypes: ['Leaf', 'Location', 'Namespace', 'Base']
+	}))}
 
 
 `;

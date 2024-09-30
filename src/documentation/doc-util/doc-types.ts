@@ -3,6 +3,7 @@ import {guard} from "../../util/assert";
 import {RemoteFlowrFilePathBaseRef} from "./doc-files";
 import fs from "fs";
 import path from "path";
+import {escapeMarkdown} from "../../util/mermaid/mermaid";
 
 /* basics generated */
 
@@ -17,13 +18,13 @@ interface Hierarchy {
 	readonly properties?: string[];
 }
 
-function getSourceFiles(fileNames: readonly string[]): ts.SourceFile[] {
+function getSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, {});
-		return fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file);
+		const program = ts.createProgram(fileNames, { target: ts.ScriptTarget.ESNext });
+		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);
-		return [];
+		return { files: [], program: undefined as unknown as ts.Program };
 	}
 }
 
@@ -48,9 +49,14 @@ function getStartLine(node: ts.Node, sourceFile: ts.SourceFile): number {
 	return lineStart + 1;
 }
 
-function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[]): Hierarchy[] {
-	const hierarchyList: Hierarchy[] = [];
+function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
+	const tryDirect = typeChecker.getTypeAtLocation(node)
+	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
+}
 
+function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): Hierarchy[] {
+	const hierarchyList: Hierarchy[] = [];
+	const typeChecker = options.program.getTypeChecker();
 	const visit = (node: ts.Node | undefined, sourceFile: ts.SourceFile) => {
 		if(!node) {
 			return;
@@ -73,7 +79,10 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[]): Hie
 				comments: getTextualComments(node),
 				filePath: sourceFile.fileName,
 				lineNumber: getStartLine(node, sourceFile),
-				properties: node.members.map(member => member.name?.getText(sourceFile) ?? ''),
+				properties: node.members.map(member => {
+					const name = member.name?.getText(sourceFile) ?? '';
+					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
+				}),
 			});
 		} else if(ts.isTypeAliasDeclaration(node)) {
 			const typeName = node.name?.getText(sourceFile) ?? '';
@@ -120,7 +129,7 @@ function getFileLink(filePath: string, startLine: number): string {
 	return `${RemoteFlowrFilePathBaseRef}/${fromSource}#L${startLine}`;
 }
 
-function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootName: string, options: GetTypesAsMermaidOption, visited: Set<string> = new Set()): MermaidCompact {
+function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootName: string, options: GetTypesWithProgramOption, visited: Set<string> = new Set()): MermaidCompact {
 	const collect: MermaidCompact = { nodeLines: [], edgeLines: [] };
 	if(visited.has(rootName)) {
 		return collect;
@@ -133,10 +142,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 	}
 
 	const genericPart = node.generics.length > 0 ? `~${node.generics.join(', ')}~` : '';
-	for(const comment of node.comments ?? []) {
-		// TODO: comments
-		collect.nodeLines.push(`%% ${comment}`);
-	}
+
 	collect.nodeLines.push(`class ${node.name}${genericPart}`);
 	collect.nodeLines.push(`    <<${node.kind}>> ${node.name}`);
 	if(node.kind === 'type') {
@@ -149,7 +155,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 			writtenProperties.add(property);
 		}
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getFileLink(node.filePath, node.lineNumber)}" "${node.comments?.join('; ') ?? ''}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getFileLink(node.filePath, node.lineNumber)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/,' ') ?? '' )}"`);
 
 	if(node.extends.length > 0) {
 		for(const baseType of node.extends) {
@@ -176,7 +182,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly Hierarchy[], rootNa
 	return collect;
 }
 
-function visualizeMermaidClassDiagram(hierarchyList: readonly Hierarchy[], options: GetTypesAsMermaidOption) {
+function visualizeMermaidClassDiagram(hierarchyList: readonly Hierarchy[], options: GetTypesWithProgramOption) {
 	const { nodeLines, edgeLines } = generateMermaidClassDiagram(hierarchyList, options.typeName, options);
 	return `
 classDiagram
@@ -187,11 +193,20 @@ ${edgeLines.join('\n')}
 }
 
 /* TODO: fetch attached comments */
-function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): string {
-	const sourceFiles = getSourceFiles(fileNames);
-	guard(sourceFiles !== undefined, 'No source files found');
-	const hierarchyList = collectHierarchyInformation(sourceFiles);
-	return visualizeMermaidClassDiagram(hierarchyList, options);
+function getTypesFromFileAsMermaid(fileNames: string[], options: GetTypesAsMermaidOption): {
+	text: string,
+	info: Hierarchy[],
+	program: ts.Program
+} {
+	const { files, program } = getSourceFiles(fileNames);
+	guard(files.length > 0, 'No source files found');
+	const withProgram = { ...options, program };
+	const hierarchyList = collectHierarchyInformation(files, withProgram);
+	return {
+		text: visualizeMermaidClassDiagram(hierarchyList, withProgram),
+		info: hierarchyList,
+		program
+	};
 }
 
 export interface GetTypesAsMermaidOption {
@@ -200,7 +215,15 @@ export interface GetTypesAsMermaidOption {
 	readonly inlineTypes?: readonly string[]
 }
 
-export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): string {
+interface GetTypesWithProgramOption extends GetTypesAsMermaidOption {
+	readonly program: ts.Program;
+}
+
+export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): {
+	text: string,
+	info: Hierarchy[],
+	program: ts.Program
+} {
 	let files = []
 	for (const fileBuff of fs.readdirSync(options.rootFolder, {recursive: true})) {
 		const file = fileBuff.toString();

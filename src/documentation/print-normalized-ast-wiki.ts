@@ -9,6 +9,11 @@ import path from "path";
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
+	const types = getTypesFromFolderAsMermaid({
+		rootFolder: path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
+		typeName: 'RNode',
+		inlineTypes: ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial']
+	})
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
 
@@ -38,13 +43,9 @@ In general, we provide node types for:
 
 The entry type into the structure is the  
 
-${codeBlock('mermaid', getTypesFromFolderAsMermaid({
-		rootFolder: path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
-		typeName: 'RNode',
-		inlineTypes: ['Leaf', 'Location', 'Namespace', 'Base']
-	}))}
+${codeBlock('mermaid', types.text)}
 
-
+TODO: type enum, TODO: comments about Leaf, Base, and the Info generic + say that it can be clicked
 `;
 }
 

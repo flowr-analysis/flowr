@@ -1,4 +1,4 @@
-Based on the explanations in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), this page collects the definitions for terms which are of interest in the context of *flowR*.
+Based on the explanations in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), this page collects the definitions for terms which are of interest in the context of *flowR*.
 
 <!-- TOC -->
 - [Program Slicing](#program-slicing)

@@ -227,7 +227,7 @@ npm run summarizer -- --help
 
 ### Generate Usage Statistics of R Code
 
-If you want to reproduce the statistics as presented in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
+If you want to reproduce the statistics as presented in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
 
 For more information, run the following from the `cli` directory:
 

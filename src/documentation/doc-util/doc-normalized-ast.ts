@@ -12,18 +12,19 @@ import { guard } from '../../util/assert';
 import { printAsMs } from './doc-ms';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 
-export function printNormalizedAst(ast: RNodeWithParent) {
+export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
 \`\`\`mermaid
-${normalizedAstToMermaid(ast)}
+${normalizedAstToMermaid(ast, prefix)}
 \`\`\`
 	`;
 }
 
 export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
+	readonly prefix?: string;
 }
-export async function printNormalizedAstForCode(shell: RShell, code: string, { showCode = true }: PrintNormalizedAstOptions = {}) {
+export async function printNormalizedAstForCode(shell: RShell, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		shell,
@@ -33,7 +34,7 @@ export async function printNormalizedAstForCode(shell: RShell, code: string, { s
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing) within the generation environment.`;
 
-	return '\n\n' +  printNormalizedAst(result.normalize.ast) + (showCode ? `
+	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
 <details>
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
@@ -49,7 +50,7 @@ ${code}
 <summary style="color:gray">Mermaid Code</summary>
 
 \`\`\`
-${normalizedAstToMermaid(result.normalize.ast)}
+${normalizedAstToMermaid(result.normalize.ast, prefix)}
 \`\`\`
 
 </details>

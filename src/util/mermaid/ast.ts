@@ -4,8 +4,8 @@ import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processi
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
-export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
-	let output = prefix + 'flowchart TD\n';
+export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
+	let output = prefix;
 	visitAst(ast, n => {
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`;
 		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`;
@@ -26,6 +26,6 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): strin
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): string {
+export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
 	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix));
 }

@@ -6,9 +6,10 @@ import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import {getTypePathLink, getTypesFromFolderAsMermaid, TypeElementInSource} from './doc-util/doc-types';
 import path from 'path';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import {FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd} from './doc-util/doc-files';
 import { printAsMs } from './doc-util/doc-ms';
 import ts from "typescript";
+import {getReplCommand} from "./doc-util/doc-cli-option";
 
 const hide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase']
 function printHierarchy(prg: ts.Program, hierarchy: TypeElementInSource[], root: string, nesting = 0): string {
@@ -68,6 +69,13 @@ Each edge is labeled with the type of the parent-child relationship (the "role")
 
 ${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1')}
 
+&nbsp;
+
+> [!TIP]
+> If you want to investigate the normalized AST, 
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or ${getReplCommand('normalize*')} 
+> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
+
 Indicative is the root expression list node, which is present in every normalized AST.
 In general, we provide node types for:
 
@@ -99,6 +107,10 @@ In summary, we have the following types:
 ${
 printHierarchy(types.program, types.info, 'RNode')
 	}
+
+With this, the example file produced the following AST (shown from left to right for space reasons):
+
+${await printNormalizedAstForCode(shell, getFileContentFromRoot('test/testfiles/example.R'), { prefix: 'flowchart LR\n' })}
 
 `;
 }

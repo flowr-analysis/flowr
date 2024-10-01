@@ -9,7 +9,7 @@ export type Identifier = string & { __brand?: 'identifier' }
  * However, wenn checking we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
  */
-export const enum ReferenceType {
+export enum ReferenceType {
 	/** The identifier type is unknown */
 	Unknown = 1,
 	/** The identifier is defined by a function (includes built-in function) */

@@ -5,13 +5,14 @@ import fs from 'fs';
 import path from 'path';
 import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
+import {details} from "./doc-structure";
 
 /* basics generated */
 
 export interface TypeElementInSource {
 	name:                 string;
 	node:                 ts.Node;
-	kind:                 'interface' | 'type';
+	kind:                 'interface' | 'type' | 'enum';
 	extends:              string[];
 	generics:             string[];
 	filePath:             string;
@@ -125,10 +126,24 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				node,
 				kind:       'type',
 				extends:    baseTypes,
+				comments:   getTextualComments(node),
 				generics,
 				filePath:   sourceFile.fileName,
 				lineNumber: getStartLine(node, sourceFile),
 			});
+		} else if(ts.isEnumDeclaration(node)) {
+			const enumName = node.name?.getText(sourceFile) ?? '';
+			/* TODO: comments, and mark correctly as enum */
+			hierarchyList.push({
+				name: enumName,
+				node,
+				kind: 'type',
+				extends: [],
+				comments: getTextualComments(node),
+				generics: [],
+				filePath: sourceFile.fileName,
+				lineNumber: getStartLine(node, sourceFile)
+			})
 		}
 
 		ts.forEachChild(node, child => visit(child, sourceFile));
@@ -266,10 +281,48 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
 	const bold = node.kind === 'interface' ? '**' : '';
-	const sep = node.comments ? '\n\n' : '\n';
+	const sep = node.comments ? '  \n' : '\n';
 
 	let text = node.comments?.join('\n') ?? '';
 	const code = node.node.getText(program.getSourceFile(node.node.getSourceFile().fileName));
 	text += `\n<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	return `${indent} * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}   ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+}
+
+export interface PrintHierarchyArguments {
+	readonly program: ts.Program
+	readonly hierarchy: TypeElementInSource[]
+	readonly root: string
+	readonly collapseFromNesting?: number
+	readonly initialNesting?: number
+	readonly maxDepth?: number
+}
+
+export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
+export function printHierarchy({ program, hierarchy, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20 }: PrintHierarchyArguments): string {
+	if(initialNesting > maxDepth) {
+		return '';
+	}
+	const node = hierarchy.find(e => e.name === root);
+	if(!node) {
+		return '';
+	}
+
+	const thisLine = implSnippet(node, program, initialNesting);
+	const result = [];
+
+	for(const baseType of node.extends) {
+		if(mermaidHide.includes(baseType)) {
+			continue;
+		}
+		const res = printHierarchy({ program, hierarchy, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth});
+		result.push(res);
+	}
+
+	const out = result.join('\n')
+	if(initialNesting === collapseFromNesting - 1) {
+		return thisLine + (out ? details(`View more (${node.extends.join(', ')})`, out, {prefixInit: ' '.repeat(2 * (collapseFromNesting + 1))}) : '');
+	} else {
+		return thisLine + (out ? '\n' + out : '');
+	}
 }

@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-09-30, 17:59:58 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-10-01, 07:49:47 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -66,7 +66,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _11.26 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _11.11 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -237,6 +237,22 @@ The following edges types exist, internally we use bitmasks to represent multipl
 1. [`NonStandardEvaluation` (256)](#9-nonstandardevaluation-edge)
 
 
+<details><summary style="color:black">Class Diagram</summary>
+
+All boxes should link to their respective implementation:
+
+```mermaid
+classDiagram
+direction RL
+class EdgeType
+    <<type>> EdgeType
+style EdgeType opacity:.35,fill:#FAFAFA
+click EdgeType href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/edge.ts#L17" ""
+```
+
+
+</details>
+    
 
 </details>
 
@@ -278,7 +294,7 @@ flowchart LR
     0{{"`#91;RNumber#93; 42
       (0)
       *1.1-2*`"}}
-    style 0 stroke:black,stroke-width:7px; 
+    style 0 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 
 ```
 	
@@ -286,7 +302,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -315,8 +331,7 @@ flowchart LR
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
- * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)** 
-
+ * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)**   
    Marker vertex for a value in the dataflow of the program.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47">./src/dataflow/graph/vertex.ts#L47</a></summary>
    
@@ -332,6 +347,40 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
    
    </details>
    
+    <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
+
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
+     Arguments required to construct a vertex in the dataflow graph.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+     
+     
+     ```ts
+     interface DataflowGraphVertexBase extends MergeableRecord {
+         /**
+          * Used to identify and separate different types of vertices.
+          */
+         readonly tag:        VertexType
+         /**
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          */
+         id:                  NodeId
+         /**
+          * The environment in which the vertex is set.
+          */
+         environment?:        REnvironmentInformation | undefined
+         /**
+          * See {@link IdentifierReference}
+          */
+         controlDependencies: ControlDependency[] | undefined
+     }
+     ```
+     
+     
+     </details>
+     
+
+</details>
+    
 
 
 > [!NOTE]
@@ -360,7 +409,7 @@ flowchart LR
     1{{"`#91;RSymbol#93; column
       (1)
       *1.1-9*`"}}
-    style 1 stroke:black,stroke-width:7px; 
+    style 1 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     3[["`#91;RAccess#93; $
       (3)
       *1.1-9*
@@ -373,7 +422,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.38 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _2.48 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -427,7 +476,7 @@ flowchart LR
     0(["`#91;RSymbol#93; x
       (0)
       *1.1*`"])
-    style 0 stroke:black,stroke-width:7px; 
+    style 0 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 
 ```
 	
@@ -435,7 +484,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.97 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.83 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -466,8 +515,7 @@ Describes symbol/variable references which are read (or potentially read at a gi
 Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
 you can see from the implementation.
 
- * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56)** 
-
+ * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56)**   
    Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56">./src/dataflow/graph/vertex.ts#L56</a></summary>
    
@@ -483,6 +531,40 @@ you can see from the implementation.
    
    </details>
    
+    <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
+
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
+     Arguments required to construct a vertex in the dataflow graph.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+     
+     
+     ```ts
+     interface DataflowGraphVertexBase extends MergeableRecord {
+         /**
+          * Used to identify and separate different types of vertices.
+          */
+         readonly tag:        VertexType
+         /**
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          */
+         id:                  NodeId
+         /**
+          * The environment in which the vertex is set.
+          */
+         environment?:        REnvironmentInformation | undefined
+         /**
+          * See {@link IdentifierReference}
+          */
+         controlDependencies: ControlDependency[] | undefined
+     }
+     ```
+     
+     
+     </details>
+     
+
+</details>
+    
 
 
 > [!NOTE]
@@ -515,7 +597,7 @@ flowchart LR
     1(["`#91;RString#93; #34;x#34;
       (1)
       *1.5-7*`"])
-    style 1 stroke:black,stroke-width:7px; 
+    style 1 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     3[["`#91;RFunctionCall#93; get
       (3)
       *1.1-8*
@@ -527,7 +609,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.97 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.95 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -600,7 +682,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.28 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _2.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -688,7 +770,7 @@ flowchart LR
     10(["`#91;RSymbol#93; x
       (10)
       *3.7*`"])
-    style 10 stroke:black,stroke-width:7px; 
+    style 10 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     12[["`#91;RFunctionCall#93; print
       (12)
       *3.1-8*
@@ -708,9 +790,9 @@ flowchart LR
     8 -->|"returns, argument"| 6
     8 -->|"reads, argument"| 3
     10 -->|"reads"| 4
-    linkStyle 12 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 12 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     10 -->|"reads"| 0
-    linkStyle 13 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 13 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     12 -->|"reads, returns, argument"| 10
 ```
 	
@@ -718,7 +800,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.41 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis required _3.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -835,7 +917,7 @@ flowchart LR
     11(["`#91;RSymbol#93; x
       (11)
       *3.7*`"])
-    style 11 stroke:black,stroke-width:7px; 
+    style 11 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     13[["`#91;RFunctionCall#93; print
       (13)
       *3.1-8*
@@ -857,9 +939,9 @@ flowchart LR
     9 -->|"reads, argument"| 4
     9 -->|"argument, non-standard-evaluation"| 7
     11 -->|"reads"| 0
-    linkStyle 14 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 14 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     11 -->|"reads"| 5
-    linkStyle 15 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 15 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     13 -->|"reads, returns, argument"| 11
 ```
 	
@@ -867,7 +949,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.53 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _3.08 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1011,7 +1093,7 @@ end
     16(["`#91;RSymbol#93; x
       (16)
       *4.7*`"])
-    style 16 stroke:black,stroke-width:7px; 
+    style 16 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     18[["`#91;RFunctionCall#93; print
       (18)
       *4.1-8*
@@ -1039,9 +1121,9 @@ end
     14 -->|"returns, argument"| 12
     14 -->|"reads, argument"| 10
     16 -->|"reads"| 7
-    linkStyle 20 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 20 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     16 -->|"reads"| 1
-    linkStyle 21 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 21 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     18 -->|"reads, returns, argument"| 16
 ```
 	
@@ -1049,7 +1131,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.56 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _4.26 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1178,7 +1260,7 @@ flowchart LR
     1[["`#91;RFunctionCall#93; foo
       (1)
       *1.1-5*`"]]
-    style 1 stroke:black,stroke-width:7px; 
+    style 1 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 
 ```
 	
@@ -1186,7 +1268,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.82 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1213,12 +1295,13 @@ flowchart LR
 
 
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
-In general the vertex provides you with information about the name of the called function, the passed arguments, and the environment in which the call happens (if it is of importance).
+In general the vertex provides you with information about 
+the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
+
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
 	 
- * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65)** 
-
+ * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65)**   
    Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
    <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65">./src/dataflow/graph/vertex.ts#L65</a></summary>
    
@@ -1245,8 +1328,274 @@ and it should not be relied on as it may under-approximate the actual calling ta
    
    </details>
    
- 
+    <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
+
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
+     Arguments required to construct a vertex in the dataflow graph.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+     
+     
+     ```ts
+     interface DataflowGraphVertexBase extends MergeableRecord {
+         /**
+          * Used to identify and separate different types of vertices.
+          */
+         readonly tag:        VertexType
+         /**
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          */
+         id:                  NodeId
+         /**
+          * The environment in which the vertex is set.
+          */
+         environment?:        REnvironmentInformation | undefined
+         /**
+          * See {@link IdentifierReference}
+          */
+         controlDependencies: ControlDependency[] | undefined
+     }
+     ```
+     
+     
+     </details>
+     
+
+</details>
+    
+The related function argument references are defined like this:
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L48)   
+   Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L48">./src/dataflow/graph/graph.ts#L48</a></summary>
+   
+   
+   ```ts
+   export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
+   ```
+   
+   
+   </details>
+   
+    <details><summary style="color:black">View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
+
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L34)**   
+     ```r
+     foo(a = 3, b = 2)
+     ```
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L34">./src/dataflow/graph/graph.ts#L34</a></summary>
+     
+     
+     ```ts
+     export interface NamedFunctionArgument extends IdentifierReference {
+         readonly name: string
+     }
+     ```
+     
+     
+     </details>
+     
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L45)**   
+       Something like `a` in `b <- a`.
+       Without any surrounding information, `a` will produce the identifier reference `a`.
+       Similarly, `b` will create a reference.
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L45">./src/dataflow/environments/identifier.ts#L45</a></summary>
+       
+       
+       ```ts
+       export interface IdentifierReference {
+           /** Node which represents the reference in the AST */
+           readonly nodeId:     NodeId
+           /** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
+           readonly name:       Identifier | undefined
+           /** Type of the reference to be resolved */
+           readonly type:       ReferenceType;
+           /**
+            * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
+            * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
+            */
+           controlDependencies: ControlDependency[] | undefined
+       }
+       ```
+       
+       
+       </details>
+       
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43)**   
+     ```r
+     foo(3, 2)
+     ```
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43">./src/dataflow/graph/graph.ts#L43</a></summary>
+     
+     
+     ```ts
+     export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
+         readonly name?: undefined
+     }
+     ```
+     
+     
+     </details>
+     
+
+</details>
+    
+
+
+
+<details><summary style="color:black">Example: Simple Function Call (unresolved)</summary>
+
+
+To get a better understanding, let's look at a simple function call without any known call target, like `foo(x,3,y=3,)`:
+
+
+
+
+```mermaid
+flowchart LR
+    1(["`#91;RSymbol#93; x
+      (1)
+      *1.5*`"])
+    3{{"`#91;RNumber#93; 3
+      (3)
+      *1.7*`"}}
+    6{{"`#91;RNumber#93; 3
+      (6)
+      *1.11*`"}}
+    7(["`#91;RArgument#93; y
+      (7)
+      *1.9*`"])
+    8[["`#91;RFunctionCall#93; foo
+      (8)
+      *1.1-13*
+    (1, 3, y (7), [empty])`"]]
+    style 8 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+    7 -->|"reads"| 6
+    8 -->|"reads, argument"| 1
+    8 -->|"argument"| 3
+    8 -->|"argument"| 7
+```
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _9.21 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+We encountered no unknown side effects during the analysis.
+
+```r
+foo(x,3,y=3,)
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    1(["`#91;RSymbol#93; x
+      (1)
+      *1.5*`"])
+    3{{"`#91;RNumber#93; 3
+      (3)
+      *1.7*`"}}
+    6{{"`#91;RNumber#93; 3
+      (6)
+      *1.11*`"}}
+    7(["`#91;RArgument#93; y
+      (7)
+      *1.9*`"])
+    8[["`#91;RFunctionCall#93; foo
+      (8)
+      *1.1-13*
+    (1, 3, y (7), [empty])`"]]
+    7 -->|"reads"| 6
+    8 -->|"reads, argument"| 1
+    8 -->|"argument"| 3
+    8 -->|"argument"| 7
+```
+
+</details>
+
+</details>
+
+
+
+In this case, we have a function call vertex with id `8` and the following arguments:
+
+
+```json
+[
+  {
+    "nodeId": 1,
+    "type": 32
+  },
+  {
+    "nodeId": 3,
+    "type": 32
+  },
+  {
+    "nodeId": 7,
+    "name": "y",
+    "type": 32
+  },
+  "<>"
+]
+```
+
+
+Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
+as the `type` of these references is a bit-mask, encoding one of the following reference types:
+
+| Value | Reference Type |
+|-------|----------------|
+| 1 | Unknown |
+| 2 | Function |
+| 4 | Variable |
+| 8 | Constant |
+| 16 | Parameter |
+| 32 | Argument |
+| 64 | BuiltInConstant |
+| 128 | BuiltInFunction |
+
+For more information on the type, please consult the implementation.
+
+ * [ReferenceType](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L12)   
+   Each reference only has exactly one reference type, stored as the respective number.
+   However, wenn checking we may want to allow for one of several types,
+   allowing the combination of the respective bitmasks.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L12">./src/dataflow/environments/identifier.ts#L12</a></summary>
+   
+   
+   ```ts
+   export enum ReferenceType {
+       /** The identifier type is unknown */
+       Unknown = 1,
+       /** The identifier is defined by a function (includes built-in function) */
+       Function = 2,
+       /** The identifier is defined by a variable (includes parameter and argument) */
+       Variable = 4,
+       /** The identifier is defined by a constant (includes built-in constant) */
+       Constant = 8,
+       /** The identifier is defined by a parameter (which we know nothing about at the moment) */
+       Parameter = 16,
+       /** The identifier is defined by an argument (which we know nothing about at the moment) */
+       Argument = 32,
+       /** The identifier is defined by a built-in value/constant */
+       BuiltInConstant = 64,
+       /** The identifier is defined by a built-in function */
+       BuiltInFunction = 128
+   }
+   ```
+   
+   
+   </details>
+   
+	
+
+</details>
+    
+
  TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
+ TODO: general node on calls and argument edges
  
 
 
@@ -1272,7 +1621,7 @@ flowchart LR
       (3)
       *1.1-10*
     (0, 1, [empty])`"]]
-    style 3 stroke:black,stroke-width:7px; 
+    style 3 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     3 -->|"returns, argument"| 1
     3 -->|"reads, argument"| 0
 ```
@@ -1281,7 +1630,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.25 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
+The analysis required _0.82 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1337,7 +1686,7 @@ flowchart LR
     0["`#91;RSymbol#93; x
       (0)
       *1.1*`"]
-    style 0 stroke:black,stroke-width:7px; 
+    style 0 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     2[["`#91;RBinaryOp#93; #60;#45;
       (2)
       *1.1-6*
@@ -1352,7 +1701,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.15 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.07 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1407,7 +1756,7 @@ flowchart LR
     0["`#91;RSymbol#93; x
       (0)
       *1.1*`"]
-    style 0 stroke:black,stroke-width:7px; 
+    style 0 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
     2[["`#91;RBinaryOp#93; #60;#60;#45;
       (2)
       *1.1-7*
@@ -1422,7 +1771,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.21 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.87 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1477,7 +1826,7 @@ flowchart LR
     2["`#91;RFunctionDefinition#93; function
       (2)
       *1.1-12*`"]
-    style 2 stroke:black,stroke-width:7px; 
+    style 2 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 
 subgraph "flow-2" [function 2]
     0{{"`#91;RNumber#93; 1
@@ -1493,7 +1842,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _0.77 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1567,7 +1916,7 @@ flowchart LR
     2 -->|"argument"| 1
     2 -->|"returns, argument"| 0
     4 -->|"reads"| 0
-    linkStyle 4 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     6 -->|"reads, returns, argument"| 4
 ```
 	
@@ -1575,7 +1924,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.30 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.03 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1652,7 +2001,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 273----------------------------------------
+    %% 281----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -1664,7 +2013,7 @@ end
     5 -->|"argument"| 4
     5 -->|"returns, argument"| 0
     7 -->|"reads"| 0
-    linkStyle 5 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     7 -->|"returns"| 3
     7 -->|"calls"| 4
 ```
@@ -1673,7 +2022,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.34 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.49 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1705,7 +2054,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 273----------------------------------------
+    %% 281----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -1762,7 +2111,7 @@ end
     (0, 9)`"]]
     3 -->|"defined-by"| 4
     4 -->|"reads"| 1
-    linkStyle 1 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 9 -.-|function| flow-9
 
     0 -->|"defined-by"| 9
@@ -1775,7 +2124,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.34 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _2.56 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1857,9 +2206,9 @@ flowchart LR
       *1.1-6*
     (0, 1)`"]]
     0 -->|"defined-by"| 1
-    linkStyle 0 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     0 -->|"defined-by"| 2
-    linkStyle 1 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     2 -->|"argument"| 1
     2 -->|"returns, argument"| 0
 ```
@@ -1868,7 +2217,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.23 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.48 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1936,13 +2285,13 @@ flowchart LR
     (0, 3)`"]]
     1 -->|"defined-by"| 2
     1 -->|"defined-by"| 3
-    linkStyle 1 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     3 -->|"argument"| 2
     3 -->|"returns, argument"| 1
     0 -->|"defined-by"| 3
-    linkStyle 4 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     0 -->|"defined-by"| 4
-    linkStyle 5 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     4 -->|"argument"| 3
     4 -->|"returns, argument"| 0
 ```
@@ -1951,7 +2300,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.42 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _1.06 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2025,7 +2374,7 @@ flowchart LR
     3 -->|"reads, argument"| 1
     3 -->|"reads, argument"| 2
     0 -->|"defined-by"| 3
-    linkStyle 2 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     0 -->|"defined-by"| 4
     4 -->|"argument"| 3
     4 -->|"returns, argument"| 0
@@ -2035,7 +2384,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.02 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2114,7 +2463,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 443----------------------------------------
+    %% 451----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -2128,14 +2477,14 @@ end
     7 -->|"reads"| 0
     7 -->|"returns"| 3
     7 -->|"calls"| 4
-    linkStyle 7 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.31 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2167,7 +2516,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 443----------------------------------------
+    %% 451----------------------------------------
     %%   foo: {foo (0, 2, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -2224,7 +2573,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 485----------------------------------------
+    %% 493----------------------------------------
     %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -2237,7 +2586,7 @@ end
     4 -->|"returns, argument"| 0
     6 -->|"reads"| 0
     6 -->|"returns"| 1
-    linkStyle 6 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     6 -->|"calls"| 3
 ```
 	
@@ -2245,7 +2594,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.59 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.21 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2278,7 +2627,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 485----------------------------------------
+    %% 493----------------------------------------
     %%   foo: {foo (0, 2, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -2343,14 +2692,14 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 548----------------------------------------
+    %% 556----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
     (x (11))`"]]
     1 -->|"defined-by-on-call"| 11
-    linkStyle 0 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 6 -.-|function| flow-6
 
     0 -->|"defined-by"| 6
@@ -2359,7 +2708,7 @@ end
     7 -->|"returns, argument"| 0
     11 -->|"reads"| 10
     11 -->|"defines-on-call"| 1
-    linkStyle 7 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     12 -->|"argument"| 11
     12 -->|"reads"| 0
     12 -->|"returns"| 5
@@ -2370,7 +2719,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.30 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2411,7 +2760,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 548----------------------------------------
+    %% 556----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -2483,14 +2832,14 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 611----------------------------------------
+    %% 619----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
     (x (11))`"]]
     1 -->|"defined-by-on-call"| 11
-    linkStyle 0 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 6 -.-|function| flow-6
 
     0 -->|"defined-by"| 6
@@ -2499,7 +2848,7 @@ end
     7 -->|"returns, argument"| 0
     11 -->|"reads"| 10
     11 -->|"defines-on-call"| 1
-    linkStyle 7 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     12 -->|"argument"| 11
     12 -->|"reads"| 0
     12 -->|"returns"| 5
@@ -2510,7 +2859,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.89 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.56 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2551,7 +2900,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 611----------------------------------------
+    %% 619----------------------------------------
     %%   f: {f (0, 2, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -2607,16 +2956,16 @@ flowchart LR
       *1.1-6*
     (1, 3)`"]]
     5 -->|"reads, argument"| 1
-    linkStyle 0 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"reads, argument"| 3
-    linkStyle 1 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 1 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.37 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.07 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2667,7 +3016,7 @@ Type: `128`
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 713----------------------------------------
+    %% 721----------------------------------------
     %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -2698,7 +3047,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 721----------------------------------------
+    %% 729----------------------------------------
     %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -2706,7 +3055,7 @@ end
     3 -->|"defined-by"| 4
     3 -->|"defined-by"| 5
     3 -->|"side-effect-on-call"| 10
-    linkStyle 2 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
     5 -->|"argument"| 4
     5 -->|"returns, argument"| 3
     6 -->|"returns, argument"| 5
@@ -2725,7 +3074,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.86 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _2.39 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2741,7 +3090,7 @@ f()
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 713----------------------------------------
+    %% 721----------------------------------------
     %%   x: {x (3, 4, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -2772,7 +3121,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 721----------------------------------------
+    %% 729----------------------------------------
     %%   f: {f (0, 2, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -2824,14 +3173,14 @@ flowchart LR
       *1.1-8*
     (1)`"]]
     3 -->|"argument, non-standard-evaluation"| 1
-    linkStyle 0 stroke:black,color:black,stroke-width:4.2px;
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
 ```
 	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.09 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _0.83 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2904,7 +3253,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.47 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.05 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2955,6 +3304,7 @@ the condition itself as this is the more general linkage point (and harmonizes w
 Using _flowR's_ code interface (see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case `x <- 1; x + 1`) as follows:
 
+
 ```ts
 const shell = new RShell()
 const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -2964,11 +3314,13 @@ const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 shell.close();
 ```
 
+
 <details>
 
 <summary style="color:gray">Transpiled Code</summary>
 
 The actual code we are using in case the example above gets oudated:
+
 
 ```ts
 async function dummyDataflow() {
@@ -2981,6 +3333,7 @@ async function dummyDataflow() {
     return result;
 }
 ```
+
 
 </details>
 
@@ -3027,3294 +3380,12 @@ However, the dataflow information contains more, quite a lot of information in f
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-```json
-{
-  "unknownReferences": [],
-  "in": [
-    {
-      "nodeId": 2,
-      "name": "<-",
-      "type": 2
-    },
-    {
-      "nodeId": 5,
-      "name": "+",
-      "type": 2
-    }
-  ],
-  "out": [
-    {
-      "nodeId": 0,
-      "name": "x",
-      "type": 4,
-      "definedAt": 2
-    }
-  ],
-  "environment": {
-    "current": {
-      "id": 748,
-      "parent": {
-        "id": 0,
-        "memory": [
-          [
-            "NULL",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": null,
-                "name": "NULL",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "NA",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": null,
-                "name": "NA",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "TRUE",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": true,
-                "name": "TRUE",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "T",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": true,
-                "name": "T",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "FALSE",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": false,
-                "name": "FALSE",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "F",
-            [
-              {
-                "type": 64,
-                "definedAt": "built-in",
-                "value": false,
-                "name": "F",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "~",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "~",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "+",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "+",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "*",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "*",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "/",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "/",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "^",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "^",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "!",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "!",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "?",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "?",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "**",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "**",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "==",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "==",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "!=",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "!=",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            ">",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": ">",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "<",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "<",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            ">=",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": ">=",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "<=",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "<=",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "%%",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "%%",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "%/%",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "%/%",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "%*%",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "%*%",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "%in%",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "%in%",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            ":",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": ":",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "list",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "list",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "c",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "c",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rep",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rep",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "seq",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "seq",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "seq_len",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "seq_len",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "seq_along",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "seq_along",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "seq.int",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "seq.int",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "gsub",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "gsub",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "which",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "which",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "class",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "class",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "dimnames",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "dimnames",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "min",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "min",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "max",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "max",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "intersect",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "intersect",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "subset",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "subset",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "match",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "match",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "sqrt",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "sqrt",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "abs",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "abs",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "round",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "round",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "floor",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "floor",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "ceiling",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "ceiling",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "signif",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "signif",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "trunc",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "trunc",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "log",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "log",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "log10",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "log10",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "log2",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "log2",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "sum",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "sum",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "mean",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "mean",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "unique",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "unique",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "paste",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "paste",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "paste0",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "paste0",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "read.csv",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "read.csv",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "stop",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "stop",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "is.null",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "is.null",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "plot",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "plot",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "numeric",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "numeric",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.character",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.character",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.integer",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.integer",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.logical",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.logical",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.numeric",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.numeric",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.matrix",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.matrix",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "do.call",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "do.call",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rbind",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rbind",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "nrow",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "nrow",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "ncol",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "ncol",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "tryCatch",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "tryCatch",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "expression",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "expression",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "factor",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "factor",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "missing",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "missing",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "as.data.frame",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "as.data.frame",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "data.frame",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "data.frame",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "na.omit",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "na.omit",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rownames",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rownames",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "names",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "names",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "order",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "order",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "length",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "length",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "any",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "any",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "dim",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "dim",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "matrix",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "matrix",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "cbind",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "cbind",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "nchar",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "nchar",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "t",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "t",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "options",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "options",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "mapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "mapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "Mapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "Mapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "lapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "lapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "sapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "sapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "vapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "vapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "Lapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "Lapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "Sapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "Sapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "Vapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "Vapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "apply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "apply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "tapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "tapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "Tapply",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "Tapply",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "print",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "print",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "(",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "(",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "load",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "load",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "load_all",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "load_all",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setwd",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setwd",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "set.seed",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "set.seed",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "eval",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "eval",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "body",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "body",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "formals",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "formals",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "environment",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "environment",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "cat",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "cat",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "switch",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "switch",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "return",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "return",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "break",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "break",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "next",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "next",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "{",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "{",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "source",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "source",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[[",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[[",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "$",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "$",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "@",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "@",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "if",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "if",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "ifelse",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "ifelse",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "get",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "get",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "library",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "library",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "require",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "require",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "=",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "=",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            ":=",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": ":=",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "assign",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "assign",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "delayedAssign",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "delayedAssign",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "->",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "->",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "->>",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "->>",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "&&",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "&&",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "&",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "&",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "||",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "||",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "|",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "|",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "|>",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "|>",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "%>%",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "%>%",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "function",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "function",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "\\",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "\\",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "quote",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "quote",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "substitute",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "substitute",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "bquote",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "bquote",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "for",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "for",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "repeat",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "repeat",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "while",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "while",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "on.exit",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "on.exit",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "sys.on.exit",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "sys.on.exit",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "par",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "par",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setnames",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setnames",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setNames",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setNames",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setkey",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setkey",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setkeyv",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setkeyv",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setindex",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setindex",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setindexv",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setindexv",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "setattr",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "setattr",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "sink",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "sink",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "requireNamespace",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "requireNamespace",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "loadNamespace",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "loadNamespace",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attachNamespace",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attachNamespace",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "asNamespace",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "asNamespace",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "library.dynam",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "library.dynam",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install.packages",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install.packages",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_github",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_github",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_gitlab",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_gitlab",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_bitbucket",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_bitbucket",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_url",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_url",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_git",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_git",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_svn",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_svn",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_local",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_local",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "install_version",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "install_version",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "update_packages",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "update_packages",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attach",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attach",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "detach",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "detach",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "unname",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "unname",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rm",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rm",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "remove",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "remove",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[[<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[[<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "[[<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "[[<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "$<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "$<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "$<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "$<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "@<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "@<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "@<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "@<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "names<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "names<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "names<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "names<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "dimnames<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "dimnames<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "dimnames<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "dimnames<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attributes<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attributes<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attributes<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attributes<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attr<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attr<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "attr<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "attr<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "class<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "class<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "class<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "class<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "levels<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "levels<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "levels<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "levels<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rownames<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rownames<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "rownames<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "rownames<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "colnames<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "colnames<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "colnames<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "colnames<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "body<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "body<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "body<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "body<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "environment<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "environment<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "environment<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "environment<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "formals<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "formals<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ],
-          [
-            "formals<<-",
-            [
-              {
-                "type": 128,
-                "definedAt": "built-in",
-                "name": "formals<<-",
-                "nodeId": "built-in"
-              }
-            ]
-          ]
-        ]
-      },
-      "memory": [
-        [
-          "x",
-          [
-            {
-              "nodeId": 0,
-              "name": "x",
-              "type": 4,
-              "definedAt": 2
-            }
-          ]
-        ]
-      ]
-    },
-    "level": 0
-  },
-  "graph": {
-    "_idMap": {
-      "size": 13,
-      "k2v": [
-        [
-          0,
-          {
-            "type": "RSymbol",
-            "location": [
-              1,
-              1,
-              1,
-              1
-            ],
-            "content": "x",
-            "lexeme": "x",
-            "info": {
-              "fullRange": [
-                1,
-                1,
-                1,
-                1
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x",
-              "id": 0,
-              "parent": 2,
-              "role": "binop-lhs",
-              "index": 0,
-              "nesting": 0
-            }
-          }
-        ],
-        [
-          1,
-          {
-            "location": [
-              1,
-              6,
-              1,
-              6
-            ],
-            "lexeme": "1",
-            "info": {
-              "fullRange": [
-                1,
-                6,
-                1,
-                6
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "1",
-              "id": 1,
-              "parent": 2,
-              "role": "binop-rhs",
-              "index": 1,
-              "nesting": 0
-            },
-            "type": "RNumber",
-            "content": {
-              "num": 1,
-              "complexNumber": false,
-              "markedAsInt": false
-            }
-          }
-        ],
-        [
-          2,
-          {
-            "type": "RBinaryOp",
-            "location": [
-              1,
-              3,
-              1,
-              4
-            ],
-            "lhs": {
-              "type": "RSymbol",
-              "location": [
-                1,
-                1,
-                1,
-                1
-              ],
-              "content": "x",
-              "lexeme": "x",
-              "info": {
-                "fullRange": [
-                  1,
-                  1,
-                  1,
-                  1
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "x",
-                "id": 0,
-                "parent": 2,
-                "role": "binop-lhs",
-                "index": 0,
-                "nesting": 0
-              }
-            },
-            "rhs": {
-              "location": [
-                1,
-                6,
-                1,
-                6
-              ],
-              "lexeme": "1",
-              "info": {
-                "fullRange": [
-                  1,
-                  6,
-                  1,
-                  6
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "1",
-                "id": 1,
-                "parent": 2,
-                "role": "binop-rhs",
-                "index": 1,
-                "nesting": 0
-              },
-              "type": "RNumber",
-              "content": {
-                "num": 1,
-                "complexNumber": false,
-                "markedAsInt": false
-              }
-            },
-            "operator": "<-",
-            "lexeme": "<-",
-            "info": {
-              "fullRange": [
-                1,
-                1,
-                1,
-                6
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x <- 1",
-              "id": 2,
-              "parent": 6,
-              "nesting": 0,
-              "index": 0,
-              "role": "expr-list-child"
-            }
-          }
-        ],
-        [
-          3,
-          {
-            "type": "RSymbol",
-            "location": [
-              2,
-              1,
-              2,
-              1
-            ],
-            "content": "x",
-            "lexeme": "x",
-            "info": {
-              "fullRange": [
-                2,
-                1,
-                2,
-                1
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x",
-              "id": 3,
-              "parent": 5,
-              "role": "binop-lhs",
-              "index": 0,
-              "nesting": 0
-            }
-          }
-        ],
-        [
-          4,
-          {
-            "location": [
-              2,
-              5,
-              2,
-              5
-            ],
-            "lexeme": "1",
-            "info": {
-              "fullRange": [
-                2,
-                5,
-                2,
-                5
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "1",
-              "id": 4,
-              "parent": 5,
-              "role": "binop-rhs",
-              "index": 1,
-              "nesting": 0
-            },
-            "type": "RNumber",
-            "content": {
-              "num": 1,
-              "complexNumber": false,
-              "markedAsInt": false
-            }
-          }
-        ],
-        [
-          5,
-          {
-            "type": "RBinaryOp",
-            "location": [
-              2,
-              3,
-              2,
-              3
-            ],
-            "lhs": {
-              "type": "RSymbol",
-              "location": [
-                2,
-                1,
-                2,
-                1
-              ],
-              "content": "x",
-              "lexeme": "x",
-              "info": {
-                "fullRange": [
-                  2,
-                  1,
-                  2,
-                  1
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "x",
-                "id": 3,
-                "parent": 5,
-                "role": "binop-lhs",
-                "index": 0,
-                "nesting": 0
-              }
-            },
-            "rhs": {
-              "location": [
-                2,
-                5,
-                2,
-                5
-              ],
-              "lexeme": "1",
-              "info": {
-                "fullRange": [
-                  2,
-                  5,
-                  2,
-                  5
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "1",
-                "id": 4,
-                "parent": 5,
-                "role": "binop-rhs",
-                "index": 1,
-                "nesting": 0
-              },
-              "type": "RNumber",
-              "content": {
-                "num": 1,
-                "complexNumber": false,
-                "markedAsInt": false
-              }
-            },
-            "operator": "+",
-            "lexeme": "+",
-            "info": {
-              "fullRange": [
-                2,
-                1,
-                2,
-                5
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x + 1",
-              "id": 5,
-              "parent": 6,
-              "nesting": 0,
-              "index": 1,
-              "role": "expr-list-child"
-            }
-          }
-        ],
-        [
-          6,
-          {
-            "type": "RExpressionList",
-            "children": [
-              {
-                "type": "RBinaryOp",
-                "location": [
-                  1,
-                  3,
-                  1,
-                  4
-                ],
-                "lhs": {
-                  "type": "RSymbol",
-                  "location": [
-                    1,
-                    1,
-                    1,
-                    1
-                  ],
-                  "content": "x",
-                  "lexeme": "x",
-                  "info": {
-                    "fullRange": [
-                      1,
-                      1,
-                      1,
-                      1
-                    ],
-                    "additionalTokens": [],
-                    "fullLexeme": "x",
-                    "id": 0,
-                    "parent": 2,
-                    "role": "binop-lhs",
-                    "index": 0,
-                    "nesting": 0
-                  }
-                },
-                "rhs": {
-                  "location": [
-                    1,
-                    6,
-                    1,
-                    6
-                  ],
-                  "lexeme": "1",
-                  "info": {
-                    "fullRange": [
-                      1,
-                      6,
-                      1,
-                      6
-                    ],
-                    "additionalTokens": [],
-                    "fullLexeme": "1",
-                    "id": 1,
-                    "parent": 2,
-                    "role": "binop-rhs",
-                    "index": 1,
-                    "nesting": 0
-                  },
-                  "type": "RNumber",
-                  "content": {
-                    "num": 1,
-                    "complexNumber": false,
-                    "markedAsInt": false
-                  }
-                },
-                "operator": "<-",
-                "lexeme": "<-",
-                "info": {
-                  "fullRange": [
-                    1,
-                    1,
-                    1,
-                    6
-                  ],
-                  "additionalTokens": [],
-                  "fullLexeme": "x <- 1",
-                  "id": 2,
-                  "parent": 6,
-                  "nesting": 0,
-                  "index": 0,
-                  "role": "expr-list-child"
-                }
-              },
-              {
-                "type": "RBinaryOp",
-                "location": [
-                  2,
-                  3,
-                  2,
-                  3
-                ],
-                "lhs": {
-                  "type": "RSymbol",
-                  "location": [
-                    2,
-                    1,
-                    2,
-                    1
-                  ],
-                  "content": "x",
-                  "lexeme": "x",
-                  "info": {
-                    "fullRange": [
-                      2,
-                      1,
-                      2,
-                      1
-                    ],
-                    "additionalTokens": [],
-                    "fullLexeme": "x",
-                    "id": 3,
-                    "parent": 5,
-                    "role": "binop-lhs",
-                    "index": 0,
-                    "nesting": 0
-                  }
-                },
-                "rhs": {
-                  "location": [
-                    2,
-                    5,
-                    2,
-                    5
-                  ],
-                  "lexeme": "1",
-                  "info": {
-                    "fullRange": [
-                      2,
-                      5,
-                      2,
-                      5
-                    ],
-                    "additionalTokens": [],
-                    "fullLexeme": "1",
-                    "id": 4,
-                    "parent": 5,
-                    "role": "binop-rhs",
-                    "index": 1,
-                    "nesting": 0
-                  },
-                  "type": "RNumber",
-                  "content": {
-                    "num": 1,
-                    "complexNumber": false,
-                    "markedAsInt": false
-                  }
-                },
-                "operator": "+",
-                "lexeme": "+",
-                "info": {
-                  "fullRange": [
-                    2,
-                    1,
-                    2,
-                    5
-                  ],
-                  "additionalTokens": [],
-                  "fullLexeme": "x + 1",
-                  "id": 5,
-                  "parent": 6,
-                  "nesting": 0,
-                  "index": 1,
-                  "role": "expr-list-child"
-                }
-              }
-            ],
-            "info": {
-              "additionalTokens": [],
-              "id": 6,
-              "nesting": 0,
-              "role": "root",
-              "index": 0
-            }
-          }
-        ],
-        [
-          "2-arg",
-          {
-            "type": "RBinaryOp",
-            "location": [
-              1,
-              3,
-              1,
-              4
-            ],
-            "lhs": {
-              "type": "RSymbol",
-              "location": [
-                1,
-                1,
-                1,
-                1
-              ],
-              "content": "x",
-              "lexeme": "x",
-              "info": {
-                "fullRange": [
-                  1,
-                  1,
-                  1,
-                  1
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "x",
-                "id": 0,
-                "parent": 2,
-                "role": "binop-lhs",
-                "index": 0,
-                "nesting": 0
-              }
-            },
-            "rhs": {
-              "location": [
-                1,
-                6,
-                1,
-                6
-              ],
-              "lexeme": "1",
-              "info": {
-                "fullRange": [
-                  1,
-                  6,
-                  1,
-                  6
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "1",
-                "id": 1,
-                "parent": 2,
-                "role": "binop-rhs",
-                "index": 1,
-                "nesting": 0
-              },
-              "type": "RNumber",
-              "content": {
-                "num": 1,
-                "complexNumber": false,
-                "markedAsInt": false
-              }
-            },
-            "operator": "<-",
-            "lexeme": "<-",
-            "info": {
-              "fullRange": [
-                1,
-                1,
-                1,
-                6
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x <- 1",
-              "id": 2,
-              "parent": 6,
-              "nesting": 0,
-              "index": 0,
-              "role": "expr-list-child"
-            }
-          }
-        ],
-        [
-          "5-arg",
-          {
-            "type": "RBinaryOp",
-            "location": [
-              2,
-              3,
-              2,
-              3
-            ],
-            "lhs": {
-              "type": "RSymbol",
-              "location": [
-                2,
-                1,
-                2,
-                1
-              ],
-              "content": "x",
-              "lexeme": "x",
-              "info": {
-                "fullRange": [
-                  2,
-                  1,
-                  2,
-                  1
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "x",
-                "id": 3,
-                "parent": 5,
-                "role": "binop-lhs",
-                "index": 0,
-                "nesting": 0
-              }
-            },
-            "rhs": {
-              "location": [
-                2,
-                5,
-                2,
-                5
-              ],
-              "lexeme": "1",
-              "info": {
-                "fullRange": [
-                  2,
-                  5,
-                  2,
-                  5
-                ],
-                "additionalTokens": [],
-                "fullLexeme": "1",
-                "id": 4,
-                "parent": 5,
-                "role": "binop-rhs",
-                "index": 1,
-                "nesting": 0
-              },
-              "type": "RNumber",
-              "content": {
-                "num": 1,
-                "complexNumber": false,
-                "markedAsInt": false
-              }
-            },
-            "operator": "+",
-            "lexeme": "+",
-            "info": {
-              "fullRange": [
-                2,
-                1,
-                2,
-                5
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x + 1",
-              "id": 5,
-              "parent": 6,
-              "nesting": 0,
-              "index": 1,
-              "role": "expr-list-child"
-            }
-          }
-        ],
-        [
-          "0-arg",
-          {
-            "type": "RSymbol",
-            "location": [
-              1,
-              1,
-              1,
-              1
-            ],
-            "content": "x",
-            "lexeme": "x",
-            "info": {
-              "fullRange": [
-                1,
-                1,
-                1,
-                1
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x",
-              "id": 0,
-              "parent": 2,
-              "role": "binop-lhs",
-              "index": 0,
-              "nesting": 0
-            }
-          }
-        ],
-        [
-          "1-arg",
-          {
-            "location": [
-              1,
-              6,
-              1,
-              6
-            ],
-            "lexeme": "1",
-            "info": {
-              "fullRange": [
-                1,
-                6,
-                1,
-                6
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "1",
-              "id": 1,
-              "parent": 2,
-              "role": "binop-rhs",
-              "index": 1,
-              "nesting": 0
-            },
-            "type": "RNumber",
-            "content": {
-              "num": 1,
-              "complexNumber": false,
-              "markedAsInt": false
-            }
-          }
-        ],
-        [
-          "3-arg",
-          {
-            "type": "RSymbol",
-            "location": [
-              2,
-              1,
-              2,
-              1
-            ],
-            "content": "x",
-            "lexeme": "x",
-            "info": {
-              "fullRange": [
-                2,
-                1,
-                2,
-                1
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "x",
-              "id": 3,
-              "parent": 5,
-              "role": "binop-lhs",
-              "index": 0,
-              "nesting": 0
-            }
-          }
-        ],
-        [
-          "4-arg",
-          {
-            "location": [
-              2,
-              5,
-              2,
-              5
-            ],
-            "lexeme": "1",
-            "info": {
-              "fullRange": [
-                2,
-                5,
-                2,
-                5
-              ],
-              "additionalTokens": [],
-              "fullLexeme": "1",
-              "id": 4,
-              "parent": 5,
-              "role": "binop-rhs",
-              "index": 1,
-              "nesting": 0
-            },
-            "type": "RNumber",
-            "content": {
-              "num": 1,
-              "complexNumber": false,
-              "markedAsInt": false
-            }
-          }
-        ]
-      ],
-      "v2k": {}
-    },
-    "_unknownSideEffects": [],
-    "rootVertices": [
-      1,
-      0,
-      2,
-      3,
-      4,
-      5
-    ],
-    "vertexInformation": [
-      [
-        1,
-        {
-          "tag": "value",
-          "id": 1
-        }
-      ],
-      [
-        0,
-        {
-          "tag": "variable-definition",
-          "id": 0
-        }
-      ],
-      [
-        2,
-        {
-          "tag": "function-call",
-          "id": 2,
-          "name": "<-",
-          "onlyBuiltin": true,
-          "args": [
-            {
-              "nodeId": 0,
-              "type": 32
-            },
-            {
-              "nodeId": 1,
-              "type": 32
-            }
-          ]
-        }
-      ],
-      [
-        3,
-        {
-          "tag": "use",
-          "id": 3
-        }
-      ],
-      [
-        4,
-        {
-          "tag": "value",
-          "id": 4
-        }
-      ],
-      [
-        5,
-        {
-          "tag": "function-call",
-          "id": 5,
-          "name": "+",
-          "onlyBuiltin": true,
-          "args": [
-            {
-              "nodeId": 3,
-              "type": 32
-            },
-            {
-              "nodeId": 4,
-              "type": 32
-            }
-          ]
-        }
-      ]
-    ],
-    "edgeInformation": [
-      [
-        2,
-        [
-          [
-            1,
-            {
-              "types": 64
-            }
-          ],
-          [
-            0,
-            {
-              "types": 72
-            }
-          ]
-        ]
-      ],
-      [
-        0,
-        [
-          [
-            1,
-            {
-              "types": 2
-            }
-          ],
-          [
-            2,
-            {
-              "types": 2
-            }
-          ]
-        ]
-      ],
-      [
-        3,
-        [
-          [
-            0,
-            {
-              "types": 1
-            }
-          ]
-        ]
-      ],
-      [
-        5,
-        [
-          [
-            3,
-            {
-              "types": 65
-            }
-          ],
-          [
-            4,
-            {
-              "types": 65
-            }
-          ]
-        ]
-      ]
-    ]
-  },
-  "entryPoint": 2,
-  "exitPoints": [
-    {
-      "type": 0,
-      "nodeId": 5
-    }
-  ]
-}
+_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
+
+```text
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":756,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["detach",[{"type":128,"definedAt":"built-in","name":"detach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["rm",[{"type":128,"definedAt":"built-in","name":"rm","nodeId":"built-in"}]],["remove",[{"type":128,"definedAt":"built-in","name":"remove","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}]}
 ```
+
 
 </details>
 
@@ -6392,7 +3463,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.62 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _2.77 ms_ (including parsing and normalization) within the generation environment. 
 We encountered unknown side effects (with ids: [3]) during the analysis.
 
 ```r

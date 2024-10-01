@@ -1,7 +1,7 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
 import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
-import { VertexType } from '../dataflow/graph/vertex';
+import {DataflowGraphVertexFunctionCall, VertexType} from '../dataflow/graph/vertex';
 import { EdgeType } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
@@ -27,13 +27,13 @@ import {
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getTypesFromFolderAsMermaid, implSnippet } from './doc-util/doc-types';
+import { getTypesFromFolderAsMermaid, MermaidTypeReport, printHierarchy} from './doc-util/doc-types';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { prefixLines } from './doc-util/doc-general';
-import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {NodeId, recoverName} from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {ReferenceType} from "../dataflow/environments/identifier";
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -102,9 +102,7 @@ Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
 ${
-	implSnippet(
-		vertexType.info.find(e => e.name === 'DataflowGraphVertexValue'), vertexType.program
-	)
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexValue' })
 }
 
 ${
@@ -142,9 +140,7 @@ Similar to the [value vertex](#value-vertex) described above, this is more a mar
 you can see from the implementation.
 
 ${
-	implSnippet(
-		vertexType.info.find(e => e.name === 'DataflowGraphVertexUse'), vertexType.program
-	)
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexUse' })
 }
 
 ${
@@ -206,16 +202,57 @@ ${
 		type:        VertexType.FunctionCall,
 		description: `
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
-In general the vertex provides you with information about the name of the called function, the passed arguments, and the environment in which the call happens (if it is of importance).
+In general the vertex provides you with information about 
+the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
+
 However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
 	 
 ${
-	implSnippet(
-		vertexType.info.find(e => e.name === 'DataflowGraphVertexFunctionCall'), vertexType.program
-	)
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionCall' })
 }
- 
+The related function argument references are defined like this:
+${
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'FunctionArgument' })
+}
+
+
+${
+details('Example: Simple Function Call (unresolved)', 
+await (async () => {
+	const code = 'foo(x,3,y=3,)';
+	const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([8]), exposeResult: true });
+	const callInfo = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+	guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
+	const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
+	const itentifierType = getTypesFromFolderAsMermaid({
+		files:       [path.resolve('./src/dataflow/environments/identifier.ts')],
+		typeName:    'IdentifierReference',
+		inlineTypes: ['ControlDependency']
+	});
+	return `
+To get a better understanding, let's look at a simple function call without any known call target, like \`${code}\`:
+
+${text}
+
+In this case, we have a function call vertex with id \`${callId}\` and the following arguments:
+
+${codeBlock('json', JSON.stringify(callVert.args, jsonReplacer, 2))}
+
+Of course now, this is hard to read in this form (although the ids of the arguments can be mapped pretty easily to the visualization),
+as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
+
+| Value | Reference Type |
+|-------|----------------|
+${Object.values(ReferenceType).filter(k => typeof k === 'string').map(k => `| ${ReferenceType[k as keyof typeof ReferenceType]} | ${k} |`).join('\n')}
+
+For more information on the type, please consult the implementation.
+
+${printHierarchy({ program: itentifierType.program, hierarchy: itentifierType.info, root: 'ReferenceType' })}
+	`
+})())
+}
+
  TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
  TODO: general node on calls and argument edges
  
@@ -394,12 +431,12 @@ async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	/* we collect type information on the graph */
 	const vertexType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/vertex.ts')],
+		files:       [path.resolve('./src/dataflow/graph/vertex.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts')],
 		typeName:    'DataflowGraphVertexInfo',
 		inlineTypes: ['MergeableRecord']
 	});
 	const edgeType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/edge.ts')],
+		files:       [path.resolve('./src/dataflow/graph/edge.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts')],
 		typeName:    'EdgeType',
 		inlineTypes: ['MergeableRecord']
 	});
@@ -494,14 +531,14 @@ the condition itself as this is the more general linkage point (and harmonizes w
 Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows:
 
-\`\`\`ts
-const shell = new RShell()
-const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+${codeBlock('ts', `
+const shell = new ${RShell.name}()
+const result = await new ${PipelineExecutor.name}(DEFAULT_DATAFLOW_PIPELINE, {
     shell,
-    request:   requestFromInput('x <- 1; x + 1')
+    request:   ${requestFromInput.name}('x <- 1; x + 1')
 }).allRemainingSteps();
 shell.close();
-\`\`\`
+`)}
 
 <details>
 
@@ -509,9 +546,7 @@ shell.close();
 
 The actual code we are using in case the example above gets oudated:
 
-\`\`\`ts
-${dummyDataflow.toString()}
-\`\`\`
+${codeBlock('ts', dummyDataflow.toString())}
 
 </details>
 
@@ -532,9 +567,8 @@ However, the dataflow information contains more, quite a lot of information in f
 
 <summary style="color:gray">Dataflow Information as Json</summary>
 
-\`\`\`json
-${JSON.stringify(result.dataflow, jsonReplacer, 2)}
-\`\`\`
+_As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
+${codeBlock('text', JSON.stringify(result.dataflow, jsonReplacer))}
 
 </details>
 

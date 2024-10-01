@@ -22,11 +22,17 @@ type MarkEdge = `${string}->${string}`
 
 export type MermaidMarkdownMark = MarkVertex | MarkEdge
 
+export interface MermaidMarkStyle {
+	readonly vertex: string
+	readonly edge: string
+}
+
 interface MermaidGraph {
 	nodeLines:           string[]
 	edgeLines:           string[]
 	includeEnvironments: boolean
 	mark:                ReadonlySet<MermaidMarkdownMark> | undefined
+	markStyle:           MermaidMarkStyle
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
 	// keep for sub-flows
@@ -172,7 +178,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`);
 	if(mark?.has(id)) {
-		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `);
+		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
 	}
 	if(mermaid.rootGraph.unknownSideEffects.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
@@ -189,7 +195,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
-				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:black,color:black,stroke-width:4.2px;`);
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);
 			}
 			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
@@ -207,6 +213,7 @@ interface MermaidGraphConfiguration {
 	idPrefix?:            string,
 	includeEnvironments?: boolean,
 	mark?:                ReadonlySet<MermaidMarkdownMark>,
+	markStyle?:           MermaidMarkStyle,
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>
 }
@@ -215,9 +222,9 @@ interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>() }: MermaidGraphConfiguration
+	{ graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments };
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {

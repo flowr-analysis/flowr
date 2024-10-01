@@ -4,33 +4,12 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import type { TypeElementInSource } from './doc-util/doc-types';
-import { implSnippet , getTypesFromFolderAsMermaid } from './doc-util/doc-types';
+import {mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
 import { printAsMs } from './doc-util/doc-ms';
 import type ts from 'typescript';
 import { getReplCommand } from './doc-util/doc-cli-option';
-
-const hide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
-function printHierarchy(prg: ts.Program, hierarchy: TypeElementInSource[], root: string, nesting = 0): string {
-
-	const node = hierarchy.find(e => e.name === root);
-	if(!node) {
-		return '';
-	}
-
-	const result = [implSnippet(node, prg, nesting)];
-
-	for(const baseType of node.extends) {
-		if(hide.includes(baseType)) {
-			continue;
-		}
-		const res = printHierarchy(prg, hierarchy, baseType, nesting + 1);
-		result.push(res);
-	}
-	return result.join('\n');
-}
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -39,7 +18,7 @@ async function getText(shell: RShell) {
 	const types = getTypesFromFolderAsMermaid({
 		rootFolder:  path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
 		typeName:    'RNode',
-		inlineTypes: hide
+		inlineTypes: mermaidHide
 	});
 	const elapsed = performance.now() - now;
 
@@ -99,7 +78,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${
-	printHierarchy(types.program, types.info, 'RNode')
+	printHierarchy({ program: types.program, hierarchy: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
 }
 
 With this, the example file produced the following AST (shown from left to right for space reasons):

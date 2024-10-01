@@ -26,12 +26,25 @@ import { BuiltIn } from '../environments/built-in';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
+/**
+ * ```r
+ * foo(a = 3, b = 2)
+ * ```
+ */
 export interface NamedFunctionArgument extends IdentifierReference {
 	readonly name: string
 }
+
+/**
+ * ```r
+ * foo(3, 2)
+ * ```
+ */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
 	readonly name?: undefined
 }
+
+/** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
 
 export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {

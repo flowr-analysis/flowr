@@ -5,7 +5,7 @@ import net from 'net';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
 import { serverLog } from './server';
-import * as http from "node:http";
+import * as http from 'http';
 
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void
@@ -89,7 +89,7 @@ export class HttpServerWrapper implements Server {
 	}
 
 	start(port: number) {
-		this.server = http.createServer((req, res) => {
+		this.server = http.createServer(req => {
 			this.connectHandler?.(new HttpSocketWrapper(req.socket));
 		});
 		this.server.listen(port);

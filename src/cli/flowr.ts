@@ -6,7 +6,8 @@
  */
 import type { DeepReadonly } from 'ts-essentials';
 import { FlowRServer } from './repl/server/server';
-import { HttpServerWrapper, Server, NetServer, WebSocketServerWrapper } from './repl/server/net';
+import type { Server } from './repl/server/net';
+import { HttpServerWrapper, NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
 import type { OptionDefinition } from 'command-line-usage';
 import { log, LogLevel } from '../util/log';

@@ -33,11 +33,11 @@ import { getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-type
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
-import {lastJoin, prefixLines} from './doc-util/doc-general';
+import { lastJoin, prefixLines } from './doc-util/doc-general';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
-import {EmptyArgument} from "../r-bridge/lang-4.x/ast/model/nodes/r-function-call";
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -252,13 +252,13 @@ as the \`type\` of these references is a bit-mask, encoding one of the following
 ${Object.values(ReferenceType).filter(k => typeof k === 'string').map(k => `| ${ReferenceType[k as keyof typeof ReferenceType]} | ${k} |`).join('\n')}
 
 In other words, we classify the references as ${
-				lastJoin(callVert.args.map(a => {
-					if(a === EmptyArgument) {
-						return `the (special) empty argument type (\`${EmptyArgument}\`)`;
-					} else {
-						return inverseMapReferenceTypes[a.type];
-					}
-				}), ', ', ', and ')
+			lastJoin(callVert.args.map(a => {
+				if(a === EmptyArgument) {
+					return `the (special) empty argument type (\`${EmptyArgument}\`)`;
+				} else {
+					return inverseMapReferenceTypes[a.type];
+				}
+			}), ', ', ', and ')
 			}.
 For more information on the types of references, please consult the implementation.
 
@@ -268,16 +268,16 @@ ${printHierarchy({ program: itentifierType.program, hierarchy: itentifierType.in
 }
 
 ${
-			block({
-				type: 'NOTE',
-				content: `
+	block({
+		type:    'NOTE',
+		content: `
 But how do you know which definitions are actually called by the function?
 So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API)) already provide you with this information.
 In general there are three scenarios you may be interested in:
 
 1. the function resolves only to builtin definitions (like \`<-\`)  
 ${
-prefixLines(details('Details', `
+	prefixLines(details('Details', `
 Heho
 `), '    ')
 }
@@ -286,8 +286,8 @@ Heho
 3. the function resolves to a mix of both
 
 				`
-			})
-		}
+	})
+}
 
  TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
  TODO: general node on calls and argument edges

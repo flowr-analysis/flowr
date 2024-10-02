@@ -6,8 +6,7 @@
  */
 import type { DeepReadonly } from 'ts-essentials';
 import { FlowRServer } from './repl/server/server';
-import type { Server } from './repl/server/net';
-import { NetServer, WebSocketServerWrapper } from './repl/server/net';
+import { HttpServerWrapper, Server, NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
 import type { OptionDefinition } from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
@@ -53,7 +52,8 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'server',                        type: Boolean, description: 'Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.' },
 	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{ name: 'version',           alias: 'V', type: Boolean, description: 'Provide information about the version of flowR as well as its underlying R system and exit.' },
-	{ name: 'ws',                            type: Boolean, description: 'If the server flag is set, use websocket for messaging' }
+	{ name: 'ws',                            type: Boolean, description: 'If the server flag is set, use websocket for messaging' },
+	{ name: 'http',                          type: Boolean, description: 'If the server flag is set, use http for messaging' }
 ];
 
 export interface FlowrCliOptions {
@@ -70,6 +70,7 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+	http:               boolean
 }
 
 export const optionHelp = [
@@ -198,7 +199,7 @@ async function mainServer(backend: Server = new NetServer()) {
 
 
 if(options.server) {
-	void mainServer(options.ws ? new WebSocketServerWrapper() : new NetServer());
+	void mainServer(options.ws ? new WebSocketServerWrapper() : options.http ? new HttpServerWrapper() : new NetServer());
 } else {
 	void mainRepl();
 }

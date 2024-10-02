@@ -4,8 +4,8 @@
 import net from 'net';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
-import type * as Buffer from 'buffer';
 import { serverLog } from './server';
+import * as http from "node:http";
 
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void
@@ -74,6 +74,52 @@ export class WebSocketWrapper implements Socket {
 	on(event: 'data' | 'close' | 'error', listener: (data: Buffer) => void) {
 		if(event === 'data') {
 			this.socket.on('message', listener);
+		} else {
+			this.socket.on(event, listener);
+		}
+	}
+}
+
+export class HttpServerWrapper implements Server {
+	private server:         net.Server | undefined;
+	private connectHandler: ((c: Socket) => void) | undefined;
+
+	public onConnect(handler: OnConnect) {
+		this.connectHandler = handler;
+	}
+
+	start(port: number) {
+		this.server = http.createServer((req, res) => {
+			this.connectHandler?.(new HttpSocketWrapper(req.socket));
+		});
+		this.server.listen(port);
+		serverLog.info('HTTP-Server wrapper is active!');
+	}
+}
+
+export class HttpSocketWrapper implements Socket {
+	private readonly socket: net.Socket;
+
+	public remoteAddress?: string;
+	public remotePort?:    number;
+
+	constructor(socket: net.Socket) {
+		this.socket = socket;
+		this.remoteAddress = socket.remoteAddress?.toString();
+		this.remotePort = socket.remotePort;
+	}
+
+	write(data: string) {
+		this.socket.write(data);
+	}
+
+	end() {
+		this.socket.end();
+	}
+
+	on(event: 'data' | 'close' | 'error', listener: (data: Buffer) => void) {
+		if(event === 'data') {
+			this.socket.on('data', listener);
 		} else {
 			this.socket.on(event, listener);
 		}

@@ -1,7 +1,8 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
 import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
-import {DataflowGraphVertexFunctionCall, VertexType} from '../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
@@ -27,13 +28,16 @@ import {
 	getAllVertices
 } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import { getTypesFromFolderAsMermaid, MermaidTypeReport, printHierarchy} from './doc-util/doc-types';
+import type { MermaidTypeReport } from './doc-util/doc-types';
+import { getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
-import { prefixLines } from './doc-util/doc-general';
-import {NodeId, recoverName} from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {ReferenceType} from "../dataflow/environments/identifier";
+import {lastJoin, prefixLines} from './doc-util/doc-general';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ReferenceType } from '../dataflow/environments/identifier';
+import {EmptyArgument} from "../r-bridge/lang-4.x/ast/model/nodes/r-function-call";
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -218,19 +222,20 @@ ${
 
 
 ${
-details('Example: Simple Function Call (unresolved)', 
-await (async () => {
-	const code = 'foo(x,3,y=3,)';
-	const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([8]), exposeResult: true });
-	const callInfo = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
-	guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
-	const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
-	const itentifierType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/environments/identifier.ts')],
-		typeName:    'IdentifierReference',
-		inlineTypes: ['ControlDependency']
-	});
-	return `
+	details('Example: Simple Function Call (unresolved)', 
+		await (async() => {
+			const code = 'foo(x,3,y=3,)';
+			const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([8]), exposeResult: true });
+			const callInfo = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
+			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
+			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
+			const itentifierType = getTypesFromFolderAsMermaid({
+				files:       [path.resolve('./src/dataflow/environments/identifier.ts')],
+				typeName:    'IdentifierReference',
+				inlineTypes: ['ControlDependency']
+			});
+			return `
 To get a better understanding, let's look at a simple function call without any known call target, like \`${code}\`:
 
 ${text}
@@ -243,15 +248,46 @@ Of course now, this is hard to read in this form (although the ids of the argume
 as the \`type\` of these references is a bit-mask, encoding one of the following reference types:
 
 | Value | Reference Type |
-|-------|----------------|
+|------:|----------------|
 ${Object.values(ReferenceType).filter(k => typeof k === 'string').map(k => `| ${ReferenceType[k as keyof typeof ReferenceType]} | ${k} |`).join('\n')}
 
-For more information on the type, please consult the implementation.
+In other words, we classify the references as ${
+				lastJoin(callVert.args.map(a => {
+					if(a === EmptyArgument) {
+						return `the (special) empty argument type (\`${EmptyArgument}\`)`;
+					} else {
+						return inverseMapReferenceTypes[a.type];
+					}
+				}), ', ', ', and ')
+			}.
+For more information on the types of references, please consult the implementation.
 
 ${printHierarchy({ program: itentifierType.program, hierarchy: itentifierType.info, root: 'ReferenceType' })}
-	`
-})())
+	`;
+		})())
 }
+
+${
+			block({
+				type: 'NOTE',
+				content: `
+But how do you know which definitions are actually called by the function?
+So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API)) already provide you with this information.
+In general there are three scenarios you may be interested in:
+
+1. the function resolves only to builtin definitions (like \`<-\`)  
+${
+prefixLines(details('Details', `
+Heho
+`), '    ')
+}
+
+2. the function only resolves to definitions that are present in the program
+3. the function resolves to a mix of both
+
+				`
+			})
+		}
 
  TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
  TODO: general node on calls and argument edges

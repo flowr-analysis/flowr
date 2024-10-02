@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
-import {details} from "./doc-structure";
+import { details } from './doc-structure';
 
 /* basics generated */
 
@@ -135,15 +135,15 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			const enumName = node.name?.getText(sourceFile) ?? '';
 			/* TODO: comments, and mark correctly as enum */
 			hierarchyList.push({
-				name: enumName,
+				name:       enumName,
 				node,
-				kind: 'type',
-				extends: [],
-				comments: getTextualComments(node),
-				generics: [],
-				filePath: sourceFile.fileName,
+				kind:       'enum',
+				extends:    [],
+				comments:   getTextualComments(node),
+				generics:   [],
+				filePath:   sourceFile.fileName,
 				lineNumber: getStartLine(node, sourceFile)
-			})
+			});
 		}
 
 		ts.forEachChild(node, child => visit(child, sourceFile));
@@ -280,7 +280,7 @@ export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): M
 export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, nesting = 0): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
-	const bold = node.kind === 'interface' ? '**' : '';
+	const bold = node.kind === 'interface' || node.kind === 'enum' ? '**' : '';
 	const sep = node.comments ? '  \n' : '\n';
 
 	let text = node.comments?.join('\n') ?? '';
@@ -290,12 +290,12 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 }
 
 export interface PrintHierarchyArguments {
-	readonly program: ts.Program
-	readonly hierarchy: TypeElementInSource[]
-	readonly root: string
+	readonly program:              ts.Program
+	readonly hierarchy:            TypeElementInSource[]
+	readonly root:                 string
 	readonly collapseFromNesting?: number
-	readonly initialNesting?: number
-	readonly maxDepth?: number
+	readonly initialNesting?:      number
+	readonly maxDepth?:            number
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
@@ -315,13 +315,13 @@ export function printHierarchy({ program, hierarchy, root, collapseFromNesting =
 		if(mermaidHide.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, hierarchy, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth});
+		const res = printHierarchy({ program, hierarchy, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
 		result.push(res);
 	}
 
-	const out = result.join('\n')
+	const out = result.join('\n');
 	if(initialNesting === collapseFromNesting - 1) {
-		return thisLine + (out ? details(`View more (${node.extends.join(', ')})`, out, {prefixInit: ' '.repeat(2 * (collapseFromNesting + 1))}) : '');
+		return thisLine + (out ? details(`View more (${node.extends.join(', ')})`, out, { prefixInit: ' '.repeat(2 * (collapseFromNesting + 1)) }) : '');
 	} else {
 		return thisLine + (out ? '\n' + out : '');
 	}

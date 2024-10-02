@@ -12,7 +12,7 @@ import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import { printAsMs } from './doc-ms';
 import { jsonReplacer } from '../../util/json';
-import {PipelineOutput} from "../../core/steps/pipeline/pipeline";
+import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
 	return `
@@ -27,15 +27,14 @@ ${graphToMermaid({
 }
 
 export interface PrintDataflowGraphOptions {
-	readonly mark?:     ReadonlySet<MermaidMarkdownMark>;
-	readonly showCode?: boolean;
-	readonly codeOpen?: boolean;
+	readonly mark?:         ReadonlySet<MermaidMarkdownMark>;
+	readonly showCode?:     boolean;
+	readonly codeOpen?:     boolean;
 	readonly exposeResult?: boolean;
 }
 
 export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
-export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult: false | undefined }): Promise<string>;
-export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions): Promise<string>;
+export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
 export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -64,9 +63,9 @@ ${code}
 
 \`\`\`
 ${graphToMermaid({
-		graph:  result.dataflow.graph,
-		prefix: 'flowchart LR'
-	}).string}
+			graph:  result.dataflow.graph,
+			prefix: 'flowchart LR'
+		}).string}
 \`\`\`
 
 </details>

@@ -4,7 +4,7 @@ export interface DetailsOptions {
     readonly color?:       string;
     readonly open?:        boolean;
     readonly hideIfEmpty?: boolean;
-    readonly prefixInit?: string;
+    readonly prefixInit?:  string;
 }
 export function details(title: string, content: string, { color = 'black', open = false, hideIfEmpty = true, prefixInit = '' }: DetailsOptions = {}): string {
 	return hideIfEmpty && content.trim().length === 0 ? '' : `

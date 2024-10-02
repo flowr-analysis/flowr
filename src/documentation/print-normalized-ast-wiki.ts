@@ -4,11 +4,10 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import {mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
+import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
 import { printAsMs } from './doc-util/doc-ms';
-import type ts from 'typescript';
 import { getReplCommand } from './doc-util/doc-cli-option';
 
 async function getText(shell: RShell) {

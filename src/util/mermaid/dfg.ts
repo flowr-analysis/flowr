@@ -24,7 +24,7 @@ export type MermaidMarkdownMark = MarkVertex | MarkEdge
 
 export interface MermaidMarkStyle {
 	readonly vertex: string
-	readonly edge: string
+	readonly edge:   string
 }
 
 interface MermaidGraph {

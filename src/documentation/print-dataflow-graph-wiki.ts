@@ -38,6 +38,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {resolveByName} from "../dataflow/environments/resolve-by-name";
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -274,16 +275,33 @@ ${
 But how do you know which definitions are actually called by the function?
 So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API)) already provide you with this information.
 In general there are three scenarios you may be interested in:
-
-1. the function resolves only to builtin definitions (like \`<-\`)  
+  
 ${
-	prefixLines(details('Details', `
-Heho
-`), '    ')
+	details('1) the function resolves only to builtin definitions (like `<-`)', `
+
+Let's have a look at a simple assignment:
+
+${await printDfGraphForCode(shell, 'x <- 2')}
+
+In this case, the call does not have a single call edge, which in general means it is bound to anything
+global beyond the scope of the given script. If it really refers to a built-in variable,
+_flowR_ (theoretically at least) does not know as any code that is not part of the analysis could cause the
+semantics to change. However, it is safe to assume that if there is a builtin with the given
+name and if there is no call edge attached to a call, that it resolves to the builtin version.
+If you want to check the resolve targets, refer to \`${resolveByName.name}\` which is defined in ${getFilePathMd('../dataflow/environments/resolve-by-name')}.
+
+
+`)
 }
 
-2. the function only resolves to definitions that are present in the program
-3. the function resolves to a mix of both
+${details('2) the function only resolves to definitions that are present in the program', `
+Hi
+`)}
+
+
+${details('3) the function resolves to a mix of both', `
+Ho
+`)}
 
 				`
 	})

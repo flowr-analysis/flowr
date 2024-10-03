@@ -279,7 +279,7 @@ ${
 		content: `
 But how do you know which definitions are actually called by the function?
 
-So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API) already provide you with this information.
+So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API](${FlowrWikiBaseRef}/Query%20API)) already provide you with this information.
 In general there are three scenarios you may be interested in:
   
 ${
@@ -375,7 +375,7 @@ In short: the last line may either refer to a definition or to a use of \`x\`, a
 First of all how can you spot that something weird is happening? Well, this definition has a ${linkEdgeName(EdgeType.Reads)} and a ${linkEdgeName(EdgeType.DefinedBy)} edge,
 but this of course does not apply to the general case.
 
-For starters, let's have a look at the environment of the call of call to \`<-\` in the last line:
+For starters, let's have a look at the environment of the call to \`<-\` in the last line:
 
 ${printEnvironmentToMarkdown(env.current)}
 

@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/documentation/print-query-wiki.ts' on 2024-09-27, 07:13:59 UTC presenting an overview of flowR's query API (version: 2.0.25, using R version 4.4.0)._
+_This document was generated automatically from '/home/runner/work/flowr/flowr/src/documentation/print-query-wiki.ts' on 2024-09-27, 11:53:37 UTC presenting an overview of flowR's query API (version: 2.0.25, using R version 4.4.0)._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to access this API.
@@ -302,7 +302,7 @@ flowchart LR
     89 -->|"reads, returns, argument"| 87
 ```
 	
-(The analysis required _20.92 ms_ (including parsing and normalization) within the generation environment.)
+(The analysis required _24.17 ms_ (including parsing and normalization) within the generation environment.)
 
 
 
@@ -341,14 +341,14 @@ Just as an example, the following [Call-Context Query](#call-context-query) find
 
 _Results (prettified and summarized):_
 
-Query:&nbsp;**call-context**&nbsp;(0ms)\
+Query:&nbsp;**call-context**&nbsp;(1ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**input**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**csv-file**:&nbsp;_`read_csv`_&nbsp;(L.6),&nbsp;_`read_csv`_&nbsp;(L.7)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;8ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;11ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.46 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _11.05 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -357,7 +357,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "input": {
@@ -377,7 +377,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -543,11 +543,11 @@ Query:&nbsp;**call-context**&nbsp;(3ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9),&nbsp;_`mean`_&nbsp;(L.19)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**plot**:&nbsp;_`points`_&nbsp;(L.17)&nbsp;with&nbsp;1&nbsp;link&nbsp;(_`plot`_&nbsp;(L.16))\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈3ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;14ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈3ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;16ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _13.50 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _16.49 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -669,11 +669,11 @@ _Results (prettified and summarized):_
 Query:&nbsp;**call-context**&nbsp;(0ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9),&nbsp;_`print`_&nbsp;(L.10),&nbsp;_`mean`_&nbsp;(L.19),&nbsp;_`print`_&nbsp;(L.19)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;6ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;7ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.86 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.07 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -706,7 +706,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -741,11 +741,11 @@ _Results (prettified and summarized):_
 Query:&nbsp;**call-context**&nbsp;(0ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9),&nbsp;_`print`_&nbsp;(L.10),&nbsp;_`mean`_&nbsp;(L.19),&nbsp;_`print`_&nbsp;(L.19)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;6ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;7ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.53 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _6.87 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -828,11 +828,11 @@ _Results (prettified and summarized):_
 Query:&nbsp;**call-context**&nbsp;(0ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9)&nbsp;with&nbsp;1&nbsp;call&nbsp;(_built-in_),&nbsp;_`mean`_&nbsp;(L.19)&nbsp;with&nbsp;1&nbsp;call&nbsp;(_built-in_)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;6ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;7ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.85 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.39 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -865,7 +865,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```

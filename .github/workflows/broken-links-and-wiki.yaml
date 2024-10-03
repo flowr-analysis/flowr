@@ -62,7 +62,11 @@ jobs:
             npm run $2 --silent > "wiki/$1.md"
             # test if the file changed, but ignore the first line which contains the time stamp
             # we additionally used sed to remove any measurement stamp for the comparison as they of course change
-            if ! diff -q <(tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g') <(tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g'); then
+            
+            tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g' > "wiki/$1.md.tmp"
+            tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g' > "wiki/$1-Old.md.tmp"
+          
+            if ! diff -q "wiki/$1.md.tmp" "wiki/$1-Old.md.tmp"; then
                 echo "$1 changed!"
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true
@@ -77,6 +81,8 @@ jobs:
           update_wiki_page "Capabilities" capabilities-markdown
           update_wiki_page "Dataflow Graph" wiki:df-graph
           update_wiki_page "Query API" wiki:query-api
+          update_wiki_page "Interface" wiki:interface
+          update_wiki_page "Normalized AST" wiki:normalized-ast
           
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
@@ -99,6 +105,7 @@ jobs:
         with:
           path: "wiki/"
           token: ${{ secrets.GH_DEPLOY_WIKI }}
+          ignore: ''
 
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0

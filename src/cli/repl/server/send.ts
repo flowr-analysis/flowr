@@ -1,4 +1,4 @@
-import type { IdMessageBase } from './messages/messages';
+import type { IdMessageBase } from './messages/all-messages';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import { jsonReplacer } from '../../../util/json';

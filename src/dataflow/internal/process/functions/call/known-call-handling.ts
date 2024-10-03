@@ -48,7 +48,7 @@ export function markNonStandardEvaluationEdges(
 		if(nse < callArgs.length) {
 			const arg = callArgs[nse];
 			if(arg !== undefined) {
-				finalGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.NonStandardEvaluation });
+				finalGraph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
 			}
 		} else {
 			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`);

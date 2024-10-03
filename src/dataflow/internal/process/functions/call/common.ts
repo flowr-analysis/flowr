@@ -52,11 +52,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	if(valueVertex.tag !== VertexType.Value) {
 		if(valueVertex.tag === VertexType.FunctionDefinition) {
 			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit, { type: EdgeType.Reads });
+				graph.addEdge(rootId, exit, EdgeType.Reads);
 			}
 		} else {
 			for(const exit of value.exitPoints) {
-				graph.addEdge(rootId, exit.nodeId, { type: EdgeType.Reads });
+				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 			}
 		}
 	}
@@ -69,7 +69,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 		if(ref.name) {
 			const resolved = resolveByName(ref.name, env, ref.type) ?? [];
 			for(const resolve of resolved) {
-				graph.addEdge(ref.nodeId, resolve.nodeId, { type: EdgeType.Reads });
+				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
 		}
 	}
@@ -115,7 +115,7 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.controlDependencies)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads });
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 				}
 				if(assumeItMayHaveAHigherTarget) {
 					remainingReadInArgs.push(ingoing);
@@ -132,7 +132,7 @@ export function processAllArguments<OtherInfo>(
 			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined, type: ReferenceType.Argument });
 		}
 
-		finalGraph.addEdge(functionRootId, processed.entryPoint, { type: EdgeType.Argument });
+		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
 	}
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments };
 }
@@ -160,7 +160,7 @@ export function patchFunctionCall<OtherInfo>(
 	});
 	for(const arg of argumentProcessResult) {
 		if(arg) {
-			nextGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Argument });
+			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
 }

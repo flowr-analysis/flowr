@@ -61,10 +61,10 @@ export function processForLoop<OtherInfo>(
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!
-	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph));
+	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, writtenVariable));
 
 	for(const write of writtenVariable) {
-		nextGraph.addEdge(write.nodeId, vector.entryPoint, { type: EdgeType.DefinedBy });
+		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
 		nextGraph.setDefinitionOfVertex(write);
 	}
 
@@ -80,10 +80,10 @@ export function processForLoop<OtherInfo>(
 		argumentProcessResult: [variable, vector, body]
 	});
 	/* mark the last argument as nse */
-	nextGraph.addEdge(rootId, body.entryPoint, { type: EdgeType.NonStandardEvaluation });
+	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);
 	// as the for-loop always evaluates its variable and condition
-	nextGraph.addEdge(name.info.id, variable.entryPoint, { type: EdgeType.Reads });
-	nextGraph.addEdge(name.info.id, vector.entryPoint, { type: EdgeType.Reads });
+	nextGraph.addEdge(name.info.id, variable.entryPoint, EdgeType.Reads);
+	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
 	return {
 		unknownReferences: [],

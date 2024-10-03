@@ -1,4 +1,4 @@
-import type { IdMessageBase } from './messages';
+import type { IdMessageBase } from './all-messages';
 
 /**
  * Sent in case of any error (e.g., if the analysis fails, or the message contains syntax errors).

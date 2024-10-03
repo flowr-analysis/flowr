@@ -31,26 +31,14 @@ flowchart TD
    root --> core(core)
    root --> benchmark(benchmark)
    root --> stat(statistics)
+   root --> queryapi(Query API)
    root --> utility(utility)
 
    style utility stroke-dasharray: 5 5,opacity:0.5;
-
-   click root href "https://github.com/flowr-analysis/flowr/" "Jump to the Repository"
-   click rb href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts" "Jump to the Implementation"
-   click norm href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang%3A4.x/ast/parser/xml" "Jump to the Implementation"
-   click da href "https://github.com/flowr-analysis/flowr/tree/main/src/dataflow" "Jump to the Implementation"
-   click slice href "https://github.com/flowr-analysis/flowr/tree/main/src/slicing" "Jump to the Implementation"
-   click rc href "https://github.com/flowr-analysis/flowr/blob/main/src/reconstruct/reconstruct.ts" "Jump to the Implementation"
-   click core href "https://github.com/flowr-analysis/flowr/blob/main/src/core" "Jump to the Implementation"
-   click benchmark href "https://github.com/flowr-analysis/flowr/tree/main/benchmark/src" "Jump to the Implementation"
-   click stat href "https://github.com/flowr-analysis/flowr/tree/main/statistics/src" "Jump to the Implementation"
-   click utility href "https://github.com/flowr-analysis/flowr/tree/main/src/util" "Jump to the Implementation"
 ```
 
 The [mermaid](https://mermaid.js.org/) diagram above presents the architecture of _flowR_,
-with the important components directly related to the actual slicing highlighted accordingly
-(all boxes should be hyperlinks to the corresponding implementation _if_ you are interested -
-depending on your browser, you may have to specifically open them in a new tab).
+with the important components directly related to the analysis highlighted accordingly.
 
 Primarily, _flowR_ provides a backward [program slicer](https://en.wikipedia.org/wiki/Program_slicing) for the [*R*](https://www.r-project.org/) programming language, which is available with the corresponding [slicer](https://github.com/flowr-analysis/flowr/tree/main/src/slicing) module and exposed by the [`slicer`](#generate-static-slices) script.
 Its subcomponents (like the custom [R bridge](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge) or the static [dataflow analysis]("https://github.com/flowr-analysis/flowr/tree/main/src/dataflow)) are not important if you simply wish to use _flowR_.
@@ -239,7 +227,7 @@ npm run summarizer -- --help
 
 ### Generate Usage Statistics of R Code
 
-If you want to reproduce the statistics as presented in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
+If you want to reproduce the statistics as presented in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
 
 For more information, run the following from the `cli` directory:
 

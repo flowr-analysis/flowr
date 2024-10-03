@@ -89,7 +89,7 @@ export function processApply<OtherInfo>(
 
 	for(const arg of processedArguments) {
 		if(arg) {
-			information.graph.addEdge(applyCallId, arg.entryPoint, { type: EdgeType.Argument });
+			information.graph.addEdge(applyCallId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
 

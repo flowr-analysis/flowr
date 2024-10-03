@@ -47,7 +47,7 @@ export function processPipe<OtherInfo>(
 			controlDependencies: data.controlDependencies,
 			type:                ReferenceType.Function
 		});
-		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument });
+		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument);
 	}
 
 	return information;

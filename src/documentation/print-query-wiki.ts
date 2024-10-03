@@ -12,28 +12,7 @@ import { markdownFormatter } from '../util/ansi';
 import { executeCallContextQueries } from '../queries/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-
-const fileCode = `
-library(ggplot)
-library(dplyr)
-library(readr)
-
-# read data with read_csv
-data <- read_csv('data.csv')
-data2 <- read_csv('data2.csv')
-
-m <- mean(data$x) 
-print(m)
-
-data %>%
-	ggplot(aes(x = x, y = y)) +
-	geom_point()
-	
-plot(data2$x, data2$y)
-points(data2$x, data2$y)
-	
-print(mean(data2$k))
-`.trim();
+import { exampleQueryCode } from './data/query/example-query-code';
 
 
 registerQueryDocumentation('call-context', {
@@ -61,7 +40,7 @@ Re-using the example code from above, the following query attaches all calls to 
 all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:
 
 ${
-	await showQuery(shell, fileCode, [
+	await showQuery(shell, exampleQueryCode, [
 		{ type: 'call-context', callName: '^mean$', kind: 'visualize', subkind: 'text' },
 		{ type: 'call-context', callName: '^read_', kind: 'input', subkind: 'csv-file', callTargets: CallTargets.OnlyGlobal },
 		{ type: 'call-context', callName: '^points$', kind: 'visualize', subkind: 'plot', linkTo: { type: 'link-to-last-call', callName: '^plot$' } }
@@ -95,7 +74,7 @@ For example, consider the following compound query that combines two call-contex
 assigned to the kind \`visualize\` and the subkind \`text\` (using the example code from above):
 
 ${
-	await showQuery(shell, fileCode, [{
+	await showQuery(shell, exampleQueryCode, [{
 		type:            'compound',
 		query:           'call-context',
 		commonArguments: { kind: 'visualize', subkind: 'text' },
@@ -109,7 +88,7 @@ ${
 Of course, in this specific scenario, the following query would be equivalent:
 
 ${
-	await showQuery(shell, fileCode, [
+	await showQuery(shell, exampleQueryCode, [
 		{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }
 	], { showCode: false, collapseResult: true })
 }
@@ -120,7 +99,7 @@ In the following, we (by default) want all calls to not resolve to a local defin
 want to resolve to a local definition:
 
 ${
-	await showQuery(shell, fileCode, [{
+	await showQuery(shell, exampleQueryCode, [{
 		type:            'compound',
 		query:           'call-context',
 		commonArguments: { kind: 'visualize', subkind: 'text', callTargets: CallTargets.OnlyGlobal },
@@ -147,12 +126,12 @@ Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more inf
 First, consider that you have a file like the following (of course, this is just a simple and artificial example):
 
 \`\`\`r
-${fileCode}
+${exampleQueryCode}
 \`\`\`
 
 <details> <summary>Dataflow Graph of the Example</summary>
 
-${await printDfGraphForCode(shell, fileCode, { showCode: false })}
+${await printDfGraphForCode(shell, exampleQueryCode, { showCode: false })}
 
 </details>
 
@@ -171,7 +150,7 @@ For the specific use-case stated, you could use the [Call-Context Query](#call-c
 
 Just as an example, the following [Call-Context Query](#call-context-query) finds all calls to \`read_csv\` that are not overwritten:
 
-${await showQuery(shell, fileCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
+${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
 
 ## The Query Format
 

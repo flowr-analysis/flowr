@@ -4,7 +4,7 @@ import type { RSymbol } from './r-symbol';
 import type { RExpressionList } from './r-expression-list';
 
 /**
- * ```ts
+ * ```r
  * for(<variable> in <vector>) <body>
  * ```
  */

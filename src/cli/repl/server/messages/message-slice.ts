@@ -1,4 +1,4 @@
-import type { IdMessageBase, MessageDefinition } from './messages';
+import type { IdMessageBase, MessageDefinition } from './all-messages';
 import * as Joi from 'joi';
 import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
@@ -24,10 +24,10 @@ export interface SliceRequestMessage extends IdMessageBase {
 export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 	type:   'request-slice',
 	schema: Joi.object({
-		type:      Joi.string().valid('request-slice').required(),
-		id:        Joi.string().optional(),
-		filetoken: Joi.string().required(),
-		criterion: Joi.array().items(Joi.string()).min(0).required()
+		type:      Joi.string().valid('request-slice').required().description('The type of the message.'),
+		id:        Joi.string().optional().description('The id of the message, if you passed one in the request.'),
+		filetoken: Joi.string().required().description('The filetoken of the file to slice must be the same as with the analysis request.'),
+		criterion: Joi.array().items(Joi.string()).min(0).required().required().description('The slicing criteria to use.'),
 	})
 };
 
@@ -41,3 +41,12 @@ export interface SliceResponseMessage extends IdMessageBase {
 	/** only contains the results of the slice steps to not repeat ourselves */
 	results: Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
 }
+
+export const responseSliceMessage: MessageDefinition<SliceResponseMessage> = {
+	type:   'response-slice',
+	schema: Joi.object({
+		type:    Joi.string().valid('response-slice').required().description('The type of the message.'),
+		id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
+		results: Joi.object().required().description('The results of the slice (one field per step slicing step).')
+	}).description('The response to a slice request.')
+};

@@ -1,7 +1,7 @@
 import { DataflowGraph } from '../dataflow/graph/graph';
 import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
 import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
@@ -34,6 +34,8 @@ import { nth } from '../util/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { getAllFunctionTargets } from '../dataflow/internal/linker';
+import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
+import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -369,7 +371,7 @@ ${text}
 
 Interesting program, right? Running this with \`u <- TRUE\` will cause the last line to evaluate to \`6\` because we redefined the assignment
 operator to mean multiplication, while with \`u <- FALSE\` causes \`x\` to be assigned to \`3\`.
-In short: the last line may either refer to a definition or to a use of \`x\`, and we are not fully equipped to visualize this.
+In short: the last line may either refer to a definition or to a use of \`x\`, and we are not fully equipped to visualize this (this causes a warning).
 First of all how can you spot that something weird is happening? Well, this definition has a ${linkEdgeName(EdgeType.Reads)} and a ${linkEdgeName(EdgeType.DefinedBy)} edge,
 but this of course does not apply to the general case.
 
@@ -413,24 +415,149 @@ ${details('Example: Function Call with a Side-Effect', await printDfGraphForCode
 	}, []]);
 
 	vertexExplanations.set(VertexType.VariableDefinition, [{
-		shell:            shell,
-		name:             'Variable Definition Vertex',
-		type:             VertexType.VariableDefinition,
-		description:      'Describes a defined variable. Not just `<-` causes this!',
+		shell:       shell,
+		name:        'Variable Definition Vertex',
+		type:        VertexType.VariableDefinition,
+		description: `
+Defined variables most commonly occur in the context of an assignment, for example, with the \`<-\` operator as shown above.
+
+${details('Example: Super Definition (<code><<-</code>)', await printDfGraphForCode(shell, 'x <<- 1', { mark: new Set([0]) }))}
+
+The implementation is relatively sparse and similar to the other marker vertices:
+
+${
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexVariableDefinition' })
+}
+
+Of course, there are not just operators that define variables, but also functions, like \`assign\`.
+
+${
+	details('Example: Using <code>assign</code>', 
+		await printDfGraphForCode(shell, 'assign("x", 1)\nx', { mark: new Set([1]) })
+		+ `\nThe example may be misleading as the visualization uses \`${recoverName.name}\` to print the lexeme of the variable. However, this actually defines the variable \`x\` (without the quotes) as you can see with the ${linkEdgeName(EdgeType.Reads)} edge.`
+	)
+}
+
+Please be aware, that the name of the symbol defined may differ from what you read in the program as R allows the assignments to strings, escaped names, and more:
+
+${details('Example: Assigning with an Escaped Name', await printDfGraphForCode(shell, '`x` <- 1\nx', { mark: new Set([0]) }))}
+${details('Example: Assigning with a String', await printDfGraphForCode(shell, '"x" <- 1\nx', { mark: new Set([0]) }))}
+
+Definitions may be constrained by conditionals (_flowR_ takes care of calculating the dominating front for you).
+
+${details('Conditional Assignments', await (async() => {
+		const constrainedDefinitions = await printDfGraphForCode(shell, 'x <- 0\nif(u) x <- 1 else x <- 2\nx', { exposeResult: true });
+		const [text, info] = constrainedDefinitions;
+
+		const finalEnvironment = printEnvironmentToMarkdown(info.dataflow.environment.current);
+		
+		return `
+${text}
+
+In this case, the definition of \`x\` is constrained by the conditional, which is reflected in the environment at the end of the analysis:
+
+${finalEnvironment}
+
+As you can see, _flowR_ is able to recognize that the initial definition of \`x\` has no influence on the final value of the variable.
+		`;
+	})())}
+
+`,
 		code:             'x <- 1',
 		expectedSubgraph: emptyGraph().defineVariable('1@x', 'x')
-	}, [{
-		name:             'Globally Defined Variable',
-		description:      'Are described similar within the dataflow graph, only the active environment differs.',
-		code:             'x <<- 1',
-		expectedSubgraph: emptyGraph().defineVariable('1@x', 'x')
-	}]]);
+	}, []]);
 
 	vertexExplanations.set(VertexType.FunctionDefinition, [{
-		shell:            shell,
-		name:             'Function Definition Vertex',
-		type:             VertexType.FunctionDefinition,
-		description:      'Describes a function definition. Are always anonymous at first; although they can be bound to a name, the id `0` refers to the `1` in the body. The presented subgraph refers to the body of the function, marking exit points and open references.',
+		shell:       shell,
+		name:        'Function Definition Vertex',
+		type:        VertexType.FunctionDefinition,
+		description: `
+Defining a function does do a lot of things: 1) it creates a new scope, 2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body, 3) it may access the enclosing environments and the callstack.
+The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
+
+${
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionDefinition' })
+}
+The subflow is defined like this:
+${
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowFunctionFlowInformation' })
+}
+
+
+Whenever we visualize a function definition, we use a dedicated node to represent the anonymous function object,
+and a subgraph (usually with the name \`"function <id>"\`) to encompass the body of the function (they are linked with a dotted line).
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+You may ask yourself: How can I know which vertices are part of the function body? how do i know the parameters?
+All vertices that are part of the graph are present in the \`graph\` property of the function definition &mdash; it contains a set of all ids of the contained vertices: 
+the actual dataflow graph is flat, and you can query all root vertices (i.e., those not part of any function definition) using 
+\`${new DataflowGraph(undefined).rootIds.name}\`. Additionally, most functions that you can call on the dataflow graph offer a flag whether you want to include
+vertices of function definitions or not (e.g., \`${new DataflowGraph(undefined).vertices.name}\`)
+
+${details('Example: Nested Function Definitions',
+		await (async() => {
+			const [text, info] = await printDfGraphForCode(shell, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
+	
+			const definitions = [...info.dataflow.graph.vertices(true)]
+				.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
+				.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`);
+			
+			return `
+${text}
+
+As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
+
+| Id | Vertex Ids in Subflow |
+|---:|-----------------------|
+${definitions.join('\n')}
+
+	`;
+		})()
+	)}
+
+But now there is still an open question: how do you know which vertices are the parameters?
+In short: there is no direct way to infer this from the dataflow graph (as parameters are handled as open references which are promises).
+However, you can use the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) to get the parameters used.   
+
+${details('Example: Parameters of a Function',
+		await (async() => {
+			
+			const code = 'f <- function(x, y = 3) x + y';
+			const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([10, 1, 3]), exposeResult: true });
+			const ast = await printNormalizedAstForCode(shell, code, { prefix: 'flowchart LR\n', showCode: false });
+			
+			const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
+			guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
+			const [id] = functionDefinition;
+			
+			const normalized = info.normalize.idMap.get(id) as RFunctionDefinition;
+			
+			return `
+Let's first consider the following dataflow graph (of \`${code}\`):
+
+${text}
+
+The function definition we are interested in has the id \`${id}\`. Looking at the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) of the code,
+we can get the parameters simply be requesting the \`parameters\` property of the function definition (yielding the names: [${normalized.parameters.map(p => `\`${p.name.content}\``).join(', ')}]):
+
+${ast}
+	`;
+		})()
+	)}
+				`
+	})
+}
+
+Last but not least, please keep in mind that R offers another way of writing anonymous functions (using the backslash): 
+
+${await printDfGraphForCode(shell, '\\(x) x + 1', { switchCodeAndGraph: true })}
+
+Besides this being a theoretically "shorter" way of defining a function, this behaves similarly to the use of `function`. 
+
+`,
 		code:             'function() 1',
 		expectedSubgraph: emptyGraph().defineFunction('1@function', [0], { graph: new Set('0'), in: [], out: [], unknownReferences: [], entryPoint: 0, environment: defaultEnv() })
 	}, []]);
@@ -577,12 +704,12 @@ async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	/* we collect type information on the graph */
 	const vertexType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/vertex.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts')],
+		files:       [path.resolve('./src/dataflow/graph/vertex.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts'), path.resolve('./src/dataflow/info.ts')],
 		typeName:    'DataflowGraphVertexInfo',
 		inlineTypes: ['MergeableRecord']
 	});
 	const edgeType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/edge.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts')],
+		files:       [path.resolve('./src/dataflow/graph/edge.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts'), path.resolve('./src/dataflow/info.ts')],
 		typeName:    'EdgeType',
 		inlineTypes: ['MergeableRecord']
 	});

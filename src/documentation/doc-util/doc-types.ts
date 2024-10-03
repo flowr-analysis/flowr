@@ -40,13 +40,20 @@ function dropGenericsFromType(type: string): string {
 	return type;
 }
 
+function removeCommentSymbols(comment: string): string {
+	return comment.replace(/^\/\*\*?/, '').replace(/\*\/$/, '').replace(/^\s*\*/, '').trim();
+}
+
 function getTextualComments(node: ts.Node): string[] {
 	const comments = ts.getJSDocCommentsAndTags(node);
 	const out: string[] = [];
 	for(const { comment } of comments) {
-		/* we may support others in the future */
 		if(typeof comment === 'string') {
 			out.push(comment);
+		} else if(comment !== undefined) {
+			for(const c of comment) {
+				out.push(removeCommentSymbols(c.getText(c.getSourceFile())));
+			}
 		}
 	}
 	return out;
@@ -63,14 +70,13 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 }
 
 export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
-	// if the type is required, partial, ... we need to follow the generic reference
 	const node = type.typeName;
 	if(ts.isQualifiedName(node)) {
 		return [node.right.getText(sourceFile) ?? ''];
 	}
 	const args = type.typeArguments?.map(arg => arg.getText(sourceFile)) ?? [];
 	const nodeLexeme = node.getText(sourceFile) ?? '';
-	if(['Pick', 'Partial', 'Required', 'Readonly'].map(s => nodeLexeme.startsWith(s))) {
+	if(['Pick', 'Partial', 'Required', 'Readonly', 'Omit'].map(s => nodeLexeme.startsWith(s))) {
 		return args;
 	}
 	return [nodeLexeme, ...args];
@@ -113,7 +119,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			if(ts.isIntersectionTypeNode(node.type) || ts.isUnionTypeNode(node.type)) {
 				baseTypes = node.type.types
 					.filter(typeNode => ts.isTypeReferenceNode(typeNode))
-					.map(typeNode => (typeNode)?.getText(sourceFile) ?? '')
+					.flatMap(typeName => followTypeReference(typeName, sourceFile))
 					.map(dropGenericsFromType);
 			} else if(ts.isTypeReferenceNode(node.type)) {
 				baseTypes = [...followTypeReference(node.type, sourceFile)];
@@ -133,7 +139,6 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			});
 		} else if(ts.isEnumDeclaration(node)) {
 			const enumName = node.name?.getText(sourceFile) ?? '';
-			/* TODO: comments, and mark correctly as enum */
 			hierarchyList.push({
 				name:       enumName,
 				node,

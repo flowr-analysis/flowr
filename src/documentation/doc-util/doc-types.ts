@@ -147,7 +147,11 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				comments:   getTextualComments(node),
 				generics:   [],
 				filePath:   sourceFile.fileName,
-				lineNumber: getStartLine(node, sourceFile)
+				lineNumber: getStartLine(node, sourceFile),
+				properties: node.members.map(member => {
+					const name = member.name?.getText(sourceFile) ?? '';
+					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
+				})
 			});
 		}
 

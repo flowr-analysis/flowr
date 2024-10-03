@@ -83,8 +83,6 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 	return { fromId, toId };
 }
 
-type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'types' | 'attribute'> & { type: EdgeType }
-
 export interface DataflowGraphJson {
 	readonly rootVertices:      NodeId[],
 	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],

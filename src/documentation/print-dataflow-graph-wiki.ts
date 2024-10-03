@@ -596,7 +596,7 @@ ${details('Example: Multi-Level Reads', await printDfGraphForCode(shell,  'x <- 
 
 Similarly, ${linkEdgeName(EdgeType.Reads)} can be cyclic, for example in the context of loops:
 
-${details('Example: Cyclic Reads', await printDfGraphForCode(shell, 'for(i in v) x <- x + 1', { mark: new Set(['11->0', '11->5', '5->0']) }))}
+${details('Example: Cyclic Reads', await printDfGraphForCode(shell, 'for(i in v) x <- x + 1', { mark: new Set(['3->2']) }))}
 				`
 	})
 }
@@ -627,14 +627,14 @@ ${
 	details('In general, this does not have to be the right hand side of the operator.', await printDfGraphForCode(shell, '3 -> x', { mark: new Set([0]) }))
 }
 
-However, nested definitions can carry it (in the nested case, \`x\` is defined by the return value of \` \`<-\`(y, z) \`). Additionally, we link the assignment function.
+However, nested definitions can carry it (in the nested case, \`x\` is defined by the return value of <code>\\\`<-\\\`(y, z)</code>). Additionally, we link the assignment function.
 
 `,
 		code:             'x <- y',
 		expectedSubgraph: emptyGraph().definedBy('1@x', '1@y').definedBy('1@x', '1:3')
 	}, [{
 		name:             'DefinedBy Edge (Nested)',
-		description:      'Nested definitions can carry the `defined by` edge as well.',
+		description:      `Nested definitions can carry the ${linkEdgeName(EdgeType.DefinedBy)} edge as well.`,
 		code:             'x <- y <- z',
 		expectedSubgraph: emptyGraph().definedBy('1@x', '1:3').definedBy('1@x', '1:8').definedBy('1@y', '1:8')
 	}, {
@@ -648,7 +648,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		shell:            shell,
 		name:             'Calls Edge',
 		type:             EdgeType.Calls,
-		description:      'Link the function call to the (anonymous) function definition.',
+		description:      'Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called.',
 		code:             'foo <- function() {}\nfoo()',
 		expectedSubgraph: emptyGraph().calls('2@foo', '1@function')
 	}, []]);
@@ -663,29 +663,36 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 	}, []]);
 
 	edgeExplanations.set(EdgeType.DefinesOnCall, [{
-		shell:            shell,
-		name:             'DefinesOnCall Edge',
-		type:             EdgeType.DefinesOnCall,
-		description:      '**This edge is automatically joined with defined by on call!**\n\n Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.',
+		shell:       shell,
+		name:        'DefinesOnCall Edge',
+		type:        EdgeType.DefinesOnCall,
+		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!**
+
+ Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.`,
 		code:             'f <- function(x) {}\nf(x=1)',
 		// here we use the ids as the argument wrappers are not easily selected with slicing criteria
 		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
-		shell:            shell,
-		name:             'DefinedByOnCall Edge',
-		type:             EdgeType.DefinedByOnCall,
-		description:      '**This edge is automatically joined with defines on call!**\n\n This represents the other direction of `defines on call` (i.e., links the parameter to the argument). This is just for completeness.',
+		shell:       shell,
+		name:        'DefinedByOnCall Edge',
+		type:        EdgeType.DefinedByOnCall,
+		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!**
+
+ This represents the other direction of ${linkEdgeName(EdgeType.DefinesOnCall)} (i.e., links the parameter to the argument). This is just for completeness.`,
 		code:             'f <- function(x) {}\nf(x=1)',
 		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Argument, [{
-		shell:            shell,
-		name:             'Argument Edge',
-		type:             EdgeType.Argument,
-		description:      'Links a function call to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!',
+		shell:       shell,
+		name:        'Argument Edge',
+		type:        EdgeType.Argument,
+		description: `Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
+		
+The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are no implicit in the structure).
+		`,
 		code:             'f(x,y)',
 		expectedSubgraph: emptyGraph().argument('1@f', '1@x').reads('1@f', '1@x').argument('1@f', '1@y').reads('1@f', '1@y')
 	}, []]);
@@ -700,13 +707,35 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 	}, []]);
 
 	edgeExplanations.set(EdgeType.NonStandardEvaluation, [{
-		shell:            shell,
-		name:             'NonStandardEvaluation Edge',
-		type:             EdgeType.NonStandardEvaluation,
-		description:      'Marks cases in which R\'s non-standard evaluation mechanisms cause the default semantics to deviate',
+		shell:       shell,
+		name:        'NonStandardEvaluation Edge',
+		type:        EdgeType.NonStandardEvaluation,
+		description: `
+Marks cases in which R's non-standard evaluation mechanisms cause the default semantics to deviate (see the case below for multiple vertices)
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+What to do if you encounter this vertex? 
+
+This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
+Yet, you may choose to follow these references for other queries. For now, _flowR's_ support for non-standard evaluation is limited.
+				`
+	})
+}
+`,
 		code:             'quote(x)',
 		expectedSubgraph: emptyGraph().argument('1@quote', '1@x').nse('1@quote', '1@x')
-	}, []]);
+	}, [{
+		name:             'Complete Expressions',
+		description:      'This works, even if we have a larger expression in `quote`.',
+		code:             'quote(x + y)',
+		expectedSubgraph: emptyGraph()
+			.argument('1@quote', '1@+').nse('1@quote', '1@+')
+			.nse('1@quote', '1@x')
+			.nse('1@quote', '1@y')
+	}]]);
 
 
 	const results = [];
@@ -829,6 +858,10 @@ by the \`when\` flag.
 In the above example, both \`a\` and \`b\` depend on the \`if\`. Please note that they are _not_ linked to the result of
 the condition itself as this is the more general linkage point (and harmonizes with other control structures, especially those which are user-defined).
 
+${details('Example: Multiple Vertices (Assignment)', await printDfGraphForCode(shell, 'if(p) a <- 1'))}
+${details('Example: Multiple Vertices (Arithmetic Expression)', await printDfGraphForCode(shell, 'if(p) 3 + 2'))}
+${details('Example: Nested Conditionals', await printDfGraphForCode(shell, 'if(x) { if(y) a else b } else c'))}
+
 ## Dataflow Information
 
 Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
@@ -875,7 +908,13 @@ ${codeBlock('text', JSON.stringify(result.dataflow, jsonReplacer))}
 
 </details>
 
-So let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
+You may be interested in its implementation:
+
+${
+		printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowInformation' })
+		}
+
+Let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
 
 ${ (() => {
 			guard(Object.keys(result.dataflow).length === 7, () => 'Update Dataflow Documentation!'); return ''; 

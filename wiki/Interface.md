@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-09-29, 09:38:30 UTC presenting an overview of flowR's interfaces (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-03, 20:47:09 UTC presenting an overview of flowR's interfaces (v2.0.25, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -55,7 +55,7 @@ The message looks like this:
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -157,7 +157,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -220,7 +220,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 13.20 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 15.46 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -252,7 +252,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -297,7 +297,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-57402-yyQUED37yPvN-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5582-oEeDCWTiypFx-.R\"}}"
 }
 ```
 
@@ -306,7 +306,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.29 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.54 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -345,7 +345,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -385,7 +385,7 @@ The first message is always a hello message.
 
 The response looks basically the same as a response sent without the `cfg` flag. However, additionally it contains a `cfg` field. 
 If you are interested in a visual representation of the control flow graph, see the 
-[visualization with mermaid](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjE1W1wiYFJJZlRoZW5FbHNlICgxNSlcbiMzNDtpZih1bmtub3duICM2MjsgMCkgIzEyMzsgeCAjNjA7IzQ1OyAyICMxMjU7IGVsc2UgIzEyMzsgeCAjNjA7IzQ1OyA1ICMxMjU7IzM0O2BcIl1cbiAgICBuMTUtZXhpdCgoICkpXG4gICAgbjBbXCJgUlN5bWJvbCAoMClcbiMzNDt1bmtub3duIzM0O2BcIl1cbiAgICBuMVtcImBSTnVtYmVyICgxKVxuIzM0OzAjMzQ7YFwiXVxuICAgIG4yW1wiYFJCaW5hcnlPcCAoMilcbiMzNDt1bmtub3duICM2MjsgMCMzNDtgXCJdXG4gICAgbjItZXhpdCgoICkpXG4gICAgbjVbXCJgUlN5bWJvbCAoNSlcbiMzNDt4IzM0O2BcIl1cbiAgICBuNltcImBSTnVtYmVyICg2KVxuIzM0OzIjMzQ7YFwiXVxuICAgIG43W1wiYFJCaW5hcnlPcCAoNylcbiMzNDt4ICM2MDsjNDU7IDIjMzQ7YFwiXVxuICAgIG43LWV4aXQoKCApKVxuICAgIG4xMVtcImBSU3ltYm9sICgxMSlcbiMzNDt4IzM0O2BcIl1cbiAgICBuMTJbXCJgUk51bWJlciAoMTIpXG4jMzQ7NSMzNDtgXCJdXG4gICAgbjEzW1wiYFJCaW5hcnlPcCAoMTMpXG4jMzQ7eCAjNjA7IzQ1OyA1IzM0O2BcIl1cbiAgICBuMTMtZXhpdCgoICkpXG4gICAgbjE2W1wiYFJTeW1ib2wgKDE2KVxuIzM0O2kjMzQ7YFwiXVxuICAgIG4zMVtcImBSRm9yTG9vcCAoMzEpXG4jMzQ7Zm9yKGkgaW4gMTp4KSAjMTIzOyBwcmludCh4KTsgcHJpbnQoaSkgIzEyNTsjMzQ7YFwiXVxuICAgIG4zMS1leGl0KCggKSlcbiAgICBuMTdbXCJgUk51bWJlciAoMTcpXG4jMzQ7MSMzNDtgXCJdXG4gICAgbjE4W1wiYFJTeW1ib2wgKDE4KVxuIzM0O3gjMzQ7YFwiXVxuICAgIG4xOVtcImBSQmluYXJ5T3AgKDE5KVxuIzM0OzE6eCMzNDtgXCJdXG4gICAgbjE5LWV4aXQoKCApKVxuICAgIG4yMltcImBSU3ltYm9sICgyMilcbiMzNDtwcmludCh4KSMzNDtgXCJdXG4gICAgbjI1W1wiYFJGdW5jdGlvbkNhbGwgKDI1KVxuIzM0O3ByaW50KHgpIzM0O2BcIl1cbiAgICBuMjUtbmFtZSgoICkpXG4gICAgbjI1LWV4aXQoKCApKVxuICAgIG4yNFtcImBSQXJndW1lbnQgKDI0KVxuIzM0O3gjMzQ7YFwiXVxuICAgIG4yNC1iZWZvcmUtdmFsdWUoKCApKVxuICAgIG4yM1tcImBSU3ltYm9sICgyMylcbiMzNDt4IzM0O2BcIl1cbiAgICBuMjQtZXhpdCgoICkpXG4gICAgbjI2W1wiYFJTeW1ib2wgKDI2KVxuIzM0O3ByaW50KGkpIzM0O2BcIl1cbiAgICBuMjlbXCJgUkZ1bmN0aW9uQ2FsbCAoMjkpXG4jMzQ7cHJpbnQoaSkjMzQ7YFwiXVxuICAgIG4yOS1uYW1lKCggKSlcbiAgICBuMjktZXhpdCgoICkpXG4gICAgbjI4W1wiYFJBcmd1bWVudCAoMjgpXG4jMzQ7aSMzNDtgXCJdXG4gICAgbjI4LWJlZm9yZS12YWx1ZSgoICkpXG4gICAgbjI3W1wiYFJTeW1ib2wgKDI3KVxuIzM0O2kjMzQ7YFwiXVxuICAgIG4yOC1leGl0KCggKSlcbiAgICBuMSAtLi0+fFwiRkRcInwgbjBcbiAgICBuMCAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1leGl0IC0uLT58XCJGRFwifCBuMVxuICAgIG42IC0uLT58XCJGRFwifCBuNVxuICAgIG41IC0uLT58XCJGRFwifCBuN1xuICAgIG43LWV4aXQgLS4tPnxcIkZEXCJ8IG42XG4gICAgbjEyIC0uLT58XCJGRFwifCBuMTFcbiAgICBuMTEgLS4tPnxcIkZEXCJ8IG4xM1xuICAgIG4xMy1leGl0IC0uLT58XCJGRFwifCBuMTJcbiAgICBuNyAtLT58XCJDRCAoVFJVRSlcInwgbjItZXhpdFxuICAgIG4xMyAtLT58XCJDRCAoRkFMU0UpXCJ8IG4yLWV4aXRcbiAgICBuMiAtLi0+fFwiRkRcInwgbjE1XG4gICAgbjE1LWV4aXQgLS4tPnxcIkZEXCJ8IG43LWV4aXRcbiAgICBuMTUtZXhpdCAtLi0+fFwiRkRcInwgbjEzLWV4aXRcbiAgICBuMzEgLS4tPnxcIkZEXCJ8IG4xNS1leGl0XG4gICAgbjMxIC0uLT58XCJGRFwifCBuMjktZXhpdFxuICAgIG4xOCAtLi0+fFwiRkRcInwgbjE3XG4gICAgbjE3IC0uLT58XCJGRFwifCBuMTlcbiAgICBuMTktZXhpdCAtLi0+fFwiRkRcInwgbjE4XG4gICAgbjIyIC0uLT58XCJGRFwifCBuMjVcbiAgICBuMjUtbmFtZSAtLi0+fFwiRkRcInwgbjIyXG4gICAgbjI0LWJlZm9yZS12YWx1ZSAtLi0+fFwiRkRcInwgbjI0XG4gICAgbjIzIC0uLT58XCJGRFwifCBuMjQtYmVmb3JlLXZhbHVlXG4gICAgbjI0LWV4aXQgLS4tPnxcIkZEXCJ8IG4yM1xuICAgIG4yNCAtLi0+fFwiRkRcInwgbjI1LW5hbWVcbiAgICBuMjUtZXhpdCAtLi0+fFwiRkRcInwgbjI0LWV4aXRcbiAgICBuMjkgLS4tPnxcIkZEXCJ8IG4yNS1leGl0XG4gICAgbjI2IC0uLT58XCJGRFwifCBuMjlcbiAgICBuMjktbmFtZSAtLi0+fFwiRkRcInwgbjI2XG4gICAgbjI4LWJlZm9yZS12YWx1ZSAtLi0+fFwiRkRcInwgbjI4XG4gICAgbjI3IC0uLT58XCJGRFwifCBuMjgtYmVmb3JlLXZhbHVlXG4gICAgbjI4LWV4aXQgLS4tPnxcIkZEXCJ8IG4yN1xuICAgIG4yOCAtLi0+fFwiRkRcInwgbjI5LW5hbWVcbiAgICBuMjktZXhpdCAtLi0+fFwiRkRcInwgbjI4LWV4aXRcbiAgICBuMTkgLS4tPnxcIkZEXCJ8IG4zMVxuICAgIG4xNiAtLi0+fFwiRkRcInwgbjE5LWV4aXRcbiAgICBuMjUgLS0+fFwiQ0QgKFRSVUUpXCJ8IG4xNlxuICAgIG4zMS1leGl0IC0tPnxcIkNEIChGQUxTRSlcInwgbjE2XG4gICAgc3R5bGUgbjE1IHN0cm9rZTpjeWFuLHN0cm9rZS13aWR0aDo2LjVweDsgICAgc3R5bGUgbjMxLWV4aXQgc3Ryb2tlOmdyZWVuLHN0cm9rZS13aWR0aDo2LjVweDsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=).
+[visualization with mermaid](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjE1W1wiYFJJZlRoZW5FbHNlICgxNSlcbiMzNDtpZih1bmtub3duICM2MjsgMCkgIzEyMzsgeCAjNjA7IzQ1OyAyICMxMjU7IGVsc2UgIzEyMzsgeCAjNjA7IzQ1OyA1ICMxMjU7IzM0O2BcIl1cbiAgICBuMTUtZXhpdCgoICkpXG4gICAgbjBbXCJgUlN5bWJvbCAoMClcbiMzNDt1bmtub3duIzM0O2BcIl1cbiAgICBuMVtcImBSTnVtYmVyICgxKVxuIzM0OzAjMzQ7YFwiXVxuICAgIG4yW1wiYFJCaW5hcnlPcCAoMilcbiMzNDt1bmtub3duICM2MjsgMCMzNDtgXCJdXG4gICAgbjItZXhpdCgoICkpXG4gICAgbjVbXCJgUlN5bWJvbCAoNSlcbiMzNDt4IzM0O2BcIl1cbiAgICBuNltcImBSTnVtYmVyICg2KVxuIzM0OzIjMzQ7YFwiXVxuICAgIG43W1wiYFJCaW5hcnlPcCAoNylcbiMzNDt4ICM2MDsjNDU7IDIjMzQ7YFwiXVxuICAgIG43LWV4aXQoKCApKVxuICAgIG4xMVtcImBSU3ltYm9sICgxMSlcbiMzNDt4IzM0O2BcIl1cbiAgICBuMTJbXCJgUk51bWJlciAoMTIpXG4jMzQ7NSMzNDtgXCJdXG4gICAgbjEzW1wiYFJCaW5hcnlPcCAoMTMpXG4jMzQ7eCAjNjA7IzQ1OyA1IzM0O2BcIl1cbiAgICBuMTMtZXhpdCgoICkpXG4gICAgbjE2W1wiYFJTeW1ib2wgKDE2KVxuIzM0O2kjMzQ7YFwiXVxuICAgIG4zMVtcImBSRm9yTG9vcCAoMzEpXG4jMzQ7Zm9yKGkgaW4gMSM1ODt4KSAjMTIzOyBwcmludCh4KTsgcHJpbnQoaSkgIzEyNTsjMzQ7YFwiXVxuICAgIG4zMS1leGl0KCggKSlcbiAgICBuMTdbXCJgUk51bWJlciAoMTcpXG4jMzQ7MSMzNDtgXCJdXG4gICAgbjE4W1wiYFJTeW1ib2wgKDE4KVxuIzM0O3gjMzQ7YFwiXVxuICAgIG4xOVtcImBSQmluYXJ5T3AgKDE5KVxuIzM0OzEjNTg7eCMzNDtgXCJdXG4gICAgbjE5LWV4aXQoKCApKVxuICAgIG4yMltcImBSU3ltYm9sICgyMilcbiMzNDtwcmludCh4KSMzNDtgXCJdXG4gICAgbjI1W1wiYFJGdW5jdGlvbkNhbGwgKDI1KVxuIzM0O3ByaW50KHgpIzM0O2BcIl1cbiAgICBuMjUtbmFtZSgoICkpXG4gICAgbjI1LWV4aXQoKCApKVxuICAgIG4yNFtcImBSQXJndW1lbnQgKDI0KVxuIzM0O3gjMzQ7YFwiXVxuICAgIG4yNC1iZWZvcmUtdmFsdWUoKCApKVxuICAgIG4yM1tcImBSU3ltYm9sICgyMylcbiMzNDt4IzM0O2BcIl1cbiAgICBuMjQtZXhpdCgoICkpXG4gICAgbjI2W1wiYFJTeW1ib2wgKDI2KVxuIzM0O3ByaW50KGkpIzM0O2BcIl1cbiAgICBuMjlbXCJgUkZ1bmN0aW9uQ2FsbCAoMjkpXG4jMzQ7cHJpbnQoaSkjMzQ7YFwiXVxuICAgIG4yOS1uYW1lKCggKSlcbiAgICBuMjktZXhpdCgoICkpXG4gICAgbjI4W1wiYFJBcmd1bWVudCAoMjgpXG4jMzQ7aSMzNDtgXCJdXG4gICAgbjI4LWJlZm9yZS12YWx1ZSgoICkpXG4gICAgbjI3W1wiYFJTeW1ib2wgKDI3KVxuIzM0O2kjMzQ7YFwiXVxuICAgIG4yOC1leGl0KCggKSlcbiAgICBuMSAtLi0+fFwiRkRcInwgbjBcbiAgICBuMCAtLi0+fFwiRkRcInwgbjJcbiAgICBuMi1leGl0IC0uLT58XCJGRFwifCBuMVxuICAgIG42IC0uLT58XCJGRFwifCBuNVxuICAgIG41IC0uLT58XCJGRFwifCBuN1xuICAgIG43LWV4aXQgLS4tPnxcIkZEXCJ8IG42XG4gICAgbjEyIC0uLT58XCJGRFwifCBuMTFcbiAgICBuMTEgLS4tPnxcIkZEXCJ8IG4xM1xuICAgIG4xMy1leGl0IC0uLT58XCJGRFwifCBuMTJcbiAgICBuNyAtLT58XCJDRCAoVFJVRSlcInwgbjItZXhpdFxuICAgIG4xMyAtLT58XCJDRCAoRkFMU0UpXCJ8IG4yLWV4aXRcbiAgICBuMiAtLi0+fFwiRkRcInwgbjE1XG4gICAgbjE1LWV4aXQgLS4tPnxcIkZEXCJ8IG43LWV4aXRcbiAgICBuMTUtZXhpdCAtLi0+fFwiRkRcInwgbjEzLWV4aXRcbiAgICBuMzEgLS4tPnxcIkZEXCJ8IG4xNS1leGl0XG4gICAgbjMxIC0uLT58XCJGRFwifCBuMjktZXhpdFxuICAgIG4xOCAtLi0+fFwiRkRcInwgbjE3XG4gICAgbjE3IC0uLT58XCJGRFwifCBuMTlcbiAgICBuMTktZXhpdCAtLi0+fFwiRkRcInwgbjE4XG4gICAgbjIyIC0uLT58XCJGRFwifCBuMjVcbiAgICBuMjUtbmFtZSAtLi0+fFwiRkRcInwgbjIyXG4gICAgbjI0LWJlZm9yZS12YWx1ZSAtLi0+fFwiRkRcInwgbjI0XG4gICAgbjIzIC0uLT58XCJGRFwifCBuMjQtYmVmb3JlLXZhbHVlXG4gICAgbjI0LWV4aXQgLS4tPnxcIkZEXCJ8IG4yM1xuICAgIG4yNCAtLi0+fFwiRkRcInwgbjI1LW5hbWVcbiAgICBuMjUtZXhpdCAtLi0+fFwiRkRcInwgbjI0LWV4aXRcbiAgICBuMjkgLS4tPnxcIkZEXCJ8IG4yNS1leGl0XG4gICAgbjI2IC0uLT58XCJGRFwifCBuMjlcbiAgICBuMjktbmFtZSAtLi0+fFwiRkRcInwgbjI2XG4gICAgbjI4LWJlZm9yZS12YWx1ZSAtLi0+fFwiRkRcInwgbjI4XG4gICAgbjI3IC0uLT58XCJGRFwifCBuMjgtYmVmb3JlLXZhbHVlXG4gICAgbjI4LWV4aXQgLS4tPnxcIkZEXCJ8IG4yN1xuICAgIG4yOCAtLi0+fFwiRkRcInwgbjI5LW5hbWVcbiAgICBuMjktZXhpdCAtLi0+fFwiRkRcInwgbjI4LWV4aXRcbiAgICBuMTkgLS4tPnxcIkZEXCJ8IG4zMVxuICAgIG4xNiAtLi0+fFwiRkRcInwgbjE5LWV4aXRcbiAgICBuMjUgLS0+fFwiQ0QgKFRSVUUpXCJ8IG4xNlxuICAgIG4zMS1leGl0IC0tPnxcIkNEIChGQUxTRSlcInwgbjE2XG4gICAgc3R5bGUgbjE1IHN0cm9rZTpjeWFuLHN0cm9rZS13aWR0aDo2LjVweDsgICAgc3R5bGUgbjMxLWV4aXQgc3Ryb2tlOmdyZWVuLHN0cm9rZS13aWR0aDo2LjVweDsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=).
 			
 
 _As the message is pretty long, we inhibit pretty printing and syntax highlighting:_
@@ -399,7 +399,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 9.30 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 10.01 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -438,7 +438,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -493,7 +493,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 6.25 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.99 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -634,7 +634,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -769,7 +769,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 6.38 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.78 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -913,7 +913,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -1024,7 +1024,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.08 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.25 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1142,7 +1142,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -1274,7 +1274,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 0
+        "timing": 1
       },
       "kinds": {
         "visualize": {
@@ -1309,7 +1309,7 @@ _As the message is pretty long, we inhibit pretty printing and syntax highlighti
 </li>
 </ol>
 
-The complete round-trip took 19.05 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 20.01 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1455,7 +1455,7 @@ The first message is always a hello message.
   "clientName": "client-0",
   "versions": {
     "flowr": "2.0.25",
-    "r": "4.4.1"
+    "r": "4.4.0"
   }
 }
 ```
@@ -1554,7 +1554,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 4.88 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 4.15 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1718,6 +1718,7 @@ We currently offer the following commands (this with a `[*]` suffix are availabl
 
 </details>
 
+
 ### Example: Retrieving the Dataflow Graph
 
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
@@ -1768,7 +1769,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.02 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.86 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1984,6 +1985,7 @@ exprlist
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
 By default, flowR looks for a file named `flowr.json` in the current working directory (or any higher directory). 
 You can also specify a different file with <span title="Description (Command Line Argument): The name of the configuration file to use">`--config-file`</span> or pass the configuration inline using <span title="Description (Command Line Argument): The flowR configuration to use, as a JSON string">`--config-json`</span>.
+
 The following summarizes the configuration options:
 
 

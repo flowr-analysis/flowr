@@ -1,17 +1,17 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-10-02, 15:47:39 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-10-03, 17:53:24 UTC presenting an overview of flowR's dataflow graph (v2.0.25, using R v4.4.1)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
 This wiki page focuses on explaining what such a dataflow graph looks like!
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph, 
+Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph,
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
-Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.	
+Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.
 
 > [!TIP]
-> If you want to investigate the dataflow graph, 
-> you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or the <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph of R code, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> 
-> command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki//Interface) for more information). 
+> If you want to investigate the dataflow graph,
+> you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or the <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph of R code, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span>
+> command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki//Interface) for more information).
 
 
 
@@ -66,7 +66,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _12.28 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _10.57 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -132,7 +132,7 @@ flowchart LR
 
 
 
-The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between 5 types of vertices V and 
+The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between 5 types of vertices V and
 9 types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a 10th edge type, although they are explicitly no data dependency).
 
@@ -301,7 +301,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.50 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.95 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -421,7 +421,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.90 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _2.24 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -483,7 +483,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.86 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -608,7 +608,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.96 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -681,7 +681,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.42 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _2.37 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -799,7 +799,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.48 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis required _3.41 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -948,7 +948,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.76 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _3.50 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1040,7 +1040,7 @@ flowchart LR
     %% Environment of 5 [level: 0]:
     %% Built-in
     %% 104----------------------------------------
-    %%   x: {x (1, 4, def. @3)}
+    %%   x: {x (id: 1, type: Variable, def. @3)}
     5["`#91;RFunctionDefinition#93; function
       (5)
       *1.6-23*`"]
@@ -1080,8 +1080,8 @@ end
     %% Environment of 12 [level: 0]:
     %% Built-in
     %% 119----------------------------------------
-    %%   f: {f (0, 2, def. @6)}
-    %%   x: {x (7, 4, def. @9)}
+    %%   f: {f (id: 0, type: Function, def. @6)}
+    %%   x: {x (id: 7, type: Variable, def. @9)}
     12[["`#91;RFunctionCall#93; f
       (12, :may:14+)
       *3.7-9*`"]]
@@ -1130,7 +1130,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.68 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _3.93 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1149,7 +1149,7 @@ flowchart LR
     %% Environment of 5 [level: 0]:
     %% Built-in
     %% 104----------------------------------------
-    %%   x: {x (1, 4, def. @3)}
+    %%   x: {x (id: 1, type: Variable, def. @3)}
     5["`#91;RFunctionDefinition#93; function
       (5)
       *1.6-23*`"]
@@ -1189,8 +1189,8 @@ end
     %% Environment of 12 [level: 0]:
     %% Built-in
     %% 119----------------------------------------
-    %%   f: {f (0, 2, def. @6)}
-    %%   x: {x (7, 4, def. @9)}
+    %%   f: {f (id: 0, type: Function, def. @6)}
+    %%   x: {x (id: 7, type: Variable, def. @9)}
     12[["`#91;RFunctionCall#93; f
       (12, :may:14+)
       *3.7-9*`"]]
@@ -1267,7 +1267,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.95 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1362,9 +1362,9 @@ and it should not be relied on as it may under-approximate the actual calling ta
 </details>
     
 The related function argument references are defined like this:
- * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L48)   
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L49)   
    Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L48">./src/dataflow/graph/graph.ts#L48</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L49">./src/dataflow/graph/graph.ts#L49</a></summary>
    
    
    ```ts
@@ -1376,11 +1376,11 @@ The related function argument references are defined like this:
    
     <details><summary style="color:black">View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
 
-   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L34)**   
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L35)**   
      ```r
      foo(a = 3, b = 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L34">./src/dataflow/graph/graph.ts#L34</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L35">./src/dataflow/graph/graph.ts#L35</a></summary>
      
      
      ```ts
@@ -1392,11 +1392,11 @@ The related function argument references are defined like this:
      
      </details>
      
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L45)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L47)**   
        Something like `a` in `b <- a`.
        Without any surrounding information, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L45">./src/dataflow/environments/identifier.ts#L45</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L47">./src/dataflow/environments/identifier.ts#L47</a></summary>
        
        
        ```ts
@@ -1418,11 +1418,11 @@ The related function argument references are defined like this:
        
        </details>
        
-   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43)**   
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L44)**   
      ```r
      foo(3, 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43">./src/dataflow/graph/graph.ts#L43</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L44">./src/dataflow/graph/graph.ts#L44</a></summary>
      
      
      ```ts
@@ -1477,7 +1477,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _15.46 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis required _4.86 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1598,11 +1598,12 @@ For more information on the types of references, please consult the implementati
 > [!NOTE]
 > 
 > But how do you know which definitions are actually called by the function?
-> So first of all, some frontends of _flowR_ (like the <span title="Description (Repl Command): Static backwards executable slicer for R">`:slicer`</span> and <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span> with the [Query API}(https://github.com/flowr-analysis/flowr/wiki//Query%20API)) already provide you with this information.
+> 
+> So first of all, some frontends of _flowR_ (like the <span title="Description (Repl Command): Static backwards executable slicer for R">`:slicer`</span> and <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span> with the [Query API}(https://github.com/flowr-analysis/flowr/wiki//Query%20API) already provide you with this information.
 > In general there are three scenarios you may be interested in:
 >   
 > 
-> <details><summary style="color:black">1) the function resolves only to builtin definitions (like `<-`)</summary>
+> <details><summary style="color:black">1) the function resolves only to builtin definitions (like <code><-</code>)</summary>
 > 
 > 
 > 
@@ -1633,7 +1634,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _4.94 ms_ (including parsing and normalization) within the generation environment. 
+> The analysis required _1.93 ms_ (including parsing and normalization) within the generation environment. 
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -1668,13 +1669,490 @@ For more information on the types of references, please consult the implementati
 > 
 > 
 > 
-> In this case, the call does not have a single call edge, which in general means it is bound to anything
-> global beyond the scope of the given script. If it really refers to a built-in variable,
-> _flowR_ (theoretically at least) does not know as any code that is not part of the analysis could cause the
-> semantics to change. However, it is safe to assume that if there is a builtin with the given
-> name and if there is no call edge attached to a call, that it resolves to the builtin version.
+> In this case, the call does not have a single [`calls`](#calls) edge, which in general means (i.e., if the analysis is done and you are not looking at an intermediate result) it is bound to anything
+> global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
+> as any code that is not part of the analysis could cause the semantics to change. 
+> However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no [`calls`](#calls) edge attached to a call.
 > If you want to check the resolve targets, refer to `resolveByName` which is defined in [`./src/dataflow/environments/resolve-by-name.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/environments/resolve-by-name.ts).
 > 
+> 
+> </details>
+>     
+> 
+> 
+> <details><summary style="color:black">2) the function only resolves to definitions that are present in the program</summary>
+> 
+> 
+> 
+> Let's have a look at a call to a function named `foo` which is defined in the same script:
+> 
+> 
+> 
+> 
+> 
+> ```mermaid
+> flowchart LR
+>     3["`#91;RFunctionDefinition#93; function
+>       (3)
+>       *1.8-19*`"]
+> 
+> subgraph "flow-3" [function 3]
+>     1{{"`#91;RNumber#93; 3
+>       (1)
+>       *1.19*`"}}
+>     style 1 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; foo
+>       (0)
+>       *1.1-3*`"]
+>     4[["`#91;RBinaryOp#93; #60;#45;
+>       (4)
+>       *1.1-19*
+>     (0, 3)`"]]
+>     %% Environment of 6 [level: 0]:
+>     %% Built-in
+>     %% 155----------------------------------------
+>     %%   foo: {foo (id: 0, type: Function, def. @4)}
+>     6[["`#91;RFunctionCall#93; foo
+>       (6)
+>       *2.1-5*`"]]
+>     style 6 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+> 3 -.-|function| flow-3
+> 
+>     0 -->|"defined-by"| 3
+>     0 -->|"defined-by"| 4
+>     4 -->|"argument"| 3
+>     4 -->|"returns, argument"| 0
+>     6 -->|"reads"| 0
+>     linkStyle 5 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     6 -->|"returns"| 1
+>     linkStyle 6 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     6 -->|"calls"| 3
+>     linkStyle 7 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+> ```
+> 	
+> <details>
+> 
+> <summary style="color:gray">R Code of the Dataflow Graph</summary>
+> 
+> The analysis required _1.91 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> We encountered no unknown side effects during the analysis.
+> 
+> ```r
+> foo <- function() 3
+> foo()
+> ```
+> 
+> <details>
+> 
+> <summary style="color:gray">Mermaid Code (without markings)</summary>
+> 
+> ```
+> flowchart LR
+>     3["`#91;RFunctionDefinition#93; function
+>       (3)
+>       *1.8-19*`"]
+> 
+> subgraph "flow-3" [function 3]
+>     1{{"`#91;RNumber#93; 3
+>       (1)
+>       *1.19*`"}}
+>     style 1 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; foo
+>       (0)
+>       *1.1-3*`"]
+>     4[["`#91;RBinaryOp#93; #60;#45;
+>       (4)
+>       *1.1-19*
+>     (0, 3)`"]]
+>     %% Environment of 6 [level: 0]:
+>     %% Built-in
+>     %% 155----------------------------------------
+>     %%   foo: {foo (id: 0, type: Function, def. @4)}
+>     6[["`#91;RFunctionCall#93; foo
+>       (6)
+>       *2.1-5*`"]]
+> 3 -.-|function| flow-3
+> 
+>     0 -->|"defined-by"| 3
+>     0 -->|"defined-by"| 4
+>     4 -->|"argument"| 3
+>     4 -->|"returns, argument"| 0
+>     6 -->|"reads"| 0
+>     6 -->|"returns"| 1
+>     6 -->|"calls"| 3
+> ```
+> 
+> </details>
+> 
+> </details>
+> 
+> 
+> 
+> Now, there are several edges, 7 to be precise, although we are primarily interested in the 3
+> edges going out from the call vertex `6`.
+> The [`reads`](#reads) edge signals all definitions which are read by the `foo` identifier (similar to a [use vertex](#use-vertex)).
+> While it seems to be somewhat redundant given the [`calls`](#calls) edge that identifies the called [function definition](#function-definition-vertex),
+> you have to consider cases in which aliases are involved in the call resolution (e.g., with higher order functions).
+> 
+> 
+> <details><summary style="color:black">Example: Alias in Call Resolution</summary>
+> 
+> In the following example, `g` [`reads`](#reads) the previous definition, but [`calls`](#calls) the function assigned to `f`.
+> 
+> 
+> 
+> ```mermaid
+> flowchart LR
+>     3["`#91;RFunctionDefinition#93; function
+>       (3)
+>       *1.6-17*`"]
+> 
+> subgraph "flow-3" [function 3]
+>     1{{"`#91;RNumber#93; 3
+>       (1)
+>       *1.17*`"}}
+>     style 1 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; f
+>       (0)
+>       *1.1*`"]
+>     4[["`#91;RBinaryOp#93; #60;#45;
+>       (4)
+>       *1.1-17*
+>     (0, 3)`"]]
+>     6(["`#91;RSymbol#93; f
+>       (6)
+>       *2.6*`"])
+>     5["`#91;RSymbol#93; g
+>       (5)
+>       *2.1*`"]
+>     7[["`#91;RBinaryOp#93; #60;#45;
+>       (7)
+>       *2.1-6*
+>     (5, 6)`"]]
+>     %% Environment of 9 [level: 0]:
+>     %% Built-in
+>     %% 176----------------------------------------
+>     %%   f: {f (id: 0, type: Function, def. @4)}
+>     %%   g: {g (id: 5, type: Unknown, def. @7)}
+>     9[["`#91;RFunctionCall#93; g
+>       (9)
+>       *3.1-3*`"]]
+> 3 -.-|function| flow-3
+> 
+>     0 -->|"defined-by"| 3
+>     0 -->|"defined-by"| 4
+>     4 -->|"argument"| 3
+>     4 -->|"returns, argument"| 0
+>     6 -->|"reads"| 0
+>     5 -->|"defined-by"| 6
+>     5 -->|"defined-by"| 7
+>     7 -->|"argument"| 6
+>     7 -->|"returns, argument"| 5
+>     9 -->|"reads"| 5
+>     linkStyle 10 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     9 -->|"returns"| 1
+>     9 -->|"calls"| 3
+>     linkStyle 12 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+> ```
+> 	
+> <details>
+> 
+> <summary style="color:gray">R Code of the Dataflow Graph</summary>
+> 
+> The analysis required _1.88 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> We encountered no unknown side effects during the analysis.
+> 
+> ```r
+> f <- function() 3
+> g <- f
+> g()
+> ```
+> 
+> <details>
+> 
+> <summary style="color:gray">Mermaid Code (without markings)</summary>
+> 
+> ```
+> flowchart LR
+>     3["`#91;RFunctionDefinition#93; function
+>       (3)
+>       *1.6-17*`"]
+> 
+> subgraph "flow-3" [function 3]
+>     1{{"`#91;RNumber#93; 3
+>       (1)
+>       *1.17*`"}}
+>     style 1 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; f
+>       (0)
+>       *1.1*`"]
+>     4[["`#91;RBinaryOp#93; #60;#45;
+>       (4)
+>       *1.1-17*
+>     (0, 3)`"]]
+>     6(["`#91;RSymbol#93; f
+>       (6)
+>       *2.6*`"])
+>     5["`#91;RSymbol#93; g
+>       (5)
+>       *2.1*`"]
+>     7[["`#91;RBinaryOp#93; #60;#45;
+>       (7)
+>       *2.1-6*
+>     (5, 6)`"]]
+>     %% Environment of 9 [level: 0]:
+>     %% Built-in
+>     %% 176----------------------------------------
+>     %%   f: {f (id: 0, type: Function, def. @4)}
+>     %%   g: {g (id: 5, type: Unknown, def. @7)}
+>     9[["`#91;RFunctionCall#93; g
+>       (9)
+>       *3.1-3*`"]]
+> 3 -.-|function| flow-3
+> 
+>     0 -->|"defined-by"| 3
+>     0 -->|"defined-by"| 4
+>     4 -->|"argument"| 3
+>     4 -->|"returns, argument"| 0
+>     6 -->|"reads"| 0
+>     5 -->|"defined-by"| 6
+>     5 -->|"defined-by"| 7
+>     7 -->|"argument"| 6
+>     7 -->|"returns, argument"| 5
+>     9 -->|"reads"| 5
+>     9 -->|"returns"| 1
+>     9 -->|"calls"| 3
+> ```
+> 
+> </details>
+> 
+> </details>
+> 
+> 
+> 
+> </details>
+>     
+> 			
+> Lastly, the [`returns`](#returns) edge links the call to the return vertices(s) of the function.
+> Please be aware, that these multiple exit points may be counter intuitive as they often appear with a nested call (usually a call to the built-in `{` function).
+> 
+>  
+> <details><summary style="color:black">(Advanced) Example: Multiple Exit Points May Still Reflect As One</summary>
+> 
+> 
+> 
+> 
+> ```mermaid
+> flowchart LR
+>     19["`#91;RFunctionDefinition#93; function
+>       (19)
+>       *1.6-5.1*`"]
+> 
+> subgraph "flow-19" [function 19]
+>     3(["`#91;RSymbol#93; u
+>       (3)
+>       *2.12*`"])
+>     5{{"`#91;RNumber#93; 3
+>       (5)
+>       *2.22*`"}}
+>     7[["`#91;RFunctionCall#93; return
+>       (7, :may:9+)
+>       *2.15-23*
+>     (5)`"]]
+>     9[["`#91;RIfThenElse#93; if
+>       (9)
+>       *2.9-23*
+>     (3, 7, [empty])`"]]
+>     10(["`#91;RSymbol#93; v
+>       (10, :may:)
+>       *3.12*`"])
+>     12{{"`#91;RNumber#93; 2
+>       (12)
+>       *3.22*`"}}
+>     14[["`#91;RFunctionCall#93; return
+>       (14, :may:)
+>       *3.15-23*
+>     (12)`"]]
+>     16[["`#91;RIfThenElse#93; if
+>       (16, :may:)
+>       *3.9-23*
+>     (10, 14, [empty])`"]]
+>     17{{"`#91;RNumber#93; 1
+>       (17, :may:)
+>       *4.9*`"}}
+>     18[["`#91;RExpressionList#93; #123;
+>       (18)
+>       *1.17*
+>     (9, 16, 17)`"]]
+>     style 3 stroke:purple,stroke-width:4px; 
+>     style 10 stroke:purple,stroke-width:4px; 
+>     style 17 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; f
+>       (0)
+>       *1.1*`"]
+>     20[["`#91;RBinaryOp#93; #60;#45;
+>       (20)
+>       *1.1-5.1*
+>     (0, 19)`"]]
+>     %% Environment of 22 [level: 0]:
+>     %% Built-in
+>     %% 222----------------------------------------
+>     %%   f: {f (id: 0, type: Function, def. @20)}
+>     22[["`#91;RFunctionCall#93; f
+>       (22)
+>       *6.1-3*`"]]
+>     style 22 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+>     7 -->|"returns, argument"| 5
+>     7 -->|"CD-True"| 9
+>     linkStyle 1 stroke:gray,color:gray;
+>     9 -->|"returns, argument"| 7
+>     9 -->|"reads, argument"| 3
+>     14 -->|"returns, argument"| 12
+>     16 -->|"returns, argument"| 14
+>     16 -->|"reads, argument"| 10
+>     18 -->|"argument"| 9
+>     18 -->|"argument"| 16
+>     18 -->|"returns, argument"| 17
+>     18 -->|"returns"| 7
+>     18 -->|"returns"| 14
+> 19 -.-|function| flow-19
+> 
+>     0 -->|"defined-by"| 19
+>     0 -->|"defined-by"| 20
+>     20 -->|"argument"| 19
+>     20 -->|"returns, argument"| 0
+>     22 -->|"reads"| 0
+>     22 -->|"returns"| 18
+>     linkStyle 18 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     22 -->|"calls"| 19
+> ```
+> 	
+> <details>
+> 
+> <summary style="color:gray">R Code of the Dataflow Graph</summary>
+> 
+> The analysis required _3.53 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> We encountered no unknown side effects during the analysis.
+> 
+> ```r
+> f <- function() {
+> 	if(u) return(3)
+> 	if(v) return(2)
+> 	1
+> }
+> f()
+> ```
+> 
+> <details>
+> 
+> <summary style="color:gray">Mermaid Code (without markings)</summary>
+> 
+> ```
+> flowchart LR
+>     19["`#91;RFunctionDefinition#93; function
+>       (19)
+>       *1.6-5.1*`"]
+> 
+> subgraph "flow-19" [function 19]
+>     3(["`#91;RSymbol#93; u
+>       (3)
+>       *2.12*`"])
+>     5{{"`#91;RNumber#93; 3
+>       (5)
+>       *2.22*`"}}
+>     7[["`#91;RFunctionCall#93; return
+>       (7, :may:9+)
+>       *2.15-23*
+>     (5)`"]]
+>     9[["`#91;RIfThenElse#93; if
+>       (9)
+>       *2.9-23*
+>     (3, 7, [empty])`"]]
+>     10(["`#91;RSymbol#93; v
+>       (10, :may:)
+>       *3.12*`"])
+>     12{{"`#91;RNumber#93; 2
+>       (12)
+>       *3.22*`"}}
+>     14[["`#91;RFunctionCall#93; return
+>       (14, :may:)
+>       *3.15-23*
+>     (12)`"]]
+>     16[["`#91;RIfThenElse#93; if
+>       (16, :may:)
+>       *3.9-23*
+>     (10, 14, [empty])`"]]
+>     17{{"`#91;RNumber#93; 1
+>       (17, :may:)
+>       *4.9*`"}}
+>     18[["`#91;RExpressionList#93; #123;
+>       (18)
+>       *1.17*
+>     (9, 16, 17)`"]]
+>     style 3 stroke:purple,stroke-width:4px; 
+>     style 10 stroke:purple,stroke-width:4px; 
+>     style 17 stroke:purple,stroke-width:4px; 
+> end
+>     0["`#91;RSymbol#93; f
+>       (0)
+>       *1.1*`"]
+>     20[["`#91;RBinaryOp#93; #60;#45;
+>       (20)
+>       *1.1-5.1*
+>     (0, 19)`"]]
+>     %% Environment of 22 [level: 0]:
+>     %% Built-in
+>     %% 222----------------------------------------
+>     %%   f: {f (id: 0, type: Function, def. @20)}
+>     22[["`#91;RFunctionCall#93; f
+>       (22)
+>       *6.1-3*`"]]
+>     7 -->|"returns, argument"| 5
+>     7 -->|"CD-True"| 9
+>     linkStyle 1 stroke:gray,color:gray;
+>     9 -->|"returns, argument"| 7
+>     9 -->|"reads, argument"| 3
+>     14 -->|"returns, argument"| 12
+>     16 -->|"returns, argument"| 14
+>     16 -->|"reads, argument"| 10
+>     18 -->|"argument"| 9
+>     18 -->|"argument"| 16
+>     18 -->|"returns, argument"| 17
+>     18 -->|"returns"| 7
+>     18 -->|"returns"| 14
+> 19 -.-|function| flow-19
+> 
+>     0 -->|"defined-by"| 19
+>     0 -->|"defined-by"| 20
+>     20 -->|"argument"| 19
+>     20 -->|"returns, argument"| 0
+>     22 -->|"reads"| 0
+>     22 -->|"returns"| 18
+>     22 -->|"calls"| 19
+> ```
+> 
+> </details>
+> 
+> </details>
+> 
+> 
+> In this case the call of `f` still only has one [`returns`](#returns) edge, although the function _looks_ as if it would have multiple exit points!
+> But you have to beware that `{` is a function call as well (see below) and it may be redefined, or at least affect the actual returns of the function.
+> In this scenario we show two types of such returns (or exit points): _explicit_ returns with the `return` function and _implicit_ returns (the result of the last evaluated expression).
+> However, they are actually linked with the call of the built-in function `{` (and, in fact, they are highlighted in the mermaid graph).
+> 
+> 
+> </details>
+>     
+> 
+> 		
+> 
+>  
 > 
 > 
 > 
@@ -1683,53 +2161,341 @@ For more information on the types of references, please consult the implementati
 > 
 > 
 > 
+> <details><summary style="color:black">3) the function resolves to a mix of both</summary>
 > 
 > 
+> 
+> Users may write... interesting pieces of code - for reasons we should not be interested in!
+> Consider a case in which you have a built-in function (like the assignment operator `<-`) and a user that wants to redefine the meaning of the function call _sometimes_:
+> 
+> 
+> 
+> 
+> ```r
+> x <- 2
+> if(u) `<-` <- `*`
+> x <- 3
+> ```
+> <details>
+> 
+> <summary style="color:gray">Dataflow Graph of the R Code</summary>
+> 
+> The analysis required _2.16 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
+> We encountered no unknown side effects during the analysis.
+> 
+> 
+> ```mermaid
+> flowchart LR
+>     1{{"`#91;RNumber#93; 2
+>       (1)
+>       *1.6*`"}}
+>     0["`#91;RSymbol#93; x
+>       (0)
+>       *1.1*`"]
+>     2[["`#91;RBinaryOp#93; #60;#45;
+>       (2)
+>       *1.1-6*
+>     (0, 1)`"]]
+>     3(["`#91;RSymbol#93; u
+>       (3)
+>       *2.4*`"])
+>     5(["`#91;RSymbol#93; #96;#42;#96;
+>       (5, :may:8+)
+>       *2.15-17*`"])
+>     4["`#91;RSymbol#93; #96;#60;#45;#96;
+>       (4, :may:8+)
+>       *2.7-10*`"]
+>     6[["`#91;RBinaryOp#93; #60;#45;
+>       (6, :may:8+)
+>       *2.7-17*
+>     (4, 5)`"]]
+>     8[["`#91;RIfThenElse#93; if
+>       (8)
+>       *2.1-17*
+>     (3, 6, [empty])`"]]
+>     10{{"`#91;RNumber#93; 3
+>       (10)
+>       *3.6*`"}}
+>     9["`#91;RSymbol#93; x
+>       (9)
+>       *3.1*`"]
+>     style 9 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+>     %% Environment of 11 [level: 0]:
+>     %% Built-in
+>     %% 244----------------------------------------
+>     %%   x:  {x (id: 0, type: Variable, def. @2)}
+>     %%   <-: {<- (id: 4, type: Unknown, cds: {8+}, def. @6)}
+>     11[["`#91;RBinaryOp#93; #60;#45;
+>       (11)
+>       *3.1-6*
+>     (9, 10)`"]]
+>     0 -->|"defined-by"| 1
+>     0 -->|"defined-by"| 2
+>     2 -->|"argument"| 1
+>     2 -->|"returns, argument"| 0
+>     5 -->|"CD-True"| 8
+>     linkStyle 4 stroke:gray,color:gray;
+>     4 -->|"defined-by"| 5
+>     4 -->|"defined-by"| 6
+>     4 -->|"CD-True"| 8
+>     linkStyle 7 stroke:gray,color:gray;
+>     6 -->|"argument"| 5
+>     6 -->|"returns, argument"| 4
+>     6 -->|"CD-True"| 8
+>     linkStyle 10 stroke:gray,color:gray;
+>     8 -->|"returns, argument"| 6
+>     8 -->|"reads, argument"| 3
+>     9 -->|"defined-by"| 10
+>     linkStyle 13 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     9 -->|"defined-by"| 11
+>     9 -->|"reads"| 0
+>     linkStyle 15 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+>     11 -->|"argument"| 10
+>     11 -->|"returns, argument"| 9
+>     11 -->|"reads"| 4
+> ```
+> 	
+> 
+> <details>
+> 
+> <summary style="color:gray">Mermaid Code (without markings)</summary>
+> 
+> ```
+> flowchart LR
+>     1{{"`#91;RNumber#93; 2
+>       (1)
+>       *1.6*`"}}
+>     0["`#91;RSymbol#93; x
+>       (0)
+>       *1.1*`"]
+>     2[["`#91;RBinaryOp#93; #60;#45;
+>       (2)
+>       *1.1-6*
+>     (0, 1)`"]]
+>     3(["`#91;RSymbol#93; u
+>       (3)
+>       *2.4*`"])
+>     5(["`#91;RSymbol#93; #96;#42;#96;
+>       (5, :may:8+)
+>       *2.15-17*`"])
+>     4["`#91;RSymbol#93; #96;#60;#45;#96;
+>       (4, :may:8+)
+>       *2.7-10*`"]
+>     6[["`#91;RBinaryOp#93; #60;#45;
+>       (6, :may:8+)
+>       *2.7-17*
+>     (4, 5)`"]]
+>     8[["`#91;RIfThenElse#93; if
+>       (8)
+>       *2.1-17*
+>     (3, 6, [empty])`"]]
+>     10{{"`#91;RNumber#93; 3
+>       (10)
+>       *3.6*`"}}
+>     9["`#91;RSymbol#93; x
+>       (9)
+>       *3.1*`"]
+>     %% Environment of 11 [level: 0]:
+>     %% Built-in
+>     %% 244----------------------------------------
+>     %%   x:  {x (id: 0, type: Variable, def. @2)}
+>     %%   <-: {<- (id: 4, type: Unknown, cds: {8+}, def. @6)}
+>     11[["`#91;RBinaryOp#93; #60;#45;
+>       (11)
+>       *3.1-6*
+>     (9, 10)`"]]
+>     0 -->|"defined-by"| 1
+>     0 -->|"defined-by"| 2
+>     2 -->|"argument"| 1
+>     2 -->|"returns, argument"| 0
+>     5 -->|"CD-True"| 8
+>     linkStyle 4 stroke:gray,color:gray;
+>     4 -->|"defined-by"| 5
+>     4 -->|"defined-by"| 6
+>     4 -->|"CD-True"| 8
+>     linkStyle 7 stroke:gray,color:gray;
+>     6 -->|"argument"| 5
+>     6 -->|"returns, argument"| 4
+>     6 -->|"CD-True"| 8
+>     linkStyle 10 stroke:gray,color:gray;
+>     8 -->|"returns, argument"| 6
+>     8 -->|"reads, argument"| 3
+>     9 -->|"defined-by"| 10
+>     9 -->|"defined-by"| 11
+>     9 -->|"reads"| 0
+>     11 -->|"argument"| 10
+>     11 -->|"returns, argument"| 9
+>     11 -->|"reads"| 4
+> ```
+> 
+> </details>
+> 
+> </details>
+> 
+> 		
+> 
+> Interesting program, right? Running this with `u <- TRUE` will cause the last line to evaluate to `6` because we redefined the assignment
+> operator to mean multiplication, while with `u <- FALSE` causes `x` to be assigned to `3`.
+> In short: the last line may either refer to a definition or to a use of `x`, and we are not fully equipped to visualize this.
+> First of all how can you spot that something weird is happening? Well, this definition has a [`reads`](#reads) and a [`defined-by`](#defined-by) edge,
+> but this of course does not apply to the general case.
+> 
+> For starters, let's have a look at the environment of the call of call to `<-` in the last line:
+> 
+> | Name | Definitions |
+> |------|-------------|
+> | `x` | {x (id: 0, type: Variable, def. @2)} |
+> | `<-` | {<- (id: 4, type: Unknown, cds: {8+}, def. @6)} |
+> 
+> <details><summary style="color:gray"> Parent Environment</summary>
+> 
+> _Built-in Environment (210 entries)_
+> 
+> </details>
+> 
+> Great, you should see a definition of `<-` which is constraint by the [control dependency](#control-dependencies) to the `if`.
+> Hence, trying to re-resolve the call using `getAllFunctionTargets` with the id (`11`) of the call as starting point will present you with
+> the following target ids: { `4`, `built-in` }.
+> This way we know that the call may refer to the built-in assignment operator or to the multiplication.
+> Similarly, trying to resolve the name with `resolveByName` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+> { `4`, `built-in` } (however, the latter will not trace aliases).
+> 
+> 	
+> 
+> 
+> 
+> </details>
+>     
 > 
 > 				
 
 
- TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
- TODO: general node on calls and argument edges
- 
+Function calls are the most complicated mechanism in R as essentially everything is a function call.
+Even **control structures** like `if(p) a else b` are desugared into function calls (e.g., as `if`(p, a, b)).
 
-
-
-<details>
-
-<summary>Interesting Case</summary>
-
-#### Built-In Function Call
+<details><summary style="color:black">Example: <code>if</code> as a Function Call</summary>
 
 
 
 
 ```mermaid
 flowchart LR
-    0{{"`#91;RLogical#93; TRUE
+    0(["`#91;RSymbol#93; p
       (0)
-      *1.4-7*`"}}
-    1{{"`#91;RNumber#93; 1
-      (1)
-      *1.10*`"}}
-    3[["`#91;RIfThenElse#93; if
-      (3)
-      *1.1-10*
-    (0, 1, [empty])`"]]
-    style 3 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
-    3 -->|"returns, argument"| 1
-    3 -->|"reads, argument"| 0
+      *1.4*`"])
+    1(["`#91;RSymbol#93; a
+      (1, :may:5+)
+      *1.7*`"])
+    3(["`#91;RSymbol#93; b
+      (3, :may:5-)
+      *1.14*`"])
+    5[["`#91;RIfThenElse#93; if
+      (5)
+      *1.1-14*
+    (0, 1, 3)`"]]
+    1 -->|"CD-True"| 5
+    linkStyle 0 stroke:gray,color:gray;
+    3 -->|"CD-False"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    5 -->|"returns, argument"| 1
+    5 -->|"returns, argument"| 3
+    5 -->|"reads, argument"| 0
 ```
 	
 <details>
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.04 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3}.
+The analysis required _1.25 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
-if(TRUE) 1
+if(p) a else b
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code </summary>
+
+```
+flowchart LR
+    0(["`#91;RSymbol#93; p
+      (0)
+      *1.4*`"])
+    1(["`#91;RSymbol#93; a
+      (1, :may:5+)
+      *1.7*`"])
+    3(["`#91;RSymbol#93; b
+      (3, :may:5-)
+      *1.14*`"])
+    5[["`#91;RIfThenElse#93; if
+      (5)
+      *1.1-14*
+    (0, 1, 3)`"]]
+    1 -->|"CD-True"| 5
+    linkStyle 0 stroke:gray,color:gray;
+    3 -->|"CD-False"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    5 -->|"returns, argument"| 1
+    5 -->|"returns, argument"| 3
+    5 -->|"reads, argument"| 0
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+
+Similarly you should be aware of calls to **anonymous functions**, which may appear given directly (e.g. as `(function() 1)()`) or indirectly, with code
+directly calling the return of another function call: `foo()()`.
+
+<details><summary style="color:black">Example: Anonymous Function Call (given directly)</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    4["`#91;RFunctionDefinition#93; function
+      (4)
+      *1.2-13*`"]
+
+subgraph "flow-4" [function 4]
+    2{{"`#91;RNumber#93; 1
+      (2)
+      *1.13*`"}}
+    style 2 stroke:purple,stroke-width:4px; 
+end
+    5[["`#91;RExpressionList#93; (
+      (5)
+      *1.1*
+    (4)`"]]
+    6[["`#91;RFunctionCall#93; (function() 1)
+      (6)
+      *1.1-16*`"]]
+    style 6 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+4 -.-|function| flow-4
+
+    5 -->|"returns, argument"| 4
+    6 -->|"reads, calls"| 5
+    6 -->|"returns"| 2
+    6 -->|"calls"| 4
+    linkStyle 4 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+```
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _1.45 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
+We encountered no unknown side effects during the analysis.
+
+```r
+(function() 1)()
 ```
 
 <details>
@@ -1738,18 +2504,29 @@ if(TRUE) 1
 
 ```
 flowchart LR
-    0{{"`#91;RLogical#93; TRUE
-      (0)
-      *1.4-7*`"}}
-    1{{"`#91;RNumber#93; 1
-      (1)
-      *1.10*`"}}
-    3[["`#91;RIfThenElse#93; if
-      (3)
-      *1.1-10*
-    (0, 1, [empty])`"]]
-    3 -->|"returns, argument"| 1
-    3 -->|"reads, argument"| 0
+    4["`#91;RFunctionDefinition#93; function
+      (4)
+      *1.2-13*`"]
+
+subgraph "flow-4" [function 4]
+    2{{"`#91;RNumber#93; 1
+      (2)
+      *1.13*`"}}
+    style 2 stroke:purple,stroke-width:4px; 
+end
+    5[["`#91;RExpressionList#93; (
+      (5)
+      *1.1*
+    (4)`"]]
+    6[["`#91;RFunctionCall#93; (function() 1)
+      (6)
+      *1.1-16*`"]]
+4 -.-|function| flow-4
+
+    5 -->|"returns, argument"| 4
+    6 -->|"reads, calls"| 5
+    6 -->|"returns"| 2
+    6 -->|"calls"| 4
 ```
 
 </details>
@@ -1758,10 +2535,312 @@ flowchart LR
 
 
 
-Control structures like `if` are desugared into function calls (we omit the arguments of `if`(TRUE, 1) for simplicity).
+</details>
+    
+
+
+<details><summary style="color:black">Example: Anonymous Function Call (given indirectly)</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    8["`#91;RFunctionDefinition#93; function
+      (8)
+      *1.8-38*`"]
+
+subgraph "flow-8" [function 8]
+    %% Environment of 4 [level: 1]:
+    %% Built-in
+    %% 275----------------------------------------
+    %% 276----------------------------------------
+    4["`#91;RFunctionDefinition#93; function
+      (4)
+      *1.26-37*`"]
+
+subgraph "flow-4" [function 4]
+    2{{"`#91;RNumber#93; 3
+      (2)
+      *1.37*`"}}
+    style 2 stroke:purple,stroke-width:4px; 
+end
+    6[["`#91;RFunctionCall#93; return
+      (6)
+      *1.19-38*
+    (4)`"]]
+end
+    0["`#91;RSymbol#93; foo
+      (0)
+      *1.1-3*`"]
+    9[["`#91;RBinaryOp#93; #60;#45;
+      (9)
+      *1.1-38*
+    (0, 8)`"]]
+    %% Environment of 11 [level: 0]:
+    %% Built-in
+    %% 295----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @9)}
+    11[["`#91;RFunctionCall#93; foo
+      (11)
+      *2.1-5*`"]]
+    %% Environment of 12 [level: 0]:
+    %% Built-in
+    %% 296----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @9)}
+    12[["`#91;RFunctionCall#93; foo()
+      (12)
+      *2.1-7*`"]]
+    style 12 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+4 -.-|function| flow-4
+
+    6 -->|"returns, argument"| 4
+8 -.-|function| flow-8
+
+    0 -->|"defined-by"| 8
+    0 -->|"defined-by"| 9
+    9 -->|"argument"| 8
+    9 -->|"returns, argument"| 0
+    11 -->|"reads"| 0
+    11 -->|"returns"| 6
+    11 -->|"calls"| 8
+    12 -->|"reads, calls"| 11
+    12 -->|"returns"| 2
+    12 -->|"calls"| 4
+    linkStyle 12 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+```
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _1.76 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+We encountered no unknown side effects during the analysis.
+
+```r
+foo <- function() return(function() 3)
+foo()()
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    8["`#91;RFunctionDefinition#93; function
+      (8)
+      *1.8-38*`"]
+
+subgraph "flow-8" [function 8]
+    %% Environment of 4 [level: 1]:
+    %% Built-in
+    %% 275----------------------------------------
+    %% 276----------------------------------------
+    4["`#91;RFunctionDefinition#93; function
+      (4)
+      *1.26-37*`"]
+
+subgraph "flow-4" [function 4]
+    2{{"`#91;RNumber#93; 3
+      (2)
+      *1.37*`"}}
+    style 2 stroke:purple,stroke-width:4px; 
+end
+    6[["`#91;RFunctionCall#93; return
+      (6)
+      *1.19-38*
+    (4)`"]]
+end
+    0["`#91;RSymbol#93; foo
+      (0)
+      *1.1-3*`"]
+    9[["`#91;RBinaryOp#93; #60;#45;
+      (9)
+      *1.1-38*
+    (0, 8)`"]]
+    %% Environment of 11 [level: 0]:
+    %% Built-in
+    %% 295----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @9)}
+    11[["`#91;RFunctionCall#93; foo
+      (11)
+      *2.1-5*`"]]
+    %% Environment of 12 [level: 0]:
+    %% Built-in
+    %% 296----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @9)}
+    12[["`#91;RFunctionCall#93; foo()
+      (12)
+      *2.1-7*`"]]
+4 -.-|function| flow-4
+
+    6 -->|"returns, argument"| 4
+8 -.-|function| flow-8
+
+    0 -->|"defined-by"| 8
+    0 -->|"defined-by"| 9
+    9 -->|"argument"| 8
+    9 -->|"returns, argument"| 0
+    11 -->|"reads"| 0
+    11 -->|"returns"| 6
+    11 -->|"calls"| 8
+    12 -->|"reads, calls"| 11
+    12 -->|"returns"| 2
+    12 -->|"calls"| 4
+```
+
+</details>
+
+</details>
+
 
 
 </details>
+    
+
+Another interesting case is a function with **side effects**, most prominently with the super-assignment `<<-`.
+In this case, you may encounter the [`side-effect-on-call`](#side-effect-on-call) as exemplified below.
+
+<details><summary style="color:black">Example: Function Call with a Side-Effect</summary>
+
+
+
+
+```mermaid
+flowchart LR
+    %% Environment of 5 [level: 0]:
+    %% Built-in
+    %% 316----------------------------------------
+    %%   x: {x (id: 1, type: Variable, def. @3)}
+    5["`#91;RFunctionDefinition#93; function
+      (5)
+      *1.6-23*`"]
+
+subgraph "flow-5" [function 5]
+    2{{"`#91;RNumber#93; 3
+      (2)
+      *1.23*`"}}
+    1["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"]
+    3[["`#91;RBinaryOp#93; #60;#60;#45;
+      (3)
+      *1.17-23*
+    (1, 2)`"]]
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6)
+      *1.1-23*
+    (0, 5)`"]]
+    %% Environment of 8 [level: 0]:
+    %% Built-in
+    %% 324----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @6)}
+    8[["`#91;RFunctionCall#93; f
+      (8)
+      *2.2-4*`"]]
+    style 8 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+    1 -->|"defined-by"| 2
+    1 -->|"defined-by"| 3
+    1 -->|"side-effect-on-call"| 8
+    linkStyle 2 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    3 -->|"argument"| 2
+    3 -->|"returns, argument"| 1
+5 -.-|function| flow-5
+
+    0 -->|"defined-by"| 5
+    0 -->|"defined-by"| 6
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 0
+    8 -->|"reads"| 0
+    8 -->|"returns"| 3
+    8 -->|"calls"| 5
+```
+	
+<details>
+
+<summary style="color:gray">R Code of the Dataflow Graph</summary>
+
+The analysis required _1.51 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+We encountered no unknown side effects during the analysis.
+
+```r
+f <- function() x <<- 3
+ f()
+```
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    %% Environment of 5 [level: 0]:
+    %% Built-in
+    %% 316----------------------------------------
+    %%   x: {x (id: 1, type: Variable, def. @3)}
+    5["`#91;RFunctionDefinition#93; function
+      (5)
+      *1.6-23*`"]
+
+subgraph "flow-5" [function 5]
+    2{{"`#91;RNumber#93; 3
+      (2)
+      *1.23*`"}}
+    1["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"]
+    3[["`#91;RBinaryOp#93; #60;#60;#45;
+      (3)
+      *1.17-23*
+    (1, 2)`"]]
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    6[["`#91;RBinaryOp#93; #60;#45;
+      (6)
+      *1.1-23*
+    (0, 5)`"]]
+    %% Environment of 8 [level: 0]:
+    %% Built-in
+    %% 324----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @6)}
+    8[["`#91;RFunctionCall#93; f
+      (8)
+      *2.2-4*`"]]
+    1 -->|"defined-by"| 2
+    1 -->|"defined-by"| 3
+    1 -->|"side-effect-on-call"| 8
+    3 -->|"argument"| 2
+    3 -->|"returns, argument"| 1
+5 -.-|function| flow-5
+
+    0 -->|"defined-by"| 5
+    0 -->|"defined-by"| 6
+    6 -->|"argument"| 5
+    6 -->|"returns, argument"| 0
+    8 -->|"reads"| 0
+    8 -->|"returns"| 3
+    8 -->|"calls"| 5
+```
+
+</details>
+
+</details>
+
+
+
+</details>
+    
+ 
+
+
+
 	
 
 <a id='variable-definition-vertex'> </a>
@@ -1796,7 +2875,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.99 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.01 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1866,7 +2945,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.21 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.02 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1937,7 +3016,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.00 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _0.99 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1977,7 +3056,7 @@ Describes a function definition. Are always anonymous at first; although they ca
 
 ## Edges
 
-
+<a id='reads'></a>
 <a id='reads-edge'> </a>
 ### 1) Reads Edge
 
@@ -2019,7 +3098,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.11 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.24 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2096,8 +3175,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 289----------------------------------------
-    %%   foo: {foo (0, 2, def. @5)}
+    %% 467----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -2117,7 +3196,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.33 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.45 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2149,8 +3228,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 289----------------------------------------
-    %%   foo: {foo (0, 2, def. @5)}
+    %% 467----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -2219,7 +3298,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.35 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _1.31 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2278,7 +3357,7 @@ Parameters can read from each other as well.
 
 </details>
 	
-
+<a id='defined-by'></a>
 <a id='definedby-edge'> </a>
 ### 2) DefinedBy Edge
 
@@ -2312,7 +3391,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.98 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.02 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2395,7 +3474,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.12 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _2.63 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2479,7 +3558,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.16 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.19 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2528,7 +3607,7 @@ Here, we define by the result of the `+` expression.
 
 </details>
 	
-
+<a id='calls'></a>
 <a id='calls-edge'> </a>
 ### 3) Calls Edge
 
@@ -2558,8 +3637,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 459----------------------------------------
-    %%   foo: {foo (0, 2, def. @5)}
+    %% 637----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -2579,7 +3658,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.48 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.30 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2611,8 +3690,8 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 459----------------------------------------
-    %%   foo: {foo (0, 2, def. @5)}
+    %% 637----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
       *2.1-5*`"]]
@@ -2637,7 +3716,7 @@ Link the function call to the (anonymous) function definition.
 
 
 	
-
+<a id='returns'></a>
 <a id='returns-edge'> </a>
 ### 4) Returns Edge
 
@@ -2668,8 +3747,8 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 501----------------------------------------
-    %%   foo: {foo (0, 2, def. @4)}
+    %% 679----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
       *2.1-5*`"]]
@@ -2689,7 +3768,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.29 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.31 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2722,8 +3801,8 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 501----------------------------------------
-    %%   foo: {foo (0, 2, def. @4)}
+    %% 679----------------------------------------
+    %%   foo: {foo (id: 0, type: Function, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
       *2.1-5*`"]]
@@ -2748,7 +3827,7 @@ Link the function call to the exit points of the target definition (this may inc
 
 
 	
-
+<a id='defines-on-call'></a>
 <a id='definesoncall-edge'> </a>
 ### 5) DefinesOnCall Edge
 
@@ -2787,8 +3866,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 564----------------------------------------
-    %%   f: {f (0, 2, def. @7)}
+    %% 742----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -2814,7 +3893,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.92 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.50 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2855,8 +3934,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 564----------------------------------------
-    %%   f: {f (0, 2, def. @7)}
+    %% 742----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -2888,7 +3967,7 @@ end
 
 
 	
-
+<a id='defined-by-on-call'></a>
 <a id='definedbyoncall-edge'> </a>
 ### 6) DefinedByOnCall Edge
 
@@ -2927,8 +4006,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 627----------------------------------------
-    %%   f: {f (0, 2, def. @7)}
+    %% 805----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -2954,7 +4033,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.58 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.44 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2995,8 +4074,8 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 627----------------------------------------
-    %%   f: {f (0, 2, def. @7)}
+    %% 805----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
       *2.1-6*
@@ -3028,7 +4107,7 @@ end
 
 
 	
-
+<a id='argument'></a>
 <a id='argument-edge'> </a>
 ### 7) Argument Edge
 
@@ -3060,7 +4139,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.18 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.16 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3097,7 +4176,7 @@ Links a function call to the entry point of its arguments. If we do not know the
 
 
 	
-
+<a id='side-effect-on-call'></a>
 <a id='sideeffectoncall-edge'> </a>
 ### 8) SideEffectOnCall Edge
 
@@ -3111,8 +4190,8 @@ Type: `128`
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 729----------------------------------------
-    %%   x: {x (3, 4, def. @5)}
+    %% 907----------------------------------------
+    %%   x: {x (id: 3, type: Variable, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
       *1.6-27*`"]
@@ -3142,8 +4221,8 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 737----------------------------------------
-    %%   f: {f (0, 2, def. @8)}
+    %% 915----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
       *2.1-3*`"]]
@@ -3169,7 +4248,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.50 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3185,8 +4264,8 @@ f()
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 729----------------------------------------
-    %%   x: {x (3, 4, def. @5)}
+    %% 907----------------------------------------
+    %%   x: {x (id: 3, type: Variable, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
       *1.6-27*`"]
@@ -3216,8 +4295,8 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 737----------------------------------------
-    %%   f: {f (0, 2, def. @8)}
+    %% 915----------------------------------------
+    %%   f: {f (id: 0, type: Function, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
       *2.1-3*`"]]
@@ -3248,7 +4327,7 @@ Links a global side effect to an affected function call (e.g., a super definitio
 
 
 	
-
+<a id='non-standard-evaluation'></a>
 <a id='nonstandardevaluation-edge'> </a>
 ### 9) NonStandardEvaluation Edge
 
@@ -3275,7 +4354,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.00 ms_ (including parsing and normalization) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3348,7 +4427,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.68 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.25 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3478,7 +4557,7 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":764,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["detach",[{"type":128,"definedAt":"built-in","name":"detach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["rm",[{"type":128,"definedAt":"built-in","name":"rm","nodeId":"built-in"}]],["remove",[{"type":128,"definedAt":"built-in","name":"remove","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}]}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":942,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["detach",[{"type":128,"definedAt":"built-in","name":"detach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["rm",[{"type":128,"definedAt":"built-in","name":"rm","nodeId":"built-in"}]],["remove",[{"type":128,"definedAt":"built-in","name":"remove","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"fullLexeme":"x <- 1","id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"fullLexeme":"x + 1","id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"fullLexeme":"x","id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"fullLexeme":"1","id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"fullLexeme":"x","id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"fullLexeme":"1","id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}]}
 ```
 
 
@@ -3501,7 +4580,7 @@ A summarized version of the produced environment looks like this:
 
 | Name | Definitions |
 |------|-------------|
-| `x` | {x (0, 4, def. @2)} |
+| `x` | {x (id: 0, type: Variable, def. @2)} |
 
 <details><summary style="color:gray"> Parent Environment</summary>
 
@@ -3558,7 +4637,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.77 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.87 ms_ (including parsing and normalization) within the generation environment. 
 We encountered unknown side effects (with ids: [3]) during the analysis.
 
 ```r

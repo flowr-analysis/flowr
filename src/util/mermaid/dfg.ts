@@ -6,7 +6,12 @@ import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier';
+import type {
+	IdentifierDefinition,
+	IdentifierReference } from '../../dataflow/environments/identifier';
+import {
+	ReferenceTypeReverseMapping
+} from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { EdgeType } from '../../dataflow/graph/edge';
 import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
@@ -138,7 +143,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
 }
 
 export function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.type},${id.controlDependencies? ' {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+	return `${id.name} (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.controlDependencies? ' cds: {' + id.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {

@@ -3,30 +3,17 @@ import type { MermaidMarkdownMark } from '../util/mermaid/dfg';
 import { RShell } from '../r-bridge/shell';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { VertexType } from '../dataflow/graph/vertex';
-import { EdgeType } from '../dataflow/graph/edge';
+import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
-import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { LogLevel } from '../util/log';
 import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
-import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { nth } from '../util/text';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../r-bridge/retriever';
-import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-import type {
-	ExplanationParameters,
-	SubExplanationParameters
-} from './data/dfg/doc-data-dfg-util';
-import {
-	getAllEdges,
-	getAllVertices
-} from './data/dfg/doc-data-dfg-util';
+import type { ExplanationParameters, SubExplanationParameters } from './data/dfg/doc-data-dfg-util';
+import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
 import { getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
@@ -39,6 +26,14 @@ import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
+import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
+import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
+import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { nth } from '../util/text';
+import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
+import { LogLevel } from '../util/log';
+import { getAllFunctionTargets } from '../dataflow/internal/linker';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -92,6 +87,14 @@ ${await subExplanation(shell, { name, description, code, expectedSubgraph })}
 
 ${subExplanations.length > 0 ? await printAllSubExplanations(shell, subExplanations) : ''}
 	`;
+}
+
+function edgeTypeToId(edgeType: EdgeType): string {
+	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
+}
+
+function linkEdgeName(edgeType: EdgeType): string {
+	return `[\`${edgeTypeToName(edgeType)}\`](#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
@@ -273,52 +276,141 @@ ${
 		type:    'NOTE',
 		content: `
 But how do you know which definitions are actually called by the function?
-So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API)) already provide you with this information.
+
+So first of all, some frontends of _flowR_ (like the ${getReplCommand('slicer')} and ${getReplCommand('query')} with the [Query API}(${FlowrWikiBaseRef}/Query%20API) already provide you with this information.
 In general there are three scenarios you may be interested in:
   
 ${
-	details('1) the function resolves only to builtin definitions (like `<-`)', `
+	details('1) the function resolves only to builtin definitions (like <code><-</code>)', `
 
 Let's have a look at a simple assignment:
 
 ${await printDfGraphForCode(shell, 'x <- 2')}
 
-In this case, the call does not have a single call edge, which in general means it is bound to anything
-global beyond the scope of the given script. If it really refers to a built-in variable,
-_flowR_ (theoretically at least) does not know as any code that is not part of the analysis could cause the
-semantics to change. However, it is safe to assume that if there is a builtin with the given
-name and if there is no call edge attached to a call, that it resolves to the builtin version.
+In this case, the call does not have a single ${linkEdgeName(EdgeType.Calls)} edge, which in general means (i.e., if the analysis is done and you are not looking at an intermediate result) it is bound to anything
+global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
+as any code that is not part of the analysis could cause the semantics to change. 
+However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no ${linkEdgeName(EdgeType.Calls)} edge attached to a call.
 If you want to check the resolve targets, refer to \`${resolveByName.name}\` which is defined in ${getFilePathMd('../dataflow/environments/resolve-by-name')}.
-
-
 `)
 }
 
 ${details('2) the function only resolves to definitions that are present in the program', `
-Hi
+
+Let's have a look at a call to a function named \`foo\` which is defined in the same script:
+
+${await (async() => {
+		const code = 'foo <- function() 3\nfoo()'; 
+		const [text, info] = await printDfGraphForCode(shell, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']) });
+		
+		const numberOfEdges = [...info.dataflow.graph.edges()].flatMap(e => [...e[1].keys()]).length;
+		const callVertex = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
+		const [callId] = callVertex;
+		
+		
+		return `
+${text}
+
+Now, there are several edges, ${numberOfEdges} to be precise, although we are primarily interested in the ${info.dataflow.graph.outgoingEdges(callId)?.size ?? 0}
+edges going out from the call vertex \`${callId}\`.
+The ${linkEdgeName(EdgeType.Reads)} edge signals all definitions which are read by the \`foo\` identifier (similar to a [use vertex](#use-vertex)).
+While it seems to be somewhat redundant given the ${linkEdgeName(EdgeType.Calls)} edge that identifies the called [function definition](#function-definition-vertex),
+you have to consider cases in which aliases are involved in the call resolution (e.g., with higher order functions).
+
+${details('Example: Alias in Call Resolution', `In the following example, \`g\` ${linkEdgeName(EdgeType.Reads)} the previous definition, but ${linkEdgeName(EdgeType.Calls)} the function assigned to \`f\`.\n` 
+			+ await printDfGraphForCode(shell, 'f <- function() 3\ng <- f\ng()', { mark: new Set(['9', '9->5', '9->3']) }))}
+			
+Lastly, the ${linkEdgeName(EdgeType.Returns)} edge links the call to the return vertices(s) of the function.
+Please be aware, that these multiple exit points may be counter intuitive as they often appear with a nested call (usually a call to the built-in \`{\` function).
+
+ ${details('(Advanced) Example: Multiple Exit Points May Still Reflect As One',
+			await printDfGraphForCode(shell, `
+f <- function() {
+	if(u) return(3)
+	if(v) return(2)
+	1
+}
+f()`.trim(), { mark: new Set([22, '22->18']) }) + 
+			`
+In this case the call of \`f\` still only has one ${linkEdgeName(EdgeType.Returns)} edge, although the function _looks_ as if it would have multiple exit points!
+But you have to beware that \`{\` is a function call as well (see below) and it may be redefined, or at least affect the actual returns of the function.
+In this scenario we show two types of such returns (or exit points): _explicit_ returns with the \`return\` function and _implicit_ returns (the result of the last evaluated expression).
+However, they are actually linked with the call of the built-in function \`{\` (and, in fact, they are highlighted in the mermaid graph).
+`
+		)}
+
+		`;
+	})()
+}
+
+ 
+
 `)}
 
 
 ${details('3) the function resolves to a mix of both', `
-Ho
+
+Users may write... interesting pieces of code - for reasons we should not be interested in!
+Consider a case in which you have a built-in function (like the assignment operator \`<-\`) and a user that wants to redefine the meaning of the function call _sometimes_:
+
+${await (async() => {
+		const [text, info] = await printDfGraphForCode(shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', { switchCodeAndGraph: true, mark: new Set([9, '9->0', '9->10']), exposeResult: true });
+	
+		const interestingUseOfAssignment = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.id === 11);
+		guard(interestingUseOfAssignment !== undefined, () => 'Could not find interesting assignment vertex for the code');
+		const [id, interestingVertex] = interestingUseOfAssignment;
+		const env = interestingVertex.environment;
+		guard(env !== undefined, () => 'Could not find environment for interesting assignment vertex');
+		const name = interestingVertex.name as string | undefined;
+		guard(name !== undefined, () => 'Could not find name for interesting assignment vertex');
+		return `
+${text}		
+
+Interesting program, right? Running this with \`u <- TRUE\` will cause the last line to evaluate to \`6\` because we redefined the assignment
+operator to mean multiplication, while with \`u <- FALSE\` causes \`x\` to be assigned to \`3\`.
+In short: the last line may either refer to a definition or to a use of \`x\`, and we are not fully equipped to visualize this.
+First of all how can you spot that something weird is happening? Well, this definition has a ${linkEdgeName(EdgeType.Reads)} and a ${linkEdgeName(EdgeType.DefinedBy)} edge,
+but this of course does not apply to the general case.
+
+For starters, let's have a look at the environment of the call of call to \`<-\` in the last line:
+
+${printEnvironmentToMarkdown(env.current)}
+
+Great, you should see a definition of \`<-\` which is constraint by the [control dependency](#control-dependencies) to the \`if\`.
+Hence, trying to re-resolve the call using \`${getAllFunctionTargets.name}\` with the id (\`${id}\`) of the call as starting point will present you with
+the following target ids: { \`${[...getAllFunctionTargets(id, info.dataflow.graph)].join('`, `')}\` }.
+This way we know that the call may refer to the built-in assignment operator or to the multiplication.
+Similarly, trying to resolve the name with \`${resolveByName.name}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+{ \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+
+	`;		
+	})()}
+
 `)}
 
 				`
 	})
 }
 
- TODO: normal call, call with for or other control structures, unnamed call, call with side effect, call with unknown function, call with only builtin function, redefined builtin functions
- TODO: general node on calls and argument edges
+Function calls are the most complicated mechanism in R as essentially everything is a function call.
+Even **control structures** like \`if(p) a else b\` are desugared into function calls (e.g., as \`if\`(p, a, b)).
+${details('Example: <code>if</code> as a Function Call', await printDfGraphForCode(shell, 'if(p) a else b'))}
+
+Similarly you should be aware of calls to **anonymous functions**, which may appear given directly (e.g. as \`(function() 1)()\`) or indirectly, with code
+directly calling the return of another function call: \`foo()()\`.
+${details('Example: Anonymous Function Call (given directly)', await printDfGraphForCode(shell, '(function() 1)()', { mark: new Set([6, '6->4']) }))}
+
+${details('Example: Anonymous Function Call (given indirectly)', await printDfGraphForCode(shell, 'foo <- function() return(function() 3)\nfoo()()', { mark: new Set([12, '12->4']) }))}
+
+Another interesting case is a function with **side effects**, most prominently with the super-assignment \`<<-\`.
+In this case, you may encounter the ${linkEdgeName(EdgeType.SideEffectOnCall)} as exemplified below.
+${details('Example: Function Call with a Side-Effect', await printDfGraphForCode(shell, 'f <- function() x <<- 3\n f()', { mark: new Set([8, '1->8']) }))}
  
 `,
 		code:             'foo()',
 		expectedSubgraph: emptyGraph().call('1@foo', 'foo', [])
-	}, [{
-		name:             'Built-In Function Call',
-		description:      'Control structures like `if` are desugared into function calls (we omit the arguments of `if`(TRUE, 1) for simplicity).',
-		code:             'if(TRUE) 1',
-		expectedSubgraph: emptyGraph().call('1@if', 'if', [], { onlyBuiltIn: true })
-	}]]);
+	}, []]);
 
 	vertexExplanations.set(VertexType.VariableDefinition, [{
 		shell:            shell,
@@ -466,7 +558,7 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 		const get = edgeExplanations.get(edge);
 		guard(get !== undefined, () => `No explanation for edge type ${edge}`);
 		const [expl, subExplanations] = get;
-		results.push(await explanation(expl, ++i, ...subExplanations));
+		results.push(`<a id='${edgeTypeToId(edge)}'></a>` + await explanation(expl, ++i, ...subExplanations));
 	}
 	return results.join('\n');
 }
@@ -500,19 +592,19 @@ This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGr
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
 This wiki page focuses on explaining what such a dataflow graph looks like!
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph, 
+Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph,
 like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
-Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.	
+Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects) marking calls which _flowR_ is unable to handle correctly.
 
 > [!TIP]
-> If you want to investigate the dataflow graph, 
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')} 
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
+> If you want to investigate the dataflow graph,
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
+> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
 
-The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and 
+The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, although they are explicitly no data dependency).
 

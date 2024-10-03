@@ -589,6 +589,11 @@ foo(.x = f(3))`);
 				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
 				'function(x, y=3) z <- x + y');
 		});
+		describe('Potentially redefine built-ins', () => {
+			assertSliced(label('Potential Definition', [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'if'
+			]), shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', ['3@x'], 'x <- 2\nif(u) `<-` <- `*`\nx <- 3');
+		});
 		describe('Data Table Assignments', () => {
 			const caps: SupportedFlowrCapabilityId[] = [
 				'name-normal', ...OperatorDatabase[':='].capabilities,

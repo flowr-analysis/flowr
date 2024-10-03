@@ -27,15 +27,16 @@ ${graphToMermaid({
 }
 
 export interface PrintDataflowGraphOptions {
-	readonly mark?:         ReadonlySet<MermaidMarkdownMark>;
-	readonly showCode?:     boolean;
-	readonly codeOpen?:     boolean;
-	readonly exposeResult?: boolean;
+	readonly mark?:               ReadonlySet<MermaidMarkdownMark>;
+	readonly showCode?:           boolean;
+	readonly codeOpen?:           boolean;
+	readonly exposeResult?:       boolean;
+	readonly switchCodeAndGraph?: boolean;
 }
 
 export async function printDfGraphForCode(shell: RShell, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
 export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -43,19 +44,28 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing and normalization) within the generation environment.`;
+	if(switchCodeAndGraph) {
+		guard(showCode, 'can not switch code and graph if code is not shown');
+	}
 
-	const resultText = '\n\n' + printDfGraph(result.dataflow.graph, mark) + (showCode ? `
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing and normalization) within the generation environment.`;
+	const dfGraph = printDfGraph(result.dataflow.graph, mark);
+	let resultText = '\n\n';
+
+	if(showCode) {
+		const codeText = `\`\`\`r
+${code}
+\`\`\``;
+		resultText += switchCodeAndGraph ? codeText : dfGraph;
+		resultText += `
 <details${codeOpen ? ' open' : ''}>
 
-<summary style="color:gray">R Code of the Dataflow Graph</summary>
+<summary style="color:gray">${switchCodeAndGraph ? 'Dataflow Graph of the R Code' : 'R Code of the Dataflow Graph'}</summary>
 
 ${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): {${[...mark].join(', ')}}.` : ''}
 We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + JSON.stringify(result.dataflow.graph.unknownSideEffects, jsonReplacer) + ')' : 'no unknown side effects'} during the analysis.
 
-\`\`\`r
-${code}
-\`\`\`
+${switchCodeAndGraph ? dfGraph : codeText}
 
 <details>
 
@@ -63,17 +73,19 @@ ${code}
 
 \`\`\`
 ${graphToMermaid({
-			graph:  result.dataflow.graph,
-			prefix: 'flowchart LR'
-		}).string}
+		graph:  result.dataflow.graph,
+		prefix: 'flowchart LR'
+	}).string}
 \`\`\`
 
 </details>
 
 </details>
 
-` : '\n(' + metaInfo + ')\n\n');
-
+`;
+	} else {
+		resultText += dfGraph + '\n(' + metaInfo + ')\n\n';
+	}
 	return exposeResult ? [resultText, result] : resultText;
 }
 

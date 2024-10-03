@@ -220,6 +220,39 @@ export function linkFunctionCalls(
 	return calledFunctionDefinitions;
 }
 
+/** convenience function returning all known call targets */
+export function getAllFunctionTargets(call: NodeId, graph: DataflowGraph): NodeId[] {
+	const found = [];
+	const callVertex = graph.get(call, true);
+	if(callVertex === undefined) {
+		return [];
+	}
+
+	const [info, outgoingEdges] = callVertex;
+
+	if(info.tag !== VertexType.FunctionCall) {
+		return [];
+	}
+
+	if(info.name !== undefined && info.environment !== undefined) {
+		const functionCallDefs = resolveByName(info.name, info.environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
+		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
+			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
+				functionCallDefs.push(target);
+			}
+		}
+		const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
+		for(const target of functionCallTargets) {
+			found.push(target.id);
+		}
+		for(const def of functionCallDefs) {
+			found.push(def);
+		}
+	}
+
+	return found;
+}
+
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph

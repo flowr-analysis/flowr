@@ -28,6 +28,8 @@ export enum ReferenceType {
 	BuiltInFunction = 128
 }
 
+export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(Object.entries(ReferenceType).map(([k, v]) => [v as ReferenceType, k]));
+
 /**
  * Check if the reference types have an overlapping type!
  */

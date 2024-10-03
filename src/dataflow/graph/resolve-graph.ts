@@ -50,7 +50,7 @@ export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): Da
 				resultGraph.addEdge(
 					resolve(from),
 					resolve(to),
-					{ type }
+					type
 				);
 			}
 		}

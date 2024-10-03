@@ -98,12 +98,12 @@ export function processAccess<OtherInfo>(
 
 	const info = fnCall.information;
 
-	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, { type: EdgeType.Returns });
+	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, EdgeType.Returns);
 
 	/* access always reads all of its indices */
 	for(const arg of fnCall.processedArguments) {
 		if(arg !== undefined) {
-			info.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads });
+			info.graph.addEdge(name.info.id, arg.entryPoint, EdgeType.Reads);
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}

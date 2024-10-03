@@ -19,7 +19,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 
 	for(const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
-		graph.addEdge(root.info.id, ref, { type: EdgeType.Reads });
+		graph.addEdge(root.info.id, ref, EdgeType.Reads);
 	}
 }
 
@@ -46,7 +46,7 @@ export function processFunctionArgument<OtherInfo>(
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])];
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
-		graph.addEdge(entryPoint, argument.value.info.id, { type: EdgeType.Reads });
+		graph.addEdge(entryPoint, argument.value.info.id, EdgeType.Reads);
 	} else if(argumentName) {
 		// we only need to link against those which are not already bound to another function call argument
 		linkReadsForArgument(argument, [...ingoingRefs, ...value?.out ?? [] /* value may perform definitions */], graph);

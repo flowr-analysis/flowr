@@ -55,7 +55,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, { type: EdgeType.Reads });
+		nextGraph.addEdge(read, target, EdgeType.Reads);
 	}
 }
 
@@ -94,7 +94,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					for(const def of definitions) {
 						if(def.definedAt !== BuiltIn) {
 							hasUpdate = true;
-							nextGraph.addEdge(def.nodeId, functionCall, { type: EdgeType.SideEffectOnCall });
+							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 						}
 					}
 				}
@@ -208,7 +208,7 @@ export function processExpressionList<OtherInfo>(
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {
 			if(exit.type === ExitPointType.Return || exit.type === ExitPointType.Default) {
-				nextGraph.addEdge(rootId, exit.nodeId, { type: EdgeType.Returns });
+				nextGraph.addEdge(rootId, exit.nodeId, EdgeType.Returns);
 			}
 		}
 	}

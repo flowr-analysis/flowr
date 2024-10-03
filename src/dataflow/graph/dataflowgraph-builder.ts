@@ -190,7 +190,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			}
 			return this;
 		}
-		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), { type });
+		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), type);
 	}
 
 	/**

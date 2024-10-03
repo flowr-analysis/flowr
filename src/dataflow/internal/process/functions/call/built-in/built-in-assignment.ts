@@ -256,10 +256,10 @@ export function markAsAssignment(
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!quoteSource) {
 		for(const sourceId of sourceIds) {
-			information.graph.addEdge(nodeToDefine, sourceId, { type: EdgeType.DefinedBy });
+			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
 	}
-	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, { type: EdgeType.DefinedBy });
+	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
 	for(const [id,edge] of (out?? [])) {
@@ -307,10 +307,10 @@ function processAssignmentToSymbol<OtherInfo>({
 		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment);
 	}
 
-	information.graph.addEdge(rootId, targetArg.entryPoint, { type: EdgeType.Returns });
+	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);
 
 	if(quoteSource) {
-		information.graph.addEdge(rootId, source.info.id, { type: EdgeType.NonStandardEvaluation });
+		information.graph.addEdge(rootId, source.info.id, EdgeType.NonStandardEvaluation);
 	}
 
 	return {

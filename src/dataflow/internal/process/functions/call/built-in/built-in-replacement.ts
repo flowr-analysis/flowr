@@ -56,7 +56,7 @@ export function processReplacementFunction<OtherInfo>(
 	for(const arg of callArgs) {
 		const ref = getReferenceOfArgument(arg);
 		if(ref !== undefined) {
-			res.graph.addEdge(rootId, ref, { type: EdgeType.Reads });
+			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}
 	}
 

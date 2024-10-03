@@ -95,11 +95,11 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		const param = nameParamMap.get(name);
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
-			graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall });
+			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 			matchedParameters.add(name);
 		} else if(specialDotParameter !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
-			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall });
+			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 		}
 	}
 
@@ -115,7 +115,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		if(remainingParameter.length <= i) {
 			if(specialDotParameter !== undefined) {
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`);
-				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall });
+				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 			} else {
 				dataflowLogger.warn(`skipping argument ${i} as there is no corresponding parameter - R should block that`);
 			}
@@ -123,7 +123,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		}
 		const param = remainingParameter[i];
 		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`);
-		graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall });
+		graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 	}
 }
 
@@ -159,19 +159,19 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const def of defs) {
-				graph.addEdge(id, def, { type: EdgeType.Reads });
+				graph.addEdge(id, def, EdgeType.Reads);
 			}
 		}
 	}
 
 	const exitPoints = def.exitPoints;
 	for(const exitPoint of exitPoints) {
-		graph.addEdge(id, exitPoint, { type: EdgeType.Returns });
+		graph.addEdge(id, exitPoint, EdgeType.Returns);
 	}
 
 	const defName = recoverName(def.id, idMap);
 	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
-	graph.addEdge(id, def.id, { type: EdgeType.Calls });
+	graph.addEdge(id, def.id, EdgeType.Calls);
 	linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph);
 }
 
@@ -331,7 +331,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		} else {
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
-				graph.addEdge(bodyInput, target, { type: EdgeType.Reads });
+				graph.addEdge(bodyInput, target, EdgeType.Reads);
 			}
 		}
 	}
@@ -363,7 +363,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 			if(out.name === name) {
 				for(const target of targets) {
 					// TODO: just give type, no object
-					graph.addEdge(target.nodeId, out.nodeId, { type: EdgeType.Reads });
+					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
 				}
 			}
 		}

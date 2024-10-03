@@ -263,27 +263,26 @@ export class DataflowGraph<
 	}
 
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId, to: NodeId, edgeInfo: EdgeData<Edge>): this
+	public addEdge(from: NodeId, to: NodeId, type: EdgeType): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, edgeInfo: EdgeData<Edge>): this
+	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this
 	/**
 	 * Will insert a new edge into the graph,
 	 * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
 	 * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
 	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this {
 		const { fromId, toId } = extractEdgeIds(from, to);
-		const { type, ...rest } = edgeInfo;
 
 		if(fromId === toId || toId === BuiltIn) {
 			return this;
 		}
 
 		/* we now that we pass all required arguments */
-		const edge = { types: type, ...rest } as unknown as Edge;
+		const edge = { types: type } as unknown as Edge;
 
 		const existingFrom = this.edgeInformation.get(fromId);
 		const edgeInFrom = existingFrom?.get(toId);

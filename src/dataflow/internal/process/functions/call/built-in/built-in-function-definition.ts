@@ -154,7 +154,7 @@ function updateNestedFunctionClosures<OtherInfo>(
 			}
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`);
 			for(const ref of resolved) {
-				subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads });
+				subgraph.addEdge(ingoing, ref, EdgeType.Reads);
 			}
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${name.info.id}`);
@@ -186,7 +186,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
-				parameters.addEdge(read, ref, { type: EdgeType.Reads });
+				parameters.addEdge(read, ref, EdgeType.Reads);
 			}
 			continue;
 		}
@@ -199,11 +199,11 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue;
 		}
 		if(writingOuts[0].controlDependencies === undefined) {
-			parameters.addEdge(read, writingOuts[0], { type: EdgeType.Reads });
+			parameters.addEdge(read, writingOuts[0], EdgeType.Reads);
 			continue;
 		}
 		for(const out of writingOuts) {
-			parameters.addEdge(read, out, { type: EdgeType.Reads });
+			parameters.addEdge(read, out, EdgeType.Reads);
 		}
 	}
 	return remainingRead;

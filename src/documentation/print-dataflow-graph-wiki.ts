@@ -482,6 +482,10 @@ The subflow is defined like this:
 ${
 	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowFunctionFlowInformation' })
 }
+And if you are interested in the exit points, they are defined like this:
+${
+	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'ExitPoint' })
+}
 
 
 Whenever we visualize a function definition, we use a dedicated node to represent the anonymous function object,
@@ -657,7 +661,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		shell:            shell,
 		name:             'Returns Edge',
 		type:             EdgeType.Returns,
-		description:      'Link the function call to the exit points of the target definition (this may incorporate the call-context).',
+		description:      'Link the [function call](#function-call-vertex)  to the exit points of the target definition (this may incorporate the call-context).',
 		code:             'foo <- function() x\nfoo()',
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
 	}, []]);

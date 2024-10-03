@@ -25,7 +25,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { resolveByName } from '../dataflow/environments/resolve-by-name';
+import { resolveByName, resolvesToBuiltInConstant } from '../dataflow/environments/resolve-by-name';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
@@ -33,7 +33,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { getAllFunctionTargets } from '../dataflow/internal/linker';
+import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
@@ -61,7 +61,7 @@ async function printAllSubExplanations(shell: RShell, expls: readonly SubExplana
 	let result = `
 <details>
 
-<summary>Interesting Case${expls.length > 1 ? 's' : ''}</summary>
+<summary>Additional Case${expls.length > 1 ? 's' : ''}</summary>
 
 `;
 	for(const sub of expls) {
@@ -380,8 +380,8 @@ For starters, let's have a look at the environment of the call of call to \`<-\`
 ${printEnvironmentToMarkdown(env.current)}
 
 Great, you should see a definition of \`<-\` which is constraint by the [control dependency](#control-dependencies) to the \`if\`.
-Hence, trying to re-resolve the call using \`${getAllFunctionTargets.name}\` with the id (\`${id}\`) of the call as starting point will present you with
-the following target ids: { \`${[...getAllFunctionTargets(id, info.dataflow.graph)].join('`, `')}\` }.
+Hence, trying to re-resolve the call using \`${getAllFunctionCallTargets.name}\` (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
+the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with \`${resolveByName.name}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
 { \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
@@ -555,7 +555,7 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 ${await printDfGraphForCode(shell, '\\(x) x + 1', { switchCodeAndGraph: true })}
 
-Besides this being a theoretically "shorter" way of defining a function, this behaves similarly to the use of `function`. 
+Besides this being a theoretically "shorter" way of defining a function, this behaves similarly to the use of \`function\`. 
 
 `,
 		code:             'function() 1',
@@ -577,10 +577,32 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
-		shell:            shell,
-		name:             'Reads Edge',
-		type:             EdgeType.Reads,
-		description:      'The source vertex is usually a `use` that reads from the respective target definition.',
+		shell:       shell,
+		name:        'Reads Edge',
+		type:        EdgeType.Reads,
+		description: `
+Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) reads whatever is defined by the target vertex (usually a [variable definition](#variable-definition-vertex)).
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
+Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
+are currently tailored to what we need in _flowR_. Hence we offer a function like \`${getAllFunctionCallTargets.name}\` (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}),
+as well as \`${resolvesToBuiltInConstant.name}\` (defined in ${getFilePathMd('../dataflow/environments/resolve-by-name.ts')}) which do this for specific cases.
+
+${details('Example: Multi-Level Reads', await printDfGraphForCode(shell,  'x <- 3\ny <- x\nprint(y)', { mark: new Set(['9->7', '7->3', '4->0']) }))}
+
+Similarly, ${linkEdgeName(EdgeType.Reads)} can be cyclic, for example in the context of loops:
+
+${details('Example: Cyclic Reads', await printDfGraphForCode(shell, 'for(i in v) x <- x + 1', { mark: new Set(['11->0', '11->5', '5->0']) }))}
+				`
+	})
+}
+ 
+Please refer to the explanation of the respective vertices for more information.
+`,
 		code:             'x <- 2\nprint(x)',
 		expectedSubgraph: emptyGraph().reads('2@x', '1@x')
 	}, [{
@@ -596,10 +618,18 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 	}]]);
 
 	edgeExplanations.set(EdgeType.DefinedBy, [{
-		shell:            shell,
-		name:             'DefinedBy Edge', /* concat for link generation */
-		type:             EdgeType.DefinedBy,
-		description:      'The source vertex is usually a `define variable` that is defined by the respective target use. However, nested definitions can carry it (in the nested case, `x` is defined by the return value of `<-`(y, z)). Additionally, we link the assignment.',
+		shell:       shell,
+		name:        'DefinedBy Edge', /* concat for link generation */
+		type:        EdgeType.DefinedBy,
+		description: `
+The source vertex is usually a [\`define variable vertex\`](#variable-definition-vertex) linking the defined symbol to the entry point of the resulting side.
+${
+	details('In general, this does not have to be the right hand side of the operator.', await printDfGraphForCode(shell, '3 -> x', { mark: new Set([0]) }))
+}
+
+However, nested definitions can carry it (in the nested case, \`x\` is defined by the return value of \` \`<-\`(y, z) \`). Additionally, we link the assignment function.
+
+`,
 		code:             'x <- y',
 		expectedSubgraph: emptyGraph().definedBy('1@x', '1@y').definedBy('1@x', '1:3')
 	}, [{

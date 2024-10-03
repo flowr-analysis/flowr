@@ -26,7 +26,8 @@ import type { REnvironmentInformation } from '../environments/environment';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
-export function findNonLocalReads(graph: DataflowGraph): IdentifierReference[] {
+export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
+	const ignores = new Set(ignore.map(i => i.nodeId));
 	const ids = new Set(
 		[...graph.vertices(true)]
 			.filter(([_, info]) => info.tag === VertexType.Use || info.tag === VertexType.FunctionCall)
@@ -35,14 +36,24 @@ export function findNonLocalReads(graph: DataflowGraph): IdentifierReference[] {
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
 	for(const id of ids) {
+		if(ignores.has(id)) {
+			continue;
+		}
 		const outgoing = graph.outgoingEdges(id);
+		const name = recoverName(id, graph.idMap);
+		const origin = graph.getVertex(id, true);
+
 		if(outgoing === undefined) {
+			nonLocalReads.push({
+				name:                recoverName(id, graph.idMap),
+				nodeId:              id,
+				controlDependencies: undefined,
+				type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
+			});
 			continue;
 		}
 		for(const [target, { types }] of outgoing) {
 			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
-				const name = recoverName(id, graph.idMap);
-				const origin = graph.getVertex(id, true);
 				if(!name) {
 					dataflowLogger.warn('found non-local read without name for id ' + id);
 				}
@@ -221,7 +232,7 @@ export function linkFunctionCalls(
 }
 
 /** convenience function returning all known call targets */
-export function getAllFunctionTargets(call: NodeId, graph: DataflowGraph): NodeId[] {
+export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph): NodeId[] {
 	const found = [];
 	const callVertex = graph.get(call, true);
 	if(callVertex === undefined) {
@@ -346,10 +357,12 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 			lastOutgoing.set(out.name, out);
 		}
 	}
+
 	for(const [name, targets] of openIns.entries()) {
 		for(const out of lastOutgoing.values()) {
 			if(out.name === name) {
 				for(const target of targets) {
+					// TODO: just give type, no object
 					graph.addEdge(target.nodeId, out.nodeId, { type: EdgeType.Reads });
 				}
 			}

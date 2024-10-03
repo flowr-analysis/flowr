@@ -589,6 +589,11 @@ foo(.x = f(3))`);
 				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
 				'function(x, y=3) z <- x + y');
 		});
+		describe('Potentially redefine built-ins', () => {
+			assertSliced(label('Potential Definition', [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'if'
+			]), shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', ['3@x'], 'x <- 2\nif(u) `<-` <- `*`\nx <- 3');
+		});
 		describe('Data Table Assignments', () => {
 			const caps: SupportedFlowrCapabilityId[] = [
 				'name-normal', ...OperatorDatabase[':='].capabilities,
@@ -730,6 +735,12 @@ print(x)`, ['9@x'], `f <- function() { function() x <<- x + 1 }
 x <- 2
 f()()
 x`);
+	});
+	describe('Side Effects', () => {
+		assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+			shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+		assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+			shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	});
 	describe('Calls with potential side effects', () => {
 		assertSliced(label('Changing the working directory', [

@@ -108,7 +108,7 @@ export const enum TraverseEdge {
  * @example
  *
  * ```typescript
- * hasAnyTypeOf(EdgeType.Reads, EdgeType.Reads | EdgeType.DefinedBy) // true
+ * edgeIncludesType(EdgeType.Reads, EdgeType.Reads | EdgeType.DefinedBy) // true
  *```
  *
  * Counterpart of {@link edgeDoesNotIncludeType}.

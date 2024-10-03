@@ -69,13 +69,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
-			res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Returns });
+			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
 	}
 	if(config.readAllArguments) {
 		for(const arg of processedArguments) {
 			if(arg) {
-				res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Reads });
+				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}
 		}
 	}

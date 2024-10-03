@@ -35,7 +35,7 @@ export function processSpecialBinOp<OtherInfo>(
 
 	for(const arg of processedArguments) {
 		if(arg) {
-			information.graph.addEdge(name.info.id, arg.entryPoint, { type: EdgeType.Reads });
+			information.graph.addEdge(name.info.id, arg.entryPoint, EdgeType.Reads);
 		}
 		// only do first if lazy
 		if(config.lazy) {

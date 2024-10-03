@@ -13,6 +13,9 @@ export function normalizeIdToNumberIfPossible(id: NodeId): NodeId {
 	return id;
 }
 
+/**
+ * Recovers the lexeme of a node from its id in the idmap.
+ */
 export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
 	return idMap?.get(id)?.lexeme;
 }

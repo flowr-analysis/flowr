@@ -131,7 +131,7 @@ For example, an access operation like \`df$column\` will treat the column name a
 
 ${
 	details('Example: Semantics Create a Value',
-		'In the following graph, the original type printed by mermaid is still `RSymbol` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what `df$column` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).\n' + 
+		`In the following graph, the original type printed by mermaid is still \`RSymbol\` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a constant! If you do not know what \`df$column\` even means, please refer to the [R topic](https://rdrr.io/r/base/Extract.html).\n` + 
 				await printDfGraphForCode(shell, 'df$column', { mark: new Set([1]) }))
 }
 		`,
@@ -172,7 +172,7 @@ Consider a case, in which we refer to a variable with a string, as in \`get("x")
 
 ${
 	details('Example: Semantics Create a Symbol',
-		'In the following graph, the original type printed by mermaid is still `RString` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! ' +
+		`In the following graph, the original type printed by mermaid is still \`RString\` (from the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)), however, the shape of the vertex signals to you that the symbol is in-fact treated as a variable use! ` +
 		'If you are unsure what `get` does, refer to the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/get). ' +
 		'Please note, that the lexeme being printed as `"x"` may be misleading (after all it is recovered from the AST), the quotes are not part of the reference.\n' +
 				await printDfGraphForCode(shell, 'get("x")', { mark: new Set([1]) }))

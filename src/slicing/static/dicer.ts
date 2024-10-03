@@ -38,11 +38,32 @@ export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriter
 					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
 				}
 			})
+			console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
 			break
 		}
 
 		case 'symetrical difference': {
-			backwardsSlice = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
+			const union = staticSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
+
+			const slices: Readonly<SliceResult>[] = []
+			for(const criteria of startCriteria.criteria) {
+				const partialSlice = staticSlicing(graph, ast, [criteria], threshold)
+				slices.push(partialSlice)
+			}
+			const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+				return {
+					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+				}
+			})
+
+			backwardsSlice = {
+				timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
+				result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
+				decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
+			}
+			console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
 			break
 		}
 	}
@@ -66,6 +87,7 @@ export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriter
 					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
 				}
 			})
+			console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
 			break
 		}
 
@@ -157,7 +179,16 @@ function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: Slic
 			}
 		}
 
-		//add function definition (subflow)
+		//add function definition (subflow) [check subflow for id that are in queue and add definition based on that]
+		//if(currentVertex.tag === VertexType.FunctionDefinition) {
+		//	console.log('subflow: %s\nqueue: %s', JSON.stringify(currentVertex.subflow.graph, jsonReplacer), JSON.stringify(queue, jsonReplacer))
+		//	for(const id of currentVertex.subflow.graph) {
+		//		if(queue.hasId(id)) {
+		//			queue.add(currentVertex.id, baseEnvironment, baseEnvFingerprint, true)
+		//		}
+		//	}
+		//}
+
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, graph, queue)
@@ -188,6 +219,26 @@ function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: Slic
 		}
 	}
 	//console.log('\n\nvisitedIds: %s\n\n', visitedIds)
+
+	for(const vertex of graph.vertices(true)) {
+		if(vertex[1].tag === VertexType.FunctionDefinition) {
+			console.log('functiondefinition: %s\nsubflow: %s', JSON.stringify(graph.get(vertex[0], true)), JSON.stringify(vertex[1].subflow.graph, jsonReplacer))
+			for(const vertexId of vertex[1].subflow.graph) {
+				if(queue.hasId(vertexId)) {
+					console.log('Subflow in queue')
+					const current = queue.potentialArguments.get(vertexId)
+					if(current === undefined) {
+						continue
+					}
+					console.log('current: %s', JSON.stringify(graph.get(current.id, true), jsonReplacer))
+					const { baseEnvironment, id, onlyForSideEffects } = current
+					const baseEnvFingerprint = envFingerprint(baseEnvironment)
+
+					queue.add(id, baseEnvironment, baseEnvFingerprint, onlyForSideEffects)
+				}
+			}
+		}
+	}
 
 	return { ...queue.status(), decodedCriteria }
 }

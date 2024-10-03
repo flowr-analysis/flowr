@@ -4,7 +4,7 @@ import type { TestLabel } from '../../_helper/label'
 import { label } from '../../_helper/label'
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id'
 
-describe.only('Simple', withShell(shell => {
+describe('Simple', withShell(shell => {
 	describe('Checks for IDs', () => {
 		const testcases: { label: TestLabel, input: string, endCriterion: DicingCriterion, startCriterion: DicingCriterion, expected: ReadonlySet<NodeId> }[]
 		= [
@@ -61,10 +61,24 @@ c <- 2
 d <- 10
 z <- x(d, c)`
 
-		assertDiced(label('Simple function', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['6@c'] }, { type: 'union', criteria: ['8@z'] }, 'x <- function(a, b) { y * b }\nc <- 2\nx(d,c)')
+		assertDiced(label('Simple function', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['6@c'] }, { type: 'union', criteria: ['8@z'] }, 'x <- function(a, b) { y * b }\nc <- 2\nx(d, c)')
 		assertDiced(label('Start in function paramenter', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['1@a'] }, { type: 'union', criteria: ['8@z'] }, 'x <- function(a, b) {\n        y <- a\n        y * b\n    }\nx(d, c)')
 		assertDiced(label('Start in function', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['3@a'] }, { type: 'union', criteria: ['8@z'] }, 'y <- a\ny * b')
 		assertDiced(label('Cuts out function parameter', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['1@x'] }, { type: 'union', criteria: ['8@z'] }, 'x <- { y * b }\nx(d, c)')
+	})
+
+	describe.only('Dicing with ifs', () => {
+		const ifCode = `x <- 4
+if(x > 5) {
+    x <- 3
+} else {
+    x <- 6
+}
+cat(x)`
+		assertDiced(label('Simple If', ['assignment-functions', 'binary-operator', 'control-flow']), shell, ifCode, { type: 'union', criteria: ['2@x'] }, { type: 'union', criteria: ['5@x'] }, 'if(x > 5) { x <- 3 } else\n{ x <- 6 }')
+		assertDiced(label('Simple If', ['assignment-functions', 'binary-operator', 'control-flow']), shell, ifCode, { type: 'intersection', criteria: ['1@x', '3@x'] }, { type: 'union', criteria: ['5@x'] }, 'if(x > 5) { x <- 3 } else\n{ x <- 6 }')
+		assertDiced(label('Simple If', ['assignment-functions', 'binary-operator', 'control-flow']), shell, ifCode, { type: 'union', criteria: ['2@x'] }, { type: 'intersection', criteria: ['5@x', '3@x'] }, 'if(x > 5) { x <- 3 } else\n{ x <- 6 }')
+
 	})
 
 	describe('Intersection dicing', () => {
@@ -80,6 +94,9 @@ while (i < 10) {
 cat(x)`
 
 		assertDicedIds(label('Simple Intersection ID Test', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'intersection', criteria: ['1@x', '2@y'] }, { type: 'union', criteria: ['10@x'] }, new Set([33, 17, 20, 21, 31]))
+		assertDicedIds(label('Excluding while', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'intersection', criteria: ['1@x', '6@x'] }, { type: 'union', criteria: ['10@x'] }, new Set([33, 17, 21, 31]))
+		assertDicedIds(label('If Test', ['assignment-functions', 'control-flow', 'binary-operator']), shell, 'x <- 4\nif(x < 5) {\n    x <- 6\n} else {\n    x <- 3\n}\ncat(x)', { type: 'intersection', criteria: ['1@x', '2@if'] }, { type: 'union', criteria: ['7@x'] }, new Set([20, 8, 14, 18, 16, 11, 17, 5, 10]))
+		assertDicedIds(label('If Test (two end criteria)', ['assignment-functions', 'control-flow', 'binary-operator']), shell, 'x <- 4\nif(x < 5) {\n    x <- 6\n} else {\n    x <- 3\n}\ncat(x)', { type: 'union', criteria: ['1@x'] }, { type: 'intersection', criteria: ['3@x', '7@x'] }, new Set([20, 8, 14, 18, 16, 11, 17, 5, 10]))
 	})
 
 	describe('Symetrical Difference dicing', () => {
@@ -95,5 +112,8 @@ while (i < 10) {
 cat(x)`
 
 		assertDicedIds(label('Simple Difference ID Test', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'symetrical difference', criteria: ['1@x', '2@y'] }, { type: 'union', criteria: ['10@x'] }, new Set([0, 3, 5, 19, 2, 18]))
+		assertDicedIds(label('Excluding while', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'symetrical difference', criteria: ['1@x', '6@x'] }, { type: 'union', criteria: ['10@x'] }, new Set([0, 20, 18, 2]))
+		assertDicedIds(label('If Test', ['assignment-functions', 'control-flow', 'binary-operator']), shell, 'x <- 4\nif(x < 5) {\n    x <- 6\n} else {\n    x <- 3\n}\ncat(x)', { type: 'symetrical difference', criteria: ['1@x', '2@if'] }, { type: 'union', criteria: ['7@x'] }, new Set([3, 0, 2]))
+		assertDicedIds(label('Difference of two endings', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'union', criteria: ['1@x'] }, { type: 'symetrical difference', criteria: ['7@y', '4@while'] }, new Set([]))
 	})
 }))

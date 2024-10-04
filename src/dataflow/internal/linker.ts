@@ -362,7 +362,6 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 		for(const out of lastOutgoing.values()) {
 			if(out.name === name) {
 				for(const target of targets) {
-					// TODO: just give type, no object
 					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
 				}
 			}

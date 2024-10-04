@@ -8,11 +8,9 @@ import { processKnownFunctionCall } from '../known-call-handling'
 import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever'
 import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever'
 import type {
-	IdGenerator,
 	NormalizedAst,
 	ParentInformation
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
-import { sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call'
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol'
@@ -20,7 +18,6 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger'
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type'
 import { overwriteEnvironment } from '../../../../../environments/overwrite'
-import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { expensiveTrace } from '../../../../../../util/log'
 
 let sourceProvider = requestProviderFromFile()
@@ -64,7 +61,7 @@ export function processSourceCall<OtherInfo>(
 			return information
 		}
 
-		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
+		return sourceRequest(rootId, request, data, information)
 	} else {
 		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
 		information.graph.markIdForUnknownSideEffects(rootId)
@@ -72,7 +69,7 @@ export function processSourceCall<OtherInfo>(
 	}
 }
 
-function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
+function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
 	const executor = new RShellExecutor()
 
 	// parse, normalize and dataflow the sourced file
@@ -80,7 +77,7 @@ function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: 
 	let dataflow: DataflowInformation
 	try {
 		const parsed = retrieveParseDataFromRCode(request, executor)
-		normalized = normalize(parsed, getId) as NormalizedAst<OtherInfo & ParentInformation>
+		normalized = normalize(parsed) as NormalizedAst<OtherInfo & ParentInformation>
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

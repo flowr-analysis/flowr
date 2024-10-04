@@ -42,15 +42,6 @@ export function deterministicCountingIdGenerator(id = 0): () => NodeId {
 	return () => id++
 }
 
-export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => NodeId {
-	return () => `${prefix}-${id++}`
-}
-
-export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
-	let id = start
-	return () => `${path}-${loc2Id(location)}-${id++}`
-}
-
 function loc2Id([sl,sc,el,ec]: SourceRange): string {
 	return `${sl}:${sc}-${el}:${ec}`
 }

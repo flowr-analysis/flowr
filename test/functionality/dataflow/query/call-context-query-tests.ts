@@ -90,15 +90,20 @@ describe('Call Context Query', withShell(shell => {
 	});
 	describe('Aliases', () => {
 		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));
-		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ id: 3 }]));
-		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [7] }]));
-		testQuery('Two level alias', 'foo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 3 }]));
-		testQuery('Multiple aliases', 'foo <- print\nbar <- print\nfoo()\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 3 }, { id: 7 }]));
-		testQuery('Multiple potential aliases', 'if(u) foo <- print else foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [1, 2] }]));
-		testQuery('Alias by return', 'f <- function() print\nx <- f()\nx()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [7] }]));
-		testQuery('Alias by side effect', 'f <- function() x <<- print\nx()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [9] }]));
-		testQuery('Alias by parameter', 'f <- function(p) { p() }\nf(print)', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [3] }]));
+		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ id: 4 }]));
+		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 4, aliasRoots: [1] }]));
+		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1] }, { id: 4 }]));
+		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [2] }]));
+		testQuery('Two level alias', 'foo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [1] }]));
+		testQuery('Multi level alias with intermediate (fst)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [4, 0] }]));
+		testQuery('Multi level alias with intermediate (snd)', 'print <- gar\nfoo <- print\nbar <- foo\nbar()', [q(/foo/, { includeAliases: true })], r([{ id: 10, aliasRoots: [7, 3] }]));
+		testQuery('Multiple aliases', 'foo <- print\nbar <- print\nfoo()\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [1] }, { id: 9, aliasRoots: [4] }]));
+		testQuery('Multiple potential aliases', 'if(u) foo <- print else foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 11, aliasRoots: [2, 6] }]));
+		testQuery('Alias by return', 'f <- function() print\nx <- f()\nx()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [1] }]));
+		testQuery('Alias by side effect', 'f <- function() x <<- print\nf()\nx()', [q(/print/, { includeAliases: true })], r([{ id: 10, aliasRoots: [2] }]));
+		testQuery('Alias by parameter', 'f <- function(p) { p() }\nf(print)', [q(/print/, { includeAliases: true })], r([{ id: 6, aliasRoots: [11] }]));
 		testQuery('Alias another function', 'f <- bar\nf()', [q(/print/, { includeAliases: true })], baseResult({}));
+		testQuery('Only partial aliases', 'f <- bar\nf()\ng <- print\ng()', [q(/print/, { includeAliases: true }), q(/bar/)], r([{ id: 9, aliasRoots: [6] }]));
 	});
 	describe('Multiple Kinds', () => {
 		testQuery('Multiple Kinds', 'print(1); foo(2)', [q(/print/, { kind: 'print-kind' }), q(/foo/, { kind: 'foo-kind' })], baseResult({

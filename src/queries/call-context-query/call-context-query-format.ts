@@ -53,19 +53,19 @@ export interface SubCallContextQueryFormat<CallName extends RegExp | string = Re
 
 export interface CallContextQuerySubKindResult {
 	/** The id of the call vertex identified within the supplied dataflow graph */
-	readonly id:         NodeId;
+	readonly id:          NodeId;
 	/**
 	 * Ids of functions which are called by the respective function call,
 	 * this will only be populated whenever you explicitly state the {@link DefaultCallContextQueryFormat#callTargets}.
 	 * An empty array means that the call targets only non-local functions.
 	 */
-	readonly calls?:     readonly NodeId[];
+	readonly calls?:      readonly NodeId[];
 	/** ids attached by the linkTo query */
-	readonly linkedIds?: readonly NodeId[];
+	readonly linkedIds?:  readonly NodeId[];
 	/**
 	 * (Direct) alias locations this call stems from
 	 */
-	readonly aliasedAt?: readonly NodeId[];
+	readonly aliasRoots?: readonly NodeId[];
 }
 
 export type CallContextQueryKindResult = Record<string, {

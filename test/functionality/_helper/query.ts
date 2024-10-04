@@ -13,6 +13,7 @@ import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
 import { log } from '../../../src/util/log';
+import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -64,6 +65,11 @@ export function assertQuery<
 		const normalized = normalizeResults(result);
 
 		/* expect them to be deeply equal */
-		assert.deepStrictEqual(normalized, expected, 'The result of the call context query does not match the expected result');
+		try {
+			assert.deepStrictEqual(normalized, expected, 'The result of the call context query does not match the expected result');
+		} catch(e: unknown) {
+			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
+			throw e;
+		}
 	});
 }

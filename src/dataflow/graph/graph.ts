@@ -426,7 +426,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 		return { ...current };
 	}
 
-	if(current.tag === 'variable-definition') {
+	if(current.tag === VertexType.VariableDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 	} else if(current.tag === VertexType.FunctionCall) {
 		guard(equalFunctionArguments(current.id, current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information');

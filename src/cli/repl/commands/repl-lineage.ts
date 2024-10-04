@@ -6,11 +6,10 @@ import { requestFromInput } from '../../../r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { OutgoingEdges } from '../../../dataflow/graph/graph';
+import type { DataflowGraph, OutgoingEdges } from '../../../dataflow/graph/graph';
 import type { DataflowGraphEdge } from '../../../dataflow/graph/edge';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import type { DataflowInformation } from '../../../dataflow/info';
-import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
 
 function splitAt(str: string, idx: number) {
@@ -36,12 +35,14 @@ function pushRelevantEdges(queue: [NodeId, DataflowGraphEdge][], outgoingEdges: 
  * Get the lineage of a node in the dataflow graph
  *
  * @param criterion - The criterion to get the lineage of
- * @param ast       - The normalized AST
- * @param dfg       - The dataflow graph
+ * @param graph - The dataflow graph to search in
+ * @param idMap - The ID map to use for resolving the criterion (will default to that shipped with the dfgraph)
  * @returns The lineage of the node represented as a set of node ids
  */
-export function getLineage(criterion: SingleSlicingCriterion, { idMap } : NormalizedAst, dfg: DataflowInformation): Set<NodeId> {
-	const src = dfg.graph.get(slicingCriterionToId(criterion, idMap));
+export function getLineage(criterion: SingleSlicingCriterion, graph: DataflowGraph, idMap?: AstIdMap): Set<NodeId> {
+	idMap ??= graph.idMap;
+	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
+	const src = graph.get(slicingCriterionToId(criterion, idMap));
 	guard(src !== undefined, 'The ID pointed to by the criterion does not exist in the dataflow graph');
 	const [vertex, outgoingEdges] = src;
 	const result: Set<NodeId> = new Set([vertex.id]);
@@ -56,7 +57,7 @@ export function getLineage(criterion: SingleSlicingCriterion, { idMap } : Normal
 
 		result.add(target);
 
-		const outgoingEdges = dfg.graph.outgoingEdges(target);
+		const outgoingEdges = graph.outgoingEdges(target);
 		if(outgoingEdges !== undefined) {
 			pushRelevantEdges(edgeQueue, outgoingEdges);
 		}
@@ -72,8 +73,8 @@ export const lineageCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const [criterion, rest] = splitAt(remainingLine, remainingLine.indexOf(' '));
-		const { dataflow: dfg, normalize: ast } = await getDfg(shell, rest);
-		const lineageIds = getLineage(criterion as SingleSlicingCriterion, ast, dfg);
+		const { dataflow: dfg } = await getDfg(shell, rest);
+		const lineageIds = getLineage(criterion as SingleSlicingCriterion, dfg.graph);
 		output.stdout([...lineageIds].join('\n'));
 	}
 };

@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-query-wiki.ts' on 2024-10-03, 20:56:32 UTC presenting an overview of flowR's query API (v2.0.25, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-query-wiki.ts' on 2024-10-04, 17:50:44 UTC presenting an overview of flowR's query API (v2.0.25, using R v4.4.1)._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to access this API.
@@ -302,7 +302,7 @@ flowchart LR
     89 -->|"reads, returns, argument"| 87
 ```
 	
-(The analysis required _21.59 ms_ (including parsing and normalization) within the generation environment.)
+(The analysis required _21.70 ms_ (including parsing and normalization) within the generation environment.)
 
 
 
@@ -341,14 +341,14 @@ Just as an example, the following [Call-Context Query](#call-context-query) find
 
 _Results (prettified and summarized):_
 
-Query:&nbsp;**call-context**&nbsp;(1ms)\
+Query:&nbsp;**call-context**&nbsp;(0ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**input**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**csv-file**:&nbsp;_`read_csv`_&nbsp;(L.6),&nbsp;_`read_csv`_&nbsp;(L.7)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;10ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;8ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _10.48 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.81 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -357,7 +357,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "kinds": {
       "input": {
@@ -382,9 +382,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 }
 ```
 
-
-
 </details>
+
+
 
 
 
@@ -437,6 +437,8 @@ Valid item types:
                 - **callTargets** string [optional]
                     _Call&nbsp;targets&nbsp;the&nbsp;function&nbsp;may&nbsp;have.&nbsp;This&nbsp;defaults&nbsp;to&nbsp;`any`.&nbsp;Request&nbsp;this&nbsp;specifically&nbsp;to&nbsp;gain&nbsp;all&nbsp;call&nbsp;targets&nbsp;we&nbsp;can&nbsp;resolve._
                     Allows only the values: 'global', 'must-include-global', 'local', 'must-include-local', 'any'
+                - **includeAliases** boolean [optional]
+                    _Consider&nbsp;a&nbsp;case&nbsp;like&nbsp;`f&nbsp;<-&nbsp;function_of_interest`,&nbsp;do&nbsp;you&nbsp;want&nbsp;uses&nbsp;of&nbsp;`f`&nbsp;to&nbsp;be&nbsp;included&nbsp;in&nbsp;the&nbsp;results?_
                 - **linkTo** object [optional]
                     _Links&nbsp;the&nbsp;current&nbsp;call&nbsp;to&nbsp;the&nbsp;last&nbsp;call&nbsp;of&nbsp;the&nbsp;given&nbsp;kind.&nbsp;This&nbsp;way,&nbsp;you&nbsp;can&nbsp;link&nbsp;a&nbsp;call&nbsp;like&nbsp;`points`&nbsp;to&nbsp;the&nbsp;latest&nbsp;graphics&nbsp;plot&nbsp;etc._
                     - **type** string [required]
@@ -472,12 +474,13 @@ For now, we support two criteria:
 1. **Function Name** (`callName`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
 2. **Call Targets**  (`callTargets`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
 
-Besides this we provide three ways to automatically categorize and link identified invocations:
+Besides this we provide the following ways to automatically categorize and link identified invocations:
 
 1. **Kind**         (`kind`): This is a general category that can be used to group calls together. For example, you may want to link all calls to `plot` to `visualize`.
 2. **Subkind**      (`subkind`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to `ggplot` to `plot`.
 3. **Linked Calls** (`linkTo`): This links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.
    For now, we _only_offer support for linking to the last call_ as the current flow dependency over-approximation is not stable.
+4. **Aliases**      (`includeAliases`): Consider a case like `f <- function_of_interest`, do you want calls to `f` to be included in the results? There is probably no need to combine this with a global call target!
 
 Re-using the example code from above, the following query attaches all calls to `mean` to the kind `visualize` and the subkind `text`,
 all calls that start with `read_` to the kind `input` but only if they are not locally overwritten, and the subkind `csv-file`, and links all calls to `points` to the last call to `plot`:
@@ -516,17 +519,17 @@ all calls that start with `read_` to the kind `input` but only if they are not l
 
 _Results (prettified and summarized):_
 
-Query:&nbsp;**call-context**&nbsp;(3ms)\
+Query:&nbsp;**call-context**&nbsp;(2ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**input**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**csv-file**:&nbsp;_`read_csv`_&nbsp;(L.6),&nbsp;_`read_csv`_&nbsp;(L.7)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9),&nbsp;_`mean`_&nbsp;(L.19)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**plot**:&nbsp;_`points`_&nbsp;(L.17)&nbsp;with&nbsp;1&nbsp;link&nbsp;(_`plot`_&nbsp;(L.16))\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈3ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;15ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈2ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;13ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _14.55 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _13.14 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -535,7 +538,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 3
+      "timing": 2
     },
     "kinds": {
       "input": {
@@ -575,14 +578,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 2
   }
 }
 ```
 
-
-
 </details>
+
+
 
 
 
@@ -592,6 +595,92 @@ As you can see, all kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
 See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose. 
 
+
+<details><summary style="color:black">Alias Example</summary>
+
+Consider the following code: 
+```r
+foo <- my_test_function
+foo()
+if(u) bar <- foo
+bar()
+my_test_function()
+```
+
+Now let's say we want to query _all_ uses of the `my_test_function`:
+
+```json
+[
+  {
+    "type": "call-context",
+    "callName": "^my_test_function",
+    "includeAliases": true
+  }
+]
+```
+
+
+
+_Results (prettified and summarized):_
+
+Query:&nbsp;**call-context**&nbsp;(0ms)\
+&nbsp;&nbsp;&nbsp;╰&nbsp;**.**\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**.**:&nbsp;_`foo`_&nbsp;(L.2)&nbsp;with&nbsp;1&nbsp;alias&nbsp;root&nbsp;(_`my_test_function`_&nbsp;(L.1)),&nbsp;_`bar`_&nbsp;(L.4)&nbsp;with&nbsp;1&nbsp;alias&nbsp;root&nbsp;(_`my_test_function`_&nbsp;(L.1)),&nbsp;_`my_test_function`_&nbsp;(L.5)\
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;5ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _5.14 ms_ (including parsing and normalization and the query) within the generation environment.	
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
+
+```json
+{
+  "call-context": {
+    ".meta": {
+      "timing": 0
+    },
+    "kinds": {
+      ".": {
+        "subkinds": {
+          ".": [
+            {
+              "id": 4,
+              "aliasRoots": [
+                1
+              ]
+            },
+            {
+              "id": 12,
+              "aliasRoots": [
+                1
+              ]
+            },
+            {
+              "id": 14
+            }
+          ]
+        }
+      }
+    }
+  },
+  ".meta": {
+    "timing": 0
+  }
+}
+```
+
+</details>
+
+
+
+
+
+	
+
+</details>
+    
 		
 
 <details> 
@@ -652,7 +741,7 @@ _All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accurac
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.96 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _6.31 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -690,9 +779,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 }
 ```
 
-
-
 </details>
+
+
 
 
 
@@ -717,14 +806,14 @@ Of course, in this specific scenario, the following query would be equivalent:
 
 _Results (prettified and summarized):_
 
-Query:&nbsp;**call-context**&nbsp;(0ms)\
+Query:&nbsp;**call-context**&nbsp;(1ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9),&nbsp;_`print`_&nbsp;(L.10),&nbsp;_`mean`_&nbsp;(L.19),&nbsp;_`print`_&nbsp;(L.19)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;6ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈1ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;7ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.65 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.31 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -733,7 +822,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "visualize": {
@@ -757,14 +846,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
 
-
-
 </details>
+
+
 
 </details>
 
@@ -807,11 +896,11 @@ _Results (prettified and summarized):_
 Query:&nbsp;**call-context**&nbsp;(0ms)\
 &nbsp;&nbsp;&nbsp;╰&nbsp;**visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰&nbsp;**text**:&nbsp;_`mean`_&nbsp;(L.9)&nbsp;with&nbsp;1&nbsp;call&nbsp;(_built-in_),&nbsp;_`mean`_&nbsp;(L.19)&nbsp;with&nbsp;1&nbsp;call&nbsp;(_built-in_)\
-_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;5ms)_
+_All&nbsp;queries&nbsp;together&nbsp;required&nbsp;≈0ms&nbsp;(1ms&nbsp;accuracy,&nbsp;total&nbsp;6ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.32 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _6.09 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -849,9 +938,9 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 }
 ```
 
-
-
 </details>
+
+
 
 
 

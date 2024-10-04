@@ -81,7 +81,7 @@ function nodeString(id: NodeId, formatter: OutputFormatter, processed: PipelineO
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [] } of results) {
+	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
 		const node = processed.normalize.idMap.get(id);
 		if(node === undefined) {
 			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
@@ -93,6 +93,9 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 		}
 		if(linkedIds.length > 0) {
 			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, processed)).join(', ')})`;
+		}
+		if(aliasRoots.length > 0) {
+			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, processed)).join(', ')})`;
 		}
 		result.push(line);
 	}

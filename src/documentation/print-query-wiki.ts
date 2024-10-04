@@ -13,6 +13,8 @@ import { executeCallContextQueries } from '../queries/call-context-query/call-co
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { exampleQueryCode } from './data/query/example-query-code';
+import { details } from './doc-util/doc-structure';
+import { codeBlock } from './doc-util/doc-code';
 
 
 registerQueryDocumentation('call-context', {
@@ -29,12 +31,13 @@ For now, we support two criteria:
 1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
 2. **Call Targets**  (\`callTargets\`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
 
-Besides this we provide three ways to automatically categorize and link identified invocations:
+Besides this we provide the following ways to automatically categorize and link identified invocations:
 
 1. **Kind**         (\`kind\`): This is a general category that can be used to group calls together. For example, you may want to link all calls to \`plot\` to \`visualize\`.
 2. **Subkind**      (\`subkind\`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to \`ggplot\` to \`plot\`.
 3. **Linked Calls** (\`linkTo\`): This links the current call to the last call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
    For now, we _only_offer support for linking to the last call_ as the current flow dependency over-approximation is not stable.
+4. **Aliases**      (\`includeAliases\`): Consider a case like \`f <- function_of_interest\`, do you want calls to \`f\` to be included in the results? There is probably no need to combine this with a global call target!
 
 Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,
 all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:
@@ -42,8 +45,20 @@ all calls that start with \`read_\` to the kind \`input\` but only if they are n
 ${
 	await showQuery(shell, exampleQueryCode, [
 		{ type: 'call-context', callName: '^mean$', kind: 'visualize', subkind: 'text' },
-		{ type: 'call-context', callName: '^read_', kind: 'input', subkind: 'csv-file', callTargets: CallTargets.OnlyGlobal },
-		{ type: 'call-context', callName: '^points$', kind: 'visualize', subkind: 'plot', linkTo: { type: 'link-to-last-call', callName: '^plot$' } }
+		{
+			type:        'call-context',
+			callName:    '^read_',
+			kind:        'input',
+			subkind:     'csv-file',
+			callTargets: CallTargets.OnlyGlobal
+		},
+		{
+			type:     'call-context',
+			callName: '^points$',
+			kind:     'visualize',
+			subkind:  'plot',
+			linkTo:   { type: 'link-to-last-call', callName: '^plot$' }
+		}
 	], { showCode: false })
 }
 
@@ -51,10 +66,23 @@ As you can see, all kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
 See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose. 
 
+${
+	await (async() => {
+		const code = `
+foo <- my_test_function
+foo()
+if(u) bar <- foo
+bar()
+my_test_function()
+`.trim();
+		return details('Alias Example', `Consider the following code: ${codeBlock('r', code)}\nNow let's say we want to query _all_ uses of the \`my_test_function\`:` + await showQuery(shell, code, [
+			{ type: 'call-context', callName: '^my_test_function', includeAliases: true }
+		], { showCode: false }));
+	})()
+}
 		`;
 	}
 });
-
 registerQueryDocumentation('compound', {
 	name:             'Compound Query',
 	type:             'virtual',

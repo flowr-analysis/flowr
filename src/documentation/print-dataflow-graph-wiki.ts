@@ -236,7 +236,7 @@ ${
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
-			const itentifierType = getTypesFromFolderAsMermaid({
+			const identifierType = getTypesFromFolderAsMermaid({
 				files:       [path.resolve('./src/dataflow/environments/identifier.ts')],
 				typeName:    'IdentifierReference',
 				inlineTypes: ['ControlDependency']
@@ -268,7 +268,7 @@ In other words, we classify the references as ${
 			}.
 For more information on the types of references, please consult the implementation.
 
-${printHierarchy({ program: itentifierType.program, hierarchy: itentifierType.info, root: 'ReferenceType' })}
+${printHierarchy({ program: identifierType.program, hierarchy: identifierType.info, root: 'ReferenceType' })}
 	`;
 		})())
 }

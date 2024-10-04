@@ -16,9 +16,9 @@ import { arrayEqual } from '../../util/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {   normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
-import {  initializeCleanEnvironments } from '../environments/environment';
+import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
@@ -247,7 +247,7 @@ export class DataflowGraph<
 
 		const fallback = vertex.tag === VertexType.VariableDefinition || vertex.tag === VertexType.Use || vertex.tag === VertexType.Value || (vertex.tag === VertexType.FunctionCall && vertex.onlyBuiltin) ? undefined : DataflowGraph.DEFAULT_ENVIRONMENT;
 		// keep a clone of the original environment
-		const environment = vertex.environment === undefined ? fallback : cloneEnvironmentInformation(vertex.environment);
+		const environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback;
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
@@ -374,7 +374,7 @@ export class DataflowGraph<
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
 			vertex.controlDependencies = reference.controlDependencies;
 		} else {
-			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: 'variable-definition' });
+			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
 		}
 	}
 
@@ -384,8 +384,7 @@ export class DataflowGraph<
 	 */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
 		const vertex = this.getVertex(info.id, true);
-		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(info.id)} to update it to a function call`);
-		guard(vertex.tag === VertexType.Use, () => `node must be a use node for ${JSON.stringify(info.id)} to update it to a function call`);
+		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall });
 	}
 
@@ -427,11 +426,11 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 		return { ...current };
 	}
 
-	if(current.tag === 'variable-definition') {
+	if(current.tag === VertexType.VariableDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 	} else if(current.tag === VertexType.FunctionCall) {
 		guard(equalFunctionArguments(current.id, current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information');
-	} else if(current.tag === 'function-definition') {
+	} else if(current.tag === VertexType.FunctionDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 		guard(arrayEqual(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points');
 	}

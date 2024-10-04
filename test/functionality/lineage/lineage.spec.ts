@@ -21,7 +21,7 @@ describe('Test lineage', withShell(shell => {
 				shell,
 				request: requestFromInput(request)
 			}).allRemainingSteps();
-			const lineageIds = getLineage(criterion, result.normalize, result.dataflow);
+			const lineageIds = getLineage(criterion, result.dataflow.graph);
 			assert.isTrue(setEquals(lineageIds, new Set(expected)), `Expected ${JSON.stringify(expected)} but got ${JSON.stringify([...lineageIds])}`);
 		});
 	}

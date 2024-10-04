@@ -8,6 +8,7 @@ import type {
 } from './call-context-query-format';
 import { CallTargets } from './call-context-query-format';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent  } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { assertUnreachable } from '../../util/assert';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
@@ -149,6 +150,63 @@ function identifyLinkToLastCallRelation(from: NodeId, cfg: ControlFlowGraph, gra
 	return found;
 }
 
+
+/* maybe we want to add caches to this */
+function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<string, NodeId[]> {
+	/* we want the names of all functions called at the source id, including synonyms and returns */
+	const aliases: Map<string, NodeId[]> = new Map();
+
+	const visited = new Set<NodeId>();
+	/* we store the current call name */
+	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+
+	while(queue.length > 0) {
+		const [str, id] = queue.shift() as [string, NodeId];
+		if(visited.has(id)) {
+			continue;
+		}
+		visited.add(id);
+		if(id !== nodeId) {
+			const present = aliases.get(str);
+			if(present) {
+				present.push(id);
+			} else {
+				aliases.set(str, [id]);
+			}
+		}
+
+		const vertex = graph.get(id);
+		if(vertex === undefined) {
+			continue;
+		}
+		const [info, outgoing] = vertex;
+
+		if(info.tag !== VertexType.FunctionCall) {
+			const x = [...outgoing]
+				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
+				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const);
+			/** only follow defined-by and reads */
+			queue.push(...x);
+			continue;
+		}
+
+		let track = EdgeType.Calls | EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+		if(id !== nodeId) {
+			track |= EdgeType.Returns;
+		}
+		const out = [...outgoing]
+			.filter(([, e]) => edgeIncludesType(e.types, track) && (nodeId !== id || !edgeIncludesType(e.types, EdgeType.Argument)))
+			.map(([t]) => t)
+		;
+
+		for(const call of out) {
+			queue.push([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
+		}
+	}
+
+	return aliases;
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -171,10 +229,29 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 		cfg = extractCFG(ast);
 	}
 
+	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
+
 	for(const [nodeId, info] of graph.vertices(true)) {
 		if(info.tag !== VertexType.FunctionCall) {
 			continue;
 		}
+		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
+		if(queriesWhichWantAliases.length > 0) {
+			/*
+			 * yes, we make an expensive call target check, we can probably do a lot of optimization here, e.g.,
+			 * by checking all of these queries would be satisfied otherwise,
+			 * in general, we first want a call to happen, i.e., trace the called targets of this!
+			 */
+			const targets = retrieveAllCallAliases(nodeId, graph);
+			for(const [l, ids] of targets.entries()) {
+				for(const query of queriesWhichWantAliases) {
+					if(query.callName.test(l)) {
+						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, aliasRoots: ids }));
+					}
+				}
+			}
+		}
+
 		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {

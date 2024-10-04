@@ -11,6 +11,7 @@ import { asciiSummaryOfQueryResult } from '../../cli/repl/commands/repl-query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
+import { printDfGraphForCode } from './doc-dfg';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -60,19 +61,17 @@ Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more
 ${resultAsString}
 \`\`\`
 
+</details>
+
 ${
 	showCode ? `
 <details> <summary style="color:gray">Original Code</summary>
 
-\`\`\`r
-${code}
-\`\`\`
+${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
 
 </details>
 	` : ''
 }
-
-</details>
 
 ${collapseResult ? '</details>' : ''}
 

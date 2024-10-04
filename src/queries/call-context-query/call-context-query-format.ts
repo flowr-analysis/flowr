@@ -15,18 +15,22 @@ export enum CallTargets {
 }
 
 export interface DefaultCallContextQueryFormat<CallName extends RegExp | string> extends BaseQueryFormat {
-	readonly type:         'call-context';
+	readonly type:            'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
-	readonly callName:     CallName;
+	readonly callName:        CallName;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
-	readonly kind?:        string;
+	readonly kind?:           string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.` */
-	readonly subkind?:     string;
+	readonly subkind?:        string;
 	/**
 	 * Call targets the function may have. This defaults to {@link CallTargets#Any}.
 	 * Request this specifically to gain all call targets we can resolve.
 	 */
-	readonly callTargets?: CallTargets;
+	readonly callTargets?:    CallTargets;
+	/**
+	 * Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?
+	 */
+	readonly includeAliases?: boolean;
 }
 
 /**
@@ -49,15 +53,19 @@ export interface SubCallContextQueryFormat<CallName extends RegExp | string = Re
 
 export interface CallContextQuerySubKindResult {
 	/** The id of the call vertex identified within the supplied dataflow graph */
-	readonly id:         NodeId;
+	readonly id:          NodeId;
 	/**
 	 * Ids of functions which are called by the respective function call,
 	 * this will only be populated whenever you explicitly state the {@link DefaultCallContextQueryFormat#callTargets}.
 	 * An empty array means that the call targets only non-local functions.
 	 */
-	readonly calls?:     readonly NodeId[];
+	readonly calls?:      readonly NodeId[];
 	/** ids attached by the linkTo query */
-	readonly linkedIds?: readonly NodeId[];
+	readonly linkedIds?:  readonly NodeId[];
+	/**
+	 * (Direct) alias locations this call stems from
+	 */
+	readonly aliasRoots?: readonly NodeId[];
 }
 
 export type CallContextQueryKindResult = Record<string, {

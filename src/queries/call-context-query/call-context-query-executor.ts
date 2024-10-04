@@ -21,6 +21,7 @@ import type { BasicQueryData } from '../query';
 import { compactRecord } from '../../util/objects';
 import { visitInReverseOrder } from '../../util/cfg/visitor';
 import { ReferenceType } from '../../dataflow/environments/identifier';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -205,6 +206,14 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 	}
 
 	return aliases;
+}
+
+function getFileNameOfNode(nodeId: NodeId, idMap: AstIdMap): string | undefined {
+	const node = idMap.get(nodeId);
+	if(node === undefined) {
+		return undefined;
+	}
+	return 'TODO';
 }
 
 /**

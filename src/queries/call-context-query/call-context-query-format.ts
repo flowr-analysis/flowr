@@ -31,6 +31,10 @@ export interface DefaultCallContextQueryFormat<CallName extends RegExp | string>
 	 * Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?
 	 */
 	readonly includeAliases?: boolean;
+	/**
+	 * Which files should the call be considered in? This does only filter for the main call result and not potentially linked calls and aliases.
+	 */
+	readonly fileNames?:      RegExp | string;
 }
 
 /**

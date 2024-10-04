@@ -35,9 +35,13 @@ describe('Post-Processing', () => {
 		});
 		/* remove the temp folder, as well as *-final and *-intermediate */
 		process.on('exit', () => {
-			fs.rmSync(tempfolder, { recursive: true, force: true });
-			fs.rmSync(tempfolder + '-final', { recursive: true, force: true });
-			fs.rmSync(tempfolder + '-intermediate', { recursive: true, force: true });
+			try {
+				fs.rmSync(tempfolder, { recursive: true, force: true });
+				fs.rmSync(tempfolder + '-final', { recursive: true, force: true });
+				fs.rmSync(tempfolder + '-intermediate', { recursive: true, force: true });
+			} catch(e) {
+				console.error('Error during cleanup:', e);
+			}
 		});
 	});
 });

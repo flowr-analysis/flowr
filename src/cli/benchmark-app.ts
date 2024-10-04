@@ -41,7 +41,11 @@ guard(options.runs === undefined || options.runs > 0, 'runs must be greater than
 function removeIfExists(summarizedRaw: string) {
 	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`);
-		fs.rmSync(summarizedRaw, { recursive: true });
+		try {
+			fs.rmSync(summarizedRaw, { recursive: true });
+		} catch(e) {
+			log.error('failure in cleanup');
+		}
 	}
 }
 

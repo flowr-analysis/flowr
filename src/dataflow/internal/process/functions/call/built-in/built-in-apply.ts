@@ -19,6 +19,10 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly indexOfFunction?:        number
 	/** does the argument have a name that it can be given by as well? */
 	readonly nameOfFunctionArgument?: string
+	/**
+	 * Should we unquote the function if it is given as a string?
+	 */
+	readonly unquoteFunction?:        boolean
 }
 
 export function processApply<OtherInfo>(
@@ -26,7 +30,7 @@ export function processApply<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ indexOfFunction = 1, nameOfFunctionArgument }: BuiltInApplyConfiguration
+	{ indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction }: BuiltInApplyConfiguration
 ): DataflowInformation {
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
@@ -52,13 +56,25 @@ export function processApply<OtherInfo>(
 
 	const arg = args[index];
 
-	if(arg === EmptyArgument || arg?.value?.type !== RType.Symbol) {
+	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol)) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
 		return information;
 	}
 
-	const functionSymbol = arg.value;
+	let functionId: NodeId;
+	let functionName: string;
 
+	const val = arg.value;
+	if(unquoteFunction && val.type === RType.String) {
+		functionId = val.info.id;
+		functionName = val.content.str;
+	} else if(val.type === RType.Symbol) {
+		functionId = val.info.id;
+		functionName = val.content;
+	} else {
+		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
+		return information;
+	}
 
 	const allOtherArguments: FunctionArgument[] = processedArguments.filter((_, i) => i !== index).map((arg, i) => {
 		const counterpart = args[i];
@@ -74,13 +90,11 @@ export function processApply<OtherInfo>(
 		}
 	});
 
-	const applyCallId = functionSymbol.info.id;
-
 	/* identify it as a full-blown function call :) */
 	information.graph.updateToFunctionCall({
 		tag:                 VertexType.FunctionCall,
-		id:                  applyCallId,
-		name:                functionSymbol.content,
+		id:                  functionId,
+		name:                functionName,
 		args:                allOtherArguments,
 		environment:         data.environment,
 		onlyBuiltin:         false,
@@ -89,7 +103,7 @@ export function processApply<OtherInfo>(
 
 	for(const arg of processedArguments) {
 		if(arg) {
-			information.graph.addEdge(applyCallId, arg.entryPoint, EdgeType.Argument);
+			information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
 

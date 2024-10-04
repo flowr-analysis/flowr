@@ -53,6 +53,7 @@ describe('Call Context Query', withShell(shell => {
 	testQuery('No Call (Symbol, Definition)', 'print <- 3', [q(/print/)], baseResult({}));
 	testQuery('Unwanted Call', 'cat()', [q(/print/)], baseResult({}));
 	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
+	testQuery('Do call', 'do.call("print")', [q(/print/)], r([{ id: 1 }]));
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7 }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4] }]));
@@ -86,6 +87,18 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('Link to Self', 'plot(x)\nplot(y)', [q(/plot/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 3, linkedIds: [] }, { id: 7, linkedIds: [3] }]));
 		testQuery('Link to Meet', 'if(k) { plot(a) } else { plot(x) }\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 19, linkedIds: [13, 6] }]));
 		testQuery('Link to Loop Closure ', 'for(i in v) { points(a); plots(b) }', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 7, linkedIds: [11] }]));
+	});
+	describe('Aliases', () => {
+		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));
+		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ id: 3 }]));
+		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [7] }]));
+		testQuery('Two level alias', 'foo <- print\nbar <- foo\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 3 }]));
+		testQuery('Multiple aliases', 'foo <- print\nbar <- print\nfoo()\nbar()', [q(/print/, { includeAliases: true })], r([{ id: 3 }, { id: 7 }]));
+		testQuery('Multiple potential aliases', 'if(u) foo <- print else foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [1, 2] }]));
+		testQuery('Alias by return', 'f <- function() print\nx <- f()\nx()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [7] }]));
+		testQuery('Alias by side effect', 'f <- function() x <<- print\nx()', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [9] }]));
+		testQuery('Alias by parameter', 'f <- function(p) { p() }\nf(print)', [q(/print/, { includeAliases: true })], r([{ id: 3, aliasedAt: [3] }]));
+		testQuery('Alias another function', 'f <- bar\nf()', [q(/print/, { includeAliases: true })], baseResult({}));
 	});
 	describe('Multiple Kinds', () => {
 		testQuery('Multiple Kinds', 'print(1); foo(2)', [q(/print/, { kind: 'print-kind' }), q(/foo/, { kind: 'foo-kind' })], baseResult({

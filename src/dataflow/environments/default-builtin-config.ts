@@ -15,7 +15,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			'rep', 'seq', 'seq_len', 'seq_along', 'seq.int', 'gsub', 'which', 'class', 'dimnames', 'min', 'max',
 			'intersect', 'subset', 'match', 'sqrt', 'abs', 'round', 'floor', 'ceiling', 'signif', 'trunc', 'log', 'log10', 'log2', 'sum', 'mean',
 			'unique', 'paste', 'paste0', 'read.csv', 'stop', 'is.null', 'plot', 'numeric', 'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix',
-			'do.call', 'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
+			'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 			'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
 		],
 		processor:       'builtin:default',
@@ -57,6 +57,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['for'],                                        processor: 'builtin:for-loop',            config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['repeat'],                                     processor: 'builtin:repeat-loop',         config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                           assumePrimitive: true  },
+	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
 	{
 		type:  'function',
 		names: [

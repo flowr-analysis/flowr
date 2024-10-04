@@ -11,7 +11,6 @@ import type { DeepReadonly } from 'ts-essentials'
 import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import type { IdGenerator } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate'
 import type { NoInfo } from '../../../../r-bridge/lang-4.x/ast/model/model'
-import { ensureArray } from '../../../../util/arrays'
 import { guard } from '../../../../util/assert'
 
 export interface NormalizeRequiredInput {
@@ -21,7 +20,7 @@ export interface NormalizeRequiredInput {
 
 function processor(results: { parse?: string | string[] }, input: Partial<NormalizeRequiredInput>) {
 	guard(results.parse !== undefined, 'No parse results found')
-	return normalize(ensureArray(results.parse), input.getId)
+	return normalize(results.parse, input.getId)
 }
 
 export const NORMALIZE = {

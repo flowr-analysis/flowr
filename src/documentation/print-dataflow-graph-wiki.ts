@@ -789,7 +789,9 @@ Additionally, you may be interested in the set of [Unknown Side Effects](#unknow
 > [!TIP]
 > If you want to investigate the dataflow graph,
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
+> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
+> 
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use \`${DataflowGraph.name}::${DataflowGraph.fromJson.name}\` to retrieve the graph from the JSON representation.
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 

@@ -7,7 +7,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/normalize-meta';
+import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 
 interface IfThenSpacing {
 	str:          string

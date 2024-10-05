@@ -1,15 +1,17 @@
-import type { CallContextQuery } from './call-context-query/call-context-query-format';
+import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
-import { executeCallContextQueries } from './call-context-query/call-context-query-executor';
+import { executeCallContextQueries } from './catalog/call-context-query/call-context-query-executor';
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { executeDataflowQuery } from './catalog/dataflow-query/dataflow-query-executor';
+import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
 
-export type Query = CallContextQuery;
+export type Query = CallContextQuery | DataflowQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -26,7 +28,8 @@ type SupportedQueries = {
 }
 
 export const SupportedQueries = {
-	'call-context': executeCallContextQueries
+	'call-context': executeCallContextQueries,
+	'dataflow':     executeDataflowQuery
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -38,7 +41,7 @@ export function executeQueriesOfSameType<SpecificQuery extends Query>(data: Basi
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
 	const executor = SupportedQueries[queries[0].type];
 	guard(executor !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return executor(data, queries) as QueryResult<SpecificQuery['type']>;
+	return executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<
@@ -67,7 +70,7 @@ function groupQueriesByType<
 				addQuery(subQuery);
 			}
 		} else {
-			addQuery(query as Query);
+			addQuery(query);
 		}
 	}
 	return grouped;
@@ -80,7 +83,7 @@ export type QueryResults<Base extends SupportedQueryTypes> = {
 
 
 type OmitFromValues<T, K extends string | number | symbol> = {
-	[P in keyof T]: Omit<T[P], K>
+	[P in keyof T]?: Omit<T[P], K>
 }
 
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;

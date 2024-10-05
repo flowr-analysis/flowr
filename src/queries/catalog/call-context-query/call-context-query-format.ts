@@ -1,5 +1,5 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../base-query-format';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */

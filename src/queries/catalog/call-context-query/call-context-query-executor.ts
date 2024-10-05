@@ -1,4 +1,4 @@
-import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -7,20 +7,20 @@ import type {
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import { CallTargets } from './call-context-query-format';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent  } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../dataflow/graph/vertex';
-import { assertUnreachable } from '../../util/assert';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
-import { resolveByName } from '../../dataflow/environments/resolve-by-name';
-import { BuiltIn } from '../../dataflow/environments/built-in';
-import type { ControlFlowGraph } from '../../util/cfg/cfg';
-import { extractCFG } from '../../util/cfg/cfg';
-import { TwoLayerCollector } from '../two-layer-collector';
-import type { BasicQueryData } from '../query';
-import { compactRecord } from '../../util/objects';
-import { visitInReverseOrder } from '../../util/cfg/visitor';
-import { ReferenceType } from '../../dataflow/environments/identifier';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { VertexType } from '../../../dataflow/graph/vertex';
+import { assertUnreachable } from '../../../util/assert';
+import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
+import { BuiltIn } from '../../../dataflow/environments/built-in';
+import type { ControlFlowGraph } from '../../../util/cfg/cfg';
+import { extractCFG } from '../../../util/cfg/cfg';
+import { TwoLayerCollector } from '../../two-layer-collector';
+import type { BasicQueryData } from '../../query';
+import { compactRecord } from '../../../util/objects';
+import { visitInReverseOrder } from '../../../util/cfg/visitor';
+import { ReferenceType } from '../../../dataflow/environments/identifier';
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -211,9 +211,10 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
  * Multi-stage call context query resolve.
  *
  * 1. Resolve all calls in the DF graph that match the respective {@link DefaultCallContextQueryFormat#callName} regex.
- * 2. Identify their respective call targets, if {@link DefaultCallContextQueryFormat#callTargets} is set to be non-any.
+ * 2. If there is an alias attached, consider all call traces.
+ * 3. Identify their respective call targets, if {@link DefaultCallContextQueryFormat#callTargets} is set to be non-any.
  *    This happens during the main resolution!
- * 3. Attach `linkTo` calls to the respective calls.
+ * 4. Attach `linkTo` calls to the respective calls.
  */
 export function executeCallContextQueries({ graph, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
 	/* omit performance page load */

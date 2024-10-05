@@ -5,7 +5,7 @@ import { markdownFormatter } from '../../util/ansi';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
 import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
 import { withSocket } from '../../../test/functionality/_helper/net';
-import { codeBlock } from './doc-code';
+import { jsonWithLimit } from './doc-code';
 import { printAsMs } from './doc-ms';
 import { guard } from '../../util/assert';
 
@@ -64,7 +64,6 @@ export interface MessagePingPongDocumentationArguments {
 
 function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '', open = false): string {
 	const bold: (s: string) => string = open ? s => `<b>${s}</b>` : s => s;
-	const msgPrettyPrint = JSON.stringify(msg, null, 2);
 	return `
 <li> ${bold( '<code>' + msg.type + `</code> (${type})`)}
 <details${open ? ' open' : ''}> 
@@ -73,8 +72,7 @@ function explainMsg(msg: IdMessageBase, type: 'request' | 'response', desc = '',
 
 ${desc}
 
-${msgPrettyPrint.length > 5_000 ? '_As the message is pretty long, we inhibit pretty printing and syntax highlighting:_' : ''}
-${codeBlock(msgPrettyPrint.length > 5_000 ? 'text' : 'json', msgPrettyPrint.length > 5_000 ? JSON.stringify(msg) : msgPrettyPrint)}
+${jsonWithLimit(msg)}
 
 </details>
 </li>

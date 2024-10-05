@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { CallTargets } from './call-context-query/call-context-query-format';
+import { CallTargets } from './catalog/call-context-query/call-context-query-format';
 
 export const CallContextQuerySchema = Joi.object({
 	type:           Joi.string().valid('call-context').required().description('The type of the query.'),
@@ -14,8 +14,13 @@ export const CallContextQuerySchema = Joi.object({
 	}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
 }).description('Call context query used to find calls in the dataflow graph');
 
+export const DataflowQuerySchema = Joi.object({
+	type: Joi.string().valid('dataflow').required().description('The type of the query.'),
+}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!');
+
 export const SupportedQueriesSchema = Joi.alternatives(
-	CallContextQuerySchema
+	CallContextQuerySchema,
+	DataflowQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

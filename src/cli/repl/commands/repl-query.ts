@@ -7,7 +7,7 @@ import { splitAtEscapeSensitive } from '../../../util/args';
 import type { OutputFormatter } from '../../../util/ansi';
 import { bold, italic } from '../../../util/ansi';
 
-import type { CallContextQuerySubKindResult } from '../../../queries/call-context-query/call-context-query-format';
+import type { CallContextQuerySubKindResult } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
 import { executeQueries } from '../../../queries/query';
@@ -17,6 +17,7 @@ import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltIn } from '../../../dataflow/environments/built-in';
+import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -125,6 +126,11 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			const out = queryResults as QueryResults<'call-context'>['call-context'];
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(asciiCallContext(formatter, out, processed));
+			continue;
+		} else if(query === 'dataflow') {
+			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
 		}
 

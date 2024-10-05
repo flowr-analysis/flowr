@@ -12,6 +12,7 @@ import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
+import { jsonWithLimit } from './doc-code';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -34,8 +35,6 @@ export async function showQuery<
 The analysis required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
-	const resultAsString = JSON.stringify(results, jsonReplacer, 2);
-
 	return `
 
 \`\`\`json
@@ -47,7 +46,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 _Results (prettified and summarized):_
 
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<'call-context'>, analysis)
+	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, analysis)
 }
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
@@ -57,9 +56,7 @@ ${metaInfo}
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
 
-\`\`\`json
-${resultAsString}
-\`\`\`
+${jsonWithLimit(results)}
 
 </details>
 

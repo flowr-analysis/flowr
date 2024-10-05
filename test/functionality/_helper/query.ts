@@ -14,6 +14,7 @@ import { decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
 import { log } from '../../../src/util/log';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
+import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -47,7 +48,7 @@ export function assertQuery<
 	Queries extends Query,
 	VirtualArguments extends VirtualCompoundConstraint<Queries['type']> = VirtualCompoundConstraint<Queries['type']>
 >(name: string | TestLabel, shell: RShell, code: string, queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[], expected:
-	QueryResultsWithoutMeta<Queries>
+	QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => QueryResultsWithoutMeta<Queries>)
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -66,7 +67,8 @@ export function assertQuery<
 
 		/* expect them to be deeply equal */
 		try {
-			assert.deepStrictEqual(normalized, expected, 'The result of the call context query does not match the expected result');
+			const expectedNormalized = typeof expected === 'function' ? expected(info) : expected;
+			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the call context query does not match the expected result');
 		} catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
 			throw e;

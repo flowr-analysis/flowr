@@ -5,16 +5,17 @@ import { LogLevel } from '../util/log';
 import { executeQueries } from '../queries/query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { explainQueries, registerQueryDocumentation, showQuery, tocForQueryType } from './doc-util/doc-query';
-import { CallTargets } from '../queries/call-context-query/call-context-query-format';
+import { CallTargets } from '../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../util/schema';
 import { QueriesSchema } from '../queries/query-schema';
 import { markdownFormatter } from '../util/ansi';
-import { executeCallContextQueries } from '../queries/call-context-query/call-context-query-executor';
+import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { exampleQueryCode } from './data/query/example-query-code';
 import { details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
+import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -22,7 +23,7 @@ registerQueryDocumentation('call-context', {
 	type:             'active',
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
 	functionName:     executeCallContextQueries.name,
-	functionFile:     '../queries/call-context-query/call-context-query-executor.ts',
+	functionFile:     '../queries/catalog/call-context-query/call-context-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
 Call context queries may be used to identify calls to specific functions that match criteria of your interest.
@@ -83,6 +84,27 @@ my_test_function()
 		`;
 	}
 });
+registerQueryDocumentation('dataflow', {
+	name:             'Dataflow Query',
+	type:             'active',
+	shortDescription: 'Returns the dataflow graph of the given code.',
+	functionName:     executeDataflowQuery.name,
+	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+Maybe you want to handle only the result of the query execution, or you just need the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) again.
+This query type does exactly that!
+
+Using the example code from above, the following query returns the dataflow graph of the code:
+${
+	await showQuery(shell, exampleQueryCode, [{
+		type: 'dataflow'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('compound', {
 	name:             'Compound Query',
 	type:             'virtual',
@@ -122,7 +144,7 @@ ${
 }
 
 However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
-Additionally, you can still overwrite default arguments. 
+Additionally, you can still overwrite default arguments.
 In the following, we (by default) want all calls to not resolve to a local definition, except for those to \`print\` for which we explicitly
 want to resolve to a local definition:
 
@@ -138,11 +160,12 @@ ${
 	}], { showCode: false })
 }
 
-Now, the results no longer contain calls to \`plot\` that are not defined locally. 
+Now, the results no longer contain calls to \`plot\` that are not defined locally.
 
 		`;
 	}
 });
+
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';

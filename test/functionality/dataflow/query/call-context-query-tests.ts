@@ -1,10 +1,10 @@
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
-	CallContextQuerySubKindResult } from '../../../../src/queries/call-context-query/call-context-query-format';
+	CallContextQuerySubKindResult } from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
 import {
 	CallTargets
-} from '../../../../src/queries/call-context-query/call-context-query-format';
+} from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
 
 
 import { withShell } from '../../_helper/shell';

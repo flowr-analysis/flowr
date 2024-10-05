@@ -26,7 +26,7 @@ import {
 	responseQueryMessage
 } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
-import { CallTargets } from '../../../queries/call-context-query/call-context-query-format';
+import { CallTargets } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
 
 export function documentAllMessages() {

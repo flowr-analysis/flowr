@@ -21,7 +21,7 @@ import { assignments } from './supported/assignments/assignments';
 import { loops } from './supported/loops/loops';
 import { controlflow } from './supported/control-flow/control-flow';
 import { dataAccess } from './supported/data-access/data-access';
-import { expressionList } from './supported/expression-list/expression-list';
+import { expressionList } from './supported/expression-list/statistics-expression-list';
 import { variables } from './supported/variables/variables';
 import type { Document } from '@xmldom/xmldom';
 

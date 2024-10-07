@@ -1,4 +1,4 @@
-import { retrieveVersionInformation } from './commands/version';
+import { retrieveVersionInformation } from './commands/repl-version';
 import type { RShell } from '../../r-bridge/shell';
 
 export async function printVersionRepl(shell: RShell): Promise<void> {

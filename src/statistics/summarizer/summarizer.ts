@@ -9,6 +9,7 @@ import { longestCommonPrefix } from '../../util/strings';
 import { getAllFiles } from '../../util/files';
 import { date2string } from '../../util/time';
 import type { FeatureSelection } from '../features/feature';
+import { log } from '../../util/log';
 
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -114,7 +115,11 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 	private removeIfExists(path?: string) {
 		if(path && fs.existsSync(path)) {
 			this.log(`Removing existing ${path}`);
-			fs.rmSync(path, { recursive: true, force: true });
+			try {
+				fs.rmSync(path, { recursive: true, force: true });
+			} catch(e) {
+				log.error('failure in cleanup');
+			}
 		}
 	}
 

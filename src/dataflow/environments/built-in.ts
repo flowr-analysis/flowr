@@ -10,6 +10,7 @@ import { processForLoop } from '../internal/process/functions/call/built-in/buil
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
+import { ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -46,13 +47,13 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 ) => DataflowInformation
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
-	kind:      'built-in-function'
+	type:      ReferenceType.BuiltInFunction
 	definedAt: typeof BuiltIn
 	processor: BuiltInIdentifierProcessor
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
-	kind:      'built-in-value'
+	type:      ReferenceType.BuiltInConstant
 	definedAt: typeof BuiltIn
 	value:     T
 }
@@ -68,13 +69,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
-			res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Returns });
+			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
 	}
 	if(config.readAllArguments) {
 		for(const arg of processedArguments) {
 			if(arg) {
-				res.graph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Reads });
+				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}
 		}
 	}
@@ -98,7 +99,7 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const d: IdentifierDefinition[] = [{
-			kind:                'built-in-function',
+			type:                ReferenceType.BuiltInFunction,
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),

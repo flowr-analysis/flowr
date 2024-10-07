@@ -1,4 +1,5 @@
 import { log, LogLevel } from '../../../src/util/log';
+import { serverLog } from '../../../src/cli/repl/server/server';
 
 /**
  * Update the minimum level of all flowr loggers.
@@ -12,6 +13,7 @@ export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
 	log.updateSettings(logger => {
 		logger.settings.minLevel = minLevel;
 	});
+	serverLog.settings.minLevel = LogLevel.Fatal;
 }
 
 /**

@@ -3,7 +3,7 @@ import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { getLineage } from '../../../src/cli/repl/commands/lineage';
+import { getLineage } from '../../../src/cli/repl/commands/repl-lineage';
 import type { TestLabel } from '../_helper/label';
 import { decorateLabelContext, label } from '../_helper/label';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -21,7 +21,7 @@ describe('Test lineage', withShell(shell => {
 				shell,
 				request: requestFromInput(request)
 			}).allRemainingSteps();
-			const lineageIds = getLineage(criterion, result.normalize, result.dataflow);
+			const lineageIds = getLineage(criterion, result.dataflow.graph);
 			assert.isTrue(setEquals(lineageIds, new Set(expected)), `Expected ${JSON.stringify(expected)} but got ${JSON.stringify([...lineageIds])}`);
 		});
 	}

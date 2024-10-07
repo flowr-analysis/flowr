@@ -3866,7 +3866,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "5ec575519531bc0853fc1f7388ea53bfe5536b16",
-          "message": "[release:patch] Fix `mapply`, Nested Data-Frame-Assignments, and CD Nestings",
+          "message": "[release:patch] Fix `mapply`, Nested Data-Frame-Assignments, and CD Nestings (Release v2.0.21)",
           "timestamp": "2024-09-10T00:41:42+02:00",
           "tree_id": "2d2319307093dbe8d76aafd3e03eea3f5f6e26a7",
           "url": "https://github.com/flowr-analysis/flowr/commit/5ec575519531bc0853fc1f7388ea53bfe5536b16"
@@ -3969,7 +3969,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "69a5fc86cba0257f9dd4afb87153a86912635ac2",
-          "message": "[release:patch] Fix `par` and Memory-Increase for Docker",
+          "message": "[release:patch] Fix `par` and Memory-Increase for Docker (Release v2.0.22)",
           "timestamp": "2024-09-12T15:57:15+02:00",
           "tree_id": "fa75f21d466253de387fd2050d5217dbea78ca34",
           "url": "https://github.com/flowr-analysis/flowr/commit/69a5fc86cba0257f9dd4afb87153a86912635ac2"
@@ -4072,7 +4072,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "44c526b4eb30b0cc6cb10bb1a3a056a3f51c9597",
-          "message": "[release:patch] Support More Side-Effects",
+          "message": "[release:patch] Support More Side-Effects (Release v2.0.23)",
           "timestamp": "2024-09-13T03:43:31+02:00",
           "tree_id": "81bd9928fc36ac9ea963c11981ef0ba31d2f22f2",
           "url": "https://github.com/flowr-analysis/flowr/commit/44c526b4eb30b0cc6cb10bb1a3a056a3f51c9597"
@@ -4175,7 +4175,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e97ab14baf2ce8e8dd82634b0ed34e4283364345",
-          "message": "[release:patch] Fix: Incorrect Side-Effects for dev.off",
+          "message": "[release:patch] Fix: Incorrect Side-Effects for dev.off (Release v2.0.24)",
           "timestamp": "2024-09-13T08:04:48+02:00",
           "tree_id": "bc3bfc5f35a5efb84d34ca16adc94e78635389ed",
           "url": "https://github.com/flowr-analysis/flowr/commit/e97ab14baf2ce8e8dd82634b0ed34e4283364345"
@@ -4278,7 +4278,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "9d8b36155cdc051cb13f4f2c93eb42c14394e0a9",
-          "message": "[release:patch] Dataflow Graph Deserialization",
+          "message": "[release:patch] Dataflow Graph Deserialization (Release v2.0.25)",
           "timestamp": "2024-09-16T18:33:48+02:00",
           "tree_id": "6d5085f73235cd2a3ed9c137e1d32256f8e84097",
           "url": "https://github.com/flowr-analysis/flowr/commit/9d8b36155cdc051cb13f4f2c93eb42c14394e0a9"
@@ -8328,7 +8328,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "5ec575519531bc0853fc1f7388ea53bfe5536b16",
-          "message": "[release:patch] Fix `mapply`, Nested Data-Frame-Assignments, and CD Nestings",
+          "message": "[release:patch] Fix `mapply`, Nested Data-Frame-Assignments, and CD Nestings (Release v2.0.21)",
           "timestamp": "2024-09-10T00:41:42+02:00",
           "tree_id": "2d2319307093dbe8d76aafd3e03eea3f5f6e26a7",
           "url": "https://github.com/flowr-analysis/flowr/commit/5ec575519531bc0853fc1f7388ea53bfe5536b16"
@@ -8431,7 +8431,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "69a5fc86cba0257f9dd4afb87153a86912635ac2",
-          "message": "[release:patch] Fix `par` and Memory-Increase for Docker",
+          "message": "[release:patch] Fix `par` and Memory-Increase for Docker (Release v2.0.22)",
           "timestamp": "2024-09-12T15:57:15+02:00",
           "tree_id": "fa75f21d466253de387fd2050d5217dbea78ca34",
           "url": "https://github.com/flowr-analysis/flowr/commit/69a5fc86cba0257f9dd4afb87153a86912635ac2"
@@ -8534,7 +8534,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "44c526b4eb30b0cc6cb10bb1a3a056a3f51c9597",
-          "message": "[release:patch] Support More Side-Effects",
+          "message": "[release:patch] Support More Side-Effects (Release v2.0.23)",
           "timestamp": "2024-09-13T03:43:31+02:00",
           "tree_id": "81bd9928fc36ac9ea963c11981ef0ba31d2f22f2",
           "url": "https://github.com/flowr-analysis/flowr/commit/44c526b4eb30b0cc6cb10bb1a3a056a3f51c9597"
@@ -8637,7 +8637,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e97ab14baf2ce8e8dd82634b0ed34e4283364345",
-          "message": "[release:patch] Fix: Incorrect Side-Effects for dev.off",
+          "message": "[release:patch] Fix: Incorrect Side-Effects for dev.off (Release v2.0.24)",
           "timestamp": "2024-09-13T08:04:48+02:00",
           "tree_id": "bc3bfc5f35a5efb84d34ca16adc94e78635389ed",
           "url": "https://github.com/flowr-analysis/flowr/commit/e97ab14baf2ce8e8dd82634b0ed34e4283364345"
@@ -8740,7 +8740,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "9d8b36155cdc051cb13f4f2c93eb42c14394e0a9",
-          "message": "[release:patch] Dataflow Graph Deserialization",
+          "message": "[release:patch] Dataflow Graph Deserialization (Release v2.0.25)",
           "timestamp": "2024-09-16T18:33:48+02:00",
           "tree_id": "6d5085f73235cd2a3ed9c137e1d32256f8e84097",
           "url": "https://github.com/flowr-analysis/flowr/commit/9d8b36155cdc051cb13f4f2c93eb42c14394e0a9"

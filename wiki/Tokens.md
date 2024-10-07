@@ -1,6 +1,4 @@
-***This wiki page is currently under construction and not linked to the [capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities)***
-
-Based on the collection of tokens that we know can be emitted by R, this page is almost a verbatim copy of the corresponding section of the appendix in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
+Based on the collection of tokens that we know can be emitted by R, this page is almost a verbatim copy of the corresponding section of the appendix in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107).
 
 Every R&nbsp;program is an expression list, identified by the `exprlist` token type, which consists of several expressions (identified by `expr`).
 Consider the following example:

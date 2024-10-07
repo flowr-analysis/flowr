@@ -110,6 +110,12 @@ x`, emptyGraph()
 		.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
 	);
 
+	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
+		shell, 'for(i in 1:10) x <- x + 1',
+		emptyGraph().defineVariable('1@x', 'x', { controlDependencies: [] }).use('1:21', 'x', { controlDependencies: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+	);
+
 	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
 		.use('10', 'x', { controlDependencies: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])

@@ -10,6 +10,7 @@ import { DataflowGraph } from '../../../../graph/graph';
 import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
+import { ReferenceType } from '../../../../environments/identifier';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
 
@@ -22,8 +23,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`;
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`);
 	// we know that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Calls });
-	finalGraph.addEdge(functionRootId, calledRootId, { type: EdgeType.Reads });
+	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Calls);
+	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Reads);
 	// keep the defined function
 	finalGraph.mergeWith(calledFunction.graph);
 
@@ -52,7 +53,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	});
 
 	const inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies });
+	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);

@@ -281,6 +281,8 @@ jobs:
           submodules: true
           lfs:        true
           token:      ${{ secrets.RELEASE_TOKEN }}
+          # check out the release ref so that the upload action finds the commit
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
 
       - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v4
@@ -289,11 +291,11 @@ jobs:
           path: benchmark-ai/
 
       - name: "⚙️ Name and Email for Git (config) and update"
-        # we pull just to be totally sure
+        # we fetch just to be totally sure
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull
+          git fetch --tags
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -310,7 +312,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.release.outputs.version }}"
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

@@ -411,7 +411,11 @@ class RShellSession {
 		if(filesToUnlink !== undefined) {
 			log.info(`unlinking ${filesToUnlink.length} files (${JSON.stringify(filesToUnlink)})`);
 			for(const f of filesToUnlink) {
-				fs.rmSync(f, { recursive: true, force: true });
+				try {
+					fs.rmSync(f, { recursive: true, force: true });
+				} catch(e) {
+					log.error(`failed to unlink file ${f}`);
+				}
 			}
 		}
 

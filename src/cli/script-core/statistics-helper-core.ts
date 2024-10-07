@@ -17,7 +17,6 @@ import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/ansi';
 
-
 function compressFolder(folder: string, target: string) {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 	return create({
@@ -30,6 +29,8 @@ function compressFolder(folder: string, target: string) {
 		fs.rmSync(folder, { recursive: true, force: true });
 	}, () => {
 		console.log(`failed to compress ${folder}`);
+	}).catch((e) => {
+		console.error('Error during compression:', e);
 	});
 }
 

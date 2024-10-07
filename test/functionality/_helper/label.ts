@@ -20,7 +20,7 @@ const uniqueTestId = (() => {
 })();
 
 
-const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output', 'lineage'] as const;
+const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output', 'lineage', 'query'] as const;
 export type TestLabelContext = typeof TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {
@@ -40,8 +40,8 @@ export interface TestLabel extends MergeableRecord {
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
 export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string
-export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
-export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
+export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
+export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
 	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids);
 	const label: TestLabel = {
 		id:      uniqueTestId(),
@@ -50,8 +50,12 @@ export function label(testname: string, ids: readonly SupportedFlowrCapabilityId
 		context: context === undefined ? new Set() : new Set(context)
 	};
 
-	for(const i of capabilities) {
-		TheGlobalLabelMap.get(i).push(label);
+	if(capabilities.size > 0) {
+		for(const i of capabilities) {
+			TheGlobalLabelMap.get(i).push(label);
+		}
+	} else {
+		TheGlobalLabelMap.get('.').push(label);
 	}
 
 	if(context === undefined) {
@@ -62,7 +66,11 @@ export function label(testname: string, ids: readonly SupportedFlowrCapabilityId
 }
 
 function getFullNameOfLabel(label: TestLabel): string {
-	return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`;
+	if(label.capabilities.size === 0) {
+		return `#${label.id} ${label.name}`;
+	} else {
+		return `#${label.id} ${label.name} [${[...label.capabilities].join(', ')}]`;
+	}
 }
 
 
@@ -166,7 +174,7 @@ function printLabelSummary(): void {
 		printCapability(capability, testNames);
 	}
 
-	console.log('-- Tests-By-Context ' + '-'.repeat(80));
+	console.log('-- Tests-By-Context (Systematic Only)' + '-'.repeat(80));
 	const contextMap = new DefaultMap<TestLabelContext, number>(() => 0);
 	const blockedIds = new Set<number>();
 	for(const testNames of TheGlobalLabelMap.values()) {
@@ -180,7 +188,7 @@ function printLabelSummary(): void {
 			}
 		}
 	}
-	for(const [context, count] of contextMap.entries()) {
+	for(const [context, count] of [...contextMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))){
 		console.log(`- ${context}: ${count}`);
 	}
 }

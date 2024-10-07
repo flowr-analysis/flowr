@@ -37,15 +37,11 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly Exi
 	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default));
 }
 
-/** The control flow information for the current {@link DataflowInformation}. */
+/** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
-	/**
-	 * The entry node into the subgraph
-	 */
+	/** The entry node into the subgraph */
 	entryPoint: NodeId,
-	/**
-	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
-	 */
+	/** All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure. */
 	exitPoints: readonly ExitPoint[]
 }
 

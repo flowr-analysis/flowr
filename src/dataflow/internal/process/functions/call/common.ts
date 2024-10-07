@@ -1,4 +1,5 @@
 import type { DataflowInformation } from '../../../../info';
+import { happensInEveryBranch } from '../../../../info';
 import type { DataflowProcessorInformation } from '../../../../processor';
 import { processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -9,6 +10,7 @@ import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import type { IdentifierReference } from '../../../../environments/identifier';
+import { ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -50,23 +52,24 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	if(valueVertex.tag !== VertexType.Value) {
 		if(valueVertex.tag === VertexType.FunctionDefinition) {
 			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit, { type: EdgeType.Reads });
+				graph.addEdge(rootId, exit, EdgeType.Reads);
 			}
 		} else {
 			for(const exit of value.exitPoints) {
-				graph.addEdge(rootId, exit.nodeId, { type: EdgeType.Reads });
+				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 			}
 		}
 	}
 	const containedSubflowIn: readonly DataflowGraphVertexFunctionDefinition[] = [...graph.vertices(true)]
 		.filter(([, info]) => isFunctionDefinitionVertex(info))
 		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition));
+
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
-			const resolved = resolveByName(ref.name, env) ?? [];
+			const resolved = resolveByName(ref.name, env, ref.type) ?? [];
 			for(const resolve of resolved) {
-				graph.addEdge(ref.nodeId, resolve.nodeId, { type: EdgeType.Reads });
+				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
 		}
 	}
@@ -102,12 +105,20 @@ export function processAllArguments<OtherInfo>(
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv) : undefined;
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, ReferenceType.Unknown) : undefined;
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
+				/* maybe all targets are not definitely of the current scope and should be still kept */
+				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads });
+					if(happensInEveryBranch(resolved.controlDependencies)) {
+						assumeItMayHaveAHigherTarget = false;
+					}
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+				}
+				if(assumeItMayHaveAHigherTarget) {
+					remainingReadInArgs.push(ingoing);
 				}
 			}
 		}
@@ -116,12 +127,12 @@ export function processAllArguments<OtherInfo>(
 		finalGraph.mergeWith(processed.graph);
 
 		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined });
+			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined });
+			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined, type: ReferenceType.Argument });
 		}
 
-		finalGraph.addEdge(functionRootId, processed.entryPoint, { type: EdgeType.Argument });
+		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
 	}
 	return { finalEnv, callArgs, remainingReadInArgs, processedArguments };
 }
@@ -145,11 +156,11 @@ export function patchFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
-		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined })
+		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
 	});
 	for(const arg of argumentProcessResult) {
 		if(arg) {
-			nextGraph.addEdge(rootId, arg.entryPoint, { type: EdgeType.Argument });
+			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
 }

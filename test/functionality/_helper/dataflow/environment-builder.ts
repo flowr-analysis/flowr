@@ -1,8 +1,9 @@
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition } from '../../../../src/dataflow/environments/identifier';
+import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import type { REnvironmentInformation , Environment } from '../../../../src/dataflow/environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
@@ -10,7 +11,11 @@ import { appendEnvironment } from '../../../../src/dataflow/environments/append'
 import type { ControlDependency } from '../../../../src/dataflow/info';
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', nodeId: '_0', definedAt, controlDependencies: undefined };
+	return { name, type: ReferenceType.Variable, nodeId: '_0', definedAt, controlDependencies: undefined };
+}
+
+export function asFunction(name: string, definedAt: NodeId): IdentifierDefinition {
+	return { name, type: ReferenceType.Function, nodeId: '_0', definedAt, controlDependencies: undefined };
 }
 
 /**
@@ -19,7 +24,7 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependencies?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: normalizeIdToNumberIfPossible(nodeId), name: options?.name, controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) };
+	return { nodeId: normalizeIdToNumberIfPossible(nodeId), type: ReferenceType.Argument, name: options?.name, controlDependencies: options?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) };
 }
 /**
  * The constant global environment with all pre-defined functions.
@@ -56,7 +61,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
-			kind: 'argument',
+			type: ReferenceType.Argument,
 			name,
 			definedAt,
 			nodeId,
@@ -72,7 +77,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
-			kind: 'function',
+			type: ReferenceType.Function,
 			name,
 			definedAt,
 			nodeId,
@@ -89,7 +94,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
-			kind: 'parameter',
+			type: ReferenceType.Parameter,
 			name,
 			definedAt,
 			nodeId,
@@ -106,7 +111,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 */
 	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependencies: ControlDependency[] | undefined = undefined) {
 		return this.defineInEnv({
-			kind: 'variable',
+			type: ReferenceType.Variable,
 			name,
 			definedAt,
 			nodeId,

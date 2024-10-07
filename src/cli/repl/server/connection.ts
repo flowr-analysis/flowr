@@ -1,15 +1,15 @@
 import { sendMessage } from './send';
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate';
-import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads } from './messages/analysis';
-import { requestAnalysisMessage } from './messages/analysis';
-import type { SliceRequestMessage, SliceResponseMessage } from './messages/slice';
-import { requestSliceMessage } from './messages/slice';
-import type { FlowrErrorMessage } from './messages/error';
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads } from './messages/message-analysis';
+import { requestAnalysisMessage } from './messages/message-analysis';
+import type { SliceRequestMessage, SliceResponseMessage } from './messages/message-slice';
+import { requestSliceMessage } from './messages/message-slice';
+import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import type { ILogObj, Logger } from 'tslog';
-import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/repl';
-import { requestExecuteReplExpressionMessage } from './messages/repl';
+import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/message-repl';
+import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { LogLevel } from '../../../util/log';
@@ -34,11 +34,14 @@ import * as tmp from 'tmp';
 import fs from 'fs';
 import type { RParseRequests } from '../../../r-bridge/retriever';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
-import type { LineageRequestMessage, LineageResponseMessage } from './messages/lineage';
-import { requestLineageMessage } from './messages/lineage';
-import { getLineage } from '../commands/lineage';
+import type { LineageRequestMessage, LineageResponseMessage } from './messages/message-lineage';
+import { requestLineageMessage } from './messages/message-lineage';
+import { getLineage } from '../commands/repl-lineage';
 import { guard } from '../../../util/assert';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
+import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
+import { requestQueryMessage } from './messages/message-query';
+import { executeQueries } from '../../../queries/query';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -98,6 +101,9 @@ export class FlowRServerConnection {
 				break;
 			case 'request-lineage':
 				this.handleLineageRequest(request.message as LineageRequestMessage);
+				break;
+			case 'request-query':
+				this.handleQueryRequest(request.message as QueryRequestMessage);
 				break;
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -309,11 +315,44 @@ export class FlowRServerConnection {
 		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
 		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
 		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const lineageIds = getLineage(request.criterion, ast, dfg);
+		const lineageIds = getLineage(request.criterion, dfg.graph, ast.idMap);
 		sendMessage<LineageResponseMessage>(this.socket, {
 			type:    'response-lineage',
 			id:      request.id,
 			lineage: [...lineageIds]
+		});
+	}
+
+	private handleQueryRequest(base: QueryRequestMessage) {
+		const requestResult = validateMessage(base, requestQueryMessage);
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id);
+			return;
+		}
+
+		const request = requestResult.message;
+		this.logger.info(`[${this.name}] Received query request for query ${JSON.stringify(request.query)}`);
+
+		const fileInformation = this.fileMap.get(request.filetoken);
+		if(!fileInformation) {
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `The file token ${request.filetoken} has never been analyzed.`
+			});
+			return;
+		}
+
+		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
+		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
+		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
+		const results = executeQueries({ graph: dfg.graph, ast }, request.query);
+		sendMessage<QueryResponseMessage>(this.socket, {
+			type: 'response-query',
+			id:   request.id,
+			results
 		});
 	}
 }

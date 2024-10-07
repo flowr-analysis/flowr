@@ -14,6 +14,7 @@ import { getAllFiles, readLineByLine, readLineByLineSync } from '../../util/file
 import { jsonReplacer } from '../../util/json';
 import { ultimateStats2String } from '../stats/print';
 import { DefaultMap } from '../../util/defaultmap';
+import { log } from '../../util/log';
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -94,7 +95,11 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	private removeIfExists(path?: string): void {
 		if(path && fs.existsSync(path)) {
 			this.log(`Removing existing ${path}`);
-			fs.rmSync(path, { recursive: true });
+			try {
+				fs.rmSync(path, { recursive: true });
+			} catch(e) {
+				log.error('failure in cleanup');
+			}
 		}
 	}
 

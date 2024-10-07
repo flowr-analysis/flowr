@@ -23,9 +23,9 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			/** Do you want to overwrite (parts) of the builtin definition? */
 			readonly overwriteBuiltIns: {
 				/** Should the default configuration still be loaded? */
-				readonly loadDefaults: boolean
+				readonly loadDefaults?: boolean
 				/** The definitions to load */
-				readonly definitions:  BuiltInDefinitions
+				readonly definitions:   BuiltInDefinitions
 			}
 		}
 	}
@@ -44,18 +44,18 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	}
 };
 
-const schema = Joi.object({
-	ignoreSourceCalls: Joi.boolean().optional(),
-	rPath:             Joi.string().optional(),
+export const flowrConfigFileSchema = Joi.object({
+	ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
+	rPath:             Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.'),
 	semantics:         Joi.object({
 		environment: Joi.object({
 			overwriteBuiltIns: Joi.object({
-				loadDefaults: Joi.boolean().optional(),
-				definitions:  Joi.array().items(Joi.object()).optional()
-			}).optional()
-		}).optional()
-	})
-});
+				loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
+				definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
+			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
+		}).optional().description('Semantics regarding the handlings of the environment.')
+	}).description('Configure language semantics and how flowR handles them.')
+}).description('The configuration file format for flowR.');
 
 // we don't load from a config file at all by default unless setConfigFile is called
 let configFile: string | undefined = undefined;
@@ -76,7 +76,7 @@ export function setConfigFile(file: string | undefined, workingDirectory = proce
 export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
 	try {
 		const parsed = JSON.parse(jsonString) as FlowrConfigOptions;
-		const validate = schema.validate(parsed);
+		const validate = flowrConfigFileSchema.validate(parsed);
 		if(!validate.error) {
 			// assign default values to all config options except for the specified ones
 			return deepMergeObject(defaultConfigOptions, parsed);

@@ -14,6 +14,7 @@ import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-b
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { Ternary } from '../../../../../../util/logic';
 
@@ -55,7 +56,7 @@ export function processIfThenElse<OtherInfo>(
 	if(conditionIsFalse !== Ternary.Always) {
 		then = processDataflowFor(thenArg, data);
 		if(then.entryPoint) {
-			then.graph.addEdge(name.info.id, then.entryPoint, { type: EdgeType.Returns });
+			then.graph.addEdge(name.info.id, then.entryPoint, EdgeType.Returns);
 		}
 		if(conditionIsTrue !== Ternary.Always) {
 			makeThenMaybe = true;
@@ -67,7 +68,7 @@ export function processIfThenElse<OtherInfo>(
 	if(otherwiseArg !== undefined && conditionIsTrue !== Ternary.Always) {
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
-			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, { type: EdgeType.Returns });
+			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, EdgeType.Returns);
 		}
 		if(conditionIsFalse !== Ternary.Always) {
 			makeOtherwiseMaybe = true;
@@ -109,7 +110,7 @@ export function processIfThenElse<OtherInfo>(
 	});
 
 	// as an if always evaluates its condition, we add a 'reads'-edge
-	nextGraph.addEdge(name.info.id, cond.entryPoint, { type: EdgeType.Reads });
+	nextGraph.addEdge(name.info.id, cond.entryPoint, EdgeType.Reads);
 
 	const exitPoints = [
 		...(then?.exitPoints ?? []).map(e => ({ ...e, controlDependencies: makeThenMaybe ? [...data.controlDependencies ?? [], { id: rootId, when: true }] : e.controlDependencies })),
@@ -118,7 +119,7 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency }, ...ingoing],
+		in:                [{ nodeId: rootId, name: name.content, controlDependencies: originalDependency, type: ReferenceType.Function }, ...ingoing],
 		out:               outgoing,
 		exitPoints,
 		entryPoint:        rootId,

@@ -9,12 +9,11 @@ import { FlowRServer } from './repl/server/server';
 import type { Server } from './repl/server/net';
 import { NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
-import type { OptionDefinition } from 'command-line-usage';
+import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
-import commandLineUsage from 'command-line-usage';
-import { parseConfig ,  setConfig, setConfigFile } from '../config';
+import { parseConfig, setConfig, setConfigFile } from '../config';
 
 
 import { guard } from '../util/assert';
@@ -23,38 +22,13 @@ import { scripts } from './common/scripts-info';
 import type { RShellOptions } from '../r-bridge/shell';
 import { RShell, RShellReviveOptions } from '../r-bridge/shell';
 import { waitOnScript } from './repl/execute';
-import { standardReplOutput } from './repl/commands/main';
+import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
-import { printVersionInformation } from './repl/commands/version';
+import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
-
-let _scriptsText: string | undefined;
-
-function getScriptsText(){
-	if(_scriptsText === undefined) {
-		_scriptsText = Array.from(Object.entries(scripts).filter(([, { type }]) => type === 'master script'), ([k,]) => k).join(', ');
-	}
-	return _scriptsText;
-}
-
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 
 export const toolName = 'flowr';
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'config-file',                   type: String,  description: 'The name of the configuration file to use', multiple: false },
-	{ name: 'config-json',                   type: String,  description: 'The flowR configuration to use, as a JSON string', multiple: false },
-	{ name: 'execute',           alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
-	{ name: 'help',              alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
-	{ name: 'no-ansi',                       type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
-	{ name: 'port' ,                         type: Number,  description: 'The port to listen on, if --server is given.', defaultValue: 1042, typeLabel: '{underline port}' },
-	{ name: 'r-path',                        type: String,  description: 'The path to the R executable to use. Defaults to your PATH.', multiple: false },
-	{ name: 'r-session-access',              type: Boolean, description: 'Allow to access the underlying R session when using flowR (security warning: this allows the execution of arbitrary R code!)' },
-	{ name: 'script',            alias: 's', type: String,  description: `The sub-script to run (${getScriptsText()})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
-	{ name: 'server',                        type: Boolean, description: 'Do not drop into a repl, but instead start a server on the given port (default: 1042) and listen for messages.' },
-	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
-	{ name: 'version',           alias: 'V', type: Boolean, description: 'Provide information about the version of flowR as well as its underlying R system and exit.' },
-	{ name: 'ws',                            type: Boolean, description: 'If the server flag is set, use websocket for messaging' }
-];
 
 export interface FlowrCliOptions {
 	'config-file':      string
@@ -89,11 +63,11 @@ export const optionHelp = [
 	},
 	{
 		header:     'Options',
-		optionList: optionDefinitions
+		optionList: flowrMainOptionDefinitions
 	}
 ];
 
-const options = commandLineArgs(optionDefinitions) as FlowrCliOptions;
+const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 log.info('running with options', options);
@@ -103,7 +77,6 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
-export const defaultConfigFile = 'flowr.json';
 let usedConfig = false;
 if(options['config-json']) {
 	const config = parseConfig(options['config-json']);

@@ -5,17 +5,17 @@
  */
 import { prompt } from './prompt';
 import * as readline from 'readline';
-import { executeRShellCommand } from './commands/execute';
+import { executeRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/args';
 import { ColorEffect, Colors, FontStyles } from '../../util/ansi';
-import { getCommand, getCommandNames } from './commands/commands';
+import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
-import type { ReplOutput } from './commands/main';
-import { standardReplOutput } from './commands/main';
+import type { ReplOutput } from './commands/repl-main';
+import { standardReplOutput } from './commands/repl-main';
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
 
@@ -118,10 +118,10 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
 export interface FlowrReplOptions extends MergeableRecord {
 	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
 	readonly shell?:               RShell
-	/** 
+	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
-    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}. 
+    * For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
 	 */
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
@@ -145,9 +145,9 @@ export interface FlowrReplOptions extends MergeableRecord {
  *
  */
 export async function repl({
-	shell = new RShell({ revive: RShellReviveOptions.Always }), 
-	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), 
-	output = standardReplOutput, 
+	shell = new RShell({ revive: RShellReviveOptions.Always }),
+	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION),
+	output = standardReplOutput,
 	historyFile = defaultHistoryFile,
 	allowRSessionAccess = false
 }: FlowrReplOptions) {

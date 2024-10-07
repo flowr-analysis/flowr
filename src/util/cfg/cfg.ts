@@ -81,6 +81,9 @@ export class ControlFlowGraph {
 		return this;
 	}
 
+	outgoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+		return this.edgeInformation.get(node);
+	}
 
 	rootVertexIds(): ReadonlySet<NodeId> {
 		return this.rootVertices;
@@ -163,8 +166,6 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 export function extractCFG<Info=ParentInformation>(ast: NormalizedAst<Info>): ControlFlowInformation {
 	return foldAst(ast.ast, cfgFolds);
 }
-
-
 
 function cfgLeaf(type: CfgVertexType): (leaf: RNodeWithParent) => ControlFlowInformation {
 	return (leaf: RNodeWithParent) => {

@@ -6,14 +6,22 @@ import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArgument } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
 import { toUnnamedArgument } from '../argument/make-argument';
-import type { ParentInformation, RNodeWithParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	ParentInformation,
+	RNodeWithParent
+} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type { IdentifierDefinition, IdentifierReference } from '../../../../../environments/identifier';
+import type {
+	IdentifierDefinition,
+	IdentifierReference,
+	InGraphReferenceType } from '../../../../../environments/identifier';
+import { ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
@@ -148,10 +156,10 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target };
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
-		kind:                isFunctionDef ? 'function' : 'variable',
+		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined)
 	}));
@@ -201,8 +209,17 @@ function processAssignmentToString<OtherInfo>(
 	});
 }
 
-function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation) {
-	return sourceInfo.graph.getVertex(source.info.id)?.tag === VertexType.FunctionDefinition;
+function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation): InGraphReferenceType {
+	const vert = sourceInfo.graph.getVertex(source.info.id, true);
+	switch(vert?.tag) {
+		case VertexType.FunctionDefinition:
+			return ReferenceType.Function;
+		case VertexType.Use:
+		case VertexType.FunctionCall:
+			return ReferenceType.Unknown;
+		default:
+			return ReferenceType.Variable;
+	}
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
@@ -239,10 +256,10 @@ export function markAsAssignment(
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!quoteSource) {
 		for(const sourceId of sourceIds) {
-			information.graph.addEdge(nodeToDefine, sourceId, { type: EdgeType.DefinedBy });
+			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
 	}
-	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, { type: EdgeType.DefinedBy });
+	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
 	for(const [id,edge] of (out?? [])) {
@@ -268,9 +285,9 @@ function processAssignmentToSymbol<OtherInfo>({
 	makeMaybe,
 	quoteSource
 }: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
-	const isFunctionDef = checkFunctionDef(source, sourceArg);
+	const referenceType = checkTargetReferenceType(source, sourceArg);
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef, data, makeMaybe ?? false);
+	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
@@ -278,8 +295,10 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
-	const readTargets: readonly IdentifierReference[] = [{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten];
-	const writeTargets = [...writeNodes, ...writeNodes, ...readFromSourceWritten];
+	const readTargets: readonly IdentifierReference[] = [
+		{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies, type: ReferenceType.Function },
+		...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten
+	];
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment);
 
@@ -288,10 +307,10 @@ function processAssignmentToSymbol<OtherInfo>({
 		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment);
 	}
 
-	information.graph.addEdge(rootId, targetArg.entryPoint, { type: EdgeType.Returns });
+	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);
 
 	if(quoteSource) {
-		information.graph.addEdge(rootId, source.info.id, { type: EdgeType.NonStandardEvaluation });
+		information.graph.addEdge(rootId, source.info.id, EdgeType.NonStandardEvaluation);
 	}
 
 	return {
@@ -299,6 +318,6 @@ function processAssignmentToSymbol<OtherInfo>({
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,
-		out:               writeTargets
+		out:               [...writeNodes, ...readFromSourceWritten]
 	};
 }

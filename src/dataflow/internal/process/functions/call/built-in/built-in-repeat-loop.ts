@@ -45,7 +45,7 @@ export function processRepeatLoop<OtherInfo>(
 	const body = processedArguments[0];
 	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`);
 
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out);
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, [])), body.out);
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 

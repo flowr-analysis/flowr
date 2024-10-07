@@ -32,12 +32,12 @@ For now, we support two criteria:
 1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
 2. **Call Targets**  (\`callTargets\`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
 
-Besides this we provide the following ways to automatically categorize and link identified invocations:
+Besides this, we provide the following ways to automatically categorize and link identified invocations:
 
 1. **Kind**         (\`kind\`): This is a general category that can be used to group calls together. For example, you may want to link all calls to \`plot\` to \`visualize\`.
 2. **Subkind**      (\`subkind\`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to \`ggplot\` to \`plot\`.
 3. **Linked Calls** (\`linkTo\`): This links the current call to the last call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
-   For now, we _only_offer support for linking to the last call_ as the current flow dependency over-approximation is not stable.
+   For now, we _only_ offer support for linking to the last call, as the current flow dependency over-approximation is not stable.
 4. **Aliases**      (\`includeAliases\`): Consider a case like \`f <- function_of_interest\`, do you want calls to \`f\` to be included in the results? There is probably no need to combine this with a global call target!
 
 Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,

@@ -10,8 +10,12 @@ import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeDataflowQuery } from './catalog/dataflow-query/dataflow-query-executor';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
+import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor';
+import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
+import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
+import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
 
-export type Query = CallContextQuery | DataflowQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -28,8 +32,10 @@ type SupportedQueries = {
 }
 
 export const SupportedQueries = {
-	'call-context': executeCallContextQueries,
-	'dataflow':     executeDataflowQuery
+	'call-context':   executeCallContextQueries,
+	'dataflow':       executeDataflowQuery,
+	'id-map':         executeIdMapQuery,
+	'normalized-ast': executeNormalizedAstQuery
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

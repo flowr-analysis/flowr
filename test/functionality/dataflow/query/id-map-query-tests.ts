@@ -8,6 +8,6 @@ describe('Normalized AST Query', withShell(shell => {
 		assertQuery(label(name), shell, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
 	}
 
-	testQuery('Single dataflow', 'x + 1', [{ type: 'id-map' }]);
+	testQuery('Single normalized AST', 'x + 1', [{ type: 'id-map' }]);
 	testQuery('Multiple Queries', 'x + 1', [{ type: 'id-map' }, { type: 'id-map' }, { type: 'id-map' }]);
 }));

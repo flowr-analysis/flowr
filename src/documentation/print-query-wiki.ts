@@ -114,10 +114,10 @@ registerQueryDocumentation('normalized-ast', {
 	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
-Maybe you want to handle only the result of the query execution, or you just need the [normalized ast](${FlowrWikiBaseRef}/Normalized%20AST) again.
+Maybe you want to handle only the result of the query execution, or you just need the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the dataflow graph of the code:
+Using the example code from above, the following query returns the normalized AST of the code:
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'normalized-ast'

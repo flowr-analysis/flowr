@@ -109,12 +109,12 @@ ${
 registerQueryDocumentation('id-map', {
 	name:             'Id-Map Query',
 	type:             'active',
-	shortDescription: 'Returns the id-map of the dataflow graph of the given code.',
+	shortDescription: 'Returns the id-map of the normalized AST of the given code.',
 	functionName:     executeIdMapQuery.name,
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
-This query provides access to all nodes in the normalized AST as a mapping from their id to the node itself. 
+This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
 
 Using the example code from above, the following query returns all nodes from the code:
 ${

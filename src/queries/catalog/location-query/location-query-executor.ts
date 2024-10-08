@@ -9,6 +9,6 @@ export function executeLocationQuery({ graph }: BasicQueryData, queries: readonl
 			timing: 0
 		},
 		// TODO: add qrouping of locations
-		location: queries.map(({ nodeId }) =>  graph.idMap?.get(nodeId)?.location)
+		location: Object.fromEntries(queries.map(({ nodeId }) => [nodeId, graph.idMap?.get(nodeId)?.location]))
 	};
 }

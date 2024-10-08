@@ -8,5 +8,5 @@ export interface LocationQuery extends BaseQueryFormat {
 }
 
 export interface LocationQueryResult extends BaseQueryResult {
-	readonly location: (SourceRange | undefined)[];
+	readonly location:	Record<NodeId, SourceRange | undefined>;
 }

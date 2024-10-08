@@ -133,6 +133,10 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
+		} else if(query === 'id-map') {
+			const out = queryResults as QueryResults<'id-map'>['id-map'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ Id List: ${[...out.idMap.keys()].join(', ')}`);
 		} else if(query === 'normalized-ast') {
 			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);

@@ -16,6 +16,7 @@ import { exampleQueryCode } from './data/query/example-query-code';
 import { details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
+import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -99,6 +100,26 @@ Using the example code from above, the following query returns the dataflow grap
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('id-map', {
+	name:             'Id-Map Query',
+	type:             'active',
+	shortDescription: 'Returns the id-map of the dataflow graph of the given code.',
+	functionName:     executeIdMapQuery.name,
+	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+If you need access to all nodes flowr has identified in the code, you can retrieve them as a list using this query.
+
+Using the example code from above, the following query returns all nodes from the code:
+${
+	await showQuery(shell, exampleQueryCode, [{
+		type: 'id-map'
 	}], { showCode: true })
 }
 		`;

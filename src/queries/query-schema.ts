@@ -22,10 +22,15 @@ export const IdMapQuerySchema = Joi.object({
 	type: Joi.string().valid('id-map').required().description('The type of the query.'),
 }).description('The id map query retrieves the id map from the normalized AST.');
 
+export const NormalizedAstQuerySchema = Joi.object({
+	type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
+}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!');
+
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
 	DataflowQuerySchema,
-	IdMapQuerySchema
+	IdMapQuerySchema,
+	NormalizedAstQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

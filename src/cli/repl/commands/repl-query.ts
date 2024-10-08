@@ -18,6 +18,7 @@ import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
+import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -132,6 +133,10 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
+		} else if(query === 'normalized-ast') {
+			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

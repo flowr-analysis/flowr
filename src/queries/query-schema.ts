@@ -18,9 +18,14 @@ export const DataflowQuerySchema = Joi.object({
 	type: Joi.string().valid('dataflow').required().description('The type of the query.'),
 }).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!');
 
+export const IdMapQuerySchema = Joi.object({
+	type: Joi.string().valid('id-map').required().description('The type of the query.'),
+}).description('The Id map query retrieves the id map from the dataflow graph');
+
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
-	DataflowQuerySchema
+	DataflowQuerySchema,
+	IdMapQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

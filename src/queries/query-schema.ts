@@ -20,7 +20,7 @@ export const DataflowQuerySchema = Joi.object({
 
 export const IdMapQuerySchema = Joi.object({
 	type: Joi.string().valid('id-map').required().description('The type of the query.'),
-}).description('The Id map query retrieves the id map from the dataflow graph');
+}).description('The id map query retrieves the id map from the normalized AST.');
 
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,

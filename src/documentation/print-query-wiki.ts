@@ -114,7 +114,7 @@ registerQueryDocumentation('id-map', {
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
-If you need access to all nodes flowr has identified in the code, you can retrieve them as a list using this query.
+This query provides access to all nodes in the normalized AST as a mapping from their id to the node itself. 
 
 Using the example code from above, the following query returns all nodes from the code:
 ${

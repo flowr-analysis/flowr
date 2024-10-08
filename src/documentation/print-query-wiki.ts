@@ -16,6 +16,7 @@ import { exampleQueryCode } from './data/query/example-query-code';
 import { details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
+import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -99,6 +100,27 @@ Using the example code from above, the following query returns the dataflow grap
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('normalized-ast', {
+	name:             'Normalized AST Query',
+	type:             'active',
+	shortDescription: 'Returns the normalized AST of the given code.',
+	functionName:     executeNormalizedAstQuery.name,
+	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+Maybe you want to handle only the result of the query execution, or you just need the [normalized ast](${FlowrWikiBaseRef}/Normalized%20AST) again.
+This query type does exactly that!
+
+Using the example code from above, the following query returns the dataflow graph of the code:
+${
+	await showQuery(shell, exampleQueryCode, [{
+		type: 'normalized-ast'
 	}], { showCode: true })
 }
 		`;

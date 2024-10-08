@@ -18,9 +18,15 @@ export const DataflowQuerySchema = Joi.object({
 	type: Joi.string().valid('dataflow').required().description('The type of the query.'),
 }).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!');
 
+export const LocationQuerySchema = Joi.object({
+	type:   Joi.string().valid('location').required().description('The type of the query.'),
+	nodeId: Joi.string().required().description('The node id to get the location of.')
+}).description('Location query used to find the location of a specific node');
+
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
-	DataflowQuerySchema
+	DataflowQuerySchema,
+	LocationQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

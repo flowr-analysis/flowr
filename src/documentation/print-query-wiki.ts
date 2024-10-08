@@ -217,6 +217,36 @@ async function getText(shell: RShell) {
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
 
+## The Query Format
+
+Queries are JSON arrays of query objects, each of which uses a \`type\` property to specify the query type.
+In general, we separate two types of queries:
+
+1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](#call-context-query)). They fetch information from the dataflow graph.
+2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](#compound-query)). 
+
+We separate these from a concept perspective. 
+For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
+
+${tocForQueryType('active')}
+
+Similarly, we support the following **virtual** queries: 
+
+${tocForQueryType('virtual')}
+
+<details>
+
+
+<summary>Detailed Query Format (Automatically Generated)</summary>
+
+Although it is probably better to consult the detailed explanations below, if you want to have a look at the scehma, here is its description:
+
+${describeSchema(QueriesSchema, markdownFormatter)}
+
+</details>
+
+### Why Queries?
+
 First, consider that you have a file like the following (of course, this is just a simple and artificial example):
 
 \`\`\`r
@@ -245,34 +275,6 @@ For the specific use-case stated, you could use the [Call-Context Query](#call-c
 Just as an example, the following [Call-Context Query](#call-context-query) finds all calls to \`read_csv\` that are not overwritten:
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
-
-## The Query Format
-
-Queries are JSON arrays of query objects, each of which uses a \`type\` property to specify the query type.
-In general, we separate two types of queries:
-
-1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](#call-context-query)). They fetch information from the dataflow graph.
-2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](#compound-query)). 
-
-We separate these from a concept perspective. 
-For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
-
-${tocForQueryType('active')}
-
-Similarly, we support the following **virtual** queries: 
-
-${tocForQueryType('virtual')}
-
-<details>
-
-
-<summary>Detailed Query Format (Automatically Generated)</summary>
-
-Although it is probably better to consult the detailed explanations below, if you want to have a look at the scehma, here is its description:
-
-${describeSchema(QueriesSchema, markdownFormatter)}
-
-</details>
 
 ${await explainQueries(shell, 'active')}
 

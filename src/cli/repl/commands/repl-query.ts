@@ -19,6 +19,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
+import {textWithTooltip} from "../../../documentation/doc-util/doc-hover-over";
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -116,6 +117,22 @@ function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'cal
 	return result.join('\n');
 }
 
+function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
+	const naive = ids.join(', ');
+	if(naive.length <= 20) {
+		return naive;
+	}
+	let acc = ''
+	let i = 0
+	while(acc.length <= 20) {
+		acc += ids[i++] + ', ';
+	}
+	if(i < ids.length) {
+		acc += '... (see JSON below)'
+	}
+	return acc;
+}
+
 export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 
@@ -134,13 +151,15 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
 		} else if(query === 'id-map') {
-			const out = queryResults as QueryResults<'id-map'>['id-map'];
+			const out = queryResults;
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-			result.push(`   ╰ Id List: ${[...out.idMap.keys()].join(', ')}`);
+			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
+			continue;
 		} else if(query === 'normalized-ast') {
-			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
+			const out = queryResults;
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+			continue;
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

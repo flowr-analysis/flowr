@@ -17,10 +17,6 @@ export type SourceRange = [
 	endColumn:   number
 ]
 
-export function sourceRangeToString([sl, sc, el, ec]: SourceRange): string {
-	return `${sl}:${sc} – ${el}:${ec}`;
-}
-
 export function getRangeStart(p: undefined): undefined
 export function getRangeStart(p: SourceRange): SourcePosition
 export function getRangeStart(p: SourceRange | undefined): SourcePosition | undefined

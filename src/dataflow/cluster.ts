@@ -1,12 +1,24 @@
-import type { DataflowGraph } from './graph/graph';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
-import type { DataflowGraphVertexInfo } from './graph/vertex';
+import type {DataflowGraph} from './graph/graph';
+import type {NodeId} from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {edgeDoesNotIncludeType, edgeIncludesType, EdgeType, edgeTypesToNames} from './graph/edge';
+import {VertexType} from './graph/vertex';
+import {guard} from "../util/assert";
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
+	/**
+	 * The node which started the cluster,
+	 * as this is theoretically picked random, there are just two guarantees you can rely on:
+	 *
+	 * 1. The node is part of the `members` as well
+	 * 2. At one point during the clustering, the node wsa considered as a starting point
+	 *
+	 * In general, this is more of a debugging aid/representative of the cluster.
+	 */
 	readonly startNode:             NodeId;
+	/** All nodes that are part of this cluster */
 	readonly members:               readonly NodeId[];
+	/** If the cluster contains unknown side effects */
 	readonly hasUnknownSideEffects: boolean;
 }
 
@@ -17,33 +29,51 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	while(notReached.size > 0){
 		const [startNode] = notReached;
 		notReached.delete(startNode);
+		const cluster = makeCluster(graph, startNode, notReached);
+		if(cluster === 'exclude') {
+			continue;
+		}
+		const destructured = [...cluster];
 		clusters.push({
 			startNode:             startNode,
-			members:               [...makeCluster(graph, startNode, notReached).add(startNode)],
-			hasUnknownSideEffects: graph.unknownSideEffects.has(startNode)
+			members:               destructured,
+			hasUnknownSideEffects: destructured.some(m => graph.unknownSideEffects.has(m))
 		});
 	}
 	return clusters;
 }
 
-function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> {
-	const info = graph.getVertex(from) as DataflowGraphVertexInfo;
-	const nodes = new Set<NodeId>();
+function addAllToCluster(c: ReadonlySet<NodeId> | 'exclude', nodes: Set<NodeId>): void {
+	if(c !== 'exclude') {
+		c.forEach(n => nodes.add(n));
+	}
+}
+
+function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> | 'exclude' {
+	const info = graph.getVertex(from);
+	guard(info !== undefined, `Vertex ${from} not found`);
+	const nodes = new Set<NodeId>([from]);
 
 	// cluster function def exit points
-	if(info.tag == 'function-definition') {
+	if(info.tag === VertexType.FunctionDefinition) {
 		for(const sub of info.exitPoints){
 			if(notReached.delete(sub)) {
-				nodes.add(sub);
-				makeCluster(graph, sub, notReached).forEach(n => nodes.add(n));
+				addAllToCluster(makeCluster(graph, sub, notReached), nodes)
 			}
 		}
 	}
 
+	const ingoing = [...graph.ingoingEdges(from) ?? []].map(i => ['in', i] as const)
+	const outgoing = [...graph.outgoingEdges(from) ?? []].map(o => ['out', o] as const)
+	const both = [...outgoing, ...ingoing];
 	// cluster adjacent edges
-	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
-		// don't cluster for non-standard evaluation
-		if(types == EdgeType.NonStandardEvaluation) {
+	for(const [t, [dest, { types }]] of both) {
+		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+			/** if we have an ingoing nse, the whole vertex is disabled */
+			console.log(from, dest, t, edgeTypesToNames(types))
+			if(t === 'in') {
+				return 'exclude'
+			}
 			continue;
 		}
 		// don't cluster for function content if it isn't returned
@@ -51,8 +81,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 			continue;
 		}
 		if(notReached.delete(dest)) {
-			nodes.add(dest);
-			makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
+			addAllToCluster(makeCluster(graph, dest, notReached), nodes)
 		}
 	}
 

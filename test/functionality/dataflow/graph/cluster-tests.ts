@@ -35,11 +35,11 @@ describe('Graph Clustering', () => {
 
 	describe('Code Snippets', withShell(shell => {
 		function test(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
-			it(`${name} [${code.split('\n').join('; ')}]`, async() => {
+			it(`${name} [${code.split('\n').join('\\n')}]`, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 					shell,
 					request: requestFromInput(code),
-					getId:   deterministicCountingIdGenerator(0)
+					getId: deterministicCountingIdGenerator(0)
 				}).allRemainingSteps();
 
 				const graph = info.dataflow.graph;
@@ -47,10 +47,13 @@ describe('Graph Clustering', () => {
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
-					const { members, hasUnknownSideEffects } = c instanceof Array ? { members: c, hasUnknownSideEffects: false } : c;
+					const {members, hasUnknownSideEffects} = c instanceof Array ? {
+						members: c,
+						hasUnknownSideEffects: false
+					} : c;
 					return {
 						startNode: '',
-						members:   members.map(s => {
+						members: members.map(s => {
 							const ret = slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap);
 							console.log(`Criterion ${s} -> id ${ret}`);
 							return ret;
@@ -59,7 +62,12 @@ describe('Graph Clustering', () => {
 					};
 				});
 				const actual = findAllClusters(graph);
-				compareClusters(actual, resolved);
+				try {
+					compareClusters(actual, resolved);
+				} catch (e) {
+					console.log(dataflowGraphToMermaidUrl(info.dataflow));
+					throw e;
+				}
 			});
 		}
 

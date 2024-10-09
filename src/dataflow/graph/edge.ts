@@ -1,10 +1,8 @@
 /**
- * An edge consist of:
- * - the target node (i.e., the variable or processing node),
- * - a type (if it is read or used in the context), and
+ * An edge consist of only of the type (source and target are encoded with the Dataflow Graph).
+ * Multiple edges are encoded by joining the respective type bits.
  */
 export interface DataflowGraphEdge {
-	// currently multiple edges are represented by multiple types
 	types: EdgeTypeBits
 }
 

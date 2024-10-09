@@ -18,6 +18,7 @@ import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
+import { sourceRangeToString } from '../../../util/range';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -132,6 +133,17 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
+		} else if(query === 'location') {
+			const out = queryResults as QueryResults<'location'>['location'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push('   ├ Location');
+			const locationArray = Object.entries(out.location);
+			for(let i = 0; i < locationArray.length - 1; i++) {
+				const [nodeId, location] = locationArray[i];
+				result.push(`   ├ ${nodeId} at ${location ? `${sourceRangeToString(location)}` : 'unknown'}`);
+			}
+			const [nodeId, location] = locationArray[locationArray.length - 1];
+			result.push(`   ╰ ${nodeId} at ${location ? `${sourceRangeToString(location)}` : 'unknown'}`);
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

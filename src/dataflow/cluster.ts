@@ -1,8 +1,9 @@
 import type {DataflowGraph} from './graph/graph';
 import type {NodeId} from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {edgeDoesNotIncludeType, edgeIncludesType, EdgeType, edgeTypesToNames} from './graph/edge';
+import {edgeDoesNotIncludeType, edgeIncludesType, EdgeType} from './graph/edge';
 import {VertexType} from './graph/vertex';
 import {guard} from "../util/assert";
+import {log} from "../util/log";
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -22,67 +23,100 @@ export interface DataflowGraphCluster {
 	readonly hasUnknownSideEffects: boolean;
 }
 
+/** maps each node to the cluster number it belongs to */
+type ClusterMap = Map<NodeId, number>;
+
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
-	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
-	const notReached = new Set<NodeId>([...graph.vertices(true)].map(([id]) => id).reverse());
-	while(notReached.size > 0){
-		const [startNode] = notReached;
-		notReached.delete(startNode);
-		const cluster = makeCluster(graph, startNode, notReached);
-		if(cluster === 'exclude') {
+	const clusterMap: ClusterMap = new Map();
+	let clusterCount = 0;
+	for(const [id, info] of graph.vertices(true)) {
+		if(clusterMap.has(id)) {
 			continue;
 		}
+		const cluster = populateCluster(graph, id, clusterMap, clusterCount++);
 		const destructured = [...cluster];
-		clusters.push({
+/*		clusters.push({
 			startNode:             startNode,
 			members:               destructured,
 			hasUnknownSideEffects: destructured.some(m => graph.unknownSideEffects.has(m))
-		});
+		});*/
 	}
+	const clusters: DataflowGraphClusters = [];
+
 	return clusters;
 }
 
-function addAllToCluster(c: ReadonlySet<NodeId> | 'exclude', nodes: Set<NodeId>): void {
-	if(c !== 'exclude') {
-		c.forEach(n => nodes.add(n));
+function addAllToCluster(c: ReadonlySet<NodeId>, nodes: Set<NodeId>): void {
+	for(const n of c){
+		nodes.add(n);
 	}
 }
 
-function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> | 'exclude' {
+const splitOnBuiltIns = ['for', 'while', 'if', 'function', 'switch']
+
+function populateCluster(graph: DataflowGraph, from: NodeId, clusterMap: ClusterMap, clusterId: number): Set<NodeId> {
 	const info = graph.getVertex(from);
 	guard(info !== undefined, `Vertex ${from} not found`);
-	const nodes = new Set<NodeId>([from]);
 
+	let assumedClusterId: NodeId | undefined | 'multi' = undefined;
+	const assumeCluster = (id?: NodeId) => {
+		if(assumedClusterId === undefined) {
+			assumedClusterId = id;
+		} else if(assumedClusterId !== 'multi') {
+			log.warn(`Assuming cluster ${id} while already assuming ${assumedClusterId}, will not add this!`);
+			assumedClusterId = 'multi';
+		}
+	}
+
+	const toCluster: NodeId[] = []
 	// cluster function def exit points
 	if(info.tag === VertexType.FunctionDefinition) {
-		for(const sub of info.exitPoints){
-			if(notReached.delete(sub)) {
-				addAllToCluster(makeCluster(graph, sub, notReached), nodes)
+		for(const sub of info.exitPoints) {
+			const has = clusterMap.get(sub);
+			assumeCluster(has);
+			if(!has) {
+				toCluster.push(sub);
 			}
 		}
 	}
 
-	const ingoing = [...graph.ingoingEdges(from) ?? []].map(i => ['in', i] as const)
-	const outgoing = [...graph.outgoingEdges(from) ?? []].map(o => ['out', o] as const)
-	const both = [...outgoing, ...ingoing];
+	const outgoing = [...graph.outgoingEdges(from) ?? []]
 	// cluster adjacent edges
-	for(const [t, [dest, { types }]] of both) {
-		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
-			/** if we have an ingoing nse, the whole vertex is disabled */
-			console.log(from, dest, t, edgeTypesToNames(types))
-			if(t === 'in') {
-				return 'exclude'
-			}
+	for(const [dest, { types }] of outgoing) {
+		/* use nse to skip and use extra cluster */
+		if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)){
 			continue;
 		}
 		// don't cluster for function content if it isn't returned
 		if(edgeDoesNotIncludeType(types, EdgeType.Returns) && info.onlyBuiltin && info.name == '{'){
 			continue;
 		}
-		if(notReached.delete(dest)) {
-			addAllToCluster(makeCluster(graph, dest, notReached), nodes)
+		const has = clusterMap.get(dest);
+		assumeCluster(has);
+		if(!has) {
+			toCluster.push(dest);
 		}
+	}
+
+	/* control dependencies should always be added (if not already _in_ the cluster, they may be there multiple times) */
+	for(const { id } of info.controlDependencies ?? []) {
+		const has = clusterMap.get(id);
+		assumeCluster(has);
+		if(!has) {
+			toCluster.push(id);
+		}
+	}
+
+	const nodes = new Set<NodeId>()
+	const clusterIdWeAre = assumedClusterId ?? clusterId;
+	if(assumedClusterId === 'multi') {
+		/* if we are part of multiple clusters, we do not taint all dependencies in the cluster */
+		clusterMap = new Map(clusterMap);
+	}
+	clusterMap.set(from, clusterIdWeAre);
+	for(const n of toCluster){
+		addAllToCluster(populateCluster(graph, n, clusterMap, clusterIdWeAre), nodes);
 	}
 
 	return nodes;

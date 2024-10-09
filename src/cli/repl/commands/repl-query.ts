@@ -19,6 +19,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { sourceRangeToString } from '../../../util/range';
+import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -144,6 +145,14 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			}
 			const [nodeId, location] = locationArray[locationArray.length - 1];
 			result.push(`   ╰ ${nodeId} at ${location ? `${sourceRangeToString(location)}` : 'unknown'}`);
+		} else if(query === 'id-map') {
+			const out = queryResults as QueryResults<'id-map'>['id-map'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ Id List: ${[...out.idMap.keys()].join(', ')}`);
+		} else if(query === 'normalized-ast') {
+			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

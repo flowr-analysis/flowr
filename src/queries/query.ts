@@ -34,9 +34,9 @@ type SupportedQueries = {
 }
 
 export const SupportedQueries = {
-	'call-context': executeCallContextQueries,
-	'dataflow':     executeDataflowQuery,
-	'location':     executeLocationQuery,
+	'call-context':   executeCallContextQueries,
+	'dataflow':       executeDataflowQuery,
+	'location':       executeLocationQuery,
 	'id-map':         executeIdMapQuery,
 	'normalized-ast': executeNormalizedAstQuery
 } as const satisfies SupportedQueries;

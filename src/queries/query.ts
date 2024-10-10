@@ -14,8 +14,8 @@ import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor'
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
 import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
 import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import {DataflowClusterQuery} from "./catalog/cluster-query/cluster-query-format";
-import {executeDataflowClusterQuery} from "./catalog/cluster-query/cluster-query-executor";
+import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
+import { executeDataflowClusterQuery } from './catalog/cluster-query/cluster-query-executor';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery;
 

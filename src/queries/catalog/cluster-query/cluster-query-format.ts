@@ -1,6 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import {DataflowGraphClusters} from "../../../dataflow/cluster";
+import type { DataflowGraphClusters } from '../../../dataflow/cluster';
 
 /**
  * Calculates and returns all clusters encountered in the dataflow graph.

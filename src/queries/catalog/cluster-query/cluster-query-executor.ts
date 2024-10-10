@@ -1,7 +1,7 @@
 import type { BasicQueryData } from '../../query';
 import { log } from '../../../util/log';
-import {DataflowClusterQuery, DataflowClusterQueryResult} from "./cluster-query-format";
-import {findAllClusters} from "../../../dataflow/cluster";
+import type { DataflowClusterQuery, DataflowClusterQueryResult } from './cluster-query-format';
+import { findAllClusters } from '../../../dataflow/cluster';
 
 
 export function executeDataflowClusterQuery({ graph }: BasicQueryData, queries: readonly DataflowClusterQuery[]): DataflowClusterQueryResult {

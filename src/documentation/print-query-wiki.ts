@@ -18,7 +18,7 @@ import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
-import {executeDataflowClusterQuery} from "../queries/catalog/cluster-query/cluster-query-executor";
+import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -134,7 +134,7 @@ registerQueryDocumentation('dataflow-cluster', {
 	type:             'active',
 	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
 	functionName:     executeDataflowClusterQuery.name,
-	functionFile:     '../src/queries/catalog/cluster-query/cluster-query-executor.ts',
+	functionFile:     '../queries/catalog/cluster-query/cluster-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
 This query automatically calculates clusters in flowR's dataflow graph and returns a list of all clusters
@@ -142,10 +142,10 @@ found.
 
 Using the example code from above, the following query returns all clusters:
 ${
-			await showQuery(shell, exampleQueryCode, [{
-				type: 'dataflow-cluster'
-			}], { showCode: true })
-		}
+	await showQuery(shell, exampleQueryCode, [{
+		type: 'dataflow-cluster'
+	}], { showCode: true })
+}
 		`;
 	}
 });

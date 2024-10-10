@@ -162,7 +162,14 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		} else if(query === 'dataflow-cluster') {
 			const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-			result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? 's': ''} (see the JSON below for details)`)
+			result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '': 's'}`);
+			for(const cluster of out.clusters) {
+				const unknownSideEffects = cluster.hasUnknownSideEffects ? '(has unknown side effect)' : '';
+				result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(cluster.members)}} ([marked](${
+					graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
+				}))`);
+			}
+			continue;
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

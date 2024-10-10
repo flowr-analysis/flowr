@@ -1,9 +1,8 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import type { DataflowQuery } from '../../../../src/queries/catalog/dataflow-query/dataflow-query-format';
 import { withShell } from '../../_helper/shell';
-import {findAllClusters} from "../../../../src/dataflow/cluster";
-import {DataflowClusterQuery} from "../../../../src/queries/catalog/cluster-query/cluster-query-format";
+import { findAllClusters } from '../../../../src/dataflow/cluster';
+import type { DataflowClusterQuery } from '../../../../src/queries/catalog/cluster-query/cluster-query-format';
 
 describe('Dataflow Cluster Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly DataflowClusterQuery[]) {

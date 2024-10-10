@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-10, 07:49:48 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-10, 16:53:23 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 16.50 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 16.05 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5515-WipweDaEIhe6-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5486-GsFpPSfvY8V3-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.77 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.80 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 11.17 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 11.88 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 10.68 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 8.89 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -803,7 +803,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 30.82 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 8.49 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1066,7 +1066,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.28 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.74 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1325,7 +1325,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 0
+        "timing": 1
       },
       "kinds": {
         "visualize": {
@@ -1361,7 +1361,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 22.91 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 23.85 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1633,7 +1633,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 5.86 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 4.99 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1848,7 +1848,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.12 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _2.21 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r

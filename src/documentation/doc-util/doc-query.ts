@@ -103,7 +103,7 @@ function linkify(name: string) {
 }
 
 export function tocForQueryType(type: 'active' | 'virtual') {
-	const queries = RegisteredQueries[type];
+	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
 	for(const [id, { name, shortDescription }] of queries) {
 		result.push(`1. [${name}](#${linkify(name)}) (\`${id}\`):\\\n    ${shortDescription}`);

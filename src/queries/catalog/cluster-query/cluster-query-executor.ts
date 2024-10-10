@@ -9,7 +9,6 @@ export function executeDataflowClusterQuery({ graph }: BasicQueryData, queries: 
 		log.warn('The dataflow cluster query expects only up to one query, but got', queries.length);
 	}
 
-	/* TODO: tests*/
 	const start = Date.now();
 	const clusters = findAllClusters(graph);
 	return {

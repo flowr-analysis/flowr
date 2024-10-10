@@ -159,6 +159,10 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
 			continue;
+		} else if(query === 'dataflow-cluster') {
+			const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? 's': ''} (see the JSON below for details)`)
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

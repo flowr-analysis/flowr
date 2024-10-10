@@ -77,7 +77,6 @@ describe('Graph Clustering', () => {
 			test('with a print call', 'x <- 3\nprint(x)', [
 				['1:1', '1:3', '1:6', '2:1', '2:7']
 			]);
-			// TODO: DATAFOW GRAPH VERTEX CLASS DIAGRAM IS WRONG
 			test('late join of clusters', 'x <- 3\ny <- 4\nprint(x + y)', [
 				['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '3:1', '3:7', '3:9', '3:11']
 			]);

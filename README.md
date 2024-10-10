@@ -24,7 +24,8 @@ You can enter `:help` to gain more information on its capabilities.
 
 ## 📜 More Information
 
-For more details on how to use _flowR_ please refer to the the [wiki pages](https://github.com/flowr-analysis/flowr/wiki), as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
+For more details on how to use _flowR_ please refer to the [wiki pages](https://github.com/flowr-analysis/flowr/wiki),
+as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
 
 ## 🚀 Contributing
 

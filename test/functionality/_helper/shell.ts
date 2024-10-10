@@ -49,15 +49,28 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 	});
 };
 
+
+let testShell: RShell | undefined = undefined;
+
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
+ * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
  */
-export function withShell(fn: (shell: RShell) => void): () => void {
+export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
+	if(!newShell && testShell === undefined) {
+		testShell = new RShell();
+		process.on('exit', () => { testShell?.close(); });
+		process.on('SIGTERM', () => { testShell?.close(); });
+	}
 	return function() {
-		const shell = new RShell();
-		after(() => shell.close());
-		fn(shell);
+		if(newShell) {
+			const shell = new RShell();
+			after(() => shell.close());
+			fn(shell);
+		} else {
+			fn(testShell as RShell);
+		}
 	};
 }
 

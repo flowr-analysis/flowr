@@ -725,6 +725,13 @@ What to do if you encounter this vertex?
 
 This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
 Yet, you may choose to follow these references for other queries. For now, _flowR's_ support for non-standard evaluation is limited.
+
+Besides the obvious quotation there are other cases in which _flowR_ may choose to create a ${linkEdgeName(EdgeType.NonStandardEvaluation)} edge, there are
+some that may appear to be counter-intuitive. For example, a for-loop body, as in the following example.
+
+${details('Example: For-Loop Body', await printDfGraphForCode(shell, 'for(i in v) b', { mark: new Set([2, '4->2']) }))}	
+${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TRUE) b', { mark: new Set([1, '3->1']) }))}	
+
 				`
 	})
 }

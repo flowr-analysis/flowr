@@ -116,6 +116,22 @@ function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'cal
 	return result.join('\n');
 }
 
+function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
+	const naive = ids.join(', ');
+	if(naive.length <= 20) {
+		return naive;
+	}
+	let acc = '';
+	let i = 0;
+	while(acc.length <= 20) {
+		acc += ids[i++] + ', ';
+	}
+	if(i < ids.length) {
+		acc += '... (see JSON below)';
+	}
+	return acc;
+}
+
 export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const result: string[] = [];
 
@@ -136,11 +152,13 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		} else if(query === 'id-map') {
 			const out = queryResults as QueryResults<'id-map'>['id-map'];
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-			result.push(`   ╰ Id List: ${[...out.idMap.keys()].join(', ')}`);
+			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
+			continue;
 		} else if(query === 'normalized-ast') {
 			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
 			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+			continue;
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

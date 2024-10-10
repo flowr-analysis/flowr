@@ -106,6 +106,10 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 	return 'linkTo' in query;
 }
 
+function exactCallNameRegex(name: RegExp | string): RegExp {
+	return new RegExp(`^${name}$`);
+}
+
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promotedQueries: CallContextQuery<RegExp>[], requiresCfg: boolean } {
 	let requiresCfg = false;
 	const promotedQueries = queries.map(q => {
@@ -113,8 +117,9 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 			requiresCfg = true;
 			return {
 				...q,
-				callName: new RegExp(q.callName),
-				linkTo:   {
+				callName: q.callNameExact ? exactCallNameRegex(q.callName)
+					: new RegExp(q.callName),
+				linkTo: {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
 					callName: new RegExp(q.linkTo.callName)
@@ -123,7 +128,8 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 		} else {
 			return {
 				...q,
-				callName: new RegExp(q.callName)
+				callName: q.callNameExact ? exactCallNameRegex(q.callName)
+					: new RegExp(q.callName)
 			};
 		}
 	});

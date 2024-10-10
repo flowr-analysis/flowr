@@ -60,8 +60,12 @@ let testShell: RShell | undefined = undefined;
 export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
 	if(!newShell && testShell === undefined) {
 		testShell = new RShell();
-		process.on('exit', () => { testShell?.close(); });
-		process.on('SIGTERM', () => { testShell?.close(); });
+		process.on('exit', () => {
+			testShell?.close(); 
+		});
+		process.on('SIGTERM', () => {
+			testShell?.close(); 
+		});
 	}
 	return function() {
 		if(newShell) {

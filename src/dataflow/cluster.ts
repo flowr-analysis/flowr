@@ -1,8 +1,8 @@
-import type {DataflowGraph} from './graph/graph';
-import type {NodeId} from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import {edgeDoesNotIncludeType, EdgeType} from './graph/edge';
-import {VertexType} from './graph/vertex';
-import {guard} from "../util/assert";
+import type { DataflowGraph } from './graph/graph';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
+import { VertexType } from './graph/vertex';
+import { guard } from '../util/assert';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {

@@ -46,20 +46,20 @@ describe('Graph Clustering', () => {
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
-					const {members, hasUnknownSideEffects} = c instanceof Array ? {
-						members: c,
+					const { members, hasUnknownSideEffects } = c instanceof Array ? {
+						members:               c,
 						hasUnknownSideEffects: false
 					} : c;
 					return {
 						startNode: '',
-						members: members.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap)),
+						members:   members.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap)),
 						hasUnknownSideEffects
 					};
 				});
 				const actual = findAllClusters(graph);
 				try {
 					compareClusters(actual, resolved);
-				} catch (e) {
+				} catch(e) {
 					console.log(dataflowGraphToMermaidUrl(info.dataflow));
 					throw e;
 				}

@@ -42,11 +42,11 @@ function dropGenericsFromType(type: string): string {
 
 function removeCommentSymbols(comment: string): string {
 	return comment
-		    // remove '/** \n * \n */...
-		    .replace(/^\/\*\*?/gm, '').replace(/^\s*\*\s*/gm, '').replace(/\*\/$/gm, '').replace(/^\s*\*/gm, '')
-			/* replace {@key foo|bar} with `bar` and {@key foo} with `foo` */
-		    .replace(/\{@[a-zA-Z]+ ([^}]+\|)?(?<name>[^}]+)}/gm, '<code>$<name></code>')
-			.trim();
+	// remove '/** \n * \n */...
+		.replace(/^\/\*\*?/gm, '').replace(/^\s*\*\s*/gm, '').replace(/\*\/$/gm, '').replace(/^\s*\*/gm, '')
+	/* replace {@key foo|bar} with `bar` and {@key foo} with `foo` */
+		.replace(/\{@[a-zA-Z]+ ([^}]+\|)?(?<name>[^}]+)}/gm, '<code>$<name></code>')
+		.trim();
 }
 
 function getTextualComments(node: ts.Node): string[] {
@@ -74,7 +74,7 @@ export function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
 	return tryDirect ? typeChecker.typeToString(tryDirect) : 'unknown';
 }
 
-const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit']
+const defaultSkip = ['Pick', 'Partial', 'Required', 'Readonly', 'Omit', 'DeepPartial', 'DeepReadonly', 'DeepWritable', 'StrictOmit'];
 
 export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFile): string[] {
 	const node = type.typeName;
@@ -83,7 +83,7 @@ export function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.S
 	}
 	const args = type.typeArguments?.map(arg => arg.getText(sourceFile)) ?? [];
 	const nodeLexeme = node.getText(sourceFile) ?? '';
-	const baseLexeme = type.getText(sourceFile) ?? ''
+	const baseLexeme = type.getText(sourceFile) ?? '';
 
 	if(defaultSkip.map(s => nodeLexeme.startsWith(s))) {
 		return [baseLexeme, ...args];
@@ -211,7 +211,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 		}
 	}
 	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
-	const inline = [...options.inlineTypes ?? [], ...defaultSkip]
+	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 	if(node.extends.length > 0) {
 		for(const baseType of node.extends) {
 			if(inline.includes(baseType)) {

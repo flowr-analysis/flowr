@@ -26,11 +26,17 @@ export const NormalizedAstQuerySchema = Joi.object({
 	type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
 }).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!');
 
+export const DataflowClusterQuerySchema = Joi.object({
+	type: Joi.string().valid('dataflow-cluster').required().description('The type of the query.'),
+}).description('The cluster query calculates and returns all clusters in the dataflow graph.');
+
+
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
 	DataflowQuerySchema,
 	IdMapQuerySchema,
-	NormalizedAstQuerySchema
+	NormalizedAstQuerySchema,
+	DataflowClusterQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

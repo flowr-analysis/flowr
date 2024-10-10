@@ -14,8 +14,10 @@ import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor'
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
 import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
 import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import {DataflowClusterQuery} from "./catalog/cluster-query/cluster-query-format";
+import {executeDataflowClusterQuery} from "./catalog/cluster-query/cluster-query-executor";
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -32,10 +34,11 @@ type SupportedQueries = {
 }
 
 export const SupportedQueries = {
-	'call-context':   executeCallContextQueries,
-	'dataflow':       executeDataflowQuery,
-	'id-map':         executeIdMapQuery,
-	'normalized-ast': executeNormalizedAstQuery
+	'call-context':     executeCallContextQueries,
+	'dataflow':         executeDataflowQuery,
+	'id-map':           executeIdMapQuery,
+	'normalized-ast':   executeNormalizedAstQuery,
+	'dataflow-cluster': executeDataflowClusterQuery,
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

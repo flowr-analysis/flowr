@@ -6,6 +6,7 @@ name: Check for Broken Links and Publish Wiki
       - '.github/workflows/broken-links-and-wiki.yaml'
       - '**/*.md'
       - 'wiki/**'
+      - 'src/documentation/**/*.ts'
   pull_request:
     types: [ opened ]
     branches: [ main ]

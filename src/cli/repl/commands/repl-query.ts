@@ -20,6 +20,8 @@ import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
+import { printAsMs } from '../../../util/time';
+
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -141,22 +143,22 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		}
 		if(query === 'call-context') {
 			const out = queryResults as QueryResults<'call-context'>['call-context'];
-			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(asciiCallContext(formatter, out, processed));
 			continue;
 		} else if(query === 'dataflow') {
 			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
 			continue;
 		} else if(query === 'id-map') {
 			const out = queryResults as QueryResults<'id-map'>['id-map'];
-			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
 			continue;
 		} else if(query === 'normalized-ast') {
 			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
 			continue;
 		}
@@ -172,10 +174,10 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			}
 			result.push(` ╰ ${key}: ${JSON.stringify(value)}`);
 		}
-		result.push(`  - Took ${timing.toFixed(0)}ms`);
+		result.push(`  - Took ${printAsMs(timing, 0)}`);
 	}
 
-	result.push(italic(`All queries together required ≈${results['.meta'].timing.toFixed(0)}ms (1ms accuracy, total ${totalInMs.toFixed(0)}ms)`, formatter));
+	result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
 	return formatter.format(result.join('\n'));
 }
 

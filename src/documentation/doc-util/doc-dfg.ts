@@ -10,9 +10,9 @@ import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
-import { printAsMs } from './doc-ms';
 import { jsonReplacer } from '../../util/json';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
+import { printAsMs } from '../../util/time';
 
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
 	return `

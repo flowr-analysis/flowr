@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-10, 16:53:23 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-11, 04:19:02 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 16.05 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 14.86 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5486-GsFpPSfvY8V3-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5442-xs6Ei4LmGIXY-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.80 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.44 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 11.88 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.03 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 8.89 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.50 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -803,7 +803,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 8.49 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 5.97 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1066,7 +1066,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.74 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.26 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1361,7 +1361,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 23.85 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 19.18 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1398,6 +1398,8 @@ For the definition of the hello message, please see it's implementation at [`./s
                         Allows only the values: 'call-context'
                     - **callName** string [required]
                         _Regex&nbsp;regarding&nbsp;the&nbsp;function&nbsp;name!_
+                    - **callNameExact** boolean [optional]
+                        _Should&nbsp;we&nbsp;automatically&nbsp;add&nbsp;the&nbsp;`^`&nbsp;and&nbsp;`$`&nbsp;anchors&nbsp;to&nbsp;the&nbsp;regex&nbsp;to&nbsp;make&nbsp;it&nbsp;an&nbsp;exact&nbsp;match?_
                     - **kind** string [optional]
                         _The&nbsp;kind&nbsp;of&nbsp;the&nbsp;call,&nbsp;this&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;group&nbsp;calls&nbsp;together&nbsp;(e.g.,&nbsp;linking&nbsp;`plot`&nbsp;to&nbsp;`visualize`).&nbsp;Defaults&nbsp;to&nbsp;`.`_
                     - **subkind** string [optional]
@@ -1633,7 +1635,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 4.99 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 3.60 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1848,7 +1850,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.21 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.80 ms_ (including parsing and normalization) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r

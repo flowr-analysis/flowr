@@ -31,7 +31,7 @@ registerQueryDocumentation('call-context', {
 Call context queries may be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
 
-1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
+1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern. Please note, that if you do not use Regex-Anchors, the query will match any function name that contains the given pattern (you can set the \`callNameExact\` property to \`true\` to automatically add the \`^...$\` anchors).
 2. **Call Targets**  (\`callTargets\`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
 
 Besides this, we provide the following ways to automatically categorize and link identified invocations:

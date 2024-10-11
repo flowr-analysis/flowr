@@ -18,6 +18,10 @@ export interface DefaultCallContextQueryFormat<CallName extends RegExp | string>
 	readonly type:            'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
 	readonly callName:        CallName;
+	/**
+	 * Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?
+	 */
+	readonly callNameExact?:  boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:           string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.` */

@@ -93,13 +93,14 @@ registerQueryDocumentation('dataflow', {
 	functionName:     executeDataflowQuery.name,
 	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the dataflow graph of the code:
+Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
 	}], { showCode: true })
 }
@@ -114,13 +115,14 @@ registerQueryDocumentation('normalized-ast', {
 	functionName:     executeNormalizedAstQuery.name,
 	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the normalized AST of the code:
+Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'normalized-ast'
 	}], { showCode: true })
 }
@@ -135,12 +137,13 @@ registerQueryDocumentation('id-map', {
 	functionName:     executeIdMapQuery.name,
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
 
-Using the example code from above, the following query returns all nodes from the code:
+Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
 	}], { showCode: true })
 }

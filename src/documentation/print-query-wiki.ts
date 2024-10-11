@@ -28,7 +28,7 @@ registerQueryDocumentation('call-context', {
 	functionFile:     '../queries/catalog/call-context-query/call-context-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
-Call context queries may be used to identify calls to specific functions that match criteria of your interest.
+Call context queries can be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
 
 1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern. Please note, that if you do not use Regex-Anchors, the query will match any function name that contains the given pattern (you can set the \`callNameExact\` property to \`true\` to automatically add the \`^...$\` anchors).

@@ -23,8 +23,10 @@ import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-p
 import { graphToMermaidUrl } from '../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
 import Joi from 'joi';
+import { executeDependenciesQuery } from './catalog/dependencies/dependencies-query-executor';
+import type { DependenciesQuery } from './catalog/dependencies/dependencies-query-format';
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DependenciesQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -104,6 +106,14 @@ export const SupportedQueries = {
 		schema: Joi.object({
 			type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
 		}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!')
+	},
+	'dependencies': {
+		executor:        executeDependenciesQuery,
+		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+			// TODO ascii summarizer
+		},
+		// TODO schema
+		schema: Joi.any()
 	}
 } as const satisfies SupportedQueries;
 

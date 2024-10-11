@@ -16,6 +16,7 @@ import { exampleQueryCode } from './data/query/example-query-code';
 import { details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
+import { executeLocationQuery } from '../queries/catalog/location-query/location-query-executor';
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 
@@ -145,6 +146,27 @@ Using the example code \`${exampleCode}\`, the following query returns all nodes
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('location', {
+	name:             'Location Query',
+	type:             'active',
+	shortDescription: 'Returns the location of a specific node.',
+	functionName:     executeLocationQuery.name,
+	functionFile:     '../queries/catalog/location-query/location-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+If you are interested in the location of a specific node, you can use the location query.
+
+Using the example code from above, the following query returns the location of the first occurrence of the symbol \`m\`:
+${
+	await showQuery(shell, exampleQueryCode, [{
+		type:   'location',
+		nodeId: '24'
 	}], { showCode: true })
 }
 		`;

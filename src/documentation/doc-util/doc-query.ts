@@ -4,7 +4,6 @@ import { executeQueries } from '../../queries/query';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { printAsMs } from './doc-ms';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/ansi';
 import { asciiSummaryOfQueryResult } from '../../cli/repl/commands/repl-query';
@@ -13,6 +12,7 @@ import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/vir
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
 import { jsonWithLimit } from './doc-code';
+import { printAsMs } from '../../util/time';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;

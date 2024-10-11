@@ -9,8 +9,8 @@ import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
-import { printAsMs } from './doc-ms';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
+import { printAsMs } from '../../util/time';
 
 export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `

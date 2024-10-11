@@ -53,6 +53,7 @@ jobs:
         run: |
           npm ci
           CHANGED_ANY=false
+          CHANGED_FILES=()
           function update_wiki_page {
             # test if the file exists
             if [ -f "wiki/$1.md" ]; then
@@ -72,6 +73,7 @@ jobs:
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true
                 git add -f "wiki/$1.md"
+                CHANGED_FILES+=("$1")
             else
                 echo "$1 did not change!"
             fi
@@ -88,7 +90,8 @@ jobs:
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"
-              git commit -m "[skip ci] doc: update generated wiki pages"
+              CHANGED_FILES_STRING=$(IFS=,; echo "${CHANGED_FILES[*]}")
+              git commit -m "[skip ci] doc: update generated wiki pages ($CHANGED_FILES_STRING)"
           fi
 
       - name: "⬆️ Push changed Wiki pages"

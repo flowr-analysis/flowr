@@ -3,7 +3,6 @@ import type { DependenciesQuery, DependenciesQueryResult } from './dependencies-
 
 export function executeDependenciesQuery({ ast, graph }: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
 	const now = Date.now();
-	// TODO execute the query
 	return {
 		'.meta': {
 			timing: Date.now() - now

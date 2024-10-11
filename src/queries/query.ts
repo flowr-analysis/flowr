@@ -14,6 +14,13 @@ import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor'
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
 import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
 import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { bold, type OutputFormatter } from '../util/ansi';
+import { printAsMs } from '../util/time';
+import { asciiCallContext, summarizeIdsIfTooLong } from '../cli/repl/commands/repl-query';
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { graphToMermaidUrl } from '../util/mermaid/dfg';
+import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
 
@@ -32,21 +39,46 @@ type SupportedQueries = {
 }
 
 interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor: QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 }
 
 export const SupportedQueries = {
 	'call-context': {
-		executor: executeCallContextQueries
+		executor:        executeCallContextQueries,
+		asciiSummarizer: (formatter, processed, queryResults, result) => {
+			const out = queryResults as QueryResults<'call-context'>['call-context'];
+			result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			result.push(asciiCallContext(formatter, out, processed));
+			return true;
+		}
 	},
 	'dataflow': {
-		executor: executeDataflowQuery
+		executor:        executeDataflowQuery,
+		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
+			result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
+			return true;
+		}
 	},
 	'id-map': {
-		executor: executeIdMapQuery
+		executor:        executeIdMapQuery,
+		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+			const out = queryResults as QueryResults<'id-map'>['id-map'];
+			result.push(`Query: ${bold('id-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
+			return true;
+		}
 	},
 	'normalized-ast': {
-		executor: executeNormalizedAstQuery
+		executor:        executeNormalizedAstQuery,
+		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
+			result.push(`Query: ${bold('normalized-ast', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+			return true;
+		}
 	}
 } as const satisfies SupportedQueries;
 

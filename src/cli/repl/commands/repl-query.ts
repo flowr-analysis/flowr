@@ -10,15 +10,14 @@ import { bold, italic } from '../../../util/ansi';
 import type { CallContextQuerySubKindResult } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { executeQueries } from '../../../queries/query';
+import { SupportedQueries , executeQueries } from '../../../queries/query';
+
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
-import type { BaseQueryMeta } from '../../../queries/base-query-format';
+import type { BaseQueryMeta, BaseQueryResult } from '../../../queries/base-query-format';
 import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltIn } from '../../../dataflow/environments/built-in';
-import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
-import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 import { printAsMs } from '../../../util/time';
 
@@ -106,7 +105,7 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 	return result.join(', ');
 }
 
-function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
 	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
@@ -118,7 +117,7 @@ function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'cal
 	return result.join('\n');
 }
 
-function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
+export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
 		return naive;
@@ -138,28 +137,8 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
-		if(query === '.meta') {
-			continue;
-		}
-		if(query === 'call-context') {
-			const out = queryResults as QueryResults<'call-context'>['call-context'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(asciiCallContext(formatter, out, processed));
-			continue;
-		} else if(query === 'dataflow') {
-			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
-			continue;
-		} else if(query === 'id-map') {
-			const out = queryResults as QueryResults<'id-map'>['id-map'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
-			continue;
-		} else if(query === 'normalized-ast') {
-			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+		const queryType = SupportedQueries[query as SupportedQueryTypes];
+		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
 			continue;
 		}
 

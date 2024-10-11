@@ -28,26 +28,38 @@ export interface BasicQueryData {
 export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
 type SupportedQueries = {
-	[QueryType in Query['type']]: QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	[QueryType in Query['type']]: SupportedQuery<QueryType>
+}
+
+interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
+	executor: QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
 }
 
 export const SupportedQueries = {
-	'call-context':   executeCallContextQueries,
-	'dataflow':       executeDataflowQuery,
-	'id-map':         executeIdMapQuery,
-	'normalized-ast': executeNormalizedAstQuery
+	'call-context': {
+		executor: executeCallContextQueries
+	},
+	'dataflow': {
+		executor: executeDataflowQuery
+	},
+	'id-map': {
+		executor: executeIdMapQuery
+	},
+	'normalized-ast': {
+		executor: executeNormalizedAstQuery
+	}
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]>;
+export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]['executor']>;
 
 export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
-	const executor = SupportedQueries[queries[0].type];
-	guard(executor !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
+	const query = SupportedQueries[queries[0].type];
+	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
+	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<

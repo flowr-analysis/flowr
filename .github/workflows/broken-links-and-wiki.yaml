@@ -105,8 +105,11 @@ jobs:
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
           path: "wiki/"
+          strategy: 'init'
           token: ${{ secrets.GH_DEPLOY_WIKI }}
-          ignore: ''
+          ignore: |
+            **/*.md.tmp
+            **/*-Old.*
 
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0

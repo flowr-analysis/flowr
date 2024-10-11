@@ -137,6 +137,10 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 	const result: string[] = [];
 
 	for(const [query, queryResults] of Object.entries(results)) {
+		if(query === '.meta') {
+			continue;
+		}
+
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
 		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
 			continue;

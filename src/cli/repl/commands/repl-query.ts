@@ -21,6 +21,7 @@ import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 import { printAsMs } from '../../../util/time';
+import { textWithTooltip } from '../../../documentation/doc-util/doc-hover-over';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -131,7 +132,7 @@ function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
 	if(i < ids.length) {
 		acc += '... (see JSON below)';
 	}
-	return acc;
+	return textWithTooltip(acc, JSON.stringify(ids));
 }
 
 export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {

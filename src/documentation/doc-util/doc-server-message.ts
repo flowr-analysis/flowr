@@ -6,8 +6,8 @@ import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/r
 import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
 import { withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
-import { printAsMs } from './doc-ms';
 import { guard } from '../../util/assert';
+import { printAsMs } from '../../util/time';
 
 export interface ServerMessageDescription {
 	readonly title:                  string

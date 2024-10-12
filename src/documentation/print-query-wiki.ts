@@ -29,10 +29,10 @@ registerQueryDocumentation('call-context', {
 	functionFile:     '../queries/catalog/call-context-query/call-context-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		return `
-Call context queries may be used to identify calls to specific functions that match criteria of your interest.
+Call context queries can be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
 
-1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern.
+1. **Function Name** (\`callName\`): The function name is specified by a regular expression. This allows you to find all calls to functions that match a specific pattern. Please note, that if you do not use Regex-Anchors, the query will match any function name that contains the given pattern (you can set the \`callNameExact\` property to \`true\` to automatically add the \`^...$\` anchors).
 2. **Call Targets**  (\`callTargets\`): This specifies to what the function call targets. For example, you may want to find all calls to a function that is not defined locally.
 
 Besides this, we provide the following ways to automatically categorize and link identified invocations:
@@ -94,13 +94,14 @@ registerQueryDocumentation('dataflow', {
 	functionName:     executeDataflowQuery.name,
 	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the dataflow graph of the code:
+Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
 	}], { showCode: true })
 }
@@ -115,13 +116,14 @@ registerQueryDocumentation('normalized-ast', {
 	functionName:     executeNormalizedAstQuery.name,
 	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the normalized AST of the code:
+Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'normalized-ast'
 	}], { showCode: true })
 }
@@ -157,12 +159,13 @@ registerQueryDocumentation('id-map', {
 	functionName:     executeIdMapQuery.name,
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
 
-Using the example code from above, the following query returns all nodes from the code:
+Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
 	}], { showCode: true })
 }

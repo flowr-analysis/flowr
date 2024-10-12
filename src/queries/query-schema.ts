@@ -4,6 +4,7 @@ import { CallTargets } from './catalog/call-context-query/call-context-query-for
 export const CallContextQuerySchema = Joi.object({
 	type:           Joi.string().valid('call-context').required().description('The type of the query.'),
 	callName:       Joi.string().required().description('Regex regarding the function name!'),
+	callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
 	kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
 	subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
 	callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),

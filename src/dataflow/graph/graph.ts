@@ -107,7 +107,7 @@ export class DataflowGraph<
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
 	private _idMap:                     AstIdMap | undefined;
 	/* Set of vertices which have sideEffects that we do not know anything about */
-	private _unknownSideEffects = new Set<NodeId>();
+	private readonly _unknownSideEffects = new Set<NodeId>();
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments();

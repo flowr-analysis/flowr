@@ -7,8 +7,8 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
-import { printAsMs } from './doc-util/doc-ms';
 import { getReplCommand } from './doc-util/doc-cli-option';
+import { printAsMs } from '../util/time';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';

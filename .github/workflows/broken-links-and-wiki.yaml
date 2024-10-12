@@ -53,6 +53,7 @@ jobs:
         run: |
           npm ci
           CHANGED_ANY=false
+          CHANGED_FILES=()
           function update_wiki_page {
             # test if the file exists
             if [ -f "wiki/$1.md" ]; then
@@ -63,15 +64,16 @@ jobs:
             npm run $2 --silent > "wiki/$1.md"
             # test if the file changed, but ignore the first line which contains the time stamp
             # we additionally used sed to remove any measurement stamp for the comparison as they of course change
-            
-            tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g; s/tmp-[A-Za-z0-9-]+//g' > "wiki/$1.md.tmp"
-            tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+\.[0-9]+ ?ms//g; s/tmp-[A-Za-z0-9-]+//g' > "wiki/$1-Old.md.tmp"
+            # additionally, we remove any part "timing": <number>.
+            tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1.md.tmp"
+            tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1-Old.md.tmp"
           
             if ! diff -q "wiki/$1.md.tmp" "wiki/$1-Old.md.tmp"; then
                 echo "$1 changed!"
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true
                 git add -f "wiki/$1.md"
+                CHANGED_FILES+=("$1")
             else
                 echo "$1 did not change!"
             fi
@@ -88,7 +90,8 @@ jobs:
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"
-              git commit -m "[skip ci] doc: update generated wiki pages"
+              CHANGED_FILES_STRING=$(IFS=,; echo "${CHANGED_FILES[*]}")
+              git commit -m "[skip ci] doc: update generated wiki pages ($CHANGED_FILES_STRING)"
           fi
 
       - name: "⬆️ Push changed Wiki pages"
@@ -105,8 +108,11 @@ jobs:
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
           path: "wiki/"
+          strategy: 'init'
           token: ${{ secrets.GH_DEPLOY_WIKI }}
-          ignore: ''
+          ignore: |
+            **/*.md.tmp
+            **/*-Old.*
 
       - name: "🔎 Check the README for broken links"
         uses: becheran/mlc@v0.18.0

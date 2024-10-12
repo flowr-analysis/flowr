@@ -1,10 +1,12 @@
 name: "QA"
 # Runs on each push and tests flowR for the default configuration.
-# Also publishes a prerelease build to npm and updates the documentation with new performance benchmarks.
+# Also publishes a pre-release build to npm and updates the documentation with new performance benchmarks.
 # Depending on the targets, etc. this may perform a different subset of steps!
 
 'on':
   push:
+    branches-ignore:
+      - 'gh-pages'
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'

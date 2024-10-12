@@ -19,6 +19,7 @@ import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
+import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -241,6 +242,51 @@ ${
 
 Now, the results no longer contain calls to \`plot\` that are not defined locally.
 
+		`;
+	}
+});
+
+
+registerQueryDocumentation('static-slice', {
+	name:             'Static Slice Query',
+	type:             'active',
+	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.',
+	functionName:     executeStaticSliceClusterQuery.name,
+	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\ny <- 2\nx';
+		return `
+To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
+return of the call) that you want to slice the dataflow graph for. 
+Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
+To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
+
+To exemplify the capabilities, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the parts required for the use of \`x\` in the last line, you can use the following query:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type:     'static-slice',
+		criteria: ['3@x']
+	}], { showCode: false })
+}
+
+In general you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
+you can use the \`noReconstruction\` flag.
+
+${
+	details('No Reconstruction Example',
+		await showQuery(shell, exampleCode, [{
+			type:             'static-slice',
+			criteria:         ['3@x'],
+			noReconstruction: true
+		}], { showCode: false })
+	)
+}
+
+You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
+This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
 		`;
 	}
 });

@@ -22,6 +22,7 @@ import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 import { printAsMs } from '../../../util/time';
 import { textWithTooltip } from '../../../documentation/doc-util/doc-hover-over';
+import type { StaticSliceQuery } from '../../../queries/catalog/static-slice-query/static-slice-query-format';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -161,6 +162,26 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
 			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+			continue;
+		} else if(query === 'static-slice') {
+			const out = queryResults as QueryResults<'static-slice'>['static-slice'];
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			for(const [fingerprint, obj] of Object.entries(out.results)) {
+				const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;
+				const addons = [];
+				if(noReconstruction) {
+					addons.push('no reconstruction');
+				}
+				if(noMagicComments) {
+					addons.push('no magic comments');
+				}
+				result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
+				if('reconstruct' in obj) {
+					result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + obj.reconstruct.code.split('\n').join('\\n') + '</code>');
+				} else {
+					result.push(`     ╰ Id List: {${summarizeIdsIfTooLong([...obj.slice.result])}}`);
+				}
+			}
 			continue;
 		} else if(query === 'dataflow-cluster') {
 			const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];

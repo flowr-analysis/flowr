@@ -6,8 +6,8 @@ import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-de
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
 
-export function fingerPrintOfQuery(query: StaticSliceQuery): `{${string}}` {
-	return JSON.stringify(query) as `{${string}}`;
+export function fingerPrintOfQuery(query: StaticSliceQuery): string {
+	return JSON.stringify(query);
 }
 
 export function executeStaticSliceClusterQuery({ graph, ast }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {

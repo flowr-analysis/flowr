@@ -5,7 +5,7 @@ import { FlowrGithubBaseRef, FlowrNpmRef, FlowrWikiBaseRef, getFileContentFromRo
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
-import { documentAllMessages } from './data/server/doc-data-server-messages';
+import { documentAllServerMessages } from './data/server/doc-data-server-messages';
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retriever';
@@ -21,7 +21,7 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 
 async function explainServer(shell: RShell): Promise<string> {
-	documentAllMessages();
+	documentAllServerMessages();
 
 	return `
 As explained in the [Overview](${FlowrWikiBaseRef}/Overview), you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).

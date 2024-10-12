@@ -138,9 +138,20 @@ registerQueryDocumentation('dataflow-cluster', {
 	functionName:     executeDataflowClusterQuery.name,
 	functionFile:     '../queries/catalog/cluster-query/cluster-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleA = 'x <- 1; x';
+		const exampleB = 'x <- 1; y';
 		return `
-This query automatically calculates clusters in flowR's dataflow graph and returns a list of all clusters
-found.
+This query automatically calculates clusters in flowR's dataflow graph 
+and returns a list of all clusters found. 
+Clusters are to be interpreted as literal clusters on the graph traversing
+edges in both directions. From this perspective, 
+the code \`${exampleA}\` has one cluster (given that all code is related), 
+while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
+
+${details('Example <code>' + exampleA + '</code>',  
+		await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
+${details('Example <code>' + exampleB + '</code>',
+		await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
 
 Using the example code from above, the following query returns all clusters:
 ${

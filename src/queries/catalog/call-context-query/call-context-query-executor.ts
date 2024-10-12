@@ -46,7 +46,7 @@ function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: Call
 		 * including any potential built-in mapping.
 		 */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		if(reResolved && reResolved.some(t => t.definedAt === BuiltIn)) {
+		if(reResolved?.some(t => t.definedAt === BuiltIn)) {
 			builtIn = true;
 		}
 	}

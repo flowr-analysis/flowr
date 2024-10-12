@@ -16,8 +16,10 @@ import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normal
 import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
 import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
 import { executeDataflowClusterQuery } from './catalog/cluster-query/cluster-query-executor';
+import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
+import { executeStaticSliceClusterQuery } from './catalog/static-slice-query/static-slice-query-executor';
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -39,6 +41,7 @@ export const SupportedQueries = {
 	'id-map':           executeIdMapQuery,
 	'normalized-ast':   executeNormalizedAstQuery,
 	'dataflow-cluster': executeDataflowClusterQuery,
+	'static-slice':     executeStaticSliceClusterQuery
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

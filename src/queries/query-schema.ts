@@ -31,13 +31,21 @@ export const DataflowClusterQuerySchema = Joi.object({
 	type: Joi.string().valid('dataflow-cluster').required().description('The type of the query.'),
 }).description('The cluster query calculates and returns all clusters in the dataflow graph.');
 
+export const StaticSliceQuerySchema = Joi.object({
+	type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
+	criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
+	noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
+	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
+}).description('Slice query used to slice the dataflow graph');
+
 
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
 	DataflowQuerySchema,
 	IdMapQuerySchema,
 	NormalizedAstQuerySchema,
-	DataflowClusterQuerySchema
+	DataflowClusterQuerySchema,
+	StaticSliceQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

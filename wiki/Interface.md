@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-11, 04:19:02 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-12, 04:28:57 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -76,17 +76,17 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object [required]
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;hello&nbsp;message._
+        _The type of the hello message._
         Allows only the values: 'hello'
     - **id** any [forbidden]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message&nbsp;is&nbsp;always&nbsp;undefined&nbsp;(as&nbsp;it&nbsp;is&nbsp;the&nbsp;initial&nbsp;message&nbsp;and&nbsp;not&nbsp;requested)._
+        _The id of the message is always undefined (as it is the initial message and not requested)._
     - **clientName** string [required]
-        _A&nbsp;unique&nbsp;name&nbsp;that&nbsp;is&nbsp;assigned&nbsp;to&nbsp;each&nbsp;client.&nbsp;It&nbsp;has&nbsp;no&nbsp;semantic&nbsp;meaning&nbsp;and&nbsp;is&nbsp;only&nbsp;used/useful&nbsp;for&nbsp;debugging._
+        _A unique name that is assigned to each client. It has no semantic meaning and is only used/useful for debugging._
     - **versions** object [required]
         - **flowr** string [required]
-            _The&nbsp;version&nbsp;of&nbsp;the&nbsp;flowr&nbsp;server&nbsp;running&nbsp;in&nbsp;semver&nbsp;format._
+            _The version of the flowr server running in semver format._
         - **r** string [required]
-            _The&nbsp;version&nbsp;of&nbsp;the&nbsp;underlying&nbsp;R&nbsp;shell&nbsp;running&nbsp;in&nbsp;semver&nbsp;format._
+            _The version of the underlying R shell running in semver format._
 
 </details>
 
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 14.86 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 15.33 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5442-xs6Ei4LmGIXY-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5429-iFlEPnpnp5kd-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.44 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.50 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 9.03 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 8.86 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 6.50 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.48 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -532,26 +532,26 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'request-file-analysis'
     - **id** string [optional]
-        _You&nbsp;may&nbsp;pass&nbsp;an&nbsp;id&nbsp;to&nbsp;link&nbsp;requests&nbsp;with&nbsp;responses&nbsp;(they&nbsp;get&nbsp;the&nbsp;same&nbsp;id)._
+        _You may pass an id to link requests with responses (they get the same id)._
     - **filetoken** string [optional]
-        _A&nbsp;unique&nbsp;token&nbsp;to&nbsp;identify&nbsp;the&nbsp;file&nbsp;for&nbsp;subsequent&nbsp;requests.&nbsp;Only&nbsp;use&nbsp;this&nbsp;if&nbsp;you&nbsp;plan&nbsp;to&nbsp;send&nbsp;more&nbsp;queries!_
+        _A unique token to identify the file for subsequent requests. Only use this if you plan to send more queries!_
     - **filename** string [optional]
-        _A&nbsp;human-readable&nbsp;name&nbsp;of&nbsp;the&nbsp;file,&nbsp;only&nbsp;for&nbsp;debugging&nbsp;purposes._
+        _A human-readable name of the file, only for debugging purposes._
     - **content** string [optional]
-        _The&nbsp;content&nbsp;of&nbsp;the&nbsp;file&nbsp;or&nbsp;an&nbsp;R&nbsp;expression&nbsp;(either&nbsp;give&nbsp;this&nbsp;or&nbsp;the&nbsp;filepath)._
+        _The content of the file or an R expression (either give this or the filepath)._
     - **filepath** alternatives [optional]
-        _The&nbsp;path&nbsp;to&nbsp;the&nbsp;file(s)&nbsp;on&nbsp;the&nbsp;local&nbsp;machine&nbsp;(either&nbsp;give&nbsp;this&nbsp;or&nbsp;the&nbsp;content)._
+        _The path to the file(s) on the local machine (either give this or the content)._
         - **.** string 
         - **.** array 
         Valid item types:
             - **.** string 
     - **cfg** boolean [optional]
-        _If&nbsp;you&nbsp;want&nbsp;to&nbsp;extract&nbsp;the&nbsp;control&nbsp;flow&nbsp;information&nbsp;of&nbsp;the&nbsp;file._
+        _If you want to extract the control flow information of the file._
     - **format** string [optional]
-        _The&nbsp;format&nbsp;of&nbsp;the&nbsp;results,&nbsp;if&nbsp;missing&nbsp;we&nbsp;assume&nbsp;json._
+        _The format of the results, if missing we assume json._
         Allows only the values: 'json', 'n-quads'
 
 </details>
@@ -562,35 +562,35 @@ For the definition of the hello message, please see it's implementation at [`./s
 For the definition of the hello message, please see it's implementation at [`./src/cli/repl/server/messages/message-analysis.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/cli/repl/server/messages/message-analysis.ts).
 
 - **.** alternatives [required]
-    _The&nbsp;response&nbsp;to&nbsp;a&nbsp;file&nbsp;analysis&nbsp;request&nbsp;(based&nbsp;on&nbsp;the&nbsp;`format`&nbsp;field)._
+    _The response to a file analysis request (based on the `format` field)._
     - **.** object 
-        _The&nbsp;response&nbsp;in&nbsp;JSON&nbsp;format._
+        _The response in JSON format._
         - **type** string [required]
-            _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+            _The type of the message._
             Allows only the values: 'response-file-analysis'
         - **id** string [optional]
-            _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;if&nbsp;you&nbsp;passed&nbsp;one&nbsp;in&nbsp;the&nbsp;request._
+            _The id of the message, if you passed one in the request._
         - **format** string [required]
-            _The&nbsp;format&nbsp;of&nbsp;the&nbsp;results&nbsp;in&nbsp;json&nbsp;format._
+            _The format of the results in json format._
             Allows only the values: 'json'
         - **results** object [required]
-            _The&nbsp;results&nbsp;of&nbsp;the&nbsp;analysis&nbsp;(one&nbsp;field&nbsp;per&nbsp;step)._
+            _The results of the analysis (one field per step)._
         - **cfg** object [optional]
-            _The&nbsp;control&nbsp;flow&nbsp;information&nbsp;of&nbsp;the&nbsp;file,&nbsp;only&nbsp;present&nbsp;if&nbsp;requested._
+            _The control flow information of the file, only present if requested._
     - **.** object 
-        _The&nbsp;response&nbsp;as&nbsp;n-quads._
+        _The response as n-quads._
         - **type** string [required]
-            _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+            _The type of the message._
             Allows only the values: 'response-file-analysis'
         - **id** string [optional]
-            _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;if&nbsp;you&nbsp;passed&nbsp;one&nbsp;in&nbsp;the&nbsp;request._
+            _The id of the message, if you passed one in the request._
         - **format** string [required]
-            _The&nbsp;format&nbsp;of&nbsp;the&nbsp;results&nbsp;in&nbsp;n-quads&nbsp;format._
+            _The format of the results in n-quads format._
             Allows only the values: 'n-quads'
         - **results** object [required]
-            _The&nbsp;results&nbsp;of&nbsp;the&nbsp;analysis&nbsp;(one&nbsp;field&nbsp;per&nbsp;step).&nbsp;Quads&nbsp;are&nbsp;presented&nbsp;as&nbsp;string._
+            _The results of the analysis (one field per step). Quads are presented as string._
         - **cfg** string [optional]
-            _The&nbsp;control&nbsp;flow&nbsp;information&nbsp;of&nbsp;the&nbsp;file,&nbsp;only&nbsp;present&nbsp;if&nbsp;requested._
+            _The control flow information of the file, only present if requested._
 
 </details>
 
@@ -803,7 +803,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 5.97 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.20 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -833,14 +833,14 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'request-slice'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;if&nbsp;you&nbsp;passed&nbsp;one&nbsp;in&nbsp;the&nbsp;request._
+        _The id of the message, if you passed one in the request._
     - **filetoken** string [required]
-        _The&nbsp;filetoken&nbsp;of&nbsp;the&nbsp;file&nbsp;to&nbsp;slice&nbsp;must&nbsp;be&nbsp;the&nbsp;same&nbsp;as&nbsp;with&nbsp;the&nbsp;analysis&nbsp;request._
+        _The filetoken of the file to slice must be the same as with the analysis request._
     - **criterion** array [required]
-        _The&nbsp;slicing&nbsp;criteria&nbsp;to&nbsp;use._
+        _The slicing criteria to use._
     Valid item types:
         - **.** string 
 
@@ -852,14 +852,14 @@ For the definition of the hello message, please see it's implementation at [`./s
 For the definition of the hello message, please see it's implementation at [`./src/cli/repl/server/messages/message-slice.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/cli/repl/server/messages/message-slice.ts).
 
 - **.** object 
-    _The&nbsp;response&nbsp;to&nbsp;a&nbsp;slice&nbsp;request._
+    _The response to a slice request._
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'response-slice'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;if&nbsp;you&nbsp;passed&nbsp;one&nbsp;in&nbsp;the&nbsp;request._
+        _The id of the message, if you passed one in the request._
     - **results** object [required]
-        _The&nbsp;results&nbsp;of&nbsp;the&nbsp;slice&nbsp;(one&nbsp;field&nbsp;per&nbsp;step&nbsp;slicing&nbsp;step)._
+        _The results of the slice (one field per step slicing step)._
 
 </details>
 
@@ -1066,7 +1066,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.26 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.22 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1081,14 +1081,14 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'request-repl-execution'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;will&nbsp;be&nbsp;the&nbsp;same&nbsp;for&nbsp;the&nbsp;request._
+        _The id of the message, will be the same for the request._
     - **ansi** boolean [optional]
-        _Should&nbsp;ansi&nbsp;formatting&nbsp;be&nbsp;enabled&nbsp;for&nbsp;the&nbsp;response?&nbsp;Is&nbsp;`false`&nbsp;by&nbsp;default._
+        _Should ansi formatting be enabled for the response? Is `false` by default._
     - **expression** string [required]
-        _The&nbsp;expression&nbsp;to&nbsp;execute._
+        _The expression to execute._
 
 </details>
 
@@ -1099,15 +1099,15 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'response-repl-execution'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;will&nbsp;be&nbsp;the&nbsp;same&nbsp;for&nbsp;the&nbsp;request._
+        _The id of the message, will be the same for the request._
     - **stream** string [required]
-        _The&nbsp;stream&nbsp;the&nbsp;message&nbsp;is&nbsp;from._
+        _The stream the message is from._
         Allows only the values: 'stdout', 'stderr'
     - **result** string [required]
-        _The&nbsp;output&nbsp;of&nbsp;the&nbsp;execution._
+        _The output of the execution._
 
 </details>
 
@@ -1118,10 +1118,10 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'end-repl-execution'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;will&nbsp;be&nbsp;the&nbsp;same&nbsp;for&nbsp;the&nbsp;request._
+        _The id of the message, will be the same for the request._
 
 </details>
 
@@ -1361,7 +1361,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 19.18 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 20.49 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1376,74 +1376,79 @@ The complete round-trip took 19.18 ms (including time required to validate the
 For the definition of the hello message, please see it's implementation at [`./src/cli/repl/server/messages/message-query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/cli/repl/server/messages/message-query.ts).
 
 - **.** object 
-    _Request&nbsp;a&nbsp;query&nbsp;to&nbsp;be&nbsp;run&nbsp;on&nbsp;the&nbsp;file&nbsp;analysis&nbsp;information._
+    _Request a query to be run on the file analysis information._
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'request-query'
     - **id** string [optional]
-        _If&nbsp;you&nbsp;give&nbsp;the&nbsp;id,&nbsp;the&nbsp;response&nbsp;will&nbsp;be&nbsp;sent&nbsp;to&nbsp;the&nbsp;client&nbsp;with&nbsp;the&nbsp;same&nbsp;id._
+        _If you give the id, the response will be sent to the client with the same id._
     - **filetoken** string [required]
-        _The&nbsp;filetoken&nbsp;of&nbsp;the&nbsp;file/data&nbsp;retrieved&nbsp;from&nbsp;the&nbsp;analysis&nbsp;request._
+        _The filetoken of the file/data retrieved from the analysis request._
     - **query** array [required]
-        _The&nbsp;query&nbsp;to&nbsp;run&nbsp;on&nbsp;the&nbsp;file&nbsp;analysis&nbsp;information._
+        _The query to run on the file analysis information._
     Valid item types:
         - **.** alternatives 
-            _Any&nbsp;query_
+            _Any query_
             - **.** alternatives 
-                _Supported&nbsp;queries_
+                _Supported queries_
                 - **.** object 
-                    _Call&nbsp;context&nbsp;query&nbsp;used&nbsp;to&nbsp;find&nbsp;calls&nbsp;in&nbsp;the&nbsp;dataflow&nbsp;graph_
+                    _Call context query used to find calls in the dataflow graph_
                     - **type** string [required]
-                        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;query._
+                        _The type of the query._
                         Allows only the values: 'call-context'
                     - **callName** string [required]
-                        _Regex&nbsp;regarding&nbsp;the&nbsp;function&nbsp;name!_
+                        _Regex regarding the function name!_
                     - **callNameExact** boolean [optional]
-                        _Should&nbsp;we&nbsp;automatically&nbsp;add&nbsp;the&nbsp;`^`&nbsp;and&nbsp;`$`&nbsp;anchors&nbsp;to&nbsp;the&nbsp;regex&nbsp;to&nbsp;make&nbsp;it&nbsp;an&nbsp;exact&nbsp;match?_
+                        _Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?_
                     - **kind** string [optional]
-                        _The&nbsp;kind&nbsp;of&nbsp;the&nbsp;call,&nbsp;this&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;group&nbsp;calls&nbsp;together&nbsp;(e.g.,&nbsp;linking&nbsp;`plot`&nbsp;to&nbsp;`visualize`).&nbsp;Defaults&nbsp;to&nbsp;`.`_
+                        _The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`_
                     - **subkind** string [optional]
-                        _The&nbsp;subkind&nbsp;of&nbsp;the&nbsp;call,&nbsp;this&nbsp;can&nbsp;be&nbsp;used&nbsp;to&nbsp;uniquely&nbsp;identify&nbsp;the&nbsp;respective&nbsp;call&nbsp;type&nbsp;when&nbsp;grouping&nbsp;the&nbsp;output&nbsp;(e.g.,&nbsp;the&nbsp;normalized&nbsp;name,&nbsp;linking&nbsp;`ggplot`&nbsp;to&nbsp;`plot`).&nbsp;Defaults&nbsp;to&nbsp;`.`_
+                        _The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`_
                     - **callTargets** string [optional]
-                        _Call&nbsp;targets&nbsp;the&nbsp;function&nbsp;may&nbsp;have.&nbsp;This&nbsp;defaults&nbsp;to&nbsp;`any`.&nbsp;Request&nbsp;this&nbsp;specifically&nbsp;to&nbsp;gain&nbsp;all&nbsp;call&nbsp;targets&nbsp;we&nbsp;can&nbsp;resolve._
+                        _Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve._
                         Allows only the values: 'global', 'must-include-global', 'local', 'must-include-local', 'any'
                     - **includeAliases** boolean [optional]
-                        _Consider&nbsp;a&nbsp;case&nbsp;like&nbsp;`f&nbsp;<-&nbsp;function_of_interest`,&nbsp;do&nbsp;you&nbsp;want&nbsp;uses&nbsp;of&nbsp;`f`&nbsp;to&nbsp;be&nbsp;included&nbsp;in&nbsp;the&nbsp;results?_
+                        _Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?_
                     - **linkTo** object [optional]
-                        _Links&nbsp;the&nbsp;current&nbsp;call&nbsp;to&nbsp;the&nbsp;last&nbsp;call&nbsp;of&nbsp;the&nbsp;given&nbsp;kind.&nbsp;This&nbsp;way,&nbsp;you&nbsp;can&nbsp;link&nbsp;a&nbsp;call&nbsp;like&nbsp;`points`&nbsp;to&nbsp;the&nbsp;latest&nbsp;graphics&nbsp;plot&nbsp;etc._
+                        _Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc._
                         - **type** string [required]
-                            _The&nbsp;type&nbsp;of&nbsp;the&nbsp;linkTo&nbsp;sub-query._
+                            _The type of the linkTo sub-query._
                             Allows only the values: 'link-to-last-call'
                         - **callName** string [required]
-                            _Regex&nbsp;regarding&nbsp;the&nbsp;function&nbsp;name&nbsp;of&nbsp;the&nbsp;last&nbsp;call.&nbsp;Similar&nbsp;to&nbsp;`callName`,&nbsp;strings&nbsp;are&nbsp;interpreted&nbsp;as&nbsp;a&nbsp;regular&nbsp;expression._
+                            _Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression._
                 - **.** object 
-                    _The&nbsp;dataflow&nbsp;query&nbsp;simply&nbsp;returns&nbsp;the&nbsp;dataflow&nbsp;graph,&nbsp;there&nbsp;is&nbsp;no&nbsp;need&nbsp;to&nbsp;pass&nbsp;it&nbsp;multiple&nbsp;times!_
+                    _The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!_
                     - **type** string [required]
-                        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;query._
+                        _The type of the query._
                         Allows only the values: 'dataflow'
                 - **.** object 
-                    _The&nbsp;id&nbsp;map&nbsp;query&nbsp;retrieves&nbsp;the&nbsp;id&nbsp;map&nbsp;from&nbsp;the&nbsp;normalized&nbsp;AST._
+                    _The id map query retrieves the id map from the normalized AST._
                     - **type** string [required]
-                        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;query._
+                        _The type of the query._
                         Allows only the values: 'id-map'
                 - **.** object 
-                    _The&nbsp;normalized&nbsp;AST&nbsp;query&nbsp;simply&nbsp;returns&nbsp;the&nbsp;normalized&nbsp;AST,&nbsp;there&nbsp;is&nbsp;no&nbsp;need&nbsp;to&nbsp;pass&nbsp;it&nbsp;multiple&nbsp;times!_
+                    _The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!_
                     - **type** string [required]
-                        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;query._
+                        _The type of the query._
                         Allows only the values: 'normalized-ast'
-            - **.** alternatives 
-                _Virtual&nbsp;queries&nbsp;(used&nbsp;for&nbsp;structure)_
                 - **.** object 
-                    _Compound&nbsp;query&nbsp;used&nbsp;to&nbsp;combine&nbsp;queries&nbsp;of&nbsp;the&nbsp;same&nbsp;type_
+                    _The cluster query calculates and returns all clusters in the dataflow graph._
                     - **type** string [required]
-                        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;query._
+                        _The type of the query._
+                        Allows only the values: 'dataflow-cluster'
+            - **.** alternatives 
+                _Virtual queries (used for structure)_
+                - **.** object 
+                    _Compound query used to combine queries of the same type_
+                    - **type** string [required]
+                        _The type of the query._
                         Allows only the values: 'compound'
                     - **query** string [required]
-                        _The&nbsp;query&nbsp;to&nbsp;run&nbsp;on&nbsp;the&nbsp;file&nbsp;analysis&nbsp;information._
+                        _The query to run on the file analysis information._
                     - **commonArguments** object [required]
-                        _Common&nbsp;arguments&nbsp;for&nbsp;all&nbsp;queries._
+                        _Common arguments for all queries._
                     - **arguments** array [required]
-                        _Arguments&nbsp;for&nbsp;each&nbsp;query._
+                        _Arguments for each query._
                     Valid item types:
                         - **.** object 
 
@@ -1455,13 +1460,13 @@ For the definition of the hello message, please see it's implementation at [`./s
 For the definition of the hello message, please see it's implementation at [`./src/cli/repl/server/messages/message-query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/cli/repl/server/messages/message-query.ts).
 
 - **.** object 
-    _The&nbsp;response&nbsp;to&nbsp;a&nbsp;query&nbsp;request._
+    _The response to a query request._
     - **type** string [required]
         Allows only the values: 'response-query'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;will&nbsp;be&nbsp;the&nbsp;same&nbsp;for&nbsp;the&nbsp;request._
+        _The id of the message, will be the same for the request._
     - **results** object [required]
-        _The&nbsp;results&nbsp;of&nbsp;the&nbsp;query._
+        _The results of the query._
 
 </details>
 
@@ -1635,7 +1640,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 3.60 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 3.48 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1651,14 +1656,14 @@ For the definition of the hello message, please see it's implementation at [`./s
 
 - **.** object 
     - **type** string [required]
-        _The&nbsp;type&nbsp;of&nbsp;the&nbsp;message._
+        _The type of the message._
         Allows only the values: 'request-lineage'
     - **id** string [optional]
-        _If&nbsp;you&nbsp;give&nbsp;the&nbsp;id,&nbsp;the&nbsp;response&nbsp;will&nbsp;be&nbsp;sent&nbsp;to&nbsp;the&nbsp;client&nbsp;with&nbsp;the&nbsp;same&nbsp;id._
+        _If you give the id, the response will be sent to the client with the same id._
     - **filetoken** string [required]
-        _The&nbsp;filetoken&nbsp;of&nbsp;the&nbsp;file/data&nbsp;retrieved&nbsp;from&nbsp;the&nbsp;analysis&nbsp;request._
+        _The filetoken of the file/data retrieved from the analysis request._
     - **criterion** string [required]
-        _The&nbsp;criterion&nbsp;to&nbsp;start&nbsp;the&nbsp;lineage&nbsp;from._
+        _The criterion to start the lineage from._
 
 </details>
 
@@ -1671,9 +1676,9 @@ For the definition of the hello message, please see it's implementation at [`./s
     - **type** string [required]
         Allows only the values: 'response-lineage'
     - **id** string [optional]
-        _The&nbsp;id&nbsp;of&nbsp;the&nbsp;message,&nbsp;will&nbsp;be&nbsp;the&nbsp;same&nbsp;for&nbsp;the&nbsp;request._
+        _The id of the message, will be the same for the request._
     - **lineage** array [required]
-        _The&nbsp;lineage&nbsp;of&nbsp;the&nbsp;given&nbsp;criterion._
+        _The lineage of the given criterion._
     Valid item types:
         - **.** string 
 
@@ -1850,7 +1855,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.80 ms_ (including parsing and normalization) within the generation environment. 
+The analysis required _1.67 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2133,21 +2138,21 @@ So you can configure _flowR_ by adding a file like the following:
 <summary style='color:gray'>Full Configuration-File Schema</summary>
 
 - **.** object 
-    _The&nbsp;configuration&nbsp;file&nbsp;format&nbsp;for&nbsp;flowR._
+    _The configuration file format for flowR._
     - **ignoreSourceCalls** boolean [optional]
-        _Whether&nbsp;source&nbsp;calls&nbsp;should&nbsp;be&nbsp;ignored,&nbsp;causing&nbsp;{@link&nbsp;processSourceCall}'s&nbsp;behavior&nbsp;to&nbsp;be&nbsp;skipped._
+        _Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped._
     - **rPath** string [optional]
-        _The&nbsp;path&nbsp;to&nbsp;the&nbsp;R&nbsp;executable&nbsp;to&nbsp;use.&nbsp;If&nbsp;this&nbsp;is&nbsp;undefined,&nbsp;this&nbsp;uses&nbsp;the&nbsp;default&nbsp;path._
+        _The path to the R executable to use. If this is undefined, this uses the default path._
     - **semantics** object 
-        _Configure&nbsp;language&nbsp;semantics&nbsp;and&nbsp;how&nbsp;flowR&nbsp;handles&nbsp;them._
+        _Configure language semantics and how flowR handles them._
         - **environment** object [optional]
-            _Semantics&nbsp;regarding&nbsp;the&nbsp;handlings&nbsp;of&nbsp;the&nbsp;environment._
+            _Semantics regarding the handlings of the environment._
             - **overwriteBuiltIns** object [optional]
-                _Do&nbsp;you&nbsp;want&nbsp;to&nbsp;overwrite&nbsp;(parts)&nbsp;of&nbsp;the&nbsp;builtin&nbsp;definition?_
+                _Do you want to overwrite (parts) of the builtin definition?_
                 - **loadDefaults** boolean [optional]
-                    _Should&nbsp;the&nbsp;default&nbsp;configuration&nbsp;still&nbsp;be&nbsp;loaded?_
+                    _Should the default configuration still be loaded?_
                 - **definitions** array [optional]
-                    _The&nbsp;definitions&nbsp;to&nbsp;load/overwrite._
+                    _The definitions to load/overwrite._
                 Valid item types:
                     - **.** object 
 

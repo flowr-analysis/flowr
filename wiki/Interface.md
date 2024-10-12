@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-12, 04:28:57 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-12, 19:13:12 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 15.33 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 14.84 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5429-iFlEPnpnp5kd-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5476-Eg1pbZfCw8A5-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.50 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.51 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 8.86 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.47 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 6.48 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.78 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -606,7 +606,7 @@ For the definition of the hello message, please see it's implementation at [`./s
 <b>Slice</b> Message (<code>request-slice</code>) 
 <details>
 
-<summary style="color:gray"> View Details. <i>The server slices a file based on the given criteria.</i> </summary>
+<summary style="color:gray"> View Details. <i>([DEPRECATED](https://github.com/flowr-analysis/flowr/wiki//Query%20API)) The server slices a file based on the given criteria.</i> </summary>
 
 ```mermaid
 sequenceDiagram
@@ -625,6 +625,11 @@ sequenceDiagram
     deactivate  Server
 	
 ```
+
+
+
+> [!WARNING]
+> We deprecated the slice request in favor of the `static-slice` [Query](https://github.com/flowr-analysis/flowr/wiki//Query%20API).
 
 
 To slice, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly slice the same file.
@@ -803,7 +808,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 6.20 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.48 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1361,7 +1366,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 20.49 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 19.71 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1436,6 +1441,19 @@ For the definition of the hello message, please see it's implementation at [`./s
                     - **type** string [required]
                         _The type of the query._
                         Allows only the values: 'dataflow-cluster'
+                - **.** object 
+                    _Slice query used to slice the dataflow graph_
+                    - **type** string [required]
+                        _The type of the query._
+                        Allows only the values: 'static-slice'
+                    - **criteria** array [required]
+                        _The slicing criteria to use._
+                    Valid item types:
+                        - **.** string 
+                    - **noReconstruction** boolean [optional]
+                        _Do not reconstruct the slice into readable code._
+                    - **noMagicComments** boolean [optional]
+                        _Should the magic comments (force-including lines within the slice) be ignored?_
             - **.** alternatives 
                 _Virtual queries (used for structure)_
                 - **.** object 
@@ -1640,7 +1658,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 3.48 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 3.96 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1855,7 +1873,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.67 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.74 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r

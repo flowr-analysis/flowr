@@ -146,7 +146,7 @@ Using the example code from above, the following query returns all clusters:
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow-cluster'
-	}], { showCode: true })
+	}], { showCode: false })
 }
 		`;
 	}

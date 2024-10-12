@@ -21,6 +21,7 @@ import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 
 import { printAsMs } from '../../../util/time';
+import { textWithTooltip } from '../../../documentation/doc-util/doc-hover-over';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -131,7 +132,7 @@ function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
 	if(i < ids.length) {
 		acc += '... (see JSON below)';
 	}
-	return acc;
+	return textWithTooltip(acc, JSON.stringify(ids));
 }
 
 export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
@@ -160,6 +161,17 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
 			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
+			continue;
+		} else if(query === 'dataflow-cluster') {
+			const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
+			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
+			result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '': 's'}`);
+			for(const cluster of out.clusters) {
+				const unknownSideEffects = cluster.hasUnknownSideEffects ? '(has unknown side effect)' : '';
+				result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(cluster.members)}} ([marked](${
+					graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
+				}))`);
+			}
 			continue;
 		}
 

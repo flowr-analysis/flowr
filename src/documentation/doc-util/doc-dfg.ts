@@ -32,11 +32,12 @@ export interface PrintDataflowGraphOptions {
 	readonly codeOpen?:           boolean;
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
+	readonly hideEnvInMermaid?:   boolean;
 }
 
 export async function printDfGraphForCode(shell: RShell, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
 export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, hideEnvInMermaid = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -48,7 +49,7 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing and normalization) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (incl. parse and normalize) within the generation environment.`;
 	const dfGraph = printDfGraph(result.dataflow.graph, mark);
 	let resultText = '\n\n';
 
@@ -73,8 +74,9 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 
 \`\`\`
 ${graphToMermaid({
-		graph:  result.dataflow.graph,
-		prefix: 'flowchart LR'
+		graph:               result.dataflow.graph,
+		prefix:              'flowchart LR', 
+		includeEnvironments: !hideEnvInMermaid
 	}).string}
 \`\`\`
 

@@ -69,7 +69,15 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		}
 
 		input = input.replaceAll(/\\/g, '\\\\');
-		return input.replaceAll(/\n/g, '\\\n').replaceAll(/ /g, '&nbsp;');
+		let source = input.replaceAll(/\n/g, '\\\n');
+		/* repeatedly replace all spaces but only at the beginning of a line */
+		let target = source;
+		do{
+			source = target;
+			/* or replace back to front */
+			target = source.replace(/^(?<leading>(&nbsp;)*) /m, '$<leading>&nbsp;');
+		} while(target !== source);
+		return target;
 	}
 
 	public getFormatString(_options?: FormatOptions): string {

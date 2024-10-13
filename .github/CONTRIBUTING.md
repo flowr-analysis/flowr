@@ -11,6 +11,7 @@ directly at <florian.sihler@uni-ulm.de>.
         - [Git-LFS Usage](#git-lfs-usage)
         - [Cloning the Repository](#cloning-the-repository)
     - [Git-Hooks](#git-hooks)
+    - [Linting and Testing](#linting-and-testing)
     - [Commits and Commit Messages](#commits-and-commit-messages)
         - [Commit Types](#commit-types)
         - [Commit Scopes](#commit-scopes)

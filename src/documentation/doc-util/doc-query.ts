@@ -147,6 +147,13 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 				}))`);
 			}
 			continue;
+		} else if(query === 'lineage') {
+			const out = queryResults as QueryResults<'lineage'>['lineage'];
+			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			for(const [criteria, lineage] of Object.entries(out.lineages)) {
+				result.push(`   ╰ ${criteria}: {${summarizeIdsIfTooLong([...lineage])}}`);
+			}
+			continue;
 		}
 
 		result.push(`Query: ${bold(query, formatter)}`);

@@ -38,6 +38,11 @@ export const StaticSliceQuerySchema = Joi.object({
 	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
 }).description('Slice query used to slice the dataflow graph');
 
+export const LineageQuerySchema = Joi.object({
+	type: Joi.string().valid('lineage').required().description('The type of the query.'),
+	id:   Joi.string().required().description('The ID of the node to get the lineage of.')
+}).description('Lineage query used to find the lineage of a node in the dataflow graph');
+
 
 export const SupportedQueriesSchema = Joi.alternatives(
 	CallContextQuerySchema,
@@ -45,7 +50,8 @@ export const SupportedQueriesSchema = Joi.alternatives(
 	IdMapQuerySchema,
 	NormalizedAstQuerySchema,
 	DataflowClusterQuerySchema,
-	StaticSliceQuerySchema
+	StaticSliceQuerySchema,
+	LineageQuerySchema
 ).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({

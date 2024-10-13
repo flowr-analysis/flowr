@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-13, 06:30:32 UTC presenting an overview of flowR's interfaces (v2.1.2, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-13, 09:47:46 UTC presenting an overview of flowR's interfaces (v2.1.2, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 14.17 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 15.00 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5424-tF6UET9WEqJF-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5571-hEO5OkZqrvoY-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.49 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.45 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 9.09 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.01 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 7.79 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.52 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -808,7 +808,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 6.43 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.27 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1330,7 +1330,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 0
+        "timing": 1
       },
       "kinds": {
         "visualize": {
@@ -1366,7 +1366,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 18.43 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 19.29 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1454,6 +1454,13 @@ For the definition of the hello message, please see it's implementation at [`./s
                         _Do not reconstruct the slice into readable code._
                     - **noMagicComments** boolean [optional]
                         _Should the magic comments (force-including lines within the slice) be ignored?_
+                - **.** object 
+                    _Lineage query used to find the lineage of a node in the dataflow graph_
+                    - **type** string [required]
+                        _The type of the query._
+                        Allows only the values: 'lineage'
+                    - **id** string [required]
+                        _The ID of the node to get the lineage of._
             - **.** alternatives 
                 _Virtual queries (used for structure)_
                 - **.** object 
@@ -1500,7 +1507,7 @@ For the definition of the hello message, please see it's implementation at [`./s
 <b>Lineage</b> Message (<code>request-lineage</code>) 
 <details>
 
-<summary style="color:gray"> View Details. <i>Obtain the lineage of a given slicing criterion.</i> </summary>
+<summary style="color:gray"> View Details. <i>([DEPRECATED](${FlowrWikiBaseRef}/Query%20API)) Obtain the lineage of a given slicing criterion.</i> </summary>
 
 ```mermaid
 sequenceDiagram
@@ -1520,6 +1527,11 @@ sequenceDiagram
 	
 ```
 
+
+
+
+> [!WARNING]
+> We deprecated the lineage request in favor of the `lineage` [Query](https://github.com/flowr-analysis/flowr/wiki//Query%20API).
 
 
 In order to retrieve the lineage of an object, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
@@ -1658,7 +1670,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 3.48 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 3.23 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1873,7 +1885,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.74 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.70 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r

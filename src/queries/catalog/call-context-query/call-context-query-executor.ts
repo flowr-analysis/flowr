@@ -107,7 +107,7 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 }
 
 function exactCallNameRegex(name: RegExp | string): RegExp {
-	return new RegExp(`^${name}$`);
+	return new RegExp(`^(${name})$`);
 }
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promotedQueries: CallContextQuery<RegExp>[], requiresCfg: boolean } {

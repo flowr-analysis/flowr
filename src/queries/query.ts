@@ -18,8 +18,10 @@ import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query
 import { executeDataflowClusterQuery } from './catalog/cluster-query/cluster-query-executor';
 import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
 import { executeStaticSliceClusterQuery } from './catalog/static-slice-query/static-slice-query-executor';
+import type { LineageQuery } from './catalog/lineage-query/lineage-query-format';
+import { executeLineageQuery } from './catalog/lineage-query/lineage-query-executor';
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | LineageQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -41,7 +43,8 @@ export const SupportedQueries = {
 	'id-map':           executeIdMapQuery,
 	'normalized-ast':   executeNormalizedAstQuery,
 	'dataflow-cluster': executeDataflowClusterQuery,
-	'static-slice':     executeStaticSliceClusterQuery
+	'static-slice':     executeStaticSliceClusterQuery,
+	'lineage':          executeLineageQuery
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

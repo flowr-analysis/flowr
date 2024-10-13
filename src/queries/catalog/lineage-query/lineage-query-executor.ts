@@ -6,7 +6,6 @@ import type {
 import { log } from '../../../util/log';
 import { getLineage } from '../../../cli/repl/commands/repl-lineage';
 
-/* TODO: deprecate the request */
 export function executeLineageQuery({ graph, ast }: BasicQueryData, queries: readonly LineageQuery[]): LineageQueryResult {
 	const start = Date.now();
 	const result: LineageQueryResult['lineages'] = {};

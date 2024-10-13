@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-12, 19:13:12 UTC presenting an overview of flowR's interfaces (v2.1.1, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-13, 06:30:32 UTC presenting an overview of flowR's interfaces (v2.1.2, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -54,7 +54,7 @@ The message looks like this:
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -157,7 +157,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 14.84 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 14.17 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -258,7 +258,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5476-Eg1pbZfCw8A5-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5424-tF6UET9WEqJF-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.51 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.49 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -357,7 +357,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 9.47 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.09 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -456,7 +456,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 6.78 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 7.79 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -663,7 +663,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -808,7 +808,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 6.48 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.43 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -952,7 +952,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -1071,7 +1071,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.22 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.18 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1189,7 +1189,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -1330,7 +1330,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 1
+        "timing": 0
       },
       "kinds": {
         "visualize": {
@@ -1366,7 +1366,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 19.71 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 18.43 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1549,7 +1549,7 @@ The first message is always a hello message.
   "type": "hello",
   "clientName": "client-0",
   "versions": {
-    "flowr": "2.1.1",
+    "flowr": "2.1.2",
     "r": "4.4.0"
   }
 }
@@ -1658,7 +1658,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 3.96 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 3.48 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 

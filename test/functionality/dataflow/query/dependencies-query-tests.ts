@@ -28,4 +28,14 @@ describe('Dependencies Query', withShell(shell => {
 	describe('Sourced files', () => {
 		testQuery('Single source', 'source("test/file.R")', { sourcedFiles: [{ nodeId: 3, functionName: 'source', file: 'test/file.R' }] });
 	});
+
+	describe('Read Files', () => {
+		testQuery('read.table', "read.table('test.csv')", { readData: [{ nodeId: 3, functionName: 'read.table', source: 'test.csv' }] });
+		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { readData: [{ nodeId: 5, functionName: 'gzfile', source: 'test.gz' }] });
+	});
+
+	describe('Write Files', () => {
+		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: 5, functionName: 'dump', destination: 'MyTextFile.txt' }] });
+		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: 3, functionName: 'cat', destination: 'stdout' }] });
+	});
 }));

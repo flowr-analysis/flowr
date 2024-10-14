@@ -1,28 +1,24 @@
 import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
-import { CallTargets } from './catalog/call-context-query/call-context-query-format';
+import { CallContextQueryDefinition  } from './catalog/call-context-query/call-context-query-format';
+
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
-import { executeCallContextQueries } from './catalog/call-context-query/call-context-query-executor';
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { executeDataflowQuery } from './catalog/dataflow-query/dataflow-query-executor';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
-import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor';
+import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
-import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
-import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import { bold, type OutputFormatter } from '../util/ansi';
-import { printAsMs } from '../util/time';
-import { asciiCallContext, summarizeIdsIfTooLong } from '../cli/repl/commands/repl-query';
+import { IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
+import type { NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { type OutputFormatter } from '../util/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import { graphToMermaidUrl } from '../util/mermaid/dfg';
-import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
-import Joi from 'joi';
+import type Joi from 'joi';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
 
@@ -40,71 +36,17 @@ type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
-interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
+export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
 	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:          Joi.ObjectSchema
 }
 
 export const SupportedQueries = {
-	'call-context': {
-		executor:        executeCallContextQueries,
-		asciiSummarizer: (formatter, processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'call-context'>['call-context'];
-			result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(asciiCallContext(formatter, out, processed));
-			return true;
-		},
-		schema: Joi.object({
-			type:           Joi.string().valid('call-context').required().description('The type of the query.'),
-			callName:       Joi.string().required().description('Regex regarding the function name!'),
-			callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
-			kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
-			subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
-			callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
-			includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-			linkTo:         Joi.object({
-				type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
-				callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
-			}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
-		}).description('Call context query used to find calls in the dataflow graph')
-	},
-	'dataflow': {
-		executor:        executeDataflowQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-			result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('dataflow').required().description('The type of the query.'),
-		}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!')
-	},
-	'id-map': {
-		executor:        executeIdMapQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'id-map'>['id-map'];
-			result.push(`Query: ${bold('id-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('id-map').required().description('The type of the query.'),
-		}).description('The id map query retrieves the id map from the normalized AST.')
-	},
-	'normalized-ast': {
-		executor:        executeNormalizedAstQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-			result.push(`Query: ${bold('normalized-ast', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
-		}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!')
-	}
+	'call-context':   CallContextQueryDefinition,
+	'dataflow':       DataflowQueryDefinition,
+	'id-map':         IdMapQueryDefinition,
+	'normalized-ast': NormalizedAstQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

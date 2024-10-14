@@ -69,7 +69,7 @@ export function assertQuery<
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const expectedNormalized = typeof expected === 'function' ? expected(info) : expected;
-			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the call context query does not match the expected result');
+			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
 			throw e;

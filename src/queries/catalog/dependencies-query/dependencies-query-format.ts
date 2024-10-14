@@ -12,13 +12,17 @@ export interface DependenciesQuery extends BaseQueryFormat {
 }
 
 export interface DependenciesQueryResult extends BaseQueryResult {
-    libraries:    (DependencyInfo & { libraryName: string })[]
-    sourcedFiles: (DependencyInfo & { file: string })[]
-    readData:     (DependencyInfo & { source: string })[]
-    writtenData:  (DependencyInfo & { destination: 'stdout' | string })[]
+    libraries:    LibraryInfo[]
+    sourcedFiles: SourceInfo[]
+    readData:     ReadInfo[]
+    writtenData:  WriteInfo[]
 }
 
 export interface DependencyInfo {
     nodeId:       NodeId
     functionName: string
 }
+export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
+export type SourceInfo = (DependencyInfo & { file: string })
+export type ReadInfo = (DependencyInfo & { source: string })
+export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })

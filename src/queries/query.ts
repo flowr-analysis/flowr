@@ -109,11 +109,13 @@ export const SupportedQueries = {
 	},
 	'dependencies': {
 		executor:        executeDependenciesQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+		asciiSummarizer: (_formatter, _processed, _queryResults, _result) => {
 			// TODO ascii summarizer
+			return false;
 		},
-		// TODO schema
-		schema: Joi.any()
+		schema: Joi.object({
+			type: Joi.string().valid('dependencies').required().description('The type of the query.'),
+		}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.')
 	}
 } as const satisfies SupportedQueries;
 

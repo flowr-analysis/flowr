@@ -25,6 +25,7 @@ import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './catalog/dependencies-query/dependencies-query-executor';
 import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
+import { printResultSection } from './catalog/dependencies-query/dependencies-query-format';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DependenciesQuery;
 
@@ -109,9 +110,14 @@ export const SupportedQueries = {
 	},
 	'dependencies': {
 		executor:        executeDependenciesQuery,
-		asciiSummarizer: (_formatter, _processed, _queryResults, _result) => {
-			// TODO ascii summarizer
-			return false;
+		asciiSummarizer: (formatter, _processed, queryResults, result) => {
+			const out = queryResults as QueryResults<'dependencies'>['dependencies'];
+			result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+			printResultSection('Libraries', out.libraries, result, l => `Library Name: ${l.libraryName}`);
+			printResultSection('Sourced Files', out.sourcedFiles, result, s => `Sourced File: ${s.file}`);
+			printResultSection('Read Data', out.readData, result, r => `Source: ${r.source}`);
+			printResultSection('Written Data', out.writtenData, result, w => `Destination: ${w.destination}`);
+			return true;
 		},
 		schema: Joi.object({
 			type: Joi.string().valid('dependencies').required().description('The type of the query.'),

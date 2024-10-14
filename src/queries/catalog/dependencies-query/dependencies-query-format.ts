@@ -26,3 +26,25 @@ export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
 export type SourceInfo = (DependencyInfo & { file: string })
 export type ReadInfo = (DependencyInfo & { source: string })
 export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })
+
+
+
+export function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics: (info: T) => string): void {
+	if(infos.length <= 0) {
+		return;
+	}
+	result.push(`   ╰ ${title}`);
+	const grouped = infos.reduce(function(groups: Map<string, T[]>, i) {
+		const array = groups.get(i.functionName);
+		if(array) {
+			array.push(i);
+		} else {
+			groups.set(i.functionName, [i]);
+		}
+		return groups;
+	}, new Map<string, T[]>());
+	for(const [functionName, infos] of grouped) {
+		result.push(`       ╰ ${functionName}`);
+		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}, ${sectionSpecifics(i)}`).join('\n'));
+	}
+}

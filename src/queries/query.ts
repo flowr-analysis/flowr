@@ -23,8 +23,8 @@ import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-p
 import { graphToMermaidUrl } from '../util/mermaid/dfg';
 import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
 import Joi from 'joi';
-import { executeDependenciesQuery } from './catalog/dependencies/dependencies-query-executor';
-import type { DependenciesQuery } from './catalog/dependencies/dependencies-query-format';
+import { executeDependenciesQuery } from './catalog/dependencies-query/dependencies-query-executor';
+import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DependenciesQuery;
 

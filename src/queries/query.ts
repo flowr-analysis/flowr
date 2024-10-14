@@ -1,5 +1,5 @@
 import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
-import { CallContextQueryDefinition  } from './catalog/call-context-query/call-context-query-format';
+import { CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
 
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
@@ -15,12 +15,18 @@ import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
 import { IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
 import type { NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
 import { NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
+import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
+import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
+import { StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
+import type { LineageQuery } from './catalog/lineage-query/lineage-query-format';
+import { LineageQueryDefinition } from './catalog/lineage-query/lineage-query-format';
 import { type OutputFormatter } from '../util/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type Joi from 'joi';
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | LineageQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -43,10 +49,13 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 }
 
 export const SupportedQueries = {
-	'call-context':   CallContextQueryDefinition,
-	'dataflow':       DataflowQueryDefinition,
-	'id-map':         IdMapQueryDefinition,
-	'normalized-ast': NormalizedAstQueryDefinition
+	'call-context':     CallContextQueryDefinition,
+	'dataflow':         DataflowQueryDefinition,
+	'id-map':           IdMapQueryDefinition,
+	'normalized-ast':   NormalizedAstQueryDefinition,
+	'dataflow-cluster': ClusterQueryDefinition,
+	'static-slice':     StaticSliceQueryDefinition,
+	'lineage':          LineageQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

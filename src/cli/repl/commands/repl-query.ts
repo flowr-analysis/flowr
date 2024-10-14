@@ -4,22 +4,14 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
-import type { OutputFormatter } from '../../../util/ansi';
-import { bold, italic } from '../../../util/ansi';
-
-import type { CallContextQuerySubKindResult } from '../../../queries/catalog/call-context-query/call-context-query-format';
+import { italic } from '../../../util/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { SupportedQueries , executeQueries } from '../../../queries/query';
+import {  executeQueries } from '../../../queries/query';
 
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
-import type { BaseQueryMeta, BaseQueryResult } from '../../../queries/base-query-format';
 import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { BuiltIn } from '../../../dataflow/environments/built-in';
-
-import { printAsMs } from '../../../util/time';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -71,99 +63,6 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	};
 }
 
-function nodeString(id: NodeId, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	if(id === BuiltIn) {
-		return italic('built-in', formatter);
-	}
-	const node = processed.normalize.idMap.get(id);
-	if(node === undefined) {
-		return `UNKNOWN: ${id}`;
-	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]})`;
-}
-
-function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
-		const node = processed.normalize.idMap.get(id);
-		if(node === undefined) {
-			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
-			continue;
-		}
-		let line = nodeString(id, formatter, processed);
-		if(calls.length > 0) {
-			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		if(linkedIds.length > 0) {
-			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		if(aliasRoots.length > 0) {
-			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		result.push(line);
-	}
-	return result.join(', ');
-}
-
-export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	/* traverse over 'kinds' and within them 'subkinds' */
-	const result: string[] = [];
-	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
-		result.push(`   ╰ ${bold(kind, formatter)}`);
-		for(const [subkind, values] of Object.entries(subkinds)) {
-			result.push(`     ╰ ${bold(subkind, formatter)}: ${asciiCallContextSubHit(formatter, values, processed)}`);
-		}
-	}
-	return result.join('\n');
-}
-
-export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
-	const naive = ids.join(', ');
-	if(naive.length <= 20) {
-		return naive;
-	}
-	let acc = '';
-	let i = 0;
-	while(acc.length <= 20) {
-		acc += ids[i++] + ', ';
-	}
-	if(i < ids.length) {
-		acc += '... (see JSON below)';
-	}
-	return acc;
-}
-
-export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	const result: string[] = [];
-
-	for(const [query, queryResults] of Object.entries(results)) {
-		if(query === '.meta') {
-			continue;
-		}
-
-		const queryType = SupportedQueries[query as SupportedQueryTypes];
-		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
-			continue;
-		}
-
-		result.push(`Query: ${bold(query, formatter)}`);
-
-		let timing = -1;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		for(const [key, value] of Object.entries(queryResults)) {
-			if(key === '.meta') {
-				timing = (value as BaseQueryMeta).timing;
-				continue;
-			}
-			result.push(` ╰ ${key}: ${JSON.stringify(value)}`);
-		}
-		result.push(`  - Took ${printAsMs(timing, 0)}`);
-	}
-
-	result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
-	return formatter.format(result.join('\n'));
-}
-
 export const queryCommand: ReplCommand = {
 	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
 	usageExample: ':query "<query>" <code>',
@@ -174,7 +73,8 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, shell, output);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(output.formatter, totalEnd - totalStart, results.query, results.processed));
+			output.stdout(JSON.stringify(results));
+			output.stdout('Total time: ' + (totalEnd - totalStart) + 'ms');
 		}
 	}
 };

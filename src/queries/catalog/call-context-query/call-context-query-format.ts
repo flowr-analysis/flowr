@@ -3,9 +3,9 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { executeCallContextQueries } from './call-context-query-executor';
 import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
-import { asciiCallContext } from '../../../cli/repl/commands/repl-query';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
+import { asciiCallContext } from '../../../documentation/doc-util/doc-query';
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */

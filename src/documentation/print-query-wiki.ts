@@ -18,6 +18,9 @@ import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
+import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
+import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -93,13 +96,14 @@ registerQueryDocumentation('dataflow', {
 	functionName:     executeDataflowQuery.name,
 	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the dataflow graph of the code:
+Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
 	}], { showCode: true })
 }
@@ -114,15 +118,83 @@ registerQueryDocumentation('normalized-ast', {
 	functionName:     executeNormalizedAstQuery.name,
 	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 Maybe you want to handle only the result of the query execution, or you just need the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) again.
 This query type does exactly that!
 
-Using the example code from above, the following query returns the normalized AST of the code:
+Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'normalized-ast'
 	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('lineage', {
+	name:             'Lineage Query',
+	type:             'active',
+	shortDescription: 'Returns lineage of a criteria.',
+	functionName:     executeLineageQuery.name,
+	functionFile:     '../queries/catalog/lineage-query/lineage-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nx';
+
+		return `
+This query calculates the _lineage_ of a given slicing criterion. The lineage traces back all parts that the
+respective variables stems from given the reads, definitions, and returns in the dataflow graph.
+
+To understand this, let's start with a simple example query, to get the lineage of the second use of \`x\` in the following code:
+${codeBlock('r', exampleCode)}
+ 
+For this, we use the criterion \`2@x\` (which is the first use of \`x\` in the second line).
+ 
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'lineage',
+		criterion: '2@x'
+	}], { showCode: false })
+}
+
+In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
+In general the lineage is smaller and makes no executability guarantees. 
+It is just a quick and neither complete nor sound way to get information on where the variable originates from.
+
+This query replaces the old [\`request-lineage\`](${FlowrWikiBaseRef}/Interface#message-request-lineage) message.
+
+		`;
+	}
+});
+
+registerQueryDocumentation('dataflow-cluster', {
+	name:             'Dataflow Cluster Query',
+	type:             'active',
+	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
+	functionName:     executeDataflowClusterQuery.name,
+	functionFile:     '../queries/catalog/cluster-query/cluster-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleA = 'x <- 1; x';
+		const exampleB = 'x <- 1; y';
+		return `
+This query automatically calculates clusters in flowR's dataflow graph 
+and returns a list of all clusters found. 
+Clusters are to be interpreted as literal clusters on the graph traversing
+edges in both directions. From this perspective, 
+the code \`${exampleA}\` has one cluster (given that all code is related), 
+while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
+
+${details('Example <code>' + exampleA + '</code>',  
+		await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
+${details('Example <code>' + exampleB + '</code>',
+		await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
+
+Using the example code from above, the following query returns all clusters:
+${
+	await showQuery(shell, exampleQueryCode, [{
+		type: 'dataflow-cluster'
+	}], { showCode: false })
 }
 		`;
 	}
@@ -135,12 +207,13 @@ registerQueryDocumentation('id-map', {
 	functionName:     executeIdMapQuery.name,
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
 		return `
 This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
 
-Using the example code from above, the following query returns all nodes from the code:
+Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleQueryCode, [{
+	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
 	}], { showCode: true })
 }
@@ -205,6 +278,51 @@ ${
 
 Now, the results no longer contain calls to \`plot\` that are not defined locally.
 
+		`;
+	}
+});
+
+
+registerQueryDocumentation('static-slice', {
+	name:             'Static Slice Query',
+	type:             'active',
+	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.',
+	functionName:     executeStaticSliceClusterQuery.name,
+	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\ny <- 2\nx';
+		return `
+To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
+return of the call) that you want to slice the dataflow graph for. 
+Given this, the slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
+To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
+
+To exemplify the capabilities, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the parts required for the use of \`x\` in the last line, you can use the following query:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type:     'static-slice',
+		criteria: ['3@x']
+	}], { showCode: false })
+}
+
+In general you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
+you can use the \`noReconstruction\` flag.
+
+${
+	details('No Reconstruction Example',
+		await showQuery(shell, exampleCode, [{
+			type:             'static-slice',
+			criteria:         ['3@x'],
+			noReconstruction: true
+		}], { showCode: false })
+	)
+}
+
+You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
+This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
 		`;
 	}
 });

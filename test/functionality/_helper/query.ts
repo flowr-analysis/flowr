@@ -47,8 +47,12 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
 export function assertQuery<
 	Queries extends Query,
 	VirtualArguments extends VirtualCompoundConstraint<Queries['type']> = VirtualCompoundConstraint<Queries['type']>
->(name: string | TestLabel, shell: RShell, code: string, queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[], expected:
-	QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => QueryResultsWithoutMeta<Queries>)
+>(
+	name: string | TestLabel,
+	shell: RShell,
+	code: string,
+	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
+	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>))
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
@@ -68,7 +72,7 @@ export function assertQuery<
 		/* expect them to be deeply equal */
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const expectedNormalized = typeof expected === 'function' ? expected(info) : expected;
+			const expectedNormalized = typeof expected === 'function' ? await expected(info) : expected;
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the call context query does not match the expected result');
 		} catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));

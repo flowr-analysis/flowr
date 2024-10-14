@@ -3,9 +3,9 @@ import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/d
 import { executeIdMapQuery } from './id-map-query-executor';
 import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
-import { summarizeIdsIfTooLong } from '../../../cli/repl/commands/repl-query';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
+import { summarizeIdsIfTooLong } from '../../../documentation/doc-util/doc-query';
 
 export interface IdMapQuery extends BaseQueryFormat {
 	readonly type: 'id-map';

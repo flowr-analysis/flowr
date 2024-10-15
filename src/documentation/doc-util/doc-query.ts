@@ -1,6 +1,7 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
-import { executeQueries } from '../../queries/query';
+import { SupportedQueries , executeQueries } from '../../queries/query';
+
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
@@ -15,10 +16,7 @@ import { printAsMs } from '../../util/time';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { BuiltIn } from '../../dataflow/environments/built-in';
-import { graphToMermaidUrl } from '../../util/mermaid/dfg';
-import { normalizedAstToMermaidUrl } from '../../util/mermaid/ast';
-import type { StaticSliceQuery } from '../../queries/catalog/static-slice-query/static-slice-query-format';
-import type { BaseQueryMeta } from '../../queries/base-query-format';
+import type { BaseQueryMeta, BaseQueryResult } from '../../queries/base-query-format';
 import { textWithTooltip } from './doc-hover-over';
 import type { CallContextQuerySubKindResult } from '../../queries/catalog/call-context-query/call-context-query-format';
 
@@ -61,7 +59,7 @@ function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly Ca
 	return result.join(', ');
 }
 
-function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	/* traverse over 'kinds' and within them 'subkinds' */
 	const result: string[] = [];
 	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
@@ -73,7 +71,7 @@ function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'cal
 	return result.join('\n');
 }
 
-function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
+export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
 		return naive;
@@ -96,63 +94,9 @@ export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs:
 		if(query === '.meta') {
 			continue;
 		}
-		if(query === 'call-context') {
-			const out = queryResults as QueryResults<'call-context'>['call-context'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(asciiCallContext(formatter, out, processed));
-			continue;
-		} else if(query === 'dataflow') {
-			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
-			continue;
-		} else if(query === 'id-map') {
-			const out = queryResults as QueryResults<'id-map'>['id-map'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
-			continue;
-		} else if(query === 'normalized-ast') {
-			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
-			continue;
-		} else if(query === 'static-slice') {
-			const out = queryResults as QueryResults<'static-slice'>['static-slice'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			for(const [fingerprint, obj] of Object.entries(out.results)) {
-				const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;
-				const addons = [];
-				if(noReconstruction) {
-					addons.push('no reconstruction');
-				}
-				if(noMagicComments) {
-					addons.push('no magic comments');
-				}
-				result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
-				if('reconstruct' in obj) {
-					result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + obj.reconstruct.code.split('\n').join('\\n') + '</code>');
-				} else {
-					result.push(`     ╰ Id List: {${summarizeIdsIfTooLong([...obj.slice.result])}}`);
-				}
-			}
-			continue;
-		} else if(query === 'dataflow-cluster') {
-			const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
-			result.push(`Query: ${bold(query, formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
-			result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '' : 's'}`);
-			for(const cluster of out.clusters) {
-				const unknownSideEffects = cluster.hasUnknownSideEffects ? '(has unknown side effect)' : '';
-				result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(cluster.members)}} ([marked](${
-					graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
-				}))`);
-			}
-			continue;
-		} else if(query === 'lineage') {
-			const out = queryResults as QueryResults<'lineage'>['lineage'];
-			result.push(`Query: ${bold(query, formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			for(const [criteria, lineage] of Object.entries(out.lineages)) {
-				result.push(`   ╰ ${criteria}: {${summarizeIdsIfTooLong([...lineage])}}`);
-			}
+
+		const queryType = SupportedQueries[query as SupportedQueryTypes];
+		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
 			continue;
 		}
 

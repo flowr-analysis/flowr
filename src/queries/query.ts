@@ -1,25 +1,30 @@
 import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
+import { CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
+
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
-import { executeCallContextQueries } from './catalog/call-context-query/call-context-query-executor';
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { executeDataflowQuery } from './catalog/dataflow-query/dataflow-query-executor';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
-import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor';
+import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
-import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
-import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
+import type { NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
 import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
-import { executeDataflowClusterQuery } from './catalog/cluster-query/cluster-query-executor';
+import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
 import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
-import { executeStaticSliceClusterQuery } from './catalog/static-slice-query/static-slice-query-executor';
+import { StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
 import type { LineageQuery } from './catalog/lineage-query/lineage-query-format';
-import { executeLineageQuery } from './catalog/lineage-query/lineage-query-executor';
+import { LineageQueryDefinition } from './catalog/lineage-query/lineage-query-format';
+import { type OutputFormatter } from '../util/ansi';
+import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type Joi from 'joi';
 
 export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | LineageQuery;
 
@@ -34,29 +39,35 @@ export interface BasicQueryData {
 export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
 
 type SupportedQueries = {
-	[QueryType in Query['type']]: QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	[QueryType in Query['type']]: SupportedQuery<QueryType>
+}
+
+export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
+	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	schema:          Joi.ObjectSchema
 }
 
 export const SupportedQueries = {
-	'call-context':     executeCallContextQueries,
-	'dataflow':         executeDataflowQuery,
-	'id-map':           executeIdMapQuery,
-	'normalized-ast':   executeNormalizedAstQuery,
-	'dataflow-cluster': executeDataflowClusterQuery,
-	'static-slice':     executeStaticSliceClusterQuery,
-	'lineage':          executeLineageQuery
+	'call-context':     CallContextQueryDefinition,
+	'dataflow':         DataflowQueryDefinition,
+	'id-map':           IdMapQueryDefinition,
+	'normalized-ast':   NormalizedAstQueryDefinition,
+	'dataflow-cluster': ClusterQueryDefinition,
+	'static-slice':     StaticSliceQueryDefinition,
+	'lineage':          LineageQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
-export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]>;
+export type QueryResult<Type extends Query['type']> = ReturnType<typeof SupportedQueries[Type]['executor']>;
 
 export function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, ...queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
 	/* every query must have the same type */
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
-	const executor = SupportedQueries[queries[0].type];
-	guard(executor !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
+	const query = SupportedQueries[queries[0].type];
+	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
+	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<

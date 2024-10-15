@@ -7,7 +7,8 @@ import { splitAtEscapeSensitive } from '../../../util/args';
 import { italic } from '../../../util/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { executeQueries } from '../../../queries/query';
+import {  executeQueries } from '../../../queries/query';
+
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';

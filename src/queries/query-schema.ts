@@ -1,58 +1,7 @@
 import Joi from 'joi';
-import { CallTargets } from './catalog/call-context-query/call-context-query-format';
+import { SupportedQueries } from './query';
 
-export const CallContextQuerySchema = Joi.object({
-	type:           Joi.string().valid('call-context').required().description('The type of the query.'),
-	callName:       Joi.string().required().description('Regex regarding the function name!'),
-	callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
-	kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
-	subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
-	callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
-	includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-	linkTo:         Joi.object({
-		type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
-		callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
-	}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
-}).description('Call context query used to find calls in the dataflow graph');
-
-export const DataflowQuerySchema = Joi.object({
-	type: Joi.string().valid('dataflow').required().description('The type of the query.'),
-}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!');
-
-export const IdMapQuerySchema = Joi.object({
-	type: Joi.string().valid('id-map').required().description('The type of the query.'),
-}).description('The id map query retrieves the id map from the normalized AST.');
-
-export const NormalizedAstQuerySchema = Joi.object({
-	type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
-}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!');
-
-export const DataflowClusterQuerySchema = Joi.object({
-	type: Joi.string().valid('dataflow-cluster').required().description('The type of the query.'),
-}).description('The cluster query calculates and returns all clusters in the dataflow graph.');
-
-export const StaticSliceQuerySchema = Joi.object({
-	type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
-	criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
-	noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
-	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
-}).description('Slice query used to slice the dataflow graph');
-
-export const LineageQuerySchema = Joi.object({
-	type: Joi.string().valid('lineage').required().description('The type of the query.'),
-	id:   Joi.string().required().description('The ID of the node to get the lineage of.')
-}).description('Lineage query used to find the lineage of a node in the dataflow graph');
-
-
-export const SupportedQueriesSchema = Joi.alternatives(
-	CallContextQuerySchema,
-	DataflowQuerySchema,
-	IdMapQuerySchema,
-	NormalizedAstQuerySchema,
-	DataflowClusterQuerySchema,
-	StaticSliceQuerySchema,
-	LineageQuerySchema
-).description('Supported queries');
+export const SupportedQueriesSchema = Joi.alternatives(Object.values(SupportedQueries).map(q => q.schema)).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({
 	type:            Joi.string().valid('compound').required().description('The type of the query.'),

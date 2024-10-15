@@ -5,6 +5,12 @@ import type {
 	DEFAULT_SLICING_PIPELINE
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
+import type { QueryResults, SupportedQuery } from '../../query';
+import { bold } from '../../../util/ansi';
+import { printAsMs } from '../../../util/time';
+import Joi from 'joi';
+import { executeStaticSliceClusterQuery } from './static-slice-query-executor';
+import { summarizeIdsIfTooLong } from '../../../documentation/doc-util/doc-query';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -30,3 +36,34 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
 	>
 }
+
+export const StaticSliceQueryDefinition = {
+	executor:        executeStaticSliceClusterQuery,
+	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
+		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		for(const [fingerprint, obj] of Object.entries(out.results)) {
+			const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;
+			const addons = [];
+			if(noReconstruction) {
+				addons.push('no reconstruction');
+			}
+			if(noMagicComments) {
+				addons.push('no magic comments');
+			}
+			result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
+			if('reconstruct' in obj) {
+				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + obj.reconstruct.code.split('\n').join('\\n') + '</code>');
+			} else {
+				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong([...obj.slice.result])}}`);
+			}
+		}
+		return true;
+	},
+	schema: Joi.object({
+		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
+		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
+		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
+		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
+	}).description('Slice query used to slice the dataflow graph')
+} as const satisfies SupportedQuery<'static-slice'>;

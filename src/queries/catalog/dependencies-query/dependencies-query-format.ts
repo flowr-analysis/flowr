@@ -8,8 +8,10 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
-	{ name: 'library', argIdx: 0, argName: 'package' },
-	{ name: 'require', argIdx: 0, argName: 'package' }
+	{ name: 'library',         argIdx: 0, argName: 'package' },
+	{ name: 'require',         argIdx: 0, argName: 'package' },
+	{ name: 'loadNamespace',   argIdx: 0, argName: 'package' },
+	{ name: 'attachNamespace', argIdx: 0, argName: 'ns' },
 ] as const;
 export const SourceFunctions: FunctionInfo[] = [
 	{ name: 'source', argIdx: 0, argName: 'file' }

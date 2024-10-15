@@ -32,7 +32,7 @@ export const LineageQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type: Joi.string().valid('lineage').required().description('The type of the query.'),
-		id:   Joi.string().required().description('The ID of the node to get the lineage of.')
+		type:      Joi.string().valid('lineage').required().description('The type of the query.'),
+		criterion: Joi.string().required().description('The slicing criterion of the node to get the lineage of.')
 	}).description('Lineage query used to find the lineage of a node in the dataflow graph')
 } as const satisfies SupportedQuery<'lineage'>;

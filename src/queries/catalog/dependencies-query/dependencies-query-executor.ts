@@ -20,6 +20,8 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 
 const SupportedVertexTypes = [RType.String, RType.Logical, RType.Number];
 
+const Unknown = 'unknown';
+
 export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
 	if(queries.length !== 1) {
 		log.warn('Dependencies query expects only up to one query, but got ', queries.length);
@@ -43,17 +45,17 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
-		libraryName:  argument as string
+		libraryName:  argument ?? Unknown
 	}), [RType.Symbol]);
 	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
-		file:         argument as string
+		file:         argument ?? Unknown
 	}));
 	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
-		source:       argument as string
+		source:       argument ?? Unknown
 	}));
 	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
@@ -107,7 +109,7 @@ function getArgumentValue({ graph }: BasicQueryData, vertex: DataflowGraphVertex
 			}
 			if(valueNode) {
 				const allowedTypes = [...SupportedVertexTypes, ...additionalAllowedTypes ?? []];
-				return allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : 'unknown';
+				return allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : Unknown;
 			}
 		}
 	}

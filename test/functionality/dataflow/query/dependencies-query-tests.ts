@@ -47,9 +47,37 @@ describe('Dependencies Query', withShell(shell => {
 	});
 
 	describe('Libraries', () => {
-		testQuery('Single library (symbol)', 'library(testLibrary)', { libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }] });
-		testQuery('Single library (string)', 'library("testLibrary")', { libraries: [{ nodeId: '1@library', functionName: 'library', libraryName: 'testLibrary' }] });
-		testQuery('Single require (string)', 'require("testLibrary")', { libraries: [{ nodeId: '1@require', functionName: 'require', libraryName: 'testLibrary' }] });
+		for(const [loadFn, str] of [
+			['library', false],
+			['library', true],
+			['require', true],
+			['loadNamespace', true],
+			['attachNamespace', true]
+			/* support attach, support with, support pacman::p_load and the like? */
+		] as const) {
+			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, {
+				libraries: [{ nodeId: '1@' + loadFn, functionName: loadFn, libraryName: 'a' }]
+			});
+		}
+
+		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { libraries: [
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '3@require', functionName: 'require', libraryName: 'c' }
+		] });
+
+		testQuery('Call with Alias', 'foo <- library\nfoo(x)', { libraries: [
+			{ nodeId: '2@foo', functionName: 'foo', libraryName: 'x' }
+		] });
+
+
+		/* currently not supported */
+		testQuery('Using a vector to load', 'lapply(c("a", "b", "c"), library, character.only = TRUE)', { libraries: [
+			/* { nodeId: '1@library', functionName: 'library', libraryName: 'a' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' } */
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown' }
+		] });
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
@@ -100,6 +128,7 @@ describe('Dependencies Query', withShell(shell => {
 
 	describe('Write Files', () => {
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }] });
+		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
 
 		describe('Custom', () => {

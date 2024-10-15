@@ -43,7 +43,6 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
  * @param code     - R code to execute the query on
  * @param queries  - Queries to execute
  * @param expected - Expected result of the queries (without attached meta-information like timing)
- * @param validateSchema - Whether the queries' JSON schema should be validated on the input
  */
 export function assertQuery<
 	Queries extends Query,
@@ -53,29 +52,26 @@ export function assertQuery<
 	shell: RShell,
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
-	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
-	validateSchema = true
+	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>))
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
 	it(effectiveName, async() => {
-		if(validateSchema) {
-			for(const query of queries) {
-				if(query.type === 'compound') {
-					continue;
+		for(const query of queries) {
+			if(query.type === 'compound') {
+				continue;
+			}
+			const queryType = SupportedQueries[query.type];
+			const queryString = JSON.stringify(query, (_key, value) => {
+				if(value instanceof RegExp) {
+					return value.toString();
 				}
-				const queryType = SupportedQueries[query.type];
-				const queryString = JSON.stringify(query, (_key, value) => {
-					if(value instanceof RegExp) {
-						return value.toString();
-					}
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-					return value;
-				});
-				const validationResult = queryType.schema.validate(JSON.parse(queryString));
-				if(validationResult.error) {
-					assert.fail(`Invalid query: ${validationResult.error.message}`);
-				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return value;
+			});
+			const validationResult = queryType.schema.validate(JSON.parse(queryString));
+			if(validationResult.error) {
+				assert.fail(`Invalid query: ${validationResult.error.message}`);
 			}
 		}
 

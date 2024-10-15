@@ -19,13 +19,18 @@ export function executeStaticSliceClusterQuery({ graph, ast }: BasicQueryData, q
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
+		const sliceStart = Date.now();
 		const slice = staticSlicing(graph, ast, criteria);
+		const sliceEnd = Date.now();
 		if(noReconstruction) {
-			results[key] = { slice };
+			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
+			const reconstructStart = Date.now();
+			const reconstruct = reconstructToCode(ast, slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstructEnd = Date.now();
 			results[key] = {
-				slice,
-				reconstruct: reconstructToCode(ast, slice.result, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect))
+				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },
+				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart } }
 			};
 		}
 	}

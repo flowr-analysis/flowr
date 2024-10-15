@@ -18,21 +18,12 @@ import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
-	const normalized = {} as QueryResultsWithoutMeta<Queries>;
-	for(const key of Object.keys(result) as (keyof QueryResults<Queries['type']>)[]) {
+	return JSON.parse(JSON.stringify(result, (key: unknown, value: unknown) => {
 		if(key === '.meta') {
-			continue;
+			return undefined;
 		}
-		const normalizedChild = {} as Omit<QueryResults<Queries['type']>, '.meta'>[typeof key];
-		for(const childKey of Object.keys(result[key]) as (keyof QueryResults<Queries['type']>[typeof key])[]) {
-			if(childKey === '.meta') {
-				continue;
-			}
-			normalizedChild[childKey] = result[key][childKey];
-		}
-		normalized[key] = normalizedChild;
-	}
-	return normalized;
+		return value;
+	})) as QueryResultsWithoutMeta<Queries>;
 }
 
 /**
@@ -89,8 +80,8 @@ export function assertQuery<
 
 		/* expect them to be deeply equal */
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const expectedNormalized = typeof expected === 'function' ? await expected(info) : expected;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(info) : expected);
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));

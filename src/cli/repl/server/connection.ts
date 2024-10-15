@@ -18,6 +18,7 @@ import { cfg2quads, extractCFG } from '../../../util/cfg/cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
+import type { ParseStepOutput } from '../../../core/steps/all/core/00-parse';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
@@ -163,7 +164,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as string, StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as ParseStepOutput, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}

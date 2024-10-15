@@ -930,7 +930,8 @@ ${
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
 
 ${ (() => {
-			guard(Object.keys(result.dataflow).length === 7, () => 'Update Dataflow Documentation!'); return ''; 
+			/* this includes the meta field for timing */
+			guard(Object.keys(result.dataflow).length === 8, () => 'Update Dataflow Documentation!'); return ''; 
 		})() }
 
 There are three sets of references.

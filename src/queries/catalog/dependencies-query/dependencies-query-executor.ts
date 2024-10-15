@@ -73,8 +73,9 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string): CallContextQuery[] {
 	return functions.map(f => ({
 		type:           'call-context',
-		callName:       `^${f.name}$`,
+		callName:       f.name,
 		includeAliases: true,
+		callNameExact:  true,
 		subkind:        f.name,
 		kind
 	}));

@@ -2,8 +2,13 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
-export const LibraryFunctions = ['library', 'require'] as const;
-export const SourceFunctions = ['source'] as const;
+export const LibraryFunctions: FunctionInfo[] = [
+	{ name: 'library', argIdx: 0, argName: 'package' },
+	{ name: 'require', argIdx: 0, argName: 'package' }
+] as const;
+export const SourceFunctions: FunctionInfo[] = [
+	{ name: 'source', argIdx: 0, argName: 'file' }
+] as const;
 export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.table', argIdx: 0, argName: 'file' },
 	{ name: 'read.csv', argIdx: 0, argName: 'file' },

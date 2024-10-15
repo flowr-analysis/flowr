@@ -25,6 +25,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace } from '../../../../../../util/log';
+import fs from 'fs';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -76,6 +77,14 @@ export function processSourceCall<OtherInfo>(
 }
 
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
+	if(request.request === 'file') {
+		/* check if the file exists and if not, fail */
+		if(!fs.existsSync(request.content)) {
+			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
+			information.graph.markIdForUnknownSideEffects(rootId);
+			return information;
+		}
+	}
 	const executor = new RShellExecutor();
 
 	// parse, normalize and dataflow the sourced file

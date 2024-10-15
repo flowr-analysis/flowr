@@ -6,7 +6,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/defa
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { QueryResults, Query, QueryResultsWithoutMeta } from '../../../src/queries/query';
-import { executeQueries } from '../../../src/queries/query';
+import { SupportedQueries , executeQueries } from '../../../src/queries/query';
 import { assert } from 'chai';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
 import type { TestLabel } from './label';
@@ -57,6 +57,24 @@ export function assertQuery<
 	const effectiveName = decorateLabelContext(name, ['query']);
 
 	it(effectiveName, async() => {
+		for(const query of queries) {
+			if(query.type === 'compound') {
+				continue;
+			}
+			const queryType = SupportedQueries[query.type];
+			const queryString = JSON.stringify(query, (_key, value) => {
+				if(value instanceof RegExp) {
+					return value.toString();
+				}
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				return value;
+			});
+			const validationResult = queryType.schema.validate(JSON.parse(queryString));
+			if(validationResult.error) {
+				assert.fail(`Invalid query: ${validationResult.error.message}`);
+			}
+		}
+
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			shell,
 			request: requestFromInput(code),
@@ -73,7 +91,7 @@ export function assertQuery<
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const expectedNormalized = typeof expected === 'function' ? await expected(info) : expected;
-			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the call context query does not match the expected result');
+			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
 			throw e;

@@ -92,7 +92,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	let dataflow: DataflowInformation;
 	try {
 		const parsed = retrieveParseDataFromRCode(request, executor);
-		normalized = normalize(parsed, getId) as NormalizedAst<OtherInfo & ParentInformation>;
+		normalized = normalize({ parsed }, getId) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

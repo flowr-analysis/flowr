@@ -5,12 +5,13 @@ import { decorateAst , deterministicCountingIdGenerator } from '../../model/proc
 import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
+import type { ParseStepOutput } from '../../../../../core/steps/all/core/00-parse';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
-export function normalize(jsonString: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+export function normalize({ parsed }: ParseStepOutput, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
-	const object = convertPreparedParsedData(prepareParsedData(jsonString));
+	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
 	return decorateAst(normalizeRootObjToAst(data, object), getId);
 }

@@ -7,6 +7,7 @@ import type { RShellExecutor } from '../../../../r-bridge/shell-executor';
 import type { RShell } from '../../../../r-bridge/shell';
 import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever';
 import { retrieveParseDataFromRCode } from '../../../../r-bridge/retriever';
+import type { QuadSerializationConfiguration } from '../../../../util/quads';
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} or {@link RShellExecutor} connection to be used to obtain the original parses AST of the R code */
@@ -15,12 +16,17 @@ export interface ParseRequiredInput {
 	readonly request: RParseRequests
 }
 
-function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
+export interface ParseStepOutput {
+	/** The parsed AST of the R code as given by the R parse side */
+	readonly parsed: string
+}
+
+async function processor(_results: unknown, input: Partial<ParseRequiredInput>): Promise<ParseStepOutput> {
 	/* in the future, we want to expose all cases */
 	if(Array.isArray(input.request)) {
-		return retrieveParseDataFromRCode(input.request[0] as RParseRequest, input.shell as RShell);
+		return { parsed: await retrieveParseDataFromRCode(input.request[0] as RParseRequest, input.shell as RShell) };
 	} else {
-		return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell);
+		return { parsed: await retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell) };
 	}
 }
 
@@ -32,8 +38,8 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	executed:          PipelineStepStage.OncePerFile,
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     text => text,
-		[StepOutputFormat.RdfQuads]: parseToQuads
+		[StepOutputFormat.Json]:     JSON.stringify,
+		[StepOutputFormat.RdfQuads]: ({ parsed }, config: QuadSerializationConfiguration) => parseToQuads(parsed, config)
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput

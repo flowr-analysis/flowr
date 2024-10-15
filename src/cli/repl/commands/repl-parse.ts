@@ -120,7 +120,7 @@ export const parseCommand: ReplCommand = {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps();
 
-		const object = convertPreparedParsedData(prepareParsedData(result.parse));
+		const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed));
 
 		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 	}

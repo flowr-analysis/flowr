@@ -473,7 +473,7 @@ export interface ReconstructionResult {
 	linesWithAutoSelected: number
 }
 
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number) {
+function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], linesWithAutoSelected: number): ReconstructionResult  {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
 		// remove outer block
 		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), linesWithAutoSelected };

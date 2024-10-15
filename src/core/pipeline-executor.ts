@@ -190,10 +190,11 @@ export class PipelineExecutor<P extends Pipeline> {
 		name:   typeof expectedStepName extends undefined ? PipelineStepName : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
+		const start = Date.now();
 		const [step, result] = this._doNextStep(expectedStepName);
 		const awaitedResult = await result;
 
-		this.output[step as PipelineStepNames<P>] = awaitedResult;
+		this.output[step as PipelineStepNames<P>] = { ...awaitedResult, '.meta': { timing: Date.now() - start } };
 		this.stepCounter++;
 
 		return { name: step as PassedName, result: awaitedResult };
@@ -210,7 +211,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`);
 		}
 
-		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, PipelineStepName>];
+		return [step.name, step.processor(this.output, this.input) as PipelineStepOutputWithName<P, PipelineStepName>];
 	}
 
 	/**
@@ -235,7 +236,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>
 	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
-	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P>  >
+	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToRequestStage} if necessary.
 	 * @param canSwitchStage - If true, automatically switch to the request stage if necessary

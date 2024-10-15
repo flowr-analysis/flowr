@@ -116,7 +116,7 @@ export class BenchmarkSlicer {
 			autoSelectIf
 		});
 
-		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code');
+		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
 

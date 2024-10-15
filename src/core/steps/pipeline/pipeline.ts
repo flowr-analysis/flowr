@@ -27,10 +27,23 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
 
+/**
+ * Meta-information attached to every step result
+ */
+export interface PipelinePerStepMetaInformation {
+	readonly '.meta': {
+		/**
+		 * The time it took to execute the step in milliseconds,
+		 * the required accuracy is dependent on the measuring system, but usually at around 1 ms.
+		 */
+		readonly timing: number
+	}
+}
+
 export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
-export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
+export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
 
 
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
@@ -43,14 +56,16 @@ export type PipelinePerRequestInput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepWithName<P, K>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
 }[PipelineStepNames<P>]
 
+
+
 export type PipelineOutput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
 }
 
 /**
  * Creates a {@link Pipeline|pipeline} from a given collection of {@link IPipelineStep|steps}.
- * In order to be valid, the collection of {@link IPipelineStep|steps} must satisfy the following set of constraints
- * (which should be logical, when you consider what a pipeline should accomplish):
+ * To be valid, the collection of {@link IPipelineStep|steps} must satisfy the following set of constraints
+ * (which should be logical, when you consider what a pipeline should achieve):
  *
  * 0) the collection of {@link IPipelineStep|steps} is not empty
  * 1) all {@link IPipelineStepOrder#name|names} of {@link IPipelineStep|steps} are unique for the given pipeline

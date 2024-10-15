@@ -135,7 +135,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize(data);
+	return normalize({ parsed: data });
 }
 
 /**

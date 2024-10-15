@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-15, 06:11:07 UTC presenting an overview of flowR's interfaces (v2.1.3, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-interface-wiki.ts' on 2024-10-15, 15:56:00 UTC presenting an overview of flowR's interfaces (v2.1.3, using R v4.4.0)._
 
 Although far from being as detailed as the in-depth explanation of
 [_flowR_](https://github.com/flowr-analysis/flowr/wiki//Core),
@@ -226,7 +226,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 15.16 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 17.38 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -308,7 +308,7 @@ The first message is always a hello message.
   "id": "1",
   "type": "error",
   "fatal": false,
-  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5600-bbPqJ73rvNhG-.R\"}}"
+  "reason": "Error while analyzing file sample.R: GuardError: unable to parse R code (see the log for more information) for request {\"request\":\"file\",\"content\":\"/tmp/tmp-5452-1EGiUO3d7Vt2-.R\"}}"
 }
 ```
 
@@ -318,7 +318,7 @@ The first message is always a hello message.
 </li>
 </ol>
 
-The complete round-trip took 1.96 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.51 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -417,7 +417,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 9.39 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 9.10 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -517,7 +517,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 6.42 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 7.90 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -808,7 +808,7 @@ The `results` field of the response contains two keys of importance:
 </li>
 </ol>
 
-The complete round-trip took 6.06 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 6.31 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1071,7 +1071,7 @@ You can combine commands by separating them with a semicolon ;.
 </li>
 </ol>
 
-The complete round-trip took 1.23 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 1.20 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1330,7 +1330,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
   "results": {
     "call-context": {
       ".meta": {
-        "timing": 0
+        "timing": 1
       },
       "kinds": {
         "visualize": {
@@ -1366,7 +1366,7 @@ _As the code is pretty long, we inhibit pretty printing and syntax highlighting 
 </li>
 </ol>
 
-The complete round-trip took 19.07 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 19.29 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1459,8 +1459,55 @@ For the definition of the hello message, please see it's implementation at [`./s
                     - **type** string [required]
                         _The type of the query._
                         Allows only the values: 'lineage'
-                    - **id** string [required]
-                        _The ID of the node to get the lineage of._
+                    - **criterion** string [required]
+                        _The slicing criterion of the node to get the lineage of._
+                - **.** object 
+                    _The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data._
+                    - **type** string [required]
+                        _The type of the query._
+                        Allows only the values: 'dependencies'
+                    - **ignoreDefaultFunctions** boolean [optional]
+                        _Should the set of functions that are detected by default be ignored/skipped?_
+                    - **libraryFunctions** array [optional]
+                        _The set of library functions to search for._
+                    Valid item types:
+                        - **.** object 
+                            - **name** string [required]
+                                _The name of the library function._
+                            - **argIdx** number [optional]
+                                _The index of the argument that contains the library name._
+                            - **argName** string [optional]
+                                _The name of the argument that contains the library name._
+                    - **sourceFunctions** array [optional]
+                        _The set of source functions to search for._
+                    Valid item types:
+                        - **.** object 
+                            - **name** string [required]
+                                _The name of the library function._
+                            - **argIdx** number [optional]
+                                _The index of the argument that contains the library name._
+                            - **argName** string [optional]
+                                _The name of the argument that contains the library name._
+                    - **readFunctions** array [optional]
+                        _The set of data reading functions to search for._
+                    Valid item types:
+                        - **.** object 
+                            - **name** string [required]
+                                _The name of the library function._
+                            - **argIdx** number [optional]
+                                _The index of the argument that contains the library name._
+                            - **argName** string [optional]
+                                _The name of the argument that contains the library name._
+                    - **writeFunctions** array [optional]
+                        _The set of data writing functions to search for._
+                    Valid item types:
+                        - **.** object 
+                            - **name** string [required]
+                                _The name of the library function._
+                            - **argIdx** number [optional]
+                                _The index of the argument that contains the library name._
+                            - **argName** string [optional]
+                                _The name of the argument that contains the library name._
             - **.** alternatives 
                 _Virtual queries (used for structure)_
                 - **.** object 
@@ -1670,7 +1717,7 @@ The response contains the lineage of the desired object in form of an array of I
 </li>
 </ol>
 
-The complete round-trip took 4.89 ms (including time required to validate the messages, start, and stop the internal mock server).
+The complete round-trip took 4.39 ms (including time required to validate the messages, start, and stop the internal mock server).
 
 </details>
 
@@ -1885,7 +1932,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.66 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _2.09 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r

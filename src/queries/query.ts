@@ -1,131 +1,35 @@
 import type {
-	CallContextQuery,
-	CallContextQuerySubKindResult
+	CallContextQuery
 } from './catalog/call-context-query/call-context-query-format';
-import { CallTargets } from './catalog/call-context-query/call-context-query-format';
+import { CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { BaseQueryFormat, BaseQueryMeta, BaseQueryResult } from './base-query-format';
-import { executeCallContextQueries } from './catalog/call-context-query/call-context-query-executor';
+import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { executeDataflowQuery } from './catalog/dataflow-query/dataflow-query-executor';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
-import { executeIdMapQuery } from './catalog/id-map-query/id-map-query-executor';
+import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
-import { executeNormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-executor';
-import type {	NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
-import { bold, italic, type OutputFormatter } from '../util/ansi';
-import { printAsMs } from '../util/time';
+import { IdMapQueryDefinition } from './catalog/id-map-query/id-map-query-format';
+import type { NormalizedAstQuery } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import { NormalizedAstQueryDefinition } from './catalog/normalized-ast-query/normalized-ast-query-format';
+import type { LineageQuery } from './catalog/lineage-query/lineage-query-format';
+import { LineageQueryDefinition } from './catalog/lineage-query/lineage-query-format';
+import type { StaticSliceQuery } from './catalog/static-slice-query/static-slice-query-format';
+import { StaticSliceQueryDefinition } from './catalog/static-slice-query/static-slice-query-format';
+import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query-format';
+import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
+import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
+import { DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
+import type { OutputFormatter } from '../util/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import { graphToMermaidUrl } from '../util/mermaid/dfg';
-import { normalizedAstToMermaidUrl } from '../util/mermaid/ast';
-import Joi from 'joi';
-import { executeDependenciesQuery } from './catalog/dependencies-query/dependencies-query-executor';
-import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
-import { printResultSection } from './catalog/dependencies-query/dependencies-query-format';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { BuiltIn } from '../dataflow/environments/built-in';
+import type Joi from 'joi';
 
-
-function nodeString(id: NodeId, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	if(id === BuiltIn) {
-		return italic('built-in', formatter);
-	}
-	const node = processed.normalize.idMap.get(id);
-	if(node === undefined) {
-		return `UNKNOWN: ${id}`;
-	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]})`;
-}
-
-function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	const result: string[] = [];
-	for(const { id, calls = [], linkedIds = [], aliasRoots = [] } of results) {
-		const node = processed.normalize.idMap.get(id);
-		if(node === undefined) {
-			result.push(` ${bold('UNKNOWN: ' + JSON.stringify({ calls, linkedIds }))}`);
-			continue;
-		}
-		let line = nodeString(id, formatter, processed);
-		if(calls.length > 0) {
-			line += ` with ${calls.length} call${calls.length > 1 ? 's' : ''} (${calls.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		if(linkedIds.length > 0) {
-			line += ` with ${linkedIds.length} link${linkedIds.length > 1 ? 's' : ''} (${linkedIds.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		if(aliasRoots.length > 0) {
-			line += ` with ${aliasRoots.length} alias root${aliasRoots.length > 1 ? 's' : ''} (${aliasRoots.map(c => nodeString(c, formatter, processed)).join(', ')})`;
-		}
-		result.push(line);
-	}
-	return result.join(', ');
-}
-
-export function asciiCallContext(formatter: OutputFormatter, results: QueryResults<'call-context'>['call-context'], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	/* traverse over 'kinds' and within them 'subkinds' */
-	const result: string[] = [];
-	for(const [kind, { subkinds }] of Object.entries(results['kinds'])) {
-		result.push(`   ╰ ${bold(kind, formatter)}`);
-		for(const [subkind, values] of Object.entries(subkinds)) {
-			result.push(`     ╰ ${bold(subkind, formatter)}: ${asciiCallContextSubHit(formatter, values, processed)}`);
-		}
-	}
-	return result.join('\n');
-}
-
-export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
-	const naive = ids.join(', ');
-	if(naive.length <= 20) {
-		return naive;
-	}
-	let acc = '';
-	let i = 0;
-	while(acc.length <= 20) {
-		acc += ids[i++] + ', ';
-	}
-	if(i < ids.length) {
-		acc += '... (see JSON below)';
-	}
-	return acc;
-}
-
-export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	const result: string[] = [];
-
-	for(const [query, queryResults] of Object.entries(results)) {
-		if(query === '.meta') {
-			continue;
-		}
-
-		const queryType = SupportedQueries[query as SupportedQueryTypes];
-		if(queryType.asciiSummarizer(formatter, processed, queryResults as BaseQueryResult, result)) {
-			continue;
-		}
-
-		result.push(`Query: ${bold(query, formatter)}`);
-
-		let timing = -1;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		for(const [key, value] of Object.entries(queryResults)) {
-			if(key === '.meta') {
-				timing = (value as BaseQueryMeta).timing;
-				continue;
-			}
-			result.push(` ╰ ${key}: ${JSON.stringify(value)}`);
-		}
-		result.push(`  - Took ${printAsMs(timing, 0)}`);
-	}
-
-	result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
-	return formatter.format(result.join('\n'));
-}
-
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DependenciesQuery;
+export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | LineageQuery | DependenciesQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -141,86 +45,21 @@ type SupportedQueries = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
 }
 
-interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
+export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
 	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
 	schema:          Joi.ObjectSchema
 }
 
 export const SupportedQueries = {
-	'call-context': {
-		executor:        executeCallContextQueries,
-		asciiSummarizer: (formatter, processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'call-context'>['call-context'];
-			result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(asciiCallContext(formatter, out, processed));
-			return true;
-		},
-		schema: Joi.object({
-			type:           Joi.string().valid('call-context').required().description('The type of the query.'),
-			callName:       Joi.string().required().description('Regex regarding the function name!'),
-			callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
-			kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
-			subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
-			callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
-			includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-			linkTo:         Joi.object({
-				type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
-				callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
-			}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
-		}).description('Call context query used to find calls in the dataflow graph')
-	},
-	'dataflow': {
-		executor:        executeDataflowQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'dataflow'>['dataflow'];
-			result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Dataflow Graph](${graphToMermaidUrl(out.graph)})`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('dataflow').required().description('The type of the query.'),
-		}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!')
-	},
-	'id-map': {
-		executor:        executeIdMapQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'id-map'>['id-map'];
-			result.push(`Query: ${bold('id-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('id-map').required().description('The type of the query.'),
-		}).description('The id map query retrieves the id map from the normalized AST.')
-	},
-	'normalized-ast': {
-		executor:        executeNormalizedAstQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];
-			result.push(`Query: ${bold('normalized-ast', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			result.push(`   ╰ [Normalized AST](${normalizedAstToMermaidUrl(out.normalized.ast)})`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
-		}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!')
-	},
-	'dependencies': {
-		executor:        executeDependenciesQuery,
-		asciiSummarizer: (formatter, _processed, queryResults, result) => {
-			const out = queryResults as QueryResults<'dependencies'>['dependencies'];
-			result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-			printResultSection('Libraries', out.libraries, result, l => `Library Name: ${l.libraryName}`);
-			printResultSection('Sourced Files', out.sourcedFiles, result, s => `Sourced File: ${s.file}`);
-			printResultSection('Read Data', out.readData, result, r => `Source: ${r.source}`);
-			printResultSection('Written Data', out.writtenData, result, w => `Destination: ${w.destination}`);
-			return true;
-		},
-		schema: Joi.object({
-			type: Joi.string().valid('dependencies').required().description('The type of the query.'),
-		}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.')
-	}
+	'call-context':     CallContextQueryDefinition,
+	'dataflow':         DataflowQueryDefinition,
+	'id-map':           IdMapQueryDefinition,
+	'normalized-ast':   NormalizedAstQueryDefinition,
+	'dataflow-cluster': ClusterQueryDefinition,
+	'static-slice':     StaticSliceQueryDefinition,
+	'lineage':          LineageQueryDefinition,
+	'dependencies':     DependenciesQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

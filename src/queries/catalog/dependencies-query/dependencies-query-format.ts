@@ -1,5 +1,10 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { QueryResults, SupportedQuery } from '../../query';
+import { bold } from '../../../util/ansi';
+import { printAsMs } from '../../../util/time';
+import Joi from 'joi';
+import { executeDependenciesQuery } from './dependencies-query-executor';
 
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
@@ -69,7 +74,7 @@ export type SourceInfo = (DependencyInfo & { file: string })
 export type ReadInfo = (DependencyInfo & { source: string })
 export type WriteInfo = (DependencyInfo & { destination: 'stdout' | string })
 
-export function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics: (info: T) => string): void {
+function printResultSection<T extends DependencyInfo>(title: string, infos: T[], result: string[], sectionSpecifics: (info: T) => string): void {
 	if(infos.length <= 0) {
 		return;
 	}
@@ -88,3 +93,19 @@ export function printResultSection<T extends DependencyInfo>(title: string, info
 		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}, ${sectionSpecifics(i)}`).join('\n'));
 	}
 }
+
+export const DependenciesQueryDefinition = {
+	executor:        executeDependenciesQuery,
+	asciiSummarizer: (formatter, _processed, queryResults, result) => {
+		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
+		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		printResultSection('Libraries', out.libraries, result, l => `Library Name: ${l.libraryName}`);
+		printResultSection('Sourced Files', out.sourcedFiles, result, s => `Sourced File: ${s.file}`);
+		printResultSection('Read Data', out.readData, result, r => `Source: ${r.source}`);
+		printResultSection('Written Data', out.writtenData, result, w => `Destination: ${w.destination}`);
+		return true;
+	},
+	schema: Joi.object({
+		type: Joi.string().valid('dependencies').required().description('The type of the query.'),
+	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.')
+} as const satisfies SupportedQuery<'dependencies'>;

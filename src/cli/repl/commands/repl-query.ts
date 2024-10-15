@@ -5,11 +5,9 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
 import { italic } from '../../../util/ansi';
-
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { asciiSummaryOfQueryResult ,  executeQueries } from '../../../queries/query';
-
+import { executeQueries } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
@@ -65,7 +63,6 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	};
 }
 
-
 export const queryCommand: ReplCommand = {
 	description:  `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
 	usageExample: ':query "<query>" <code>',
@@ -76,7 +73,8 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, shell, output);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(asciiSummaryOfQueryResult(output.formatter, totalEnd - totalStart, results.query, results.processed));
+			output.stdout(JSON.stringify(results));
+			output.stdout('Total time: ' + (totalEnd - totalStart) + 'ms');
 		}
 	}
 };

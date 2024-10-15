@@ -1,5 +1,11 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { executeCallContextQueries } from './call-context-query-executor';
+import { bold } from '../../../util/ansi';
+import { printAsMs } from '../../../util/time';
+import Joi from 'joi';
+import type { QueryResults, SupportedQuery } from '../../query';
+import { asciiCallContext } from '../../../documentation/doc-util/doc-query';
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
@@ -83,3 +89,25 @@ export interface CallContextQueryResult extends BaseQueryResult {
 
 export type CallContextQuery<CallName extends RegExp | string = RegExp | string> = DefaultCallContextQueryFormat<CallName> | SubCallContextQueryFormat<CallName>;
 
+export const CallContextQueryDefinition = {
+	executor:        executeCallContextQueries,
+	asciiSummarizer: (formatter, processed, queryResults, result) => {
+		const out = queryResults as QueryResults<'call-context'>['call-context'];
+		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		result.push(asciiCallContext(formatter, out, processed));
+		return true;
+	},
+	schema: Joi.object({
+		type:           Joi.string().valid('call-context').required().description('The type of the query.'),
+		callName:       Joi.string().required().description('Regex regarding the function name!'),
+		callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
+		kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
+		subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
+		callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
+		includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
+		linkTo:         Joi.object({
+			type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
+			callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
+		}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
+	}).description('Call context query used to find calls in the dataflow graph')
+} as const satisfies SupportedQuery<'call-context'>;

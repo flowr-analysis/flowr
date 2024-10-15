@@ -18,6 +18,7 @@ For the latest code-coverage information, see [codecov.io](https://app.codecov.i
 ## Testing Suites
 
 Currently, flowR contains two testing suites: one for [functionality](#functionality-tests) and one for [performance](#performance-tests). We explain each of them in the following.
+A more general test experience is granted by `npm run checkup` which will include the construction of the docker image, the generation of the wiki pages, and the linter.
 
 ### Functionality Tests
 

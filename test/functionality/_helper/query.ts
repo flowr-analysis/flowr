@@ -6,6 +6,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/defa
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { QueryResults, Query, QueryResultsWithoutMeta } from '../../../src/queries/query';
+import { SupportedQueries , executeQueries } from '../../../src/queries/query';
 import { assert } from 'chai';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
 import type { TestLabel } from './label';
@@ -14,7 +15,7 @@ import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-que
 import { log } from '../../../src/util/log';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import { executeQueries } from '../../../src/queries/query';
+
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
 	const normalized = {} as QueryResultsWithoutMeta<Queries>;
@@ -42,6 +43,7 @@ function normalizeResults<Queries extends Query>(result: QueryResults<Queries['t
  * @param code     - R code to execute the query on
  * @param queries  - Queries to execute
  * @param expected - Expected result of the queries (without attached meta-information like timing)
+ * @param validateSchema - Whether the queries' JSON schema should be validated on the input
  */
 export function assertQuery<
 	Queries extends Query,
@@ -51,11 +53,32 @@ export function assertQuery<
 	shell: RShell,
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
-	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>))
+	expected: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
+	validateSchema = true
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
 	it(effectiveName, async() => {
+		if(validateSchema) {
+			for(const query of queries) {
+				if(query.type === 'compound') {
+					continue;
+				}
+				const queryType = SupportedQueries[query.type];
+				const queryString = JSON.stringify(query, (_key, value) => {
+					if(value instanceof RegExp) {
+						return value.toString();
+					}
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+					return value;
+				});
+				const validationResult = queryType.schema.validate(JSON.parse(queryString));
+				if(validationResult.error) {
+					assert.fail(`Invalid query: ${validationResult.error.message}`);
+				}
+			}
+		}
+
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			shell,
 			request: requestFromInput(code),

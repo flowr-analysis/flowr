@@ -16,7 +16,7 @@ describe('Lineage Query', withShell(shell => {
 					return acc;
 				}, {} as LineageQueryResult['lineages'])
 			}
-		}));
+		}), false);
 	}
 
 	testQuery('Single Expression', 'x + 1', [{ type: 'lineage', criterion: '1@x' }]);

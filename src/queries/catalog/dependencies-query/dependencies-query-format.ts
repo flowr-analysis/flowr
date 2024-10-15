@@ -55,7 +55,12 @@ export interface FunctionInfo {
 }
 
 export interface DependenciesQuery extends BaseQueryFormat {
-    readonly type: 'dependencies'
+    readonly type:                    'dependencies'
+    readonly ignoreDefaultFunctions?: boolean
+    readonly libraryFunctions?:       FunctionInfo[]
+    readonly sourceFunctions?:        FunctionInfo[]
+    readonly readFunctions?:          FunctionInfo[]
+    readonly writeFunctions?:         FunctionInfo[]
 }
 
 export interface DependenciesQueryResult extends BaseQueryResult {
@@ -94,6 +99,12 @@ function printResultSection<T extends DependencyInfo>(title: string, infos: T[],
 	}
 }
 
+const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
+	name:    Joi.string().required().description('The name of the library function.'),
+	argIdx:  Joi.number().optional().description('The index of the argument that contains the library name.'),
+	argName: Joi.string().optional().description('The name of the argument that contains the library name.'),
+})).optional();
+
 export const DependenciesQueryDefinition = {
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
@@ -106,6 +117,11 @@ export const DependenciesQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type: Joi.string().valid('dependencies').required().description('The type of the query.'),
+		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
+		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped?'),
+		libraryFunctions:       functionInfoSchema.description('The set of library functions to search for.'),
+		sourceFunctions:        functionInfoSchema.description('The set of source functions to search for.'),
+		readFunctions:          functionInfoSchema.description('The set of data reading functions to search for.'),
+		writeFunctions:         functionInfoSchema.description('The set of data writing functions to search for.'),
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.')
 } as const satisfies SupportedQuery<'dependencies'>;

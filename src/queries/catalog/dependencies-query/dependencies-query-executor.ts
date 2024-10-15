@@ -26,29 +26,36 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	}
 	const now = Date.now();
 
+	const query = queries[0];
+	const ignoreDefault = query.ignoreDefaultFunctions ?? false;
+	const libraryFunctions = getFunctionsToCheck(query.libraryFunctions, ignoreDefault, LibraryFunctions);
+	const sourceFunctions = getFunctionsToCheck(query.sourceFunctions, ignoreDefault, SourceFunctions);
+	const readFunctions = getFunctionsToCheck(query.readFunctions, ignoreDefault, ReadFunctions);
+	const writeFunctions = getFunctionsToCheck(query.writeFunctions, ignoreDefault, WriteFunctions);
+
 	const results = executeQueries(data, [
-		...makeCallContextQuery(LibraryFunctions, 'library'),
-		...makeCallContextQuery(SourceFunctions, 'source'),
-		...makeCallContextQuery(ReadFunctions, 'read'),
-		...makeCallContextQuery(WriteFunctions, 'write')
+		...makeCallContextQuery(libraryFunctions, 'library'),
+		...makeCallContextQuery(sourceFunctions, 'source'),
+		...makeCallContextQuery(readFunctions, 'read'),
+		...makeCallContextQuery(writeFunctions, 'write')
 	])['call-context'];
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', LibraryFunctions, (id, vertex, argument) => ({
+	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		libraryName:  argument as string
 	}), [RType.Symbol]);
-	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', SourceFunctions, (id, vertex, argument) => ({
+	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		file:         argument as string
 	}));
-	const readData: ReadInfo[] = getResults(data, results, 'read', ReadFunctions, (id, vertex, argument) => ({
+	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		source:       argument as string
 	}));
-	const writtenData: WriteInfo[] = getResults(data, results, 'write', WriteFunctions, (id, vertex, argument) => ({
+	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argument) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		// write functions that don't have argIndex are assumed to write to stdout
@@ -74,7 +81,7 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 }
 
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: (id: NodeId, vertex: DataflowGraphVertexFunctionCall, argument: string | undefined) => T | undefined, additionalAllowedTypes?: RType[]) {
-	return Object.entries(results.kinds[kind]?.subkinds ?? {}).flatMap(([name, results]) => results.map(({ id }) => {
+	return Object.entries(results?.kinds[kind]?.subkinds ?? {}).flatMap(([name, results]) => results.map(({ id }) => {
 		const vertex = data.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 		let index = info.argIdx;
@@ -104,4 +111,15 @@ function getArgumentValue({ graph }: BasicQueryData, vertex: DataflowGraphVertex
 		}
 	}
 	return undefined;
+}
+
+function getFunctionsToCheck(customFunctions: FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: FunctionInfo[]): FunctionInfo[] {
+	const functions: FunctionInfo[] = [];
+	if(!ignoreDefaultFunctions) {
+		functions.push(...defaultFunctions);
+	}
+	if(customFunctions) {
+		functions.push(...customFunctions);
+	}
+	return functions;
 }

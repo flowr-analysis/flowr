@@ -1,12 +1,11 @@
 import type { RShell } from '../../r-bridge/shell';
 import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
-import { executeQueries } from '../../queries/query';
+import { asciiSummaryOfQueryResult , executeQueries } from '../../queries/query';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
 import { markdownFormatter } from '../../util/ansi';
-import { asciiSummaryOfQueryResult } from '../../cli/repl/commands/repl-query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';

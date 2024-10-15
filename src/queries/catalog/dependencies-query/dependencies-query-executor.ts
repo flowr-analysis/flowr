@@ -1,6 +1,14 @@
 import type { BasicQueryData } from '../../query';
 import { executeQueries } from '../../query';
-import type { DependenciesQuery, DependenciesQueryResult, FunctionInfo, LibraryInfo, ReadInfo, SourceInfo, WriteInfo } from './dependencies-query-format';
+import type {
+	DependenciesQuery,
+	DependenciesQueryResult,
+	FunctionInfo,
+	LibraryInfo,
+	ReadInfo,
+	SourceInfo,
+	WriteInfo
+} from './dependencies-query-format';
 import { LibraryFunctions, ReadFunctions, SourceFunctions, WriteFunctions } from './dependencies-query-format';
 import type { CallContextQuery } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
@@ -9,6 +17,8 @@ import { log } from '../../../util/log';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { removeRQuotes } from '../../../r-bridge/retriever';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+
+const SupportedVertexType = [ RType.String, RType.Logical, RType.Number ];
 
 export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
 	if(queries.length !== 1) {
@@ -25,7 +35,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 
 	const libraries: LibraryInfo[] = results.kinds['library']?.subkinds['.'].map(({ id }) => {
 		const vertex = data.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		const libraryName = getArgumentValue(data, vertex, 0, [RType.String, RType.Symbol]);
+		const libraryName = getArgumentValue(data, vertex, 0, [...SupportedVertexType, RType.Symbol]);
 		if(libraryName) {
 			return {
 				nodeId:       id,
@@ -37,7 +47,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 	}).filter(x => x !== undefined) ?? [];
 	const sourcedFiles: SourceInfo[] = results.kinds['source']?.subkinds['.'].map(({ id }) => {
 		const vertex = data.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
-		const file = getArgumentValue(data, vertex, 0, [RType.String]);
+		const file = getArgumentValue(data, vertex, 0, SupportedVertexType);
 		if(file) {
 			return {
 				nodeId:       id,
@@ -57,7 +67,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 				index = arg;
 			}
 		}
-		const source = getArgumentValue(data, vertex, index, [RType.String]);
+		const source = getArgumentValue(data, vertex, index, SupportedVertexType);
 		if(source) {
 			return {
 				nodeId:       id,
@@ -129,7 +139,10 @@ function getArgumentValue({ graph }: BasicQueryData, vertex: DataflowGraphVertex
 	if(vertex && vertex.args.length > argumentIndex) {
 		const arg = getReferenceOfArgument(vertex.args[argumentIndex]);
 		if(arg) {
-			const valueNode = graph.idMap?.get(arg);
+			let valueNode = graph.idMap?.get(arg);
+			if(valueNode?.type === RType.Argument) {
+				valueNode = valueNode.value;
+			}
 			if(valueNode) {
 				return allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : 'unknown';
 			}

@@ -1,7 +1,9 @@
 import Joi from 'joi';
 import { SupportedQueries } from './query';
 
-export const SupportedQueriesSchema = Joi.alternatives(Object.values(SupportedQueries).map(q => q.schema)).description('Supported queries');
+export const SupportedQueriesSchema = Joi.alternatives(
+	Object.values(SupportedQueries).map(q => q.schema)
+).description('Supported queries');
 
 export const CompoundQuerySchema = Joi.object({
 	type:            Joi.string().valid('compound').required().description('The type of the query.'),

@@ -6,7 +6,6 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/defa
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { QueryResults, Query, QueryResultsWithoutMeta } from '../../../src/queries/query';
-import { executeQueries } from '../../../src/queries/query';
 import { assert } from 'chai';
 import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual-query/virtual-queries';
 import type { TestLabel } from './label';
@@ -15,7 +14,7 @@ import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-que
 import { log } from '../../../src/util/log';
 import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-
+import { executeQueries } from '../../../src/queries/query';
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
 	const normalized = {} as QueryResultsWithoutMeta<Queries>;

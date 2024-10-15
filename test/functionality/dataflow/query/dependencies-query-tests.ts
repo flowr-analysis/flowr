@@ -1,18 +1,43 @@
 import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import type { DependenciesQueryResult } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import type {
+	DependenciesQueryResult, DependencyInfo
+} from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
+
+function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
+	const out: Partial<DependenciesQueryResult> = {
+		...res
+	};
+	for(const [key, value] of Object.entries(res) as [keyof DependenciesQueryResult, DependencyInfo[]][]) {
+		if(key === '.meta') {
+			continue;
+		}
+		// @ts-expect-error -- we do not need key-dependent typing due to the spread
+		out[key] = value.map(({ nodeId, ...rest }) => ({ nodeId: typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap), ...rest }));
+	}
+	return out;
+}
 
 describe('Dependencies Query', withShell(shell => {
-	function testQuery(name: string, code: string, expected: Partial<DependenciesQueryResult>): void {
-		assertQuery(label(name), shell, code, [{ type: 'dependencies' }], {
+	/** handles slicing criteria for the node ids */
+	function testQuery(
+		name: string,
+		code: string,
+		expected: Partial<DependenciesQueryResult>
+	): void {
+		assertQuery(label(name), shell, code, [{ type: 'dependencies' }], ({ normalize }) => ({
 			dependencies: {
-				libraries:    expected.libraries ?? [],
-				sourcedFiles: expected.sourcedFiles ?? [],
-				readData:     expected.readData ?? [],
-				writtenData:  expected.writtenData ?? []
+				...emptyDependencies,
+				...decodeIds(expected, normalize.idMap)
 			}
-		});
+		}));
 	}
 
 	describe('Simple', () => {

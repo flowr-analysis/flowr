@@ -1,7 +1,7 @@
 /** Automatically provides hover over with the documentation for these! */
 import { scripts } from '../../cli/common/scripts-info';
 import { guard } from '../../util/assert';
-import { textWithTooltip } from './doc-hover-over';
+import { textWithTooltip } from '../../util/html-hover-over';
 import type { OptionDefinition } from 'command-line-usage';
 import { flowrMainOptionDefinitions } from '../../cli/flowr-main-options';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';

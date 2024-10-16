@@ -1,7 +1,7 @@
 import type { ReplCommand, ReplOutput } from '../../cli/repl/commands/repl-main';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { getReplCommand } from './doc-cli-option';
-import { textWithTooltip } from './doc-hover-over';
+import { textWithTooltip } from '../../util/html-hover-over';
 import type { RShell } from '../../r-bridge/shell';
 import { replProcessAnswer } from '../../cli/repl/core';
 import { voidFormatter } from '../../util/ansi';

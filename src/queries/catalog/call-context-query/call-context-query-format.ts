@@ -5,7 +5,8 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { asciiCallContext } from '../../../documentation/doc-util/doc-query';
+
+import { asciiCallContext } from '../../query-print';
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally (e.g., the call targets a library function) */

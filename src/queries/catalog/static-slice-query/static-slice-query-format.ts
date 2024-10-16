@@ -10,7 +10,8 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeStaticSliceClusterQuery } from './static-slice-query-executor';
-import { summarizeIdsIfTooLong } from '../../../documentation/doc-util/doc-query';
+
+import { summarizeIdsIfTooLong } from '../../query-print';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {

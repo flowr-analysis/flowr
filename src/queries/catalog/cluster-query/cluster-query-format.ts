@@ -4,8 +4,8 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { DataflowGraphClusters } from '../../../dataflow/cluster';
 import { executeDataflowClusterQuery } from './cluster-query-executor';
-import { summarizeIdsIfTooLong } from '../../../documentation/doc-util/doc-query';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
+import { summarizeIdsIfTooLong } from '../../query-print';
 
 /**
  * Calculates and returns all clusters encountered in the dataflow graph.

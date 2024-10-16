@@ -6,7 +6,8 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeLineageQuery } from './lineage-query-executor';
-import { summarizeIdsIfTooLong } from '../../../documentation/doc-util/doc-query';
+
+import { summarizeIdsIfTooLong } from '../../query-print';
 
 /**
  * Calculates the lineage of the given criterion.

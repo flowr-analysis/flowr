@@ -13,7 +13,7 @@ import { executeCallContextQueries } from '../queries/catalog/call-context-query
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { exampleQueryCode } from './data/query/example-query-code';
-import { details } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow-query-executor';
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
@@ -22,6 +22,7 @@ import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cl
 import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
 import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
+import { getReplCommand } from './doc-util/doc-cli-option';
 
 
 registerQueryDocumentation('call-context', {
@@ -381,6 +382,17 @@ async function getText(shell: RShell) {
 
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+There are many ways to query a dataflow graph created by flowR.
+For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).	
+			`.trim()
+	})
+}
 
 ## The Query Format
 

@@ -332,7 +332,7 @@ This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#me
 registerQueryDocumentation('dependencies', {
 	name:             'Dependencies Query',
 	type:             'active',
-	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R~script',
+	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
 	functionName:     executeDependenciesQuery.name,
 	functionFile:     '../queries/catalog/dependencies-query/dependencies-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {

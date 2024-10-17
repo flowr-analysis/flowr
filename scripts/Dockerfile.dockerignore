@@ -1,0 +1,9 @@
+node_modules/
+.nyc_output/
+coverage/
+doc/
+wiki/
+statistics-out/
+*.gz
+*.log
+src/documentation/

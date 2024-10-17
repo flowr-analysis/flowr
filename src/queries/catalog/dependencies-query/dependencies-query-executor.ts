@@ -51,17 +51,19 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		libraryName:  argument ?? Unknown
 	}), [RType.Symbol]);
 
-	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
-	visitAst(data.ast.ast, n => {
-		if(n.type === RType.Symbol && n.namespace) {
-			/* we should improve the identification of ':::' */
-			libraries.push({
-				nodeId:       n.info.id,
-				functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-				libraryName:  n.namespace
-			});
-		}
-	});
+	if(!ignoreDefault) {
+		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
+		visitAst(data.ast.ast, n => {
+			if(n.type === RType.Symbol && n.namespace) {
+				/* we should improve the identification of ':::' */
+				libraries.push({
+					nodeId:       n.info.id,
+					functionName: (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
+					libraryName:  n.namespace
+				});
+			}
+		});
+	}
 
 
 	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argument) => ({

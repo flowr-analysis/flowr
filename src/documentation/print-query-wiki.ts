@@ -23,6 +23,7 @@ import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-
 import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
+import { NewIssueUrl } from './doc-util/doc-issue';
 
 
 registerQueryDocumentation('call-context', {
@@ -363,11 +364,27 @@ ${
 Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
 For example, consider the following script:
 ${codeBlock('r', longerCode)}
-The following query returns the dependencies of the script:
+The following query returns the dependencies of the script.
 ${
 	await showQuery(shell, longerCode, [{
 		type: 'dependencies'
-	}], { showCode: false, collapseQuery: true })
+	}], { showCode: false, collapseQuery: true, collapseResult: true })
+}
+
+Currently the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
+We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl})).
+
+In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
+
+${
+	await showQuery(shell, longerCode, [{
+		type:                   'dependencies',
+		ignoreDefaultFunctions: true,
+		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library' }],
+		sourceFunctions:        [],
+		readFunctions:          [],
+		writeFunctions:         []
+	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 
 		`;

@@ -96,7 +96,7 @@ function printResultSection<T extends DependencyInfo>(title: string, infos: T[],
 		return groups;
 	}, new Map<string, T[]>());
 	for(const [functionName, infos] of grouped) {
-		result.push(`       ╰ ${functionName}`);
+		result.push(`       ╰ \`${functionName}\``);
 		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}, ${sectionSpecifics(i)}`).join('\n'));
 	}
 }

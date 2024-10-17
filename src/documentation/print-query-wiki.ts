@@ -21,6 +21,7 @@ import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-que
 import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
 import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
 import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
+import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -105,7 +106,7 @@ Using the example code \`${exampleCode}\`, the following query returns the dataf
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
-	}], { showCode: true })
+	}], { showCode: true, collapseQuery: true })
 }
 		`;
 	}
@@ -127,7 +128,7 @@ Using the example code \`${exampleCode}\`, the following query returns the norma
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'normalized-ast'
-	}], { showCode: true })
+	}], { showCode: true, collapseQuery: true })
 }
 		`;
 	}
@@ -194,7 +195,7 @@ Using the example code from above, the following query returns all clusters:
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow-cluster'
-	}], { showCode: false })
+	}], { showCode: false, collapseQuery: true })
 }
 		`;
 	}
@@ -215,7 +216,7 @@ Using the example code \`${exampleCode}\`, the following query returns all nodes
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
-	}], { showCode: true })
+	}], { showCode: true, collapseQuery: true })
 }
 		`;
 	}
@@ -326,6 +327,52 @@ This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#me
 		`;
 	}
 });
+
+registerQueryDocumentation('dependencies', {
+	name:             'Dependencies Query',
+	type:             'active',
+	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R~script',
+	functionName:     executeDependenciesQuery.name,
+	functionFile:     '../queries/catalog/dependencies-query/dependencies-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'library(x)';
+		const longerCode = `
+source("sample.R")
+foo <- loadNamespace("bar")
+
+data <- read.csv("data.csv")
+
+#' @importFrom ggplot2 ggplot geom_point aes
+ggplot(data, aes(x=x, y=y)) + geom_point()
+
+better::write.csv(data, "data2.csv")
+print("hello world!")
+		`;
+		return `
+This query extracts all dependencies from an R script, using a combination of [Call-Context Queries](#call-context-query)
+and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).  
+
+In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'dependencies'
+	}], { showCode: false, collapseQuery: true })
+}
+
+Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
+For example, consider the following script:
+${codeBlock('r', longerCode)}
+The following query returns the dependencies of the script:
+${
+	await showQuery(shell, longerCode, [{
+		type: 'dependencies'
+	}], { showCode: false, collapseQuery: true })
+}
+
+		`;
+	}
+});
+
 
 
 async function getText(shell: RShell) {

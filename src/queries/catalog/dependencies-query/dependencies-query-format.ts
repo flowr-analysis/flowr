@@ -112,10 +112,10 @@ export const DependenciesQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'dependencies'>['dependencies'];
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		printResultSection('Libraries', out.libraries, result, l => `Library Name: ${l.libraryName}`);
-		printResultSection('Sourced Files', out.sourcedFiles, result, s => `Sourced File: ${s.file}`);
-		printResultSection('Read Data', out.readData, result, r => `Source: ${r.source}`);
-		printResultSection('Written Data', out.writtenData, result, w => `Destination: ${w.destination}`);
+		printResultSection('Libraries', out.libraries, result, l => `\`${l.libraryName}\``);
+		printResultSection('Sourced Files', out.sourcedFiles, result, s => `\`${s.file}\``);
+		printResultSection('Read Data', out.readData, result, r => `\`${r.source}\``);
+		printResultSection('Written Data', out.writtenData, result, w => `\`${w.destination}\``);
 		return true;
 	},
 	schema: Joi.object({

@@ -70,6 +70,11 @@ describe('Dependencies Query', withShell(shell => {
 			{ nodeId: '2@foo', functionName: 'foo', libraryName: 'x' }
 		] });
 
+		testQuery('Load implicitly', 'foo::x\nbar:::y()', { libraries: [
+			{ nodeId: '1@x', functionName: '::', libraryName: 'foo' },
+			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }
+		] });
+
 
 		/* currently not supported */
 		testQuery('Using a vector to load', 'lapply(c("a", "b", "c"), library, character.only = TRUE)', { libraries: [

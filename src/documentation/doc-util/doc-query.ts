@@ -10,19 +10,20 @@ import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
-import { jsonWithLimit } from './doc-code';
+import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
+	readonly collapseQuery?:  boolean;
 }
 
 export async function showQuery<
 	Base extends SupportedQueryTypes,
 	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult }: ShowQueryOptions = {}): Promise<string> {
+>(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -35,11 +36,10 @@ export async function showQuery<
 The analysis required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
+	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
 	return `
 
-\`\`\`json
-${JSON.stringify(queries, jsonReplacer, 2)}
-\`\`\`
+${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
 
 ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary>' : ''}
 
@@ -129,10 +129,10 @@ Responsible for the execution of the ${name} query is \`${functionName}\` in ${g
 }
 
 export async function explainQueries(shell: RShell, type: 'active' | 'virtual'): Promise<string> {
-	const queries = RegisteredQueries[type];
+	const queries = [...RegisteredQueries[type].entries()].sort(([,{ name: a }], [, { name: b }]) => a.localeCompare(b));
 	const result: string[] = [];
-	for(const doc of queries.values()) {
+	for(const [,doc] of queries) {
 		result.push(await explainQuery(shell, doc));
 	}
-	return result.join('\n\n\n');
+	return result.join(`\n${'-'.repeat(5)}\n\n`);
 }

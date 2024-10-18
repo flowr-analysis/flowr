@@ -67,7 +67,7 @@ z <- x(d, c)`
 		assertDiced(label('Cuts out function parameter', ['assignment-functions', 'binary-operator', 'function-calls', 'function-definitions']), shell, code, { type: 'union', criteria: ['1@x'] }, { type: 'union', criteria: ['8@z'] }, 'x <- { y * b }\nx(d, c)')
 	})
 
-	describe.only('Dicing with ifs', () => {
+	describe('Dicing with ifs', () => {
 		const ifCode = `x <- 4
 if(x > 5) {
     x <- 3
@@ -116,4 +116,19 @@ cat(x)`
 		assertDicedIds(label('If Test', ['assignment-functions', 'control-flow', 'binary-operator']), shell, 'x <- 4\nif(x < 5) {\n    x <- 6\n} else {\n    x <- 3\n}\ncat(x)', { type: 'symetrical difference', criteria: ['1@x', '2@if'] }, { type: 'union', criteria: ['7@x'] }, new Set([3, 0, 2]))
 		assertDicedIds(label('Difference of two endings', ['assignment-functions', 'binary-operator', 'while-loop']), shell, fibWhile, { type: 'union', criteria: ['1@x'] }, { type: 'symetrical difference', criteria: ['7@y', '4@while'] }, new Set([]))
 	})
+
+	describe('undefined Start or end criteria', withShell(shell => {
+		const testcases: { label: TestLabel, input: string, endCriterion: DicingCriterion | undefined, startCriterion: DicingCriterion | undefined, expected: string }[]
+		= [
+			{ label: label('Simple Example for a', ['assignment-functions', 'binary-operator']), input: 'a <- 3\nb <- 4\nc <- a + b', endCriterion: { type: 'union', criteria: ['3@c'] }, startCriterion: undefined, expected: 'a <- 3\nb <- 4\nc <- a + b' },
+			{ label: label('Simple Example for b', ['assignment-functions', 'binary-operator']), input: 'a <- 3\nb <- 4\nc <- a + b', endCriterion: undefined, startCriterion: { type: 'union', criteria: ['2@b'] }, expected: 'b <- 4\nc <- b' },
+			{ label: label('Extended Example', ['assignment-functions', 'binary-operator']), input: 'a <- 3\nb <- 4\nc <- a + b\nd <- 5\ne <- d + c', endCriterion: { type: 'union', criteria: ['5@e'] }, startCriterion: undefined, expected: 'a <- 3\nb <- 4\nc <- a + b\nd <- 5\ne <- d + c' },
+			{ label: label('Multiple Start Points', ['assignment-functions', 'binary-operator']), input: 'a <- 3\nb <- 4\nc <- a + b\nd <- 5\ne <- d + c', endCriterion: undefined, startCriterion: { type: 'union', criteria: ['4@d', '3@c'] }, expected: 'c <- a + b\nd <- 5\ne <- d + c' },
+			{ label: label('Multiple End Points', ['assignment-functions', 'binary-operator']), input: 'a <- 3\nb <- 4\nc <- a + b\nd <- b + 5\ne <- d + c', endCriterion: { type: 'union', criteria: ['4@d', '3@c'] }, startCriterion: undefined, expected: 'a <- 3\nb <- 4\nc <- a + b\nd <- b + 5' },
+		]
+
+		for(const testcase of testcases) {
+			assertDiced(testcase.label, shell, testcase.input, testcase.startCriterion, testcase.endCriterion, testcase.expected)
+		}
+	}))
 }))

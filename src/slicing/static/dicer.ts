@@ -16,111 +16,123 @@ import { VisitingQueue } from './visiting-queue'
 
 
 
-export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriteria: DicingCriterion, startCriteria: DicingCriterion, threshold = 75):  Readonly<SliceResult> {
+export function staticDicing(graph: DataflowGraph, ast: NormalizedAst, endCriteria: DicingCriterion | undefined, startCriteria: DicingCriterion | undefined, threshold = 75):  Readonly<SliceResult> {
+	guard(endCriteria !== undefined || startCriteria !== undefined, 'We need at least a starting or ending Criteria')
+	
 	let backwardsSlice: Readonly<SliceResult> | undefined = undefined
 	let forwardSlice: Readonly<SliceResult> | undefined = undefined
 	
-	switch(endCriteria.type) {
-		case 'union': {
-			backwardsSlice = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
-			break
-		}
+	if(endCriteria !== undefined) {
+		switch(endCriteria.type) {
+			case 'union': {
+				backwardsSlice = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
+				break
+			}
+
+			case 'intersection': {
+				const slices: Readonly<SliceResult>[] = []
+				for(const criteria of endCriteria.criteria) {
+					slices.push(staticSlicing(graph, ast, [criteria], threshold))
+				}
+				backwardsSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+					return {
+						timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+						result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+						decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+					}
+				})
+				console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
+				break
+			}
 		
-		case 'intersection': {
-			const slices: Readonly<SliceResult>[] = []
-			for(const criteria of endCriteria.criteria) {
-				slices.push(staticSlicing(graph, ast, [criteria], threshold))
-			}
-			backwardsSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
-				return {
-					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
-					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
-					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+			case 'symetrical difference': {
+				const union = staticSlicing(graph, ast, endCriteria.criteria as SlicingCriteria, threshold)
+			
+				const slices: Readonly<SliceResult>[] = []
+				for(const criteria of endCriteria.criteria) {
+					const partialSlice = staticSlicing(graph, ast, [criteria], threshold)
+					slices.push(partialSlice)
 				}
-			})
-			console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
-			break
+				const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+					return {
+						timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+						result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+						decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+					}
+				})
+			
+				backwardsSlice = {
+					timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
+					result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
+					decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
+				}
+				console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
+				break
+			}
 		}
-
-		case 'symetrical difference': {
-			const union = staticSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
-
-			const slices: Readonly<SliceResult>[] = []
-			for(const criteria of startCriteria.criteria) {
-				const partialSlice = staticSlicing(graph, ast, [criteria], threshold)
-				slices.push(partialSlice)
+	}
+	if(startCriteria !== undefined) {
+		switch(startCriteria.type) {
+			case 'union': {
+				forwardSlice = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
+				break
 			}
-			const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
-				return {
-					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
-					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
-					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+
+			case 'intersection': {
+				const slices: Readonly<SliceResult>[] = []
+				for(const criteria of startCriteria.criteria) {
+					const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
+					slices.push(partialSlice)
 				}
-			})
-
-			backwardsSlice = {
-				timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
-				result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
-				decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
+				forwardSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+					return {
+						timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+						result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+						decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+					}
+				})
+				console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
+				break
 			}
-			console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(backwardsSlice.result, jsonReplacer))
-			break
+
+			case 'symetrical difference': {
+				const union = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
+
+				const slices: Readonly<SliceResult>[] = []
+				for(const criteria of startCriteria.criteria) {
+					const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
+					slices.push(partialSlice)
+				}
+				const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
+					return {
+						timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
+						result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
+						decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
+					}
+				})
+
+				forwardSlice = {
+					timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
+					result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
+					decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
+				}
+				console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
+				break
+			}
 		}
 	}
 
-	switch(startCriteria.type) {
-		case 'union': {
-			forwardSlice = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
-			break
-		}
-		
-		case 'intersection': {
-			const slices: Readonly<SliceResult>[] = []
-			for(const criteria of startCriteria.criteria) {
-				const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
-				slices.push(partialSlice)
-			}
-			forwardSlice = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
-				return {
-					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
-					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
-					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
-				}
-			})
-			console.log('slices: %s\nintersection: %s', JSON.stringify(slices.filter(s => s.result), jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
-			break
-		}
-
-		case 'symetrical difference': {
-			const union = forwardSlicing(graph, ast, startCriteria.criteria as SlicingCriteria, threshold)
-
-			const slices: Readonly<SliceResult>[] = []
-			for(const criteria of startCriteria.criteria) {
-				const partialSlice = forwardSlicing(graph, ast, [criteria], threshold)
-				slices.push(partialSlice)
-			}
-			const intersection = slices.reduceRight((previousValue, currentValue, _currentIndex, _array) => {
-				return {
-					timesHitThreshold: previousValue.timesHitThreshold + currentValue.timesHitThreshold,
-					result: 		         new Set([...previousValue.result].filter(i => currentValue.result.has(i))),
-					decodedCriteria:   previousValue.decodedCriteria.concat(currentValue.decodedCriteria)
-				}
-			})
-
-			forwardSlice = {
-				timesHitThreshold: union.timesHitThreshold - intersection.timesHitThreshold,
-				result:            new Set([...union.result].filter(i => !intersection.result.has(i))),
-				decodedCriteria:   union.decodedCriteria.filter(i => !intersection.decodedCriteria.includes(i))
-			}
-			console.log('union: %s\nintersection: %s\ndifference: %s', JSON.stringify(union.result, jsonReplacer), JSON.stringify(intersection.result, jsonReplacer), JSON.stringify(forwardSlice.result, jsonReplacer))
-			break
-		}
+	let dicingResult: Readonly<SliceResult> | undefined = undefined
+	if(backwardsSlice === undefined) {
+		dicingResult = forwardSlice
+	} else if(forwardSlice === undefined) {
+		dicingResult = backwardsSlice
+	} else {
+		const diceResult = new Set([...backwardsSlice.result].filter(i => forwardSlice.result.has(i)))
+		//console.log(diceResult)
+		dicingResult = { timesHitThreshold: backwardsSlice.timesHitThreshold + forwardSlice.timesHitThreshold, result: diceResult, decodedCriteria: backwardsSlice.decodedCriteria.concat(forwardSlice.decodedCriteria) }
 	}
-
-	const diceResult = new Set([...backwardsSlice.result].filter(i => forwardSlice.result.has(i)))
-	//console.log(diceResult)
-	const dicingResult = { timesHitThreshold: backwardsSlice.timesHitThreshold + forwardSlice.timesHitThreshold, result: diceResult, decodedCriteria: backwardsSlice.decodedCriteria.concat(forwardSlice.decodedCriteria) }
-	return dicingResult
+	return dicingResult as Readonly<SliceResult>
 }
 
 function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
@@ -179,16 +191,6 @@ function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: Slic
 			}
 		}
 
-		//add function definition (subflow) [check subflow for id that are in queue and add definition based on that]
-		//if(currentVertex.tag === VertexType.FunctionDefinition) {
-		//	console.log('subflow: %s\nqueue: %s', JSON.stringify(currentVertex.subflow.graph, jsonReplacer), JSON.stringify(queue, jsonReplacer))
-		//	for(const id of currentVertex.subflow.graph) {
-		//		if(queue.hasId(id)) {
-		//			queue.add(currentVertex.id, baseEnvironment, baseEnvFingerprint, true)
-		//		}
-		//	}
-		//}
-
 		if(!onlyForSideEffects) {
 			if(currentVertex.tag === VertexType.FunctionCall && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, graph, queue)
@@ -226,6 +228,7 @@ function forwardSlicing(graph: DataflowGraph, ast: NormalizedAst, criteria: Slic
 			for(const vertexId of vertex[1].subflow.graph) {
 				if(queue.hasId(vertexId)) {
 					console.log('Subflow in queue')
+					//look at sliceForCall to add to queue
 					const current = queue.potentialArguments.get(vertexId)
 					if(current === undefined) {
 						continue

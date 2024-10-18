@@ -410,8 +410,8 @@ export function assertDiced(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string,
-	startCriteria: DicingCriterion,
-	endCriteria: DicingCriterion,
+	startCriteria: DicingCriterion | undefined,
+	endCriteria: DicingCriterion | undefined,
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)

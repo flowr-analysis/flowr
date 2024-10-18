@@ -9,9 +9,9 @@ import { staticDicing } from '../../../../slicing/static/dicer'
 
 export interface DiceRequiredInput {
 	/** The dicing criterion is only of interest if you actually want to Dice the R code */
-	readonly startingCriterion: DicingCriterion,
+	readonly startingCriterion: DicingCriterion | undefined,
     
-    readonly endCriterion: DicingCriterion,
+    readonly endCriterion: DicingCriterion | undefined,
 	
     /** How many re-visits of the same node are ok? */
 	readonly threshold?: number

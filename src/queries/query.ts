@@ -1,15 +1,11 @@
-import type {
-	CallContextQuery
-} from './catalog/call-context-query/call-context-query-format';
+import type { CallContextQuery } from './catalog/call-context-query/call-context-query-format';
 import { CallContextQueryDefinition } from './catalog/call-context-query/call-context-query-format';
-import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { BaseQueryFormat, BaseQueryResult } from './base-query-format';
+import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-query-format';
 import { guard } from '../util/assert';
 import type { VirtualQueryArgumentsWithType } from './virtual-query/virtual-queries';
 import { SupportedVirtualQueries } from './virtual-query/virtual-queries';
 import type { Writable } from 'ts-essentials';
 import type { VirtualCompoundConstraint } from './virtual-query/compound-query';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowQuery } from './catalog/dataflow-query/dataflow-query-format';
 import { DataflowQueryDefinition } from './catalog/dataflow-query/dataflow-query-format';
 import type { IdMapQuery } from './catalog/id-map-query/id-map-query-format';
@@ -27,7 +23,7 @@ import { DependenciesQueryDefinition } from './catalog/dependencies-query/depend
 import type { OutputFormatter } from '../util/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import type Joi from 'joi';
+import Joi from 'joi';
 import type { LocationMapQuery } from './catalog/location-map-query/location-map-query-format';
 import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
 
@@ -42,11 +38,6 @@ export type Query = CallContextQuery
 	| LocationMapQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
-
-export interface BasicQueryData {
-	readonly ast:   NormalizedAst;
-	readonly graph: DataflowGraph;
-}
 
 /* Each executor receives all queries of its type in case it wants to avoid repeated traversal */
 export type QueryExecutor<Query extends BaseQueryFormat, Result extends BaseQueryResult> = (data: BasicQueryData, query: readonly Query[]) => Result;
@@ -149,3 +140,22 @@ export function executeQueries<
 	};
 	return results as QueryResults<Base>;
 }
+
+export const SupportedQueriesSchema = Joi.alternatives(
+	Object.values(SupportedQueries).map(q => q.schema)
+).description('Supported queries');
+
+export const CompoundQuerySchema = Joi.object({
+	type:            Joi.string().valid('compound').required().description('The type of the query.'),
+	query:           Joi.string().required().description('The query to run on the file analysis information.'),
+	commonArguments: Joi.object().required().description('Common arguments for all queries.'),
+	arguments:       Joi.array().items(Joi.object()).required().description('Arguments for each query.')
+}).description('Compound query used to combine queries of the same type');
+export const VirtualQuerySchema = Joi.alternatives(
+	CompoundQuerySchema
+).description('Virtual queries (used for structure)');
+export const AnyQuerySchema = Joi.alternatives(
+	SupportedQueriesSchema,
+	VirtualQuerySchema
+).description('Any query');
+export const QueriesSchema = Joi.array().items(AnyQuerySchema).description('Queries to run on the file analysis information (in the form of an array)');

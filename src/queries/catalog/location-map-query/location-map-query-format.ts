@@ -1,13 +1,11 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeLocationMapQuery } from './location-map-query-executor';
-import { bold } from '../../../util/ansi';
+import { bold, type OutputFormatter } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
-import type { QueryResults, SupportedQuery } from '../../query';
-
-import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
+import { summarizeIdsIfTooLong } from '../../query-print';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
@@ -19,8 +17,8 @@ export interface LocationMapQueryResult extends BaseQueryResult {
 
 export const LocationMapQueryDefinition = {
 	executor:        executeLocationMapQuery,
-	asciiSummarizer: (formatter, _processed, queryResults, result) => {
-		const out = queryResults as QueryResults<'location-map'>['location-map'];
+	asciiSummarizer: (formatter: OutputFormatter, _processed: unknown, queryResults: BaseQueryResult, result: string[]) => {
+		const out = queryResults as LocationMapQueryResult;
 		result.push(`Query: ${bold('location-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...Object.keys(out.map)])}}`);
 		return true;
@@ -28,4 +26,4 @@ export const LocationMapQueryDefinition = {
 	schema: Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 	}).description('The id map query retrieves the location of every id in the ast.')
-} as const satisfies SupportedQuery<'location-map'>;
+} as const;

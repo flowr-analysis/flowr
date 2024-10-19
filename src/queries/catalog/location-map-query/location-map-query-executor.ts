@@ -1,9 +1,9 @@
-import type { BasicQueryData } from '../../query';
 import { log } from '../../../util/log';
 import type {
 	LocationMapQuery,
 	LocationMapQueryResult
 } from './location-map-query-format';
+import type { BasicQueryData } from '../../base-query-format';
 
 
 export function executeLocationMapQuery({ ast }: BasicQueryData, queries: readonly LocationMapQuery[]): LocationMapQueryResult {

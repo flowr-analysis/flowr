@@ -8,7 +8,7 @@ import type {
 } from './call-context-query-format';
 import { CallTargets } from './call-context-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { assertUnreachable } from '../../../util/assert';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
@@ -17,10 +17,11 @@ import { BuiltIn } from '../../../dataflow/environments/built-in';
 import type { ControlFlowGraph } from '../../../util/cfg/cfg';
 import { extractCFG } from '../../../util/cfg/cfg';
 import { TwoLayerCollector } from '../../two-layer-collector';
-import type { BasicQueryData } from '../../query';
 import { compactRecord } from '../../../util/objects';
 import { visitInReverseOrder } from '../../../util/cfg/visitor';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
+
+import type { BasicQueryData } from '../../base-query-format';
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -253,7 +254,7 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
 					if(query.callName.test(l)) {
-						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, aliasRoots: ids }));
+						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, aliasRoots: ids }));
 					}
 				}
 			}
@@ -280,7 +281,7 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 				}
 			}
 
-			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, calls: targets, linkedIds }));
+			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, calls: targets, linkedIds }));
 		}
 	}
 

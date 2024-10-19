@@ -2,7 +2,7 @@ import { RShell } from '../r-bridge/shell';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { executeQueries } from '../queries/query';
+import { executeQueries, QueriesSchema } from '../queries/query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import {
 	explainQueries,
@@ -13,7 +13,6 @@ import {
 } from './doc-util/doc-query';
 import { CallTargets } from '../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../util/schema';
-import { QueriesSchema } from '../queries/query-schema';
 import { markdownFormatter } from '../util/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';

@@ -1,4 +1,3 @@
-import type { BasicQueryData } from '../../query';
 import { executeQueriesOfSameType  } from '../../query';
 import type {
 	DependenciesQuery,
@@ -18,6 +17,7 @@ import { removeRQuotes } from '../../../r-bridge/retriever';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import type { BasicQueryData } from '../../base-query-format';
 
 const SupportedVertexTypes = [RType.String, RType.Logical, RType.Number];
 

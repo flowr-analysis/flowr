@@ -22,7 +22,7 @@ describe('Compound Query', withShell(shell => {
 				kinds: {
 					'visualize': {
 						subkinds: {
-							'print': [{ id: 3 }, { id: 7 }]
+							'print': [{ id: 3, name: 'print' }, { id: 7, name: 'foo' }]
 						}
 					}
 				}

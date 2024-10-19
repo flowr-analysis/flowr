@@ -104,7 +104,7 @@ function makeReport(collector: TwoLayerCollector<string, string, CallContextQuer
 }
 
 function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFormat {
-	return 'linkTo' in query;
+	return 'linkTo' in query && query.linkTo !== undefined;
 }
 
 function exactCallNameRegex(name: RegExp | string): RegExp {

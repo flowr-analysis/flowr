@@ -80,8 +80,14 @@ type DefinedRecord<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: Defined<T[K]>;
 }
 
+export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T>
+export function compactRecord(record: undefined): undefined
+export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined
 /** from a record take only the keys that are not undefined */
-export function compactRecord<T extends Record<string, unknown>>(record: T): DefinedRecord<T> {
+export function compactRecord<T extends Record<string, unknown>>(record: T | undefined): DefinedRecord<T> | undefined {
+	if(record === undefined) {
+		return undefined;
+	}
 	const result: Partial<Record<string, unknown>> = {};
 	for(const key of Object.keys(record)) {
 		if(record[key] !== undefined) {

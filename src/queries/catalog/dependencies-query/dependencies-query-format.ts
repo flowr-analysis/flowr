@@ -8,20 +8,29 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
-	{ name: 'library',         argIdx: 0, argName: 'package' },
-	{ name: 'require',         argIdx: 0, argName: 'package' },
-	{ name: 'loadNamespace',   argIdx: 0, argName: 'package' },
-	{ name: 'attachNamespace', argIdx: 0, argName: 'ns' },
+	{ name: 'library',           argIdx: 0, argName: 'package' },
+	{ name: 'require',           argIdx: 0, argName: 'package' },
+	{ name: 'loadNamespace',     argIdx: 0, argName: 'package' },
+	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns' },
+	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg' },
+	{ name: 'p_load',            argIdx: 'unnamed' }, // pacman
+	{ name: 'p_load_gh',         argIdx: 'unnamed' }, // pacman
+	{ name: 'from_import',       argIdx: 0, argName: 'package' }, // easypackages
+	{ name: 'libraries',         argIdx: 'unnamed' }, // easypackages
+	{ name: 'shelf',             argIdx: 'unnamed' } // librarian
 ] as const;
 export const SourceFunctions: FunctionInfo[] = [
-	{ name: 'source', argIdx: 0, argName: 'file' }
+	{ name: 'source', argIdx: 0, argName: 'file' },
+	{ name: 'sys.source', argIdx: 0, argName: 'file' }
 ] as const;
 export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.table', argIdx: 0, argName: 'file' },
 	{ name: 'read.csv', argIdx: 0, argName: 'file' },
 	{ name: 'read.csv2', argIdx: 0, argName: 'file' },
 	{ name: 'read.delim', argIdx: 0, argName: 'file' },
-	{ name: 'read.delim', argIdx: 0, argName: 'file' },
+	{ name: 'read.dcf', argIdx: 0, argName: 'file' },
+	{ name: 'readLines', argIdx: 0, argName: 'file' },
+	{ name: 'scan', argIdx: 0, argName: 'file' },
 	{ name: 'read.fwf', argIdx: 0, argName: 'file' },
 	{ name: 'file', argIdx: 1, argName: 'open' },
 	{ name: 'url', argIdx: 1, argName: 'open' },
@@ -46,14 +55,15 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'write.csv', argIdx: 1, argName: 'file' },
 	{ name: 'saveRDS', argIdx: 1, argName: 'file' },
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ name: 'print' },
-	{ name: 'cat' },
+	{ name: 'print', linkTo: 'sink' },
+	{ name: 'cat', linkTo: 'sink' },
 ] as const;
 
 export interface FunctionInfo {
     name:     string
-    argIdx?:  number
+    argIdx?:  number | 'unnamed'
     argName?: string
+    linkTo?:  string
 }
 
 export interface DependenciesQuery extends BaseQueryFormat {
@@ -72,9 +82,10 @@ export interface DependenciesQueryResult extends BaseQueryResult {
     writtenData:  WriteInfo[]
 }
 
-export interface DependencyInfo {
+export interface DependencyInfo extends Record<string, unknown>{
     nodeId:       NodeId
     functionName: string
+    linkedIds?:   readonly NodeId[]
 }
 export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
 export type SourceInfo = (DependencyInfo & { file: string })

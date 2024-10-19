@@ -4,7 +4,13 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { executeQueries } from '../queries/query';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
-import { explainQueries, registerQueryDocumentation, showQuery, tocForQueryType } from './doc-util/doc-query';
+import {
+	explainQueries,
+	linkToQueryOfName,
+	registerQueryDocumentation,
+	showQuery,
+	tocForQueryType
+} from './doc-util/doc-query';
 import { CallTargets } from '../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../util/schema';
 import { QueriesSchema } from '../queries/query-schema';
@@ -24,6 +30,7 @@ import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-qu
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
+import { executeLocationMapQuery } from '../queries/catalog/location-map-query/location-map-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -385,6 +392,34 @@ ${
 		readFunctions:          [],
 		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
+}
+
+		`;
+	}
+});
+
+registerQueryDocumentation('location-map', {
+	name:             'Location Map Query',
+	type:             'active',
+	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
+	functionName:     executeLocationMapQuery.name,
+	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1\nx * 2';
+		return `
+A query like the ${linkToQueryOfName('id-map')} query can return a really big result, especially for larger scripts.
+If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
+
+Consider you have the following code:
+
+${codeBlock('r', exampleCode)}
+
+The following query then gives you the aforementioned mapping:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'location-map'
+	}], { showCode: false, collapseQuery: true })
 }
 
 		`;

@@ -114,7 +114,7 @@ for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
-You can submit an expression (using enter),
+You can submit an expression (using <kbd>enter</kbd>),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
 The best command to get started with the REPL is ${getReplCommand('help')}.
 Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
@@ -246,8 +246,8 @@ _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classe
 
 ### Using the \`${RShell.name}\` to Interact with R
 
-The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
-For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+The \`${RShell.name}\` class interfaces with the \`R\`&nbsp;ecosystem installed on the host system.
+For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
 > Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.

@@ -28,8 +28,18 @@ import type { OutputFormatter } from '../util/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type Joi from 'joi';
+import type { LocationMapQuery } from './catalog/location-map-query/location-map-query-format';
+import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
 
-export type Query = CallContextQuery | DataflowQuery | NormalizedAstQuery | IdMapQuery | DataflowClusterQuery | StaticSliceQuery | LineageQuery | DependenciesQuery;
+export type Query = CallContextQuery
+	| DataflowQuery
+	| NormalizedAstQuery
+	| IdMapQuery
+	| DataflowClusterQuery
+	| StaticSliceQuery
+	| LineageQuery
+	| DependenciesQuery
+	| LocationMapQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -59,7 +69,8 @@ export const SupportedQueries = {
 	'dataflow-cluster': ClusterQueryDefinition,
 	'static-slice':     StaticSliceQueryDefinition,
 	'lineage':          LineageQueryDefinition,
-	'dependencies':     DependenciesQueryDefinition
+	'dependencies':     DependenciesQueryDefinition,
+	'location-map':     LocationMapQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

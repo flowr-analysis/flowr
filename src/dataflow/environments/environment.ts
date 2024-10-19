@@ -90,7 +90,7 @@ export interface REnvironmentInformation {
 export const BuiltInEnvironment = new Environment(undefined as unknown as IEnvironment);
 BuiltInEnvironment.memory = undefined as unknown as EnvironmentMemory;
 
-const EmptyBuiltInEnvironment: IEnvironment = {
+export const EmptyBuiltInEnvironment: IEnvironment = {
 	id:     BuiltInEnvironment.id,
 	memory: undefined as unknown as EnvironmentMemory,
 	parent: undefined as unknown as IEnvironment

@@ -4,7 +4,6 @@
 import net from 'net';
 import type WebSocket from 'ws';
 import { WebSocketServer } from 'ws';
-import type * as Buffer from 'buffer';
 import { serverLog } from './server';
 
 /** Function handler that should be triggered when the respective socket connects */
@@ -32,7 +31,7 @@ export class WebSocketServerWrapper implements Server {
 	}
 
 	start(port: number) {
-		this.server = new WebSocketServer({ port });
+		this.server = new WebSocketServer({ port, maxPayload: 1024 * 1024 * 1024 * 1024 });
 		serverLog.info('WebSocket-Server wrapper is active!');
 		this.server.on('connection', c => this.connectHandler?.(new WebSocketWrapper(c)));
 	}

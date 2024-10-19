@@ -66,6 +66,12 @@ describe('Dependencies Query', withShell(shell => {
 			{ nodeId: '3@require', functionName: 'require', libraryName: 'c' }
 		] });
 
+		testQuery('pacman', 'p_load(a, b, c)', { libraries: [
+			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'a' },
+			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'b' },
+			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'c' }
+		] });
+
 		testQuery('Call with Alias', 'foo <- library\nfoo(x)', { libraries: [
 			{ nodeId: '2@foo', functionName: 'foo', libraryName: 'x' }
 		] });
@@ -135,6 +141,7 @@ describe('Dependencies Query', withShell(shell => {
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
+		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { writtenData: [{ nodeId: '2@cat', functionName: 'cat', destination: 'unknown', linkedIds: [3] }] });
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {

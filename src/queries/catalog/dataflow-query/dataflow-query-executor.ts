@@ -1,6 +1,6 @@
-import type { BasicQueryData } from '../../query';
 import type { DataflowQuery, DataflowQueryResult } from './dataflow-query-format';
 import { log } from '../../../util/log';
+import type { BasicQueryData } from '../../base-query-format';
 
 
 export function executeDataflowQuery({ graph }: BasicQueryData, queries: readonly DataflowQuery[]): DataflowQueryResult {

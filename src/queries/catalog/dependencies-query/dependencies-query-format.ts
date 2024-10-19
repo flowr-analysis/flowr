@@ -8,20 +8,29 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
-	{ name: 'library',         argIdx: 0, argName: 'package' },
-	{ name: 'require',         argIdx: 0, argName: 'package' },
-	{ name: 'loadNamespace',   argIdx: 0, argName: 'package' },
-	{ name: 'attachNamespace', argIdx: 0, argName: 'ns' },
+	{ name: 'library',           argIdx: 0, argName: 'package' },
+	{ name: 'require',           argIdx: 0, argName: 'package' },
+	{ name: 'loadNamespace',     argIdx: 0, argName: 'package' },
+	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns' },
+	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg' },
+	{ name: 'p_load',            argIdx: 'unnamed' }, // pacman
+	{ name: 'p_load_gh',         argIdx: 'unnamed' }, // pacman
+	{ name: 'from_import',       argIdx: 0, argName: 'package' }, // easypackages
+	{ name: 'libraries',         argIdx: 'unnamed' }, // easypackages
+	{ name: 'shelf',             argIdx: 'unnamed' } // librarian
 ] as const;
 export const SourceFunctions: FunctionInfo[] = [
-	{ name: 'source', argIdx: 0, argName: 'file' }
+	{ name: 'source', argIdx: 0, argName: 'file' },
+	{ name: 'sys.source', argIdx: 0, argName: 'file' }
 ] as const;
 export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.table', argIdx: 0, argName: 'file' },
 	{ name: 'read.csv', argIdx: 0, argName: 'file' },
 	{ name: 'read.csv2', argIdx: 0, argName: 'file' },
 	{ name: 'read.delim', argIdx: 0, argName: 'file' },
-	{ name: 'read.delim', argIdx: 0, argName: 'file' },
+	{ name: 'read.dcf', argIdx: 0, argName: 'file' },
+	{ name: 'readLines', argIdx: 0, argName: 'file' },
+	{ name: 'scan', argIdx: 0, argName: 'file' },
 	{ name: 'read.fwf', argIdx: 0, argName: 'file' },
 	{ name: 'file', argIdx: 1, argName: 'open' },
 	{ name: 'url', argIdx: 1, argName: 'open' },
@@ -35,6 +44,42 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'matrix', argIdx: 0, argName: 'data' },
 	{ name: 'readRDS', argIdx: 0, argName: 'file' },
 	{ name: 'readLines', argIdx: 0, argName: 'con' },
+	// readr
+	{ name: 'read_csv', argIdx: 0, argName: 'file' },
+	{ name: 'read_csv2', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines', argIdx: 0, argName: 'file' },
+	{ name: 'read_delim', argIdx: 0, argName: 'file' },
+	{ name: 'read_dsv', argIdx: 0, argName: 'file' },
+	{ name: 'read_fwf', argIdx: 0, argName: 'file' },
+	{ name: 'read_tsv', argIdx: 0, argName: 'file' },
+	{ name: 'read_table', argIdx: 0, argName: 'file' },
+	{ name: 'read_log', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines_chunked', argIdx: 0, argName: 'file' },
+	// xlsx
+	{ name: 'read.xlsx', argIdx: 0, argName: 'file' },
+	{ name: 'read.xlsx2', argIdx: 0, argName: 'file' },
+	// data.table
+	{ name: 'fread', argIdx: 0, argName: 'file' },
+	// haven
+	{ name: 'read_sas', argIdx: 0, argName: 'file' },
+	{ name: 'read_sav', argIdx: 0, argName: 'file' },
+	{ name: 'read_por', argIdx: 0, argName: 'file' },
+	{ name: 'read_dta', argIdx: 0, argName: 'file' },
+	{ name: 'read_xpt', argIdx: 0, argName: 'file' },
+	// feather
+	{ name: 'read_feather', argIdx: 0, argName: 'file' },
+	// foreign
+	{ name: 'read.arff', argIdx: 0, argName: 'file' },
+	{ name: 'read.dbf', argIdx: 0, argName: 'file' },
+	{ name: 'read.dta', argIdx: 0, argName: 'file' },
+	{ name: 'read.epiinfo', argIdx: 0, argName: 'file' },
+	{ name: 'read.mtp', argIdx: 0, argName: 'file' },
+	{ name: 'read.octave', argIdx: 0, argName: 'file' },
+	{ name: 'read.spss', argIdx: 0, argName: 'file' },
+	{ name: 'read.ssd', argIdx: 0, argName: 'file' },
+	{ name: 'read.systat', argIdx: 0, argName: 'file' },
+	{ name: 'read.xport', argIdx: 0, argName: 'file' },
 ] as const;
 export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'save', argIdx: 0, argName: '...' },
@@ -46,14 +91,40 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'write.csv', argIdx: 1, argName: 'file' },
 	{ name: 'saveRDS', argIdx: 1, argName: 'file' },
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ name: 'print' },
-	{ name: 'cat' },
+	{ name: 'print', linkTo: 'sink' },
+	{ name: 'cat', linkTo: 'sink' },
+	// readr
+	{ name: 'write_csv', argIdx: 1, argName: 'file' },
+	{ name: 'write_csv2', argIdx: 1, argName: 'file' },
+	{ name: 'write_delim', argIdx: 1, argName: 'file' },
+	{ name: 'write_dsv', argIdx: 1, argName: 'file' },
+	{ name: 'write_fwf', argIdx: 1, argName: 'file' },
+	{ name: 'write_tsv', argIdx: 1, argName: 'file' },
+	{ name: 'write_table', argIdx: 1, argName: 'file' },
+	{ name: 'write_log', argIdx: 1, argName: 'file' },
+	// heaven
+	{ name: 'write_sas', argIdx: 1, argName: 'file' },
+	{ name: 'write_sav', argIdx: 1, argName: 'file' },
+	{ name: 'write_por', argIdx: 1, argName: 'file' },
+	{ name: 'write_dta', argIdx: 1, argName: 'file' },
+	{ name: 'write_xpt', argIdx: 1, argName: 'file' },
+	// feather
+	{ name: 'write_feather', argIdx: 1, argName: 'file' },
+	// foreign
+	{ name: 'write.arff', argIdx: 1, argName: 'file' },
+	{ name: 'write.dbf', argIdx: 1, argName: 'file' },
+	{ name: 'write.dta', argIdx: 1, argName: 'file' },
+	{ name: 'write.foreign', argIdx: 1, argName: 'file' },
+	// xlsx
+	{ name: 'write.xlsx', argIdx: 1, argName: 'file' },
+	{ name: 'write.xlsx2', argIdx: 1, argName: 'file' },
 ] as const;
 
 export interface FunctionInfo {
     name:     string
-    argIdx?:  number
+    argIdx?:  number | 'unnamed'
     argName?: string
+    linkTo?:  string
 }
 
 export interface DependenciesQuery extends BaseQueryFormat {
@@ -72,9 +143,10 @@ export interface DependenciesQueryResult extends BaseQueryResult {
     writtenData:  WriteInfo[]
 }
 
-export interface DependencyInfo {
+export interface DependencyInfo extends Record<string, unknown>{
     nodeId:       NodeId
     functionName: string
+    linkedIds?:   readonly NodeId[]
 }
 export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
 export type SourceInfo = (DependencyInfo & { file: string })

@@ -72,20 +72,20 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		nodeId:       id,
 		functionName: vertex.name,
 		file:         argument ?? Unknown,
-		linkedIds
+		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
 	}));
 	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argument, linkedIds) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		source:       argument ?? Unknown,
-		linkedIds
+		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
 	}));
 	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argument, linkedIds) => ({
 		nodeId:       id,
 		functionName: vertex.name,
 		// write functions that don't have argIndex are assumed to write to stdout
 		destination:  argument ?? ((linkedIds?.length ?? 0) > 0 ? Unknown : 'stdout'),
-		linkedIds:    linkedIds
+		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
 	}));
 
 	return {

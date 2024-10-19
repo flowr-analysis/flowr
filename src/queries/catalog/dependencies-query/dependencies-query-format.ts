@@ -44,6 +44,42 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'matrix', argIdx: 0, argName: 'data' },
 	{ name: 'readRDS', argIdx: 0, argName: 'file' },
 	{ name: 'readLines', argIdx: 0, argName: 'con' },
+	// readr
+	{ name: 'read_csv', argIdx: 0, argName: 'file' },
+	{ name: 'read_csv2', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines', argIdx: 0, argName: 'file' },
+	{ name: 'read_delim', argIdx: 0, argName: 'file' },
+	{ name: 'read_dsv', argIdx: 0, argName: 'file' },
+	{ name: 'read_fwf', argIdx: 0, argName: 'file' },
+	{ name: 'read_tsv', argIdx: 0, argName: 'file' },
+	{ name: 'read_table', argIdx: 0, argName: 'file' },
+	{ name: 'read_log', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines', argIdx: 0, argName: 'file' },
+	{ name: 'read_lines_chunked', argIdx: 0, argName: 'file' },
+	// xlsx
+	{ name: 'read.xlsx', argIdx: 0, argName: 'file' },
+	{ name: 'read.xlsx2', argIdx: 0, argName: 'file' },
+	// data.table
+	{ name: 'fread', argIdx: 0, argName: 'file' },
+	// haven
+	{ name: 'read_sas', argIdx: 0, argName: 'file' },
+	{ name: 'read_sav', argIdx: 0, argName: 'file' },
+	{ name: 'read_por', argIdx: 0, argName: 'file' },
+	{ name: 'read_dta', argIdx: 0, argName: 'file' },
+	{ name: 'read_xpt', argIdx: 0, argName: 'file' },
+	// feather
+	{ name: 'read_feather', argIdx: 0, argName: 'file' },
+	// foreign
+	{ name: 'read.arff', argIdx: 0, argName: 'file' },
+	{ name: 'read.dbf', argIdx: 0, argName: 'file' },
+	{ name: 'read.dta', argIdx: 0, argName: 'file' },
+	{ name: 'read.epiinfo', argIdx: 0, argName: 'file' },
+	{ name: 'read.mtp', argIdx: 0, argName: 'file' },
+	{ name: 'read.octave', argIdx: 0, argName: 'file' },
+	{ name: 'read.spss', argIdx: 0, argName: 'file' },
+	{ name: 'read.ssd', argIdx: 0, argName: 'file' },
+	{ name: 'read.systat', argIdx: 0, argName: 'file' },
+	{ name: 'read.xport', argIdx: 0, argName: 'file' },
 ] as const;
 export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'save', argIdx: 0, argName: '...' },
@@ -57,6 +93,31 @@ export const WriteFunctions: FunctionInfo[] = [
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ name: 'print', linkTo: 'sink' },
 	{ name: 'cat', linkTo: 'sink' },
+	// readr
+	{ name: 'write_csv', argIdx: 1, argName: 'file' },
+	{ name: 'write_csv2', argIdx: 1, argName: 'file' },
+	{ name: 'write_delim', argIdx: 1, argName: 'file' },
+	{ name: 'write_dsv', argIdx: 1, argName: 'file' },
+	{ name: 'write_fwf', argIdx: 1, argName: 'file' },
+	{ name: 'write_tsv', argIdx: 1, argName: 'file' },
+	{ name: 'write_table', argIdx: 1, argName: 'file' },
+	{ name: 'write_log', argIdx: 1, argName: 'file' },
+	// heaven
+	{ name: 'write_sas', argIdx: 1, argName: 'file' },
+	{ name: 'write_sav', argIdx: 1, argName: 'file' },
+	{ name: 'write_por', argIdx: 1, argName: 'file' },
+	{ name: 'write_dta', argIdx: 1, argName: 'file' },
+	{ name: 'write_xpt', argIdx: 1, argName: 'file' },
+	// feather
+	{ name: 'write_feather', argIdx: 1, argName: 'file' },
+	// foreign
+	{ name: 'write.arff', argIdx: 1, argName: 'file' },
+	{ name: 'write.dbf', argIdx: 1, argName: 'file' },
+	{ name: 'write.dta', argIdx: 1, argName: 'file' },
+	{ name: 'write.foreign', argIdx: 1, argName: 'file' },
+	// xlsx
+	{ name: 'write.xlsx', argIdx: 1, argName: 'file' },
+	{ name: 'write.xlsx2', argIdx: 1, argName: 'file' },
 ] as const;
 
 export interface FunctionInfo {

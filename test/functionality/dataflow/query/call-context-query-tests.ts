@@ -128,6 +128,6 @@ describe('Call Context Query', withShell(shell => {
 	});
 	describe('Without Regex', () => {
 		testQuery('Print calls', 'print(1)', [q('pr')], r([{ id: 3, name: 'print' }]));
-		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r(new Array(10000).fill({ id: 3, name: 'print' } as const) as CallContextQuerySubKindResult[]));
+		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r([{ id: 3, name: 'print' }]));
 	});
 }));

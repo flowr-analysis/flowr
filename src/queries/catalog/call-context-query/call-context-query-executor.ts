@@ -214,6 +214,23 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 	return aliases;
 }
 
+function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>) {
+	for(const [, collected] of collector.store) {
+		for(const [subkind, values] of collected) {
+			const seen = new Set<string>();
+			const newValues = values.filter(v => {
+				const str = JSON.stringify(v);
+				if(seen.has(str)) {
+					return false;
+				}
+				seen.add(str);
+				return true;
+			});
+			collected.set(subkind, newValues);
+		}
+	}
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -284,6 +301,8 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, calls: targets, linkedIds }));
 		}
 	}
+
+	removeIdenticalDuplicates(initialIdCollector);
 
 	return {
 		'.meta': {

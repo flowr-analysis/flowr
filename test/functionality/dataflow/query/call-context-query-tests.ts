@@ -126,4 +126,8 @@ describe('Call Context Query', withShell(shell => {
 		testQuery('Contained Match (expl. false)', 'foo()', [q(/o/, { callNameExact: false })], r([{ id: 1, name: 'foo' }]));
 		testQuery('No Contained Match', 'foo()', [q(/o/, { callNameExact: true })], baseResult({}));
 	});
+	describe('Without Regex', () => {
+		testQuery('Print calls', 'print(1)', [q('pr')], r([{ id: 3, name: 'print' }]));
+		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r(new Array(10000).fill({ id: 3, name: 'print' } as const) as CallContextQuerySubKindResult[]));
+	});
 }));

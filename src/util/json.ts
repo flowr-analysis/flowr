@@ -90,7 +90,7 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 			if(Object.hasOwn(obj, key)) {
 				// @ts-expect-error - We know that obj[key] is not undefined, it its own property
 				const value: unknown = obj[key];
-				if(value === undefined || typeof value === 'function' || typeof value === 'symbol' || key === 'fullLexeme') {
+				if(value === undefined || typeof value === 'function' || typeof value === 'symbol' || key === 'info') {
 					continue;
 				}
 				if(i++ > 0) {

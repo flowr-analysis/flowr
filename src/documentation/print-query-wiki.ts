@@ -79,7 +79,7 @@ ${
 
 As you can see, all kinds and subkinds with the same name are grouped together.
 Yet, re-stating common arguments and kinds may be cumbersome (although you can already use clever regex patterns).
-See the [Compound Query](#compound-query) for a way to structure your queries more compactly if you think it gets too verbose. 
+See the ${linkToQueryOfName('compound')} for a way to structure your queries more compactly if you think it gets too verbose. 
 
 ${
 	await (async() => {
@@ -357,7 +357,7 @@ better::write.csv(data, "data2.csv")
 print("hello world!")
 		`;
 		return `
-This query extracts all dependencies from an R script, using a combination of [Call-Context Queries](#call-context-query)
+This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).  
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
@@ -450,8 +450,8 @@ with a running flowR server, or the ${getReplCommand('query')} command in the fl
 Queries are JSON arrays of query objects, each of which uses a \`type\` property to specify the query type.
 In general, we separate two types of queries:
 
-1. **Active Queries**: Are exactly what you would expect from a query (e.g., the [Call-Context Query](#call-context-query)). They fetch information from the dataflow graph.
-2. **Virtual Queries**: Are used to structure your queries (e.g., the [Compound Query](#compound-query)). 
+1. **Active Queries**: Are exactly what you would expect from a query (e.g., the ${linkToQueryOfName('call-context')}). They fetch information from the dataflow graph.
+2. **Virtual Queries**: Are used to structure your queries (e.g., the ${linkToQueryOfName('compound')}). 
 
 We separate these from a concept perspective. 
 For now, we support the following **active** queries (which we will refer to simply as a \`query\`):
@@ -498,9 +498,9 @@ However, this fails to incorporate
 3. Context information (e.g., calls like \`points\` may link to the current plot)
 
 To solve this, flowR provides a query API which allows you to specify queries on the dataflow graph.
-For the specific use-case stated, you could use the [Call-Context Query](#call-context-query) to find all calls to \`read_csv\` which refer functions that are not overwritten.
+For the specific use-case stated, you could use the ${linkToQueryOfName('call-context')} to find all calls to \`read_csv\` which refer functions that are not overwritten.
 
-Just as an example, the following [Call-Context Query](#call-context-query) finds all calls to \`read_csv\` that are not overwritten:
+Just as an example, the following ${linkToQueryOfName('call-context')} finds all calls to \`read_csv\` that are not overwritten:
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
 

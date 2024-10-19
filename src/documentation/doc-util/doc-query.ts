@@ -102,12 +102,12 @@ function linkify(name: string) {
 	return name.toLowerCase().replace(/ /g, '-');
 }
 
-export function linkToQueryOfName(id: SupportedQueryTypes) {
+export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQueryTypes) {
 	const query = RegisteredQueries.active.get(id) ?? RegisteredQueries.virtual.get(id);
 	if(!query) {
 		throw new Error(`Query ${id} not found`);
 	}
-	return linkify(query.name);
+	return `[${query.name}](#${linkify(query.name)})`;
 }
 
 export function tocForQueryType(type: 'active' | 'virtual') {

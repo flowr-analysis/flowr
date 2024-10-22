@@ -1,6 +1,6 @@
-import type { BasicQueryData } from '../../query';
 import { log } from '../../../util/log';
 import type { NormalizedAstQuery, NormalizedAstQueryResult } from './normalized-ast-query-format';
+import type { BasicQueryData } from '../../base-query-format';
 
 
 export function executeNormalizedAstQuery({ ast }: BasicQueryData, queries: readonly NormalizedAstQuery[]): NormalizedAstQueryResult {

@@ -28,7 +28,6 @@ import {
 import { exampleQueryCode } from '../query/example-query-code';
 import { CallTargets } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
-import { block } from '../../doc-util/doc-structure';
 
 export function documentAllServerMessages() {
 
@@ -248,10 +247,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
 		shortDescription: `([DEPRECATED](${FlowrWikiBaseRef}/Query%20API)) The server slices a file based on the given criteria.`,
 		text:             async(shell: RShell) => {
 			return `
-${block({
-		type:    'WARNING',
-		content: `We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).`
-	})}
+**We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).**
 
 To slice, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly slice the same file.
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](${FlowrWikiBaseRef}/Terminology#slicing-criterion) 
@@ -507,10 +503,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 		text:             async(shell: RShell) => {
 			return `
 
-${block({
-		type:    'WARNING',
-		content: `We deprecated the lineage request in favor of the \`lineage\` [Query](${FlowrWikiBaseRef}/Query%20API).`
-	})}
+**We deprecated the lineage request in favor of the \`lineage\` [Query](${FlowrWikiBaseRef}/Query%20API).**
 
 In order to retrieve the lineage of an object, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly retrieve the lineage of the same file.
 Besides that, you will need to add a [criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) that specifies the object whose lineage you're interested in.

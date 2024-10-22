@@ -18,13 +18,13 @@ export const serverLog = new FlowrLogger({ name: 'server' });
  * thereon be handled by a {@link FlowRServerConnection}.
  */
 export class FlowRServer {
-	private readonly server:     Server;
-	private readonly shell:      RShell;
-	private versionInformation:  VersionInformation | undefined;
-	private allowRSessionAccess: boolean = false;
+	private readonly server:              Server;
+	private readonly shell:               RShell;
+	private versionInformation:           VersionInformation | undefined;
+	private readonly allowRSessionAccess: boolean;
 
 	/** maps names to the respective connection */
-	private connections = new Map<string, FlowRServerConnection>();
+	private readonly connections = new Map<string, FlowRServerConnection>();
 	private nameCounter = 0;
 
 	constructor(shell: RShell, allowRSessionAccess: boolean, server: Server = new NetServer()) {

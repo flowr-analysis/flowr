@@ -69,6 +69,9 @@ export class FlowRServerConnection {
 		this.logger = serverLog.getSubLogger({ name });
 		this.socket.on('data', data => this.handleData(String(data)));
 		this.socket.on('error', e => this.logger.error(`[${this.name}] Error while handling connection: ${String(e)}`));
+		this.socket.on('close', () => {
+			this.fileMap.clear();
+		});
 		this.allowRSessionAccess = allowRSessionAccess;
 	}
 
@@ -128,6 +131,8 @@ export class FlowRServerConnection {
 
 		if(message.filetoken && this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`);
+			// explicitly delete the previous store
+			this.fileMap.delete(message.filetoken);
 		}
 
 		const tempFile = tmp.fileSync({ postfix: '.R' });

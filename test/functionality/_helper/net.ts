@@ -81,10 +81,22 @@ export class FakeSocket implements Socket {
 					return;
 				}
 			}
+			// set a checking interval
+			const interval = setInterval(() => {
+				for(const message of this.messages) {
+					if(message.type === type) {
+						clearTimeout(timeout);
+						clearInterval(interval);
+						resolve();
+						return;
+					}
+				}
+			}, 100);
 			// otherwise wait
 			this.messageHandler = (message: IdMessageBase) => {
 				if(message.type === type) {
 					clearTimeout(timeout);
+					clearInterval(interval);
 					resolve();
 				}
 			};

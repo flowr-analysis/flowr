@@ -113,6 +113,8 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 	}
 }
 
+
+
 export const BuiltInProcessorMapper = {
 	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:apply':               processApply,
@@ -131,6 +133,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:repeat-loop':         processRepeatLoop,
 	'builtin:while-loop':          processWhileLoop,
 	'builtin:replacement':         processReplacementFunction,
+	'builtin:vector':              processReplacementFunction,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;

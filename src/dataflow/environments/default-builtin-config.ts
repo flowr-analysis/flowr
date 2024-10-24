@@ -58,6 +58,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['repeat'],                                     processor: 'builtin:repeat-loop',         config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
+	{ type: 'function', names: ['c'],                                    	   processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
 	{
 		type:  'function',
 		names: [

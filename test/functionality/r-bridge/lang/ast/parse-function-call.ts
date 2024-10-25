@@ -194,51 +194,52 @@ describe('Parse function calls', withShell(shell => {
 			})
 		);
 		for(const quote of ['"', "'", '`']) {
-			// TODO: describe quote
-			for (const firstArgName of ['a', 'a b', 'a(1)']) {
-				const argLength = firstArgName.length;
-				const arg = `${quote}${firstArgName}${quote}`
-				assertAst(label(`escaped argument (${firstArgName})`, ['name-normal', 'call-normal', 'string-arguments', 'strings']),
-					shell, `f(${arg}=3)`,
-					exprList({
-						type: RType.FunctionCall,
-						named: true,
-						location: rangeFrom(1, 1, 1, 1),
-						lexeme: 'f',
-						info: {},
-						functionName: {
-							type: RType.Symbol,
-							location: rangeFrom(1, 1, 1, 1),
-							lexeme: 'f',
-							content: 'f',
-							namespace: undefined,
-							info: {}
-						},
-						arguments: [
-							{
-								type: RType.Argument,
-								location: rangeFrom(1, 3, 1, 4 + argLength),
-								name: {
-									type: RType.Symbol,
+			describe(`Escaped Arguments Using Quote ${quote}`, () => {
+				for(const firstArgName of ['a', 'a b', 'a(1)']) {
+					const argLength = firstArgName.length;
+					const arg = `${quote}${firstArgName}${quote}`;
+					assertAst(label(`${firstArgName}`, ['name-normal', 'call-normal', 'string-arguments', 'strings']),
+						shell, `f(${arg}=3)`,
+						exprList({
+							type:         RType.FunctionCall,
+							named:        true,
+							location:     rangeFrom(1, 1, 1, 1),
+							lexeme:       'f',
+							info:         {},
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 1),
+								lexeme:    'f',
+								content:   'f',
+								namespace: undefined,
+								info:      {}
+							},
+							arguments: [
+								{
+									type:     RType.Argument,
 									location: rangeFrom(1, 3, 1, 4 + argLength),
+									name:     {
+										type:      RType.Symbol,
+										location:  rangeFrom(1, 3, 1, 4 + argLength),
+										lexeme:    arg,
+										content:   firstArgName,
+										namespace: undefined,
+										info:      {}
+									},
 									lexeme: arg,
-									content: firstArgName,
-									namespace: undefined,
-									info: {}
-								},
-								lexeme: arg,
-								info: {},
-								value: {
-									type: RType.Number,
-									location: rangeFrom(1, 4 + argLength + 2, 1, 4 + argLength + 2),
-									lexeme: '3',
-									content: numVal(3),
-									info: {}
+									info:   {},
+									value:  {
+										type:     RType.Number,
+										location: rangeFrom(1, 4 + argLength + 2, 1, 4 + argLength + 2),
+										lexeme:   '3',
+										content:  numVal(3),
+										info:     {}
+									}
 								}
-							}
-						]
-					}));
-			}
+							]
+						}));
+				}
+			});
 		}
 	});
 	describe('directly called functions', () => {

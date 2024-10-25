@@ -9,6 +9,7 @@ import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
+import { startAndEndsWith } from '../../../../../../../util/strings';
 
 
 /**
@@ -38,7 +39,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name =    {
 			type:      RType.Symbol,
 			location,
-			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : content,
+			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
 			namespace: undefined,
 			lexeme:    content,
 			info:      {

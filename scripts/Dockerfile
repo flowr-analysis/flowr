@@ -34,6 +34,10 @@ COPY --from=builder /app/dist /app/dist
 
 RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts
 
+# make new user
+RUN addgroup -S flowr && adduser -S flowr -G flowr
+USER flowr
+
 ENTRYPOINT [\
     "node",\
     # configure basic memory options

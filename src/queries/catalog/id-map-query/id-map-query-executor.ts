@@ -1,6 +1,6 @@
-import type { BasicQueryData } from '../../query';
 import { log } from '../../../util/log';
 import type { IdMapQuery, IdMapQueryResult } from './id-map-query-format';
+import type { BasicQueryData } from '../../base-query-format';
 
 
 export function executeIdMapQuery({ ast }: BasicQueryData, queries: readonly IdMapQuery[]): IdMapQueryResult {

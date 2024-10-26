@@ -12,6 +12,7 @@ export const LibraryFunctions: FunctionInfo[] = [
 	{ name: 'require',           argIdx: 0, argName: 'package' },
 	{ name: 'loadNamespace',     argIdx: 0, argName: 'package' },
 	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns' },
+	{ name: 'attach',            argIdx: 0, argName: 'what' },
 	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg' },
 	{ name: 'p_load',            argIdx: 'unnamed' }, // pacman
 	{ name: 'p_load_gh',         argIdx: 'unnamed' }, // pacman
@@ -29,7 +30,6 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.csv2', argIdx: 0, argName: 'file' },
 	{ name: 'read.delim', argIdx: 0, argName: 'file' },
 	{ name: 'read.dcf', argIdx: 0, argName: 'file' },
-	{ name: 'readLines', argIdx: 0, argName: 'file' },
 	{ name: 'scan', argIdx: 0, argName: 'file' },
 	{ name: 'read.fwf', argIdx: 0, argName: 'file' },
 	{ name: 'file', argIdx: 1, argName: 'open' },
@@ -44,6 +44,7 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'matrix', argIdx: 0, argName: 'data' },
 	{ name: 'readRDS', argIdx: 0, argName: 'file' },
 	{ name: 'readLines', argIdx: 0, argName: 'con' },
+	{ name: 'readRenviron', argIdx: 0, argName: 'path' },
 	// readr
 	{ name: 'read_csv', argIdx: 0, argName: 'file' },
 	{ name: 'read_csv2', argIdx: 0, argName: 'file' },
@@ -92,7 +93,9 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'saveRDS', argIdx: 1, argName: 'file' },
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ name: 'print', linkTo: 'sink' },
-	{ name: 'cat', linkTo: 'sink' },
+	{ name: 'cat', linkTo: 'sink', argIdx: 1, argName: 'file' },
+	{ name: 'message', linkTo: 'sink' },
+	{ name: 'warning', linkTo: 'sink' },
 	// readr
 	{ name: 'write_csv', argIdx: 1, argName: 'file' },
 	{ name: 'write_csv2', argIdx: 1, argName: 'file' },

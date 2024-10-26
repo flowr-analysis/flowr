@@ -29,16 +29,14 @@ As explained in the [Overview](${FlowrWikiBaseRef}/Overview), you can simply run
 Currently, every connection is handled by the same underlying \`${RShell.name}\` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary number of&nbsp;${RShell.name} sessions on the target machine).
 
-Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. 
-Similarly, the server will answer you with a single line that ends in a newline (please be aware that due to size constraints, the server may send multiple messages in a row, terminated with the newline). 
-Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
+Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
 ${
 	block({
 		type:    'NOTE',
 		content: `
 The default ${getCliLongOptionOf('flowr', 'server', false)} uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'server', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.
+connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.
 			`
 	})
 }
@@ -114,7 +112,7 @@ for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
-You can submit an expression (using <kbd>enter</kbd>),
+You can submit an expression (using enter),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
 The best command to get started with the REPL is ${getReplCommand('help')}.
 Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
@@ -246,8 +244,8 @@ _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classe
 
 ### Using the \`${RShell.name}\` to Interact with R
 
-The \`${RShell.name}\` class interfaces with the \`R\`&nbsp;ecosystem installed on the host system.
-For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
+For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
 > Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.

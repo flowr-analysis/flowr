@@ -228,6 +228,8 @@ While the context is derived from the \`filename\`, we currently offer no way to
 		}
 	});
 
+	const deprecatedByQuery = `(<a href="${FlowrWikiBaseRef}/Query%20API">deprecated</a>)`;
+	
 	documentServerMessage({
 		title:                  'Slice',
 		type:                   'request',
@@ -244,7 +246,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
     end
     deactivate  Server
 	`,
-		shortDescription: `([DEPRECATED](${FlowrWikiBaseRef}/Query%20API)) The server slices a file based on the given criteria.`,
+		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
 		text:             async(shell: RShell) => {
 			return `
 **We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).**
@@ -499,7 +501,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
     end
     deactivate  Server
 	`,
-		shortDescription: '([DEPRECATED](${FlowrWikiBaseRef}/Query%20API)) Obtain the lineage of a given slicing criterion.',
+		shortDescription: `${deprecatedByQuery} Obtain the lineage of a given slicing criterion.`,
 		text:             async(shell: RShell) => {
 			return `
 

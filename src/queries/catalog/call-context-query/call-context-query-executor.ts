@@ -1,4 +1,4 @@
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import type {DataflowGraph} from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -6,22 +6,21 @@ import type {
 	CallContextQuerySubKindResult,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { CallTargets } from './call-context-query-format';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../../dataflow/graph/vertex';
-import { assertUnreachable } from '../../../util/assert';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
-import { BuiltIn } from '../../../dataflow/environments/built-in';
-import type { ControlFlowGraph } from '../../../util/cfg/cfg';
-import { extractCFG } from '../../../util/cfg/cfg';
-import { TwoLayerCollector } from '../../two-layer-collector';
-import { compactRecord } from '../../../util/objects';
-import { visitInReverseOrder } from '../../../util/cfg/visitor';
-import { ReferenceType } from '../../../dataflow/environments/identifier';
+import {CallTargets} from './call-context-query-format';
+import type {NodeId} from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {recoverContent} from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import {VertexType} from '../../../dataflow/graph/vertex';
+import {assertUnreachable} from '../../../util/assert';
+import {edgeIncludesType, EdgeType} from '../../../dataflow/graph/edge';
+import {resolveByName} from '../../../dataflow/environments/resolve-by-name';
+import {BuiltIn} from '../../../dataflow/environments/built-in';
+import {extractCFG} from '../../../util/cfg/cfg';
+import {TwoLayerCollector} from '../../two-layer-collector';
+import {compactRecord} from '../../../util/objects';
+import {ReferenceType} from '../../../dataflow/environments/identifier';
 
-import type { BasicQueryData } from '../../base-query-format';
+import type {BasicQueryData} from '../../base-query-format';
+import {identifyLinkToLastCallRelation} from "./identify-link-to-last-call-relation";
 
 function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarget: CallTargets): NodeId[] | 'no'  {
 	const callVertex = graph.get(id);
@@ -136,25 +135,6 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 	});
 
 	return { promotedQueries, requiresCfg };
-}
-
-function identifyLinkToLastCallRelation(from: NodeId, cfg: ControlFlowGraph, graph: DataflowGraph, linkTo: RegExp): NodeId[] {
-	const found: NodeId[] = [];
-	visitInReverseOrder(cfg, from, node => {
-		/* we ignore the start id as it cannot be the last call */
-		if(node === from) {
-			return;
-		}
-		const vertex = graph.getVertex(node);
-		if(vertex === undefined || vertex.tag !== VertexType.FunctionCall) {
-			return;
-		}
-		if(linkTo.test(vertex.name)) {
-			found.push(node);
-			return true;
-		}
-	});
-	return found;
 }
 
 

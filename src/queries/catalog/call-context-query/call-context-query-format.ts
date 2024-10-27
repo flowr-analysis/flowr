@@ -58,7 +58,7 @@ interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> ext
 	readonly callName: CallName;
 }
 
-type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
+export type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
 
 export interface SubCallContextQueryFormat<CallName extends RegExp | string = RegExp | string> extends DefaultCallContextQueryFormat<CallName> {
 	readonly linkTo: LinkTo<CallName>;

@@ -28,6 +28,12 @@ import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
+import {LinkTo} from "../../queries/catalog/call-context-query/call-context-query-format";
+import {extractCFG} from "../../util/cfg/cfg";
+
+import {
+	identifyLinkToLastCallRelation
+} from "../../queries/catalog/call-context-query/identify-link-to-last-call-relation";
 
 export const BuiltIn = 'built-in';
 
@@ -58,12 +64,20 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
+/* TODO: improve support for link to */
+export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
+	readonly returnsNthArgument?: number | 'last',
+	readonly cfg?: ExitPointType,
+	readonly readAllArguments?: boolean,
+	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
+}
+
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number | 'last', cfg?: ExitPointType, readAllArguments?: boolean, hasUnknownSideEffects?: boolean } & ForceArguments
+	config: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
 	if(config.returnsNthArgument !== undefined) {
@@ -81,12 +95,17 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 
 	if(config.hasUnknownSideEffects) {
-		res.graph.markIdForUnknownSideEffects(rootId);
+		if(typeof config.hasUnknownSideEffects !== 'boolean') {
+			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects)
+		} else {
+			res.graph.markIdForUnknownSideEffects(rootId);
+		}
 	}
 
 	if(config.cfg !== undefined) {
 		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
 	}
+
 	return res;
 }
 

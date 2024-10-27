@@ -186,7 +186,9 @@ print(x)`,  emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '10' }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '10' }] }));
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '10' }] })
+					.markIdForUnknownSideEffects('14')
+			);
 			assertDataflow(label('Break in condition', ['repeat-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 repeat {
@@ -219,7 +221,9 @@ print(x)`, emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '13' }, { id: '11', when: true }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '13' }, { id: '11', when: true }] }));
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '13' }, { id: '11', when: true }] })
+					.markIdForUnknownSideEffects('17')
+			);
 			assertDataflow(label('Next', ['repeat-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 repeat {
@@ -247,7 +251,9 @@ print(x)`,  emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('6', { controlDependencies: [{ id: '15' }] })
-					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '15' }] }));
+					.defineVariable('5', 'x', { definedBy: ['6', '7'], controlDependencies: [{ id: '15' }] })
+					.markIdForUnknownSideEffects('19')
+			);
 		});
 
 		describe('for', () => {
@@ -284,7 +290,9 @@ print(x)`, emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '14', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }));
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('18')
+			);
 			assertDataflow(label('Break in condition', ['for-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 for(i in 1:100) {
@@ -323,7 +331,9 @@ print(x)`,  emptyGraph()
 					.constant('4')
 					.constant('5')
 					.constant('10', { controlDependencies: [{ id: '17', when: true }, { id: '15', when: true }] })
-					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] }));
+					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('21')
+			);
 			assertDataflow(label('Next', ['for-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 for(i in 1:100) {
@@ -361,7 +371,9 @@ print(x)`,  emptyGraph()
 					.constant('10', { controlDependencies: [{ id: '19', when: true }] })
 					.defineVariable('9', 'x', { definedBy: ['10', '11'], controlDependencies: [] })
 					.constant('15', { controlDependencies: [{ id: '19', when: true }] })
-					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] }));
+					.defineVariable('14', 'x', { definedBy: ['15', '16'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('23')
+			);
 		});
 
 		describe('while', () => {
@@ -393,7 +405,9 @@ print(x)`,  emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7', { controlDependencies: [{ id: '11', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }));
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('15')
+			);
 			assertDataflow(label('Break in condition', ['while-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 while(TRUE) {
@@ -427,7 +441,9 @@ print(x)`, emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7', { controlDependencies: [{ id: '14', when: true }, { id: '12', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] }));
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('18')
+			);
 			assertDataflow(label('Next', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
@@ -460,7 +476,9 @@ print(x)`, emptyGraph()
 					.constant('7', { controlDependencies: [{ id: '16', when: true }] })
 					.defineVariable('6', 'x', { definedBy: ['7', '8'], controlDependencies: [] })
 					.constant('12', { controlDependencies: [{ id: '16', when: true }] })
-					.defineVariable('11', 'x', { definedBy: ['12', '13'], controlDependencies: [] }));
+					.defineVariable('11', 'x', { definedBy: ['12', '13'], controlDependencies: [] })
+					.markIdForUnknownSideEffects('20')
+			);
 		});
 	});
 }));

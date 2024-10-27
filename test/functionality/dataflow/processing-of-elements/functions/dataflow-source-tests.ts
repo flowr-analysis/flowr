@@ -32,6 +32,7 @@ describe('source', withShell(shell => {
 		.constant('simple-1:1-1:6-1')
 		.defineVariable('simple-1:1-1:6-0', 'N', { definedBy: ['simple-1:1-1:6-1', 'simple-1:1-1:6-2'] })
 		.addControlDependency('simple-1:1-1:6-0', '3')
+		.markIdForUnknownSideEffects('7')
 	);
 
 	assertDataflow(label('multiple source', ['sourcing-external-files', 'strings', 'unnamed-arguments', 'normal-definition', 'newlines']), shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)',  emptyGraph()
@@ -56,6 +57,7 @@ describe('source', withShell(shell => {
 		.constant('simple-3:1-3:6-1')
 		.defineVariable('simple-3:1-3:6-0', 'N', { definedBy: ['simple-3:1-3:6-1', 'simple-3:1-3:6-2'] })
 		.addControlDependency('simple-3:1-3:6-0', '10')
+		.markIdForUnknownSideEffects('14')
 	);
 
 	assertDataflow(label('conditional', ['if', 'name-normal', 'sourcing-external-files', 'unnamed-arguments', 'strings']), shell, 'if (x) { source("simple") }\ncat(N)',  emptyGraph()
@@ -73,6 +75,7 @@ describe('source', withShell(shell => {
 		.constant('simple-1:10-1:15-1')
 		.defineVariable('simple-1:10-1:15-0', 'N', { definedBy: ['simple-1:10-1:15-1', 'simple-1:10-1:15-2'] })
 		.addControlDependency('simple-1:10-1:15-0', '6')
+		.markIdForUnknownSideEffects('12')
 	);
 
 	// missing sources should just be ignored
@@ -97,6 +100,7 @@ describe('source', withShell(shell => {
 		.constant('recursive2-2:1-2:6-5')
 		/* indicate recursion */
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-7')
+		.markIdForUnknownSideEffects('recursive2-2:1-2:6-3')
 	);
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
@@ -147,7 +151,9 @@ describe('source', withShell(shell => {
 			})
 			.defineVariable('closure1-1:1-1:6-0', 'f', { definedBy: ['closure1-1:1-1:6-7', 'closure1-1:1-1:6-8'] })
 			.addControlDependency('closure1-1:1-1:6-0', '3')
-			.defineVariable('4', 'g', { definedBy: ['6', '7'] }));
+			.defineVariable('4', 'g', { definedBy: ['6', '7'] })
+			.markIdForUnknownSideEffects('12')
+	);
 	assertDataflow(label('sourcing a closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers', ...OperatorDatabase['<<-'].capabilities]),
 		shell, 'x <- 2\nsource("closure2")\nf()\nprint(x)', emptyGraph()
 			.use('10', 'x')
@@ -182,5 +188,6 @@ describe('source', withShell(shell => {
 			}, { environment: defaultEnv().defineVariable('x', 'closure2-2:1-2:6-3', 'closure2-2:1-2:6-5') })
 			.defineVariable('closure2-2:1-2:6-0', 'f', { definedBy: ['closure2-2:1-2:6-7', 'closure2-2:1-2:6-8'] })
 			.addControlDependency('closure2-2:1-2:6-0', '6')
+			.markIdForUnknownSideEffects('12')
 	);
 }));

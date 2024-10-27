@@ -138,7 +138,10 @@ print(x)`, emptyGraph()
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				.constant('13')
-				.defineVariable('12', 'x', { definedBy: ['13', '14'] }));
+				.defineVariable('12', 'x', { definedBy: ['13', '14'] })
+				.markIdForUnknownSideEffects('18')
+				.markIdForUnknownSideEffects('23')
+		);
 	});
 	describe('Escaped Identifiers Should Still Be Resolved', () => {
 		const distractor = 'x <- 3\ny <- 4\nz <- 2\n';

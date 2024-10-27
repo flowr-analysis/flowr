@@ -9,19 +9,7 @@ import Joi from 'joi';
 import { asciiCallContext } from '../../query-print';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-
-export enum CallTargets {
-	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
-	OnlyGlobal = 'global',
-	/** call targets a function that is defined locally or globally, but must include a global function */
-	MustIncludeGlobal = 'must-include-global',
-	/** call targets a function that is defined locally  */
-	OnlyLocal = 'local',
-	/** call targets a function that is defined locally or globally, but must include a local function */
-	MustIncludeLocal = 'must-include-local',
-	/** call targets a function that is defined locally or globally */
-	Any = 'any'
-}
+import { CallTargets } from './identify-link-to-last-call-relation';
 
 export interface DefaultCallContextQueryFormat<CallName extends RegExp | string> extends BaseQueryFormat {
 	readonly type:            'call-context';

@@ -11,7 +11,6 @@ import {
 	showQuery,
 	tocForQueryType
 } from './doc-util/doc-query';
-import { CallTargets } from '../queries/catalog/call-context-query/call-context-query-format';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
@@ -30,6 +29,7 @@ import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { executeLocationMapQuery } from '../queries/catalog/location-map-query/location-map-query-executor';
+import { CallTargets } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 
 registerQueryDocumentation('call-context', {

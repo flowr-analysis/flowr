@@ -28,12 +28,10 @@ import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
-import {LinkTo} from "../../queries/catalog/call-context-query/call-context-query-format";
-import {extractCFG} from "../../util/cfg/cfg";
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
-import {
-	identifyLinkToLastCallRelation
-} from "../../queries/catalog/call-context-query/identify-link-to-last-call-relation";
+
+
 
 export const BuiltIn = 'built-in';
 
@@ -64,11 +62,10 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-/* TODO: improve support for link to */
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
-	readonly returnsNthArgument?: number | 'last',
-	readonly cfg?: ExitPointType,
-	readonly readAllArguments?: boolean,
+	readonly returnsNthArgument?:    number | 'last',
+	readonly cfg?:                   ExitPointType,
+	readonly readAllArguments?:      boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
 }
 
@@ -96,7 +93,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 	if(config.hasUnknownSideEffects) {
 		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects)
+			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects);
 		} else {
 			res.graph.markIdForUnknownSideEffects(rootId);
 		}

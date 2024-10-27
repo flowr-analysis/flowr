@@ -774,6 +774,14 @@ x`);
 		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")', ['1@v'],
 		'v\nlibrary(x)\nrequire(y)\nw <- "x"\nattachNamespace(w)\nloadNamespace("x")'
 		);
+		assertSliced(label('Points Should Link to Plot', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'plot(f)\npoints(g)', ['2@points'],
+			'plot(f)\npoints(g)'
+		);
+		assertSliced(label('Custom plot should have no links', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'plot <- function() {}\nplot(f)\npoints(g)', ['3@points'],
+			'points(g)'
+		);
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

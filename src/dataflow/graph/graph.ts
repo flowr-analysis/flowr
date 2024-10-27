@@ -24,7 +24,7 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
 import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
-import {LinkTo} from "../../queries/catalog/call-context-query/call-context-query-format";
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
@@ -410,7 +410,7 @@ export class DataflowGraph<
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
-			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> })
+			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
 			return this;
 		}
 		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));

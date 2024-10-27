@@ -33,5 +33,6 @@ describe('Simple Defs in Multiple Files', withShell(shell => {
 			.constant('-inline-@root-1-1')
 			.defineVariable('-inline-@root-1-0', 'y', { definedBy: ['-inline-@root-1-1', '-inline-@root-1-2'] })
 			.addControlDependency('-inline-@root-1-0', 'root-1')
+			.markIdForUnknownSideEffects('-inline-@root-2-5')
 	);
 }));

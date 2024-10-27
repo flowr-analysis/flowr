@@ -51,7 +51,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
 		for(const id of graph.unknownSideEffects) {
-			if(typeof id !== "object") { /* otherwise, their target is just missing */
+			if(typeof id !== 'object') { /* otherwise, their target is just missing */
 				queue.add(id, emptyEnv, basePrint, true);
 			}
 		}

@@ -121,6 +121,21 @@ export const WriteFunctions: FunctionInfo[] = [
 	// xlsx
 	{ name: 'write.xlsx', argIdx: 1, argName: 'file' },
 	{ name: 'write.xlsx2', argIdx: 1, argName: 'file' },
+	// graphics
+	{ name: 'pdf', argIdx: 0, argName: 'file' },
+	{ name: 'jpeg', argIdx: 0, argName: 'file' },
+	{ name: 'png', argIdx: 0, argName: 'file' },
+	{ name: 'windows', argIdx: 0, argName: 'file' },
+	{ name: 'postscript', argIdx: 0, argName: 'file' },
+	{ name: 'xfix', argIdx: 0, argName: 'file' },
+	{ name: 'bitmap', argIdx: 0, argName: 'file' },
+	{ name: 'pictex', argIdx: 0, argName: 'file' },
+	{ name: 'cairo_pdf', argIdx: 0, argName: 'file' },
+	{ name: 'svg', argIdx: 0, argName: 'file' },
+	{ name: 'bmp', argIdx: 0, argName: 'file' },
+	{ name: 'tiff', argIdx: 0, argName: 'file' },
+	{ name: 'X11', argIdx: 0, argName: 'file' },
+	{ name: 'quartz', argIdx: 0, argName: 'file' },
 ] as const;
 
 export interface FunctionInfo {

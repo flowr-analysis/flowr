@@ -24,6 +24,7 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
 import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
@@ -89,6 +90,8 @@ export interface DataflowGraphJson {
 	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
 }
 
+export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
+
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
  * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
@@ -106,8 +109,12 @@ export class DataflowGraph<
 > {
 	private static DEFAULT_ENVIRONMENT: REnvironmentInformation | undefined = undefined;
 	private _idMap:                     AstIdMap | undefined;
-	/* Set of vertices which have sideEffects that we do not know anything about */
-	private readonly _unknownSideEffects = new Set<NodeId>();
+	/*
+	 * Set of vertices which have sideEffects that we do not know anything about.
+	 * As a (temporary) solution until we have FD edges, a side effect may also store known target links
+	 * that have to be/should be resolved (as globals) as a separate pass before the df analysis ends.
+	 */
+	private readonly _unknownSideEffects = new Set<UnknownSidEffect>();
 
 	constructor(idMap: AstIdMap | undefined) {
 		DataflowGraph.DEFAULT_ENVIRONMENT ??= initializeCleanEnvironments();
@@ -173,7 +180,7 @@ export class DataflowGraph<
 	/**
 	 * Retrieves the set of vertices which have side effects that we do not know anything about.
 	 */
-	public get unknownSideEffects(): ReadonlySet<NodeId> {
+	public get unknownSideEffects(): Set<UnknownSidEffect> {
 		return this._unknownSideEffects;
 	}
 
@@ -401,7 +408,11 @@ export class DataflowGraph<
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId): this {
+	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
+		if(target) {
+			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
+			return this;
+		}
 		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));
 		return this;
 	}

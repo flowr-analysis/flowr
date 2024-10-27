@@ -2,9 +2,6 @@ import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
 	CallContextQuerySubKindResult } from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
-import {
-	CallTargets
-} from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
 
 
 import { withShell } from '../../_helper/shell';
@@ -12,6 +9,7 @@ import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
 import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
+import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 
 /** simple query shortcut */

@@ -33,7 +33,7 @@ if(1)
 			.defineVariable('0', '`if`', { definedBy: ['5', '6'] })
 			.constant('7')
 			.definesOnCall('7', '1')
-			.constant('9'));
+			.constant('9').markIdForUnknownSideEffects('11'));
 	assertDataflow(label('if (assignment)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 
@@ -67,7 +67,8 @@ print(x)`, emptyGraph()
 			.constant('7')
 			.definesOnCall('7', '1')
 			.constant('9')
-			.defineVariable('8', 'x', { definedBy: ['9', '10'] }));
+			.defineVariable('8', 'x', { definedBy: ['9', '10'] })
+			.markIdForUnknownSideEffects('16'));
 	assertDataflow(label('<-', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'name-escaped', ...OperatorDatabase['*'].capabilities, 'named-arguments']),
 		shell, `x <- 2
 \`<-\` <- \`*\`
@@ -95,7 +96,8 @@ print(y = x)`, emptyGraph()
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.defineVariable('3', '`<-`', { definedBy: ['4', '5'] })
-			.constant('7'));
+			.constant('7')
+			.markIdForUnknownSideEffects('13'));
 	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return','newlines', ...OperatorDatabase['*'].capabilities, 'call-normal', 'unnamed-arguments']),
 		shell, `f <- function() {
    x <- 2
@@ -145,5 +147,6 @@ print(y)`, emptyGraph()
 				environment:       defaultEnv().pushEnv().defineVariable('x', '3', '5').defineVariable('<-', '6', '8')
 			})
 			.defineVariable('0', 'f', { definedBy: ['13', '14'] })
-			.defineVariable('15', 'y', { definedBy: ['17', '18'] }));
+			.defineVariable('15', 'y', { definedBy: ['17', '18'] })
+			.markIdForUnknownSideEffects('22'));
 }));

@@ -11,12 +11,22 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:  'function',
 		names: [
-			'~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', '%in%', ':', 'list', 'c',
+			'~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', '%in%', ':', 'list',
 			'rep', 'seq', 'seq_len', 'seq_along', 'seq.int', 'gsub', 'which', 'class', 'dimnames', 'min', 'max',
 			'intersect', 'subset', 'match', 'sqrt', 'abs', 'round', 'floor', 'ceiling', 'signif', 'trunc', 'log', 'log10', 'log2', 'sum', 'mean',
-			'unique', 'paste', 'paste0', 'read.csv', 'stop', 'is.null', 'plot', 'numeric', 'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix',
+			'unique', 'paste', 'paste0', 'read.csv', 'stop', 'is.null', 'numeric', 'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix',
 			'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
-			'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar', 't'
+			'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar',
+			'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz'
+		],
+		processor:       'builtin:default',
+		config:          { readAllArguments: true },
+		assumePrimitive: true
+	},
+	{
+		type:  'function',
+		names: [
+			'c', 't'
 		],
 		processor:       'builtin:default',
 		config:          { readAllArguments: true },
@@ -27,11 +37,17 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['lapply', 'sapply', 'vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
 	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                  processor: 'builtin:apply',               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
-	{ type: 'function', names: ['print'],                                      processor: 'builtin:default',             config: { returnsNthArgument: 0, forceArgs: 'all' },                                  assumePrimitive: false },
+	{ type: 'function', names: ['print', 'message', 'warning'],                processor: 'builtin:default',             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
+	// graphics base
+	{ type:            'function', names:           ['plot', 'map', 'image', 'boxplot', 'barplot', 'matplot', 'hist', 'stem', 'density', 'smoothScatter', 'contour', 'persp'],
+		processor:       'builtin:default',             config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^pdf|jpeg|png|windows|postscript|xfig|bitmap|pictex|cairo_pdf|svg|bmp|tiff|X11|quartz$/ } }, assumePrimitive: true },
+	// graphics addons
+	{ type:            'function', names:           ['points', 'abline', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols', 'tiplabels'],
+		processor:       'builtin:default',             config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^dev\.new|dev\.copy|plot|map|image|boxplot|barplot|matplot|hist|stem|density|smoothScatter|contour|persp$/ } }, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                    assumePrimitive: true  },
 	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                           assumePrimitive: false },
 	{ type: 'function', names: ['eval', 'body', 'formals', 'environment'],     processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                           assumePrimitive: false },
-	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all' },                                                         assumePrimitive: false },
+	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                        assumePrimitive: false },
 	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return },                         assumePrimitive: false },
 	{ type: 'function', names: ['break'],                                      processor: 'builtin:default',             config: { cfg: ExitPointType.Break },                                                 assumePrimitive: false },

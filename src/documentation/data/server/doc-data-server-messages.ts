@@ -26,8 +26,8 @@ import {
 	responseQueryMessage
 } from '../../../cli/repl/server/messages/message-query';
 import { exampleQueryCode } from '../query/example-query-code';
-import { CallTargets } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import { requestLineageMessage, responseLineageMessage } from '../../../cli/repl/server/messages/message-lineage';
+import { CallTargets } from '../../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 export function documentAllServerMessages() {
 
@@ -229,7 +229,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
 	});
 
 	const deprecatedByQuery = `(<a href="${FlowrWikiBaseRef}/Query%20API">deprecated</a>)`;
-	
+
 	documentServerMessage({
 		title:                  'Slice',
 		type:                   'request',

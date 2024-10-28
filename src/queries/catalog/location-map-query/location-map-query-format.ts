@@ -20,7 +20,7 @@ export const LocationMapQueryDefinition = {
 	asciiSummarizer: (formatter: OutputFormatter, _processed: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;
 		result.push(`Query: ${bold('location-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...Object.keys(out.map)])}}`);
+		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...Object.keys(out.map)])}}`);
 		return true;
 	},
 	schema: Joi.object({

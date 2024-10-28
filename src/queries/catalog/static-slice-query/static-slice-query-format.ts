@@ -56,7 +56,7 @@ export const StaticSliceQueryDefinition = {
 			if('reconstruct' in obj) {
 				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + obj.reconstruct.code.split('\n').join('\\n') + '</code>');
 			} else {
-				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong([...obj.slice.result])}}`);
+				result.push(`     ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...obj.slice.result])}}`);
 			}
 		}
 		return true;

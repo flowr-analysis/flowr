@@ -182,6 +182,9 @@ cat(product)
 				{ members: ['2@require', '2@vx'], hasUnknownSideEffects: true },
 				['1@x', '1@<-', '1@vx', '3@x']
 			]);
+			test('unknown side effects with forward ref', 'vx <- 3\nrequire(vx,character.only=TRUE)', [
+				{ members: ['1@vx', '1@<-', '1@3', '2@require', '2@vx', '$8', '2@TRUE'], hasUnknownSideEffects: true }
+			]);
 		});
 	}));
 });

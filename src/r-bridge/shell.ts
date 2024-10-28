@@ -103,23 +103,27 @@ export interface RShellOptions extends RShellSessionOptions {
 }
 
 export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
-export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
-	pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
-	// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
-	// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
-	commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
-	cwd:                process.cwd(),
-	env:                undefined,
-	eol:                '\n',
-	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs'
-} as const;
 
-export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-	...DEFAULT_R_SHELL_EXEC_OPTIONS,
-	sessionName: 'default',
-	revive:      RShellReviveOptions.Never,
-	onRevive:    () => { /* do nothing */ }
-} as const;
+let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
+
+export function getDefaultRShellOptions(): RShellOptions {
+	if(!DEFAULT_R_SHELL_OPTIONS) {
+		DEFAULT_R_SHELL_OPTIONS = {
+			pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
+			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
+			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
+			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
+			cwd:                process.cwd(),
+			env:                undefined,
+			eol:                '\n',
+			homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+			sessionName:        'default',
+			revive:             RShellReviveOptions.Never,
+			onRevive:           () => { /* do nothing */ }
+		};
+	}
+	return DEFAULT_R_SHELL_OPTIONS;
+}
 
 /**
  * The `RShell` represents an interactive session with the R interpreter.
@@ -138,7 +142,7 @@ export class RShell {
 	private tempDirs         = new Set<string>();
 
 	public constructor(options?: Partial<RShellOptions>) {
-		this.options = { ...DEFAULT_R_SHELL_OPTIONS, ...options };
+		this.options = { ...getDefaultRShellOptions(), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
 
 		this.session = new RShellSession(this.options, this.log);

@@ -60,7 +60,7 @@ export const flowrConfigFileSchema = Joi.object({
 // we don't load from a config file at all by default unless setConfigFile is called
 let configFile: string | undefined = undefined;
 let configWorkingDirectory = process.cwd();
-let currentConfig: FlowrConfigOptions | undefined;
+let currentConfig: FlowrConfigOptions | undefined = undefined;
 
 export function setConfigFile(file: string | undefined, workingDirectory = process.cwd(), forceLoad = false) {
 	configFile = file;

@@ -338,7 +338,7 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message;
-		this.logger.info(`[${this.name}] Received query request for query ${JSON.stringify(request.query)}`);
+		this.logger.info(`[${this.name}] Received query request`);
 
 		const fileInformation = this.fileMap.get(request.filetoken);
 		if(!fileInformation) {

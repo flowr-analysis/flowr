@@ -4,13 +4,13 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
-import { italic } from '../../../util/ansi';
+import { ansiFormatter, italic } from '../../../util/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { executeQueries } from '../../../queries/query';
+import { AnyQuerySchema, QueriesSchema , executeQueries } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
-import { AnyQuerySchema, QueriesSchema } from '../../../queries/query-schema';
+import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 
 
 async function getDataflow(shell: RShell, remainingLine: string) {
@@ -73,8 +73,7 @@ export const queryCommand: ReplCommand = {
 		const results = await processQueryArgs(remainingLine, shell, output);
 		const totalEnd = Date.now();
 		if(results) {
-			output.stdout(JSON.stringify(results));
-			output.stdout('Total time: ' + (totalEnd - totalStart) + 'ms');
+			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
 		}
 	}
 };

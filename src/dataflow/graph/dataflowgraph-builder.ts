@@ -12,6 +12,8 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { BuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency } from '../info';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
+import { DefaultBuiltinConfig } from '../environments/default-builtin-config';
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);
@@ -276,4 +278,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		this.rootVertices = new Set(ids.map(normalizeIdToNumberIfPossible));
 		return this;
 	}
+}
+
+export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
+	const got = DefaultBuiltinConfig.find(e => e.names.includes(name));
+	if(got?.type !== 'function') {
+		return undefined;
+	}
+	return (got?.config as { hasUnknownSideEffects: LinkTo<RegExp> | undefined }).hasUnknownSideEffects;
 }

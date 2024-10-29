@@ -21,4 +21,8 @@ describe('Processing of Elements', () => {
 	describe('Multiple Files', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'multiple-files'))
 	);
+
+	describe('External Side Effect Dependencies', () =>
+		requireAllTestsInFolder(path.join(__dirname, 'dependencies-by-side-effects'))
+	);
 });

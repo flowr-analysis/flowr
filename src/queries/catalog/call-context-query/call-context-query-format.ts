@@ -1,25 +1,15 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeCallContextQueries } from './call-context-query-executor';
+import type { OutputFormatter } from '../../../util/ansi';
 import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
-import type { QueryResults, SupportedQuery } from '../../query';
 
 import { asciiCallContext } from '../../query-print';
-
-export enum CallTargets {
-	/** call targets a function that is not defined locally (e.g., the call targets a library function) */
-	OnlyGlobal = 'global',
-	/** call targets a function that is defined locally or globally, but must include a global function */
-	MustIncludeGlobal = 'must-include-global',
-	/** call targets a function that is defined locally  */
-	OnlyLocal = 'local',
-	/** call targets a function that is defined locally or globally, but must include a local function */
-	MustIncludeLocal = 'must-include-local',
-	/** call targets a function that is defined locally or globally */
-	Any = 'any'
-}
+import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import { CallTargets } from './identify-link-to-last-call-relation';
 
 export interface DefaultCallContextQueryFormat<CallName extends RegExp | string> extends BaseQueryFormat {
 	readonly type:            'call-context';
@@ -56,7 +46,7 @@ interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> ext
 	readonly callName: CallName;
 }
 
-type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
+export type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
 
 export interface SubCallContextQueryFormat<CallName extends RegExp | string = RegExp | string> extends DefaultCallContextQueryFormat<CallName> {
 	readonly linkTo: LinkTo<CallName>;
@@ -65,6 +55,8 @@ export interface SubCallContextQueryFormat<CallName extends RegExp | string = Re
 export interface CallContextQuerySubKindResult {
 	/** The id of the call vertex identified within the supplied dataflow graph */
 	readonly id:          NodeId;
+	/** The name of the function call */
+	readonly name:        string;
 	/**
 	 * Ids of functions which are called by the respective function call,
 	 * this will only be populated whenever you explicitly state the {@link DefaultCallContextQueryFormat#callTargets}.
@@ -92,8 +84,8 @@ export type CallContextQuery<CallName extends RegExp | string = RegExp | string>
 
 export const CallContextQueryDefinition = {
 	executor:        executeCallContextQueries,
-	asciiSummarizer: (formatter, processed, queryResults, result) => {
-		const out = queryResults as QueryResults<'call-context'>['call-context'];
+	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, result: string[]) => {
+		const out = queryResults as CallContextQueryResult;
 		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(asciiCallContext(formatter, out, processed));
 		return true;
@@ -111,4 +103,4 @@ export const CallContextQueryDefinition = {
 			callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
 		}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
 	}).description('Call context query used to find calls in the dataflow graph')
-} as const satisfies SupportedQuery<'call-context'>;
+} as const;

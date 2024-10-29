@@ -17,6 +17,13 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { requestFingerprint } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
+import type { DataflowGraph } from './graph/graph';
+import type { ControlFlowGraph } from '../util/cfg/cfg';
+import { extractCFG } from '../util/cfg/cfg';
+import { EdgeType } from './graph/edge';
+import {
+	identifyLinkToLastCallRelation
+} from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -49,6 +56,27 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
 };
 
+
+function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
+	let cfg: ControlFlowGraph | undefined = undefined;
+	for(const s of graph.unknownSideEffects) {
+		if(typeof s !== 'object') {
+			continue;
+		}
+		if(!cfg) {
+			cfg = extractCFG(ast).graph;
+		}
+		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
+		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo.callName);
+		for(const pot of potentials) {
+			graph.addEdge(s.id, pot, EdgeType.Reads);
+		}
+		if(potentials.length > 0) {
+			graph.unknownSideEffects.delete(s);
+		}
+	}
+}
+
 export function produceDataFlowGraph<OtherInfo>(
 	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
@@ -76,5 +104,6 @@ export function produceDataFlowGraph<OtherInfo>(
 		}
 	}
 
+	resolveLinkToSideEffects(ast, df.graph);
 	return df;
 }

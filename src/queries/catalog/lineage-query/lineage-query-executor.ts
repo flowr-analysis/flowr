@@ -1,10 +1,10 @@
-import type { BasicQueryData } from '../../query';
 import type {
 	LineageQuery,
 	LineageQueryResult
 } from './lineage-query-format';
 import { log } from '../../../util/log';
 import { getLineage } from '../../../cli/repl/commands/repl-lineage';
+import type { BasicQueryData } from '../../base-query-format';
 
 export function executeLineageQuery({ graph, ast }: BasicQueryData, queries: readonly LineageQuery[]): LineageQueryResult {
 	const start = Date.now();

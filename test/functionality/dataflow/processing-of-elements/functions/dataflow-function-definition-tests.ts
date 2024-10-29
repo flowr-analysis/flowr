@@ -498,7 +498,9 @@ print(g())`, emptyGraph()
 				.defineVariable('0', 'f', { definedBy: ['10', '11'] })
 				.constant('14')
 				.definesOnCall('14', '1')
-				.defineVariable('12', 'g', { definedBy: ['16', '17'] }));
+				.defineVariable('12', 'g', { definedBy: ['16', '17'] })
+				.markIdForUnknownSideEffects('22')
+		);
 		assertDataflow(label('nested closures w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'lambda-syntax', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'closures', 'grouping']),
 			shell, `f <- function(x = 1) {
   (\\(y = 2) function(z = 3) x + y + z)()
@@ -569,7 +571,9 @@ print(g())`, emptyGraph()
 				.defineVariable('0', 'f', { definedBy: ['26', '27'] })
 				.constant('30')
 				.definesOnCall('30', '1')
-				.defineVariable('28', 'g', { definedBy: ['32', '33'] }), { minRVersion: MIN_VERSION_LAMBDA });
+				.defineVariable('28', 'g', { definedBy: ['32', '33'] })
+				.markIdForUnknownSideEffects('38'),
+			{ minRVersion: MIN_VERSION_LAMBDA });
 		assertDataflow(label('closure w/ side effects', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'closures', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', ...OperatorDatabase['+'].capabilities, 'numbers']),
 			shell, `f <- function() {
   function() {
@@ -629,7 +633,9 @@ print(x)`, emptyGraph()
 				})
 				.defineVariable('0', 'f', { definedBy: ['14', '15'] })
 				.constant('17')
-				.defineVariable('16', 'x', { definedBy: ['17', '18'] }));
+				.defineVariable('16', 'x', { definedBy: ['17', '18'] })
+				.markIdForUnknownSideEffects('25')
+		);
 	});
 
 	describe('Dead Code', () => {

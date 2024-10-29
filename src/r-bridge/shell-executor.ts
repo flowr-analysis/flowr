@@ -1,5 +1,5 @@
 import type { RShellExecutionOptions } from './shell';
-import { DEFAULT_R_SHELL_OPTIONS } from './shell';
+import { getDefaultRShellOptions } from './shell';
 import { deepMergeObject } from '../util/objects';
 import { spawnSync } from 'child_process';
 import type { SemVer } from 'semver';
@@ -15,7 +15,7 @@ export class RShellExecutor {
 	private readonly prerequisites: string[];
 
 	public constructor(options?: Partial<RShellExecutionOptions>) {
-		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options);
+		this.options = deepMergeObject(getDefaultRShellOptions(), options);
 		this.prerequisites = [initCommand(this.options.eol)];
 	}
 

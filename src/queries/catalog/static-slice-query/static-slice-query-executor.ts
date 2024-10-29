@@ -1,10 +1,10 @@
-import type { BasicQueryData } from '../../query';
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlicing } from '../../../slicing/static/static-slicer';
 import { reconstructToCode } from '../../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
+import type { BasicQueryData } from '../../base-query-format';
 
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);

@@ -12,7 +12,7 @@ import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	/**
+   /**
    * Initial and frozen ast-information
    */
 	readonly completeAst:         NormalizedAst<OtherInfo>
@@ -35,7 +35,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly referenceChain:      string[]
 	/**
-	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g. of known ifs).
+	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
 }

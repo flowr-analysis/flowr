@@ -26,15 +26,15 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const;
 
-function legacyProcessor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests }) {
+function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests }) {
 	return produceDataFlowGraph(input.request as RParseRequests, results.normalize as NormalizedAst);
 }
 
 export const STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	humanReadableName: 'dataflow',
-	processor:         legacyProcessor,
+	processor,
 	requiredInput:     {
 	}
-} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>;
+} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>;
 

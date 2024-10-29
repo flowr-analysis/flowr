@@ -28,7 +28,7 @@ export const LineageQueryDefinition = {
 		const out = queryResults as QueryResults<'lineage'>['lineage'];
 		result.push(`Query: ${bold('lineage', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [criteria, lineage] of Object.entries(out.lineages)) {
-			result.push(`   ╰ ${criteria}: {${summarizeIdsIfTooLong([...lineage])}}`);
+			result.push(`   ╰ ${criteria}: {${summarizeIdsIfTooLong(formatter, [...lineage])}}`);
 		}
 		return true;
 	},

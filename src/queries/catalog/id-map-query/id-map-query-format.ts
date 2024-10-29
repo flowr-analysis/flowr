@@ -21,7 +21,7 @@ export const IdMapQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'id-map'>['id-map'];
 		result.push(`Query: ${bold('id-map', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong([...out.idMap.keys()])}}`);
+		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...out.idMap.keys()])}}`);
 		return true;
 	},
 	schema: Joi.object({

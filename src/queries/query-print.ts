@@ -1,5 +1,5 @@
 import type { OutputFormatter } from '../util/ansi';
-import { bold, italic } from '../util/ansi';
+import { markdownFormatter , bold, italic } from '../util/ansi';
 import type { QueryResults, SupportedQueryTypes } from './query';
 import { SupportedQueries } from './query';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
@@ -57,7 +57,7 @@ export function asciiCallContext(formatter: OutputFormatter, results: QueryResul
 	return result.join('\n');
 }
 
-export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
+export function summarizeIdsIfTooLong(formatter: OutputFormatter, ids: readonly NodeId[]) {
 	const naive = ids.join(', ');
 	if(naive.length <= 20) {
 		return naive;
@@ -68,9 +68,9 @@ export function summarizeIdsIfTooLong(ids: readonly NodeId[]) {
 		acc += ids[i++] + ', ';
 	}
 	if(i < ids.length) {
-		acc += '... (see JSON below)';
+		acc += '... (see JSON)';
 	}
-	return textWithTooltip(acc, JSON.stringify(ids));
+	return formatter === markdownFormatter ? textWithTooltip(acc, JSON.stringify(ids)) : acc;
 }
 
 export function asciiSummaryOfQueryResult(formatter: OutputFormatter, totalInMs: number, results: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {

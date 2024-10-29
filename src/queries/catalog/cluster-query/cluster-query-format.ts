@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold } from '../../../util/ansi';
+import { bold, markdownFormatter } from '../../../util/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { DataflowGraphClusters } from '../../../dataflow/cluster';
@@ -27,9 +27,13 @@ export const ClusterQueryDefinition = {
 		result.push(`   ╰ Found ${out.clusters.length} cluster${out.clusters.length === 1 ? '' : 's'}`);
 		for(const cluster of out.clusters) {
 			const unknownSideEffects = cluster.hasUnknownSideEffects ? '(has unknown side effect)' : '';
-			result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(cluster.members)}} ([marked](${
-				graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
-			}))`);
+			let suffix = '';
+			if(formatter === markdownFormatter) {
+				suffix = `([marked](${
+					graphToMermaidUrl(processed.dataflow.graph, false, new Set(cluster.members))
+				}))`;
+			}
+			result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(formatter, cluster.members)}} ${suffix}`);
 		}
 		return true;
 	},

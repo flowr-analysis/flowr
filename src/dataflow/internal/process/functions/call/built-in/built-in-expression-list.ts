@@ -115,7 +115,7 @@ export function processExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const expressions = args.map(unpackArgument);
+	const expressions = args.map(e => unpackArgument(e));
 
 	dataflowLogger.trace(() => `[expr list] with ${expressions.length} expressions`);
 

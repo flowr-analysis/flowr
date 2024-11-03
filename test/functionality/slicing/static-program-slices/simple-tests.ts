@@ -64,6 +64,13 @@ x`, {
 				expectedOutput: '[1] 1'
 			});
 	});
+	describe('Replacement With Argument-Name', () => {
+		assertSliced(label('simple argument', ['replacement-functions']), shell,
+			'rownames(y=x) <- c("w")\nx',
+			['2@x'],
+			'rownames(y=x) <- c("w")\nx'
+		);
+	});
 	describe('Access', () => {
 		assertSliced(label('constant', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'unnamed-arguments', 'single-bracket-access']),
 			shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na');

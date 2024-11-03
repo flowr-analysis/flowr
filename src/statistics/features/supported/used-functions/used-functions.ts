@@ -117,7 +117,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				]);
 			}
 
-			classifyArguments(node.arguments.map(unpackArgument), info.args);
+			classifyArguments(node.arguments.map(e => unpackArgument(e)), info.args);
 
 			calls.push(node);
 		}, node => {

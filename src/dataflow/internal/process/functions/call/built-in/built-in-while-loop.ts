@@ -32,7 +32,7 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const unpackedArgs = args.map(unpackArgument);
+	const unpackedArgs = args.map(e => unpackArgument(e));
 
 	if(unpackedArgs.some(isUndefined)) {
 		dataflowLogger.warn(`While-Loop ${name.content} has empty arguments in ${JSON.stringify(args)}, skipping`);

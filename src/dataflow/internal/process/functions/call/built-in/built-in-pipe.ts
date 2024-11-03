@@ -27,7 +27,7 @@ export function processPipe<OtherInfo>(
 		return information;
 	}
 
-	const [lhs, rhs] = args.map(unpackArgument);
+	const [lhs, rhs] = args.map(e => unpackArgument(e));
 
 	guard(lhs !== undefined && rhs !== undefined, () => `lhs and rhs must be present, but ${JSON.stringify(lhs)} and ${JSON.stringify(rhs)} were found instead.`);
 

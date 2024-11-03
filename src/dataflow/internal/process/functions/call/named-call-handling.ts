@@ -54,7 +54,7 @@ export function processNamedCall<OtherInfo>(
 	let builtIn = false;
 
 	for(const resolvedFunction of resolved) {
-		if(resolvedFunction.type === ReferenceType.BuiltInFunction) {
+		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
 			builtIn = true;
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
 		} else {

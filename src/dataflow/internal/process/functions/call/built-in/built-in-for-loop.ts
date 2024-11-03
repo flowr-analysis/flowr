@@ -30,7 +30,7 @@ export function processForLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const [variableArg, vectorArg, bodyArg] = args.map(unpackArgument);
+	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackArgument(e));
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);

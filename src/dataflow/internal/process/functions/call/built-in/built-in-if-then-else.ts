@@ -29,7 +29,7 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const [condArg, thenArg, otherwiseArg] = args.map(unpackArgument);
+	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackArgument(e));
 
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);

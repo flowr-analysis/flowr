@@ -147,8 +147,8 @@ export function processAssignment<OtherInfo>(
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
-	const source = unpackArgument(args[1]);
-	const target = unpackArgument(args[0]);
+	const source = unpackArgument(args[1], false);
+	const target = unpackArgument(args[0], false);
 
 	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`);
 	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`);

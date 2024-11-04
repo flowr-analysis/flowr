@@ -1,9 +1,10 @@
-import { assert, expect } from 'chai';
+import { expect } from 'chai';
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
-import { Identifier, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import type { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 
 describe('Resolve', () => {
@@ -51,7 +52,7 @@ describe('Resolve', () => {
 		});
 		it('Undefined Identifier', () => {
 			const env = defaultEnv();
-			const result = resolvesToBuiltInConstant("test", env, undefined);
+			const result = resolvesToBuiltInConstant('foo', env, undefined);
 			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
 		});
 
@@ -59,7 +60,7 @@ describe('Resolve', () => {
 			const env = defaultEnv();
 			const result = resolvesToBuiltInConstant(identifier, env, expected);
 			expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
-		}
+		};
 		it('Resolve TRUE',	testSingle('TRUE', true));
 		it('Resolve T',		testSingle('T', true));
 		it('Resolve FALSE',	testSingle('FALSE', false));

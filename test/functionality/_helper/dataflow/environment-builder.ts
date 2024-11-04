@@ -103,7 +103,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new parameter in the top environment.
+	 * Defines a new variable in the top environment.
 	 * @param name - Variable name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition

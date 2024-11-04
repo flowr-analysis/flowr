@@ -100,7 +100,7 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 	return functions.map(f => ({
 		type:           'call-context',
 		callName:       f.name,
-		includeAliases: true,
+		includeAliases: false,
 		callNameExact:  true,
 		subkind:        f.name,
 		linkTo:         f.linkTo ? { type: 'link-to-last-call', callName: f.linkTo } : undefined,

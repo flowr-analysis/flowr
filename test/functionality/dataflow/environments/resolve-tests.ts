@@ -53,15 +53,24 @@ describe('Resolve', () => {
 			const result = resolvesToBuiltInConstant('foo', defaultEnv(), undefined);
 			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
 		});
-		const testSingle = (label: string, identifier: Identifier, expected: unknown) => it(label, () => {
-			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), expected);
-			expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
+
+		const testSingle = (label: string, identifier: Identifier, wantedValue: unknown, expectedResult: Ternary) => it(label, () => {
+			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
+			expect(result, `should be Ternary[${expectedResult}]`).to.be.equal(expectedResult);
 		});
-		testSingle('Resolve TRUE',	'TRUE', true);
-		testSingle('Resolve T',		'T', true);
-		testSingle('Resolve FALSE',	'FALSE', false);
-		testSingle('Resolve F',		'F', false);
-		testSingle('Resolve NULL',	'NULL', null);
-		testSingle('Resolve NA',	'NA', null);
+
+		// Positive Tests
+		//			Label				Identifier		Wanted Value  Expected Return Value
+		testSingle('Resolve TRUE',		'TRUE', 		true,		  Ternary.Always);
+		testSingle('Resolve T',			'T', 			true,		  Ternary.Always);
+		testSingle('Resolve FALSE',		'FALSE',		false,		  Ternary.Always);
+		testSingle('Resolve F',			'F',			false,		  Ternary.Always);
+		testSingle('Resolve NULL',		'NULL', 		null,		  Ternary.Always);
+		testSingle('Resolve NA',		'NA', 			null,		  Ternary.Always);
+
+		// Negative Tests
+		//			Label			    Identifier		Wanted Value  Expected Return Value
+		testSingle('Does not Resolve',  '42',			true,   	  Ternary.Never);
+		//testSingle('Maybe Resolves',    'x<-true; x<-false',			true,   	  Ternary.Maybe);
 	});
 });

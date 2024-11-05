@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { Assertion, assert, expect } from 'chai';
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
@@ -45,32 +45,22 @@ describe('Resolve', () => {
 		});
 	});
 	describe('Builtin Constants', () => {
-		it('Unknown Identifier', () => {
-			const result = resolvesToBuiltInConstant(undefined, defaultEnv(), undefined);
-			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
-		});
-		it('Undefined Identifier', () => {
-			const result = resolvesToBuiltInConstant('foo', defaultEnv(), undefined);
-			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
-		});
-
-		const testSingle = (label: string, identifier: Identifier, wantedValue: unknown, expectedResult: Ternary) => it(label, () => {
+		const testResolve = (label: string, identifier: Identifier | undefined, wantedValue: unknown, expectedResult: Ternary) => it(label, () => {
 			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
-			expect(result, `should be Ternary[${expectedResult}]`).to.be.equal(expectedResult);
+			assert.strictEqual(result, expectedResult, `should be Ternary[${expectedResult}]`);
 		});
 
-		// Positive Tests
-		//			Label				Identifier		Wanted Value  Expected Return Value
-		testSingle('Resolve TRUE',		'TRUE', 		true,		  Ternary.Always);
-		testSingle('Resolve T',			'T', 			true,		  Ternary.Always);
-		testSingle('Resolve FALSE',		'FALSE',		false,		  Ternary.Always);
-		testSingle('Resolve F',			'F',			false,		  Ternary.Always);
-		testSingle('Resolve NULL',		'NULL', 		null,		  Ternary.Always);
-		testSingle('Resolve NA',		'NA', 			null,		  Ternary.Always);
+		//			Label				   Identifier	Wanted Value  Expected Return Value
+		testResolve('Resolve TRUE',		  'TRUE', 		true,		  Ternary.Always);
+		testResolve('Resolve TRUE',		  'TRUE', 		true,		  Ternary.Always);
+		testResolve('Resolve T',		  'T', 			true,		  Ternary.Always);
+		testResolve('Resolve FALSE',	  'FALSE',		false,		  Ternary.Always);
+		testResolve('Resolve F',		  'F',			false,		  Ternary.Always);
+		testResolve('Resolve NULL',		  'NULL', 		null,		  Ternary.Always);
+		testResolve('Resolve NA',		  'NA', 		null,		  Ternary.Always);
 
-		// Negative Tests
-		//			Label			    Identifier		Wanted Value  Expected Return Value
-		testSingle('Does not Resolve',  '42',			true,   	  Ternary.Never);
-		//testSingle('Maybe Resolves',    'x<-true; x<-false',			true,   	  Ternary.Maybe);
+		testResolve('Unknown Identifier',  undefined, 	undefined,	  Ternary.Never);
+		testResolve('Unknown Identifier', 'foo', 		undefined,	  Ternary.Never);
+		testResolve('Does not Resolve',   '42',			true,   	  Ternary.Never);
 	});
 });

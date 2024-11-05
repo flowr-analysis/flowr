@@ -54,8 +54,8 @@ describe('Resolve', () => {
 			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
 		});
 		const testSingle = (label: string, identifier: Identifier, expected: unknown) => it(label, () => {
-				const result = resolvesToBuiltInConstant(identifier, defaultEnv(), expected);
-				expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
+			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), expected);
+			expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
 		});
 		testSingle('Resolve TRUE',	'TRUE', true);
 		testSingle('Resolve T',		'T', true);

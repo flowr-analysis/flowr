@@ -1,4 +1,4 @@
-import { Assertion, assert, expect } from 'chai';
+import { assert, expect } from 'chai';
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
@@ -6,6 +6,7 @@ import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/datafl
 import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
+import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
 describe('Resolve', () => {
 	describe('ByName', () => {
@@ -45,22 +46,32 @@ describe('Resolve', () => {
 		});
 	});
 	describe('Builtin Constants', () => {
-		const testResolve = (label: string, identifier: Identifier | undefined, wantedValue: unknown, expectedResult: Ternary) => it(label, () => {
-			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
+		const testResolve = (label: string, identifier: Identifier | undefined, wantedValue: unknown, expectedResult: Ternary, environment: REnvironmentInformation = defaultEnv()) => it(label, () => {
+			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
 			assert.strictEqual(result, expectedResult, `should be Ternary[${expectedResult}]`);
 		});
 
-		//			Label				   Identifier	Wanted Value  Expected Return Value
-		testResolve('Resolve TRUE',		  'TRUE', 		true,		  Ternary.Always);
-		testResolve('Resolve TRUE',		  'TRUE', 		true,		  Ternary.Always);
-		testResolve('Resolve T',		  'T', 			true,		  Ternary.Always);
-		testResolve('Resolve FALSE',	  'FALSE',		false,		  Ternary.Always);
-		testResolve('Resolve F',		  'F',			false,		  Ternary.Always);
-		testResolve('Resolve NULL',		  'NULL', 		null,		  Ternary.Always);
-		testResolve('Resolve NA',		  'NA', 		null,		  Ternary.Always);
+		//			Label				    Identifier	Wanted Value  Expected Return Value 
+		testResolve('Resolve TRUE',		    'TRUE', 	true,		  Ternary.Always);
+		testResolve('Resolve TRUE',		    'TRUE', 	true,		  Ternary.Always);
+		testResolve('Resolve T',		    'T', 		true,		  Ternary.Always);
+		testResolve('Resolve FALSE',	    'FALSE',	false,		  Ternary.Always);
+		testResolve('Resolve F',		    'F',		false,		  Ternary.Always);
+		testResolve('Resolve NULL',		    'NULL', 	null,		  Ternary.Always);
+		testResolve('Resolve NA',		    'NA', 		null,		  Ternary.Always);
 
-		testResolve('Unknown Identifier',  undefined, 	undefined,	  Ternary.Never);
-		testResolve('Unknown Identifier', 'foo', 		undefined,	  Ternary.Never);
-		testResolve('Does not Resolve',   '42',			true,   	  Ternary.Never);
+		testResolve('Maybe Resolves TRUE',  'TRUE', 	true,		  Ternary.Maybe, 
+			defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })
+		);
+		testResolve('Maybe Resolves FALSE', 'FALSE', 	false,		  Ternary.Maybe, 
+			defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })
+		);
+
+		testResolve('Undefined Identifier',  undefined, undefined,	  Ternary.Never);
+		testResolve('Unknown Identifier',   'foo', 		undefined,	  Ternary.Never);
+		testResolve('Does not Resolve',     '42',		true,   	  Ternary.Never);
+		testResolve('Does not Resolve', 	'FALSE', 	false,		  Ternary.Never, 
+			defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })
+		);
 	});
 });

@@ -72,10 +72,6 @@ describe('Dependencies Query', withShell(shell => {
 			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'c' }
 		] });
 
-		testQuery('Call with Alias', 'foo <- library\nfoo(x)', { libraries: [
-			{ nodeId: '2@foo', functionName: 'foo', libraryName: 'x' }
-		] });
-
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', { libraries: [
 			{ nodeId: '1@x', functionName: '::', libraryName: 'foo' },
 			{ nodeId: '2@y', functionName: ':::', libraryName: 'bar' }

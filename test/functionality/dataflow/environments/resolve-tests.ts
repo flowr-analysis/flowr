@@ -46,26 +46,22 @@ describe('Resolve', () => {
 	});
 	describe('Builtin Constants', () => {
 		it('Unknown Identifier', () => {
-			const env = defaultEnv();
-			const result = resolvesToBuiltInConstant(undefined, env, undefined);
+			const result = resolvesToBuiltInConstant(undefined, defaultEnv(), undefined);
 			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
 		});
 		it('Undefined Identifier', () => {
-			const env = defaultEnv();
-			const result = resolvesToBuiltInConstant('foo', env, undefined);
+			const result = resolvesToBuiltInConstant('foo', defaultEnv(), undefined);
 			expect(result, 'should be Ternary.Never').to.be.equal(Ternary.Never);
 		});
-
-		const testSingle = (identifier: Identifier, expected: unknown) => function() {
-			const env = defaultEnv();
-			const result = resolvesToBuiltInConstant(identifier, env, expected);
-			expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
-		};
-		it('Resolve TRUE',	testSingle('TRUE', true));
-		it('Resolve T',		testSingle('T', true));
-		it('Resolve FALSE',	testSingle('FALSE', false));
-		it('Resolve F',		testSingle('F', false));
-		it('Resolve NULL',	testSingle('NULL', null));
-		it('Resolve NA',	testSingle('NA', null));
+		const testSingle = (label: string, identifier: Identifier, expected: unknown) => it(label, () => {
+				const result = resolvesToBuiltInConstant(identifier, defaultEnv(), expected);
+				expect(result, 'should be Ternary.Always').to.be.equal(Ternary.Always);
+		});
+		testSingle('Resolve TRUE',	'TRUE', true);
+		testSingle('Resolve T',		'T', true);
+		testSingle('Resolve FALSE',	'FALSE', false);
+		testSingle('Resolve F',		'F', false);
+		testSingle('Resolve NULL',	'NULL', null);
+		testSingle('Resolve NA',	'NA', null);
 	});
 });

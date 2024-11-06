@@ -53,7 +53,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new argument in the top environment.
+	 * Defines a new argument in the current environment.
 	 * @param name - Argument name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
@@ -69,7 +69,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new function in the top environment.
+	 * Defines a new function in the current environment.
 	 * @param name - Function name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
@@ -86,7 +86,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new parameter in the top environment.
+	 * Defines a new parameter in the current environment.
 	 * @param name - Parameter name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
@@ -103,7 +103,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
-	 * Defines a new parameter in the top environment.
+	 * Defines a new variable in the current environment.
 	 * @param name - Variable name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition

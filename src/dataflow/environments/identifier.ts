@@ -6,7 +6,7 @@ export type Identifier = string & { __brand?: 'identifier' }
 
 /**
  * Each reference only has exactly one reference type, stored as the respective number.
- * However, wenn checking we may want to allow for one of several types,
+ * However, when checking we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
  */
 export enum ReferenceType {

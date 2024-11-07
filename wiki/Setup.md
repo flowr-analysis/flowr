@@ -30,7 +30,7 @@ docker pull eagleoutice/flowr
 Afterward, you can test if the installation was successful by running the following (currently, there is no helper script for that):
 
 ```shell
-docker run -it --rm flowr
+docker run -it --rm eagleoutice/flowr
 ```
 
 This should drop you into _flowR_'s read-evaluate-print loop.

@@ -35,7 +35,7 @@ docker run -it --rm eagleoutice/flowr
 
 This should drop you into _flowR_'s read-evaluate-print loop.
 Enter `:help` to receive more information and `:quit` to leave.
-Please remember, that you have to link external directories to make them available within the running container:
+Please remember that you have to link external directories to make them available within the running container:
 
 ## ⚒️ Building From Scratch
 

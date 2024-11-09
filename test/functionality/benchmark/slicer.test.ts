@@ -15,7 +15,7 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 	return { stats, statInfo };
 }
 
-describe.sequential('Benchmark Slicer', () => {
+describe('Benchmark Slicer', () => {
 	test('Print times', () => {
 		assert.equal(formatNanoseconds(0).trim(), '0:000000ms');
 		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms');
@@ -24,7 +24,7 @@ describe.sequential('Benchmark Slicer', () => {
 		assert.equal(formatNanoseconds(234892342839398).trim(), '234892.342:839398 s');
 	});
 
-	describe('Stats by parsing text-based inputs', function() {
+	describe.sequential('Stats by parsing text-based inputs', function() {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer();
 			const request = { request: 'text' as const, content: 'a <- b' };

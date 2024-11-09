@@ -6,6 +6,35 @@
 
 import { LogLevel } from '../../src/util/log';
 import { setMinLevelOfAllLogs } from './_helper/log';
+import { checkNetworkConnection } from './_helper/network';
+import { RShell } from '../../src/r-bridge/shell';
+import type { SemVer } from 'semver';
 
-export const VERBOSE_TESTS = process.argv.includes('--verbose');
-setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS);
+/* eslint-disable no-var */
+declare global {
+    var hasNetwork: boolean;
+    var rVersion: SemVer | null | undefined;
+    var hasXmlParseData: boolean;
+}
+/* eslint-enable no-var */
+
+globalThis.hasNetwork = false;
+globalThis.hasXmlParseData = false;
+
+await (async() => {
+	const isVerbose = process.argv.includes('--verbose');
+	setMinLevelOfAllLogs(isVerbose ? LogLevel.Trace : LogLevel.Error, isVerbose);
+
+	globalThis.hasNetwork = await checkNetworkConnection();
+	let shell: RShell | undefined;
+	try {
+		shell = new RShell();
+		shell.tryToInjectHomeLibPath();
+		globalThis.rVersion = await shell.usedRVersion();
+		globalThis.hasXmlParseData = await shell.isPackageInstalled('xmlparsedata');
+	} catch(e) {
+		console.error(e);
+	} finally {
+		shell?.close();
+	}
+})();

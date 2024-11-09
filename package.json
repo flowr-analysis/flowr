@@ -37,9 +37,9 @@
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "vitest --config test/vitest.config.ts",
-    "test-coverage": "vitest --config test/vitest.config.ts --coverage",
+    "test:coverage": "vitest --config test/vitest.config.ts --coverage",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
-    "test-full": "npm run test -- --test-installation",
+    "test-full": "npm run test:coverage -- --test-installation",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
     "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --forbid-only && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm-run-all wiki:*"
   },

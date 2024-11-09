@@ -2,7 +2,7 @@ import { assert } from 'chai';
 import type { DeepPartial } from 'ts-essentials';
 import { jsonReplacer, jsonBigIntRetriever } from '../../../src/util/json';
 import type { TestConfiguration } from '../_helper/shell';
-import { ensureConfig } from '../_helper/shell';
+import { skipTestBecauseConfigNotMet } from '../_helper/shell';
 import { deepMergeObject } from '../../../src/util/objects';
 import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics';
 import type { FeatureKey, FeatureValue } from '../../../src/statistics/features/feature';
@@ -45,11 +45,10 @@ export interface Statistics {
 export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feature: T, tests: Statistics[]) {
 	const featureInfo = ALL_FEATURES[feature];
 	for(const t of tests) {
-		test(t.name, async function(this: unknown){
-			await ensureConfig(shell, this, t.requirements ? {
-				...t.requirements,
-				needsPackages: ['xmlparsedata', ...(t.requirements.needsPackages ?? [])]
-			} : { needsPackages: ['xmlparsedata'] });
+		test.skipIf(skipTestBecauseConfigNotMet(shell, t.requirements ? {
+			...t.requirements,
+			needsXmlParseData: true
+		} : { needsXmlParseData: true }))(t.name, async function(this: unknown) {
 			// create a new feature map to record to, this resets the state as well
 			const map: DummyAppendMemoryMap = new Map();
 			initDummyFileProvider(map);

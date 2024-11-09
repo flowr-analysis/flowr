@@ -9,11 +9,8 @@ import { describe, test } from 'vitest';
 
 
 describe('Post-Processing', () => {
-	test('Full Extraction on Sample Folder (Shellesc)', async() => {
-		/* if we are on windows, skip, as there are maybe cleanup problems */
-		if(getPlatform() === 'windows' || getPlatform() === 'unknown') {
-			return;
-		}
+	/* if we are on windows, skip, as there are maybe cleanup problems */
+	test.skipIf(getPlatform() === 'windows' || getPlatform() === 'unknown')('Full Extraction on Sample Folder (Shellesc)', async() => {
 		const tempfolder = fs.mkdtempSync(path.resolve(os.tmpdir(), 'flowr-test-temp-'));
 		// run the basic statistics script
 		await flowrScriptGetStats({

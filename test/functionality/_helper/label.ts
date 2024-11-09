@@ -10,7 +10,6 @@ import { DefaultMap } from '../../../src/util/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
 import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { getAllCapabilities } from '../../../src/r-bridge/data/get';
-import { afterAll } from 'vitest';
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => []);
@@ -165,7 +164,7 @@ function printCapability(label: FlowrCapabilityWithPath, testNames: TestLabel[])
 	console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`);
 }
 
-function printLabelSummary(): void {
+export function printLabelSummary(): void {
 	console.log('== Test Capability Coverage ' + '='.repeat(80));
 	// only list those for which we have a support claim
 	const allCapabilities = [...getAllCapabilities()];
@@ -194,4 +193,4 @@ function printLabelSummary(): void {
 	}
 }
 
-process.on('exit', printLabelSummary);
+process.on('exit', () => printLabelSummary());

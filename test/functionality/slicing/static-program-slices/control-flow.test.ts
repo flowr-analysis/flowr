@@ -23,22 +23,20 @@ print(x)`, ['11@x'], `if(y) { if(z) { x <- 3 } else
 x`);
 
 		// we don't expect to be smart about loops other than repeat at the moment, see https://github.com/flowr-analysis/flowr/issues/804
-		const loops: [string, SupportedFlowrCapabilityId[]][] = [
-			['repeat', ['repeat-loop']],
-			['while(TRUE)', ['while-loop', 'logical']],
-			['for(i in 1:100)', ['for-loop', 'numbers', 'name-normal']]
-		];
-		for(const [loop, caps] of loops){
-			describe(loop, () => {
-				assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
-					shell, `x <- 1
+		describe.each([
+			{ loop: 'repeat', caps: ['repeat-loop'] },
+			{ loop: 'while(TRUE)', caps: ['while-loop', 'logical'] },
+			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
+		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[]}[])('$loop', ({ loop, caps }) => {
+			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+				shell, `x <- 1
 ${loop} {
    x <- 2;
    break
 }
 print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`);
-				assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
-					shell, `x <- 1
+			assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
+				shell, `x <- 1
 ${loop} {
    x <- 2;
    if(foo) 
@@ -50,8 +48,8 @@ ${loop} {
     if(foo) break
 }
 x`);
-				assertSliced(label('Next', [...caps, 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
-					shell, `x <- 1
+			assertSliced(label('Next', [...caps, 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
+				shell, `x <- 1
 ${loop} {
    x <- 2;
    next;
@@ -62,8 +60,7 @@ print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${l
     x <- 3
 }
 x`);
-			});
-		}
+		});
 		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
    x <- 3 * x

@@ -47,102 +47,101 @@ describe.sequential('CSV parsing', withShell(shell => {
 	});
 }));
 
-describe.sequential('Constant Parsing',
-	withShell(shell => {
-		describe('parse empty', () => {
-			assertAst(label('nothing', []),
-				shell, '', exprList()
-			);
+describe.sequential('Constant Parsing', withShell(shell => {
+	describe('parse empty', () => {
+		assertAst(label('nothing', []),
+			shell, '', exprList()
+		);
+	});
+	describe('parse single', () => {
+		test('parse illegal', async() =>
+			await expect(retrieveParseDataFromRCode({
+				request: 'text',
+				content: '{'
+			}, shell)).rejects.toThrow()
+		);
+		describe('numbers', () => {
+			for(const number of RNumberPool) {
+				const range = rangeFrom(1, 1, 1, number.str.length);
+				assertAst(label(number.str, ['numbers']),
+					shell, number.str, exprList({
+						type:     RType.Number,
+						location: range,
+						lexeme:   number.str,
+						content:  number.val,
+						info:     {}
+					})
+				);
+			}
 		});
-		describe('parse single', () => {
-			test('parse illegal', async() =>
-				await expect(retrieveParseDataFromRCode({
-					request: 'text',
-					content: '{'
-				}, shell)).rejects.toThrow()
-			);
-			describe('numbers', () => {
-				for(const number of RNumberPool) {
-					const range = rangeFrom(1, 1, 1, number.str.length);
-					assertAst(label(number.str, ['numbers']),
-						shell, number.str, exprList({
-							type:     RType.Number,
-							location: range,
-							lexeme:   number.str,
-							content:  number.val,
-							info:     {}
-						})
-					);
-				}
-			});
-			describe('strings', () => {
-				for(const string of RStringPool) {
-					const range = rangeFrom(1, 1, 1, string.str.length);
-					const raw = string.str.startsWith('r') || string.str.startsWith('R');
-					assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
-						shell, string.str, exprList({
-							type:     RType.String,
-							location: range,
-							lexeme:   string.str,
-							content:  string.val,
-							info:     {}
-						}),
-						{
-							// just a hackey way to not outright flag all
-							minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
-						}
-					);
-				}
-			});
-			describe('Symbols', () => {
-				for(const symbol of RSymbolPool) {
-					const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1);
-					const exported = symbol.namespace !== undefined;
-					const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
-					assertAst(label(symbol.str, ['name-normal', ...mapped]),
-						shell, symbol.str, exprList({
-							type:      RType.Symbol,
-							namespace: symbol.namespace,
-							location:  range,
-							lexeme:    symbol.val,
-							content:   symbol.val,
-							info:      {}
-						})
-					);
-				}
-			});
-			describe('logical', () => {
-				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
-					assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
-						shell, lexeme, exprList({
-							type:     RType.Logical,
-							location: rangeFrom(1, 1, 1, lexeme.length),
-							lexeme,
-							content,
-							info:     {}
-						})
-					);
-				}
-			});
-			describe('comments', () => {
-				assertAst(label('simple line comment', ['comments']),
-					shell, '# Hello World',
+		describe('strings', () => {
+			for(const string of RStringPool) {
+				const range = rangeFrom(1, 1, 1, string.str.length);
+				const raw = string.str.startsWith('r') || string.str.startsWith('R');
+				assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
+					shell, string.str, exprList({
+						type:     RType.String,
+						location: range,
+						lexeme:   string.str,
+						content:  string.val,
+						info:     {}
+					}),
 					{
-						...exprList(),
-						info: {
-							additionalTokens: [
-								{
-									type:     RType.Comment,
-									location: rangeFrom(1, 1, 1, 13),
-									lexeme:   '# Hello World',
-									content:  ' Hello World',
-									info:     {}
-								}
-							]
-						}
+						// just a hackey way to not outright flag all
+						minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
 					}
 				);
-			});
+			}
 		});
-	})
+		describe('Symbols', () => {
+			for(const symbol of RSymbolPool) {
+				const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1);
+				const exported = symbol.namespace !== undefined;
+				const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
+				assertAst(label(symbol.str, ['name-normal', ...mapped]),
+					shell, symbol.str, exprList({
+						type:      RType.Symbol,
+						namespace: symbol.namespace,
+						location:  range,
+						lexeme:    symbol.val,
+						content:   symbol.val,
+						info:      {}
+					})
+				);
+			}
+		});
+		describe('logical', () => {
+			for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
+				assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
+					shell, lexeme, exprList({
+						type:     RType.Logical,
+						location: rangeFrom(1, 1, 1, lexeme.length),
+						lexeme,
+						content,
+						info:     {}
+					})
+				);
+			}
+		});
+		describe('comments', () => {
+			assertAst(label('simple line comment', ['comments']),
+				shell, '# Hello World',
+				{
+					...exprList(),
+					info: {
+						additionalTokens: [
+							{
+								type:     RType.Comment,
+								location: rangeFrom(1, 1, 1, 13),
+								lexeme:   '# Hello World',
+								content:  ' Hello World',
+								info:     {}
+							}
+						]
+					}
+				}
+			);
+		});
+	});
+})
 );

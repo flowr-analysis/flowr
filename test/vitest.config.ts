@@ -9,9 +9,18 @@ export default defineConfig({
 		sequence:    {
 			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
 			concurrent: true,
-			setupFiles: 'list'
+			setupFiles: 'parallel'
 		},
 		setupFiles: ['./test/functionality/test-setup.ts'],
-		reporters:  process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['basic'],
+		reporters:  process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
+		isolate:    false,
+		pool:       'threads',
+		deps:       {
+			optimizer: {
+				ssr: {
+					enabled: true
+				}
+			}
+		}
 	},
 });

@@ -2,9 +2,9 @@ import { randomString } from '../../../src/util/random';
 import { removeRQuotes } from '../../../src/r-bridge/retriever';
 import { describe, assert, test } from 'vitest';
 
-describe.sequential('(AST) Retriever', () => {
+describe('(AST) Retriever', () => {
 	describe('helper functions', () => {
-		describe('removeTokenMapQuotationMarks', () => {
+		describe('removeRQuotes', () => {
 			describe('extract', () => {
 				const positive = (source: string): void => {
 					describe(source === '' ? '<empty>' : `${source}`, () => {

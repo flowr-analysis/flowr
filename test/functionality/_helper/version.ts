@@ -8,10 +8,10 @@ import type { RShell } from '../../../src/r-bridge/shell';
  * @param versionToSatisfy - The version pattern to satisfy (e.g., `"<= 4.0.0 || 5.0.0 - 6.0.0"`)
  * @param test 					   - The test to skip if the version does not satisfy the pattern
  */
-export const testRequiresRVersion = async(shell: RShell, versionToSatisfy: string, test: Mocha.Context): Promise<void> => {
+export const testRequiresRVersion = async(shell: RShell, versionToSatisfy: string, test: unknown): Promise<void> => {
 	const version = await shell.usedRVersion();
 	if(version === null || !semver.satisfies(version, versionToSatisfy)) {
 		console.warn(`Skipping test because ${JSON.stringify(version?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`);
-		test.skip();
+		/* TODO: test.skip(); */
 	}
 };

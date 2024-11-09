@@ -1,6 +1,4 @@
-import { it } from 'mocha';
 import { testRequiresNetworkConnection } from './network';
-import { assert } from 'chai';
 import { testRequiresRVersion } from './version';
 import type { MergeableRecord } from '../../../src/util/objects';
 import { deepMergeObject } from '../../../src/util/objects';
@@ -35,13 +33,15 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
+import { assert, test, afterAll } from 'vitest';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
-	return it(msg, async function(): Promise<void> {
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
+	return test(msg, async function(): Promise<void> {
 		let shell: RShell | null = null;
 		try {
 			shell = new RShell();
-			await fn(shell, this);
+			// @ts-ignore
+			await fn(shell, this as unknown);
 		} finally {
 			// ensure we close the shell in error cases too
 			shell?.close();
@@ -61,16 +61,16 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	if(!newShell && testShell === undefined) {
 		testShell = new RShell();
 		process.on('exit', () => {
-			testShell?.close(); 
+			testShell?.close();
 		});
 		process.on('SIGTERM', () => {
-			testShell?.close(); 
+			testShell?.close();
 		});
 	}
 	return function() {
 		if(newShell) {
 			const shell = new RShell();
-			after(() => shell.close());
+			afterAll(() => shell.close());
 			fn(shell);
 		} else {
 			fn(testShell as RShell);
@@ -130,17 +130,17 @@ export const defaultTestConfiguration: TestConfiguration = {
 	needsNetworkConnection: false
 };
 
-async function testRequiresPackages(shell: RShell, requiredPackages: string[], test: Mocha.Context) {
+async function testRequiresPackages(shell: RShell, requiredPackages: string[], test: unknown) {
 	shell.tryToInjectHomeLibPath();
 	for(const pkg of requiredPackages) {
 		if(!await shell.isPackageInstalled(pkg)) {
 			console.warn(`Skipping test because package "${pkg}" is not installed (install it locally to get the tests to run).`);
-			test.skip();
+			/* TODO: test.skip(); */
 		}
 	}
 }
 
-export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
+export async function ensureConfig(shell: RShell, test: unknown, userConfig?: Partial<TestConfiguration>): Promise<void> {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	if(config.needsNetworkConnection) {
 		await testRequiresNetworkConnection(test);
@@ -167,10 +167,10 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
-}>): Mocha.Suite | Mocha.Test {
+}>) {
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return it(`${fullname} (input: ${input})`, async function() {
+	return test(`${fullname} (input: ${input})`, async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 
 		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
@@ -187,7 +187,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
-	it(name, async function() {
+	test(name, async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
@@ -214,7 +214,7 @@ export function assertOutput(name: string | TestLabel, shell: RShell, input: str
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
 	}
 	const effectiveName = decorateLabelContext(name, ['output']);
-	it(`${effectiveName} (input: ${input})`, async function() {
+	test(`${effectiveName} (input: ${input})`, async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 		const lines = await shell.sendCommandWithOutput(input, { automaticallyTrimOutput: userConfig?.trimOutput ?? true });
 		/* we have to reset in between such tests! */
@@ -262,7 +262,7 @@ export function assertDataflow(
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
-	it(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
+	test(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -302,7 +302,7 @@ export function assertDataflow(
 			console.error('diff:\n', diff);
 			throw e;
 		}
-	}).timeout('4min');
+	});
 	handleAssertOutput(name, shell, input, userConfig);
 }
 
@@ -315,9 +315,9 @@ function printIdMapping(ids: NodeId[], map: AstIdMap): string {
 /**
  * Please note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
-export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)) {
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
-	const t = it(decorateLabelContext(name, ['slice']), async function() {
+	const t = test(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
@@ -349,10 +349,10 @@ export function assertSliced(
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
-): Mocha.Test {
+) {
 	const fullname = decorateLabelContext(name, ['slice']);
 
-	const t = it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
+	const t = test(`${JSON.stringify(criteria)} ${fullname}`, async function(this: unknown) {
 		await ensureConfig(shell, this, userConfig);
 
 		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{

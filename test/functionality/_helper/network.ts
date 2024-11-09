@@ -11,9 +11,10 @@ export const hasNetworkConnection = async(): Promise<boolean> => {
 
 
 /** Automatically skip a test if no internet connection is available */
-export const testRequiresNetworkConnection = async(test: Mocha.Context): Promise<void> => {
-	if(!await hasNetworkConnection()) {
+export const testRequiresNetworkConnection = async(test: unknown): Promise<void> => {
+	/* TODO */
+	/*if(!await hasNetworkConnection()) {
 		console.warn('Skipping test because no internet connection is available');
 		test.skip();
-	}
+	}*/
 };

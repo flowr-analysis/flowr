@@ -10,6 +10,7 @@ import { DefaultMap } from '../../../src/util/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
 import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { getAllCapabilities } from '../../../src/r-bridge/data/get';
+import { afterAll } from 'vitest';
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => []);
@@ -193,5 +194,4 @@ function printLabelSummary(): void {
 	}
 }
 
-after(printLabelSummary);
 process.on('exit', printLabelSummary);

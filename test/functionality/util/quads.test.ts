@@ -7,7 +7,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { describe, assert, test } from 'vitest';
 
-describe('Quads', withShell(shell => {
+describe.sequential('Quads', withShell(shell => {
 	const context = 'test';
 	const domain = 'https://uni-ulm.de/r-ast/';
 

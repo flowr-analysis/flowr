@@ -6,7 +6,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 
-describe('Parse function calls', withShell(shell => {
+describe.sequential('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
 		assertAst(label('f()', ['call-normal', 'name-normal']),
 			shell, 'f()', exprList({

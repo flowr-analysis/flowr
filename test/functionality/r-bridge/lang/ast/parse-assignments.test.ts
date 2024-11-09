@@ -7,8 +7,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 
-describe('Parse simple assignments',
-	withShell(shell => {
+describe.sequential('Parse simple assignments', withShell(shell => {
 		describe('Constant assignments', () => {
 			for(const op of AssignmentOperators) {
 				const opOffset = op.length - 1;

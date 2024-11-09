@@ -19,7 +19,7 @@ import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Atomic (dataflow information)', withShell(shell => {
+describe.sequential('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
 			['42', 'numbers'],

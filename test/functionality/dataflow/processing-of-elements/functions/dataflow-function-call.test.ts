@@ -13,7 +13,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Function Call', withShell(shell => {
+describe.sequential('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
 		assertDataflow(label('Calling function a', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'formals-named', 'implicit-return', 'unnamed-arguments']),
 			shell, 'i <- 4; a <- function(x) { x }\na(i)', emptyGraph()

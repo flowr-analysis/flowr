@@ -9,7 +9,7 @@ import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retrieve
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe, assert, test, expect } from 'vitest';
 
-describe('CSV parsing', withShell(shell => {
+describe.sequential('CSV parsing', withShell(shell => {
 	test('simple', async() => {
 		const code = await retrieveParseDataFromRCode({
 			request: 'text',
@@ -47,7 +47,7 @@ describe('CSV parsing', withShell(shell => {
 	});
 }));
 
-describe('Constant Parsing',
+describe.sequential('Constant Parsing',
 	withShell(shell => {
 		describe('parse empty', () => {
 			assertAst(label('nothing', []),
@@ -55,11 +55,11 @@ describe('Constant Parsing',
 			);
 		});
 		describe('parse single', () => {
-			test('parse illegal', async () =>
-				await expect((retrieveParseDataFromRCode({
+			test('parse illegal', async() =>
+				await expect(retrieveParseDataFromRCode({
 					request: 'text',
 					content: '{'
-				}, shell))).rejects.toThrow()
+				}, shell)).rejects.toThrow()
 			);
 			describe('numbers', () => {
 				for(const number of RNumberPool) {
@@ -70,7 +70,7 @@ describe('Constant Parsing',
 							location: range,
 							lexeme:   number.str,
 							content:  number.val,
-							info:     { }
+							info:     {}
 						})
 					);
 				}

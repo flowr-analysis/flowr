@@ -5,7 +5,7 @@ import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 
-describe('Parse the line directive', withShell(shell => {
+describe.sequential('Parse the line directive', withShell(shell => {
 	assertAst(label('Simple line', ['comments']),
 		shell, '#line 42 "foo.R"',
 		exprList({

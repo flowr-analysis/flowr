@@ -4,7 +4,7 @@ import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features
 import { describe } from 'vitest';
 
 
-describe('Used Function Calls', withShell(shell => {
+describe.sequential('Used Function Calls', withShell(shell => {
 	testForFeatureForInput(shell, 'usedFunctions', [
 		{
 			name:     'no calls',

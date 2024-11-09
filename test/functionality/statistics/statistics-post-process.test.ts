@@ -28,7 +28,6 @@ describe('Post-Processing', () => {
 			limit:        undefined,
 			'no-ansi':    false
 		});
-		console.log('Dumping Data to: ', tempfolder);
 		/* now run the summarizer :D */
 		await flowrScriptSummarizer({
 			verbose:         false,

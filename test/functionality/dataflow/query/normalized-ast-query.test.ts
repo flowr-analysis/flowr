@@ -6,7 +6,7 @@ import type {
 } from '../../../../src/queries/catalog/normalized-ast-query/normalized-ast-query-format';
 import { describe } from 'vitest';
 
-describe('Normalized AST Query', withShell(shell => {
+describe.sequential('Normalized AST Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly NormalizedAstQuery[]) {
 		assertQuery(label(name), shell, code, query, ({ normalize }) => ({ 'normalized-ast': { normalized: normalize } }));
 	}

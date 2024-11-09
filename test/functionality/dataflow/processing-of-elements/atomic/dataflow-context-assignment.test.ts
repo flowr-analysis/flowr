@@ -5,7 +5,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { describe } from 'vitest';
 
 
-describe('Context Assignments', withShell(shell => {
+describe.sequential('Context Assignments', withShell(shell => {
 	describe('Table Assignment', () => {
 		assertDataflow(label('Assign single bracket', ['name-normal', 'function-calls', 'functions-with-global-side-effects', 'implicit-return', 'strings', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
 			shell, `

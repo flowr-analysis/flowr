@@ -8,7 +8,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Redefining builtins', withShell(shell => {
+describe.sequential('Redefining builtins', withShell(shell => {
 	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 

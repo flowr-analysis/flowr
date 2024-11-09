@@ -16,7 +16,7 @@ import { doNotAutoSelect } from '../../../../src/reconstruct/auto-select/auto-se
 import { makeMagicCommentHandler } from '../../../../src/reconstruct/auto-select/magic-comments';
 import { describe } from 'vitest';
 
-describe('Static Slice Query', withShell(shell => {
+describe.sequential('Static Slice Query', withShell(shell => {
 	function testQuery(name: string, code: string, queries: readonly StaticSliceQuery[]) {
 		assertQuery(label(name), shell, code, queries, async() => {
 			const results: StaticSliceQueryResult['results'] = {};

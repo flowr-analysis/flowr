@@ -15,7 +15,7 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 	return { stats, statInfo };
 }
 
-describe('Benchmark Slicer', () => {
+describe.sequential('Benchmark Slicer', () => {
 	test('Print times', () => {
 		assert.equal(formatNanoseconds(0).trim(), '0:000000ms');
 		assert.equal(formatNanoseconds(1000000).trim(), '1:000000ms');
@@ -25,7 +25,7 @@ describe('Benchmark Slicer', () => {
 	});
 
 	describe('Stats by parsing text-based inputs', function() {
-		test('Simple slice for simple line', async() => {
+		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer();
 			const request = { request: 'text' as const, content: 'a <- b' };
 			await slicer.init(request);
@@ -80,7 +80,7 @@ describe('Benchmark Slicer', () => {
 				total:  1
 			});
 
-		}, { timeout: 15 * 60 * 1000 });
+		});
 		test('Slicing the same code three times', async() => {
 			const slicer = new BenchmarkSlicer();
 			const request = {

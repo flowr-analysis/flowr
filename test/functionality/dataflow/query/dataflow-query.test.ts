@@ -4,7 +4,7 @@ import type { DataflowQuery } from '../../../../src/queries/catalog/dataflow-que
 import { withShell } from '../../_helper/shell';
 import { describe } from 'vitest';
 
-describe('Dataflow Query', withShell(shell => {
+describe.sequential('Dataflow Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly DataflowQuery[]) {
 		assertQuery(label(name), shell, code, query, ({ dataflow }) => ({ dataflow: { graph: dataflow.graph } }));
 	}

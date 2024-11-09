@@ -4,7 +4,7 @@ import { RFalse, RTrue } from '../../../../src/r-bridge/lang-4.x/convert-values'
 import { describe } from 'vitest';
 
 
-describe('Controlflow', withShell(shell => {
+describe.sequential('Controlflow', withShell(shell => {
 	testForFeatureForInput(shell, 'controlflow', [
 		{
 			name:     'no control flow',

@@ -10,7 +10,7 @@ import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/mod
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Function Definition', withShell(shell => {
+describe.sequential('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
 		assertDataflow(label('unknown read in function', ['normal-definition', 'implicit-return', 'name-normal']),
 			shell, 'function() { x }', emptyGraph()

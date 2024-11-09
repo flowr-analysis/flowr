@@ -7,7 +7,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Lists with variable references', withShell(shell => {
+describe.sequential('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
 		assertDataflow(label('directly together', ['name-normal', 'newlines']), shell,
 			'x\nx', emptyGraph()

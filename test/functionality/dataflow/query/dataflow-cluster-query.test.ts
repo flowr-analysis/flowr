@@ -5,7 +5,7 @@ import { findAllClusters } from '../../../../src/dataflow/cluster';
 import type { DataflowClusterQuery } from '../../../../src/queries/catalog/cluster-query/cluster-query-format';
 import { describe } from 'vitest';
 
-describe('Dataflow Cluster Query', withShell(shell => {
+describe.sequential('Dataflow Cluster Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly DataflowClusterQuery[]) {
 		assertQuery(label(name), shell, code, query, ({ dataflow }) => ({ 'dataflow-cluster': { clusters: findAllClusters(dataflow.graph) } }));
 	}

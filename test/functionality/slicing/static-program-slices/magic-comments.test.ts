@@ -12,7 +12,7 @@ function withMagicComments(expectedOutput?: string): Partial<TestConfigurationWi
 	};
 }
 
-describe('Reconstruct with Magic Comments', withShell(shell => {
+describe.sequential('Reconstruct with Magic Comments', withShell(shell => {
 	describe('Without Comments', () => {
 		assertSliced(label('full', ['local-left-assignment', 'assignments-and-bindings', 'numbers']),
 			shell, 'x <- 2\ncat()\nx', ['3@x'],

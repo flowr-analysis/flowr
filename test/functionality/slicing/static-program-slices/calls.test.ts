@@ -5,7 +5,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/g
 import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
-describe('Calls', withShell(shell => {
+describe.sequential('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
 		const code = `i <- 4
 a <- function(x) { x }

@@ -10,7 +10,7 @@ import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe, beforeAll, afterAll } from 'vitest';
 
-describe('source', withShell(shell => {
+describe.sequential('source', withShell(shell => {
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',

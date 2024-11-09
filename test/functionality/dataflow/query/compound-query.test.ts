@@ -3,7 +3,7 @@ import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { describe } from 'vitest';
 
-describe('Compound Query', withShell(shell => {
+describe.sequential('Compound Query', withShell(shell => {
 	assertQuery(label('Compound Virtual Query'),
 		shell, 'print(1); foo(2)', [{
 			type:            'compound',

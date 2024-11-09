@@ -27,7 +27,7 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 	return out;
 }
 
-describe('Dependencies Query', withShell(shell => {
+describe.sequential('Dependencies Query', withShell(shell => {
 	/** handles slicing criteria for the node ids */
 	function testQuery(
 		name: string,

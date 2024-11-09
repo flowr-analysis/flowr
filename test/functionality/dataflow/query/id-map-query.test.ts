@@ -4,7 +4,7 @@ import { withShell } from '../../_helper/shell';
 import type { IdMapQuery } from '../../../../src/queries/catalog/id-map-query/id-map-query-format';
 import { describe } from 'vitest';
 
-describe('Normalized AST Query', withShell(shell => {
+describe.sequential('Normalized AST Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly IdMapQuery[]) {
 		assertQuery(label(name), shell, code, query, (({ normalize }) => ({ 'id-map': { idMap: normalize.idMap } })));
 	}

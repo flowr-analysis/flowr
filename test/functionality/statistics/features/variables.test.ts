@@ -3,7 +3,7 @@ import { withShell } from '../../_helper/shell';
 import { describe } from 'vitest';
 
 
-describe('Variables', withShell(shell => {
+describe.sequential('Variables', withShell(shell => {
 	testForFeatureForInput(shell, 'variables', [
 		{
 			name:     'no variables',

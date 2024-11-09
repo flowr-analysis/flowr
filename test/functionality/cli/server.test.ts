@@ -21,7 +21,7 @@ import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli
 import { describe, assert, test } from 'vitest';
 
 describe('flowr', () => {
-	describe('Server', withShell(shell => {
+	describe.sequential('Server', withShell(shell => {
 		test('Correct Hello Message', withSocket(shell,async socket => {
 			const messages = socket.getMessages();
 			assert.strictEqual(messages.length, 1, 'Expected exactly one message to hello the client');

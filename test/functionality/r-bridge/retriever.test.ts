@@ -2,7 +2,7 @@ import { randomString } from '../../../src/util/random';
 import { removeRQuotes } from '../../../src/r-bridge/retriever';
 import { describe, assert, test } from 'vitest';
 
-describe('(AST) Retriever', () => {
+describe.sequential('(AST) Retriever', () => {
 	describe('helper functions', () => {
 		describe('removeTokenMapQuotationMarks', () => {
 			describe('extract', () => {

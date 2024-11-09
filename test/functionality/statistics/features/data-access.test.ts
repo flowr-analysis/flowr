@@ -3,7 +3,7 @@ import { withShell } from '../../_helper/shell';
 import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability';
 import { describe } from 'vitest';
 
-describe('Data Access', withShell(shell => {
+describe.sequential('Data Access', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
 		{
 			name:     'no data access',

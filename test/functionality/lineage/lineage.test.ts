@@ -11,7 +11,7 @@ import { setEquals } from '../../../src/util/set';
 import { OperatorDatabase } from '../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe, assert, test } from 'vitest';
 
-describe('Test lineage', withShell(shell => {
+describe.sequential('Test lineage', withShell(shell => {
 
 	function assertLineage(title: string | TestLabel, request: string, criterion: SingleSlicingCriterion, expected: NodeId[]) {
 		const effectiveName = decorateLabelContext(title, ['lineage']);

@@ -9,7 +9,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
 
-describe('Parse simple operations', withShell(shell => {
+describe.sequential('Parse simple operations', withShell(shell => {
 	describe('unary operations', () => {
 		for(const op of UnaryOperatorPool) {
 			const simpleInput = `${op}42`;

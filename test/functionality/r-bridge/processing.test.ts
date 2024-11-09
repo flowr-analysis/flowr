@@ -9,7 +9,7 @@ import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect'
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe, assert, test } from 'vitest';
 
-describe('Assign unique Ids and Parents', withShell((shell) => {
+describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
 			assertDecoratedAst(name, shell, input, expected);

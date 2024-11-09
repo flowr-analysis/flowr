@@ -4,7 +4,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { describe } from 'vitest';
 
-describe('Simple Defs in Multiple Files', withShell(shell => {
+describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 
 	assertDataflow(label('two files', ['name-normal', 'numbers']), shell,
 		[

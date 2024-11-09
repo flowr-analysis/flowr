@@ -33,7 +33,7 @@ describe('Graph Clustering', () => {
 			]);
 	});
 
-	describe('Code Snippets', withShell(shell => {
+	describe.sequential('Code Snippets', withShell(shell => {
 		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
 			test(`${name} [${code.split('\n').join('\\n')}]`, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

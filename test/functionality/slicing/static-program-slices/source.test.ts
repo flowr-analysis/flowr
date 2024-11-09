@@ -5,7 +5,7 @@ import { label } from '../../_helper/label';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe, beforeAll, afterAll } from 'vitest';
 
-describe('source', withShell(shell => {
+describe.sequential('source', withShell(shell => {
 	const sources = {
 		simple:   'N <- 9',
 		closure1: 'f <- function() { function() 3 }',

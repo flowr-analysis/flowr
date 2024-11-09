@@ -7,7 +7,8 @@ export default defineConfig({
 		},
 		testTimeout: 60 * 1000,
 		sequence:    {
-			concurrent: false
+			/* each test file that does not support parallel execution will be executed in sequence by stating this explicitly */
+			concurrent: true
 		},
 		setupFiles: ['./test/functionality/test-setup.ts'],
 	},

@@ -7,7 +7,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 
-describe('Parse value access', withShell(shell => {
+describe.sequential('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
 		assertAst(label('Empty Access', ['name-normal', 'single-bracket-access', 'access-with-empty']),
 			shell, 'a[]', exprList({

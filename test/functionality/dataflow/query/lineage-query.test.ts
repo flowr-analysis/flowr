@@ -8,7 +8,7 @@ import type {
 import { getLineage } from '../../../../src/cli/repl/commands/repl-lineage';
 import { describe } from 'vitest';
 
-describe('Lineage Query', withShell(shell => {
+describe.sequential('Lineage Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly LineageQuery[]) {
 		assertQuery(label(name), shell, code, query, ({ dataflow }) => ({
 			'lineage': {

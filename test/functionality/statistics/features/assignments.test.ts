@@ -2,7 +2,7 @@ import { testForFeatureForInput } from '../statistics';
 import { withShell } from '../../_helper/shell';
 import { describe } from 'vitest';
 
-describe('Assignments', withShell(shell => {
+describe.sequential('Assignments', withShell(shell => {
 	testForFeatureForInput(shell, 'assignments', [
 		{
 			name:     'no assignment',

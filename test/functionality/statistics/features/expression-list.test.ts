@@ -3,7 +3,7 @@ import { withShell } from '../../_helper/shell';
 import { describe } from 'vitest';
 
 
-describe('Expression List', withShell(shell => {
+describe.sequential('Expression List', withShell(shell => {
 	testForFeatureForInput(shell, 'expressionList', [
 		{
 			name:     'just the root expression list',

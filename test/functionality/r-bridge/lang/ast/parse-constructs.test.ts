@@ -168,7 +168,7 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 	capabilities: ['if', 'numbers']
 }];
 
-const ElsegroupingVariants: ElseSpacing[] = [{
+const ElseGroupingVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
 	otherwise: 	  off => inBrace(
@@ -191,7 +191,7 @@ const ElsegroupingVariants: ElseSpacing[] = [{
 	capabilities: ['if', 'numbers', 'grouping']
 }];
 
-describe('Parse simple constructs', withShell(shell => {
+describe.sequential('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
 			for(const pool of [{ name: 'grouping', variants: IfThenBraceVariants }, {
@@ -221,7 +221,7 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		});
 		describe('if-then-else', () => {
-			for(const elsePool of [{ name: 'grouping', variants: ElsegroupingVariants }, {
+			for(const elsePool of [{ name: 'grouping', variants: ElseGroupingVariants }, {
 				name:     'spacing',
 				variants: ElseSpacingVariants
 			}]) {

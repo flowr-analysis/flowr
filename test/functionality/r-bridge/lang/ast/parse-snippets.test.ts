@@ -6,7 +6,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 
-describe('Parse Larger Snippets', withShell((shell) => {
+describe.sequential('Parse Larger Snippets', withShell(shell => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(label('Manual Max Function', [
 			'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->>'].capabilities, 'numbers', 'if', ...OperatorDatabase['>'].capabilities, 'grouping', 'newlines'

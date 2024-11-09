@@ -3,7 +3,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { describe } from 'vitest';
 
-describe('Dataflow Plot Dependencies', withShell(shell => {
+describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
 	assertDataflow(label('Linking points to last plot', ['functions-with-global-side-effects']), shell,
 		'plot(f)\npoints(g)',
 		emptyGraph()

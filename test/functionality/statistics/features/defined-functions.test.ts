@@ -4,7 +4,7 @@ import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/
 import { describe } from 'vitest';
 
 
-describe('Defined Functions', withShell(shell => {
+describe.sequential('Defined Functions', withShell(shell => {
 	testForFeatureForInput(shell, 'definedFunctions', [
 		{
 			name:     'no definitions',

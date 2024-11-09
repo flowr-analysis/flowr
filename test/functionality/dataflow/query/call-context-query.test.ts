@@ -41,7 +41,7 @@ function r(results: CallContextQuerySubKindResult[], kind = 'test-kind', subkind
 	});
 }
 
-describe('Call Context Query', withShell(shell => {
+describe.sequential('Call Context Query', withShell(shell => {
 	function testQuery(name: string, code: string, query: readonly CallContextQuery[], expected: QueryResultsWithoutMeta<CallContextQuery>) {
 		assertQuery(label(name), shell, code, query, expected);
 	}

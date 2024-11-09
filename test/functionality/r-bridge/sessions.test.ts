@@ -4,7 +4,7 @@ import { guard } from '../../../src/util/assert';
 import { describe, assert, test, expect } from 'vitest';
 
 /** here we use testWithShell to get a fresh shell within each call */
-describe('RShell sessions', withShell(shell => {
+describe.sequential('RShell sessions', withShell(shell => {
 	test('test that we can create a connection to R', () => {
 		assert.doesNotThrow(() => {
 			shell.clearEnvironment();

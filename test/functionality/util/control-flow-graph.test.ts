@@ -24,7 +24,7 @@ function normAllIds(ids: NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
 }
 
-describe('Control Flow Graph', withShell(shell => {
+describe.sequential('Control Flow Graph', withShell(shell => {
 	function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
 		// shallow copy is important to avoid killing the CFG :c
 		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };

@@ -6,7 +6,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { describe } from 'vitest';
 
-describe('While', withShell(shell => {
+describe.sequential('While', withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.nse('3', '1')

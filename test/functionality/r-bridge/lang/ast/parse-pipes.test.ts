@@ -6,7 +6,7 @@ import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 
-describe('Parse Pipes', withShell(shell => {
+describe.sequential('Parse Pipes', withShell(shell => {
 	assertAst(label('x |> f()', ['name-normal', 'built-in-pipe-and-pipe-bind', 'call-normal']),
 		shell, 'x |> f()', exprList({
 			type:     RType.Pipe,

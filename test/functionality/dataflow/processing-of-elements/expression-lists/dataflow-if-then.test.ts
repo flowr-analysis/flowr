@@ -9,7 +9,7 @@ import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/mod
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
-describe('Lists with if-then constructs', withShell(shell => {
+describe.sequential('Lists with if-then constructs', withShell(shell => {
 	for(const assign of ['<-', '<<-', '=']) {
 		describe(`using ${assign}`, () => {
 			describe('reads within if', () => {

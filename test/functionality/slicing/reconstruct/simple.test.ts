@@ -5,7 +5,7 @@ import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/op
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe } from 'vitest';
 
-describe('Simple', withShell(shell => {
+describe.sequential('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const [id, code, caps] of [
 			[0, 'x <- 5', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]],

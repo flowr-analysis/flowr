@@ -6,7 +6,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 
-describe('Parse function definitions', withShell(shell => {
+describe.sequential('Parse function definitions', withShell(shell => {
 	describe('without parameters', () => {
 		assertAst(label('Noop', ['normal-definition', 'grouping']),
 			shell, 'function() { }', exprList({

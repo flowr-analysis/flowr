@@ -4,7 +4,7 @@ import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/op
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
 
-describe('Simple', withShell(shell => {
+describe.sequential('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
 			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),

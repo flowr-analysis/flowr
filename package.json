@@ -3,7 +3,6 @@
   "version": "2.1.5",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/flowr-analysis/flowr.git"
@@ -31,12 +30,12 @@
     "wiki:query-api": "ts-node src/documentation/print-query-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
     "build": "tsc --project .",
-    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --bundle --minify --target=node18 --outfile=dist/src/cli/flowr.min.js",
+    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --bundle --minify --target=node22 --outfile=dist/src/cli/flowr.min.js",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
-    "test": "vitest --config test/vitest.config.ts",
+    "test": "vitest --config test/vitest.config.mts",
     "test:coverage": "npm run test -- --coverage",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
@@ -53,33 +52,6 @@
   ],
   "author": "Florian Sihler",
   "license": "ISC",
-  "mocha": {
-    "require": "ts-node/register",
-    "timeout": 60000,
-    "spec": "test/**/*.spec.ts",
-    "source-map": true,
-    "recursive": true,
-    "exit": true,
-    "produce-source-map": true
-  },
-  "nyc": {
-    "all": true,
-    "per-file": true,
-    "check-coverage": false,
-    "skip-full": true,
-    "lines": 70,
-    "extension": [
-      ".ts"
-    ],
-    "include": [
-      "src/**/*.ts"
-    ],
-    "reporter": [
-      "text",
-      "lcov",
-      "cobertura"
-    ]
-  },
   "eslintConfig": {
     "settings": {
       "import/resolver": {
@@ -207,6 +179,7 @@
     "esbuild": "^0.23.1",
     "eslint": "^8.57.1",
     "license-checker": "^25.0.1",
+    "npm-run-all": "^4.1.5",
     "release-it": "^17.6.0",
     "ts-node": "^10.9.2",
     "typedoc": "^0.26.7",

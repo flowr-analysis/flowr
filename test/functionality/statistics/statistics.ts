@@ -45,7 +45,7 @@ export interface Statistics {
 export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feature: T, tests: Statistics[]) {
 	const featureInfo = ALL_FEATURES[feature];
 	for(const t of tests) {
-		test.skipIf(skipTestBecauseConfigNotMet(shell, t.requirements ? {
+		test.skipIf(skipTestBecauseConfigNotMet(t.requirements ? {
 			...t.requirements,
 			needsXmlParseData: true
 		} : { needsXmlParseData: true }))(t.name, async function(this: unknown) {

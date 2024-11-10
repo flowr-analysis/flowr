@@ -93,6 +93,24 @@ npm run performance-test
 
 See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
 
+
+### Testing Within Your IDE
+#### VS Code
+With the vitest extension you can start tests driectly from the definition and explore your suite in the Testing tab. To get started simply install the [vitest Extension](https://marketplace.visualstudio.com/items?itemName=vitest.explorer).
+
+![vscode market place](img/vs-code-vitest.png)
+
+| Testing Tab | In Code |
+|-------------|---------|
+|![testing tab](img/testing-vs-code.png)|![in code](img/testing-vs-code-2.png)|
+
+- Left-clicking the <img style="vertical-align: middle" src='img/circle-check-regular.svg' height='16pt'> or <img style="vertical-align: middle" src='img/circle-xmark-regular.svg' height='16pt'> Icon next to the code will rerun the test. Right-clicking will open a context menu, allowing you to debug the test.
+- In the Testing tab you can run (and debug) all tests, individual suites or individual tests.
+
+#### Webstorm 
+Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/vitest.html).
+
+
 ## CI Pipeline
 
 We have several workflows defined in [.github/workflows](../.github/workflows/).

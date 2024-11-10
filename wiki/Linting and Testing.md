@@ -9,8 +9,8 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
   - [Testing Within Your IDE](#testing-within-your-ide)
-    - [Using Visual Studio Code](#using-visual-studio-code)
-    - [Using WebStorm](#using-webstorm)
+    - [Using Visual Studio Code](#vs-code)
+    - [Using WebStorm](#webstorm)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
@@ -95,19 +95,23 @@ See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/pe
 
 
 ### Testing Within Your IDE
+
 #### VS Code
-With the vitest extension you can start tests driectly from the definition and explore your suite in the Testing tab. To get started simply install the [vitest Extension](https://marketplace.visualstudio.com/items?itemName=vitest.explorer).
+
+Using the vitest Extension for Visual Studio Code, you can start tests directly from the definition and explore your suite in the Testing tab.
+To get started, install the [vitest Extension](https://marketplace.visualstudio.com/items?itemName=vitest.explorer).
 
 ![vscode market place](img/vs-code-vitest.png)
 
-| Testing Tab | In Code |
-|-------------|---------|
-|![testing tab](img/testing-vs-code.png)|![in code](img/testing-vs-code-2.png)|
+|               Testing Tab               | In Code                               |
+|:---------------------------------------:|:-------------------------------------:|
+| ![testing tab](img/testing-vs-code.png) | ![in code](img/testing-vs-code-2.png) |
 
 - Left-clicking the <img style="vertical-align: middle" src='img/circle-check-regular.svg' height='16pt'> or <img style="vertical-align: middle" src='img/circle-xmark-regular.svg' height='16pt'> Icon next to the code will rerun the test. Right-clicking will open a context menu, allowing you to debug the test.
-- In the Testing tab you can run (and debug) all tests, individual suites or individual tests.
+- In the Testing tab, you can run (and debug) all tests, individual suites or individual tests.
 
-#### Webstorm 
+#### Webstorm
+
 Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/vitest.html).
 
 

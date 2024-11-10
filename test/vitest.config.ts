@@ -11,11 +11,12 @@ export default defineConfig({
 			concurrent: true,
 			setupFiles: 'parallel'
 		},
-		setupFiles: ['./test/functionality/test-setup.ts'],
-		reporters:  process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
-		isolate:    false,
-		pool:       'threads',
-		deps:       {
+		setupFiles:  ['./test/functionality/test-setup.ts'],
+		globalSetup: ['./test/functionality/test-summary.ts'],
+		reporters:   process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
+		isolate:     false,
+		pool:        'threads',
+		deps:        {
 			optimizer: {
 				ssr: {
 					enabled: true

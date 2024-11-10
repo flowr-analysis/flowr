@@ -1,7 +1,3 @@
-import { it } from 'mocha';
-import { testRequiresNetworkConnection } from './network';
-import { assert } from 'chai';
-import { testRequiresRVersion } from './version';
 import type { MergeableRecord } from '../../../src/util/objects';
 import { deepMergeObject } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
@@ -35,9 +31,11 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
+import { assert, test, afterAll } from 'vitest';
+import semver from 'semver/preload';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
-	return it(msg, async function(): Promise<void> {
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
+	return test(msg, async function(this: unknown): Promise<void> {
 		let shell: RShell | null = null;
 		try {
 			shell = new RShell();
@@ -61,16 +59,16 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	if(!newShell && testShell === undefined) {
 		testShell = new RShell();
 		process.on('exit', () => {
-			testShell?.close(); 
+			testShell?.close();
 		});
 		process.on('SIGTERM', () => {
-			testShell?.close(); 
+			testShell?.close();
 		});
 	}
 	return function() {
 		if(newShell) {
 			const shell = new RShell();
-			after(() => shell.close());
+			afterAll(() => shell.close());
 			fn(shell);
 		} else {
 			fn(testShell as RShell);
@@ -114,7 +112,7 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
-	needsPackages:          string[]
+	needsXmlParseData:      boolean
 	needsNetworkConnection: boolean
 }
 
@@ -126,31 +124,51 @@ export interface TestConfigurationWithOutput extends TestConfiguration {
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsPackages:          [],
+	needsXmlParseData:      false,
 	needsNetworkConnection: false
 };
 
-async function testRequiresPackages(shell: RShell, requiredPackages: string[], test: Mocha.Context) {
-	shell.tryToInjectHomeLibPath();
-	for(const pkg of requiredPackages) {
-		if(!await shell.isPackageInstalled(pkg)) {
-			console.warn(`Skipping test because package "${pkg}" is not installed (install it locally to get the tests to run).`);
-			test.skip();
-		}
+
+/** Automatically skip a test if no internet connection is available */
+function skipTestBecauseNoNetwork(): boolean {
+	if(!globalThis.hasNetwork) {
+		console.warn('Skipping test because no internet connection is available');
+		return true;
 	}
+	return false;
 }
 
-export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
+
+/**
+ * Automatically skip a test if it does not satisfy the given version pattern
+ * (for a [semver](https://www.npmjs.com/package/semver) version).
+ *
+ * @param versionToSatisfy - The version pattern to satisfy (e.g., `"<= 4.0.0 || 5.0.0 - 6.0.0"`)
+ */
+function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean {
+	if(!globalThis.rVersion || !semver.satisfies(globalThis.rVersion, versionToSatisfy)) {
+		console.warn(`Skipping test because ${JSON.stringify(globalThis.rVersion?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`);
+		return true;
+	}
+	return false;
+}
+
+
+function skipTestBecauseXmlParseDataIsMissing(): boolean {
+	if(!globalThis.hasXmlParseData) {
+		console.warn('Skipping test because package "xmlparsedata" is not installed (install it locally to get the tests to run).');
+		return true;
+	}
+	return false;
+}
+
+
+
+export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
-	if(config.needsNetworkConnection) {
-		await testRequiresNetworkConnection(test);
-	}
-	if(config.minRVersion !== undefined) {
-		await testRequiresRVersion(shell, `>=${config.minRVersion}`, test);
-	}
-	if(config.needsPackages && config.needsPackages.length  > 0) {
-		await testRequiresPackages(shell, config.needsPackages, test);
-	}
+	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
+		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`)
+		|| config.needsXmlParseData && skipTestBecauseXmlParseDataIsMissing();
 }
 
 /**
@@ -167,11 +185,10 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
-}>): Mocha.Suite | Mocha.Test {
+}>) {
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return it(`${fullname} (input: ${input})`, async function() {
-		await ensureConfig(shell, this, userConfig);
+	return test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${fullname} (input: ${input})`, async function() {
 
 		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			shell,
@@ -187,8 +204,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
-	it(name, async function() {
-		await ensureConfig(shell, this, userConfig);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			shell,
@@ -214,8 +230,7 @@ export function assertOutput(name: string | TestLabel, shell: RShell, input: str
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
 	}
 	const effectiveName = decorateLabelContext(name, ['output']);
-	it(`${effectiveName} (input: ${input})`, async function() {
-		await ensureConfig(shell, this, userConfig);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${input})`, async function() {
 		const lines = await shell.sendCommandWithOutput(input, { automaticallyTrimOutput: userConfig?.trimOutput ?? true });
 		/* we have to reset in between such tests! */
 		shell.clearEnvironment();
@@ -262,9 +277,7 @@ export function assertDataflow(
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
-	it(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		await ensureConfig(shell, this, userConfig);
-
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			shell,
 			request: typeof input === 'string' ? requestFromInput(input) : input,
@@ -302,7 +315,7 @@ export function assertDataflow(
 			console.error('diff:\n', diff);
 			throw e;
 		}
-	}).timeout('4min');
+	});
 	handleAssertOutput(name, shell, input, userConfig);
 }
 
@@ -315,11 +328,9 @@ function printIdMapping(ids: NodeId[], map: AstIdMap): string {
 /**
  * Please note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
-export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)) {
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
-	const t = it(decorateLabelContext(name, ['slice']), async function() {
-		await ensureConfig(shell, this, userConfig);
-
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   getId,
 			request: requestFromInput(input),
@@ -337,7 +348,6 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 			`got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids ${JSON.stringify(ids)}:\n${[...result.normalize.idMap].map(i => `${i[0]}: '${i[1].lexeme}'`).join('\n')})`);
 	});
 	handleAssertOutput(name, shell, input, userConfig);
-	return t;
 }
 
 
@@ -349,12 +359,10 @@ export function assertSliced(
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
-): Mocha.Test {
+) {
 	const fullname = decorateLabelContext(name, ['slice']);
 
-	const t = it(`${JSON.stringify(criteria)} ${fullname}`, async function() {
-		await ensureConfig(shell, this, userConfig);
-
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${JSON.stringify(criteria)} ${fullname}`, async function() {
 		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
 			getId,
 			request:      requestFromInput(input),
@@ -375,5 +383,4 @@ export function assertSliced(
 		}
 	});
 	handleAssertOutput(name, shell, input, userConfig);
-	return t;
 }

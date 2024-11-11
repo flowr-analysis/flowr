@@ -2,87 +2,85 @@ import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
 import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
-import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
-import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import { describe, assert, test, expect } from 'vitest';
 
 describe('Resolve', () => {
-    describe('ByName', () => {
-        test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
-            const xVar = variable('x', '_1');
-            const env = defaultEnv().defineInEnv(xVar);
-            const result = resolveByName('x', env, ReferenceType.Unknown);
-            guard(result !== undefined, 'there should be a result');
-            expect(result, 'there should be exactly one definition for x').to.have.length(1);
-            expect(result[0], 'it should be x').to.deep.equal(xVar);
-        });
-        test(label('Locally with global distract', ['global-scope', 'lexicographic-scope'], ['other']), () => {
-            let env = defaultEnv()
-                .defineVariable('x', '_2', '_1');
-            const xVar = variable('x', '_1');
-            env = env.defineInEnv(xVar);
-            const result = resolveByName('x', env, ReferenceType.Unknown);
-            guard(result !== undefined, 'there should be a result');
-            expect(result, 'there should be exactly one definition for x').to.have.length(1);
-            expect(result[0], 'it should be x').to.be.deep.equal(xVar);
-        });
-        describe('Resolve Function', () => {
-            test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
-                const xVar = variable('foo', '_1');
-                const env = defaultEnv().defineInEnv(xVar);
-                const result = resolveByName('foo', env, ReferenceType.Function);
-                expect(result, 'there should be no result').to.be.undefined;
-            });
-        });
-        describe('Resolve Variable', () => {
-            test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
-                const xVar = asFunction('foo', '_1');
-                const env = defaultEnv().defineInEnv(xVar);
-                const result = resolveByName('foo', env, ReferenceType.Variable);
-                expect(result, 'there should be no result').to.be.undefined;
-            });
-        });
-    });
-    describe('Builtin Constants', () => {
-        // Always Resolve
-        test.each([
-            //Identifier  Wanted Value  
-            ['TRUE',  true],
-            ['TRUE',  true],
-            ['T',     true],
-            ['FALSE', false],
-            ['F',     false],
-            ['NULL',  null],
-            ['NA',    null],
+	describe('ByName', () => {
+		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
+			const xVar = variable('x', '_1');
+			const env = defaultEnv().defineInEnv(xVar);
+			const result = resolveByName('x', env, ReferenceType.Unknown);
+			guard(result !== undefined, 'there should be a result');
+			expect(result, 'there should be exactly one definition for x').to.have.length(1);
+			expect(result[0], 'it should be x').to.deep.equal(xVar);
+		});
+		test(label('Locally with global distract', ['global-scope', 'lexicographic-scope'], ['other']), () => {
+			let env = defaultEnv()
+				.defineVariable('x', '_2', '_1');
+			const xVar = variable('x', '_1');
+			env = env.defineInEnv(xVar);
+			const result = resolveByName('x', env, ReferenceType.Unknown);
+			guard(result !== undefined, 'there should be a result');
+			expect(result, 'there should be exactly one definition for x').to.have.length(1);
+			expect(result[0], 'it should be x').to.be.deep.equal(xVar);
+		});
+		describe('Resolve Function', () => {
+			test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
+				const xVar = variable('foo', '_1');
+				const env = defaultEnv().defineInEnv(xVar);
+				const result = resolveByName('foo', env, ReferenceType.Function);
+				expect(result, 'there should be no result').to.be.undefined;
+			});
+		});
+		describe('Resolve Variable', () => {
+			test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
+				const xVar = asFunction('foo', '_1');
+				const env = defaultEnv().defineInEnv(xVar);
+				const result = resolveByName('foo', env, ReferenceType.Variable);
+				expect(result, 'there should be no result').to.be.undefined;
+			});
+		});
+	});
+	describe('Builtin Constants', () => {
+		// Always Resolve
+		test.each([
+			//Identifier  Wanted Value  
+			['TRUE',  true],
+			['TRUE',  true],
+			['T',     true],
+			['FALSE', false],
+			['F',     false],
+			['NULL',  null],
+			['NA',    null],
 
-        ])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
-            const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
-            assert.strictEqual(result, Ternary.Always, `should be Ternary.Always`);
-        });
+		])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
+			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
+			assert.strictEqual(result, Ternary.Always, 'should be Ternary.Always');
+		});
 
-        // Maybe Resolve
-        test.each([
-            //Identifier  Wanted Value    Environment
-            ['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
-            ['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
-        ])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
-            const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
-            assert.strictEqual(result, Ternary.Maybe, `should be Ternary.Maybe`);
-        });
+		// Maybe Resolve
+		test.each([
+			//Identifier  Wanted Value    Environment
+			['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
+			['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
+		])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
+			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
+			assert.strictEqual(result, Ternary.Maybe, 'should be Ternary.Maybe');
+		});
 
-        // Never Resolve
-        test.each([
-            //Identifier  Wanted Value  Environment
-            [undefined, undefined, defaultEnv()],
-            ['foo',     undefined, defaultEnv()],
-            ['42',      true,      defaultEnv()],
-            ['FALSE',   false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
-        ])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
-            const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
-            assert.strictEqual(result, Ternary.Never, `should be Ternary.Never`);
-        });
+		// Never Resolve
+		test.each([
+			//Identifier  Wanted Value  Environment
+			[undefined, undefined, defaultEnv()],
+			['foo',     undefined, defaultEnv()],
+			['42',      true,      defaultEnv()],
+			['FALSE',   false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
+		])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
+			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
+			assert.strictEqual(result, Ternary.Never, 'should be Ternary.Never');
+		});
 
-    });
+	});
 });

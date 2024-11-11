@@ -2,10 +2,10 @@ There are several ways to use _flowR_.
 You can download and build it from source, download the accompanying docker image, or use its Visual Studio Code extension and RStudio Addin.
 
 <!-- TOC -->
-- [🗒️ Using the Visual Studio Code Extension](#️-using-the-visual-studio-code-extension)
-- [🗒️ Using the RStudio Addin](#️-using-the-rstudio-addin)
-- [🐳️ Using the Docker Image](#️-using-the-docker-image)
-- [⚒️ Building From Scratch](#️-building-from-scratch)
+- [🗒️ Using the Visual Studio Code Extension](#-using-the-visual-studio-code-extension)
+- [🗒️ Using the RStudio Addin](#-using-the-rstudio-addin)
+- [🐳️ Using the Docker Image](#-using-the-docker-image)
+- [⚒️ Building From Scratch](#-building-from-scratch)
 - [📜 Developing for _flowR_](#-developing-for-flowr)
 <!-- TOC -->
 
@@ -35,7 +35,15 @@ docker run -it --rm eagleoutice/flowr
 
 This should drop you into _flowR_'s read-evaluate-print loop.
 Enter `:help` to receive more information and `:quit` to leave.
-Please remember that you have to link external directories to make them available within the running container:
+Please remember that you have to link external directories to make them available within the running container.
+
+To start flowr as a server, you can run:
+
+```shell
+docker run -it --rm -p1042:1042 eagleoutice/flowr --server
+```
+
+For more information, see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page.
 
 ## ⚒️ Building From Scratch
 

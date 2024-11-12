@@ -54,7 +54,6 @@ describe('Resolve', () => {
 			['F',     false],
 			['NULL',  null],
 			['NA',    null],
-
 		])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
 			assert.strictEqual(result, Ternary.Always, 'should be Ternary.Always');

@@ -90,7 +90,7 @@ export interface ResolveResult<T = unknown> {
 	from:  ReferenceType
 }
 
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue?: unknown): ResolveResult[] | undefined {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult[] | undefined {
 	if(name === undefined) {
 		return undefined;
 	}
@@ -100,10 +100,8 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 		return undefined;
 	}
 
-	const resolves = definitions.map<ResolveResult>(def => ({
+	return definitions.map<ResolveResult>(def => ({
 		value: (def as BuiltInIdentifierConstant).value,
 		from:  def.type
 	}));
-
-	return wantedValue === undefined ? resolves : resolves.filter(r => r.value == wantedValue); 
 }

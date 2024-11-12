@@ -10,13 +10,12 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { resolvesToBuiltInConstant } from '../../../../../environments/resolve-by-name';
+import { resolveToConstants } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/environment';
-import { Ternary } from '../../../../../../util/logic';
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -51,26 +50,29 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const conditionIsFalse = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, false);
-	const conditionIsTrue = resolvesToBuiltInConstant(condArg?.lexeme, data.environment, true);
-	if(conditionIsFalse !== Ternary.Always) {
+	
+	const definitions = resolveToConstants(condArg?.lexeme, data.environment);
+	const conditionIsAlwaysFalse = definitions?.every(d => d.value == false) ?? false; 
+	const conditionIsAlwaysTrue  = definitions?.every(d => d.value == true) ?? false; 
+	
+	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);
 		if(then.entryPoint) {
 			then.graph.addEdge(name.info.id, then.entryPoint, EdgeType.Returns);
 		}
-		if(conditionIsTrue !== Ternary.Always) {
+		if(!conditionIsAlwaysTrue) {
 			makeThenMaybe = true;
 		}
 	}
 
 	let otherwise: DataflowInformation | undefined;
 	let makeOtherwiseMaybe = false;
-	if(otherwiseArg !== undefined && conditionIsTrue !== Ternary.Always) {
+	if(otherwiseArg !== undefined && !conditionIsAlwaysTrue) {
 		otherwise = processDataflowFor(otherwiseArg, data);
 		if(otherwise.entryPoint) {
 			otherwise.graph.addEdge(name.info.id, otherwise.entryPoint, EdgeType.Returns);
 		}
-		if(conditionIsFalse !== Ternary.Always) {
+		if(!conditionIsAlwaysFalse) {
 			makeOtherwiseMaybe = true;
 		}
 	}

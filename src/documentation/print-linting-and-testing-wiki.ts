@@ -1,12 +1,12 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-import { RShell } from '../r-bridge/shell';
 import { codeBlock } from './doc-util/doc-code';
+import { FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 
-async function getText(shell: RShell) {
+function getText() {
 	return `
 For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
-for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
+for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)
@@ -58,7 +58,7 @@ It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensu
 
 #### Test Structure
 
-All functionality tests are to be located under [test/functionality](https://github.com/flowr-analysis/flowr/tree/main/test/functionality).
+All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}test/functionality).
 
 This folder contains three special and important elements:
 
@@ -88,7 +88,7 @@ To run them, issue:
 
 ${codeBlock('shell', 'npm run performance-test')}
 
-See [test/performance](https://github.com/flowr-analysis/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark).
+See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](${FlowrSiteBaseRef}/wiki/stats/benchmark).
 
 
 ### Testing Within Your IDE
@@ -119,12 +119,12 @@ We explain the most important workflows in the following:
 
 - [qa.yaml](../.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
-    - uploading the results to the [benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for releases
+    - uploading the results to the [benchmark page](${FlowrSiteBaseRef}/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
-  - deploying the documentation to [GitHub Pages](https://flowr-analysis.github.io/flowr/doc/)
-- [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
+  - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
+- [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
 - [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
@@ -152,21 +152,22 @@ By now, the rules should be rather stable and so, if the linter fails,
 it is usually best if you (if necessary) read the respective description and fix the respective problem.
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
-However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose).
+However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose).
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 `;
 }
 
 if(require.main === module) {
 	setMinLevelOfAllLogs(LogLevel.Fatal);
 
-	const shell = new RShell();
+	/*const shell = new RShell();
 	void getText(shell).then(str => {
 		console.log(str);
 	}).finally(() => {
 		shell.close();
-	});
+	});*/
+	console.log(getText());
 }

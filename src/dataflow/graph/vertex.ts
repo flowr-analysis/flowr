@@ -15,6 +15,12 @@ export enum VertexType {
 	FunctionDefinition = 'function-definition'
 }
 
+export interface ContainerIndex{
+	readonly lexeme: string,
+	readonly nodeId: NodeId,
+}
+export type ContainerIndices = ContainerIndex[] | undefined
+
 /**
  * Arguments required to construct a vertex in the dataflow graph.
  *
@@ -39,6 +45,8 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * See {@link IdentifierReference}
 	 */
 	controlDependencies: ControlDependency[] | undefined
+	
+	indices?: ContainerIndices
 }
 
 /**

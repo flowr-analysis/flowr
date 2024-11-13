@@ -16,6 +16,9 @@ import type { ForceArguments } from '../common';
 import { BuiltIn } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
+import type { ContainerIndex, ContainerIndices } from '../../../../../graph/vertex';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -32,6 +35,17 @@ function tableAssignmentProcessor<OtherInfo>(
 	return processKnownFunctionCall({ name, args, rootId, data }).information;
 }
 
+/**
+ * Processes different types of access operations.
+ * 
+ * Example:
+ * ```r
+ * a[i]
+ * a$foo
+ * a[[i]]
+ * a@foo
+ * ```
+ */
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -93,7 +107,26 @@ export function processAccess<OtherInfo>(
 				};
 			}
 		}
-		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
+		// a$foo a@foo
+		let accessedArgument: ContainerIndex | undefined;
+		let resolvedFirstParameterIndices: ContainerIndices;
+		if(newArgs[0] !== EmptyArgument) {
+			const accessArg = newArgs[1] === EmptyArgument ? 'all' : newArgs[1].lexeme;
+			const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
+			resolvedFirstParameter?.forEach(param => {
+				const definition = param as InGraphIdentifierDefinition;
+				if(definition.indices) {
+					resolvedFirstParameterIndices = definition.indices;
+				}
+			});
+			accessedArgument = resolvedFirstParameterIndices?.find(index => index.lexeme === accessArg);
+		}
+		
+		const indices = accessedArgument === undefined ? undefined : [accessedArgument];
+		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, indices);
+		if(accessedArgument !== undefined) {
+			fnCall.information.graph.addEdge(name.info.id, accessedArgument.nodeId, EdgeType.Reads);
+		}
 	}
 
 	const info = fnCall.information;
@@ -111,16 +144,16 @@ export function processAccess<OtherInfo>(
 	return {
 		...info,
 		/*
-     * Keep active nodes in case of assignments etc.
-     * We make them maybe as a kind of hack.
-     * This way when using
-     * ```ts
-     * a[[1]] <- 3
-     * a[[2]] <- 4
-     * a
-     * ```
-     * the read for a will use both accesses as potential definitions and not just the last one!
-     */
+		 * Keep active nodes in case of assignments etc.
+		 * We make them maybe as a kind of hack.
+		 * This way when using
+		 * ```ts
+		 * a[[1]] <- 3
+		 * a[[2]] <- 4
+		 * a
+		 * ```
+		 * the read for a will use both accesses as potential definitions and not just the last one!
+		 */
 		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */

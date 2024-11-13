@@ -15,6 +15,7 @@ import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { VertexType } from '../../../../graph/vertex';
+import type { ContainerIndices } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
@@ -57,7 +58,7 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>
+	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indices: ContainerIndices = undefined,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 
@@ -85,7 +86,8 @@ export function processKnownFunctionCall<OtherInfo>(
 		/* will be overwritten accordingly */
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
-		args:                reverseOrder ? [...callArgs].reverse() : callArgs
+		args:                reverseOrder ? [...callArgs].reverse() : callArgs,
+		indices:             indices,
 	});
 
 	if(hasUnknownSideEffect) {

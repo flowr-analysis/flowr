@@ -86,6 +86,7 @@ jobs:
           update_wiki_page "Query API" wiki:query-api
           update_wiki_page "Interface" wiki:interface
           update_wiki_page "Normalized AST" wiki:normalized-ast
+          update_wiki_page "Linting and Testing" wiki:linting-and-testing
           
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"

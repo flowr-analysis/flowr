@@ -110,7 +110,7 @@ export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInform
 
 
 export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
+interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
 
 /**
  * Contains the normalized AST as a doubly linked tree
@@ -127,19 +127,27 @@ const nestForElement: ReadonlySet<RType> = new Set([
 	RType.FunctionDefinition, RType.ForLoop, RType.WhileLoop, RType.RepeatLoop, RType.IfThenElse,
 ]);
 
+export interface NormalizedAstDecorationConfiguration<OtherInfo> {
+	/** The id generator: must generate a unique id für each passed node */
+	getId?: IdGenerator<OtherInfo>
+	/** the path to the file this AST was extracted from will be added to the nodes */
+	file?:  string
+}
+
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
  *
  * @param ast   - The root of the AST to convert
  * @param getId - The id generator: must generate a unique id für each passed node
+ * @param file  - the path to the file this AST was extracted from will be added to the nodes
  *
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
  * @returns A decorated AST based on the input and the id provider.
  */
-export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): NormalizedAst<OtherInfo & ParentInformation> {
+export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, { getId = deterministicCountingIdGenerator(0), file }: NormalizedAstDecorationConfiguration<OtherInfo>): NormalizedAst<OtherInfo & ParentInformation> {
 	const idMap: AstIdMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>();
-	const info: FoldInfo<OtherInfo> = { idMap, getId };
+	const info: FoldInfo<OtherInfo> = { idMap, getId, file };
 
 	/* Please note, that all fold processors do not re-create copies in higher-folding steps so that the idMap stays intact. */
 	const foldLeaf = createFoldForLeaf(info);
@@ -206,6 +214,7 @@ function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 				nesting
 			}
 		} as RNodeWithParent<OtherInfo>;
+		decorated.info.file = info.file;
 		info.idMap.set(id, decorated);
 		return decorated;
 	};
@@ -228,6 +237,7 @@ function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			lhsInfo.role = RoleInParent.BinaryOperationLhs;
 			rhsInfo.role = RoleInParent.BinaryOperationRhs;
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -240,6 +250,7 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const opInfo = operand.info;
 		opInfo.parent = id;
 		opInfo.role = RoleInParent.UnaryOperand;
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -264,6 +275,7 @@ function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
 				}
 			}
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -284,6 +296,7 @@ function createFoldForForLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		bodyInfo.parent = id;
 		bodyInfo.index = 2;
 		bodyInfo.role = RoleInParent.ForBody;
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -296,6 +309,7 @@ function createFoldForRepeatLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const bodyInfo = body.info;
 		bodyInfo.parent = id;
 		bodyInfo.role = RoleInParent.RepeatBody;
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -312,6 +326,7 @@ function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		bodyInfo.parent = id;
 		bodyInfo.index = 1;
 		bodyInfo.role = RoleInParent.WhileBody;
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -334,6 +349,7 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			otherwiseInfo.index = 2;
 			otherwiseInfo.role = RoleInParent.IfOtherwise;
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -350,6 +366,7 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			childInfo.index = i++;
 			childInfo.role = RoleInParent.ExpressionListChild;
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -377,6 +394,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 				argInfo.role = RoleInParent.FunctionCallArgument;
 			}
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -397,6 +415,7 @@ function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		bodyInfo.parent = id;
 		bodyInfo.index = idx;
 		bodyInfo.role = RoleInParent.FunctionDefinitionBody;
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -415,6 +434,7 @@ function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			defaultInfo.index = 1;
 			defaultInfo.role = RoleInParent.ParameterDefaultValue;
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }
@@ -437,6 +457,7 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			valueInfo.index = idx;
 			valueInfo.role = RoleInParent.ArgumentValue;
 		}
+		decorated.info.file = info.file;
 		return decorated;
 	};
 }

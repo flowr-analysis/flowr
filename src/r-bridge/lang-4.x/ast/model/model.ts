@@ -51,6 +51,10 @@ interface Source {
 	 * This allows inline-comments!
 	 */
 	additionalTokens?: OtherInfoNode[]
+	/**
+	 * The file in which the respective node is located
+	 */
+	file?:             string
 }
 
 /**

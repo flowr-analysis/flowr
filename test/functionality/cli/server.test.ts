@@ -92,9 +92,10 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/"id":\d+|"timing":\s*\d+/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/"id":\d+|"timing":\s*\d+/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
 

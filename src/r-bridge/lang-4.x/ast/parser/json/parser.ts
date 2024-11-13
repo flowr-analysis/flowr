@@ -9,9 +9,16 @@ import type { ParseStepOutput } from '../../../../../core/steps/all/core/00-pars
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
-export function normalize({ parsed }: ParseStepOutput, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+/**
+ * Take the output as produced by the parse step and normalize the AST from the R parser.
+ */
+export function normalize(
+	{ parsed }: ParseStepOutput,
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
+	file: string | undefined
+): NormalizedAst {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
-	return decorateAst(normalizeRootObjToAst(data, object), getId);
+	return decorateAst(normalizeRootObjToAst(data, object), { getId, file });
 }

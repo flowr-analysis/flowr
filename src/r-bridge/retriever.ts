@@ -49,7 +49,7 @@ export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText
-export function requestFromInput(input: readonly string[]): RParseRequests
+export function requestFromInput(input: readonly string[] | string): RParseRequests
 
 /**
  * Creates a {@link RParseRequests} from a given input.

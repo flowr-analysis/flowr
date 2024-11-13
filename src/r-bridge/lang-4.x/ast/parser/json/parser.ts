@@ -15,7 +15,7 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 export function normalize(
 	{ parsed }: ParseStepOutput,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
-	file: string | undefined
+	file?: string
 ): NormalizedAst {
 	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined };
 	const object = convertPreparedParsedData(prepareParsedData(parsed));

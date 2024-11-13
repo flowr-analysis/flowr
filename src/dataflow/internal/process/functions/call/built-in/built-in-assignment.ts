@@ -17,8 +17,8 @@ import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
-	IdentifierDefinition,
 	IdentifierReference,
+	InGraphIdentifierDefinition,
 	InGraphReferenceType } from '../../../../../environments/identifier';
 import { ReferenceType
 } from '../../../../../environments/identifier';
@@ -27,6 +27,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../../../graph/vertex';
+import type { ContainerIndices } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -161,7 +162,7 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target };
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): InGraphIdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
 		type:                referenceType,
@@ -251,12 +252,19 @@ export function markAsAssignment(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: IdentifierDefinition,
+	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	quoteSource?: boolean,
 	superAssignment?: boolean,
 ) {
+	let indices: ContainerIndices;
+	if(sourceIds.length === 1) {
+		// support for tracking indices
+		indices = information.graph.getVertex(sourceIds[0])?.indices;
+	}
+	nodeToDefine.indices ??= indices;
+
 	information.environment = define(nodeToDefine, superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	if(!quoteSource) {

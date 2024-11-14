@@ -1,11 +1,11 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
-import { FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 
 function getText() {
 	return `
-For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
+For the latest code-coverage information, see [codecov.io](${FlowrCodecovRef}), 
 for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
@@ -26,7 +26,7 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
 ## Testing Suites
 
 Currently, flowR contains two testing suites: one for [functionality](#functionality-tests) and one for [performance](#performance-tests). We explain each of them in the following.
-A more general test experience is granted by \`npm run checkup\` which will include the construction of the docker image, the generation of the wiki pages, and the linter.
+In addition to running those tests, you can use the more generalized \`npm run checkup\`. This will include the construction of the docker image, the generation of the wiki pages, and the linter.
 
 ### Functionality Tests
 
@@ -51,7 +51,7 @@ To run all tests, including a coverage report and label summary, run:
 
 ${codeBlock('shell', 'npm run test-full')}
 
-However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they don’t apply to your current system setup 
+However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they don't apply to your current system setup 
 (or can't be tested with the current prerequisites). 
 Each test can specify such requirements as part of the \`TestConfiguration\`, which is then used in the \`test.skipIf\` function of _vitest_.
 It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests are ensured to run.
@@ -74,7 +74,7 @@ Whenever this is not possible (e.g., when using \`withShell\`), please use \`des
 Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
-Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts#L42-L44) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
+Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
 
 Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 
@@ -175,12 +175,5 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 if(require.main === module) {
 	setMinLevelOfAllLogs(LogLevel.Fatal);
-
-	/*const shell = new RShell();
-	void getText(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
-	});*/
 	console.log(getText());
 }

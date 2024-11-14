@@ -99,7 +99,7 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 		function assertIds(name: string, input: string, expected: Set<NodeId>, stop?: (node: RNodeWithParent) => boolean) {
 			test(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input);
-				const ast = decorateAst(baseAst);
+				const ast = decorateAst(baseAst.ast, {});
 				const ids = collectAllIds(ast.ast, stop);
 				assert.deepStrictEqual(ids, expected, `Ids do not match for input ${input}`);
 			});

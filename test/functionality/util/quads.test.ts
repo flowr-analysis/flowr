@@ -13,7 +13,7 @@ describe.sequential('Quads', withShell(shell => {
 
 	const compareQuadsCfg = async(code: string, expected: string) => {
 		const ast = await retrieveNormalizedAst(shell, code);
-		const decorated = decorateAst(ast).ast;
+		const decorated = decorateAst(ast.ast, {}).ast;
 		const serialized = serialize2quads(decorated, { context, domain, getId: defaultQuadIdGenerator() });
 		assert.strictEqual(serialized.trim(), expected.trim());
 	};

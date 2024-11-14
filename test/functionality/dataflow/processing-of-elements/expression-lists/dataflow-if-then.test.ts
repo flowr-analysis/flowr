@@ -380,4 +380,28 @@ f()`, emptyGraph()
 				})
 				.defineVariable('3', 'f', { definedBy: ['14', '15'] }));
 	});
+	describe('Dead Code', () => {
+		assertDataflow(label('useless branch I', ['if', 'control-flow', 'built-in']),
+			shell, `y <- TRUE
+if(TRUE) {
+	y <- FALSE
+} else {
+	y <- TRUE
+}
+print(y)`, emptyGraph()
+				.defineVariable('3@y', 'y', { definedBy: ['3@y', '3@FALSE'] })
+				.constant('3@FALSE'), { expectIsSubgraph: true, resolveIdsAsCriterion: true });
+
+		assertDataflow(label('useless branch II', ['if', 'control-flow', 'built-in']),
+			shell, `y <- TRUE
+	if(FALSE) {
+		y <- FALSE
+	} else {
+		y <- TRUE
+	}
+	print(y)`, emptyGraph()
+				.defineVariable('5@y', 'y', { definedBy: ['5@y', '5@TRUE'] })
+				.constant('5@TRUE'), { expectIsSubgraph: true, resolveIdsAsCriterion: true });
+
+	});	
 }));

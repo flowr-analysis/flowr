@@ -84,7 +84,8 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 	'x', emptyGraph().use('0', 'x')
 );
 `)}
-The \`name-normal\` capability refers to a variable name being used, and the test checks that the dataflow graph contains a node for the variable \`x\`.
+
+The resulting labels are used in the test report that is generated as part of the test output. They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported. 
 
 #### Running Only Some Tests
 

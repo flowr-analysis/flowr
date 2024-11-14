@@ -74,7 +74,7 @@ Whenever this is not possible (e.g., when using \`withShell\`), please use \`des
 Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
-Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}/test/functionality/_helper/label.ts#L42-L44) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
+Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts#L42-L44) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
 
 Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 

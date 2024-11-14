@@ -16,7 +16,7 @@ import { describe, assert, test } from 'vitest';
 function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return test(decorateLabelContext(name, ['slice']), async() => {
 		const ast = await retrieveNormalizedAst(shell, input);
-		const decorated = decorateAst(ast);
+		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
 			.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme }));

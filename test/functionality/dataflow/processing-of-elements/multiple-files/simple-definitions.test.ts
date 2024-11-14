@@ -1,8 +1,9 @@
-import { assertDataflow, withShell } from '../../../_helper/shell';
+import { assertDataflow, retrieveNormalizedAst, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import { produceDataFlowGraph } from '../../../../../src/dataflow/extractor';
 
 describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 
@@ -36,4 +37,23 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			.addControlDependency('-inline-@root-1-0', 'root-1')
 			.markIdForUnknownSideEffects('-inline-@root-2-5')
 	);
+
+	test('Correct File-Info for Multiple Files', async() => {
+		const requests = [{
+			request: 'file',
+			content: 'test/testfiles/parse-multiple/a.R'
+		}, {
+			request: 'file',
+			content: 'test/testfiles/parse-multiple/b.R'
+		}] as const;
+		const df = produceDataFlowGraph(requests, await retrieveNormalizedAst(shell, 'file://' + requests[0].content));
+		const idMap = df.graph.idMap;
+		assert(idMap !== undefined);
+		assert(idMap.size > 0);
+		for(const [id, node] of idMap.entries()) {
+			// assert that the node.info.file is set correctly
+			assert(node.info.file !== undefined, `Node ${id} has no file info`);
+		}
+
+	});
 }));

@@ -92,7 +92,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	let dataflow: DataflowInformation;
 	try {
 		const parsed = retrieveParseDataFromRCode(request, executor);
-		normalized = normalize({ parsed }, getId) as NormalizedAst<OtherInfo & ParentInformation>;
+		normalized = normalize({ parsed }, getId, request.request === 'file' ? request.content : undefined) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,
@@ -106,7 +106,9 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	}
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	dataflow.graph.addControlDependency(dataflow.entryPoint, rootId);
+	if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+		dataflow.graph.addControlDependency(dataflow.entryPoint, rootId);
+	}
 	for(const out of dataflow.out) {
 		dataflow.graph.addControlDependency(out.nodeId, rootId);
 	}

@@ -11,7 +11,7 @@ import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/mod
 import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type {
-	AstIdMap, IdGenerator,
+	AstIdMap, IdGenerator, NormalizedAst,
 	RNodeWithParent
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
@@ -102,11 +102,11 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	}
 }
 
-export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<RNodeWithParent> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const request = requestFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 		shell, request
-	}).allRemainingSteps()).normalize.ast;
+	}).allRemainingSteps()).normalize;
 };
 
 export interface TestConfiguration extends MergeableRecord {

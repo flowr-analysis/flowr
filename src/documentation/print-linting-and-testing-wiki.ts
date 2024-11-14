@@ -1,7 +1,7 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
-import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, FlowrWikiBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 
 function getText() {
 	return `
@@ -74,7 +74,7 @@ Whenever this is not possible (e.g., when using \`withShell\`), please use \`des
 Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
-Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
+Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}. The resulting labels are used in the test report that is generated as part of the test output. They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported. 
 
 Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 
@@ -85,7 +85,23 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 `)}
 
-The resulting labels are used in the test report that is generated as part of the test output. They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported. 
+When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
+- \`expectIsSubgraph\` indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
+- \`resolveIdsAsCriterion\` indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion) rather than actual ids. For example, passing \`12@a\` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
+
+The following example shows both in use.
+${codeBlock('typescript', `
+assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
+	shell, '\`a\` <- 2\\na',
+	emptyGraph()
+		.use('2@a')
+		.reads('2@a', '1@\`a\`'),
+	{
+		expectIsSubgraph:      true,
+		resolveIdsAsCriterion: true
+	}
+);
+`)}
 
 #### Running Only Some Tests
 

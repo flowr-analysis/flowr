@@ -1,7 +1,7 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
-import { FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 
 function getText() {
 	return `
@@ -73,6 +73,18 @@ Whenever this is not possible (e.g., when using \`withShell\`), please use \`des
 
 Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
+
+Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}/test/functionality/_helper/label.ts#L42-L44) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}.
+
+Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
+
+For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/processing-of-elements/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
+${codeBlock('typescript', `
+assertDataflow(label('simple variable', ['name-normal']), shell,
+	'x', emptyGraph().use('0', 'x')
+);
+`)}
+The \`name-normal\` capability refers to a variable name being used, and the test checks that the dataflow graph contains a node for the variable \`x\`.
 
 #### Running Only Some Tests
 

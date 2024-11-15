@@ -1,9 +1,19 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	test: {
 		coverage: {
-			provider: 'v8'
+			provider: 'v8',
+			exclude:  [
+				...configDefaults.exclude,
+				'**/node_modules/**',
+				'./dist/**',
+				'./coverage/**',
+				'./wiki/**',
+				'./doc/**',
+				'./test/**',
+				'./src/documentation/**',
+			]
 		},
 		testTimeout: 60 * 1000,
 		sequence:    {

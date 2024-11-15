@@ -118,6 +118,14 @@ jobs:
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
 
+      - name: "⬆️ Upload Coverage Reports to Codecov"
+        if: github.ref == 'refs/heads/main'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+
   prerelease:
     name: "📦 Prerelease"
     runs-on: ubuntu-22.04

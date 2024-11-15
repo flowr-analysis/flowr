@@ -23,3 +23,6 @@ parsers:
 
 github_checks:
   annotations: true
+
+ignore:
+  - "wiki"

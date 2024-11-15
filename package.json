@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -28,6 +28,7 @@
     "wiki:df-graph": "ts-node src/documentation/print-dataflow-graph-wiki.ts",
     "wiki:normalized-ast": "ts-node src/documentation/print-normalized-ast-wiki.ts",
     "wiki:query-api": "ts-node src/documentation/print-query-wiki.ts",
+    "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
     "build": "tsc --project .",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --bundle --minify --target=node22 --outfile=dist/src/cli/flowr.min.js",

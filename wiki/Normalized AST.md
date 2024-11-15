@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-10-10, 07:30:16 UTC presenting an overview of flowR's normalized ast (v2.1.1, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-14, 16:01:09 UTC presenting an overview of flowR's normalized ast (v2.1.5, using R v4.4.0)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -55,7 +55,7 @@ x"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _7.36 ms_ (including parsing) within the generation environment.
+The analysis required _10.74 ms_ (including parsing) within the generation environment.
 
 ```r
 x <- 2 * 3 + 1
@@ -129,7 +129,7 @@ direction RL
 class RNode~Info = NoInfo~
     <<type>> RNode
 style RNode opacity:.35,fill:#FAFAFA
-click RNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L159" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62;  All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
+click RNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62;  All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
 class RExpressionList~Info = NoInfo~
     <<interface>> RExpressionList
     RExpressionList : type#58; RType.ExpressionList
@@ -142,7 +142,7 @@ click RExpressionList href "https://github.com/flowr-analysis/flowr/tree/main//s
 class RFunctions~Info~
     <<type>> RFunctions
 style RFunctions opacity:.35,fill:#FAFAFA
-click RFunctions href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L142" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types related to functions (calls and definitions) in the normalized AST."
+click RFunctions href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L146" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types related to functions (calls and definitions) in the normalized AST."
 class RFunctionDefinition~Info = NoInfo~
     <<interface>> RFunctionDefinition
     RFunctionDefinition : type#58; RType.FunctionDefinition
@@ -204,7 +204,7 @@ click RArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/r-b
 class ROther~Info~
     <<type>> ROther
 style ROther opacity:.35,fill:#FAFAFA
-click ROther href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L147" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of otherwise hard to categorize nodes in the normalized AST. At the moment these are the comment#45;like nodes."
+click ROther href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L151" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of otherwise hard to categorize nodes in the normalized AST. At the moment these are the comment#45;like nodes."
 class RComment~Info = NoInfo~
     <<interface>> RComment
     RComment : type#58; RType.Comment
@@ -221,11 +221,11 @@ click RLineDirective href "https://github.com/flowr-analysis/flowr/tree/main//sr
 class RConstructs~Info~
     <<type>> RConstructs
 style RConstructs opacity:.35,fill:#FAFAFA
-click RConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L137" "As an extension to; #60;code#62;RLoopConstructs#60;/code#62;; , this subtype of; #60;code#62;RNode#60;/code#62;; includes the; #60;code#62;RIfThenElse#60;/code#62;; construct as well."
+click RConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L141" "As an extension to; #60;code#62;RLoopConstructs#60;/code#62;; , this subtype of; #60;code#62;RNode#60;/code#62;; includes the; #60;code#62;RIfThenElse#60;/code#62;; construct as well."
 class RLoopConstructs~Info~
     <<type>> RLoopConstructs
 style RLoopConstructs opacity:.35,fill:#FAFAFA
-click RLoopConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all looping constructs in the normalized AST."
+click RLoopConstructs href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L136" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all looping constructs in the normalized AST."
 class RForLoop~Info = NoInfo~
     <<interface>> RForLoop
     RForLoop : type#58; RType.ForLoop
@@ -307,7 +307,7 @@ click RBinaryOp href "https://github.com/flowr-analysis/flowr/tree/main//src/r-b
 class RSingleNode~Info~
     <<type>> RSingleNode
 style RSingleNode opacity:.35,fill:#FAFAFA
-click RSingleNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L128" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of; #60;code#62;Leaf#60;/code#62;; nodes in the normalized AST."
+click RSingleNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of; #60;code#62;Leaf#60;/code#62;; nodes in the normalized AST."
 class RSymbol~Info = NoInfo, T extends string = string~
     <<interface>> RSymbol
     RSymbol : type#58; RType.Symbol
@@ -318,7 +318,7 @@ click RSymbol href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bri
 class RConstant~Info~
     <<type>> RConstant
 style RConstant opacity:.35,fill:#FAFAFA
-click RConstant href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L123" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of constants represented in the normalized AST."
+click RConstant href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L127" "This subtype of; #60;code#62;RNode#60;/code#62;; represents all types of constants represented in the normalized AST."
 class RNumber~Info = NoInfo~
     <<interface>> RNumber
     RNumber : type#58; RType.Number
@@ -424,7 +424,7 @@ Info .. RNode
 ```
 
 
-_The generation of the class diagram required 909.91 ms._
+_The generation of the class diagram required 835.57 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -434,7 +434,7 @@ Most notably, the `info` field holds the `id` of the node, which is used to refe
 
 In summary, we have the following types:
 
- * [RNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L159)   
+ * [RNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163)   
    The `RNode` type is the union of all possible nodes in the R-ast.
    It should be used whenever you either not care what kind of
    node you are dealing with or if you want to handle all possible nodes.
@@ -444,7 +444,7 @@ In summary, we have the following types:
    ) listed above
    can be used to restrict the kind of node. They do not have to be
    exclusive, some nodes can appear in multiple subtypes.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L159">./src/r-bridge/lang-4.x/ast/model/model.ts#L159</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163">./src/r-bridge/lang-4.x/ast/model/model.ts#L163</a></summary>
    
    
    ```ts
@@ -488,12 +488,12 @@ In summary, we have the following types:
      </details>
      
 
-   * [RFunctions](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L142)   
+   * [RFunctions](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L146)   
      This subtype of
      <code>RNode</code>
      represents all types related to functions
      (calls and definitions) in the normalized AST.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L142">./src/r-bridge/lang-4.x/ast/model/model.ts#L142</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L146">./src/r-bridge/lang-4.x/ast/model/model.ts#L146</a></summary>
      
      
      ```ts
@@ -648,12 +648,12 @@ In summary, we have the following types:
        
 
 
-   * [ROther](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L147)   
+   * [ROther](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L151)   
      This subtype of
      <code>RNode</code>
      represents all types of otherwise hard to categorize
      nodes in the normalized AST. At the moment these are the comment-like nodes.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L147">./src/r-bridge/lang-4.x/ast/model/model.ts#L147</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L151">./src/r-bridge/lang-4.x/ast/model/model.ts#L151</a></summary>
      
      
      ```ts
@@ -711,7 +711,7 @@ In summary, we have the following types:
        
 
 
-   * [RConstructs](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L137)   
+   * [RConstructs](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L141)   
      As an extension to
      <code>RLoopConstructs</code>
      , this subtype of
@@ -720,7 +720,7 @@ In summary, we have the following types:
      the
      <code>RIfThenElse</code>
      construct as well.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L137">./src/r-bridge/lang-4.x/ast/model/model.ts#L137</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L141">./src/r-bridge/lang-4.x/ast/model/model.ts#L141</a></summary>
      
      
      ```ts
@@ -734,11 +734,11 @@ In summary, we have the following types:
      
      </details>
      
-     * [RLoopConstructs](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132)   
+     * [RLoopConstructs](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L136)   
        This subtype of
        <code>RNode</code>
        represents all looping constructs in the normalized AST.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132">./src/r-bridge/lang-4.x/ast/model/model.ts#L132</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L136">./src/r-bridge/lang-4.x/ast/model/model.ts#L136</a></summary>
        
        
        ```ts
@@ -931,14 +931,14 @@ In summary, we have the following types:
      </details>
      
 
-   * [RSingleNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L128)   
+   * [RSingleNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132)   
      This subtype of
      <code>RNode</code>
      represents all types of
      <code>Leaf</code>
      nodes in the
      normalized AST.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L128">./src/r-bridge/lang-4.x/ast/model/model.ts#L128</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L132">./src/r-bridge/lang-4.x/ast/model/model.ts#L132</a></summary>
      
      
      ```ts
@@ -994,12 +994,12 @@ In summary, we have the following types:
        </details>
        
 
-     * [RConstant](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L123)   
+     * [RConstant](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L127)   
        This subtype of
        <code>RNode</code>
        represents all types of constants
        represented in the normalized AST.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L123">./src/r-bridge/lang-4.x/ast/model/model.ts#L123</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L127">./src/r-bridge/lang-4.x/ast/model/model.ts#L127</a></summary>
        
        
        ```ts
@@ -1326,7 +1326,7 @@ product"])
 
 <summary style="color:gray">R Code of the Normalized AST</summary>
 
-The analysis required _6.28 ms_ (including parsing) within the generation environment.
+The analysis required _10.03 ms_ (including parsing) within the generation environment.
 
 ```r
 sum <- 0

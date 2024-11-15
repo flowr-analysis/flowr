@@ -8,6 +8,7 @@ import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
 import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
+import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
 
 export const fileProtocol = 'file://';
@@ -48,7 +49,7 @@ export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
 export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
 export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
 export function requestFromInput(input: string): RParseRequestFromText
-export function requestFromInput(input: readonly string[]): RParseRequests
+export function requestFromInput(input: readonly string[] | string): RParseRequests
 
 /**
  * Creates a {@link RParseRequests} from a given input.
@@ -135,7 +136,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);
-	return normalize({ parsed: data });
+	return normalize({ parsed: data }, deterministicCountingIdGenerator(0), request.request === 'file' ? request.content : undefined);
 }
 
 /**

@@ -3,7 +3,7 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 
 describe.sequential('List access', withShell(shell => {
-	test('Simple access slice', () => {
+	describe('Simple access slice', () => {
 		const slice = `person <- list(age = 24, name = "John")
 a <- person$name`;
 
@@ -28,7 +28,7 @@ a <- person$name`,
 		);
 	});
 
-	test('Access slice with noise', () => {
+	describe('Access slice with noise', () => {
 		const slice = `person <- list(age = 24, name = "John")
 other_person <- list(age = 24, name = "John")
 b <- person$age
@@ -55,7 +55,7 @@ a <- person$name`,
 		);
 	});
 
-	test('Access slice with noise and multiple accesses', () => {
+	describe('Access slice with noise and multiple accesses', () => {
 		const slice = `person <- list(age = 24, name = "John")
 b <- person$name
 a <- person$age
@@ -83,7 +83,7 @@ c <- person$name`,
 		);
 	});
 
-	test('Access slice with previous assignment', () => {
+	describe('Access slice with previous assignment', () => {
 		const slice = `person <- list(age = 24, name = "John")
 person$name <- "Bob"
 a <- person$name`;

@@ -10,7 +10,7 @@ person$name`,
 		emptyGraph()
 			.defineVariable('1@person')
 			.reads('2@person', '1@person')
-			.reads('2@$', '1@name'),
+			.reads('2@$', '7'),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,

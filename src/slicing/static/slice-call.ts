@@ -24,7 +24,7 @@ import { ReferenceType } from '../../dataflow/environments/identifier';
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment;
 
-	const level = callerEnvironment?.level ?? 0;
+	let level = callerEnvironment?.level ?? 0;
 
 	if(baseEnvironment.level !== level) {
 		while(baseEnvironment.level < level) {
@@ -32,6 +32,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexFunctionCall, 
 		}
 		while(baseEnvironment.level > level) {
 			callerEnvironment = pushLocalEnvironment(callerEnvironment ?? initializeCleanEnvironments(true));
+			level = callerEnvironment.level;
 		}
 	}
 

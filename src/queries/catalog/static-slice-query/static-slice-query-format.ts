@@ -9,7 +9,7 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
-import { executeStaticSliceClusterQuery } from './static-slice-query-executor';
+import { executeStaticSliceQuery } from './static-slice-query-executor';
 
 import { summarizeIdsIfTooLong } from '../../query-print';
 
@@ -39,7 +39,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 }
 
 export const StaticSliceQueryDefinition = {
-	executor:        executeStaticSliceClusterQuery,
+	executor:        executeStaticSliceQuery,
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
 		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);

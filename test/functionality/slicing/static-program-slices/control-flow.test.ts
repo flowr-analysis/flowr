@@ -108,6 +108,7 @@ print(x)`, ['7@x'], 'x <- 2\nx');
 	describe('Dead Code', () => {
 		assertSliced(label('useless branch I', ['control-flow', 'built-in', 'if']), 
 			shell, `
+y <- TRUE
 if(TRUE) {
    y <- TRUE
 } else {
@@ -117,6 +118,7 @@ print(y)`, ['7@y'], 'y <- TRUE\ny');
 
 		assertSliced(label('useless branch II', ['control-flow', 'built-in', 'if']), 
 			shell, `
+y <- TRUE
 if(FALSE) {
    y <- TRUE
 } else {
@@ -126,6 +128,7 @@ print(y)`, ['7@y'], 'y <- FALSE\ny');
 	
 		assertSliced(label('useless branch III', ['control-flow', 'built-in', 'if']), 
 			shell, `
+y <- TRUE
 if(FALSE) {
    if(TRUE) {
       y <- TRUE

@@ -394,14 +394,38 @@ print(y)`, emptyGraph()
 
 		assertDataflow(label('useless branch II', ['if', 'control-flow', 'built-in']),
 			shell, `y <- TRUE
-	if(FALSE) {
-		y <- FALSE
-	} else {
-		y <- TRUE
-	}
-	print(y)`, emptyGraph()
+if(FALSE) {
+	y <- FALSE
+} else {
+	y <- TRUE
+}
+print(y)`, emptyGraph()
 				.defineVariable('5@y', 'y', { definedBy: ['5@y', '5@TRUE'] })
 				.constant('5@TRUE'), { expectIsSubgraph: true, resolveIdsAsCriterion: true });
 
+		assertDataflow(label('useless branch (complete graph)', ['if', 'control-flow', 'built-in']),
+			shell, `x <- 1
+if(TRUE) {
+	x <- 3 
+} else {
+	x <- 2
+}
+x`, emptyGraph()
+				.defineVariable('1@x', 'x', { definedBy: ['1@1', '1@<-'] })
+				.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1@1')], { returns: ['1@x'] })
+				.constant('1@1')
+				.constant('2@TRUE')
+				.call('2@if', 'if', [argumentInCall('2@TRUE'), argumentInCall('2@{')], { reads: ['2@TRUE'], returns: ['2@{'] })
+				.call('2@{', '{', [argumentInCall('3@<-')], { returns: ['3@<-'] })
+				.defineVariable('3@x', 'x', { definedBy: ['3@3', '3@<-'] })
+				.call('3@<-', '<-', [argumentInCall('3@3'), argumentInCall('3@x')], { returns: ['3@x'] })
+				.constant('3@3')
+				.reads('7@x', '3@x')
+				.use('7@x')
+			, { resolveIdsAsCriterion: true });
+
 	});	
+	
+
+	
 }));

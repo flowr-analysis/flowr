@@ -106,29 +106,29 @@ print(x)`, ['7@x'], 'x <- 2\nx');
 	});
 
 	describe('Dead Code', () => {
-		assertSliced(label('useless branch I', ['control-flow', 'built-in', 'if']), 
+		assertSliced(label('useless branch I', ['control-flow', 'built-in', 'if']),
 			shell, `
-y <- TRUE
+y <- 42
 if(TRUE) {
    y <- TRUE
 } else {
    y <- FALSE
 }
-print(y)`, ['7@y'], 'y <- TRUE\ny');
+print(y)`, ['8@y'], 'y <- TRUE\ny');
 
-		assertSliced(label('useless branch II', ['control-flow', 'built-in', 'if']), 
+		assertSliced(label('useless branch II', ['control-flow', 'built-in', 'if']),
 			shell, `
-y <- TRUE
+y <- 42
 if(FALSE) {
    y <- TRUE
 } else {
    y <- FALSE
 }
-print(y)`, ['7@y'], 'y <- FALSE\ny');
-	
-		assertSliced(label('useless branch III', ['control-flow', 'built-in', 'if']), 
+print(y)`, ['8@y'], 'y <- FALSE\ny');
+
+		assertSliced(label('useless branch III', ['control-flow', 'built-in', 'if']),
 			shell, `
-y <- TRUE
+y <- 42
 if(FALSE) {
    if(TRUE) {
       y <- TRUE
@@ -138,8 +138,7 @@ if(FALSE) {
 } else {
    y <- TRUE
 }
-y <- FALSE
-print(y)`, ['12@y'], 'y <- FALSE\ny');
+print(y)`, ['12@y'], 'y <- TRUE\ny');
 	});
-   
+
 }));

@@ -15,6 +15,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { makeAllMaybe } from '../../../../../environments/environment';
 
 export function processIfThenElse<OtherInfo>(
@@ -50,11 +51,11 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	
+
 	const definitions = resolveToConstants(condArg?.lexeme, data.environment);
-	const conditionIsAlwaysFalse = definitions?.every(d => d.value == false) ?? false; 
-	const conditionIsAlwaysTrue  = definitions?.every(d => d.value == true) ?? false; 
-	
+	const conditionIsAlwaysFalse = definitions?.every(d => d.value === false) ?? false;
+	const conditionIsAlwaysTrue  = definitions?.every(d => d.value === true) ?? false;
+
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);
 		if(then.entryPoint) {
@@ -81,7 +82,15 @@ export function processIfThenElse<OtherInfo>(
 	const thenEnvironment = then?.environment ?? cond.environment;
 
 	// if there is no "else" case, we have to recover whatever we had before as it may be not executed
-	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
+	let finalEnvironment: REnvironmentInformation;
+
+	if(conditionIsAlwaysFalse) {
+		finalEnvironment = otherwise ? otherwise.environment : cond.environment;
+	} else if(conditionIsAlwaysTrue) {
+		finalEnvironment = thenEnvironment;
+	} else {
+		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
+	}
 
 	const cdTrue = { id: rootId, when: true };
 	const cdFalse = { id: rootId, when: false };

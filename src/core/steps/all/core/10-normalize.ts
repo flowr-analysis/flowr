@@ -12,14 +12,26 @@ import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import type { IdGenerator } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NoInfo } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParseStepOutput } from './00-parse';
+import type { RParseRequest, RParseRequests } from '../../../../r-bridge/retriever';
 
 export interface NormalizeRequiredInput {
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
-	readonly getId?: IdGenerator<NoInfo>
+	readonly getId?:  IdGenerator<NoInfo>
+	readonly request: RParseRequests
+}
+
+function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
+	if(request === undefined) {
+		return undefined;
+	} else if(Array.isArray(request)) {
+		return (request as ReadonlyArray<RParseRequest>)[0].request === 'file' ? (request as ReadonlyArray<RParseRequest>)[0].content : undefined;
+	} else {
+		return (request as RParseRequest).request === 'file' ? (request as RParseRequest).content : undefined;
+	}
 }
 
 function processor(results: { parse?: ParseStepOutput }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as ParseStepOutput, input.getId);
+	return normalize(results.parse as ParseStepOutput, input.getId, getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE = {

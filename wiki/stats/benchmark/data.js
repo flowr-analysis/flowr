@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731602214618,
+  "lastUpdate": 1731870836490,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -4848,6 +4848,109 @@ window.BENCHMARK_DATA = {
             "value": 2.3895427243026623,
             "unit": "ms",
             "range": 1.30652599483124,
+            "extra": "median: 1.02ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7869360165281424,
+            "unit": "#",
+            "extra": "std: 0.12681559080835017"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7639690077689504,
+            "unit": "#",
+            "extra": "std: 0.13100359353752966"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 95.46617542613636,
+            "unit": "KiB",
+            "range": 244.77619956879823,
+            "extra": "median: 24.54"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "23801137ca7083fd1edfe603a80c8ebf6d2d557a",
+          "message": "[release:patch] Fix: Static Slicing For Inverted Caller",
+          "timestamp": "2024-11-17T19:53:11+01:00",
+          "tree_id": "60b0536b0e628727fcdc94746a38538f3f6c5896",
+          "url": "https://github.com/flowr-analysis/flowr/commit/23801137ca7083fd1edfe603a80c8ebf6d2d557a"
+        },
+        "date": 1731870835269,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 238.99386745454547,
+            "unit": "ms",
+            "range": 99.5397110373604,
+            "extra": "median: 213.23ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 17.344255954545453,
+            "unit": "ms",
+            "range": 30.98539214696861,
+            "extra": "median: 8.51ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 60.94850918181818,
+            "unit": "ms",
+            "range": 127.79646053550617,
+            "extra": "median: 28.95ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 839.1842053181819,
+            "unit": "ms",
+            "range": 1529.9296327924758,
+            "extra": "median: 360.01ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.0548017594197465,
+            "unit": "ms",
+            "range": 1.212534826826947,
+            "extra": "median: 0.78ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23833344722067284,
+            "unit": "ms",
+            "range": 0.18520720238626878,
+            "extra": "median: 0.09ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.306734662937843,
+            "unit": "ms",
+            "range": 1.2769510302954954,
             "extra": "median: 1.02ms"
           },
           {
@@ -9825,6 +9928,109 @@ window.BENCHMARK_DATA = {
             "value": 16.5134858115635,
             "unit": "ms",
             "range": 44.69517481552843,
+            "extra": "median: 3.49ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8712997340230448,
+            "unit": "#",
+            "extra": "std: 0.10089474161172114"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8102441553774778,
+            "unit": "#",
+            "extra": "std: 0.14548434035979138"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 99.4425,
+            "unit": "KiB",
+            "range": 113.62933451202426,
+            "extra": "median: 49.92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "23801137ca7083fd1edfe603a80c8ebf6d2d557a",
+          "message": "[release:patch] Fix: Static Slicing For Inverted Caller",
+          "timestamp": "2024-11-17T19:53:11+01:00",
+          "tree_id": "60b0536b0e628727fcdc94746a38538f3f6c5896",
+          "url": "https://github.com/flowr-analysis/flowr/commit/23801137ca7083fd1edfe603a80c8ebf6d2d557a"
+        },
+        "date": 1731870836485,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 246.34857636,
+            "unit": "ms",
+            "range": 46.05736358259125,
+            "extra": "median: 222.96ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 19.12205878,
+            "unit": "ms",
+            "range": 14.425168152928613,
+            "extra": "median: 11.90ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 74.45471131999999,
+            "unit": "ms",
+            "range": 70.57749655074137,
+            "extra": "median: 33.53ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 7726.72160172,
+            "unit": "ms",
+            "range": 28528.07523908248,
+            "extra": "median: 1025.43ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 15.999780665624812,
+            "unit": "ms",
+            "range": 43.68226004466487,
+            "extra": "median: 3.30ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2820169656616924,
+            "unit": "ms",
+            "range": 0.15417410861831182,
+            "extra": "median: 0.18ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 16.29007209329986,
+            "unit": "ms",
+            "range": 43.71440479393139,
             "extra": "median: 3.49ms"
           },
           {

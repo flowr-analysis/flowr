@@ -34,7 +34,6 @@ We welcome every contribution! Please check out the [contributing guidelines](ht
 ### Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!--suppress ALL -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 <table>
@@ -46,6 +45,7 @@ We welcome every contribution! Please check out the [contributing guidelines](ht
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/bjthehun"><img src="https://avatars.githubusercontent.com/u/38729215?v=4?s=100" width="100px;" alt="Benedikt Jutz"/><br /><sub><b>Benedikt Jutz</b></sub></a><br /><a href="https://github.com/flowr-analysis/flowr/commits?author=bjthehun" title="Code">💻</a> <a href="https://github.com/flowr-analysis/flowr/commits?author=bjthehun" title="Tests">⚠️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Core5563"><img src="https://avatars.githubusercontent.com/u/140061253?v=4?s=100" width="100px;" alt="Core5563"/><br /><sub><b>Core5563</b></sub></a><br /><a href="https://github.com/flowr-analysis/flowr/commits?author=Core5563" title="Code">💻</a> <a href="https://github.com/flowr-analysis/flowr/commits?author=Core5563" title="Tests">⚠️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Ehcsan"><img src="https://avatars.githubusercontent.com/u/68707578?v=4?s=100" width="100px;" alt="Ehcsan"/><br /><sub><b>Ehcsan</b></sub></a><br /><a href="https://github.com/flowr-analysis/flowr/commits?author=Ehcsan" title="Code">💻</a> <a href="https://github.com/flowr-analysis/flowr/commits?author=Ehcsan" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/gigalasr"><img src="https://avatars.githubusercontent.com/u/25102989?v=4?s=100" width="100px;" alt="Lars"/><br /><sub><b>Lars</b></sub></a><br /><a href="https://github.com/flowr-analysis/flowr/commits?author=gigalasr" title="Code">💻</a> <a href="https://github.com/flowr-analysis/flowr/commits?author=gigalasr" title="Tests">⚠️</a></td>
     </tr>
   </tbody>
   <tfoot>
@@ -61,6 +61,7 @@ We welcome every contribution! Please check out the [contributing guidelines](ht
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ----

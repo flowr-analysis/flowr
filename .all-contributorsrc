@@ -16,7 +16,13 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/9303573?v=4",
       "profile": "https://github.com/EagleoutIce",
       "contributions": [
-        "code", "ideas", "maintenance", "projectManagement", "research", "test", "talk"
+        "code",
+        "ideas",
+        "maintenance",
+        "projectManagement",
+        "research",
+        "test",
+        "talk"
       ]
     },
     {
@@ -25,7 +31,10 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/5741138?v=4",
       "profile": "https://ellpeck.de/",
       "contributions": [
-        "code", "maintenance", "test", "plugin"
+        "code",
+        "maintenance",
+        "test",
+        "plugin"
       ]
     },
     {
@@ -34,7 +43,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/49213919?v=4",
       "profile": "https://lukas.pietzschmann.org/",
       "contributions": [
-        "code", "test"
+        "code",
+        "test"
       ]
     },
     {
@@ -43,7 +53,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/38729215?v=4",
       "profile": "https://github.com/bjthehun",
       "contributions": [
-        "code", "test"
+        "code",
+        "test"
       ]
     },
     {
@@ -52,7 +63,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/140061253?v=4",
       "profile": "https://github.com/Core5563",
       "contributions": [
-        "code", "test"
+        "code",
+        "test"
       ]
     },
     {
@@ -61,10 +73,22 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/68707578?v=4",
       "profile": "https://github.com/Ehcsan",
       "contributions": [
-        "code", "test"
+        "code",
+        "test"
+      ]
+    },
+    {
+      "login": "gigalasr",
+      "name": "Lars",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25102989?v=4",
+      "profile": "https://github.com/gigalasr",
+      "contributions": [
+        "code",
+        "test"
       ]
     }
   ],
   "contributorsPerLine": 7,
-  "linkToUsage": true
+  "linkToUsage": true,
+  "commitType": "docs"
 }

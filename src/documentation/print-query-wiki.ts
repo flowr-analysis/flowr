@@ -23,7 +23,7 @@ import { executeDataflowQuery } from '../queries/catalog/dataflow-query/dataflow
 import { executeIdMapQuery } from '../queries/catalog/id-map-query/id-map-query-executor';
 import { executeNormalizedAstQuery } from '../queries/catalog/normalized-ast-query/normalized-ast-query-executor';
 import { executeDataflowClusterQuery } from '../queries/catalog/cluster-query/cluster-query-executor';
-import { executeStaticSliceClusterQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
+import { executeStaticSliceQuery } from '../queries/catalog/static-slice-query/static-slice-query-executor';
 import { executeLineageQuery } from '../queries/catalog/lineage-query/lineage-query-executor';
 import { executeDependenciesQuery } from '../queries/catalog/dependencies-query/dependencies-query-executor';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -296,7 +296,7 @@ registerQueryDocumentation('static-slice', {
 	name:             'Static Slice Query',
 	type:             'active',
 	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.',
-	functionName:     executeStaticSliceClusterQuery.name,
+	functionName:     executeStaticSliceQuery.name,
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nx';

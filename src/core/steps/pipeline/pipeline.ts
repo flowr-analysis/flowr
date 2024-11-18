@@ -25,6 +25,16 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
  * @see Pipeline for details
  */
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
+/**
+ * Returns the steps included in the given pipeline.
+ * @example
+ * ```ts
+ * type Pipeline = typeof DEFAULT_DATAFLOW_PIPELINE
+ * // Pipeline contains Pipeline<step1 | step2 | ...>
+ * type Steps = PipelineStep<typeof DEFAULT_DATAFLOW_PIPELINE>
+ * // Steps contains just step1 | step2 | ...
+ * ```
+ */
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
 
 /**
@@ -40,12 +50,43 @@ export interface PipelinePerStepMetaInformation {
 	}
 }
 
+/**
+ * Returns the step with the given name from the given pipeline.
+ *
+ * @example
+ * ```ts
+ * type Foo = PipelineStepWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
+ * // Foo contains the type of the "parse" step in the DEFAULT_DATAFLOW_PIPELINE
+ * ```
+ */
 export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
+/**
+ * Returns the processor function of the step with the given name from the given pipeline.
+ */
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
+/**
+ * Returns the printer function of the step with the given name from the given pipeline.
+ */
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
+/**
+ * Returns the output type of the step with the given name from the given pipeline.
+ *
+ * @example
+ * ```ts
+ * type Foo = PipelineStepOutputWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
+ * // Foo contains the ParseStepOutput & PipelinePerStepMetaInformation type (ie the parse output and meta information)
+ * ```
+ */
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
-
-
+/**
+ * Returns a union type that represents the required inputs to be passed to the given pipeline.
+ *
+ * @example
+ * ```ts
+ * type Foo = PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>
+ * // Foo contains ParseRequiredInput & NormalizeRequiredInput
+ * ```
+ */
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
 
 /**

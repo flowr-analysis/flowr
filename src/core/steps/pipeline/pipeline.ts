@@ -30,9 +30,9 @@ export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
  * @example
  * ```ts
  * type Pipeline = typeof DEFAULT_DATAFLOW_PIPELINE
- * // Pipeline contains Pipeline<step1 | step2 | ...>
+ * // Pipeline is now Pipeline<step1 | step2 | ...>
  * type Steps = PipelineStep<typeof DEFAULT_DATAFLOW_PIPELINE>
- * // Steps contains just step1 | step2 | ...
+ * // Steps is now just step1 | step2 | ...
  * ```
  */
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
@@ -56,16 +56,18 @@ export interface PipelinePerStepMetaInformation {
  * @example
  * ```ts
  * type Foo = PipelineStepWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
- * // Foo contains the type of the "parse" step in the DEFAULT_DATAFLOW_PIPELINE
+ * // Foo is now only the "parse" step from the DEFAULT_DATAFLOW_PIPELINE
  * ```
  */
 export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
 /**
  * Returns the processor function of the step with the given name from the given pipeline.
+ * @see {@link PipelineStepWithName}
  */
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
 /**
  * Returns the printer function of the step with the given name from the given pipeline.
+ * @see {@link PipelineStepWithName}
  */
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
 /**
@@ -75,6 +77,7 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends Pipeli
  * ```ts
  * type Foo = PipelineStepOutputWithName<typeof DEFAULT_DATAFLOW_PIPELINE, 'parse'>
  * // Foo contains the ParseStepOutput & PipelinePerStepMetaInformation type (ie the parse output and meta information)
+ * @see {@link PipelineStepWithName}
  * ```
  */
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
@@ -86,6 +89,11 @@ export type PipelineStepOutputWithName<P extends Pipeline, Name extends Pipeline
  * type Foo = PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>
  * // Foo contains ParseRequiredInput & NormalizeRequiredInput
  * ```
+ * 
+ * In short, this can be useful whenever you want to describe _all_ inputs a complete
+ * pipeline needs to run through (i.e., the union of all inputs required by the individual steps).
+ *
+ * @see {@link PipelineOutput}
  */
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
 

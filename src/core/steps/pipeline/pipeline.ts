@@ -98,7 +98,18 @@ export type PipelinePerRequestInput<P extends Pipeline> = {
 }[PipelineStepNames<P>]
 
 
-
+/**
+ * Returns an object type that represents the types of the outputs that will result from running the given pipeline, each as the step's name mapped to its PipelineStepOutputWithName.
+ * @example
+ * ```ts
+ * type Foo = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
+ * // Foo contains {
+ * //   parse: ParseStepOutput & PipelinePerStepMetaInformation,
+ * //   normalize: NormalizeStepOutput & PipelinePerStepMetaInformation,
+ * //   ...
+ * // }
+ * ```
+ */
 export type PipelineOutput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
 }

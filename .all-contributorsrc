@@ -38,6 +38,16 @@
       ]
     },
     {
+      "login": "gigalasr",
+      "name": "Lars",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25102989?v=4",
+      "profile": "https://github.com/gigalasr",
+      "contributions": [
+        "code",
+        "test"
+      ]
+    },
+    {
       "login": "LukasPietzschmann",
       "name": "Lukas Pietzschmann",
       "avatar_url": "https://avatars.githubusercontent.com/u/49213919?v=4",
@@ -72,16 +82,6 @@
       "name": "Ehcsan",
       "avatar_url": "https://avatars.githubusercontent.com/u/68707578?v=4",
       "profile": "https://github.com/Ehcsan",
-      "contributions": [
-        "code",
-        "test"
-      ]
-    },
-    {
-      "login": "gigalasr",
-      "name": "Lars",
-      "avatar_url": "https://avatars.githubusercontent.com/u/25102989?v=4",
-      "profile": "https://github.com/gigalasr",
       "contributions": [
         "code",
         "test"

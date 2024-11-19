@@ -79,7 +79,7 @@ export class NormalizedAstVisitor<Info = NoInfo> {
 		switch(type) {
 			case RType.FunctionCall:
 				v.visitFunctionCall?.(node);
-				this.visitSingle(node.named ? node.functionName : node.calledFunction, v, v);
+				this.visitSingle(node.named ? node.functionName : node.calledFunction, v);
 				this.visit(node.arguments, v);
 				break;
 			case RType.FunctionDefinition:

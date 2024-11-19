@@ -1523,5 +1523,3 @@ product"])
 </details>
 
 
-
-

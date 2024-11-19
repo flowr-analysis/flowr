@@ -6,6 +6,7 @@ import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import type { ParseStepOutput } from '../../../../../core/steps/all/core/00-parse';
+import type { ParseStepOutputTS } from '../../../../../core/steps/all/core/01-parse-tree-sitter';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -21,4 +22,12 @@ export function normalize(
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
 	return decorateAst(normalizeRootObjToAst(data, object), { getId, file });
+}
+
+export function normalizeTreeSitter(
+	{ parsed }: ParseStepOutputTS,
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
+	file?: string
+): NormalizedAst {
+	// TODO turn parsed tree into our NormalizedAst
 }

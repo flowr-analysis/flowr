@@ -20,7 +20,7 @@ export interface NormalizeRequiredInput {
 	readonly request: RParseRequests
 }
 
-function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
+export function getCurrentRequestFile(request: RParseRequests | undefined): string | undefined {
 	if(request === undefined) {
 		return undefined;
 	} else if(Array.isArray(request)) {
@@ -50,5 +50,3 @@ export const NORMALIZE = {
 	dependencies:  [ 'parse' ],
 	requiredInput: undefined as unknown as NormalizeRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>;
-
-

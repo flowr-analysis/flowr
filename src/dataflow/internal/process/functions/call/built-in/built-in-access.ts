@@ -109,16 +109,10 @@ export function processAccess<OtherInfo>(
 		}
 		// a$foo a@foo
 		let accessedArgument: ContainerIndex | undefined;
-		let resolvedFirstParameterIndices: ContainerIndices;
 		if(newArgs[0] !== EmptyArgument) {
 			const accessArg = newArgs[1] === EmptyArgument ? 'all' : newArgs[1].lexeme;
 			const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
-			resolvedFirstParameter?.forEach(param => {
-				const definition = param as InGraphIdentifierDefinition;
-				if(definition.indices) {
-					resolvedFirstParameterIndices = definition.indices;
-				}
-			});
+			const resolvedFirstParameterIndices = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indices ?? []);
 			accessedArgument = resolvedFirstParameterIndices?.find(index => index.lexeme === accessArg);
 		}
 		

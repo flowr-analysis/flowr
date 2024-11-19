@@ -9,7 +9,6 @@ import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { printAsMs } from '../util/time';
-import { NormalizedAstVisitor } from '../abstract-interpretation/normalized-ast-visitor';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -23,10 +22,10 @@ async function getText(shell: RShell) {
 	const elapsed = performance.now() - now;
 
 	const visitorInterface = getTypesFromFolderAsMermaid({
-		rootFolder: path.resolve('./src/abstract-interpretation'),
-		typeName: 'Visitor',
+		rootFolder:  path.resolve('./src/abstract-interpretation'),
+		typeName:    'Visitor',
 		inlineTypes: mermaidHide
-	})
+	});
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
 
@@ -111,7 +110,7 @@ async function getAst(code: string) {
 ### **Step 2**: Implement the \`Visitor\` Interface
 To use the NormalizedAstVisitor we have to implement the Visitor interface:
 ${
-	printHierarchy({program: visitorInterface.program, hierarchy: visitorInterface.info, root: 'Visitor', collapseFromNesting: Number.MAX_VALUE})
+	printHierarchy({ program: visitorInterface.program, hierarchy: visitorInterface.info, root: 'Visitor', collapseFromNesting: Number.MAX_VALUE })
 }
 
 

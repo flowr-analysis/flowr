@@ -9,6 +9,7 @@ import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { printAsMs } from '../util/time';
+import { NormalizedAstVisitor } from '../abstract-interpretation/normalized-ast-visitor';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -20,6 +21,12 @@ async function getText(shell: RShell) {
 		inlineTypes: mermaidHide
 	});
 	const elapsed = performance.now() - now;
+
+	const visitorInterface = getTypesFromFolderAsMermaid({
+		rootFolder: path.resolve('./src/abstract-interpretation'),
+		typeName: 'Visitor',
+		inlineTypes: mermaidHide
+	})
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
 
@@ -83,6 +90,68 @@ ${
 With this, the example file produced the following AST (shown from left to right for space reasons):
 
 ${await printNormalizedAstForCode(shell, getFileContentFromRoot('test/testfiles/example.R'), { prefix: 'flowchart LR\n' })}
+
+
+# Working with the Normalized AST
+## Visiting
+This chapter will outline how to use the \`NormalizedAstVisitor\` to go over the AST.
+
+### **Step 1**: Get the ast
+
+We can get the AST by running a parse & normalize _flowr_ pipeline:
+${codeBlock('ts', `
+async function getAst(code: string) {
+    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+        shell: new RShell(),
+        request: requestFromInput(code.trim())
+    }).allRemainingSteps();
+    return result.normalize.ast;
+}`)}
+
+### **Step 2**: Implement the \`Visitor\` Interface
+To use the NormalizedAstVisitor we have to implement the Visitor interface:
+${
+	printHierarchy({program: visitorInterface.program, hierarchy: visitorInterface.info, root: 'Visitor', collapseFromNesting: Number.MAX_VALUE})
+}
+
+
+In this example we will implement a Visitor that counts the occurances of _if-statements_. For this we only implement the \`visitIfThenElse\` function.
+${codeBlock('ts', `
+const ifCountVisitor: Visitor & {count: number } = {
+    visitIfThenElse() {
+        this.count++;
+    },
+    count: 0
+}
+`)}
+
+### **Step 3**: Run the NormalizedAstVisitor
+${codeBlock('ts', `
+new NormalizedAstVisitor(ast).accept(ifCount);
+`)}
+
+### Complete Code
+${codeBlock('ts', `
+async function countIfs(code: string) {
+    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+        shell: new RShell(),
+        request: requestFromInput(code.trim())
+    }).allRemainingSteps();
+
+    const ast = result.normalize.ast;
+
+    const ifCountVisitor: Visitor & {count: number } = {
+        visitIfThenElse() {
+            this.count++;
+        },
+        count: 0
+    }
+
+    new NormalizedAstVisitor(ast).accept(ifCountVisitor);
+    return ifCount.count;
+}
+`)}
+
 
 `;
 }

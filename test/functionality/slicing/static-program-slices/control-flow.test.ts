@@ -104,4 +104,41 @@ x <- 4
 }
 print(x)`, ['7@x'], 'x <- 2\nx');
 	});
+
+	describe('Dead Code', () => {
+		assertSliced(label('useless branch I', ['control-flow', 'built-in', 'if']),
+			shell, `
+y <- 42
+if(TRUE) {
+   y <- TRUE
+} else {
+   y <- FALSE
+}
+print(y)`, ['8@y'], 'y <- TRUE\ny');
+
+		assertSliced(label('useless branch II', ['control-flow', 'built-in', 'if']),
+			shell, `
+y <- 42
+if(FALSE) {
+   y <- TRUE
+} else {
+   y <- FALSE
+}
+print(y)`, ['8@y'], 'y <- FALSE\ny');
+
+		assertSliced(label('useless branch III', ['control-flow', 'built-in', 'if']),
+			shell, `
+y <- 42
+if(FALSE) {
+   if(TRUE) {
+      y <- TRUE
+   } else {
+      y <- FALSE
+   }
+} else {
+   y <- TRUE
+}
+print(y)`, ['12@y'], 'y <- TRUE\ny');
+	});
+
 }));

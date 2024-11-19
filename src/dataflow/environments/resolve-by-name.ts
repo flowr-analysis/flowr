@@ -4,7 +4,7 @@ import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType , ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
-
+import type { BuiltInIdentifierConstant } from './built-in';
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -83,4 +83,25 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	} else {
 		return some ? Ternary.Maybe : Ternary.Never;
 	}
+}
+
+export interface ResolveResult<T = unknown> {
+	value: T,
+	from:  ReferenceType
+}
+
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult[] | undefined {
+	if(name === undefined) {
+		return undefined;
+	}
+
+	const definitions = resolveByName(name, environment, ReferenceType.Constant);
+	if(definitions === undefined) {
+		return undefined;
+	}
+
+	return definitions.map<ResolveResult>(def => ({
+		value: (def as BuiltInIdentifierConstant).value,
+		from:  def.type
+	}));
 }

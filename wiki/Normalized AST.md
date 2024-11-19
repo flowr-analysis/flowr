@@ -1524,4 +1524,83 @@ product"])
 
 
 
+# Working with the Normalized AST
+## Visiting
+This chapter will outline how to use the ``NormalizedAstVisitor`` to go over the AST.
 
+### **Step 1**: Get the ast
+
+We can get the AST by running a parse & normalize _flowr_ pipeline:
+```ts
+async function getAst(code: string) {
+	const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+		shell: new RShell(),
+		request: requestFromInput(code.trim())
+	}).allRemainingSteps();
+    return result.normalize.ast;
+}
+```
+
+### **Step 2**: Implement the Visitor Interface
+To use the NormalizedAstVisitor we have to implement the Visitor interface.
+```ts
+export interface Visitor<Info = NoInfo> {
+    visitNumber?(num: RNumber<Info>): void;
+	visitString?(str: RString<Info>): void;
+	visitLogical?(logical: RLogical<Info>): void;
+	visitSymbol?(symbol: RSymbol<Info>): void;
+	visitAccess?(node: RAccess<Info>): void;
+	visitBinaryOp?(op: RBinaryOp<Info>): void;
+	visitPipe?(op: RPipe<Info>): void;
+	visitUnaryOp?(op: RUnaryOp<Info>): void;
+    visitFor?(loop: RForLoop<Info>): void;
+	visitWhile?(loop: RWhileLoop<Info>): void;
+	visitRepeat?(loop: RRepeatLoop<Info>): void;
+	visitNext?(next: RNext<Info>): void;
+	visitBreak?(next: RBreak<Info>): void;
+	visitComment?(comment: RComment<Info>): void;
+	visitLineDirective?(comment: RLineDirective<Info>): void;
+	visitIfThenElse?(ifThenExpr: RIfThenElse<Info>): void;
+	visitExprList?(exprList: RExpressionList<Info>): void;
+	visitFunctionDefinition?(definition: RFunctionDefinition<Info>): void;
+	visitFunctionCall?(call: RFunctionCall<Info>): void;
+	visitArgument?(argument: RArgument<Info>): void;
+	visitParameter?(parameter: RParameter<Info>): void;
+}
+```
+In this example we will implement a Visitor that counts the occurances of _if-statements_. For this we only implement the ``visitIfThenElse`` function.
+```ts
+const ifCountVisitor: Visitor & {count: number } = {
+    visitIfThenElse() {
+        this.count++;
+    },
+    count: 0
+}
+```
+
+### **Step 3**: Run the NormalizedAstVisitor
+```ts
+ new NormalizedAstVisitor(ast).accept(ifCount);
+```
+
+### Complete Code
+```ts
+async function countIfs(code: string) {
+    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+	    shell: new RShell(),
+	    request: requestFromInput(code.trim())
+	}).allRemainingSteps();
+
+    const ast = result.normalize.ast;
+
+    const ifCountVisitor: Visitor & {count: number } = {
+        visitIfThenElse() {
+            this.count++;
+        },
+        count: 0
+    }
+
+    new NormalizedAstVisitor(ast).accept(ifCountVisitor);
+    return ifCount.count;
+}
+```

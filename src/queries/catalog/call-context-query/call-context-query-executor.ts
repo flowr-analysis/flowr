@@ -203,6 +203,20 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 		}
 
 		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
+			const file = ast.idMap.get(nodeId)?.info.file;
+			filterCheck: if(query.fileFilter !== undefined) {
+				if(file === undefined) {
+					if(query.includeUndefinedFiles) {
+						break filterCheck;
+					}
+					continue;
+				}
+				if(new RegExp(query.fileFilter).test(file)) {
+					break filterCheck;
+				}
+				continue;
+			}
+
 			let targets: NodeId[] | 'no' | undefined = undefined;
 			if(query.callTargets) {
 				targets = satisfiesCallTargets(nodeId, graph, query.callTargets);

@@ -119,7 +119,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	/* call the function with the request */
 	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
 		request.content
-	)}${suffix})`.replaceAll('\\\\', '\\');
+	)}${suffix})`;
 
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request);

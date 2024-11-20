@@ -1,24 +1,24 @@
-import TreeSitter from 'web-tree-sitter';
+import Parser from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
 
 export class TreeSitterExecutor {
 
-	private static language: TreeSitter.Language;
-	private readonly parser: TreeSitter;
+	private static language: Parser.Language;
+	private readonly parser: Parser;
 
 	public static async initTreeSitter(): Promise<void> {
-		await TreeSitter.init();
+		await Parser.init();
 		// TODO pass config variable to specify where the wasm is
-		TreeSitterExecutor.language = await TreeSitter.Language.load(`${__dirname}/tree-sitter-r.wasm`);
+		TreeSitterExecutor.language = await Parser.Language.load(`${__dirname}/tree-sitter-r.wasm`);
 	}
 
 	constructor() {
-		this.parser = new TreeSitter();
+		this.parser = new Parser();
 		this.parser.setLanguage(TreeSitterExecutor.language);
 	}
 
-	public parse(request: RParseRequest): TreeSitter.Tree {
+	public parse(request: RParseRequest): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file' ){
 			// TODO what base path should this be based on (pass one like in RShell?)

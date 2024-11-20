@@ -37,7 +37,7 @@ export interface DefaultCallContextQueryFormat<CallName extends RegExp | string>
 	 */
 	readonly fileFilter?:            string;
 	/**
-	 * If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results?
+	 * If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.
 	 */
 	readonly includeUndefinedFiles?: boolean;
 }

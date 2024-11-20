@@ -206,7 +206,7 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			const file = ast.idMap.get(nodeId)?.info.file;
 			filterCheck: if(query.fileFilter !== undefined) {
 				if(file === undefined) {
-					if(query.includeUndefinedFiles) {
+					if(query.includeUndefinedFiles ?? true) {
 						break filterCheck;
 					}
 					continue;

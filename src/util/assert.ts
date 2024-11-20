@@ -1,6 +1,6 @@
 /** use this to ensure that all cases are covered in case of a selection */
 
-/* istanbul ignore next */
+/* v8 ignore next */
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unexpected object: ${JSON.stringify(x)}`);
 }
@@ -32,6 +32,7 @@ export type GuardMessage = string | (() => string)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: boolean | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
+	/* v8 ignore next 3 */
 	if(!assertion) {
 		throw new GuardError( typeof message === 'string' ? message : message());
 	}

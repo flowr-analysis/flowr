@@ -30,6 +30,6 @@ export const NORMALIZE_TREE_SITTER = {
 		[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
 		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 	},
-	dependencies:  [ 'parse' ],
+	dependencies:  [ 'parse-ts' ],
 	requiredInput: undefined as unknown as NormalizeRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'normalize-ts', typeof processor>>;

@@ -22,7 +22,7 @@ export default defineConfig({
 			setupFiles: 'parallel'
 		},
 		setupFiles:  ['./test/functionality/test-setup.ts'],
-		globalSetup: ['./test/functionality/test-summary.ts'],
+		globalSetup: ['./test/functionality/test-setup-global.ts'],
 		reporters:   process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',

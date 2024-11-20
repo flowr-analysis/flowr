@@ -19,7 +19,7 @@ import {
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
@@ -31,8 +31,9 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
-import { assert, test, afterAll } from 'vitest';
+import { assert, test, describe, afterAll } from 'vitest';
 import semver from 'semver/preload';
+import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -188,17 +189,29 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 }>) {
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${fullname} (input: ${input})`, async function() {
+	return describe(`${fullname} (input: ${input})`, () => {
+		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('shell', async function() {
+			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+				shell,
+				request: requestFromInput(input)
+			});
+			const result = await pipeline.allRemainingSteps();
+			const ast = result.normalize.ast;
 
-		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			shell,
-			request: requestFromInput(input)
+			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
+				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		const result = await pipeline.allRemainingSteps();
-		const ast = result.normalize.ast;
-
-		assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
-			() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('tree-sitter', async function() {
+			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
+				// TODO make this global at some point, or a param like the shell?
+				treeSitter: new TreeSitterExecutor(),
+				request:    requestFromInput(input)
+			});
+			const result = await pipeline.allRemainingSteps();
+			const ast = result['normalize-ts'].ast;
+			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
+				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		});
 	});
 }
 

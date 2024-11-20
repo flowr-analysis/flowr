@@ -3,8 +3,11 @@ import { printMissingLabelSummary } from './_helper/label';
 import fs from 'fs';
 import { DefaultMap } from '../../src/util/defaultmap';
 import { GlobalSummaryFile } from './summary-def';
+import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-export function setup() {
+export async function setup() {
+	await TreeSitterExecutor.initTreeSitter();
+
 	try {
 		fs.unlinkSync(GlobalSummaryFile);
 	} catch(e) {

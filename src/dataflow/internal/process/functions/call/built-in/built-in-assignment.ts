@@ -62,6 +62,7 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
+	readonly indices?:             ContainerIndices
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -260,19 +261,21 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	quoteSource?: boolean,
-	superAssignment?: boolean,
+	config?: AssignmentConfiguration | undefined,
 ) {
 	let indices: ContainerIndices;
 	if(sourceIds.length === 1) {
 		// support for tracking indices
 		indices = information.graph.getVertex(sourceIds[0])?.indices;
 	}
+	if(config?.indices !== undefined) {
+		indices = (indices ?? []).concat(config.indices);
+	}
 	nodeToDefine.indices ??= indices;
 
-	information.environment = define(nodeToDefine, superAssignment, information.environment);
+	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
-	if(!quoteSource) {
+	if(!config?.quoteSource) {
 		for(const sourceId of sourceIds) {
 			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
@@ -291,18 +294,8 @@ export function markAsAssignment(
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
-function processAssignmentToSymbol<OtherInfo>({
-	nameOfAssignmentFunction,
-	source,
-	args: [targetArg, sourceArg],
-	target,
-	rootId,
-	data,
-	information,
-	superAssignment,
-	makeMaybe,
-	quoteSource
-}: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
@@ -323,7 +316,7 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment);
+		markAsAssignment(information, write, [source.info.id], rootId, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

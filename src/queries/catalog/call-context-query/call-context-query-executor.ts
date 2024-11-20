@@ -207,14 +207,16 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			filterCheck: if(query.fileFilter !== undefined) {
 				if(file === undefined) {
 					if(query.includeUndefinedFiles ?? true) {
-						break filterCheck;
+						break filterCheck; // although the node's file is unknown, we continue with the query
+					} else {
+						continue; // the file is unknown, and we don't want to include it; skip to the next query
 					}
-					continue;
 				}
 				if(new RegExp(query.fileFilter).test(file)) {
-					break filterCheck;
+					break filterCheck; // the file matches the filter; continue with the query
+				} else {
+					continue; // the file does not match the filter; skip to the next query
 				}
-				continue;
 			}
 
 			let targets: NodeId[] | 'no' | undefined = undefined;

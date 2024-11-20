@@ -18,7 +18,7 @@ import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { ContainerIndex, ContainerIndices } from '../../../../../graph/vertex';
+import type { ContainerIndex } from '../../../../../graph/vertex';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]

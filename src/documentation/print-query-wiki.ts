@@ -98,6 +98,7 @@ my_test_function()
 		`;
 	}
 });
+
 registerQueryDocumentation('dataflow', {
 	name:             'Dataflow Query',
 	type:             'active',

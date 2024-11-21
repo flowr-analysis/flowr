@@ -6,13 +6,16 @@ import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
 import type { SourceRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
-import { boolean2ts, number2ts } from '../convert-values';
+import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
 import type { RComment } from '../ast/model/nodes/r-comment';
 import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
+import type { RString } from '../ast/model/nodes/r-string';
+import { startAndEndsWith } from '../../../util/strings';
+import type { RParameter } from '../ast/model/nodes/r-parameter';
 
 export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
 	const root = convertTreeNode(tree.rootNode);
@@ -50,7 +53,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.BracedExpression:
 		case TreeSitterType.ParenthesizedExpression: {
 			const opening = node.children[0];
-			const body = node.children.slice(1, node.children.length - 1);
+			const body = node.children.slice(1, -1);
 			const closing = node.children[node.children.length - 1];
 			return {
 				type:     RType.ExpressionList,
@@ -67,7 +70,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.BinaryOperator: {
 			const lhs = convertTreeNode(node.children[0]);
 			const rhs = convertTreeNode(node.children[node.children.length - 1]);
-			const [comments, [op]] = splitComments(node.children.slice(1, node.children.length - 1));
+			const [comments, [op]] = splitComments(node.children.slice(1, -1));
 			const opSource = makeSourceRange(op);
 			if(op.type == 'special'){
 				return {
@@ -197,6 +200,51 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		}
+		case TreeSitterType.Call: {
+			const [func, argsParentheses] = node.children;
+			const args = splitArrayOn(argsParentheses.children.slice(1, -1), x => x.type === 'comma');
+			const call = {
+				arguments: args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument),
+				location:  makeSourceRange(func),
+				lexeme:    func.text,
+				...defaultInfo
+			};
+			if(func.type === TreeSitterType.Identifier){
+				return {
+					...call,
+					type:         RType.FunctionCall,
+					functionName: convertTreeNode(func) as RSymbol,
+					named:        true
+				};
+			} else {
+				return {
+					...call,
+					type:           RType.FunctionCall,
+					calledFunction: convertTreeNode(func),
+					named:          undefined
+				};
+			}
+		}
+		case TreeSitterType.FunctionDefinition: {
+			const [name, paramsParens, body] = node.children;
+			const params = splitArrayOn(paramsParens.children.slice(1, -1), x => x.type === 'comma');
+			return {
+				type:       RType.FunctionDefinition,
+				parameters: params.map(n => convertTreeNode(n[0]) as RParameter),
+				body:       ensureExpressionList(convertTreeNode(body)),
+				location:   makeSourceRange(name),
+				lexeme:     name.text,
+				...defaultInfo
+			};
+		}
+		case TreeSitterType.String:
+			return {
+				type:     RType.String,
+				location: range,
+				content:  string2ts(node.text),
+				lexeme:   node.text,
+				...defaultInfo
+			};
 		case TreeSitterType.Float:
 			return {
 				type:     RType.Number,
@@ -228,7 +276,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			const [func, content] = node.children;
 			// bracket is now [ or [[ and argsClosing is x] or x]]
 			const [bracket, ...argsClosing] = content.children;
-			const args = splitArrayOn(argsClosing.slice(0, argsClosing.length-1), x => x.type === 'comma');
+			const args = splitArrayOn(argsClosing.slice(0, -1), x => x.type === 'comma');
 			return {
 				type:     RType.Access,
 				operator: bracket.text as '[' | '[[',
@@ -263,6 +311,34 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		}
+		case TreeSitterType.Parameter: {
+			const name = node.children[0];
+			const nameRange = makeSourceRange(name);
+			let defaultValue: RNode | undefined = undefined;
+			if(node.children.length == 3){
+				defaultValue = convertTreeNode(node.children[2]);
+			}
+			return {
+				type: RType.Parameter,
+				name: {
+					type:      RType.Symbol,
+					location:  nameRange,
+					namespace: undefined,
+					content:   name.text,
+					lexeme:    name.text,
+					info:      {
+						fullRange:        nameRange,
+						additionalTokens: [],
+						fullLexeme:       name.text
+					}
+				},
+				special:  false,
+				defaultValue,
+				location: range,
+				lexeme:   node.text,
+				...defaultInfo
+			};
+		}
 		case TreeSitterType.Argument: {
 			if(node.children.length == 1){
 				const [arg] = node.children;
@@ -276,9 +352,21 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				};
 			} else {
 				const [nameNode, /* = */, valueNode] = node.children;
+				let name = convertTreeNode(nameNode) as RString | RSymbol;
+				// unescape argument names
+				if(name.type === RType.String){
+					name = {
+						...name,
+						type:      RType.Symbol,
+						content:   name.content.str,
+						namespace: undefined
+					};
+				} else if(startAndEndsWith(name.content, '`')){
+					name.content = name.content.slice(1, -1);
+				}
 				return {
 					type:     RType.Argument,
-					name:     convertTreeNode(nameNode) as RSymbol,
+					name:     name,
 					value:    convertTreeNode(valueNode),
 					location: makeSourceRange(nameNode),
 					lexeme:   nameNode.text,

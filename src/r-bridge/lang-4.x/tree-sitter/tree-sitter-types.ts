@@ -9,6 +9,9 @@ export enum TreeSitterType {
     ForStatement = 'for_statement',
     WhileStatement = 'while_statement',
     RepeatStatement = 'repeat_statement',
+    Call = 'call',
+    FunctionDefinition = 'function_definition',
+    String = 'string',
     Float = 'float',
     True = 'true',
     False = 'false',
@@ -17,7 +20,7 @@ export enum TreeSitterType {
     Subset = 'subset',
     Subset2 = 'subset2',
     ExtractOperator = 'extract_operator',
-    NamespaceOperator = 'namespace',
+    Parameter = 'parameter',
     Argument = 'argument',
     Comment = 'comment'
 }

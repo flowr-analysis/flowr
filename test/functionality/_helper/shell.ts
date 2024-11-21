@@ -93,11 +93,13 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string): void {
-	const astCopy = removeInformation(ast, includeTokens, ignoreColumns);
-	const expectedCopy = removeInformation(expected, includeTokens, ignoreColumns);
+function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreSourceInfo = true): void {
+	if(ignoreSourceInfo) {
+		ast = removeInformation(ast, includeTokens, ignoreColumns);
+		expected = removeInformation(expected, includeTokens, ignoreColumns);
+	}
 	try {
-		assert.deepStrictEqual(astCopy, expectedCopy);
+		assert.deepStrictEqual(ast, expected);
 	} catch(e) {
 		if(message) {
 			console.error(message());
@@ -195,6 +197,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe(`${fullname} (input: ${input})`, () => {
+		let resolveShellAst: (node: RNode) => void;
+		const shellAstPromise = new Promise<RNode>(r => resolveShellAst = r);
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('shell', async function() {
 			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 				shell,
@@ -202,10 +206,13 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			});
 			const result = await pipeline.allRemainingSteps();
 			const ast = result.normalize.ast;
-
-			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			resolveShellAst(ast);
+			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
+
+		let resolveTsAst: (node: RNode) => void;
+		const tsAstPromise = new Promise<RNode>(r => resolveTsAst = r);
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('tree-sitter', async function() {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 				// TODO make this global at some point, or a param like the shell?
@@ -214,8 +221,16 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			});
 			const result = await pipeline.allRemainingSteps();
 			const ast = result['normalize-ts'].ast;
-			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			resolveTsAst(ast);
+			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		});
+
+		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('compare-shell-ts', async function() {
+			// awful way to wait for the other two tests to be finished so we don't have to calculate the ast multiple times
+			const shellAst = await shellAstPromise;
+			const tsAst = await tsAstPromise;
+			assertAstEqual(tsAst, shellAst, true, false, () => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 	});
 }
@@ -231,7 +246,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 		const ast = result.normalize.ast;
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, false, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		assertAstEqual(ast, expected, false, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 	});
 }
 

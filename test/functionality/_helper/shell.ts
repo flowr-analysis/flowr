@@ -31,7 +31,7 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
-import { assert, test, describe, afterAll } from 'vitest';
+import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
@@ -197,23 +197,28 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	if(!userConfig?.skipTreeSitter) {
 		labelContext.push('desugar-tree-sitter');
 	}
+	const skipTreeSitter = userConfig?.skipTreeSitter;
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return describe(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
-		test.skipIf(skip)('shell', async function() {
-			const ast = await makeShellAst();
-			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
-				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
+		let shellAst: RNode | undefined;
+		let tsAst: RNode | undefined;
+		beforeAll(async() => {
+			shellAst = await makeShellAst();
+			if(!skipTreeSitter) {
+				tsAst = await makeTsAst();
+			}
 		});
-		test.skipIf(skip || userConfig?.skipTreeSitter)('tree-sitter', async function() {
-			const ast = await makeTsAst();
-			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
-				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		test('shell', function() {
+			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		test.skipIf(skip || userConfig?.skipTreeSitter)('compare', async function() {
-			const tsAst = await makeTsAst();
-			const shellAst = await makeShellAst();
+		test.skipIf(skipTreeSitter)('tree-sitter', function() {
+			assertAstEqual(tsAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
+		});
+		test.skipIf(skipTreeSitter)('compare', function() {
 			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)
-			assertAstEqual(tsAst, shellAst, true, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
 				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 	});

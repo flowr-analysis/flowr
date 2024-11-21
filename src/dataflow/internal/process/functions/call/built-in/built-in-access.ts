@@ -18,7 +18,7 @@ import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { ContainerIndex } from '../../../../../graph/vertex';
+import type { ContainerIndices } from '../../../../../graph/vertex';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -108,19 +108,19 @@ export function processAccess<OtherInfo>(
 			}
 		}
 		// a$foo a@foo
-		let accessedArgument: ContainerIndex | undefined;
+		let accessedArguments: ContainerIndices;
 		if(newArgs[0] !== EmptyArgument) {
-			const accessArg = newArgs[1] === EmptyArgument ? 'all' : newArgs[1].lexeme;
+			const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
 			const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
 			const resolvedFirstParameterIndices = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indices ?? []);
-			accessedArgument = resolvedFirstParameterIndices?.find(index => index.lexeme === accessArg);
+			accessedArguments = resolvedFirstParameterIndices?.filter(index => index.lexeme === accessArg);
 		}
 		
-		const indices = accessedArgument === undefined ? undefined : [accessedArgument];
+		const indices = accessedArguments === undefined ? undefined : accessedArguments;
 		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, indices);
-		if(accessedArgument !== undefined) {
-			fnCall.information.graph.addEdge(name.info.id, accessedArgument.nodeId, EdgeType.Reads);
-		}
+		accessedArguments?.forEach((arg) => {
+			fnCall.information.graph.addEdge(name.info.id, arg.nodeId, EdgeType.Reads);
+		});
 	}
 
 	const info = fnCall.information;

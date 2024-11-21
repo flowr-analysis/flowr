@@ -13,8 +13,8 @@ import type { NormalizeRequiredInput } from './10-normalize';
 import { getCurrentRequestFile } from './10-normalize';
 import type { ParseStepOutputTS } from './01-parse-tree-sitter';
 
-function processor(results: { parse?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
-	return normalizeTreeSitter(results.parse as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
+function processor(results: { 'parse-ts'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
+	return normalizeTreeSitter(results['parse-ts'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE_TREE_SITTER = {

@@ -10,23 +10,22 @@ import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import { number2ts } from '../convert-values';
 
 export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
-	const originalRoot = tree.rootNode;
-	if(originalRoot.type !== TreeSitterType.Program || originalRoot.childCount !== 1) {
-		throw new ParseError(`expected root to be ${TreeSitterType.Program} with one child, yet received ${originalRoot.type}`);
+	const root = convertTreeNode(tree.rootNode);
+	if(root.type !== RType.ExpressionList) {
+		throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
 	}
-	return convertTreeNode(originalRoot) as RExpressionList;
+	return root;
 }
 
 function convertTreeNode(node: SyntaxNode): RNode {
+	// generally, the grammar source file dictates what children a node has in what order:
+	// https://github.com/r-lib/tree-sitter-r/blob/main/grammar.js
 	const range = makeSourceRange(node);
 	switch(node.type as TreeSitterType) {
 		case TreeSitterType.Program:
-			if(node.childCount !== 1) {
-				throw new ParseError(`expected ${TreeSitterType.Program} to have one child, yet received ${node.childCount}`);
-			}
 			return {
 				type:     RType.ExpressionList,
-				children: [convertTreeNode(node.firstChild as SyntaxNode)],
+				children: node.children.map(convertTreeNode),
 				grouping: undefined,
 				lexeme:   undefined,
 				info:     {
@@ -72,6 +71,14 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					fullLexeme:       node.text
 				}
 			};
+		case TreeSitterType.IfStatement: {
+			// "if", (, condition, ), if true, "else", if false (optional),
+			const [,, condition,,truePath, ...falsePath] = node.children;
+			return {
+				type: RType.IfThenElse,
+
+			};
+		}
 		default:
 			throw new ParseError(`unexpected node type ${node.type}`);
 	}

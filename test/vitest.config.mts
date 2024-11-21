@@ -27,6 +27,8 @@ export default defineConfig({
 		isolate:     false,
 		pool:        'threads',
 		deps:        {
+			// this is deprecated but the options suggested in the deprecation notice do not work
+			external:  ['web-tree-sitter'],
 			optimizer: {
 				ssr: {
 					enabled: true

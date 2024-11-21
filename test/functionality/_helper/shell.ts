@@ -189,7 +189,8 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean,
-	ignoreColumns:          boolean
+	ignoreColumns:          boolean,
+	skipTreeSitter:         boolean
 }>) {
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
@@ -205,7 +206,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('tree-sitter', async function() {
+		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('tree-sitter', async function() {
 			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
 				// TODO make this global at some point, or a param like the shell?
 				treeSitter: new TreeSitterExecutor(),

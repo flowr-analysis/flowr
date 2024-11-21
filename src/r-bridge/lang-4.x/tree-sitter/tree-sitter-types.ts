@@ -4,6 +4,7 @@ export enum TreeSitterType {
     ParenthesizedExpression = 'parenthesized_expression',
     BinaryOperator = 'binary_operator',
     UnaryOperator = 'unary_operator',
+    NamespaceOperator = 'namespace_operator',
     Identifier = 'identifier',
     IfStatement = 'if_statement',
     ForStatement = 'for_statement',
@@ -13,6 +14,12 @@ export enum TreeSitterType {
     FunctionDefinition = 'function_definition',
     String = 'string',
     Float = 'float',
+    Integer = 'integer',
+    Complex = 'complex',
+    Inf = 'inf',
+    Nan = 'nan',
+    Na = 'na',
+    Null = 'null',
     True = 'true',
     False = 'false',
     Break = 'break',
@@ -22,5 +29,6 @@ export enum TreeSitterType {
     ExtractOperator = 'extract_operator',
     Parameter = 'parameter',
     Argument = 'argument',
+    Dots = 'dots',
     Comment = 'comment'
 }

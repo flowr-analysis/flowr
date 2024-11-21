@@ -37,34 +37,40 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		}
 	};
 	switch(node.type as TreeSitterType) {
-		case TreeSitterType.Program:
+		case TreeSitterType.Program: {
+			const [comments, children] = splitComments(node.children);
 			return {
 				type:     RType.ExpressionList,
-				children: node.children.map(convertTreeNode),
+				children: children.map(convertTreeNode),
 				grouping: undefined,
 				lexeme:   undefined,
 				info:     {
 					fullRange:        undefined,
-					// TODO parse delimiters here? (see normalize-root)
-					additionalTokens: [],
+					additionalTokens: comments,
 					fullLexeme:       undefined
 				}
 			};
+		}
 		case TreeSitterType.BracedExpression:
 		case TreeSitterType.ParenthesizedExpression: {
-			const opening = node.children[0];
-			const body = node.children.slice(1, -1);
-			const closing = node.children[node.children.length - 1];
+			const [comments, children] = splitComments(node.children);
+			const opening = children[0];
+			const body = children.slice(1, -1);
+			const closing = children[children.length - 1];
 			return {
 				type:     RType.ExpressionList,
 				location: undefined,
 				lexeme:   undefined,
-				children: body.map(convertTreeNode),
+				children: body.map(n => convertTreeNode(n)),
 				grouping: [
 					convertTreeNode(opening) as RSymbol,
 					convertTreeNode(closing) as RSymbol
 				],
-				...defaultInfo
+				info: {
+					fullRange:        range,
+					additionalTokens: comments,
+					fullLexeme:       node.text
+				}
 			};
 		}
 		case TreeSitterType.BinaryOperator: {
@@ -72,6 +78,14 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			const rhs = convertTreeNode(node.children[node.children.length - 1]);
 			const [comments, [op]] = splitComments(node.children.slice(1, -1));
 			const opSource = makeSourceRange(op);
+			const lhsAsArg: RArgument = {
+				type:     RType.Argument,
+				location: lhs.location as SourceRange,
+				value:    lhs,
+				name:     undefined,
+				lexeme:   lhs.lexeme as string,
+				info:     {}
+			};
 			if(op.type == 'special'){
 				return {
 					type:         RType.FunctionCall,
@@ -85,27 +99,26 @@ function convertTreeNode(node: SyntaxNode): RNode {
 						namespace: undefined,
 						info:      {}
 					},
-					arguments: [
-						{
-							type:     RType.Argument,
-							location: lhs.location as SourceRange,
-							value:    lhs,
-							name:     undefined,
-							lexeme:   lhs.lexeme as string,
-							info:     {}
-						},
-						{
-							type:     RType.Argument,
-							location: rhs.location as SourceRange,
-							value:    rhs,
-							name:     undefined,
-							lexeme:   rhs.lexeme as string,
-							info:     {}
-						}
-					],
+					arguments: [lhsAsArg, {
+						type:     RType.Argument,
+						location: rhs.location as SourceRange,
+						value:    rhs,
+						name:     undefined,
+						lexeme:   rhs.lexeme as string,
+						info:     {}
+					}],
 					named:        true,
 					infixSpecial: true,
 					info:         {}
+				};
+			} else if(op.text === '|>') {
+				return {
+					type:     RType.Pipe,
+					location: opSource,
+					lhs:      lhsAsArg,
+					rhs,
+					lexeme:   op.text,
+					...defaultInfo
 				};
 			} else {
 				return {
@@ -133,10 +146,24 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		}
+		case TreeSitterType.NamespaceOperator: {
+			const [lhs, /* :: or ::: */, rhs] = node.children;
+			return {
+				type:      RType.Symbol,
+				location:  makeSourceRange(rhs),
+				content:   rhs.text,
+				lexeme:    rhs.text,
+				namespace: lhs.text,
+				...defaultInfo
+			};
+		}
 		case '{' as TreeSitterType:
 		case '}' as TreeSitterType:
 		case '(' as TreeSitterType:
 		case ')' as TreeSitterType:
+		case TreeSitterType.Na:
+		case TreeSitterType.Null:
+		case TreeSitterType.Dots:
 		case TreeSitterType.Identifier:
 			return {
 				type:      RType.Symbol,
@@ -202,19 +229,36 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		}
 		case TreeSitterType.Call: {
 			const [func, argsParentheses] = node.children;
+			// tree-sitter wraps next and break in a function call, but we don't, so unwrap
+			if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
+				return convertTreeNode(func);
+			}
 			const args = splitArrayOn(argsParentheses.children.slice(1, -1), x => x.type === 'comma');
+			const funcRange = makeSourceRange(func);
 			const call = {
 				arguments: args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument),
-				location:  makeSourceRange(func),
+				location:  funcRange,
 				lexeme:    func.text,
 				...defaultInfo
 			};
-			if(func.type === TreeSitterType.Identifier){
+			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator) {
 				return {
 					...call,
 					type:         RType.FunctionCall,
-					functionName: convertTreeNode(func) as RSymbol,
-					named:        true
+					// calling a function as a string should make it into a symbol
+					functionName: func.type !== TreeSitterType.String ? convertTreeNode(func) as RSymbol : {
+						type:      RType.Symbol,
+						location:  funcRange,
+						namespace: undefined,
+						content:   removeRQuotes(func.text),
+						lexeme:    func.text,
+						info:      {
+							fullRange:        funcRange,
+							additionalTokens: [],
+							fullLexeme:       func.text
+						}
+					},
+					named: true
 				};
 			} else {
 				return {
@@ -246,6 +290,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		case TreeSitterType.Float:
+		case TreeSitterType.Integer:
+		case TreeSitterType.Complex:
+		case TreeSitterType.Inf:
+		case TreeSitterType.Nan:
 			return {
 				type:     RType.Number,
 				location: range,
@@ -332,10 +380,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 						fullLexeme:       name.text
 					}
 				},
-				special:  false,
+				special:  name.text === '...',
 				defaultValue,
-				location: range,
-				lexeme:   node.text,
+				location: nameRange,
+				lexeme:   name.text,
 				...defaultInfo
 			};
 		}

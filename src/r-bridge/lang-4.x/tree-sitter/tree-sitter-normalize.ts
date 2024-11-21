@@ -85,7 +85,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.BinaryOperator: {
 			const lhs = convertTreeNode(node.children[0]);
 			const rhs = convertTreeNode(node.children[node.children.length - 1]);
-			const [comments, [op]] = splitComments(node.children.slice(1, -1), true);
+			const [comments, [op]] = splitComments(node.children.slice(1, -1));
 			const opSource = makeSourceRange(op);
 			const lhsAsArg: RArgument = {
 				type:     RType.Argument,

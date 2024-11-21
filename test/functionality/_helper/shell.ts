@@ -77,12 +77,15 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	};
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean): T {
+function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting') {
 			return undefined;
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
+		} else if(key == 'location' && ignoreColumns && Array.isArray(value) && value.length === 4) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			value = [value[0], 0, value[2], value[3] - value[1]];
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
@@ -90,9 +93,9 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, message?: () => string): void {
-	const astCopy = removeInformation(ast, includeTokens);
-	const expectedCopy = removeInformation(expected, includeTokens);
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string): void {
+	const astCopy = removeInformation(ast, includeTokens, ignoreColumns);
+	const expectedCopy = removeInformation(expected, includeTokens, ignoreColumns);
 	try {
 		assert.deepStrictEqual(astCopy, expectedCopy);
 	} catch(e) {
@@ -185,7 +188,8 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
-	ignoreAdditionalTokens: boolean
+	ignoreAdditionalTokens: boolean,
+	ignoreColumns:          boolean
 }>) {
 	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
@@ -198,7 +202,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			const result = await pipeline.allRemainingSteps();
 			const ast = result.normalize.ast;
 
-			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
+			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('tree-sitter', async function() {
@@ -209,7 +213,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			});
 			const result = await pipeline.allRemainingSteps();
 			const ast = result['normalize-ts'].ast;
-			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
+			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 	});
@@ -226,7 +230,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 		const ast = result.normalize.ast;
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		assertAstEqualIgnoreSourceInformation(ast, expected, false, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 	});
 }
 

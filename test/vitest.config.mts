@@ -26,9 +26,12 @@ export default defineConfig({
 		reporters:   process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',
-		deps:        {
-			// this is deprecated but the options suggested in the deprecation notice do not work
-			external:  ['web-tree-sitter'],
+		server:      {
+			deps: {
+				external: [/web-tree-sitter/]
+			}
+		},
+		deps: {
 			optimizer: {
 				ssr: {
 					enabled: true

@@ -4,6 +4,7 @@ import type {
 	CallContextQueryKindResult,
 	CallContextQueryResult,
 	CallContextQuerySubKindResult,
+	FileFilter,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -64,6 +65,10 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 				...q,
 				callName: q.callNameExact ? exactCallNameRegex(q.callName)
 					: new RegExp(q.callName),
+				fileFilter: q.fileFilter && {
+					...q.fileFilter,
+					filter: new RegExp(q.fileFilter.filter)
+				},
 				linkTo: {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
@@ -74,7 +79,11 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 			return {
 				...q,
 				callName: q.callNameExact ? exactCallNameRegex(q.callName)
-					: new RegExp(q.callName)
+					: new RegExp(q.callName),
+				fileFilter: q.fileFilter && {
+					...q.fileFilter,
+					filter: new RegExp(q.fileFilter.filter)
+				}
 			};
 		}
 	});
@@ -156,6 +165,16 @@ function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, 
 	}
 }
 
+function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp> | undefined): boolean {
+	if(filter === undefined) {
+		return true;
+	}
+	if(file === undefined) {
+		return filter.includeUndefinedFiles ?? true;
+	}
+	return filter.filter.test(file);
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -204,19 +223,8 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 
 		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
-			filterCheck: if(query.fileFilter !== undefined) {
-				if(file === undefined) {
-					if(query.includeUndefinedFiles ?? true) {
-						break filterCheck; // although the node's file is unknown, we continue with the query
-					} else {
-						continue; // the file is unknown, and we don't want to include it; skip to the next query
-					}
-				}
-				if(new RegExp(query.fileFilter).test(file)) {
-					break filterCheck; // the file matches the filter; continue with the query
-				} else {
-					continue; // the file does not match the filter; skip to the next query
-				}
+			if(!doesFilepathMatch(file, query.fileFilter)) {
+				continue;
 			}
 
 			let targets: NodeId[] | 'no' | undefined = undefined;

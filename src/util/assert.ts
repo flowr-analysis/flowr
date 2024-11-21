@@ -1,6 +1,6 @@
 /** use this to ensure that all cases are covered in case of a selection */
 
-/* istanbul ignore next */
+/* v8 ignore next */
 export function assertUnreachable(x: never): never {
 	throw new Error(`Unexpected object: ${JSON.stringify(x)}`);
 }
@@ -28,10 +28,11 @@ export type GuardMessage = string | (() => string)
 
 /**
  * @param assertion - will be asserted
- * @param message - if a string, will be used as error message, if a function, will be called to produce the error message (can be used to avoid costly message generations)
+ * @param message - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: boolean | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
+	/* v8 ignore next 3 */
 	if(!assertion) {
 		throw new GuardError( typeof message === 'string' ? message : message());
 	}

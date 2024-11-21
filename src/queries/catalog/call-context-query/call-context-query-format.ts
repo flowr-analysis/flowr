@@ -11,10 +11,21 @@ import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { CallTargets } from './identify-link-to-last-call-relation';
 
-export interface DefaultCallContextQueryFormat<CallName extends RegExp | string> extends BaseQueryFormat {
+export interface FileFilter<FilterType> {
+	/**
+	 * Regex that a node's file attribute must match to be considered
+	 */
+	readonly filter:                 FilterType;
+	/**
+	 * If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.
+	 */
+	readonly includeUndefinedFiles?: boolean;
+}
+
+export interface DefaultCallContextQueryFormat<RegexType extends RegExp | string> extends BaseQueryFormat {
 	readonly type:            'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
-	readonly callName:        CallName;
+	readonly callName:        RegexType;
 	/**
 	 * Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?
 	 */
@@ -32,6 +43,10 @@ export interface DefaultCallContextQueryFormat<CallName extends RegExp | string>
 	 * Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?
 	 */
 	readonly includeAliases?: boolean;
+	/**
+	 * Filter that, when set, a node's file attribute must match to be considered
+	 */
+	readonly fileFilter?:     FileFilter<RegexType>;
 }
 
 /**
@@ -98,7 +113,11 @@ export const CallContextQueryDefinition = {
 		subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
 		callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
 		includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-		linkTo:         Joi.object({
+		fileFilter:     Joi.object({
+			fileFilter:            Joi.string().required().description('Regex that a node\'s file attribute must match to be considered'),
+			includeUndefinedFiles: Joi.boolean().optional().description('If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.')
+		}).optional().description('Filter that, when set, a node\'s file attribute must match to be considered'),
+		linkTo: Joi.object({
 			type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
 			callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
 		}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')

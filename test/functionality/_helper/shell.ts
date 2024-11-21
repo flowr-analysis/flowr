@@ -239,7 +239,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			request:    requestFromInput(input)
 		});
 		const result = await pipeline.allRemainingSteps();
-		return result['normalize-ts'].ast;
+		return result.normalize.ast;
 	}
 }
 

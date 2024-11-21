@@ -24,7 +24,7 @@ function processor(_results: unknown, input: Partial<ParseRequiredInputTS>): Par
 }
 
 export const PARSE_WITH_TREE_SITTER_STEP = {
-	name:              'parse-ts',
+	name:              'parse',
 	humanReadableName: 'parse with tree-sitter',
 	description:       'Parse the given R code into an AST using tree-sitter',
 	processor,
@@ -36,4 +36,4 @@ export const PARSE_WITH_TREE_SITTER_STEP = {
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInputTS
-} as const satisfies DeepReadonly<IPipelineStep<'parse-ts', typeof processor>>;
+} as const satisfies DeepReadonly<IPipelineStep<'parse', typeof processor>>;

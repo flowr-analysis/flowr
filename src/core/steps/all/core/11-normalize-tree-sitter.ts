@@ -13,12 +13,12 @@ import type { NormalizeRequiredInput } from './10-normalize';
 import { getCurrentRequestFile } from './10-normalize';
 import type { ParseStepOutputTS } from './01-parse-tree-sitter';
 
-function processor(results: { 'parse-ts'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
-	return normalizeTreeSitter(results['parse-ts'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
+function processor(results: { 'parse'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
+	return normalizeTreeSitter(results['parse'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE_TREE_SITTER = {
-	name:              'normalize-ts',
+	name:              'normalize',
 	humanReadableName: 'normalize tree-sitter tree',
 	description:       'Normalize the AST to flowR\'s AST',
 	processor,
@@ -30,6 +30,6 @@ export const NORMALIZE_TREE_SITTER = {
 		[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
 		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 	},
-	dependencies:  [ 'parse-ts' ],
+	dependencies:  [ 'parse' ],
 	requiredInput: undefined as unknown as NormalizeRequiredInput
-} as const satisfies DeepReadonly<IPipelineStep<'normalize-ts', typeof processor>>;
+} as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>;

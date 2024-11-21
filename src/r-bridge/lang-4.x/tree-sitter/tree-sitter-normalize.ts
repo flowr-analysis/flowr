@@ -63,20 +63,29 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:   undefined,
 				children: body.map(n => convertTreeNode(n)),
 				grouping: [
-					convertTreeNode(opening) as RSymbol,
-					convertTreeNode(closing) as RSymbol
+					{
+						type:      RType.Symbol,
+						location:  makeSourceRange(opening),
+						content:   removeRQuotes(opening.text),
+						lexeme:    opening.text,
+						namespace: undefined,
+						...defaultInfo
+					}, {
+						type:      RType.Symbol,
+						location:  makeSourceRange(closing),
+						content:   removeRQuotes(closing.text),
+						lexeme:    closing.text,
+						namespace: undefined,
+						...defaultInfo
+					}
 				],
-				info: {
-					fullRange:        range,
-					additionalTokens: comments,
-					fullLexeme:       node.text
-				}
+				info: { additionalTokens: comments, }
 			};
 		}
 		case TreeSitterType.BinaryOperator: {
 			const lhs = convertTreeNode(node.children[0]);
 			const rhs = convertTreeNode(node.children[node.children.length - 1]);
-			const [comments, [op]] = splitComments(node.children.slice(1, -1));
+			const [comments, [op]] = splitComments(node.children.slice(1, -1), true);
 			const opSource = makeSourceRange(op);
 			const lhsAsArg: RArgument = {
 				type:     RType.Argument,
@@ -157,8 +166,6 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		}
-		case '{' as TreeSitterType:
-		case '}' as TreeSitterType:
 		case '(' as TreeSitterType:
 		case ')' as TreeSitterType:
 		case TreeSitterType.Na:
@@ -194,7 +201,18 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			const [sequenceComments, [sequenceNode]] = splitComments(sequence);
 			return {
 				type:     RType.ForLoop,
-				variable: convertTreeNode(variableNode) as RSymbol,
+				variable: {
+					type:      RType.Symbol,
+					location:  makeSourceRange(variableNode),
+					content:   removeRQuotes(variableNode.text),
+					lexeme:    variableNode.text,
+					namespace: undefined,
+					info:      {
+						fullRange:        undefined,
+						additionalTokens: [],
+						fullLexeme:       undefined
+					}
+				},
 				vector:   convertTreeNode(sequenceNode),
 				body:     ensureExpressionList(convertTreeNode(body)),
 				location: makeSourceRange(forNode),
@@ -231,7 +249,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			const [func, argsParentheses] = node.children;
 			// tree-sitter wraps next and break in a function call, but we don't, so unwrap
 			if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
-				return convertTreeNode(func);
+				return {
+					...convertTreeNode(func),
+					...defaultInfo
+				};
 			}
 			const args = splitArrayOn(argsParentheses.children.slice(1, -1), x => x.type === 'comma');
 			const funcRange = makeSourceRange(func);
@@ -242,21 +263,21 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator) {
+				let funcNode = convertTreeNode(func) as RSymbol | RString;
+				if(funcNode.type === RType.String) {
+					funcNode = {
+						...funcNode,
+						type:      RType.Symbol,
+						namespace: undefined,
+						content:   removeRQuotes(func.text)
+					};
+				}
 				return {
 					...call,
 					type:         RType.FunctionCall,
-					// calling a function as a string should make it into a symbol
-					functionName: func.type !== TreeSitterType.String ? convertTreeNode(func) as RSymbol : {
-						type:      RType.Symbol,
-						location:  funcRange,
-						namespace: undefined,
-						content:   removeRQuotes(func.text),
-						lexeme:    func.text,
-						info:      {
-							fullRange:        funcRange,
-							additionalTokens: [],
-							fullLexeme:       func.text
-						}
+					functionName: {
+						...funcNode,
+						...defaultInfo
 					},
 					named: true
 				};
@@ -343,9 +364,12 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				operator: operator.text as '$' | '@',
 				accessed: convertTreeNode(lhs),
 				access:   [{
-					type:     RType.Argument,
-					name:     undefined,
-					value:    convertTreeNode(rhs),
+					type:  RType.Argument,
+					name:  undefined,
+					value: {
+						...convertTreeNode(rhs),
+						...defaultInfo
+					},
 					location: rhsRange,
 					lexeme:   rhs.text,
 					info:     {
@@ -375,7 +399,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					content:   name.text,
 					lexeme:    name.text,
 					info:      {
-						fullRange:        nameRange,
+						fullRange:        range,
 						additionalTokens: [],
 						fullLexeme:       name.text
 					}
@@ -384,7 +408,11 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				defaultValue,
 				location: nameRange,
 				lexeme:   name.text,
-				...defaultInfo
+				info:     {
+					fullRange:        range,
+					additionalTokens: [],
+					fullLexeme:       name.text
+				}
 			};
 		}
 		case TreeSitterType.Argument: {
@@ -412,13 +440,18 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				} else if(startAndEndsWith(name.content, '`')){
 					name.content = name.content.slice(1, -1);
 				}
+				const nameRange = makeSourceRange(nameNode);
 				return {
 					type:     RType.Argument,
 					name:     name,
 					value:    convertTreeNode(valueNode),
-					location: makeSourceRange(nameNode),
+					location: nameRange,
 					lexeme:   nameNode.text,
-					...defaultInfo
+					info:     {
+						fullRange:        nameRange,
+						additionalTokens: [],
+						fullLexeme:       nameNode.text
+					}
 				};
 			}
 
@@ -450,7 +483,17 @@ function splitComments(nodes: SyntaxNode[]): [RComment[], SyntaxNode[]] {
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {
 		if(node.type === TreeSitterType.Comment) {
-			comments.push(convertTreeNode(node) as RComment);
+			const range = makeSourceRange(node);
+			comments.push({
+				type:     RType.Comment,
+				location: range,
+				content:  node.text.slice(1),
+				lexeme:   node.text,
+				info:     {
+					additionalTokens: [],
+					fullLexeme:       node.text
+				}
+			});
 		} else {
 			others.push(node);
 		}

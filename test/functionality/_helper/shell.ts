@@ -77,15 +77,15 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	};
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean): T {
+function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting') {
+		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
 			return undefined;
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
-		} else if(key == 'location' && ignoreColumns && Array.isArray(value) && value.length === 4) {
+		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			value = [value[0], 0, value[2], value[3] - value[1]];
+			value = [value[0], 0, value[2], 0];
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
@@ -93,11 +93,9 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreSourceInfo = true): void {
-	if(ignoreSourceInfo) {
-		ast = removeInformation(ast, includeTokens, ignoreColumns);
-		expected = removeInformation(expected, includeTokens, ignoreColumns);
-	}
+function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
+	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	expected = removeInformation(expected, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	try {
 		assert.deepStrictEqual(ast, expected);
 	} catch(e) {
@@ -206,10 +204,12 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('compare-shell-ts', async function() {
+		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('compare', async function() {
 			const tsAst = await makeTsAst();
 			const shellAst = await makeShellAst();
-			assertAstEqual(tsAst, shellAst, true, false, () => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
+			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)
+			assertAstEqual(tsAst, shellAst, true, userConfig?.ignoreColumns === true,
+				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 	});
 

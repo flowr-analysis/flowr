@@ -18,8 +18,6 @@ import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -40,12 +38,10 @@ export function processReplacementFunction<OtherInfo>(
 	let indices: ContainerIndices | undefined = undefined;
 	if(name.content === '$<-') {
 		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
-		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-		const resolvedAccessedArgs = resolveByName(accessedArg?.lexeme ?? '', data.environment) as InGraphIdentifierDefinition[] | undefined;
 		const indexArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
 		const valueArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.BinaryOperationRhs);
-		if(resolvedAccessedArgs !== undefined && resolvedAccessedArgs.length > 0 && indexArg !== undefined && valueArg !== undefined) {
-			indices = [ { lexeme: indexArg.lexeme, nodeId: indexArg.info.id } ];
+		if(indexArg !== undefined && valueArg?.value !== undefined) {
+			indices = [ { lexeme: indexArg.lexeme, nodeId: valueArg.value.info.id } ];
 		}
 	}
 

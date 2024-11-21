@@ -4,6 +4,7 @@ import { retrieveNormalizedAst, withShell } from '../_helper/shell';
 import type { RString } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RBinaryOp } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
 describe('normalize-visitor', withShell(shell => {
 	let normalized: NormalizedAst | undefined;
@@ -39,5 +40,34 @@ describe('normalize-visitor', withShell(shell => {
 		const astFold = new MyStringFold();
 		const result = astFold.fold(normalized?.ast);
 		expect(result).toBe(2);
+	});
+	test('do basic math (monoid)', async() => {
+		class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
+			constructor() {
+				super(0);
+			}
+
+			protected concat(a: number, b: number): number {
+				return b;
+			}
+
+			override foldRNumber(node: RNumber<Info>) {
+				return node.content.num;
+			}
+
+			override foldRBinaryOp(node: RBinaryOp<Info>) {
+				if(node.operator === '+') {
+					return this.fold(node.lhs) + this.fold(node.rhs);
+				} else if(node.operator === '*') {
+					return this.fold(node.lhs) * this.fold(node.rhs);
+				} else {
+					return super.foldRBinaryOp(node);
+				}
+			}
+		}
+		const astFold = new MyMathFold();
+		const math = await retrieveNormalizedAst(shell, '1 + 3 * 2');
+		const result = astFold.fold(math?.ast);
+		expect(result).toBe(7);
 	});
 }));

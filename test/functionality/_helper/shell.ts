@@ -3,7 +3,7 @@ import { deepMergeObject } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
 import { guard } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import type { TestLabel } from './label';
+import type { TestLabel, TestLabelContext } from './label';
 import { modifyLabelName , decorateLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
@@ -192,19 +192,24 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	ignoreColumns:          boolean,
 	skipTreeSitter:         boolean
 }>) {
+	const skip = skipTestBecauseConfigNotMet();
+	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
+	if(!userConfig?.skipTreeSitter) {
+		labelContext.push('desugar-tree-sitter');
+	}
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return describe(`${decorateLabelContext(name, ['desugar'])} (input: ${input})`, () => {
-		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('shell', async function() {
+	return describe(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
+		test.skipIf(skip)('shell', async function() {
 			const ast = await makeShellAst();
 			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('tree-sitter', async function() {
+		test.skipIf(skip || userConfig?.skipTreeSitter)('tree-sitter', async function() {
 			const ast = await makeTsAst();
 			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('compare', async function() {
+		test.skipIf(skip || userConfig?.skipTreeSitter)('compare', async function() {
 			const tsAst = await makeTsAst();
 			const shellAst = await makeShellAst();
 			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)

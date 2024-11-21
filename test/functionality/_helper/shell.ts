@@ -194,45 +194,43 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	ignoreColumns:          boolean,
 	skipTreeSitter:         boolean
 }>) {
-	const fullname = decorateLabelContext(name, ['desugar']);
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return describe(`${fullname} (input: ${input})`, () => {
-		let resolveShellAst: (node: RNode) => void;
-		const shellAstPromise = new Promise<RNode>(r => resolveShellAst = r);
+	return describe(`${decorateLabelContext(name, ['desugar'])} (input: ${input})`, () => {
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig))('shell', async function() {
-			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-				shell,
-				request: requestFromInput(input)
-			});
-			const result = await pipeline.allRemainingSteps();
-			const ast = result.normalize.ast;
-			resolveShellAst(ast);
+			const ast = await makeShellAst();
 			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-
-		let resolveTsAst: (node: RNode) => void;
-		const tsAstPromise = new Promise<RNode>(r => resolveTsAst = r);
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('tree-sitter', async function() {
-			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-				// TODO make this global at some point, or a param like the shell?
-				treeSitter: new TreeSitterExecutor(),
-				request:    requestFromInput(input)
-			});
-			const result = await pipeline.allRemainingSteps();
-			const ast = result['normalize-ts'].ast;
-			resolveTsAst(ast);
+			const ast = await makeTsAst();
 			assertAstEqual(ast, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
-
 		test.skipIf(skipTestBecauseConfigNotMet(userConfig) || userConfig?.skipTreeSitter)('compare-shell-ts', async function() {
-			// awful way to wait for the other two tests to be finished so we don't have to calculate the ast multiple times
-			const shellAst = await shellAstPromise;
-			const tsAst = await tsAstPromise;
+			const tsAst = await makeTsAst();
+			const shellAst = await makeShellAst();
 			assertAstEqual(tsAst, shellAst, true, false, () => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
 		});
 	});
+
+	async function makeShellAst(): Promise<RNode> {
+		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+			shell,
+			request: requestFromInput(input)
+		});
+		const result = await pipeline.allRemainingSteps();
+		return result.normalize.ast;
+	}
+
+	async function makeTsAst(): Promise<RNode> {
+		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
+			// TODO make this global at some point, or a param like the shell?
+			treeSitter: new TreeSitterExecutor(),
+			request:    requestFromInput(input)
+		});
+		const result = await pipeline.allRemainingSteps();
+		return result['normalize-ts'].ast;
+	}
 }
 
 /** call within describeSession */

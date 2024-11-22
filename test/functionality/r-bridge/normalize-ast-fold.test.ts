@@ -5,6 +5,7 @@ import type { RString } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-s
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RBinaryOp } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 describe('normalize-visitor', withShell(shell => {
 	let normalized: NormalizedAst | undefined;
@@ -69,5 +70,21 @@ describe('normalize-visitor', withShell(shell => {
 		const math = await retrieveNormalizedAst(shell, '1 + 3 * 2');
 		const result = astFold.fold(math?.ast);
 		expect(result).toBe(7);
+	});
+	test('fold should stop if overwritten and no continue', async() => {
+		let foundNumber = false;
+		class MyMathFold<Info> extends DefaultNormalizedAstFold<void, Info> {
+			override foldRNumber(node: RNumber<Info>) {
+				foundNumber = true;
+			}
+
+			override foldRExpressionList(node: RExpressionList<Info>) {
+
+			}
+		}
+		const astFold = new MyMathFold();
+		const math = await retrieveNormalizedAst(shell, '1 + 3 * 2');
+		astFold.fold(math?.ast);
+		expect(foundNumber).toBe(false);
 	});
 }));

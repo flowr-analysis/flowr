@@ -54,6 +54,13 @@ Besides this, we provide the following ways to automatically categorize and link
    For now, we _only_ offer support for linking to the last call, as the current flow dependency over-approximation is not stable.
 4. **Aliases**      (\`includeAliases\`): Consider a case like \`f <- function_of_interest\`, do you want calls to \`f\` to be included in the results? There is probably no need to combine this with a global call target!
 
+It's also possible to filter the results based on the following properties:
+
+1. **File** (\`fileFilter\`): This allows you to filter the results based on the file in which the call is located. This can be useful if you are only interested in calls in, e.g., specific folders.
+  The \`fileFilter\` property is an object made up of two properties:
+  - **Filter** (\`filter\`): A regular expression that a node's file attribute must match to be considered.
+  - **Include Undefined Files** (\`includeUndefinedFiles\`): If \`fileFilter\` is set, but a node's file attribute is not present, should we include it in the results? Defaults to \`true\`.
+
 Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,
 all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:
 
@@ -98,6 +105,7 @@ my_test_function()
 		`;
 	}
 });
+
 registerQueryDocumentation('dataflow', {
 	name:             'Dataflow Query',
 	type:             'active',

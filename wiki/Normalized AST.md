@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-19, 16:10:08 UTC presenting an overview of flowR's normalized ast (v2.1.7, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-22, 09:56:33 UTC presenting an overview of flowR's normalized ast (v2.1.7, using R v4.4.1)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -24,7 +24,7 @@ Each edge is labeled with the type of the parent-child relationship (the "role")
 
 
 ```mermaid
-flowchart TD
+flowchart LR
     n7(["RExpressionList (7)
  "])
     n6(["RBinaryOp (6)
@@ -51,51 +51,7 @@ x"])
 
 ```
 	
-<details>
-
-<summary style="color:gray">R Code of the Normalized AST</summary>
-
-The analysis required _8.86 ms_ (including parsing) within the generation environment.
-
-```r
-x <- 2 * 3 + 1
-```
-
-<details>
-
-<summary style="color:gray">Mermaid Code</summary>
-
-```
-flowchart TD
-    n7(["RExpressionList (7)
- "])
-    n6(["RBinaryOp (6)
-#60;#45;"])
-    n7 -->|"expr-list-child-0"| n6
-    n0(["RSymbol (0)
-x"])
-    n6 -->|"binop-lhs"| n0
-    n5(["RBinaryOp (5)
-#43;"])
-    n6 -->|"binop-rhs"| n5
-    n3(["RBinaryOp (3)
-#42;"])
-    n5 -->|"binop-lhs"| n3
-    n1(["RNumber (1)
-2"])
-    n3 -->|"binop-lhs"| n1
-    n2(["RNumber (2)
-3"])
-    n3 -->|"binop-rhs"| n2
-    n4(["RNumber (4)
-1"])
-    n5 -->|"binop-rhs"| n4
-
-```
-
-</details>
-
-</details>
+(The analysis required _7.04 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 
 
 
@@ -106,7 +62,7 @@ x"])
 > you can either use the [Visual Studio Code extension](https://github.com/flowr-analysis/vscode-flowr) or the <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the normalized AST of R code, start with 'file://' to indicate a file (aliases: :n*)">`:normalize*`</span> 
 > command in the REPL (see the [Interface wiki page](https://github.com/flowr-analysis/flowr/wiki//Interface) for more information). 
 
-Indicative is the root expression list node, which is present in every normalized AST.
+Indicative of the normalization is the root expression list node, which is present in every normalized AST.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -278,7 +234,7 @@ click RNamedAccess href "https://github.com/flowr-analysis/flowr/tree/main//src/
 class RIndexAccess~Info = NoInfo~
     <<interface>> RIndexAccess
     RIndexAccess : operator#58; #34;#91;#34; | #34;#91;#91;#34;
-    RIndexAccess : access#58; readonly (RArgument#60;Info#62; | #34;#60;#62;#34;)#91;#93;
+    RIndexAccess : access#58; readonly (#34;#60;#62;#34; | RArgument#60;Info#62;)#91;#93;
 click RIndexAccess href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-access.ts#L25" "access can be a number, a variable or an expression that resolves to one, a filter etc."
     RIndexAccess : type#58; RType.Access [from RAccessBase]
     RIndexAccess : accessed#58; RNode#60;Info#62; [from RAccessBase]
@@ -424,7 +380,7 @@ Info .. RNode
 ```
 
 
-_The generation of the class diagram required 813.93 ms._
+_The generation of the class diagram required 622.61 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -433,6 +389,9 @@ Additionally, every AST node is generic with respect to the `Info` type which al
 Most notably, the `info` field holds the `id` of the node, which is used to reference the node in the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph).
 
 In summary, we have the following types:
+
+
+<details><summary style="color:black">Normalized AST Node Types</summary>
 
  * [RNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163)   
    The `RNode` type is the union of all possible nodes in the R-ast.
@@ -1147,394 +1106,23 @@ In summary, we have the following types:
      
 
 
-With this, the example file produced the following AST (shown from left to right for space reasons):
-
-
-
-
-```mermaid
-flowchart LR
-    n53(["RExpressionList (53)
- "])
-    n2(["RBinaryOp (2)
-#60;#45;"])
-    n53 -->|"expr-list-child-0"| n2
-    n0(["RSymbol (0)
-sum"])
-    n2 -->|"binop-lhs"| n0
-    n1(["RNumber (1)
-0"])
-    n2 -->|"binop-rhs"| n1
-    n5(["RBinaryOp (5)
-#60;#45;"])
-    n53 -->|"expr-list-child-1"| n5
-    n3(["RSymbol (3)
-product"])
-    n5 -->|"binop-lhs"| n3
-    n4(["RNumber (4)
-1"])
-    n5 -->|"binop-rhs"| n4
-    n8(["RBinaryOp (8)
-#60;#45;"])
-    n53 -->|"expr-list-child-2"| n8
-    n6(["RSymbol (6)
-w"])
-    n8 -->|"binop-lhs"| n6
-    n7(["RNumber (7)
-7"])
-    n8 -->|"binop-rhs"| n7
-    n11(["RBinaryOp (11)
-#60;#45;"])
-    n53 -->|"expr-list-child-3"| n11
-    n9(["RSymbol (9)
-N"])
-    n11 -->|"binop-lhs"| n9
-    n10(["RNumber (10)
-10"])
-    n11 -->|"binop-rhs"| n10
-    n36(["RForLoop (36)
-for"])
-    n53 -->|"expr-list-child-4"| n36
-    n12(["RSymbol (12)
-i"])
-    n36 -->|"for-variable"| n12
-    n20(["RBinaryOp (20)
-#58;"])
-    n36 -->|"for-vector"| n20
-    n13(["RNumber (13)
-1"])
-    n20 -->|"binop-lhs"| n13
-    n19(["RExpressionList (19)
- "])
-    n20 -->|"binop-rhs"| n19
-    n19 -.-|"group-open"| n14
-    n19 -.-|"group-close"| n15
-    n14(["RSymbol (14)
-("])
-    n15(["RSymbol (15)
-)"])
-    n18(["RBinaryOp (18)
-#45;"])
-    n19 -->|"expr-list-child-0"| n18
-    n16(["RSymbol (16)
-N"])
-    n18 -->|"binop-lhs"| n16
-    n17(["RNumber (17)
-1"])
-    n18 -->|"binop-rhs"| n17
-    n35(["RExpressionList (35)
- "])
-    n36 -->|"for-body"| n35
-    n35 -.-|"group-open"| n21
-    n35 -.-|"group-close"| n22
-    n21(["RSymbol (21)
-#123;"])
-    n22(["RSymbol (22)
-#125;"])
-    n29(["RBinaryOp (29)
-#60;#45;"])
-    n35 -->|"expr-list-child-0"| n29
-    n23(["RSymbol (23)
-sum"])
-    n29 -->|"binop-lhs"| n23
-    n28(["RBinaryOp (28)
-#43;"])
-    n29 -->|"binop-rhs"| n28
-    n26(["RBinaryOp (26)
-#43;"])
-    n28 -->|"binop-lhs"| n26
-    n24(["RSymbol (24)
-sum"])
-    n26 -->|"binop-lhs"| n24
-    n25(["RSymbol (25)
-i"])
-    n26 -->|"binop-rhs"| n25
-    n27(["RSymbol (27)
-w"])
-    n28 -->|"binop-rhs"| n27
-    n34(["RBinaryOp (34)
-#60;#45;"])
-    n35 -->|"expr-list-child-1"| n34
-    n30(["RSymbol (30)
-product"])
-    n34 -->|"binop-lhs"| n30
-    n33(["RBinaryOp (33)
-#42;"])
-    n34 -->|"binop-rhs"| n33
-    n31(["RSymbol (31)
-product"])
-    n33 -->|"binop-lhs"| n31
-    n32(["RSymbol (32)
-i"])
-    n33 -->|"binop-rhs"| n32
-    n44(["RFunctionCall (44)
-cat"])
-    n53 -->|"expr-list-child-5"| n44
-    n37(["RSymbol (37)
-cat"])
-    n44 -->|"call-name"| n37
-    n39(["RArgument (39)
-#34;Sum#58;#34;"])
-    n44 -->|"call-argument-1"| n39
-    n38(["RString (38)
-#34;Sum#58;#34;"])
-    n39 -->|"arg-value"| n38
-    n41(["RArgument (41)
-sum"])
-    n44 -->|"call-argument-2"| n41
-    n40(["RSymbol (40)
-sum"])
-    n41 -->|"arg-value"| n40
-    n43(["RArgument (43)
-#34;
-#34;"])
-    n44 -->|"call-argument-3"| n43
-    n42(["RString (42)
-#34;
-#34;"])
-    n43 -->|"arg-value"| n42
-    n52(["RFunctionCall (52)
-cat"])
-    n53 -->|"expr-list-child-6"| n52
-    n45(["RSymbol (45)
-cat"])
-    n52 -->|"call-name"| n45
-    n47(["RArgument (47)
-#34;Product#58;#34;"])
-    n52 -->|"call-argument-1"| n47
-    n46(["RString (46)
-#34;Product#58;#34;"])
-    n47 -->|"arg-value"| n46
-    n49(["RArgument (49)
-product"])
-    n52 -->|"call-argument-2"| n49
-    n48(["RSymbol (48)
-product"])
-    n49 -->|"arg-value"| n48
-    n51(["RArgument (51)
-#34;
-#34;"])
-    n52 -->|"call-argument-3"| n51
-    n50(["RString (50)
-#34;
-#34;"])
-    n51 -->|"arg-value"| n50
-
-```
-	
-<details>
-
-<summary style="color:gray">R Code of the Normalized AST</summary>
-
-The analysis required _6.09 ms_ (including parsing) within the generation environment.
-
-```r
-sum <- 0
-product <- 1
-w <- 7
-N <- 10
-
-for (i in 1:(N-1)) {
-  sum <- sum + i + w
-  product <- product * i
-}
-
-cat("Sum:", sum, "\n")
-cat("Product:", product, "\n")
-
-```
-
-<details>
-
-<summary style="color:gray">Mermaid Code</summary>
-
-```
-flowchart LR
-    n53(["RExpressionList (53)
- "])
-    n2(["RBinaryOp (2)
-#60;#45;"])
-    n53 -->|"expr-list-child-0"| n2
-    n0(["RSymbol (0)
-sum"])
-    n2 -->|"binop-lhs"| n0
-    n1(["RNumber (1)
-0"])
-    n2 -->|"binop-rhs"| n1
-    n5(["RBinaryOp (5)
-#60;#45;"])
-    n53 -->|"expr-list-child-1"| n5
-    n3(["RSymbol (3)
-product"])
-    n5 -->|"binop-lhs"| n3
-    n4(["RNumber (4)
-1"])
-    n5 -->|"binop-rhs"| n4
-    n8(["RBinaryOp (8)
-#60;#45;"])
-    n53 -->|"expr-list-child-2"| n8
-    n6(["RSymbol (6)
-w"])
-    n8 -->|"binop-lhs"| n6
-    n7(["RNumber (7)
-7"])
-    n8 -->|"binop-rhs"| n7
-    n11(["RBinaryOp (11)
-#60;#45;"])
-    n53 -->|"expr-list-child-3"| n11
-    n9(["RSymbol (9)
-N"])
-    n11 -->|"binop-lhs"| n9
-    n10(["RNumber (10)
-10"])
-    n11 -->|"binop-rhs"| n10
-    n36(["RForLoop (36)
-for"])
-    n53 -->|"expr-list-child-4"| n36
-    n12(["RSymbol (12)
-i"])
-    n36 -->|"for-variable"| n12
-    n20(["RBinaryOp (20)
-#58;"])
-    n36 -->|"for-vector"| n20
-    n13(["RNumber (13)
-1"])
-    n20 -->|"binop-lhs"| n13
-    n19(["RExpressionList (19)
- "])
-    n20 -->|"binop-rhs"| n19
-    n19 -.-|"group-open"| n14
-    n19 -.-|"group-close"| n15
-    n14(["RSymbol (14)
-("])
-    n15(["RSymbol (15)
-)"])
-    n18(["RBinaryOp (18)
-#45;"])
-    n19 -->|"expr-list-child-0"| n18
-    n16(["RSymbol (16)
-N"])
-    n18 -->|"binop-lhs"| n16
-    n17(["RNumber (17)
-1"])
-    n18 -->|"binop-rhs"| n17
-    n35(["RExpressionList (35)
- "])
-    n36 -->|"for-body"| n35
-    n35 -.-|"group-open"| n21
-    n35 -.-|"group-close"| n22
-    n21(["RSymbol (21)
-#123;"])
-    n22(["RSymbol (22)
-#125;"])
-    n29(["RBinaryOp (29)
-#60;#45;"])
-    n35 -->|"expr-list-child-0"| n29
-    n23(["RSymbol (23)
-sum"])
-    n29 -->|"binop-lhs"| n23
-    n28(["RBinaryOp (28)
-#43;"])
-    n29 -->|"binop-rhs"| n28
-    n26(["RBinaryOp (26)
-#43;"])
-    n28 -->|"binop-lhs"| n26
-    n24(["RSymbol (24)
-sum"])
-    n26 -->|"binop-lhs"| n24
-    n25(["RSymbol (25)
-i"])
-    n26 -->|"binop-rhs"| n25
-    n27(["RSymbol (27)
-w"])
-    n28 -->|"binop-rhs"| n27
-    n34(["RBinaryOp (34)
-#60;#45;"])
-    n35 -->|"expr-list-child-1"| n34
-    n30(["RSymbol (30)
-product"])
-    n34 -->|"binop-lhs"| n30
-    n33(["RBinaryOp (33)
-#42;"])
-    n34 -->|"binop-rhs"| n33
-    n31(["RSymbol (31)
-product"])
-    n33 -->|"binop-lhs"| n31
-    n32(["RSymbol (32)
-i"])
-    n33 -->|"binop-rhs"| n32
-    n44(["RFunctionCall (44)
-cat"])
-    n53 -->|"expr-list-child-5"| n44
-    n37(["RSymbol (37)
-cat"])
-    n44 -->|"call-name"| n37
-    n39(["RArgument (39)
-#34;Sum#58;#34;"])
-    n44 -->|"call-argument-1"| n39
-    n38(["RString (38)
-#34;Sum#58;#34;"])
-    n39 -->|"arg-value"| n38
-    n41(["RArgument (41)
-sum"])
-    n44 -->|"call-argument-2"| n41
-    n40(["RSymbol (40)
-sum"])
-    n41 -->|"arg-value"| n40
-    n43(["RArgument (43)
-#34;
-#34;"])
-    n44 -->|"call-argument-3"| n43
-    n42(["RString (42)
-#34;
-#34;"])
-    n43 -->|"arg-value"| n42
-    n52(["RFunctionCall (52)
-cat"])
-    n53 -->|"expr-list-child-6"| n52
-    n45(["RSymbol (45)
-cat"])
-    n52 -->|"call-name"| n45
-    n47(["RArgument (47)
-#34;Product#58;#34;"])
-    n52 -->|"call-argument-1"| n47
-    n46(["RString (46)
-#34;Product#58;#34;"])
-    n47 -->|"arg-value"| n46
-    n49(["RArgument (49)
-product"])
-    n52 -->|"call-argument-2"| n49
-    n48(["RSymbol (48)
-product"])
-    n49 -->|"arg-value"| n48
-    n51(["RArgument (51)
-#34;
-#34;"])
-    n52 -->|"call-argument-3"| n51
-    n50(["RString (50)
-#34;
-#34;"])
-    n51 -->|"arg-value"| n50
-
-```
-
 </details>
+    
 
-</details>
+The following segments intend to give you an overview of how to work with the normalized AST:
 
+* [How to get a normalized AST](#how-get-a-normalized-ast)
+* [Visitors and Folds](#visitors-and-folds)
 
+## How Get a Normalized AST
 
+As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface#the-pipeline-executor) wiki page, you can use the 
+`PipelineExecutor` to get the normalized AST. If you are only interested in the normalization,
+a pipeline like the `DEFAULT_NORMALIZE_PIPELINE` suffices:
 
-# Working with the Normalized AST
-## Visiting
-This chapter will outline how to use the `NormalizedAstVisitor` to go over the AST.
-
-### **Step 1**: Get the ast
-
-We can get the AST by running a parse & normalize _flowr_ pipeline:
 
 ```ts
-async function getAst(code: string) {
+async function getAst(code: string): Promise<RNode> {
     const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
         shell: new RShell(),
         request: requestFromInput(code.trim())
@@ -1544,86 +1132,304 @@ async function getAst(code: string) {
 ```
 
 
-### **Step 2**: Implement the `Visitor` Interface
-To use the NormalizedAstVisitor we have to implement the Visitor interface:
- * **[Visitor](https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-visitor.ts#L27)**   
-   
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-visitor.ts#L27">./src/abstract-interpretation/normalized-ast-visitor.ts#L27</a></summary>
+From the REPL, you can use the <span title="Description (Repl Command): Get mermaid code for the normalized AST of R code, start with 'file://' to indicate a file (aliases: :n)">`:normalize`</span> command. 
+
+## Traversing the Normalized AST
+
+We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [Folds](#folds).
+
+### Visitors
+
+If you want a simple visitor which traverses the AST, the `visitAst` function from 
+[`./src/r-bridge/lang-4.x/ast/model/processing/visitor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/processing/visitor.ts) is a good starting point.
+You may specify functions to be called whenever you enter and exit a node during the traversal, and any
+computation is to be done by side effects.
+For example, if you want to collect all the `id`s present within a normalized (sub-)ast,
+as it is done by the collectAllIds function, you can use the following visitor:
+
+
+```ts
+const ids = new Set<NodeId>();
+visitAst(nodes, node => {
+    ids.add(node.info.id);
+});
+return ids;
+```
+ 
+
+### Folds
+
+We formulate a fold with the base class `DefaultNormalizedAstFold` in [`./src/abstract-interpretation/normalized-ast-fold.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/abstract-interpretation/normalized-ast-fold.ts).
+Using this class, you can create your own fold behavior by overwriting the default methods.
+By default, the class provides a monoid abstraction using the _empty_ from the constructor and the _concat_ method.
+
+ 
+ * [DefaultNormalizedAstFold](https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-fold.ts#L82)   
+   Default implementation of a fold over the normalized AST (using the classic fold traversal).
+   To modify the behavior, please extend this class and overwrite the methods of interest.
+   You can control the value passing (`Returns` generic)
+   by providing sensible Monoid behavior overwriting the
+   <code>concat</code>
+   method
+   and supplying the empty value in the constructor.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-fold.ts#L82">./src/abstract-interpretation/normalized-ast-fold.ts#L82</a></summary>
    
    
    ```ts
-   export interface Visitor<Info = NoInfo> {
-       visitNumber?(num: RNumber<Info>): void;
-       visitString?(str: RString<Info>): void;
-       visitLogical?(logical: RLogical<Info>): void;
-       visitSymbol?(symbol: RSymbol<Info>): void;
-       visitAccess?(node: RAccess<Info>): void;
-       visitBinaryOp?(op: RBinaryOp<Info>): void;
-       visitPipe?(op: RPipe<Info>): void;
-       visitUnaryOp?(op: RUnaryOp<Info>): void;
-       visitFor?(loop: RForLoop<Info>): void;
-       visitWhile?(loop: RWhileLoop<Info>): void;
-       visitRepeat?(loop: RRepeatLoop<Info>): void;
-       visitNext?(next: RNext<Info>): void;
-       visitBreak?(next: RBreak<Info>): void;
-       visitComment?(comment: RComment<Info>): void;
-       visitLineDirective?(comment: RLineDirective<Info>): void;
-       visitIfThenElse?(ifThenExpr: RIfThenElse<Info>): void;
-       visitExprList?(exprList: RExpressionList<Info>): void;
-       visitFunctionDefinition?(definition: RFunctionDefinition<Info>): void;
-       visitFunctionCall?(call: RFunctionCall<Info>): void;
-       visitArgument?(argument: RArgument<Info>): void;
-       visitParameter?(parameter: RParameter<Info>): void;
+   /**
+    * Default implementation of a fold over the normalized AST (using the classic fold traversal).
+    * To modify the behavior, please extend this class and overwrite the methods of interest.
+    * You can control the value passing (`Returns` generic)
+    * by providing sensible Monoid behavior overwriting the {@link DefaultNormalizedAstFold#concat|concat} method
+    * and supplying the empty value in the constructor.
+    *
+    * @note By providing `entry` and `exit` you can use this as an extension to the simpler {@link visitAst} function but without
+    *       the early termination within the visitors (for this, you can overwrite the respective `fold*` methods).
+    *
+    * @example First you want to create your own fold:
+    *
+    * ```ts
+    * let marker = false;
+    * class MyNumberFold<Info> extends DefaultNormalizedAstFold<void, Info> {
+    *     override foldRNumber(node: RNumber<Info>) {
+    *         super.foldRNumber(node);
+    *         marker = true;
+    *     }
+    * }
+    * ```
+    * This one does explicitly not use the return functionality (and hence acts more as a conventional visitor).
+    * Now let us suppose we have a normalized AST as an {@link RNode} in the variable `ast`
+    * and want to check if the AST contains a number:
+    *
+    * ```ts
+    * const result = new MyNumberFold().fold(ast);
+    * ```
+    *
+    * Please take a look at the corresponding tests or the wiki pages for more information on how to use this fold.
+    */
+   export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements NormalizedAstFold<Returns, Info> {
+       protected readonly enter: EntryExitVisitor<Info>;
+       protected readonly exit:  EntryExitVisitor<Info>;
+       protected readonly empty: Returns;
+   
+       /**
+        * Empty must provide a sensible default whenever you want to have `Returns` as non-`void`
+        * (e.g., whenever you want your visitors to be able to return a value).
+        */
+       constructor(empty: Returns, enter?: EntryExitVisitor<Info>, exit?: EntryExitVisitor<Info>) {
+           this.empty = empty;
+           this.enter = enter;
+           this.exit = exit;
+       }
+   
+       /**
+        * Monoid::concat
+        *
+        *
+        * @see {@link https://en.wikipedia.org/wiki/Monoid}
+        * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
+        */
+       protected concat(_a: Returns, _b: Returns): Returns {
+           return this.empty;
+       }
+   
+       /**
+        * overwrite this method, if you have a faster way to concat multiple nodes
+        *
+        * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
+        */
+       protected concatAll(nodes: readonly Returns[]): Returns {
+           return nodes.reduce((acc, n) => this.concat(acc, n), this.empty);
+       }
+   
+       public fold(nodes: SingleOrArrayOrNothing<RNode<Info> | typeof EmptyArgument>): Returns {
+           if(Array.isArray(nodes)) {
+               const n = nodes as readonly (RNode<Info> | null | undefined | typeof EmptyArgument)[];
+               return this.concatAll(n.filter(n => n && n !== EmptyArgument).map(node => this.foldSingle(node as RNode<Info>)));
+           } else if(nodes) {
+               return this.foldSingle(nodes as RNode<Info>);
+           }
+           return this.empty;
+       }
+   
+       protected foldSingle(node: RNode<Info>): Returns {
+           this.enter?.(node);
+           const type = node.type;
+           // @ts-expect-error -- ts may be unable to infer that the type is correct
+           const result = this.folds[type]?.(node);
+           this.exit?.(node);
+           return result;
+       }
+   
+       foldRAccess(access: RAccess<Info>) {
+           let accessed = this.foldSingle(access.accessed);
+           if(access.operator === '[' || access.operator === '[[') {
+               accessed = this.concat(accessed, this.fold(access.access));
+           }
+           return accessed;
+       }
+       foldRArgument(argument: RArgument<Info>) {
+           return this.concat(this.fold(argument.name), this.fold(argument.value));
+       }
+       foldRBinaryOp(binaryOp: RBinaryOp<Info>) {
+           return this.concat(this.foldSingle(binaryOp.lhs), this.foldSingle(binaryOp.rhs));
+       }
+       foldRExpressionList(exprList: RExpressionList<Info>) {
+           return this.concat(this.fold(exprList.grouping), this.fold(exprList.children));
+       }
+       foldRForLoop(loop: RForLoop<Info>) {
+           return this.concatAll([this.foldSingle(loop.variable), this.foldSingle(loop.vector), this.foldSingle(loop.body)]);
+       }
+       foldRFunctionCall(call: RFunctionCall<Info>) {
+           return this.concat(this.foldSingle(call.named ? call.functionName : call.calledFunction), this.fold(call.arguments));
+       }
+       foldRFunctionDefinition(definition: RFunctionDefinition<Info>) {
+           return this.concat(this.fold(definition.parameters), this.foldSingle(definition.body));
+       }
+       foldRIfThenElse(ite: RIfThenElse<Info>) {
+           return this.concatAll([this.foldSingle(ite.condition), this.foldSingle(ite.then), this.fold(ite.otherwise)]);
+       }
+       foldRParameter(parameter: RParameter<Info>) {
+           return this.concat(this.foldSingle(parameter.name), this.fold(parameter.defaultValue));
+       }
+       foldRPipe(pipe: RPipe<Info>) {
+           return this.concat(this.foldSingle(pipe.lhs), this.foldSingle(pipe.rhs));
+       }
+       foldRRepeatLoop(loop: RRepeatLoop<Info>) {
+           return this.foldSingle(loop.body);
+       }
+       foldRUnaryOp(unaryOp: RUnaryOp<Info>) {
+           return this.foldSingle(unaryOp.operand);
+       }
+       foldRWhileLoop(loop: RWhileLoop<Info>) {
+           return this.concat(this.foldSingle(loop.condition), this.foldSingle(loop.body));
+       }
+       foldRBreak(_node: RBreak<Info>) {
+           return this.empty;
+       }
+       foldRComment(_node: RComment<Info>) {
+           return this.empty;
+       }
+       foldRLineDirective(_node: RLineDirective<Info>) {
+           return this.empty;
+       }
+       foldRLogical(_node: RLogical<Info>) {
+           return this.empty;
+       }
+       foldRNext(_node: RNext<Info>) {
+           return this.empty;
+       }
+       foldRNumber(_node: RNumber<Info>) {
+           return this.empty;
+       }
+       foldRString(_node: RString<Info>) {
+           return this.empty;
+       }
+       foldRSymbol(_node: RSymbol<Info>) {
+           return this.empty;
+       }
+   
+       protected readonly folds: FittingNormalizedAstFold<Returns, Info> = {
+           [RType.Access]:             n => this.foldRAccess(n),
+           [RType.Argument]:           n => this.foldRArgument(n),
+           [RType.BinaryOp]:           n => this.foldRBinaryOp(n),
+           [RType.Break]:              n => this.foldRBreak(n),
+           [RType.Comment]:            n => this.foldRComment(n),
+           [RType.ExpressionList]:     n => this.foldRExpressionList(n),
+           [RType.ForLoop]:            n => this.foldRForLoop(n),
+           [RType.FunctionCall]:       n => this.foldRFunctionCall(n),
+           [RType.FunctionDefinition]: n => this.foldRFunctionDefinition(n),
+           [RType.IfThenElse]:         n => this.foldRIfThenElse(n),
+           [RType.LineDirective]:      n => this.foldRLineDirective(n),
+           [RType.Logical]:            n => this.foldRLogical(n),
+           [RType.Next]:               n => this.foldRNext(n),
+           [RType.Number]:             n => this.foldRNumber(n),
+           [RType.Parameter]:          n => this.foldRParameter(n),
+           [RType.Pipe]:               n => this.foldRPipe(n),
+           [RType.RepeatLoop]:         n => this.foldRRepeatLoop(n),
+           [RType.String]:             n => this.foldRString(n),
+           [RType.Symbol]:             n => this.foldRSymbol(n),
+           [RType.UnaryOp]:            n => this.foldRUnaryOp(n),
+           [RType.WhileLoop]:          n => this.foldRWhileLoop(n),
+       };
    }
    ```
    
    
    </details>
    
+    <details><summary style="color:black">View more (NormalizedAstFold)</summary>
 
+   * [NormalizedAstFold](https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-fold.ts#L35)   
+     Describes the fold functions for each node type.
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/abstract-interpretation/normalized-ast-fold.ts#L35">./src/abstract-interpretation/normalized-ast-fold.ts#L35</a></summary>
+     
+     
+     ```ts
+     /**
+      * Describes the fold functions for each node type.
+      */
+     export type NormalizedAstFold<Returns = void, Info = NoInfo> = {
+         [K in FoldableRType as `fold${Capitalize<K>}`]: FoldOfType<K, Returns, Info>;
+     }
+     ```
+     
+     
+     </details>
+     
 
-In this example we will implement a Visitor that counts the occurances of _if-statements_. For this we only implement the `visitIfThenElse` function.
+</details>
+    
+
+Now, of course, we could provide hundreds of examples here, but we use tests to verify that the fold behaves as expected
+and happily point to them at [`./test/functionality/r-bridge/normalize-ast-fold.test.ts`](https://github.com/flowr-analysis/flowr/tree/main/./test/functionality/r-bridge/normalize-ast-fold.test.ts).
+
+As a simple showcase, we want to use the fold to evaluate numeric expressions containing numbers, `+`, and `*` operators.
+
 
 ```ts
-const ifCountVisitor: Visitor & {count: number } = {
-    visitIfThenElse() {
-        this.count++;
-    },
-    count: 0
-}
-```
-
-
-### **Step 3**: Run the NormalizedAstVisitor
-
-```ts
-new NormalizedAstVisitor(ast).accept(ifCount);
-```
-
-
-### Complete Code
-
-```ts
-async function countIfs(code: string) {
-    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-        shell: new RShell(),
-        request: requestFromInput(code.trim())
-    }).allRemainingSteps();
-
-    const ast = result.normalize.ast;
-
-    const ifCountVisitor: Visitor & {count: number } = {
-        visitIfThenElse() {
-            this.count++;
-        },
-        count: 0
+class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
+    constructor() {
+    	/* use `0` as a placeholder empty for the monoid */
+        super(0);
     }
 
-    new NormalizedAstVisitor(ast).accept(ifCountVisitor);
-    return ifCount.count;
+    protected override concat(a: number, b: number): number {
+    	/* for this example, we ignore cases that we cannot handle */ 
+        return b;
+    }
+
+    override foldRNumber(node: RNumber<Info>) {
+    	/* return the value of the number */ 
+        return node.content.num;
+    }
+
+    override foldRBinaryOp(node: RBinaryOp<Info>) {
+        if(node.operator === '+') {
+            return this.fold(node.lhs) + this.fold(node.rhs);
+        } else if(node.operator === '*') {
+            return this.fold(node.lhs) * this.fold(node.rhs);
+        } else {
+        	/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
+            return super.foldRBinaryOp(node);
+        }
+    }
 }
 ```
 
+
+Now, we can use the `PipelineExecutor` to get the normalized AST and apply the fold:
+  
+
+```ts
+const shell = new RShell();
+const ast = (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+	shell, request: retrieveNormalizedAst(RShell, '1 + 3 * 2')
+}).allRemainingSteps()).normalize.ast;
+
+const result = new MyMathFold().fold(ast);
+console.log(result); // 7
+```
 
 
 

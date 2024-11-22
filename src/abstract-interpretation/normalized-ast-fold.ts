@@ -29,10 +29,17 @@ type FoldOfType<T extends RType, Returns = void, Info = NoInfo> = (node: Extract
 /** explicitly excludes types that are not visitable */
 export type FoldableRType = Exclude<RType, RType.Delimiter>;
 
+/**
+ * Describes the fold functions for each node type.
+ */
 export type NormalizedAstFold<Returns = void, Info = NoInfo> = {
 	[K in FoldableRType as `fold${Capitalize<K>}`]: FoldOfType<K, Returns, Info>;
 }
 
+/**
+ * Describes the type of a mapping object,
+ * which maps the type of the normalized AST node to the corresponding fold function.
+ */
 export type FittingNormalizedAstFold<Returns = void, Info = NoInfo> = Readonly<{
 	[K in FoldableRType]: FoldOfType<K, Returns, Info>;
 }>
@@ -42,9 +49,35 @@ export type SingleOrArrayOrNothing<T> = T | readonly (T | null | undefined)[] | 
 export type EntryExitVisitor<Info> = ((node: RNode<Info>) => void) | undefined;
 
 /**
- * TODO: documentation
- * default impls will always return empty, we may accept monoids in the future!
- * is a fold as well
+ * Default implementation of a fold over the normalized AST (using the classic fold traversal).
+ * To modify the behavior, please extend this class and overwrite the methods of interest.
+ * You can control the value passing (`Returns` generic)
+ * by providing sensible Monoid behavior overwriting the {@link DefaultNormalizedAstFold#concat|concat} method
+ * and supplying the empty value in the constructor.
+ *
+ * @note By providing `entry` and `exit` you can use this as an extension to the simpler {@link visitAst} function but without
+ *       the early termination within the visitors (for this, you can overwrite the respective `fold*` methods).
+ *
+ * @example First you want to create your own fold:
+ *
+ * ```ts
+ * let marker = false;
+ * class MyNumberFold<Info> extends DefaultNormalizedAstFold<void, Info> {
+ *     override foldRNumber(node: RNumber<Info>) {
+ *         super.foldRNumber(node);
+ *         marker = true;
+ *     }
+ * }
+ * ```
+ * This one does explicitly not use the return functionality (and hence acts more as a conventional visitor).
+ * Now let us suppose we have a normalized AST as an {@link RNode} in the variable `ast`
+ * and want to check if the AST contains a number:
+ *
+ * ```ts
+ * const result = new MyNumberFold().fold(ast);
+ * ```
+ *
+ * Please take a look at the corresponding tests or the wiki pages for more information on how to use this fold.
  */
 export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements NormalizedAstFold<Returns, Info> {
 	protected readonly enter: EntryExitVisitor<Info>;
@@ -61,12 +94,22 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 		this.exit = exit;
 	}
 
-	/** allows you to overwrite merge behavior */
+	/**
+	 * Monoid::concat
+	 *
+	 *
+	 * @see {@link https://en.wikipedia.org/wiki/Monoid}
+	 * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
+	 */
 	protected concat(_a: Returns, _b: Returns): Returns {
 		return this.empty;
 	}
 
-	/** overwrite, if you have a faster way to concat multiple nodes */
+	/**
+	 * overwrite this method, if you have a faster way to concat multiple nodes
+	 *
+	 * @see {@link DefaultNormalizedAstFold#concatAll|concatAll}
+	 */
 	protected concatAll(nodes: readonly Returns[]): Returns {
 		return nodes.reduce((acc, n) => this.concat(acc, n), this.empty);
 	}

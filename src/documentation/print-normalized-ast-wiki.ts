@@ -6,9 +6,15 @@ import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
 import path from 'path';
-import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot, getFilePathMd } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { printAsMs } from '../util/time';
+import { details } from './doc-util/doc-structure';
+import { PipelineExecutor } from '../core/pipeline-executor';
+import { requestFromInput } from '../r-bridge/retriever';
+import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
+import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -16,16 +22,11 @@ async function getText(shell: RShell) {
 	const now = performance.now();
 	const types = getTypesFromFolderAsMermaid({
 		rootFolder:  path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
+		files:       [path.resolve('./src/abstract-interpretation/normalized-ast-fold.ts')],
 		typeName:    'RNode',
 		inlineTypes: mermaidHide
 	});
 	const elapsed = performance.now() - now;
-
-	const visitorInterface = getTypesFromFolderAsMermaid({
-		rootFolder:  path.resolve('./src/abstract-interpretation'),
-		typeName:    'Visitor',
-		inlineTypes: mermaidHide
-	});
 
 	return `${autoGenHeader({ filename: module.filename, purpose: 'normalized ast', rVersion: rversion })}
 
@@ -45,7 +46,7 @@ ${codeBlock('r', 'x <- 2 * 3 + 1')}
 Each node in the AST contains the type, the id, and the lexeme (if applicable).
 Each edge is labeled with the type of the parent-child relationship (the "role").
 
-${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1')}
+${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n' })}
 
 &nbsp;
 
@@ -54,7 +55,7 @@ ${await printNormalizedAstForCode(shell, 'x <- 2 * 3 + 1')}
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). 
 
-Indicative is the root expression list node, which is present in every normalized AST.
+Indicative of the normalization is the root expression list node, which is present in every normalized AST.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -83,74 +84,109 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${
-	printHierarchy({ program: types.program, hierarchy: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
+	details('Normalized AST Node Types', 
+		printHierarchy({ program: types.program, hierarchy: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
+	)
 }
 
-With this, the example file produced the following AST (shown from left to right for space reasons):
+The following segments intend to give you an overview of how to work with the normalized AST:
 
-${await printNormalizedAstForCode(shell, getFileContentFromRoot('test/testfiles/example.R'), { prefix: 'flowchart LR\n' })}
+* [How to get a normalized AST](#how-get-a-normalized-ast)
+* [Visitors and Folds](#visitors-and-folds)
 
+## How Get a Normalized AST
 
-# Working with the Normalized AST
-## Visiting
-This chapter will outline how to use the \`NormalizedAstVisitor\` to go over the AST.
+As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#the-pipeline-executor) wiki page, you can use the 
+\`${PipelineExecutor.name}\` to get the normalized AST. If you are only interested in the normalization,
+a pipeline like the \`DEFAULT_NORMALIZE_PIPELINE\` suffices:
 
-### **Step 1**: Get the ast
-
-We can get the AST by running a parse & normalize _flowr_ pipeline:
 ${codeBlock('ts', `
-async function getAst(code: string) {
-    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-        shell: new RShell(),
-        request: requestFromInput(code.trim())
+async function getAst(code: string): Promise<RNode> {
+    const result = await new ${PipelineExecutor.name}(DEFAULT_NORMALIZE_PIPELINE, {
+        shell: new ${RShell.name}(),
+        request: ${requestFromInput.name}(code.trim())
     }).allRemainingSteps();
     return result.normalize.ast;
 }`)}
 
-### **Step 2**: Implement the \`Visitor\` Interface
-To use the NormalizedAstVisitor we have to implement the Visitor interface:
-${
-	printHierarchy({ program: visitorInterface.program, hierarchy: visitorInterface.info, root: 'Visitor', collapseFromNesting: Number.MAX_VALUE })
-}
+From the REPL, you can use the ${getReplCommand('normalize')} command. 
 
+## Traversing the Normalized AST
 
-In this example we will implement a Visitor that counts the occurances of _if-statements_. For this we only implement the \`visitIfThenElse\` function.
+We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [Folds](#folds).
+
+### Visitors
+
+If you want a simple visitor which traverses the AST, the \`${visitAst.name}\` function from 
+${getFilePathMd('../r-bridge/lang-4.x/ast/model/processing/visitor.ts')} is a good starting point.
+You may specify functions to be called whenever you enter and exit a node during the traversal, and any
+computation is to be done by side effects.
+For example, if you want to collect all the \`id\`s present within a normalized (sub-)ast,
+as it is done by the ${collectAllIds.name} function, you can use the following visitor:
+
 ${codeBlock('ts', `
-const ifCountVisitor: Visitor & {count: number } = {
-    visitIfThenElse() {
-        this.count++;
-    },
-    count: 0
-}
-`)}
+const ids = new Set<NodeId>();
+visitAst(nodes, node => {
+    ids.add(node.info.id);
+});
+return ids;
+`)} 
 
-### **Step 3**: Run the NormalizedAstVisitor
+### Folds
+
+We formulate a fold with the base class \`${DefaultNormalizedAstFold.name}\` in ${getFilePathMd('../abstract-interpretation/normalized-ast-fold.ts')}.
+Using this class, you can create your own fold behavior by overwriting the default methods.
+By default, the class provides a monoid abstraction using the _empty_ from the constructor and the _concat_ method.
+
+ 
+${printHierarchy({ program: types.program, hierarchy: types.info, root: 'DefaultNormalizedAstFold' })}
+
+Now, of course, we could provide hundreds of examples here, but we use tests to verify that the fold behaves as expected
+and happily point to them at ${getFilePathMd('../../test/functionality/r-bridge/normalize-ast-fold.test.ts')}.
+
+As a simple showcase, we want to use the fold to evaluate numeric expressions containing numbers, \`+\`, and \`*\` operators.
+
 ${codeBlock('ts', `
-new NormalizedAstVisitor(ast).accept(ifCount);
-`)}
-
-### Complete Code
-${codeBlock('ts', `
-async function countIfs(code: string) {
-    const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-        shell: new RShell(),
-        request: requestFromInput(code.trim())
-    }).allRemainingSteps();
-
-    const ast = result.normalize.ast;
-
-    const ifCountVisitor: Visitor & {count: number } = {
-        visitIfThenElse() {
-            this.count++;
-        },
-        count: 0
+class MyMathFold<Info> extends ${DefaultNormalizedAstFold.name}<number, Info> {
+    constructor() {
+    	/* use \`0\` as a placeholder empty for the monoid */
+        super(0);
     }
 
-    new NormalizedAstVisitor(ast).accept(ifCountVisitor);
-    return ifCount.count;
+    protected override concat(a: number, b: number): number {
+    	/* for this example, we ignore cases that we cannot handle */ 
+        return b;
+    }
+
+    override foldRNumber(node: RNumber<Info>) {
+    	/* return the value of the number */ 
+        return node.content.num;
+    }
+
+    override foldRBinaryOp(node: RBinaryOp<Info>) {
+        if(node.operator === '+') {
+            return this.fold(node.lhs) + this.fold(node.rhs);
+        } else if(node.operator === '*') {
+            return this.fold(node.lhs) * this.fold(node.rhs);
+        } else {
+        	/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
+            return super.foldRBinaryOp(node);
+        }
+    }
 }
 `)}
 
+Now, we can use the \`${PipelineExecutor.name}\` to get the normalized AST and apply the fold:
+  
+${codeBlock('ts', `
+const shell = new ${RShell.name}();
+const ast = (await new ${PipelineExecutor.name}(DEFAULT_NORMALIZE_PIPELINE, {
+	shell, request: retrieveNormalizedAst(${RShell.name}, '1 + 3 * 2')
+}).allRemainingSteps()).normalize.ast;
+
+const result = new MyMathFold().fold(ast);
+console.log(result); // -> 7
+`)}
 
 `;
 }

@@ -48,7 +48,7 @@ describe('normalize-visitor', withShell(shell => {
 				super(0);
 			}
 
-			protected concat(a: number, b: number): number {
+			protected override concat(a: number, b: number): number {
 				return b;
 			}
 
@@ -74,11 +74,11 @@ describe('normalize-visitor', withShell(shell => {
 	test('fold should stop if overwritten and no continue', async() => {
 		let foundNumber = false;
 		class MyMathFold<Info> extends DefaultNormalizedAstFold<void, Info> {
-			override foldRNumber(node: RNumber<Info>) {
+			override foldRNumber(_node: RNumber<Info>) {
 				foundNumber = true;
 			}
 
-			override foldRExpressionList(node: RExpressionList<Info>) {
+			override foldRExpressionList(_node: RExpressionList<Info>) {
 
 			}
 		}

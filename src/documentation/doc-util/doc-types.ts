@@ -12,7 +12,7 @@ import { details } from './doc-structure';
 export interface TypeElementInSource {
 	name:                 string;
 	node:                 ts.Node;
-	kind:                 'interface' | 'type' | 'enum';
+	kind:                 'interface' | 'type' | 'enum' | 'class';
 	extends:              string[];
 	generics:             string[];
 	filePath:             string;
@@ -161,6 +161,29 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 					const name = member.name?.getText(sourceFile) ?? '';
 					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
 				})
+			});
+		} else if(ts.isClassDeclaration(node)) {
+			const className = node.name?.getText(sourceFile) ?? '';
+			const baseTypes = node.heritageClauses?.flatMap(clause =>
+				clause.types
+					.map(type => type.getText(sourceFile) ?? '')
+					.map(dropGenericsFromType)
+			) ?? [];
+			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+
+			hierarchyList.push({
+				name:       dropGenericsFromType(className),
+				node,
+				kind:       'class',
+				extends:    baseTypes,
+				comments:   getTextualComments(node),
+				generics,
+				filePath:   sourceFile.fileName,
+				lineNumber: getStartLine(node, sourceFile),
+				properties: node.members.map(member => {
+					const name = member.name?.getText(sourceFile) ?? '';
+					return `${name}${escapeMarkdown(': ' + getType(member, typeChecker))}`;
+				}),
 			});
 		}
 

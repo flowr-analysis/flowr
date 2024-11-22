@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-22, 09:56:33 UTC presenting an overview of flowR's normalized ast (v2.1.7, using R v4.4.1)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-22, 12:56:10 UTC presenting an overview of flowR's normalized ast (v2.1.7, using R v4.4.0)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -51,7 +51,7 @@ x"])
 
 ```
 	
-(The analysis required _7.04 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
+(The analysis required _10.72 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 
 
 
@@ -380,7 +380,7 @@ Info .. RNode
 ```
 
 
-_The generation of the class diagram required 622.61 ms._
+_The generation of the class diagram required 820.33 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -1428,7 +1428,7 @@ const ast = (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 }).allRemainingSteps()).normalize.ast;
 
 const result = new MyMathFold().fold(ast);
-console.log(result); // 7
+console.log(result); // -> 7
 ```
 
 

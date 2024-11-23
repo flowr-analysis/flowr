@@ -41,7 +41,7 @@
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
-    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --forbid-only && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm-run-all wiki:*"
+    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm-run-all wiki:*"
   },
   "keywords": [
     "static code analysis",

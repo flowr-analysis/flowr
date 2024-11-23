@@ -6,7 +6,7 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
-import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
+import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { requestFromInput } from '../r-bridge/retriever';
@@ -969,6 +969,24 @@ ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
+
+#### Linked Unknown Side Effects
+
+Not all side effects are created equal in the sense that they stem from a specific function call.
+Consider R's basic [\`graphics\`](https://www.rdocumentation.org/packages/graphics/) which
+implicitly draws on the current device and does not explicitly link a function like \`points\` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
+
+${await (async() => {
+			const [result, df] = await printDfGraphForCode(shell, 'plot(data)\npoints(data2)', { exposeResult: true });
+			return `
+${result}
+
+Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [${[...df.dataflow.graph.unknownSideEffects].map(formatSideEffect).join(',')}].
+Additionally, we express this by a ${linkEdgeName(EdgeType.Reads)} edge.
+	`;
+		})()}
+ 
+
 	`;
 
 	})()

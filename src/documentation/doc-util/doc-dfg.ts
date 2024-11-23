@@ -1,4 +1,4 @@
-import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { DataflowGraph, UnknownSidEffect } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
 import type { MermaidMarkdownMark } from '../../util/mermaid/dfg';
 import { graphToMermaid } from '../../util/mermaid/dfg';
@@ -10,7 +10,6 @@ import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
-import { jsonReplacer } from '../../util/json';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { printAsMs } from '../../util/time';
 
@@ -33,6 +32,14 @@ export interface PrintDataflowGraphOptions {
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
 	readonly hideEnvInMermaid?:   boolean;
+}
+
+export function formatSideEffect(ef: UnknownSidEffect): string {
+	if(typeof ef === 'object') {
+		return `${ef.id} (linked)`;
+	} else {
+		return `${ef}`;
+	}
 }
 
 export async function printDfGraphForCode(shell: RShell, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
@@ -64,7 +71,7 @@ ${code}
 <summary style="color:gray">${switchCodeAndGraph ? 'Dataflow Graph of the R Code' : 'R Code of the Dataflow Graph'}</summary>
 
 ${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): {${[...mark].join(', ')}}.` : ''}
-We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + JSON.stringify(result.dataflow.graph.unknownSideEffects, jsonReplacer) + ')' : 'no unknown side effects'} during the analysis.
+We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + [...result.dataflow.graph.unknownSideEffects].map(formatSideEffect).join(', ') + ')' : 'no unknown side effects'} during the analysis.
 
 ${switchCodeAndGraph ? dfGraph : codeText}
 

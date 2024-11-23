@@ -73,7 +73,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs }, indices?.length === 1);
 	if(markAsNSE) {
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}

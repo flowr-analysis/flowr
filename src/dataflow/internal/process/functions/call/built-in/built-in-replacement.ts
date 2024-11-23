@@ -38,10 +38,12 @@ export function processReplacementFunction<OtherInfo>(
 	let indices: ContainerIndices | undefined = undefined;
 	if(name.content === '$<-') {
 		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
+		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
 		const indexArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
 		const valueArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.BinaryOperationRhs);
-		if(indexArg !== undefined && valueArg?.value !== undefined) {
-			indices = [ { lexeme: indexArg.lexeme, nodeId: valueArg.value.info.id } ];
+		if(indexArg !== undefined && valueArg?.value !== undefined && accessedArg != undefined) {
+			// use access node as reference to get complete line in slice
+			indices = [ { lexeme: indexArg.lexeme, nodeId: accessedArg.info.parent ?? '' } ]; // valueArg.value.info.id
 		}
 	}
 

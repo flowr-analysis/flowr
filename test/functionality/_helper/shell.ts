@@ -17,10 +17,13 @@ import type {
 import {
 	deterministicCountingIdGenerator
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
+import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
+
+
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
@@ -34,6 +37,7 @@ import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph'
 import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -398,20 +402,36 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, includeTreeSitter?: boolean },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ) {
-	const fullname = decorateLabelContext(name, ['slice']);
-
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${JSON.stringify(criteria)} ${fullname}`, async function() {
-		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
+	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
+	const skip = skipTestBecauseConfigNotMet(userConfig);
+	test.skipIf(skip)(fullname, async() => {
+		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
 			getId,
 			request:      requestFromInput(input),
 			parser:       shell,
 			criterion:    criteria,
 			autoSelectIf: userConfig?.autoSelectIf
 		}).allRemainingSteps();
+		testSlice(result);
+	});
+	if(userConfig?.includeTreeSitter) {
+		test.skipIf(skip)(`${fullname} (tree-sitter)`, async() => {
+			const result = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
+				getId,
+				request:      requestFromInput(input),
+				parser:       new TreeSitterExecutor(),
+				criterion:    criteria,
+				autoSelectIf: userConfig?.autoSelectIf
+			}).allRemainingSteps();
+			testSlice(result);
+		});
+	}
+	handleAssertOutput(name, shell, input, userConfig);
 
+	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>) {
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,
@@ -422,6 +442,5 @@ export function assertSliced(
 			console.error(normalizedAstToMermaidUrl(result.normalize.ast));
 			throw e;
 		}
-	});
-	handleAssertOutput(name, shell, input, userConfig);
+	}
 }

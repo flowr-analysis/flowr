@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import type { DataflowProcessors } from './processor';
+import type { DataflowProcessorInformation, DataflowProcessors } from './processor';
 import { processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -24,6 +24,8 @@ import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import type { Tree } from 'web-tree-sitter';
+import type { Parser } from '../r-bridge/parser';
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -78,6 +80,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 }
 
 export function produceDataFlowGraph<OtherInfo>(
+	parser: Parser<string | Tree>,
 	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -88,7 +91,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	} else {
 		firstRequest = request as RParseRequest;
 	}
-	const dfData = {
+	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+		parser:              parser,
 		completeAst:         ast,
 		environment:         initializeCleanEnvironments(),
 		processors,

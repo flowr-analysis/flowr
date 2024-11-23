@@ -11,6 +11,8 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RParseRequests } from '../../../../r-bridge/retriever';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
+import type { Parser } from '../../../../r-bridge/parser';
+import type { Tree } from 'web-tree-sitter';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -26,8 +28,8 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const;
 
-function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests }) {
-	return produceDataFlowGraph(input.request as RParseRequests, results.normalize as NormalizedAst);
+function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<string | Tree> }) {
+	return produceDataFlowGraph(input.parser as Parser<string | Tree>, input.request as RParseRequests, results.normalize as NormalizedAst);
 }
 
 export const STATIC_DATAFLOW = {
@@ -37,4 +39,3 @@ export const STATIC_DATAFLOW = {
 	requiredInput:     {
 	}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>;
-

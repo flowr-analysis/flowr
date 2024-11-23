@@ -96,8 +96,8 @@ import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-co
  * @see PipelineExecutor#nextStep
  */
 export class PipelineExecutor<P extends Pipeline> {
-	private readonly pipeline: P;
-	private readonly length:   number;
+	public readonly pipeline: P;
+	private readonly length:  number;
 
 	private input:  PipelineInput<P>;
 	private output: PipelineOutput<P> = {} as PipelineOutput<P>;

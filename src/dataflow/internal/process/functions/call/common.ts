@@ -77,7 +77,8 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 
 
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
+	isSingle: boolean = false,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -115,7 +116,9 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.controlDependencies)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					if(!isSingle) {
+						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					}
 				}
 				if(assumeItMayHaveAHigherTarget) {
 					remainingReadInArgs.push(ingoing);

@@ -3,14 +3,31 @@ import { BuiltInEnvironment } from './environment';
 import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
-import type { IdentifierDefinition } from './identifier';
+import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+
+const hasNoControlDependencies = (definition: IdentifierDefinition) => definition.controlDependencies === undefined || definition.controlDependencies.length === 0;
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
 	// check if it is maybe or not
+	const inGraphDefinition = definition as InGraphIdentifierDefinition;
 	if(existing === undefined || definition.controlDependencies === undefined) {
 		newEnvironments.memory.set(name, [definition]);
 	} else {
+		if(inGraphDefinition.indices !== undefined && hasNoControlDependencies(definition)) {
+			const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition)
+				.filter((def) => def !== undefined);
+			for(let i = 0; i < inGraphDefinition.indices.length; i++) {
+				const overwriteIndex = inGraphDefinition.indices[i];
+				for(let j = 0; j < existingDefs.length; j++) {
+					const existingDef = existingDefs[j];
+					if(existingDef.indices === undefined) {
+						continue;
+					}
+					existingDef.indices = existingDef.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
+				}
+			}
+		}
 		existing.push(definition);
 	}
 }

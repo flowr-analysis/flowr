@@ -109,7 +109,8 @@ function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTo
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const request = requestFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		shell, request
+		parser:	shell,
+		request
 	}).allRemainingSteps()).normalize;
 };
 
@@ -194,10 +195,10 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 }>) {
 	const skip = skipTestBecauseConfigNotMet();
 	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
-	if(!userConfig?.skipTreeSitter) {
+	const skipTreeSitter = userConfig?.skipTreeSitter;
+	if(!skipTreeSitter) {
 		labelContext.push('desugar-tree-sitter');
 	}
-	const skipTreeSitter = userConfig?.skipTreeSitter;
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
 		let shellAst: RNode | undefined;
@@ -225,7 +226,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 	async function makeShellAst(): Promise<RNode> {
 		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(input)
 		});
 		const result = await pipeline.allRemainingSteps();
@@ -234,9 +235,8 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 
 	async function makeTsAst(): Promise<RNode> {
 		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-			// TODO make this global at some point, or a param like the shell?
-			treeSitter: new TreeSitterExecutor(),
-			request:    requestFromInput(input)
+			parser:  new TreeSitterExecutor(),
+			request: requestFromInput(input)
 		});
 		const result = await pipeline.allRemainingSteps();
 		return result.normalize.ast;
@@ -248,7 +248,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
-			shell,
+			parser:  shell,
 			request: requestFromInput(input),
 		}).allRemainingSteps();
 
@@ -320,7 +320,7 @@ export function assertDataflow(
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps();
@@ -375,7 +375,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   getId,
 			request: requestFromInput(input),
-			shell
+			parser:  shell
 		}).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
@@ -407,7 +407,7 @@ export function assertSliced(
 		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
 			getId,
 			request:      requestFromInput(input),
-			shell,
+			parser:       shell,
 			criterion:    criteria,
 			autoSelectIf: userConfig?.autoSelectIf
 		}).allRemainingSteps();

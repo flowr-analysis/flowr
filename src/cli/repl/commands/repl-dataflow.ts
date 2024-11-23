@@ -7,7 +7,7 @@ import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

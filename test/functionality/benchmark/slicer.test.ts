@@ -3,6 +3,7 @@ import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test } from 'vitest';
+import { DEFAULT_SLICING_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -26,7 +27,7 @@ describe('Benchmark Slicer', () => {
 
 	describe.sequential('Stats by parsing text-based inputs', function() {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
-			const slicer = new BenchmarkSlicer();
+			const slicer = new BenchmarkSlicer(DEFAULT_SLICING_PIPELINE);
 			const request = { request: 'text' as const, content: 'a <- b' };
 			await slicer.init(request);
 			await slicer.slice('1@a');
@@ -82,7 +83,7 @@ describe('Benchmark Slicer', () => {
 
 		});
 		test('Slicing the same code three times', async() => {
-			const slicer = new BenchmarkSlicer();
+			const slicer = new BenchmarkSlicer(DEFAULT_SLICING_PIPELINE);
 			const request = {
 				request: 'text' as const,
 				content: `library(x)

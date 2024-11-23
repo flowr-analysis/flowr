@@ -13,6 +13,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
+import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -40,7 +41,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 });
 
 async function getSlice() {
-	const slicer = new BenchmarkSlicer();
+	const slicer = new BenchmarkSlicer(DEFAULT_SLICING_PIPELINE);
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 

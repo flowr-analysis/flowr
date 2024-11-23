@@ -1,11 +1,12 @@
 import Parser from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
+import type { SyncParser } from '../../parser';
 
-export class TreeSitterExecutor {
+export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
+	public readonly parser:  Parser;
 	private static language: Parser.Language;
-	private readonly parser: Parser;
 
 	public static async initTreeSitter(): Promise<void> {
 		await Parser.init();
@@ -27,5 +28,9 @@ export class TreeSitterExecutor {
 			sourceCode = request.content;
 		}
 		return this.parser.parse(sourceCode);
+	}
+
+	public close(): void {
+		this.parser.delete();
 	}
 }

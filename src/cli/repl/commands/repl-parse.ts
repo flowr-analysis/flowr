@@ -116,7 +116,7 @@ export const parseCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await new PipelineExecutor(DEFAULT_PARSE_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps();
 

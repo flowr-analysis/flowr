@@ -11,6 +11,10 @@ import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
 import { initCommand } from './init';
 import { getConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
+import type { AsyncParser } from './parser';
+import type { RParseRequest } from './retriever';
+import {  retrieveParseDataFromRCode } from './retriever';
+
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -133,7 +137,9 @@ export function getDefaultRShellOptions(): RShellOptions {
  * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
  * as a legacy mode :D)
  */
-export class RShell {
+export class RShell implements AsyncParser<string>{
+
+	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	private session:         RShellSession;
 	private readonly log:    Logger<ILogObj>;
@@ -147,6 +153,10 @@ export class RShell {
 
 		this.session = new RShellSession(this.options, this.log);
 		this.revive();
+	}
+
+	public parse(request: RParseRequest): Promise<string> {
+		return retrieveParseDataFromRCode(request, this);
 	}
 
 	private revive() {

@@ -538,6 +538,32 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
 	});
 	describe('Failures in Practice', () => {
+		describe('Inverted Caller', () => {
+			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
+				shell, 'create <- function() function() 3\ng <- create()\nc <- g()', ['3@c'], 'create <- function() function() 3\ng <- create()\nc <- g()');
+			assertSliced(label('Call from Lower', ['function-calls', 'lexicographic-scope']),
+				shell, 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()', ['3@c'], 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()');
+			assertSliced(label('Higher Base', ['function-calls', 'lexicographic-scope']),
+				shell, `
+x <- function() b()
+c <- (function() {
+a <- function() b() + x()
+b <<- function() 2
+g <- function() f() + 1
+h <- function() g() * 2
+f <- function() a()
+h()})()`.trim(), ['2@c'], `
+x <- function() b()
+c <- (function() {
+        a <- function() b() + x()
+        b <<- function() 2
+        g <- function() f() + 1
+        h <- function() g() * 2
+        f <- function() a()
+        h()
+    })()
+`.trim());
+		});
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {
 			const caps: SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, 'double-bracket-access', 'numbers', 'infix-calls', 'binary-operator', 'call-normal', 'newlines', 'unnamed-arguments', 'precedence', 'special-operator', 'strings', ...OperatorDatabase['=='].capabilities];

@@ -352,7 +352,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 
 
 export function assertSliced(
-	name: string | TestLabel,
+	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,

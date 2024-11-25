@@ -3,7 +3,10 @@ import { repl } from './utility/utility';
 
 describe('repl', () => {
 	test(':df', async() => {
-		const output = await repl([':df asd', ':quit']);
+		const output = await repl([':df test', ':quit']);
+		console.log(output);
 		assert.isTrue(output.includes('flowchart'));
 	});
+
+	
 });

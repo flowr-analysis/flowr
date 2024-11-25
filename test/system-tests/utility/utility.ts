@@ -1,7 +1,7 @@
-import { $ } from 'zx';
+import { $, ProcessPromise, sleep } from 'zx';
 
 export async function repl(input: string[]): Promise<string> {
-	const proc = $`npm run flowr`.quiet().timeout('10s');
+	const proc = $`npm run flowr`.quiet().timeout('30s');
 
 	let i = 0;
 	proc.stdout.on('data', (d) => {
@@ -17,4 +17,11 @@ export async function repl(input: string[]): Promise<string> {
 	const output = await proc.text();
 	proc.stdin.end();
 	return output;
+}
+
+export async function npmRun(cmd: string, args: string): Promise<string> {
+    const proc = $`npm run ${cmd} -- ${args}`.quiet();
+	await sleep('5s');
+	await proc.kill();
+	return proc.text();
 }

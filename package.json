@@ -189,8 +189,7 @@
     "typedoc-theme-hierarchy": "^5.0.3",
     "typedoc-umlclass": "^0.10.0",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.4",
-    "zx": "^8.2.2"
+    "vitest": "^2.1.4"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.2",

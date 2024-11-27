@@ -1,146 +1,89 @@
-import { describe, test } from 'vitest';
+import { describe } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 
 describe.sequential('List access', withShell(shell => {
-	describe('Simple access slice', () => {
-		const slice = `person <- list(age = 24, name = "John")
-a <- person$name`;
+	describe('Simple access', () => {
+		assertSliced(
+			label('List with single element', []), shell,
+			`person <- list(name = "John")
+result <- person$name`,
+			['2@result'],
+			`person <- list(name = "John")
+result <- person$name`,
+		);
 
 		assertSliced(
-			label('Slice on list object', []), shell, slice, ['2@person'],
-			`person <- list(age = 24, name = "John")
-person`,
-		);
-		assertSliced(
-			label('Slice on access operator', []), shell, slice, ['2@$'],
-			`person <- list(age = 24, name = "John")
-person$name`,
-		);
-		assertSliced(
-			label('Slice on accessed index', []), shell, slice, ['2@name'],
-			'person$name',
-		);
-		assertSliced(
-			label('Slice on result of access', []), shell, slice, ['2@a'],
-			`person <- list(age = 24, name = "John")
-a <- person$name`,
+			label('List with several elements', []), shell,
+			`person <- list(name = "John", age = 24, is_male = TRUE)
+result <- person$name`,
+			['2@result'],
+			`person <- list(name = "John", age = 24, is_male = TRUE)
+result <- person$name`,
 		);
 	});
 
-	describe('Access slice with noise', () => {
-		const slice = `person <- list(age = 24, name = "John")
+	describe('Access with other accesses', () => {
+		assertSliced(
+			label('With other list', []), shell,
+			`person <- list(age = 24, name = "John")
 other_person <- list(age = 24, name = "John")
-b <- person$age
-a <- person$name`;
+a <- other_person$name
+result <- person$name`,
+			['4@result'],
+			`person <- list(age = 24, name = "John")
+result <- person$name`,
+		);
 
 		assertSliced(
-			label('Slice on list object', []), shell, slice, ['4@person'],
-			`person <- list(age = 24, name = "John")
-person`,
-		);
-		assertSliced(
-			label('Slice on access operator', []), shell, slice, ['4@$'],
-			`person <- list(age = 24, name = "John")
-person$name`,
-		);
-		assertSliced(
-			label('Slice on accessed index', []), shell, slice, ['4@name'],
-			'person$name',
-		);
-		assertSliced(
-			label('Slice on result of access', []), shell, slice, ['4@a'],
-			`person <- list(age = 24, name = "John")
-a <- person$name`,
-		);
-	});
-
-	describe('Access slice with noise and multiple accesses', () => {
-		const slice = `person <- list(age = 24, name = "John")
-b <- person$name
+			label('With other accesses', []), shell,
+			`person <- list(age = 24, name = "John", is_male = TRUE)
 a <- person$age
-c <- person$name`;
-
-		assertSliced(
-			label('Slice on list object', []), shell, slice, ['4@person'],
-			`person <- list(age = 24, name = "John")
-person`,
-
-		);
-		assertSliced(
-			label('Slice on access operator', []), shell, slice, ['4@$'],
-			`person <- list(age = 24, name = "John")
-person$name`,
-		);
-		assertSliced(
-			label('Slice on accessed index', []), shell, slice, ['4@name'],
-			'person$name',
-		);
-		assertSliced(
-			label('Slice on result of access', []), shell, slice, ['4@c'],
-			`person <- list(age = 24, name = "John")
-c <- person$name`,
+b <- person$is_male
+result <- person$age`,
+			['4@result'],
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+result <- person$age`,
 		);
 	});
 
-	describe('Access slice with previous assignment', () => {
-		const slice = `person <- list(age = 24, name = "John")
+	describe('Access with assignment', () => {
+		assertSliced(
+			label('When there is more than one assignment to the same index, then the last assignment is in the slice', []),
+			shell,
+			`person <- list(age = 24, name = "John")
 person$name <- "Bob"
-a <- person$name`;
+person$name <- "Alice"
+person$name <- "Malory"
+result <- person$name`,
+			['5@result'],
+			`person$name <- "Malory"
+result <- person$name`,
+		);
 
 		assertSliced(
-			label('Slice on list object', []), shell, slice, ['3@person'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-person`,
-
+			label('When there are assignments to the other indices, then they are not in the slice', []),
+			shell,
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+person$is_male <- FALSE
+person$name <- "Alice"
+person$age <- 33
+result <- person$name`,
+			['5@result'],
+			`person$name <- "Alice"
+result <- person$name`,
 		);
-		assertSliced(
-			label('Slice on access operator', []), shell, slice, ['3@$'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-person$name`,
-		);
-		assertSliced(
-			label('Slice on accessed index', []), shell, slice, ['3@name'],
-			'person$name',
-		);
-		assertSliced(
-			label('Slice on result of access', []), shell, slice, ['3@a'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-a <- person$name`,
-		);
-	});
-
-	test.fails('Access slice with previous assignment to other index', () => {
-		const slice = `person <- list(age = 24, name = "John")
-person$name <- "Bob"
-person$age <- 25
-a <- person$name`;
 
 		assertSliced(
-			label('Slice on list object', []), shell, slice, ['4@person'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-person`,
-
-		);
-		assertSliced(
-			label('Slice on access operator', []), shell, slice, ['4@$'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-person$name`,
-		);
-		assertSliced(
-			label('Slice on accessed index', []), shell, slice, ['4@name'],
-			'person$name',
-		);
-		assertSliced(
-			label('Slice on result of access', []), shell, slice, ['4@a'],
-			`person <- list(age = 24, name = "John")
-person$name <- "Bob"
-a <- person$name`,
+			label('When there are assignments to only other indices, then list is in the slice', []),
+			shell,
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+person$is_male <- FALSE
+person$name <- "Alice"
+result <- person$age`,
+			['4@result'],
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+result <- person$age`,
 		);
 	});
 }));

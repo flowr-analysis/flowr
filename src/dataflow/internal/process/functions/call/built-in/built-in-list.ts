@@ -3,7 +3,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ContainerIndex } from '../../../../../graph/vertex';
+import type { ContainerIndex, ContainerIndices } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -29,8 +29,16 @@ export function processList<OtherInfo>(
 			continue;
 		}
 
-		namedArguments.push({ lexeme: arg.name.content, nodeId: arg.info.id });
+		const newIndex: ContainerIndex = {
+			lexeme: arg.name.content,
+			nodeId: arg.info.id,
+		};
+		namedArguments.push(newIndex);
 	}
 
-	return processKnownFunctionCall({ name, args, rootId, data }, namedArguments).information;
+	const indices: ContainerIndices = {
+		indices:       namedArguments,
+		isSingleIndex: false,
+	};
+	return processKnownFunctionCall({ name, args, rootId, data }, [indices]).information;
 }

@@ -27,7 +27,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../../../graph/vertex';
-import type { ContainerIndices } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -62,7 +62,7 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
-	readonly indices?:             ContainerIndices
+	readonly indicesCollection?:   ContainerIndicesCollection
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -263,15 +263,15 @@ export function markAsAssignment(
 	rootIdOfAssignment: NodeId,
 	config?: AssignmentConfiguration | undefined,
 ) {
-	let indices: ContainerIndices;
+	let indicesCollection: ContainerIndicesCollection = undefined;
 	if(sourceIds.length === 1) {
 		// support for tracking indices
-		indices = information.graph.getVertex(sourceIds[0])?.indices;
+		indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
 	}
-	if(config?.indices !== undefined) {
-		indices = (indices ?? []).concat(config.indices);
+	if(config?.indicesCollection !== undefined) {
+		indicesCollection = (indicesCollection ?? []).concat(config.indicesCollection);
 	}
-	nodeToDefine.indices ??= indices;
+	nodeToDefine.indicesCollection ??= indicesCollection;
 
 	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);

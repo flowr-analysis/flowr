@@ -18,7 +18,7 @@ import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { ContainerIndices } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -108,19 +108,29 @@ export function processAccess<OtherInfo>(
 			}
 		}
 		// a$foo a@foo
-		let accessedArguments: ContainerIndices;
+		let accessedIndicesCollection: ContainerIndicesCollection;
 		if(newArgs[0] !== EmptyArgument) {
 			const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
 			const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
-			const resolvedFirstParameterIndices = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indices ?? []);
-			accessedArguments = resolvedFirstParameterIndices?.filter(index => index.lexeme === accessArg);
+			const indicesCollection = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+			for(const indices of indicesCollection ?? []) {
+				const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg);
+				if(filteredIndices.length == 0) {
+					continue;
+				}
+				accessedIndicesCollection ??= [];
+				accessedIndicesCollection.push({
+					indices:       filteredIndices,
+					isSingleIndex: indices.isSingleIndex
+				});
+			}
 		}
 		
-		const indices = accessedArguments === undefined ? undefined : accessedArguments;
-		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, indices);
-		accessedArguments?.forEach((arg) => {
-			fnCall.information.graph.addEdge(name.info.id, arg.nodeId, EdgeType.Reads);
-		});
+		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);
+		const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
+		for(const accessedIndex of accessedIndices ?? []) {
+			fnCall.information.graph.addEdge(name.info.id, accessedIndex.nodeId, EdgeType.Reads);
+		}
 	}
 
 	const info = fnCall.information;

@@ -4,8 +4,8 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type { ContainerIndicesCollection } from '../graph/vertex';
 
-const hasNoControlDependencies = (definition: IdentifierDefinition) => definition.controlDependencies === undefined || definition.controlDependencies.length === 0;
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
@@ -14,22 +14,46 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	if(existing === undefined || definition.controlDependencies === undefined) {
 		newEnvironments.memory.set(name, [definition]);
 	} else {
-		if(inGraphDefinition.indices !== undefined && hasNoControlDependencies(definition)) {
+		if(inGraphDefinition.indicesCollection !== undefined && definition.controlDependencies === undefined) {
 			const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition)
 				.filter((def) => def !== undefined);
-			for(let i = 0; i < inGraphDefinition.indices.length; i++) {
-				const overwriteIndex = inGraphDefinition.indices[i];
-				for(let j = 0; j < existingDefs.length; j++) {
-					const existingDef = existingDefs[j];
-					if(existingDef.indices === undefined) {
+			const indices = inGraphDefinition.indicesCollection?.flatMap(indices => indices.indices);
+			// Compare existing and new definitions, add new definitions and remove existing
+			// definitons that are overwritten by new definition
+			const newExistingDefs: InGraphIdentifierDefinition[] = [];
+			for(const overwriteIndex of indices) {
+				for(const existingDef of existingDefs) {
+					if(existingDef.indicesCollection === undefined) {
 						continue;
 					}
-					existingDef.indices = existingDef.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
+					const newIndicesCollection: ContainerIndicesCollection = [];
+					for(const indices of existingDef.indicesCollection) {
+						// Filter existing indices with same name
+						const newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
+						if(newIndices.length > 0) {
+							newIndicesCollection.push({
+								...indices,
+								indices: newIndices,
+							});
+						}
+					}
+
+					// if indices are now empty list, don't keep empty definition
+					if(newIndicesCollection.length > 0) {
+						newExistingDefs.push({
+							...existingDef,
+							indicesCollection: newIndicesCollection,
+						});
+					}
 				}
 			}
+			// store changed existing definitons and add new one
+			newEnvironments.memory.set(name, [...newExistingDefs, definition]);
+		} else {
+			existing.push(definition);
 		}
-		existing.push(definition);
 	}
+	// console.log('after:', newEnvironments.memory.get(name));
 }
 
 /**

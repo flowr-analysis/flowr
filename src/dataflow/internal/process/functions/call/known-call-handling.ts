@@ -15,7 +15,7 @@ import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { VertexType } from '../../../../graph/vertex';
-import type { ContainerIndices } from '../../../../graph/vertex';
+import type { ContainerIndicesCollection } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
@@ -58,7 +58,7 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indices: ContainerIndices = undefined,
+	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 
@@ -68,12 +68,13 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	const processArgs = reverseOrder ? [...args].reverse() : args;
 
+	const isSingleIndex = indicesCollection?.every(indices => indices.isSingleIndex);
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs }, indices?.length === 1);
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs }, isSingleIndex);
 	if(markAsNSE) {
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}
@@ -87,7 +88,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		onlyBuiltin:         false,
 		controlDependencies: data.controlDependencies,
 		args:                reverseOrder ? [...callArgs].reverse() : callArgs,
-		indices:             indices,
+		indicesCollection:   indicesCollection,
 	});
 
 	if(hasUnknownSideEffect) {

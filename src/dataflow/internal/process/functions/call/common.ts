@@ -78,7 +78,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 
 export function processAllArguments<OtherInfo>(
 	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
-	isSingle: boolean = false,
+	isSingleIndex: boolean = false,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -116,7 +116,8 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.controlDependencies)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					if(!isSingle) {
+					// When only a single index is referenced, we don't need to reference the whole object
+					if(!isSingleIndex) {
 						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 					}
 				}

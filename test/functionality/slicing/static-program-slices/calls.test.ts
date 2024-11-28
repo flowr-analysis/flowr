@@ -538,6 +538,10 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
 	});
 	describe('Failures in Practice', () => {
+		describe('empty functions', () => {
+			assertSliced(label('Empty Function in Reconstruct', ['function-definitions']), shell,
+				'x <- 2\nfoo <- function(n, x = 3) { print(x) }\nprint(x)', ['3@x'], 'x <- 2\nx');
+		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
 				shell, 'create <- function() function() 3\ng <- create()\nc <- g()', ['3@c'], 'create <- function() function() 3\ng <- create()\nc <- g()');

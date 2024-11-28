@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1731870836490,
+  "lastUpdate": 1732799936608,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -4975,6 +4975,109 @@ window.BENCHMARK_DATA = {
             "value": 0.7639690077689504,
             "unit": "#",
             "extra": "std: 0.13100359353752966"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 95.46617542613636,
+            "unit": "KiB",
+            "range": 244.77619956879823,
+            "extra": "median: 24.54"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "db7ac2e228f8144da97c252a2affb26bd9ea4e0b",
+          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor",
+          "timestamp": "2024-11-28T13:54:45+01:00",
+          "tree_id": "54959f17cb72871023e10232c7b70ca57816b089",
+          "url": "https://github.com/flowr-analysis/flowr/commit/db7ac2e228f8144da97c252a2affb26bd9ea4e0b"
+        },
+        "date": 1732799935154,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 242.24415118181818,
+            "unit": "ms",
+            "range": 104.26310147093089,
+            "extra": "median: 215.43ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 17.39715159090909,
+            "unit": "ms",
+            "range": 31.09452227247912,
+            "extra": "median: 8.49ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 60.33616290909091,
+            "unit": "ms",
+            "range": 127.75990956872062,
+            "extra": "median: 28.90ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 833.5976102727273,
+            "unit": "ms",
+            "range": 1502.9439844838432,
+            "extra": "median: 367.11ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.029558401836784,
+            "unit": "ms",
+            "range": 1.2081663161038019,
+            "extra": "median: 0.73ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23538053186242114,
+            "unit": "ms",
+            "range": 0.17968366955783688,
+            "extra": "median: 0.09ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.278853130617715,
+            "unit": "ms",
+            "range": 1.2795408953549086,
+            "extra": "median: 1.00ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7891949660994808,
+            "unit": "#",
+            "extra": "std: 0.1265547989588566"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7665650684287274,
+            "unit": "#",
+            "extra": "std: 0.13059911524134268"
           },
           {
             "name": "memory (df-graph)",
@@ -10061,6 +10164,109 @@ window.BENCHMARK_DATA = {
             "value": 99.4425,
             "unit": "KiB",
             "range": 113.62933451202426,
+            "extra": "median: 49.92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "db7ac2e228f8144da97c252a2affb26bd9ea4e0b",
+          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor",
+          "timestamp": "2024-11-28T13:54:45+01:00",
+          "tree_id": "54959f17cb72871023e10232c7b70ca57816b089",
+          "url": "https://github.com/flowr-analysis/flowr/commit/db7ac2e228f8144da97c252a2affb26bd9ea4e0b"
+        },
+        "date": 1732799936603,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 237.81388206,
+            "unit": "ms",
+            "range": 43.26435892465071,
+            "extra": "median: 219.92ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 18.584648960000003,
+            "unit": "ms",
+            "range": 13.710753719051512,
+            "extra": "median: 10.86ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 71.41246154000001,
+            "unit": "ms",
+            "range": 65.6106108648961,
+            "extra": "median: 32.22ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 7625.11364774,
+            "unit": "ms",
+            "range": 29095.600821943466,
+            "extra": "median: 966.37ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 15.746698561898643,
+            "unit": "ms",
+            "range": 44.50249372495068,
+            "extra": "median: 3.18ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24344144772080362,
+            "unit": "ms",
+            "range": 0.13994668646932817,
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 15.997988500166153,
+            "unit": "ms",
+            "range": 44.53599655284285,
+            "extra": "median: 3.48ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12710 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8762109251198998,
+            "unit": "#",
+            "extra": "std: 0.10203599599093915"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.819994064355517,
+            "unit": "#",
+            "extra": "std: 0.14776952252356845"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 99.526015625,
+            "unit": "KiB",
+            "range": 113.60201607005874,
             "extra": "median: 49.92"
           }
         ]

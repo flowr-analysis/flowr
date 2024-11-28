@@ -83,7 +83,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			/* downloader and installer functions (R, devtools, BiocManager) */
 			'library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
 			/* weird env attachments */
-			'attach', 'detach', 'unname', 'rm', 'remove'
+			'attach', 'unname'
 		],
 		processor:       'builtin:default',
 		config:          { hasUnknownSideEffects: true },

@@ -1,4 +1,4 @@
-import { configDefaults, defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	test: {
@@ -8,10 +8,10 @@ export default defineConfig({
 			concurrent: true,
 			setupFiles: 'parallel'
 		},
-		reporters:   process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
-		isolate:     false,
-		pool:        'threads',
-		deps:        {
+		reporters: process.env.GITHUB_ACTIONS ? ['basic', 'github-actions'] : ['dot'],
+		isolate:   false,
+		pool:      'threads',
+		deps:      {
 			optimizer: {
 				ssr: {
 					enabled: true

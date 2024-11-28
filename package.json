@@ -37,7 +37,7 @@
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
-    "test:system": "vitest --dir test/system-tests --config test/vitest.config.mts",
+    "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
     "test:coverage": "npm run test -- --coverage",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3; cd ../../; }; func",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",

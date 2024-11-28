@@ -49,9 +49,9 @@ type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, 
 export function prepareParsedData(data: string): CsvEntry[] {
 	let json: unknown;
 	try {
-		json = JSON.parse(`[${data}]`);
+		json = JSON.parse(`[${data.trim()}]`);
 	} catch(e) {
-		throw new Error(`Failed to parse data ${data}: ${(e as Error)?.message}`);
+		throw new Error(`Failed to parse data [${data}]: ${(e as Error)?.message}`);
 	}
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`);
 

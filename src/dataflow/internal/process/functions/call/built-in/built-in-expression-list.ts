@@ -80,7 +80,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	for(const { functionCall, called } of calledEnvs) {
 		const callDependencies = nextGraph.getVertex(functionCall, true)?.controlDependencies;
 		for(const calledFn of called) {
-			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must call a function definition');
+			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common
 			let environment = calledFn.environment;
 			while(environment.level > inputEnvironment.level) {

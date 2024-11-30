@@ -7,7 +7,7 @@ import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/pro
 import type { RBinaryOp } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
-describe('normalize-visitor', withShell(shell => {
+describe.sequential('normalize-visitor', withShell(shell => {
 	let normalized: NormalizedAst | undefined;
 	let mathAst: NormalizedAst | undefined;
 	beforeAll(async() => {

@@ -10,7 +10,7 @@ export async function flowrRepl(input: string[]): Promise<string> {
 	const process = new Promise<string>((resolve, reject) => {
 		const child = exec('npm run flowr', { timeout: 60 * 1000 }, (error, stdout, _) => {
 			if(error) {
-				reject(new Error(`${error.name}: ${error.message}\ns${stdout}`));
+				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
 			}
 
 			resolve(stdout);
@@ -46,7 +46,7 @@ export async function run(command: string, terminateOn?: string, timeout = 60 * 
 	const process = new Promise<string>((resolve, reject) => {
 		const child = exec(command, { timeout }, (error, stdout, _) => {
 			if(error) {
-				reject(new Error(`${error.name}: ${error.message}\ns${stdout}`));
+				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
 			}
 
 			resolve(stdout);
@@ -55,6 +55,7 @@ export async function run(command: string, terminateOn?: string, timeout = 60 * 
 		if(terminateOn) {
 			let buffer = '';
 			child.stdout?.on('data', (d: Buffer) => {
+				console.log(d.toString());
 				buffer += d.toString();
 
 				if(buffer.includes(terminateOn)) {

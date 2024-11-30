@@ -811,6 +811,26 @@ x`);
 			'plot <- function() {}\nplot(f)\npoints(g)', ['3@points'],
 			'points(g)'
 		);
+		assertSliced(label('Link to the last map', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'map(f)\nx <- points(g)', ['2@points'],
+			'map(f)\npoints(g)'
+		);
+		assertSliced(label('Link to the last map (print)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'map(f)\nx <- points(g)\nprint(x)', ['3@print'],
+			'map(f)\nx <- points(g)\nprint(x)'
+		);
+		assertSliced(label('Link to the last map (with par)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)', ['3@x'],
+			'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)'
+		);
+		assertSliced(label('Link to the last map (multiple map)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'map("x")\nmap("y")\nx <- points(g)', ['3@x'],
+			'map("y")\nx <- points(g)'
+		);
+		assertSliced(label('Link to the last map (map with foo)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+			'map("a", foo=c(-1))\npoints(x)', ['2@points'],
+			'map("a", foo=c(-1))\npoints(x)'
+		);
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

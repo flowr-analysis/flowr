@@ -38,5 +38,5 @@ export function mermaidCodeToUrl(code: string, edit = false): string {
 			autoSync: true
 		}
 	};
-	return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}#`;
+	return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`;
 }

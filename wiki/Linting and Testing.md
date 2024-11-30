@@ -1,5 +1,5 @@
 
-For the latest code-coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
+For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
 for the latest benchmark results, see the [benchmark results](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
@@ -7,6 +7,7 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
     - [Test Structure](#test-structure)
     - [Writing a Test](#writing-a-test)
     - [Running Only Some Tests](#running-only-some-tests)
+  - [System Tests](#system-tests)
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
   - [Testing Within Your IDE](#testing-within-your-ide)
@@ -19,8 +20,10 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
 
 ## Testing Suites
 
-Currently, flowR contains two testing suites: one for [functionality](#functionality-tests) and one for [performance](#performance-tests). We explain each of them in the following.
-In addition to running those tests, you can use the more generalized `npm run checkup`. This will include the construction of the docker image, the generation of the wiki pages, and the linter.
+Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
+one for [system tests](#system-tests), and one for [performance](#performance-tests). We explain each of them in the following.
+In addition to running those tests, you can use the more generalized `npm run checkup`. 
+This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
 
 ### Functionality Tests
 
@@ -35,8 +38,8 @@ npm run test
 
 
 Within the commandline,
-this should automatically drop you into a watch mode which will automatically re-run the tests if you change the code.
-If, at any time there are too many errors, you can use `--bail=<value>` to stop the tests after a certain number of errors.
+this should automatically drop you into a watch mode which will automatically re-run (potentially) affected tests if you change the code.
+If, at any time there are too many errors for you to comprehend, you can use `--bail=<value>` to stop the tests after a certain number of errors.
 For example:
 
 
@@ -61,10 +64,10 @@ npm run test-full
 ```
 
 
-However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they don't apply to your current system setup 
-(or can't be tested with the current prerequisites). 
+However, depending on your local version of&nbsp;R, your network connection, and other factors (each test may have a set of criteria), 
+some tests may be skipped automatically as they do not apply to your current system setup (or can not be tested with the current prerequisites). 
 Each test can specify such requirements as part of the `TestConfiguration`, which is then used in the `test.skipIf` function of _vitest_.
-It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests are ensured to run.
+It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests run.
 
 #### Test Structure
 
@@ -72,12 +75,18 @@ All functionality tests are to be located under [test/functionality](https://git
 
 This folder contains three special and important elements:
 
-- `test-setup` which is the entry point if *all* tests are run. It should automatically disable logging statements and configure global variables (e.g., if installation tests should run).
-- `_helper` which contains helper functions to be used by other tests.
-- `test-summary` which may produce a summary of the covered capabilities.
+- `test-setup.ts` which is the entry point if *all* tests are run. It should automatically disable logging statements and configure global variables (e.g., if installation tests should run).
+- `_helper/` folder which contains helper functions to be used by other tests.
+- `test-summary.ts` which may produce a summary of the covered capabilities.
 
-We name all tests using the `.test.ts` suffix and try to run them in parallel. 
-Whenever this is not possible (e.g., when using `withShell`), please use `describe.sequential` to disable parallel execution for the respective test.
+
+> [!WARNING]
+> 
+> We name all test files using the `.test.ts` suffix and try to run them in parallel.
+> Whenever this is not possible (e.g., when using `withShell`), please use `describe.sequential`
+> to disable parallel execution for the respective test (otherwise, such tests are flaky).
+> 
+
 
 #### Writing a Test
 
@@ -98,10 +107,11 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
+
 - `expectIsSubgraph` indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
 - `resolveIdsAsCriterion` indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki//Terminology#slicing-criterion) rather than actual ids. For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
-The following example shows both in use.
+The following example shows both in use:
 
 ```typescript
 assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilities, 'numbers', 'name-normal', 'newlines', 'name-escaped']),
@@ -122,10 +132,29 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 To run only some tests, vitest allows you to [filter](https://vitest.dev/guide/filtering.html) tests. 
 Besides, you can use the watch mode (with `npm run test`) to only run tests that are affected by your changes.
 
+### System Tests
+
+In contrast to the [functionality tests](#functionality-tests), the system tests use runners like the `npm` scripts
+to test the behavior of the whole system, for example, by running the CLI or the server.
+They are slower and hence not part of `npm run test` but can be run using:
+
+```shell
+npm run test:system
+```
+
+To work, they require you to set up your system correctly (e.g., have `npm` available on your path).
+The CI environment will make sure of that. At the moment, these tests are not labeled and only intended
+to check basic availability of *flowR*'s core features (as we test the functionality of these features dedicately 
+with the [functionality tests](#functionality-tests)).
+
+Have a look at the [test/system-tests](https://github.com/flowr-analysis/flowr/tree/main/test/system-tests) folder for more information.
+ 
+
+
 ### Performance Tests
 
 The performance test suite of *flowR* uses several suites to check for variations in the required times for certain steps.
-Although we measure wall time in the CI (which is subject to rather large variations), it should give a rough idea of the performance of *flowR*.
+Although we measure wall time in the CI (which is subject to rather large variations), it should give a rough idea *flowR*'s performance.
 Furthermore, the respective scripts can be used locally as well.
 To run them, issue:
 
@@ -161,18 +190,18 @@ Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/
 
 ## CI Pipeline
 
-We have several workflows defined in [.github/workflows](../.github/workflows/).
+We have several workflows defined in [.github/workflows](https://github.com/flowr-analysis/flowr/tree/main//.github/workflows/).
 We explain the most important workflows in the following:
 
-- [qa.yaml](../.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
+- [qa.yaml](https://github.com/flowr-analysis/flowr/tree/main//.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
     - uploading the results to the [benchmark page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](https://flowr-analysis.github.io/flowr/doc/)
-- [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
-- [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
+- [release.yaml](https://github.com/flowr-analysis/flowr/tree/main//.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](https://hub.docker.com/r/eagleoutice/flowr).
+- [broken-links-and-wiki.yaml](https://github.com/flowr-analysis/flowr/tree/main//.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
 
@@ -185,7 +214,7 @@ npm run lint
 ```
 
 
-And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](../.githooks/pre-push) as explained in the [CONTRIBUTING.md](../.github/CONTRIBUTING.md):
+And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](https://github.com/flowr-analysis/flowr/tree/main//.githooks/pre-push) as explained in the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/tree/main//.github/CONTRIBUTING.md):
 
 
 ```shell
@@ -193,7 +222,7 @@ npm run lint-local
 ```
 
 
-Besides checking coding style (as defined in the [package.json](../package.json)), the *full* linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](https://github.com/flowr-analysis/flowr/tree/main//package.json)), the *full* linter runs the [license checker](#license-checker).
 
 In case you are unaware,
 eslint can automatically fix several linting problems[](https://eslint.org/docs/latest/use/command-line-interface#fix-problems).
@@ -215,5 +244,5 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](https://github.com/flowr-analysis/flowr/tree/main//package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 

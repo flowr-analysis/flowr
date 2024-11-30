@@ -17,7 +17,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(content))}\`"`;
 			output += `    n${id}[${name}]\n`;
 		} else {
-			output += `    n${id}(( ))\n`;
+			output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;
 		}
 	}
 	for(const [from, targets] of cfg.graph.edges()) {

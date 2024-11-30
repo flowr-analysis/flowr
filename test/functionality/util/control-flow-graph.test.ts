@@ -42,7 +42,7 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 				assert.deepStrictEqual(normAllIds(cfg.nexts), normAllIds(expected.nexts), 'nexts differ');
 				assert.deepStrictEqual(normAllIds(cfg.returns), normAllIds(expected.returns), 'returns differ');
 				assert.isTrue(equalCfg(cfg.graph, expected.graph), 'graphs differ');
-			} catch(e: unknown) {
+			} /* v8 ignore next 4 */ catch(e: unknown) {
 				console.error(`expected: ${cfgToMermaidUrl(expected, result.normalize)}`);
 				console.error(`actual: ${cfgToMermaidUrl(cfg, result.normalize)}`);
 				throw e;

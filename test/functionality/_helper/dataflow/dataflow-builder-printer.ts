@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/* this is a test-only utility */
 /**
  * The builder printer takes a dataflow graph and produces a string-code representation of what a builder would look like to create the graph.
  * The goal is to create syntactically correct TypeScript code in a best-effort approach.
@@ -310,3 +312,5 @@ class DataflowBuilderPrinter {
 function edgeId(from: NodeId, to: NodeId, type: EdgeType): string {
 	return `${from}->${to}[${type}]`;
 }
+
+/* v8 ignore stop */

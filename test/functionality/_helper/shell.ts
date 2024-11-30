@@ -301,7 +301,7 @@ export function assertDataflow(
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
-		} catch(e) {
+		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
 				{ label: 'got', graph: info.dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
@@ -314,7 +314,7 @@ export function assertDataflow(
 
 			console.error('diff:\n', diff);
 			throw e;
-		}
+		} /* v8 ignore stop */
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 }
@@ -376,11 +376,11 @@ export function assertSliced(
 				result.reconstruct.code, expected,
 				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			);
-		} catch(e) {
+		} /* v8 ignore start */ catch(e) {
 			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
 			console.error(normalizedAstToMermaidUrl(result.normalize.ast));
 			throw e;
-		}
+		} /* v8 ignore stop */
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 }

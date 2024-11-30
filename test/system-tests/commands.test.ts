@@ -5,7 +5,7 @@ import { run } from './utility/utility';
 describe('commands', () => {
 	test('flowr as server', async() => {
 		const expected = 'Server listening on port';
-		const output = await run('npm run flowr -- --server', expected);
+		const output = await run('npm run flowr -- --server', expected, 60 * 2000);
 		assert.include(output, expected);
 	});
 

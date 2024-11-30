@@ -169,18 +169,18 @@ Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/
 
 ## CI Pipeline
 
-We have several workflows defined in [.github/workflows](../.github/workflows/).
+We have several workflows defined in [.github/workflows](${RemoteFlowrFilePathBaseRef}/.github/workflows/).
 We explain the most important workflows in the following:
 
-- [qa.yaml](../.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
+- [qa.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
     - uploading the results to the [benchmark page](${FlowrSiteBaseRef}/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
-- [release.yaml](../.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
-- [broken-links-and-wiki.yaml](../.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
+- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
+- [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
 
 ## Linting
 
@@ -189,11 +189,11 @@ The main one:
 
 ${codeBlock('shell', 'npm run lint')}
 
-And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](../.githooks/pre-push) as explained in the [CONTRIBUTING.md](../.github/CONTRIBUTING.md):
+And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](${RemoteFlowrFilePathBaseRef}/.githooks/pre-push) as explained in the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md):
 
 ${codeBlock('shell', 'npm run lint-local')}
 
-Besides checking coding style (as defined in the [package.json](../package.json)), the *full* linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](${RemoteFlowrFilePathBaseRef}/package.json)), the *full* linter runs the [license checker](#license-checker).
 
 In case you are unaware,
 eslint can automatically fix several linting problems[](https://eslint.org/docs/latest/use/command-line-interface#fix-problems).
@@ -211,7 +211,7 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 ### License Checker
 
-*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](../package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}/package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 `;
 }
 

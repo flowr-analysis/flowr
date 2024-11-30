@@ -57,10 +57,9 @@ export async function run(command: string, terminateOn?: string, timeout = 60 * 
 			child.stdout?.on('data', (d: Buffer) => {
 				buffer += d.toString();
 
-
-				console.log(d.toString(), buffer, terminateOn, buffer.includes(terminateOn));
 				if(buffer.includes(terminateOn)) {
-					child.kill();
+					child.kill('SIGKILL');
+					resolve(buffer);
 				}
 			});
 		}

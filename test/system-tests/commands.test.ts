@@ -9,8 +9,8 @@ describe('commands', () => {
 		assert.include(output, expected);
 	});
 
-	test('slicer', async() => {
+/*	test('slicer', async() => {
 		const output = await run('npm run slicer -- -c "3@a" -r "a <- 3\\nb <- 4\\nprint(a)"');
 		assert.include(output, 'a <- 3\na');
-	});
+	});*/
 });

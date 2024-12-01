@@ -144,8 +144,11 @@ export function processAssignment<OtherInfo>(
 		return processAssignmentToString(target, args, name, rootId, data, config, source);
 	}
 
-	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`);
-	return processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
+
+	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	info.graph.markIdForUnknownSideEffects(rootId);
+	return info;
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {

@@ -10,6 +10,7 @@ import { ALL_FEATURES } from '../../features/feature';
 import { deterministicCountingIdGenerator } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { defaultStatisticsFileSuffix } from '../../output/file-provider';
+import { arraySum } from '../../../util/arrays';
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
@@ -86,7 +87,7 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 	const shortStats = [...report.valueInfoMap.entries()].map(([name, values]) => {
 		return {
 			name,
-			count:  [...values.values()].reduce((a, b) => a + b, 0),
+			count:  arraySum([...values.values()]),
 			unique: values.size()
 		};
 	}).sort((a, b) => b.count - a.count).slice(0, limit);

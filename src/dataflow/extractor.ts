@@ -63,9 +63,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		if(!cfg) {
-			cfg = extractCFG(ast).graph;
-		}
+		cfg ??= extractCFG(ast).graph;
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
 		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo.callName);
 		for(const pot of potentials) {

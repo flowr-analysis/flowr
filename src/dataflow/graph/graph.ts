@@ -298,7 +298,9 @@ export class DataflowGraph<
 			} else {
 				existingFrom.set(toId, edge);
 			}
-			this.installEdge(type, toId, fromId, edge);
+			if(type === EdgeType.DefinesOnCall) {
+				this.installDefinesOnCallEdge(type, toId, fromId, edge);
+			}
 		} else {
 			// adding the type
 			edgeInFrom.types |= type;
@@ -306,18 +308,16 @@ export class DataflowGraph<
 		return this;
 	}
 
-	private installEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
-		if(type === EdgeType.DefinesOnCall) {
-			const otherEdge: Edge = {
-				...edge,
-				types: EdgeType.DefinedByOnCall
-			};
-			const existingTo = this.edgeInformation.get(toId);
-			if(existingTo === undefined) {
-				this.edgeInformation.set(toId, new Map([[fromId, otherEdge]]));
-			} else {
-				existingTo.set(fromId, otherEdge);
-			}
+	private installDefinesOnCallEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
+		const otherEdge: Edge = {
+			...edge,
+			types: EdgeType.DefinedByOnCall
+		};
+		const existingTo = this.edgeInformation.get(toId);
+		if(existingTo === undefined) {
+			this.edgeInformation.set(toId, new Map([[fromId, otherEdge]]));
+		} else {
+			existingTo.set(fromId, otherEdge);
 		}
 	}
 
@@ -364,7 +364,7 @@ export class DataflowGraph<
 					if(get === undefined) {
 						existing.set(target, edge);
 					} else {
-						get.types = get.types | edge.types;
+						get.types |= edge.types;
 					}
 				}
 			}
@@ -401,8 +401,17 @@ export class DataflowGraph<
 		const vertex = this.getVertex(from, true);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
 		vertex.controlDependencies ??= [];
-		if(to && vertex.controlDependencies.every(({ id, when: cond }) => id !== to && when !== cond)) {
-			vertex.controlDependencies.push({ id: to, when });
+		if(to) {
+			let hasControlDependency = false;
+			for(const { id, when: cond } of vertex.controlDependencies) {
+				if(id === to && when !== cond) {
+					hasControlDependency = true;
+					break;
+				}
+			}
+			if(!hasControlDependency) {
+				vertex.controlDependencies.push({ id: to, when });
+			}
 		}
 		return this;
 	}
@@ -433,8 +442,8 @@ export class DataflowGraph<
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
-		dataflowLogger.warn(`nodes to be joined for the same id should have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs. ${JSON.stringify(next, jsonReplacer)} -- we are currently not handling cases in which vertices may be either! Keeping current.`);
-		return { ...current };
+		dataflowLogger.warn(() => `nodes to be joined for the same id should have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs. ${JSON.stringify(next, jsonReplacer)} -- we are currently not handling cases in which vertices may be either! Keeping current.`);
+		return current;
 	}
 
 	if(current.tag === VertexType.VariableDefinition) {
@@ -446,6 +455,5 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 		guard(arrayEqual(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points');
 	}
 
-	// make a copy
-	return { ...current };
+	return current;
 }

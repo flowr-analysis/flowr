@@ -36,7 +36,7 @@ This command includes the construction of the docker image, the generation of th
 
 The functionality tests represent conventional unit (and depending on your terminology component/api) tests.
 We use [vitest](https://vitest.dev/) as our testing framework.
-You can run the tests by issuing:
+You can run the tests by issuing (some quick benchmarks may be available with \`vitest bench\`):
 
 ${codeBlock('shell', 'npm run test')}
 

@@ -59,7 +59,7 @@ export function isNamedArgument(arg: FunctionArgument): arg is NamedFunctionArgu
 
 export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefined {
 	if(arg !== EmptyArgument) {
-		return arg.nodeId;
+		return arg?.nodeId;
 	}
 	return undefined;
 }

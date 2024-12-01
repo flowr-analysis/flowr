@@ -24,7 +24,7 @@ async function getDataflow(shell: RShell, remainingLine: string) {
 function printHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query "<query>" <code>', output.formatter)}`);
 	output.stdout('The query is an array of query objects to represent multiple queries. Each query object may have the following properties:');
-	output.stdout(describeSchema(AnyQuerySchema, output.formatter));
+	output.stdout(describeSchema(AnyQuerySchema(), output.formatter));
 	output.stdout(`\n\nThe example ${italic(':query "[{\\"type\\": \\"call-context\\", \\"callName\\": \\"mean\\" }]" mean(1:10)', output.formatter)} would return the call context of the mean function.`);
 	output.stdout('As a convenience, we interpret any (non-help) string not starting with \'[\' as a regex for the simple call-context query.');
 	output.stdout(`Hence, ${italic(':query "mean" mean(1:10)', output.formatter)} is equivalent to the above example.`);
@@ -46,7 +46,7 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	let parsedQuery: Query[] = [];
 	if(query.startsWith('[')) {
 		parsedQuery = JSON.parse(query) as Query[];
-		const validationResult = QueriesSchema.validate(parsedQuery);
+		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
 			output.stderr(`Invalid query: ${validationResult.error.message}`);
 			printHelp(output);

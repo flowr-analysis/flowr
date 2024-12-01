@@ -241,7 +241,7 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			let linkedIds: NodeId[] | undefined = undefined;
 			if(cfg && isSubCallQuery(query)) {
 				/* if we have a linkTo query, we have to find the last call */
-				const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, query.linkTo.callName);
+				const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, query.linkTo);
 				if(lastCall) {
 					linkedIds = lastCall;
 				}

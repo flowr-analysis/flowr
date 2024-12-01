@@ -17,7 +17,7 @@ export const requestQueryMessage: MessageDefinition<QueryRequestMessage> = {
 		type:      Joi.string().valid('request-query').required().description('The type of the message.'),
 		id:        Joi.string().optional().description('If you give the id, the response will be sent to the client with the same id.'),
 		filetoken: Joi.string().required().description('The filetoken of the file/data retrieved from the analysis request.'),
-		query:     QueriesSchema.required().description('The query to run on the file analysis information.')
+		query:     QueriesSchema().required().description('The query to run on the file analysis information.')
 	}).description('Request a query to be run on the file analysis information.')
 };
 

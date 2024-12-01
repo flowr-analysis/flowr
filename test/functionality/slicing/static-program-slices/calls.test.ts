@@ -811,26 +811,40 @@ x`);
 			'plot <- function() {}\nplot(f)\npoints(g)', ['3@points'],
 			'points(g)'
 		);
-		assertSliced(label('Link to the last map', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
-			'map(f)\nx <- points(g)', ['2@points'],
-			'map(f)\npoints(g)'
-		);
-		assertSliced(label('Link to the last map (print)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
-			'map(f)\nx <- points(g)\nprint(x)', ['3@print'],
-			'map(f)\nx <- points(g)\nprint(x)'
-		);
-		assertSliced(label('Link to the last map (with par)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
-			'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)', ['3@x'],
-			'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)'
-		);
-		assertSliced(label('Link to the last map (multiple map)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
-			'map("x")\nmap("y")\nx <- points(g)', ['3@x'],
-			'map("y")\nx <- points(g)'
-		);
-		assertSliced(label('Link to the last map (map with foo)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
-			'map("a", foo=c(-1))\npoints(x)', ['2@points'],
-			'map("a", foo=c(-1))\npoints(x)'
-		);
+		describe('maps::map', () => {
+			assertSliced(label('Link to the last map', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map(f)\nx <- points(g)', ['2@points'],
+				'map(f)\npoints(g)'
+			);
+			assertSliced(label('Link to the last map (print)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map(f)\nx <- points(g)\nprint(x)', ['3@print'],
+				'map(f)\nx <- points(g)\nprint(x)'
+			);
+			assertSliced(label('Link to the last map (with par)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)', ['3@x'],
+				'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)'
+			);
+			assertSliced(label('Link to the last map (multiple map)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("x")\nmap("y")\nx <- points(g)', ['3@x'],
+				'map("y")\nx <- points(g)'
+			);
+			assertSliced(label('Link to the last map (map with foo)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", foo=c(-1))\npoints(x)', ['2@points'],
+				'map("a", foo=c(-1))\npoints(x)'
+			);
+			assertSliced(label('An added map should be included', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=TRUE)\npoints(x)', ['2@points'],
+				'map("a", add=TRUE)\npoints(x)'
+			);
+			assertSliced(label('A not-added map should be kept', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=FALSE)\npoints(x)', ['2@points'],
+				'map("a", add=FALSE)\npoints(x)'
+			);
+			assertSliced(label('Map-Add should cascade', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)', ['3@points'],
+				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)'
+			);
+		});
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

@@ -3,7 +3,8 @@ import type { ControlFlowGraph } from '../../../util/cfg/cfg';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitInReverseOrder } from '../../../util/cfg/visitor';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
@@ -12,6 +13,8 @@ import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { LinkTo } from './call-context-query-format';
+import { CascadeAction } from './cascade-action';
 
 export enum CallTargets {
     /** call targets a function that is not defined locally (e.g., the call targets a library function) */
@@ -81,7 +84,9 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 
 
 
-export function getValueOfArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: readonly RType[]): RNodeWithParent | undefined {
+export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
+	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
+): (RNodeWithParent & { type: Types[number] } ) | undefined {
 	if(!call) {
 		return undefined;
 	}
@@ -107,8 +112,16 @@ export function getValueOfArgument(graph: DataflowGraph, call: DataflowGraphVert
 }
 
 
-export function identifyLinkToLastCallRelation(from: NodeId, cfg: ControlFlowGraph, graph: DataflowGraph, linkTo: RegExp): NodeId[] {
+export function identifyLinkToLastCallRelation(
+	from: NodeId,
+	cfg: ControlFlowGraph,
+	graph: DataflowGraph,
+	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp>
+): NodeId[] {
 	const found: NodeId[] = [];
+	if(ignoreIf && ignoreIf(from, graph)) {
+		return found;
+	}
 	visitInReverseOrder(cfg, from, node => {
 		/* we ignore the start id as it cannot be the last call */
 		if(node === from) {
@@ -118,13 +131,17 @@ export function identifyLinkToLastCallRelation(from: NodeId, cfg: ControlFlowGra
 		if(vertex === undefined || vertex[0].tag !== VertexType.FunctionCall) {
 			return;
 		}
-		if(linkTo.test(vertex[0].name)) {
+		if(callName.test(vertex[0].name)) {
+			const act = cascadeIf ? cascadeIf(vertex[0], from, graph) : CascadeAction.Stop;
+			if(act === CascadeAction.Skip) {
+				return;
+			}
 			const tar = satisfiesCallTargets(vertex[0].id, graph, CallTargets.MustIncludeGlobal);
 			if(tar === 'no') {
-				return true;
+				return act === CascadeAction.Stop;
 			}
 			found.push(node);
-			return true;
+			return act === CascadeAction.Stop;
 		}
 	});
 	return found;

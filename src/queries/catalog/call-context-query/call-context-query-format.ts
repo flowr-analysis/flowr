@@ -10,8 +10,9 @@ import { asciiCallContext } from '../../query-print';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { CallTargets } from './identify-link-to-last-call-relation';
-import type { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
+import type { CascadeAction } from './cascade-action';
 
 export interface FileFilter<FilterType> {
 	/**
@@ -62,15 +63,15 @@ interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> ext
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;
 	/**
-	 * Should we ignore this call?
+	 * Should we ignore this (source) call?
 	 * Currently, there is no well working serialization for this.
 	 */
-	readonly ignoreIf?:  (call: RFunctionCall, graph: DataflowGraph) => boolean;
+	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
 	/**
 	 * Should we continue searching after the link was created?
 	 * Currently, there is no well working serialization for this.
 	 */
-	readonly cascadeIf?: ((call: RFunctionCall, graph: DataflowGraph) => boolean) | boolean
+	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
 }
 
 export type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
@@ -132,8 +133,8 @@ export const CallContextQueryDefinition = {
 		linkTo: Joi.object({
 			type:      Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
 			callName:  Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.'),
-			ignoreIf:  Joi.function().optional().description('Should we ignore this call? Currently, there is no well working serialization for this.'),
-			cascadeIf: Joi.alternatives(Joi.boolean(), Joi.function()).optional().description('Should we continue searching after the link was created? Currently, there is no well working serialization for this.')
+			ignoreIf:  Joi.function().optional().description('Should we ignore this (source) call? Currently, there is no well working serialization for this.'),
+			cascadeIf: Joi.function().optional().description('Should we continue searching after the link was created? Currently, there is no well working serialization for this.')
 		}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
 	}).description('Call context query used to find calls in the dataflow graph')
 } as const;

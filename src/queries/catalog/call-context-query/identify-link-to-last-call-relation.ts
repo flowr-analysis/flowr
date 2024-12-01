@@ -1,13 +1,17 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowGraph } from '../../../util/cfg/cfg';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitInReverseOrder } from '../../../util/cfg/visitor';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
 import { BuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
+import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export enum CallTargets {
     /** call targets a function that is not defined locally (e.g., the call targets a library function) */
@@ -74,6 +78,34 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 			assertUnreachable(callTarget);
 	}
 }
+
+
+
+export function getValueOfArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: readonly RType[]): RNodeWithParent | undefined {
+	if(!call) {
+		return undefined;
+	}
+	const totalIndex = argument.name ? call.args.findIndex(arg => arg !== EmptyArgument && arg.name === argument.name) : -1;
+	let refAtIndex: NodeId | undefined;
+	if(totalIndex < 0) {
+		const references = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
+		refAtIndex = references[argument.index];
+	} else {
+		const arg = call.args[totalIndex];
+		refAtIndex = getReferenceOfArgument(arg);
+	}
+	if(refAtIndex === undefined) {
+		return undefined;
+	}
+	let valueNode = graph.idMap?.get(refAtIndex);
+	if(valueNode?.type === RType.Argument) {
+		valueNode = valueNode.value;
+	}
+	if(valueNode) {
+		return !additionalAllowedTypes || additionalAllowedTypes.includes(valueNode.type) ? valueNode : undefined;
+	}
+}
+
 
 export function identifyLinkToLastCallRelation(from: NodeId, cfg: ControlFlowGraph, graph: DataflowGraph, linkTo: RegExp): NodeId[] {
 	const found: NodeId[] = [];

@@ -845,6 +845,14 @@ x`);
 				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)'
 			);
 		});
+		describe('unknown assigns', () => {
+			assertSliced(label('Different assign target', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign("y", 3)\nprint(x)', ['2@x'], 'x');
+			assertSliced(label('Variable assign target (different)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(y, 3)\nprint(x)', ['2@x'], 'x');
+			assertSliced(label('Variable assign target (same)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(x, 3)\nprint(x)', ['2@x'], 'x');
+		});
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

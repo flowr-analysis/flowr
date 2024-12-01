@@ -58,6 +58,8 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
+	/** is the target a variable pointing at the actual name? */
+	readonly targetVariable?:      boolean
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -94,7 +96,7 @@ export function processAssignment<OtherInfo>(
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name);
 	const { type, named } = target;
 
-	if(type === RType.Symbol) {
+	if(!config.targetVariable && type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs });
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,

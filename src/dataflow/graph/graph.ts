@@ -299,7 +299,7 @@ export class DataflowGraph<
 				existingFrom.set(toId, edge);
 			}
 			if(type === EdgeType.DefinesOnCall) {
-				this.installDefinesOnCallEdge(type, toId, fromId, edge);
+				this.installDefinesOnCallEdge(toId, fromId, edge);
 			}
 		} else {
 			// adding the type
@@ -308,7 +308,7 @@ export class DataflowGraph<
 		return this;
 	}
 
-	private installDefinesOnCallEdge(type: EdgeType, toId: NodeId, fromId: NodeId, edge: Edge) {
+	private installDefinesOnCallEdge(toId: NodeId, fromId: NodeId, edge: Edge) {
 		const otherEdge: Edge = {
 			...edge,
 			types: EdgeType.DefinedByOnCall

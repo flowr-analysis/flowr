@@ -845,6 +845,17 @@ x`);
 				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)'
 			);
 		});
+		describe('unknown assigns', () => {
+			assertSliced(label('Same assign target', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign("x", 3)\nprint(x)', ['2@x'], 'assign("x", 3)\nx');
+			assertSliced(label('Different assign target', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign("y", 3)\nprint(x)', ['2@x'], 'x');
+			assertSliced(label('Variable assign target (different)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(y, 3)\nprint(x)', ['2@x'], 'assign(y, 3)\nx'); /* as we do not know the target of `y`, we mark as unknown */
+			assertSliced(label('Variable assign target (same)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(x, 3)\nprint(x)', ['2@x'], 'assign(x, 3)\nx'); /* as we do not know the target of `x`, we mark as unknown */
+
+		});
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

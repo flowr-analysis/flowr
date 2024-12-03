@@ -26,6 +26,12 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 }
 
 function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+	// When new definition is not a single index, e.g. a list redefinition, then reset existing definition
+	// TODO: what happens when indicesCollection has more than one element?
+	if(definition.indicesCollection !== undefined && definition.indicesCollection?.some(indices => !indices.isSingleIndex)) {
+		return [definition];
+	}
+	// console.log('merging');
 	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
 	const indices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
 	// Compare existing and new definitions, add new definitions and remove existing

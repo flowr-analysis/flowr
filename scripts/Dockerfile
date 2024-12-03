@@ -19,7 +19,7 @@ LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
 WORKDIR /app
 
-RUN apk add --no-cache --update R
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories; apk add --no-cache --update R
 
 COPY ./scripts/demo.R LICENSE /app/
 
@@ -32,10 +32,8 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist /app/dist
 
-RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts
-
 # make new user
-RUN addgroup -S flowr && adduser -S flowr -G flowr
+RUN rm -rf /app/**/tsconfig.tsbuildinfo /app/dist/**/*.d.ts && addgroup -S flowr && adduser -S flowr -G flowr
 USER flowr
 
 ENTRYPOINT [\

@@ -23,6 +23,38 @@ result <- person$name`,
 		);
 	});
 
+	describe('Whole list access', () => {
+		assertSliced(
+			label('When each argument of a list is redefined, then original list is still in slice', []), shell,
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+person$is_male <- FALSE
+person$name <- "Alice"
+person$age <- 33
+result <- person`,
+			['5@result'],
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+person$is_male <- FALSE
+person$name <- "Alice"
+person$age <- 33
+result <- person`
+		);
+
+		assertSliced(
+			label('When arguments are added to an empty list, then original list is in slice', []), shell,
+			`person <- list()
+person$is_male <- FALSE
+person$name <- "Alice"
+person$age <- 33
+result <- person`,
+			['5@result'],
+			`person <- list()
+person$is_male <- FALSE
+person$name <- "Alice"
+person$age <- 33
+result <- person`
+		);
+	});
+
 	describe('Access with other accesses', () => {
 		assertSliced(
 			label('With other list', []), shell,

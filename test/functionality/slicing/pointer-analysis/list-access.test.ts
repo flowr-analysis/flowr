@@ -89,7 +89,8 @@ person$name <- "Alice"
 person$name <- "Malory"
 result <- person$name`,
 			['5@result'],
-			`person$name <- "Malory"
+			`person <- list(age = 24, name = "John")
+person$name <- "Malory"
 result <- person$name`,
 		);
 
@@ -102,12 +103,13 @@ person$name <- "Alice"
 person$age <- 33
 result <- person$name`,
 			['5@result'],
-			`person$name <- "Alice"
+			`person <- list(age = 24, name = "John", is_male = TRUE)
+person$name <- "Alice"
 result <- person$name`,
 		);
 
 		assertSliced(
-			label('When there are assignments to only other indices, then list is in the slice', []),
+			label('When there are assignments to only other indices, then only list is in the slice', []),
 			shell,
 			`person <- list(age = 24, name = "John", is_male = TRUE)
 person$is_male <- FALSE

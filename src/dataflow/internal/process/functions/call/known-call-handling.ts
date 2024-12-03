@@ -68,13 +68,12 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	const processArgs = reverseOrder ? [...args].reverse() : args;
 
-	const isSingleIndex = indicesCollection?.every(indices => indices.isSingleIndex);
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs }, isSingleIndex);
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
 	if(markAsNSE) {
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}

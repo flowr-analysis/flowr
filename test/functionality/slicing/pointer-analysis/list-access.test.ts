@@ -53,6 +53,22 @@ person$name <- "Alice"
 person$age <- 33
 result <- person`
 		);
+
+		assertSliced(
+			label('When whole list is redefined, then every list assignment before is not in slice', []), shell,
+			`person <- list(age = 24, name = "John")
+person$age <- 33
+person$name <- "Jane"
+person <- list(height = 164, is_male = FALSE)
+person$height <- 199
+person$is_male <- TRUE
+result <- person`,
+			['7@result'],
+			`person <- list(height = 164, is_male = FALSE)
+person$height <- 199
+person$is_male <- TRUE
+result <- person`
+		);
 	});
 
 	describe('Access with other accesses', () => {

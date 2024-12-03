@@ -19,6 +19,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
+import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -64,73 +65,9 @@ export function processAccess<OtherInfo>(
 	if(!config.treatIndicesAsString) {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
-		const existing = data.environment.current.memory.get(':=');
-		const outInfo = { definitionRootNodes: [] };
-		data.environment.current.memory.set(':=', [{
-			type:                ReferenceType.BuiltInFunction,
-			definedAt:           BuiltIn,
-			controlDependencies: undefined,
-			processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
-			name:                ':=',
-			nodeId:              BuiltIn
-		}]);
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
-		/* recover the environment */
-		if(existing !== undefined) {
-			data.environment.current.memory.set(':=', existing);
-		}
-		if(head.value && outInfo.definitionRootNodes.length > 0) {
-			markAsAssignment(fnCall.information,
-				{ type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
-				outInfo.definitionRootNodes,
-				rootId
-			);
-		}
+		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, config, head);
 	} else {
-		const newArgs = [...args];
-		// if the argument is a symbol, we convert it to a string for this perspective
-		for(let i = 1; i < newArgs.length; i++) {
-			const arg = newArgs[i];
-			if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
-				newArgs[i] = {
-					...arg,
-					value: {
-						type:     RType.String,
-						info:     arg.value.info,
-						lexeme:   arg.value.lexeme,
-						location: arg.value.location,
-						content:  {
-							quotes: 'none',
-							str:    arg.value.lexeme
-						}
-					}
-				};
-			}
-		}
-		// a$foo a@foo
-		let accessedIndicesCollection: ContainerIndicesCollection;
-		if(newArgs[0] !== EmptyArgument) {
-			const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
-			const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
-			const indicesCollection = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
-			for(const indices of indicesCollection ?? []) {
-				const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg);
-				if(filteredIndices.length == 0) {
-					continue;
-				}
-				accessedIndicesCollection ??= [];
-				accessedIndicesCollection.push({
-					indices:       filteredIndices,
-					isSingleIndex: indices.isSingleIndex
-				});
-			}
-		}
-		
-		fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);
-		const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
-		for(const accessedIndex of accessedIndices ?? []) {
-			fnCall.information.graph.addEdge(name.info.id, accessedIndex.nodeId, EdgeType.Reads);
-		}
+		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId, config);
 	}
 
 	const info = fnCall.information;
@@ -169,4 +106,110 @@ export function processAccess<OtherInfo>(
 			}
 		})
 	};
+}
+
+/**
+ * Processes different types of number-based access operations.
+ * 
+ * Example:
+ * ```r
+ * a[i]
+ * a[[i]]
+ * ```
+ */
+function processNumberBasedAccess<OtherInfo>(
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation, string>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	config: { treatIndicesAsString: boolean; } & ForceArguments,
+	head: RArgument<OtherInfo & ParentInformation>,
+) {
+	const existing = data.environment.current.memory.get(':=');
+	const outInfo = { definitionRootNodes: [] };
+	data.environment.current.memory.set(':=', [{
+		type:                ReferenceType.BuiltInFunction,
+		definedAt:           BuiltIn,
+		controlDependencies: undefined,
+		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+		name:                ':=',
+		nodeId:              BuiltIn,
+	}]);
+
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	/* recover the environment */
+	if(existing !== undefined) {
+		data.environment.current.memory.set(':=', existing);
+	}
+	if(head.value && outInfo.definitionRootNodes.length > 0) {
+		markAsAssignment(fnCall.information,
+			{ type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, controlDependencies: [] },
+			outInfo.definitionRootNodes,
+			rootId
+		);
+	}
+	return fnCall;
+}
+
+/**
+ * Processes different types of string-based access operations.
+ * 
+ * Example:
+ * ```r
+ * a$foo
+ * a@foo
+ * ```
+ */
+function processStringBasedAccess<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation, string>,
+	rootId: NodeId,
+	config: { treatIndicesAsString: boolean; } & ForceArguments,
+) {
+	const newArgs = [...args];
+	// if the argument is a symbol, we convert it to a string for this perspective
+	for(let i = 1; i < newArgs.length; i++) {
+		const arg = newArgs[i];
+		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
+			newArgs[i] = {
+				...arg,
+				value: {
+					type:     RType.String,
+					info:     arg.value.info,
+					lexeme:   arg.value.lexeme,
+					location: arg.value.location,
+					content:  {
+						quotes: 'none',
+						str:    arg.value.lexeme
+					}
+				}
+			};
+		}
+	}
+
+	let accessedIndicesCollection: ContainerIndicesCollection;
+	if(newArgs[0] !== EmptyArgument) {
+		const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
+		const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
+		const indicesCollection = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+		for(const indices of indicesCollection ?? []) {
+			const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg);
+			if(filteredIndices.length == 0) {
+				continue;
+			}
+			accessedIndicesCollection ??= [];
+			accessedIndicesCollection.push({
+				indices:       filteredIndices,
+				isSingleIndex: indices.isSingleIndex
+			});
+		}
+	}
+
+	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);
+	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
+	for(const accessedIndex of accessedIndices ?? []) {
+		fnCall.information.graph.addEdge(name.info.id, accessedIndex.nodeId, EdgeType.Reads);
+	}
+	return fnCall;
 }

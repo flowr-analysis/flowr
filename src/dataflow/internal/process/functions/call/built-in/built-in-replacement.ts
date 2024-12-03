@@ -40,8 +40,7 @@ export function processReplacementFunction<OtherInfo>(
 		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
 		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
 		const indexArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
-		const valueArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.BinaryOperationRhs);
-		if(indexArg !== undefined && valueArg?.value !== undefined && accessedArg != undefined) {
+		if(indexArg !== undefined && accessedArg != undefined) {
 			// use access node as reference to get complete line in slice
 			indices = [
 				{
@@ -53,7 +52,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-', makeMaybe: config.makeMaybe, indicesCollection: indices });
+	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-', makeMaybe: indices !== undefined ? false : config.makeMaybe, indicesCollection: indices });
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
 	const { callArgs } = processAllArguments({

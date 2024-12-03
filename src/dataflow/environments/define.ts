@@ -4,56 +4,67 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
-import type { ContainerIndicesCollection } from '../graph/vertex';
+import type { ContainerIndex, ContainerIndicesCollection } from '../graph/vertex';
 
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
-	// check if it is maybe or not
+
+	// When there are defined indices, merge the definitions
 	const inGraphDefinition = definition as InGraphIdentifierDefinition;
+	if(existing !== undefined && inGraphDefinition.indicesCollection !== undefined && inGraphDefinition.controlDependencies === undefined) {
+		newEnvironments.memory.set(name, mergeIndices(existing, inGraphDefinition));
+		return;
+	}
+
+	// check if it is maybe or not
 	if(existing === undefined || definition.controlDependencies === undefined) {
 		newEnvironments.memory.set(name, [definition]);
 	} else {
-		if(inGraphDefinition.indicesCollection !== undefined && definition.controlDependencies === undefined) {
-			const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition)
-				.filter((def) => def !== undefined);
-			const indices = inGraphDefinition.indicesCollection?.flatMap(indices => indices.indices);
-			// Compare existing and new definitions, add new definitions and remove existing
-			// definitons that are overwritten by new definition
-			const newExistingDefs: InGraphIdentifierDefinition[] = [];
-			for(const overwriteIndex of indices) {
-				for(const existingDef of existingDefs) {
-					if(existingDef.indicesCollection === undefined) {
-						continue;
-					}
-					const newIndicesCollection: ContainerIndicesCollection = [];
-					for(const indices of existingDef.indicesCollection) {
-						// Filter existing indices with same name
-						const newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
-						if(newIndices.length > 0) {
-							newIndicesCollection.push({
-								...indices,
-								indices: newIndices,
-							});
-						}
-					}
+		existing.push(definition);
+	}
+}
 
-					// if indices are now empty list, don't keep empty definition
-					if(newIndicesCollection.length > 0) {
-						newExistingDefs.push({
-							...existingDef,
-							indicesCollection: newIndicesCollection,
-						});
-					}
+function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
+	const indices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
+	// Compare existing and new definitions, add new definitions and remove existing
+	// definitons that are overwritten by new definition
+	const newExistingDefs: InGraphIdentifierDefinition[] = [];
+	for(const overwriteIndex of indices) {
+		for(const existingDef of existingDefs) {
+			if(existingDef.indicesCollection === undefined) {
+				continue;
+			}
+			const newIndicesCollection: ContainerIndicesCollection = [];
+			for(const indices of existingDef.indicesCollection) {
+				let newIndices: ContainerIndex[];
+				if(!indices.isSingleIndex) {
+					// If indices are not a single, e.g. a list, take whole definition
+					newIndices = indices.indices;
+				} else {
+					// Filter existing indices with same name
+					newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
+				}
+				if(newIndices.length > 0) {
+					newIndicesCollection.push({
+						...indices,
+						indices: newIndices,
+					});
 				}
 			}
-			// store changed existing definitons and add new one
-			newEnvironments.memory.set(name, [...newExistingDefs, definition]);
-		} else {
-			existing.push(definition);
+
+			// if indices are now empty list, don't keep empty definition
+			if(newIndicesCollection.length > 0) {
+				newExistingDefs.push({
+					...existingDef,
+					indicesCollection: newIndicesCollection,
+				});
+			}
 		}
 	}
-	// console.log('after:', newEnvironments.memory.get(name));
+	// store changed existing definitons and add new one
+	return [...newExistingDefs, definition];
 }
 
 /**

@@ -136,4 +136,79 @@ result <- person$age`,
 result <- person$age`,
 		);
 	});
+
+	describe('Nested lists', () => {
+		assertSliced(
+			label('When index of nested list is overwritten, then overwrite is also in slice', []),
+			shell,
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$name <- "Jane"
+person$height <- 177
+result <- person$grades$algebra`,
+			['7@result'],
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+grades$algebra <- 1.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+result <- person$grades$algebra`,
+		);
+
+		assertSliced(
+			label('When index of nested list is overwritten after nesting, then overwrite is also in slice', []),
+			shell,
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$name <- "Jane"
+person$height <- 177
+person$grades$algebra <- 4.0
+person$grades$german <- 1.0
+result <- person$grades$algebra`,
+			['9@result'],
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$grades$algebra <- 4.0
+result <- person$grades$algebra`,
+		);
+
+		assertSliced(
+			label('When nested list is overwritten, then only overwrite list is in slice', []),
+			shell,
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+grades <- list(arts <- 4.0, music <- 3.0)
+grades$music <- 2.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$name <- "Jane"
+person$height <- 177
+result <- person$grades$music`,
+			['9@result'],
+			`grades <- list(arts <- 4.0, music <- 3.0)
+grades$music <- 2.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+result <- person$grades$music`,
+		);
+
+		assertSliced(
+			label('When nested list is overwritten after nesting, then only overwrite list is in slice', []),
+			shell,
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$grades <- list(arts <- 4.0, music <- 3.0)
+person$name <- "Jane"
+person$height <- 177
+result <- person$grades$music`,
+			['8@result'],
+			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
+person$grades <- list(arts <- 4.0, music <- 3.0)
+result <- person$grades$music`,
+		);
+	});
 }));

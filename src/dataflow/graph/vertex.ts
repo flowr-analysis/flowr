@@ -13,10 +13,14 @@ export enum VertexType {
 	FunctionDefinition = 'function-definition'
 }
 
-export interface ContainerIndex {
+export interface ContainerLeafIndex {
 	readonly lexeme: string,
 	readonly nodeId: NodeId,
 }
+export interface ContainerParentIndex extends ContainerLeafIndex {
+	readonly subIndices: ContainerIndex[],
+}
+export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
 export interface ContainerIndices {
 	readonly indices:       ContainerIndex[],
 	// Differentiate between single and multiple indices (a list with one index is not a single index)

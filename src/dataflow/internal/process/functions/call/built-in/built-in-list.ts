@@ -3,7 +3,10 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ContainerIndex, ContainerIndices } from '../../../../../graph/vertex';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
+import type { ContainerIndices, ContainerIndex } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -25,14 +28,28 @@ export function processList<OtherInfo>(
 	const namedArguments: ContainerIndex[] = [];
 	for(const arg of args) {
 		// Skip non named arguments
-		if(arg === EmptyArgument || arg.type !== 'RArgument' || arg.name === undefined) {
+		if(arg === EmptyArgument || arg.type !== RType.Argument || arg.name === undefined) {
 			continue;
 		}
 
-		const newIndex: ContainerIndex = {
+		let newIndex: ContainerIndex = {
 			lexeme: arg.name.content,
 			nodeId: arg.info.id,
 		};
+
+		// Check whether argument value is non-primitve
+		if(arg.value?.type === RType.Symbol) {
+			const defs = resolveByName(arg.value.lexeme, data.environment);
+			const indices = defs
+				?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? [])
+				.flatMap(indices => indices.indices);
+			// console.log('indices of', arg.value.lexeme, ':', indices);
+			newIndex = {
+				...newIndex,
+				subIndices: indices,
+			};
+		}
+
 		namedArguments.push(newIndex);
 	}
 

@@ -262,6 +262,12 @@ export function markAsAssignment(
 	if(sourceIds.length === 1) {
 		// support for tracking indices
 		indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
+		// if(indicesCollection) {
+		// 	const indicesCollectionString = indicesCollection.map(indices => 
+		// 		indices.indices.map(index => `{ lexeme: ${index.lexeme}, nodeId: ${index.nodeId} }`).join(', ')
+		// 	).join(', ');
+		// 	console.log(`Defining indices ${indicesCollectionString} for ${nodeToDefine.name}`);
+		// }
 	}
 	if(config?.indicesCollection !== undefined) {
 		indicesCollection = (indicesCollection ?? []).concat(config.indicesCollection);

@@ -6,6 +6,17 @@ import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import type { ContainerIndex, ContainerIndicesCollection } from '../graph/vertex';
 
+function printDefChanges(newEnvironments: IEnvironment, name: string) {
+	const defs = newEnvironments.memory.get(name);
+	console.log('after');
+	for(const element of defs ?? []) {
+		const def = element as InGraphIdentifierDefinition;
+		console.log(def.name);
+		for(const index of def.indicesCollection ?? []) {
+			console.log(index.indices, index.isSingleIndex);
+		}
+	}
+}
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
@@ -14,6 +25,7 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	const inGraphDefinition = definition as InGraphIdentifierDefinition;
 	if(existing !== undefined && inGraphDefinition.indicesCollection !== undefined && inGraphDefinition.controlDependencies === undefined) {
 		newEnvironments.memory.set(name, mergeIndices(existing, inGraphDefinition));
+		printDefChanges(newEnvironments, name);
 		return;
 	}
 
@@ -42,6 +54,7 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 			if(existingDef.indicesCollection === undefined) {
 				continue;
 			}
+			// console.log(existingDef);
 			const newIndicesCollection: ContainerIndicesCollection = [];
 			for(const indices of existingDef.indicesCollection) {
 				let newIndices: ContainerIndex[];
@@ -59,6 +72,7 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 					});
 				}
 			}
+			// console.log('newIndicesCollection', newIndicesCollection);
 
 			// if indices are now empty list, don't keep empty definition
 			if(newIndicesCollection.length > 0) {
@@ -69,6 +83,7 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 			}
 		}
 	}
+	// console.log('newExistingDefs', newExistingDefs);
 	// store changed existing definitons and add new one
 	return [...newExistingDefs, definition];
 }
@@ -79,6 +94,8 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
  */
 export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation): REnvironmentInformation {
 	const name = definition.name;
+	// console.log('defining:', name);
+	// console.log('definition:', definition);
 	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`);
 	let newEnvironment;
 	if(superAssign) {

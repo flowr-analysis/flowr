@@ -20,6 +20,7 @@ import type { InGraphIdentifierDefinition } from '../../../../../environments/id
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { ContainerIndex, ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -188,13 +189,30 @@ function processStringBasedAccess<OtherInfo>(
 		}
 	}
 
+	// console.log('processing string based access of', name, newArgs);
+	// element of list of list
+	// accessed: type: RArgument, value: RAccess
+	// access: type: RArgument, value: RString
+	// list of list:
+	// accessed: type: RArgument, value: RSymbol
+	// access: type: RArgument, value: RString
+	// element of list:
+	// accessed: type: RArgument, value: RSymbol
+	// access: type: RArgument, value: RString
+
+	// if value is not symbol but access, resolve access first
+
+	const nonEmptyArgs = newArgs.filter(arg => arg !== EmptyArgument);
+	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed); // or just nonEmptyArgs[0] or newArgs[0]
+	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess); // or just nonEmptyArgs[1] or newArgs[1]
 	let accessedIndicesCollection: ContainerIndicesCollection;
-	if(newArgs[0] !== EmptyArgument) {
-		const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
-		const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
-		const indicesCollection = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+	if(accessArg !== undefined && accessedArg != undefined) {
+		console.log('accessed', accessedArg);
+		console.log('access', accessArg);
+		const resolvedAccessedArg = resolveByName(accessedArg.lexeme ?? '', data.environment);
+		const indicesCollection = resolvedAccessedArg?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
 		for(const indices of indicesCollection ?? []) {
-			const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg);
+			const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg.lexeme);
 			if(filteredIndices.length == 0) {
 				continue;
 			}
@@ -204,6 +222,17 @@ function processStringBasedAccess<OtherInfo>(
 				isSingleIndex: indices.isSingleIndex
 			});
 		}
+		console.log('---------');
+		console.log('resolving', resolvedAccessedArg);
+		console.log('collection');
+		for(const element of indicesCollection ?? []) {
+			console.log(element);
+		}
+		console.log('accessed');
+		for(const element of accessedIndicesCollection ?? []) {
+			console.log(element);
+		}
+		console.log('---------');
 	}
 
 	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);

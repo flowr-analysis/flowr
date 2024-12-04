@@ -210,5 +210,42 @@ person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = 
 person$grades <- list(arts <- 4.0, music <- 3.0)
 result <- person$grades$music`,
 		);
+
+		assertSliced(
+			label('When nested list is accessed, then accesses to nested list are in slice', []),
+			shell,
+			`grades <- list(algebra = 1.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+grades$algebra <- 5.0
+person$name <- "Jane"
+result <- person$grades`,
+			['7@result'],
+			`grades <- list(algebra = 1.3, sports = 1.7)
+grades$algebra <- 1.0
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+result <- person$grades`,
+		);
+
+		assertSliced(
+			label('When double nested list is accessed, then accesses to all nested lists are in slice', []),
+			shell,
+			`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+person$name <- "Jane"
+result <- person$grades`,
+			['7@result'],
+			`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+result <- person$grades`,
+		);
 	});
 }));

@@ -18,7 +18,7 @@ import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
+import type { ContainerIndex, ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 interface TableAssignmentProcessorMarker {
@@ -208,8 +208,21 @@ function processStringBasedAccess<OtherInfo>(
 
 	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);
 	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
-	for(const accessedIndex of accessedIndices ?? []) {
-		fnCall.information.graph.addEdge(name.info.id, accessedIndex.nodeId, EdgeType.Reads);
-	}
+	referenceIndices(accessedIndices, fnCall, name.info.id);
 	return fnCall;
+}
+
+/**
+ * Creates reads edges to accessed indices and sub-indices of node
+ */
+function referenceIndices(
+	accessedIndices: ContainerIndex[] | undefined,
+	fnCall: ProcessKnownFunctionCallResult,
+	parentNodeId: NodeId,
+) {
+	for(const accessedIndex of accessedIndices ?? []) {
+		fnCall.information.graph.addEdge(parentNodeId, accessedIndex.nodeId, EdgeType.Reads);
+		const accessedSubIndices = (accessedIndex as ContainerParentIndex)?.subIndices ?? [];
+		referenceIndices(accessedSubIndices, fnCall, accessedIndex.nodeId);
+	}
 }

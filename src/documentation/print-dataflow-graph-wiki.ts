@@ -721,7 +721,7 @@ ${
 	block({
 		type:    'NOTE',
 		content: `
-What to do if you encounter this vertex? 
+What to do if you encounter a vertex marked with this edge? 
 
 This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
 Yet, you may choose to follow these references for other queries. For now, _flowR's_ support for non-standard evaluation is limited.

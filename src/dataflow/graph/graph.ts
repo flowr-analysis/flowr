@@ -112,6 +112,12 @@ export interface DataflowGraphJson {
 	readonly edgeInformation:   [NodeId, [NodeId, DataflowGraphEdge][]][]
 }
 
+/**
+ * An unknown side effect describes something that we cannot handle correctly (in all cases).
+ * For example, `eval` will be marked as an unknown side effect as we have no idea of how it will affect the program.
+ * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
+ * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
+ */
 export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
 
 /**
@@ -124,7 +130,11 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
  *
  * All methods return the modified graph to allow for chaining.
- * You can use {@link DataflowGraph#fromJson} to construct a dataflow graph object from a deserialized JSON object.
+ *
+ * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
+ * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
+ * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
+ * @see {@link emptyGraph} - to create an empty graph (useful in tests)
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,

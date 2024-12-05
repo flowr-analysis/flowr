@@ -107,33 +107,33 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 	}));
 }
 
-export function resolveToValues(name: Identifier, environment: REnvironmentInformation, graph: DataflowGraph) {
-	/*
-	* - Was genau ist mit alias tracking gemeint? 
-	* - Soll resolveToValues schon benutzt werden? 
-	* 	- überall wo resolveToConstants eingesetzt wird
-	*   - for i in 1 -> kein loop lul
-	*   - bei if -> true, false 
-	* - Warum kann der Identifier undefined sein?
-	* - Kann ich resolveByName Nutzen dafür?
-	* - How do I get the Value from a node?
-	*/
+// export function resolveToValues(name: Identifier, environment: REnvironmentInformation, graph: DataflowGraph) {
+// 	/*
+// 	* - Was genau ist mit alias tracking gemeint? 
+// 	* - Soll resolveToValues schon benutzt werden? 
+// 	* 	- überall wo resolveToConstants eingesetzt wird
+// 	*   - for i in 1 -> kein loop lul
+// 	*   - bei if -> true, false 
+// 	* - Warum kann der Identifier undefined sein?
+// 	* - Kann ich resolveByName Nutzen dafür?
+// 	* - How do I get the Value from a node?
+// 	*/
 
-	/*
-	* BuiltInIdentifierDefinition: Funktion
-	* BuiltInIdentifierConstant: Const Wert (true, false, null, ...)
-	* 
-	* 
-	* append: Zwei environments zusammenfügen, alten defs bleiben erhalten (union)
-	* 
-	* overwrite: überschreiben, aber maybe bleibt da
-	* 
-	* anpassen: 
-	* - (define)
-	* - overwrite
-	* - append
-	* - built-in-assignment -> define()
-	* 
-	* Datenfluss berechnen -> Environment Holen -> Werte anschauen ->
-	 */
-}
+// 	/*
+// 	* BuiltInIdentifierDefinition: Funktion
+// 	* BuiltInIdentifierConstant: Const Wert (true, false, null, ...)
+// 	* 
+// 	* 
+// 	* append: Zwei environments zusammenfügen, alten defs bleiben erhalten (union)
+// 	* 
+// 	* overwrite: überschreiben, aber maybe bleibt da
+// 	* 
+// 	* anpassen: 
+// 	* - (define)
+// 	* - overwrite
+// 	* - append
+// 	* - built-in-assignment -> define()
+// 	* 
+// 	* Datenfluss berechnen -> Environment Holen -> Werte anschauen ->
+// 	 */
+// }

@@ -171,7 +171,7 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 		type:                referenceType,
 		definedAt:           rootId,
 		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value: value
+		value:               value
 	}));
 }
 
@@ -256,28 +256,36 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	 * -> Set Domain (später wäre intervall domain)
 	 */
 
-	let definitions: NodeId[] = [];
+	const definitions: NodeId[] = [];
 
 	for(const sourceId of sourceIds) {
 		const info = dataflow.getVertex(sourceId);
-		if(info === undefined) { return undefined; }
+		if(info === undefined) {
+			return undefined; 
+		}
 
 		if(info.tag === VertexType.Value) {
 			// Source is constant
 			definitions.push(sourceId);
-		} else if (info.tag === VertexType.Use) {
+		} else if(info.tag === VertexType.Use) {
 			// Source is Symbol -> resolve definitions of symbol
 			const identifier = recoverName(sourceId, dataflow.idMap);
-			if(identifier === undefined) { return undefined; }
+			if(identifier === undefined) {
+				return undefined; 
+			}
 
 			const defs = resolveByName(identifier, environment);
-			if(defs === undefined) { return undefined; }
+			if(defs === undefined) {
+				return undefined; 
+			}
 
 			for(const def of defs) {
 				// If one definition is not constant (or a variable aliasing a constant) 
 				// we can't say for sure what value the source has 
-				if (def.type === ReferenceType.Variable) {
-					if(def.value === undefined) { return undefined; }
+				if(def.type === ReferenceType.Variable) {
+					if(def.value === undefined) {
+						return undefined; 
+					}
 					definitions.push(...def.value);
 				} else if(def.type !== ReferenceType.Constant && def.type !== ReferenceType.BuiltInConstant) {
 					return undefined;

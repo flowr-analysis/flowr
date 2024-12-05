@@ -5,6 +5,7 @@ import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType , ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { BuiltInIdentifierConstant } from './built-in';
+import type { DataflowGraph } from '../graph/graph';
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -104,4 +105,35 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 		value: (def as BuiltInIdentifierConstant).value,
 		from:  def.type
 	}));
+}
+
+export function resolveToValues(name: Identifier, environment: REnvironmentInformation, graph: DataflowGraph) {
+	/*
+	* - Was genau ist mit alias tracking gemeint? 
+	* - Soll resolveToValues schon benutzt werden? 
+	* 	- überall wo resolveToConstants eingesetzt wird
+	*   - for i in 1 -> kein loop lul
+	*   - bei if -> true, false 
+	* - Warum kann der Identifier undefined sein?
+	* - Kann ich resolveByName Nutzen dafür?
+	* - How do I get the Value from a node?
+	*/
+
+	/*
+	* BuiltInIdentifierDefinition: Funktion
+	* BuiltInIdentifierConstant: Const Wert (true, false, null, ...)
+	* 
+	* 
+	* append: Zwei environments zusammenfügen, alten defs bleiben erhalten (union)
+	* 
+	* overwrite: überschreiben, aber maybe bleibt da
+	* 
+	* anpassen: 
+	* - (define)
+	* - overwrite
+	* - append
+	* - built-in-assignment -> define()
+	* 
+	* Datenfluss berechnen -> Environment Holen -> Werte anschauen ->
+	 */
 }

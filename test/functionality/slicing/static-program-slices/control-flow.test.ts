@@ -27,7 +27,7 @@ x`);
 			{ loop: 'repeat', caps: ['repeat-loop'] },
 			{ loop: 'while(TRUE)', caps: ['while-loop', 'logical'] },
 			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
-		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[]}[])('$loop', ({ loop, caps }) => {
+		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
 			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 ${loop} {
@@ -70,7 +70,7 @@ x`);
    return(x)
 }
 
-f(5)`, ['9@f'],`f <- function(x) {
+f(5)`, ['9@f'], `f <- function(x) {
         x <- 3 * x
         return(x)
     }
@@ -141,4 +141,23 @@ if(FALSE) {
 print(y)`, ['12@y'], 'y <- TRUE\ny');
 	});
 
+	describe('Alias Tracking', () => {
+		assertSliced(label('useless branch with alias', ['control-flow', 'built-in', 'if']),
+			shell, `
+x <- TRUE 
+y <- TRUE
+if(x) {
+   y <- FALSE
+}
+print(y)`, ['7@y'], 'x <- TRUE\nif(x) { y <- FALSE }\ny');
+
+		assertSliced(label('useless branch with alias ||', ['control-flow', 'built-in', 'if']),
+			shell, `
+x <- FALSE 
+y <- TRUE
+if(x) {
+   y <- FALSE
+}
+print(y)`, ['7@y'], 'y <- TRUE\ny');
+	});
 }));

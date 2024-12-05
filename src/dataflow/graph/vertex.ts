@@ -42,7 +42,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 /**
  * Marker vertex for a value in the dataflow of the program.
  * This does not contain the _value_ of the referenced constant
- * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normlaized AST}
+ * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
  * (or more specifically the {@link AstIdMap}).
  *
  * If you have a {@link DataflowGraph|dataflow graph} named `graph`
@@ -53,8 +53,10 @@ interface DataflowGraphVertexBase extends MergeableRecord {
  * const node = graph.idMap.get(value.id)
  * ```
  *
- * This then returns the corresponding node in the {@link NormalizedAst|normlaized AST}, for example
+ * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
  * an {@link RNumber} or {@link RString}.
+ *
+ * This works similarly for {@link IdentifierReference|reference} for which you can use the `id`.
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value

@@ -26,21 +26,35 @@ import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
+/**
+ * Describes the information we store per function body.
+ * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+ */
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
 
 /**
+ * A reference with a name, e.g. `a` and `b` in the following function call:
+ *
  * ```r
  * foo(a = 3, b = 2)
  * ```
+ *
+ * @see #isNamedArgument
+ * @see PositionalFunctionArgument
  */
 export interface NamedFunctionArgument extends IdentifierReference {
 	readonly name: string
 }
 
 /**
+ * A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
+ *
  * ```r
  * foo(3, 2)
  * ```
+ *
+ * @see #isPositionalArgument
+ * @see NamedFunctionArgument
  */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
 	readonly name?: undefined
@@ -49,14 +63,23 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 /** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
 
+/**
+ * Check if the given argument is a {@link PositionalFunctionArgument}.
+ */
 export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {
 	return arg !== EmptyArgument && arg.name === undefined;
 }
 
+/**
+ * Check if the given argument is a {@link NamedFunctionArgument}.
+ */
 export function isNamedArgument(arg: FunctionArgument): arg is NamedFunctionArgument {
 	return arg !== EmptyArgument && arg.name !== undefined;
 }
 
+/**
+ * Returns the reference of a non-empty argument.
+ */
 export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefined {
 	if(arg !== EmptyArgument) {
 		return arg?.nodeId;
@@ -64,6 +87,9 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 	return undefined;
 }
 
+/**
+ * A reference that is enough to indicate start and end points of an edge within the dataflow graph.
+ */
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependencies'>  | IdentifierDefinition
 
 
@@ -77,13 +103,9 @@ export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = 
  */
 export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
 
-
-function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge): { fromId: NodeId, toId: NodeId } {
-	const fromId = typeof from === 'object' ? from.nodeId : from;
-	const toId = typeof to === 'object' ? to.nodeId : to;
-	return { fromId, toId };
-}
-
+/**
+ * The structure of the serialized {@link DataflowGraph}.
+ */
 export interface DataflowGraphJson {
 	readonly rootVertices:      NodeId[],
 	readonly vertexInformation: [NodeId, DataflowGraphVertexInfo][],
@@ -102,6 +124,7 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
  *
  * All methods return the modified graph to allow for chaining.
+ * You can use {@link DataflowGraph#fromJson} to construct a dataflow graph object from a deserialized JSON object.
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
@@ -280,7 +303,7 @@ export class DataflowGraph<
 	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this {
-		const { fromId, toId } = extractEdgeIds(from, to);
+		const [fromId, toId] = extractEdgeIds(from, to);
 
 		if(fromId === toId || toId === BuiltIn) {
 			return this;
@@ -456,4 +479,13 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 	}
 
 	return current;
+}
+
+/**
+ * Returns the ids of the dataflow vertices referenced by a {@link ReferenceForEdge}.
+ */
+function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge): [fromId: NodeId, toId: NodeId] {
+	const fromId = typeof from === 'object' ? from.nodeId : from;
+	const toId = typeof to === 'object' ? to.nodeId : to;
+	return [fromId, toId];
 }

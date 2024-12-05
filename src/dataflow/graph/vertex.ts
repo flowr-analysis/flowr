@@ -4,8 +4,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency } from '../info';
 
-export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
-
 
 export enum VertexType {
 	Value              = 'value',
@@ -43,10 +41,23 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 
 /**
  * Marker vertex for a value in the dataflow of the program.
+ * This does not contain the _value_ of the referenced constant
+ * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normlaized AST}
+ * (or more specifically the {@link AstIdMap}).
+ *
+ * If you have a {@link DataflowGraph|dataflow graph} named `graph`
+ * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+ *
+ * @example
+ * ```ts
+ * const node = graph.idMap.get(value.id)
+ * ```
+ *
+ * This then returns the corresponding node in the {@link NormalizedAst|normlaized AST}, for example
+ * an {@link RNumber} or {@link RString}.
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
-	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 	readonly environment?: undefined
 }
 
@@ -104,8 +115,20 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	environment?: REnvironmentInformation
 }
 
+/**
+ * What is to be passed to construct a vertex in the {@link DataflowGraph|dataflow graph}
+ */
 export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphVertexValue
+
+/**
+ * This is the union type of all possible vertices that appear within a {@link DataflowGraph|dataflow graph},
+ * they can be constructed passing a {@link DataflowGraphVertexArgument} to the graph.
+ *
+ * See {@link DataflowGraphVertices} for an id-based mapping.
+ */
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
+
+export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
 
 export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {

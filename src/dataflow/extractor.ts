@@ -24,7 +24,6 @@ import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import type { Tree } from 'web-tree-sitter';
 import type { Parser } from '../r-bridge/parser';
 
 export const processors: DataflowProcessors<ParentInformation> = {
@@ -80,7 +79,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 }
 
 export function produceDataFlowGraph<OtherInfo>(
-	parser: Parser<string | Tree>,
+	parser: Parser,
 	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {

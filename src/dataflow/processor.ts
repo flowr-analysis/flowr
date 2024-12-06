@@ -11,10 +11,9 @@ import type { REnvironmentInformation } from './environments/environment';
 import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { Parser } from '../r-bridge/parser';
-import type { Tree } from 'web-tree-sitter';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:              Parser<string | Tree>
+	readonly parser:              Parser
    /**
    * Initial and frozen ast-information
    */

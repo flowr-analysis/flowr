@@ -91,7 +91,7 @@ export class BenchmarkSlicer {
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
-	private readonly parser:   Parser<string | Tree>;
+	private readonly parser:   Parser;
 	private readonly pipeline: SupportedPipelines;
 	private stats:             SlicerStats | undefined;
 	private loadedXml:         string | Tree | undefined;

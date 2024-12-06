@@ -1,6 +1,6 @@
 import type { RParseRequest, RParseRequests } from './retriever';
 
-interface ParserContent<T> {
+interface ParserContent<T = unknown> {
 
     // TODO use this for the server response message & repl output
     // description(): string;
@@ -9,9 +9,9 @@ interface ParserContent<T> {
 
     close(): void;
 }
-export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};
-export type AsyncParser<T> = ParserContent<Promise<T>> & {readonly async: true};
-export type Parser<T> = SyncParser<T> | AsyncParser<T>;
+export type SyncParser<T = unknown> = ParserContent<Awaited<T>> & {readonly async?: false};
+export type AsyncParser<T = unknown> = ParserContent<Promise<T>> & {readonly async: true};
+export type Parser<T = unknown> = SyncParser<T> | AsyncParser<T>;
 
 export interface ParseRequiredInput<T> {
     /** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */

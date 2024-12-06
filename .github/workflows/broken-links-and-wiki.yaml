@@ -1,0 +1,129 @@
+name: Check for Broken Links and Publish Wiki
+
+'on':
+  push:
+    paths:
+      - '.github/workflows/broken-links-and-wiki.yaml'
+      - '**/*.md'
+      - 'wiki/**'
+      - 'src/documentation/**/*.ts'
+  pull_request:
+    types: [ opened ]
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # every monday at night
+    - cron: '0 1 * * 1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🛒 Checkout Repository (Release Perm.)"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+
+      - name: "🛒 Checkout LFS"
+        # just as a time-proven safety measure
+        run: git lfs checkout
+
+      - name: "🛠️ Update the Generated Wiki Pages"
+        run: |
+          npm ci
+          CHANGED_ANY=false
+          CHANGED_FILES=()
+          function update_wiki_page {
+            # test if the file exists
+            if [ -f "wiki/$1.md" ]; then
+                cp "wiki/$1.md" "wiki/$1-Old.md"
+            else
+                touch "wiki/$1-Old.md"
+            fi
+            npm run $2 --silent > "wiki/$1.md"
+            # test if the file changed, but ignore the first line which contains the time stamp
+            # we additionally used sed to remove any measurement stamp for the comparison as they of course change
+            # additionally, we remove any part "timing": <number>.
+            tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1.md.tmp"
+            tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1-Old.md.tmp"
+          
+            if ! diff -q "wiki/$1.md.tmp" "wiki/$1-Old.md.tmp"; then
+                echo "$1 changed!"
+                echo "CHANGED=true" >> $GITHUB_ENV
+                CHANGED_ANY=true
+                git add -f "wiki/$1.md"
+                CHANGED_FILES+=("$1")
+            else
+                echo "$1 did not change!"
+            fi
+            # delete the old file again
+            rm "wiki/$1-Old.md"
+          }
+          
+          update_wiki_page "Capabilities" capabilities-markdown
+          update_wiki_page "Dataflow Graph" wiki:df-graph
+          update_wiki_page "Query API" wiki:query-api
+          update_wiki_page "Interface" wiki:interface
+          update_wiki_page "Normalized AST" wiki:normalized-ast
+          update_wiki_page "Linting and Testing" wiki:linting-and-testing
+          
+          if [ $CHANGED_ANY == "true" ]; then
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              CHANGED_FILES_STRING=$(IFS=,; echo "${CHANGED_FILES[*]}")
+              git commit -m "[skip ci] doc: update generated wiki pages ($CHANGED_FILES_STRING)"
+          fi
+
+      - name: "⬆️ Push changed Wiki pages"
+        if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: main
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          force: true
+
+      - name: "⬆️ Publish the Wiki"
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        # We do not need to republish if nothing changes. Furthermore, do not publish on PR as this should be done by the push on main!
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        with:
+          path: "wiki/"
+          strategy: 'init'
+          token: ${{ secrets.GH_DEPLOY_WIKI }}
+          ignore: |
+            **/*.md.tmp
+            **/*-Old.*
+
+      - name: "🔎 Check the README for broken links"
+        uses: becheran/mlc@v0.18.0
+        continue-on-error: true
+        with:
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
+
+      - name: "🔎 Check the Wiki pages for broken links"
+        uses: becheran/mlc@v0.18.0
+        continue-on-error: true
+        if: ${{ always() && !failure() }}
+        with:
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/

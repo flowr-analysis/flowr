@@ -9,7 +9,8 @@ import { getPlatform } from '../util/os';
 import fs from 'fs';
 import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
 import { initCommand } from './init';
-import { getConfig } from '../config';
+import type { RShellEngineConfig } from '../config';
+import { getEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser } from './parser';
 import type { RParseRequest } from './retriever';
@@ -113,7 +114,7 @@ let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 export function getDefaultRShellOptions(): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {
 		DEFAULT_R_SHELL_OPTIONS = {
-			pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
+			pathToRExecutable:  getEngineConfig<RShellEngineConfig>('r-shell')?.rPath ?? DEFAULT_R_PATH,
 			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
 			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],

@@ -81,7 +81,7 @@ describe('flowr', () => {
 
 			// we are testing the server and not the slicer here!
 			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				shell,
+				parser:  shell,
 				request: requestFromInput('1 + 1'),
 			}).allRemainingSteps());
 

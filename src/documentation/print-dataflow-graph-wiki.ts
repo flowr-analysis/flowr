@@ -763,7 +763,7 @@ ${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TR
 async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
 	const shell = new RShell();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput('x <- 1\nx + 1')
 	}).allRemainingSteps();
 	shell.close();

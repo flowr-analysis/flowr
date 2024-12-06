@@ -8,7 +8,7 @@ import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 
 async function controlflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

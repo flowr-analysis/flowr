@@ -15,7 +15,7 @@ import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 
 async function getDataflow(shell: RShell, remainingLine: string) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

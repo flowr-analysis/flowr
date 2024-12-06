@@ -18,7 +18,6 @@ import { cfg2quads, extractCFG } from '../../../util/cfg/cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
-import type { ParseStepOutput } from '../../../core/steps/all/core/00-parse';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
@@ -43,6 +42,7 @@ import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-de
 import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
 import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
+import type { ParseStepOutput } from '../../../r-bridge/parser';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -169,7 +169,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as ParseStepOutput, StepOutputFormat.RdfQuads, config()),
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(STATIC_DATAFLOW, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
@@ -202,7 +202,7 @@ export class FlowRServerConnection {
 		}
 
 		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
-			shell:     this.shell,
+			parser:    this.shell,
 			request,
 			criterion: [] // currently unknown
 		});

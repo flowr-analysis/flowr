@@ -9,8 +9,12 @@ import { getPlatform } from '../util/os';
 import fs from 'fs';
 import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
 import { initCommand } from './init';
-import { getConfig } from '../config';
+import { getEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
+import type { AsyncParser } from './parser';
+import type { RParseRequest } from './retriever';
+import {  retrieveParseDataFromRCode } from './retriever';
+
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -109,7 +113,7 @@ let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 export function getDefaultRShellOptions(): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {
 		DEFAULT_R_SHELL_OPTIONS = {
-			pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
+			pathToRExecutable:  getEngineConfig('r-shell')?.rPath ?? DEFAULT_R_PATH,
 			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
 			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
@@ -133,7 +137,9 @@ export function getDefaultRShellOptions(): RShellOptions {
  * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
  * as a legacy mode :D)
  */
-export class RShell {
+export class RShell implements AsyncParser<string>{
+
+	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	private session:         RShellSession;
 	private readonly log:    Logger<ILogObj>;
@@ -147,6 +153,10 @@ export class RShell {
 
 		this.session = new RShellSession(this.options, this.log);
 		this.revive();
+	}
+
+	public parse(request: RParseRequest): Promise<string> {
+		return retrieveParseDataFromRCode(request, this);
 	}
 
 	private revive() {

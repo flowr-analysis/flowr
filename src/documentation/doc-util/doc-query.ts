@@ -26,7 +26,7 @@ export async function showQuery<
 >(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const results = executeQueries({ graph: analysis.dataflow.graph, ast: analysis.normalize }, queries);

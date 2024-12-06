@@ -27,7 +27,7 @@ export interface PrintNormalizedAstOptions {
 export async function printNormalizedAstForCode(shell: RShell, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
@@ -66,7 +66,7 @@ ${normalizedAstToMermaid(result.normalize.ast, prefix)}
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();

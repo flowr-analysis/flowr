@@ -12,7 +12,9 @@ import { resolveByName } from './resolve-by-name';
 import type { ControlDependency } from '../info';
 import { jsonReplacer } from '../../util/json';
 
-
+/**
+ * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#controlDependencies|control dependencies}).
+ */
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency | undefined = undefined): IdentifierReference {
 	const node = graph.get(ref.nodeId, true);
 	if(includeDefs) {
@@ -72,11 +74,21 @@ export class Environment implements IEnvironment {
 }
 
 /**
- * First of all, yes, R stores its environments differently, potentially even with a different differentiation between
- * the `baseenv`, the `emptyenv`and other default environments. Yet, during dataflow we want sometimes to know more (static
- * reference information) and sometimes know less (to be honest we do not want that,
+ * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link EnvironmentMemory}).
+ *
+ * First, yes, R stores its environments differently, potentially even with another differentiation between
+ * the `baseenv`, the `emptyenv`, and other default environments (see https://adv-r.hadley.nz/environments.html).
+ * Yet, during the dataflow analysis, we want sometimes to know more (static {@link IdentifierDefinition|reference information})
+ * and sometimes know less (to be honest, we do not want that,
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
- * One example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
+ *
+ * @see {@link define} - to define new {@link IdentifierDefinition|identifier definitions} within an environment
+ * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
+ * @see {@link makeReferenceMaybe} - to attach control dependencies to a reference
+ * @see {@link pushLocalEnvironment} - to create a new local scope
+ * @see {@link popLocalEnvironment} - to remove the current local scope
+ * @see {@link appendEnvironment} - to append an environment to the current one
+ * @see {@link overwriteEnvironment} - to overwrite the definitions in the current environment with those of another one
  */
 export interface REnvironmentInformation {
 	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */

@@ -5,12 +5,12 @@ import type { ControlDependency } from '../info';
 export type Identifier = string & { __brand?: 'identifier' }
 
 /**
- * Each reference only has exactly one reference type, stored as the respective number.
+ * Each reference has exactly one reference type, stored as the respective number.
  * However, when checking, we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
  *
  * Having reference types is important as R separates a variable definition from
- * a function when resolving {@link Identifier|identifier}.
+ * a function when resolving an {@link Identifier|identifier}.
  * In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
  * while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
  *
@@ -46,6 +46,12 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
 	return (t & target) !== 0;
 }
 
+/**
+ * Describes all types of reference (definitions) that can appear within a graph (i.e., that are not built-in like the
+ * default definition for the assignment operator `<-`).
+ *
+ * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
+ */
 export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>
 
 /**

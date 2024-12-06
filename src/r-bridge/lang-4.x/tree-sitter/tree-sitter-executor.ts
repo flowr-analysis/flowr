@@ -2,7 +2,6 @@ import Parser from 'web-tree-sitter';
 import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
 import type { SyncParser } from '../../parser';
-import type { TreeSitterEngineConfig } from '../../../config';
 import { getEngineConfig } from '../../../config';
 
 export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
@@ -14,7 +13,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public static async initTreeSitter(): Promise<void> {
 		await Parser.init();
-		const config = getEngineConfig<TreeSitterEngineConfig>('tree-sitter');
+		const config = getEngineConfig('tree-sitter');
 		const path = config?.wasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		TreeSitterExecutor.language = await Parser.Language.load(path);
 	}

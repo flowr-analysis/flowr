@@ -24,3 +24,8 @@ export const TREE_SITTER_NORMALIZE_PIPELINE = createPipeline(PARSE_WITH_TREE_SIT
 
 export const DEFAULT_PARSE_PIPELINE = createPipeline(PARSE_WITH_R_SHELL_STEP);
 export const TREE_SITTER_PARSE_PIPELINE = createPipeline(PARSE_WITH_TREE_SITTER_STEP);
+
+// TODO factory methods for making dataflow/parse/etc pipelines (each type one method)
+//  that take in the parser and automatically finds out which steps to use
+//  createDataflowPipeline(parser: Parser): Pipeline (or smth)
+//  (then afterwards we'll create a better system once we know it all works lol)

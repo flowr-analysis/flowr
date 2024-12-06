@@ -129,8 +129,8 @@ export function getConfig(): FlowrConfigOptions {
 	return currentConfig as FlowrConfigOptions;
 }
 
-export function getEngineConfig<T extends EngineConfig>(engine: T['type']): T | undefined {
-	return getConfig().engines.find(e => e.type === engine) as T | undefined;
+export function getEngineConfig<T extends EngineConfig['type']>(engine: T): EngineConfig & { type: T } | undefined {
+	return getConfig().engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 }
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {

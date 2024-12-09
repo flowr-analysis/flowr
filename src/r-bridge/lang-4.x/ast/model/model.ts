@@ -159,6 +159,9 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
  * All other subtypes (like {@link RLoopConstructs}) listed above
  * can be used to restrict the kind of node. They do not have to be
  * exclusive, some nodes can appear in multiple subtypes.
+ *
+ * @see {@link recoverName} - to receive the name/lexeme from such a node
+ * @see {@link recoverContent} - for a more rigorous approach to get the content of a node within a {@link DataflowGraph|dataflow graph}
  */
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>

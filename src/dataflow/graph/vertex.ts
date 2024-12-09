@@ -4,8 +4,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency } from '../info';
 
-export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
-
 
 export enum VertexType {
 	Value              = 'value',
@@ -16,7 +14,7 @@ export enum VertexType {
 }
 
 /**
- * Arguments required to construct a vertex in the dataflow graph.
+ * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
  *
  * @see DataflowGraphVertexUse
  * @see DataflowGraphVertexVariableDefinition
@@ -28,7 +26,9 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 */
 	readonly tag:        VertexType
 	/**
-	 * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+	 * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+	 * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+	 * as well as the corresponding {@link NormalizedAst|normalized AST}.
 	 */
 	id:                  NodeId
 	/**
@@ -36,22 +36,42 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 */
 	environment?:        REnvironmentInformation | undefined
 	/**
-	 * See {@link IdentifierReference}
+	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
 	controlDependencies: ControlDependency[] | undefined
 }
 
 /**
  * Marker vertex for a value in the dataflow of the program.
+ * This does not contain the _value_ of the referenced constant
+ * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
+ * (or more specifically the {@link AstIdMap}).
+ *
+ * If you have a {@link DataflowGraph|dataflow graph} named `graph`
+ * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+ *
+ * @example
+ * ```ts
+ * const node = graph.idMap.get(value.id)
+ * ```
+ *
+ * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
+ * an {@link RNumber} or {@link RString}.
+ *
+ * This works similarly for {@link IdentifierReference|identifier references}
+ * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
+ *
+ * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
-	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 	readonly environment?: undefined
 }
 
 /**
- * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
+ *
+ * @see {@link isUseVertex} - to check if a vertex is a use vertex
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
@@ -60,7 +80,9 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 }
 
 /**
- * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
+ *
+ * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
 	readonly tag:  VertexType.FunctionCall
@@ -80,7 +102,9 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 }
 
 /**
- * Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.
+ *
+ * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.VariableDefinition
@@ -88,6 +112,11 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 	readonly environment?: undefined
 }
 
+/**
+ * Arguments required to construct a vertex which represents the definition of a function in the {@link DataflowGraph|dataflow graph}.
+ *
+ * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
+ */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
 	readonly tag: VertexType.FunctionDefinition
 	/**
@@ -104,26 +133,56 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	environment?: REnvironmentInformation
 }
 
+/**
+ * What is to be passed to construct a vertex in the {@link DataflowGraph|dataflow graph}
+ */
 export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphVertexValue
+
+/**
+ * This is the union type of all possible vertices that appear within a {@link DataflowGraph|dataflow graph},
+ * they can be constructed passing a {@link DataflowGraphVertexArgument} to the graph.
+ *
+ * See {@link DataflowGraphVertices} for an id-based mapping.
+ */
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>
 
+/**
+ * A mapping of {@link NodeId}s to {@link DataflowGraphVertexInfo|vertices}.
+ */
+export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
+
+/**
+ * Check if the given vertex is a {@link DataflowGraphVertexValue|value vertex}.
+ */
 export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
 	return vertex.tag === VertexType.Value;
 }
 
+/**
+ * Check if the given vertex is a {@link DataflowGraphVertexUse|use vertex}.
+ */
 export function isUseVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
 	return vertex.tag === VertexType.Use;
 }
 
+/**
+ * Check if the given vertex is a {@link DataflowGraphVertexFunctionCall|function call vertex}.
+ */
 export function isFunctionCallVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
 	return vertex.tag === VertexType.FunctionCall;
 }
 
+/**
+ * Check if the given vertex is a {@link DataflowGraphVertexVariableDefinition|variable definition vertex}.
+ */
 export function isVariableDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
 	return vertex.tag === VertexType.VariableDefinition;
 }
 
+/**
+ * Check if the given vertex is a {@link DataflowGraphVertexFunctionDefinition|function definition vertex}.
+ */
 export function isFunctionDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
 	return vertex.tag === VertexType.FunctionDefinition;
 }

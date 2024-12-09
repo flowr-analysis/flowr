@@ -14,7 +14,7 @@ import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { recoverName, type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
 	IdentifierDefinition,
@@ -32,7 +32,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { getAliases } from '../../../../../environments/resolve-by-name';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -240,66 +240,6 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>
 	readonly information:              DataflowInformation
-}
-
-export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	/*
-	 * Hier raus finden was fürn Wert rechts (source) steht
-	 * Wenn source konstante: define direkt mit id der konstante 
-	 * Wenn source identifier: dann im environment nachschauen -> resolveByName 
-	 * 	Wenn mind. 1 def mit keinem Konst Wert (oder keine Def): stop :( (top vom lattice)
-	 *  Wenn alle Wert haben: dann Union alle Werte nehmen  
-	 * Else: nix stop :( (top vom lattice) 
-	 *
-	 * -> In eine Funktion auslagern
-	 * -> Später könnte man einen Funktionsaufruf auswerten :O :O :O :O
-	 * -> Set Domain (später wäre intervall domain)
-	 */
-
-	const definitions: NodeId[] = [];
-
-	for(const sourceId of sourceIds) {
-		const info = dataflow.getVertex(sourceId);
-		if(info === undefined) {
-			return undefined; 
-		}
-
-		if(info.tag === VertexType.Value) {
-			// Source is constant
-			definitions.push(sourceId);
-		} else if(info.tag === VertexType.Use) {
-			// Source is Symbol -> resolve definitions of symbol
-			const identifier = recoverName(sourceId, dataflow.idMap);
-			if(identifier === undefined) {
-				return undefined; 
-			}
-
-			const defs = resolveByName(identifier, environment);
-			if(defs === undefined) {
-				return undefined; 
-			}
-
-			for(const def of defs) {
-				// If one definition is not constant (or a variable aliasing a constant) 
-				// we can't say for sure what value the source has 
-				if(def.type === ReferenceType.Variable) {
-					if(def.value === undefined) {
-						return undefined; 
-					}
-					definitions.push(...def.value);
-				} else if(def.type !== ReferenceType.Constant && def.type !== ReferenceType.BuiltInConstant) {
-					return undefined;
-				}
-
-				definitions.push(def.nodeId);
-			}
-
-		} else {
-			return undefined;
-		}
-	}
-
-	return [...new Set(definitions)];
 }
 
 /**

@@ -5,6 +5,10 @@ import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType , ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { BuiltInIdentifierConstant } from './built-in';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { VertexType } from '../graph/vertex';
+import type { DataflowGraph } from '../graph/graph';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -107,33 +111,83 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 	}));
 }
 
-// export function resolveToValues(name: Identifier, environment: REnvironmentInformation, graph: DataflowGraph) {
-// 	/*
-// 	* - Was genau ist mit alias tracking gemeint? 
-// 	* - Soll resolveToValues schon benutzt werden? 
-// 	* 	- überall wo resolveToConstants eingesetzt wird
-// 	*   - for i in 1 -> kein loop lul
-// 	*   - bei if -> true, false 
-// 	* - Warum kann der Identifier undefined sein?
-// 	* - Kann ich resolveByName Nutzen dafür?
-// 	* - How do I get the Value from a node?
-// 	*/
 
-// 	/*
-// 	* BuiltInIdentifierDefinition: Funktion
-// 	* BuiltInIdentifierConstant: Const Wert (true, false, null, ...)
-// 	* 
-// 	* 
-// 	* append: Zwei environments zusammenfügen, alten defs bleiben erhalten (union)
-// 	* 
-// 	* overwrite: überschreiben, aber maybe bleibt da
-// 	* 
-// 	* anpassen: 
-// 	* - (define)
-// 	* - overwrite
-// 	* - append
-// 	* - built-in-assignment -> define()
-// 	* 
-// 	* Datenfluss berechnen -> Environment Holen -> Werte anschauen ->
-// 	 */
-// }
+export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: NodeId[] = [];
+
+	for(const sourceId of sourceIds) {
+		const info = dataflow.getVertex(sourceId);
+		if(info === undefined) {
+			return undefined; 
+		}
+
+		if(info.tag === VertexType.Value) {
+			// Source is constant
+			definitions.push(sourceId);
+		} else if(info.tag === VertexType.Use) {
+
+			// Source is Symbol -> resolve definitions of symbol
+			const identifier = recoverName(sourceId, dataflow.idMap);
+			if(identifier === undefined) {
+				return undefined; 
+			}
+
+			const defs = resolveByName(identifier, environment);
+			if(defs === undefined) {
+				return undefined; 
+			}
+
+			for(const def of defs) {
+				// If one definition is not constant (or a variable aliasing a constant) 
+				// we can't say for sure what value the source has 
+				if(def.type === ReferenceType.Variable) {
+					if(def.value === undefined) {
+						return undefined; 
+					}
+					definitions.push(...def.value);
+				} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
+					definitions.push(def.nodeId);
+				} else {
+					return undefined;
+				}
+			}
+
+		} else {
+			return undefined;
+		}
+	}
+
+	return [...new Set(definitions)];
+}
+
+export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {
+	if(identifier === undefined) {
+		return undefined;
+	}
+	
+	const defs = resolveByName(identifier, environment);
+	if(defs === undefined) {
+		return undefined;
+	}
+
+	const values: unknown[] = [];
+	for(const def of defs) {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			values.push(def.value);
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// TODO: nothing?
+		} else {
+			if(def.value !== undefined) {
+				for(const id of def.value) {
+					const value = graph.idMap?.get(id)?.content;
+					if(value !== undefined) {
+						values.push(value);
+					}
+				}
+			}
+		}
+	}
+
+	return values;
+}
+

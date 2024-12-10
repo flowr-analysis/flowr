@@ -40,7 +40,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		expect(values).toEqual([true]);
 	});
 
-	test('Loop', async () => {
+	test('Loop', async() => {
 		const result = await runPipeline(`x <- TRUE;
 while(x) {
   if(runif(1)) 
@@ -48,6 +48,6 @@ while(x) {
 }`, shell);
 		const values = resolveToValues('x' as Identifier, result.dataflow.environment, result.dataflow.graph);
 		expect(values).toEqual([true, false]);
-	})
+	});
 }));
 

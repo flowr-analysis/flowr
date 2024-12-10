@@ -188,6 +188,10 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 		}
 	}
 
+	if (values.length == 0) {
+		return undefined;
+	}
+	
 	return values;
 }
 

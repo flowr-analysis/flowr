@@ -149,7 +149,7 @@ y <- TRUE
 if(x) {
    y <- FALSE
 }
-print(y)`, ['7@y'], 'x <- TRUE\nif(x) { y <- FALSE }\ny');
+print(y)`, ['7@y'], 'y <- FALSE\ny');
 
 		assertSliced(label('useless branch with alias ||', ['control-flow', 'built-in', 'if']),
 			shell, `

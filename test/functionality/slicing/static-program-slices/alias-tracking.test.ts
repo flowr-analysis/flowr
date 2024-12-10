@@ -29,9 +29,15 @@ describe.sequential('Alias Tracking', withShell(shell => {
 	});
 
 	test('Simple Builtin Multiple', async() => {
-		const result = await runPipeline('x <- TRUE; y <- FALSE; z <- y; z <- x; print(z);', shell);
-		const values = resolveToValues('x' as Identifier, result.dataflow.environment, result.dataflow.graph);
-		expect(values).toEqual([true, false]);
+		const result = await runPipeline('x <- TRUE; y <- FALSE; z <- x; z <- y; print(z);', shell);
+		const values = resolveToValues('z' as Identifier, result.dataflow.environment, result.dataflow.graph);
+		expect(values).toEqual([false]);
+	});
+
+	test('Assign in branch', async() => {
+		const result = await runPipeline('x <- TRUE; y <- FALSE; if(x) { y <- TRUE; }; print(y);', shell);
+		const values = resolveToValues('y' as Identifier, result.dataflow.environment, result.dataflow.graph);
+		expect(values).toEqual([true]);
 	});
 }));
 

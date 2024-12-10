@@ -10,7 +10,7 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { resolveToConstants } from '../../../../../environments/resolve-by-name';
+import { resolveToValues } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -52,9 +52,10 @@ export function processIfThenElse<OtherInfo>(
 
 	// we should defer this to the abstract interpretation
 
-	const definitions = resolveToConstants(condArg?.lexeme, data.environment);
-	const conditionIsAlwaysFalse = definitions?.every(d => d.value === false) ?? false;
-	const conditionIsAlwaysTrue  = definitions?.every(d => d.value === true) ?? false;
+	//const definitions = resolveToConstants(condArg?.lexeme, data.environment);
+	const values = resolveToValues(condArg?.lexeme, data.environment, cond.graph);
+	const conditionIsAlwaysFalse = values?.every(d => d === false) ?? false;
+	const conditionIsAlwaysTrue  = values?.every(d => d === true) ?? false;
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);

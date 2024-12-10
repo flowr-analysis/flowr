@@ -14,7 +14,7 @@ import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
 	IdentifierDefinition,
@@ -32,6 +32,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
+import { getAliases } from '../../../../../environments/resolve-by-name';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -161,12 +162,16 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target };
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+/**
+ * Promotes the ingoing/unknown references of target (an assignment) to defitions   
+ */
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): IdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
 		type:                referenceType,
 		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined)
+		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+		value:               value
 	}));
 }
 
@@ -292,7 +297,8 @@ function processAssignmentToSymbol<OtherInfo>({
 }: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false);
+	const aliases = getAliases([source.info.id], information.graph, information.environment);
+	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);

@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, it } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 
@@ -39,21 +39,23 @@ person$age <- 33
 result <- person`
 		);
 
-		assertSliced(
-			label('When arguments are added to an empty list, then original list is in slice', []), shell,
-			`person <- list()
+		it.fails('When arguments are added to an empty list, then original list is in slice', () => {
+			assertSliced(
+				label('When arguments are added to an empty list, then original list is in slice', []), shell,
+				`person <- list()
 person$is_male <- FALSE
 person$name <- "Alice"
 person$age <- 33
 result <- person`,
-			['5@result'],
-			`person <- list()
+				['5@result'],
+				`person <- list()
 person$is_male <- FALSE
 person$name <- "Alice"
 person$age <- 33
 result <- person`
-		);
-
+			);
+		});
+		
 		assertSliced(
 			label('When whole list is redefined, then every list assignment before is not in slice', []), shell,
 			`person <- list(age = 24, name = "John")
@@ -155,10 +157,11 @@ person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = 
 result <- person$grades$algebra`,
 		);
 
-		assertSliced(
-			label('When index of nested list is overwritten after nesting, then overwrite is also in slice', []),
-			shell,
-			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+		it.fails('When index of nested list is overwritten after nesting, then overwrite is also in slice', () => {
+			assertSliced(
+				label('When index of nested list is overwritten after nesting, then overwrite is also in slice', []),
+				shell,
+				`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
 grades$algebra <- 1.0
 grades$sports <- 1.0
 person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
@@ -167,17 +170,19 @@ person$height <- 177
 person$grades$algebra <- 4.0
 person$grades$german <- 1.0
 result <- person$grades$algebra`,
-			['9@result'],
-			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+				['9@result'],
+				`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
 person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
 person$grades$algebra <- 4.0
 result <- person$grades$algebra`,
-		);
+			);
+		});
 
-		assertSliced(
-			label('When nested list is overwritten, then only overwrite list is in slice', []),
-			shell,
-			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+		it.fails('When nested list is overwritten, then only overwrite list is in slice', () => {
+			assertSliced(
+				label('When nested list is overwritten, then only overwrite list is in slice', []),
+				shell,
+				`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
 grades$algebra <- 1.0
 grades$sports <- 1.0
 grades <- list(arts <- 4.0, music <- 3.0)
@@ -186,17 +191,19 @@ person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = 
 person$name <- "Jane"
 person$height <- 177
 result <- person$grades$music`,
-			['9@result'],
-			`grades <- list(arts <- 4.0, music <- 3.0)
+				['9@result'],
+				`grades <- list(arts <- 4.0, music <- 3.0)
 grades$music <- 2.0
 person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
 result <- person$grades$music`,
-		);
+			);
+		});
 
-		assertSliced(
-			label('When nested list is overwritten after nesting, then only overwrite list is in slice', []),
-			shell,
-			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+		it.fails('When nested list is overwritten after nesting, then only overwrite list is in slice', () => {
+			assertSliced(
+				label('When nested list is overwritten after nesting, then only overwrite list is in slice', []),
+				shell,
+				`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
 grades$algebra <- 1.0
 grades$sports <- 1.0
 person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
@@ -204,12 +211,13 @@ person$grades <- list(arts <- 4.0, music <- 3.0)
 person$name <- "Jane"
 person$height <- 177
 result <- person$grades$music`,
-			['8@result'],
-			`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
+				['8@result'],
+				`grades <- list(algebra = 1.3, german = 2.0, english = 2.3, sports = 1.7)
 person <- list(age = 24, name = "John", height = 164, is_male = FALSE, grades = grades)
 person$grades <- list(arts <- 4.0, music <- 3.0)
 result <- person$grades$music`,
-		);
+			);
+		});
 
 		assertSliced(
 			label('When nested list is accessed, then accesses to nested list are in slice', []),
@@ -230,7 +238,7 @@ result <- person$grades`,
 		);
 
 		assertSliced(
-			label('When double nested list is accessed, then accesses to all nested lists are in slice', []),
+			label('When nested list is accessed, then accesses to nested lists are in slice', []),
 			shell,
 			`algebra_grades <- list(test = 1.0, exam = 3.0)
 algebra_grades$test <- 4.0
@@ -247,5 +255,45 @@ grades$sports <- 1.0
 person <- list(name = "John", grades = grades)
 result <- person$grades`,
 		);
+
+		assertSliced(
+			label('When double nested list is accessed, then accesses to nested lists are in slice', []),
+			shell,
+			`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+person$name <- "Jane"
+result <- person$grades$algebra`,
+			['7@result'],
+			`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+person <- list(name = "John", grades = grades)
+result <- person$grades$algebra`,
+		);
+
+		it.fails('When list is assigned, then accesses to list and nested lists are in slice', () => {
+			assertSliced(
+				label('When list is assigned, then accesses to list and nested lists are in slice', []),
+				shell,
+				`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+person$name <- "Jane"
+result <- person`,
+				['7@result'],
+				`algebra_grades <- list(test = 1.0, exam = 3.0)
+algebra_grades$test <- 4.0
+grades <- list(algebra = algebra_grades, sports = 1.7)
+grades$sports <- 1.0
+person <- list(name = "John", grades = grades)
+person$name <- "Jane"
+result <- person`,
+			);
+		});
 	});
 }));

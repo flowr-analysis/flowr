@@ -11,6 +11,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
 import { BuiltIn } from '../../../../../environments/built-in';
@@ -18,8 +19,10 @@ import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { ContainerIndex, ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import type { Base } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -122,7 +125,7 @@ function processNumberBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation, string>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	config: { treatIndicesAsString: boolean; } & ForceArguments,
+	config: ForceArguments,
 	head: RArgument<OtherInfo & ParentInformation>,
 ) {
 	const existing = data.environment.current.memory.get(':=');
@@ -165,7 +168,7 @@ function processStringBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation, string>,
 	rootId: NodeId,
-	config: { treatIndicesAsString: boolean; } & ForceArguments,
+	config: ForceArguments,
 ) {
 	const newArgs = [...args];
 	// if the argument is a symbol, we convert it to a string for this perspective
@@ -188,41 +191,117 @@ function processStringBasedAccess<OtherInfo>(
 		}
 	}
 
+	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
+
+	// Resolve access on the way up the fold
+	const nonEmptyArgs = newArgs.filter(arg => arg !== EmptyArgument);
+	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
+	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+
+	if(accessedArg === undefined || accessArg === undefined) {
+		return fnCall;
+	}
+
 	let accessedIndicesCollection: ContainerIndicesCollection;
-	if(newArgs[0] !== EmptyArgument) {
-		const accessArg = newArgs[1] === EmptyArgument ? undefined : newArgs[1].lexeme;
-		const resolvedFirstParameter = resolveByName(newArgs[0].lexeme ?? '', data.environment);
-		const indicesCollection = resolvedFirstParameter?.flatMap(param => (param as InGraphIdentifierDefinition)?.indicesCollection ?? []);
-		for(const indices of indicesCollection ?? []) {
-			const filteredIndices = indices.indices.filter(index => index.lexeme === accessArg);
-			if(filteredIndices.length == 0) {
-				continue;
-			}
-			accessedIndicesCollection ??= [];
-			accessedIndicesCollection.push({
-				indices:       filteredIndices,
-				isSingleIndex: indices.isSingleIndex
-			});
+	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
+	if(accessedArg.value?.type === RType.Symbol) {
+		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment);
+	} else {
+		// Higher access call
+		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
+		const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
+		const subIndices = vertex?.indicesCollection
+			?.flatMap(indices => indices.indices)
+			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
+		if(subIndices) {
+			accessedIndicesCollection = filterIndices(subIndices, accessArg);
 		}
 	}
 
-	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs }, accessedIndicesCollection);
-	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
-	referenceIndices(accessedIndices, fnCall, name.info.id);
+	// Add indices to vertex afterwards
+	if(accessedIndicesCollection) {
+		const vertex = fnCall.information.graph.getVertex(rootId);
+		if(vertex) {
+			vertex.indicesCollection = accessedIndicesCollection;
+		}
+
+		// When access has no access as parent, it's the top most
+		const rootNode = data.completeAst.idMap.get(rootId);
+		const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
+		if(parentNode?.type !== RType.Access) {
+			// Only reference indices in top most access
+			referenceIndices(accessedIndicesCollection, fnCall, name.info.id);
+		}
+	}
+
 	return fnCall;
 }
 
 /**
- * Creates reads edges to accessed indices and sub-indices of node
+ * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.
+ * 
+ * @param accessedArg - The argument to resolve
+ * @param accessArg - The argument which is used to filter the indices
+ * @param environment - The environment in which {@link accessedArg} is resolved
+ * @returns The filtered {@link ContainerIndicesCollection} of the resolved {@link accessedArg}
+ */
+function resolveSingleIndex<OtherInfo>(
+	accessedArg: RArgument<OtherInfo & ParentInformation>,
+	accessArg: Base<OtherInfo & ParentInformation>,
+	environment: REnvironmentInformation,
+): ContainerIndicesCollection {
+	const definitions = resolveByName(accessedArg.lexeme, environment);
+	const indicesCollection = definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg);
+	return accessedIndicesCollection;
+}
+
+/**
+ * Filters the single indices of the {@link indicesCollection} according to the lexeme of the {@link accessArg}.
+ * 
+ * @param indicesCollection - The {@link ContainerIndicesCollection} to filter
+ * @param accessArg - The argument which is used to filter {@link indicesCollection}
+ * @returns The filtered copy of {@link indicesCollection}
+ */
+function filterIndices<OtherInfo>(
+	indicesCollection: ContainerIndicesCollection,
+	accessArg: Base<OtherInfo & ParentInformation>,
+): ContainerIndicesCollection {
+	let accessedIndicesCollection: ContainerIndicesCollection = undefined;
+	for(const indices of indicesCollection ?? []) {
+		const filteredIndices = indices.indices.filter(index => accessArg.lexeme === index.lexeme);
+
+		if(filteredIndices.length == 0) {
+			continue;
+		}
+
+		accessedIndicesCollection ??= [];
+		accessedIndicesCollection.push({
+			indices:       filteredIndices,
+			isSingleIndex: indices.isSingleIndex
+		});
+	}
+	return accessedIndicesCollection;
+}
+
+/**
+ * 
+ * Creates edges of type {@link EdgeType.Reads} to the {@link accessedIndices} and their sub-indices starting from
+ * the node with {@link parentNodeId}.
+ * 
+ * @param accessedIndices - All indices that were accessed by the access operation
+ * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
  */
 function referenceIndices(
-	accessedIndices: ContainerIndex[] | undefined,
+	accessedIndicesCollection: ContainerIndicesCollection,
 	fnCall: ProcessKnownFunctionCallResult,
 	parentNodeId: NodeId,
 ) {
+	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
+
 	for(const accessedIndex of accessedIndices ?? []) {
 		fnCall.information.graph.addEdge(parentNodeId, accessedIndex.nodeId, EdgeType.Reads);
-		const accessedSubIndices = (accessedIndex as ContainerParentIndex)?.subIndices ?? [];
+		const accessedSubIndices = ('subIndices' in accessedIndex) ? accessedIndex.subIndices : undefined;
 		referenceIndices(accessedSubIndices, fnCall, accessedIndex.nodeId);
 	}
 }

@@ -40,14 +40,13 @@ export function processList<OtherInfo>(
 		// Check whether argument value is non-primitve
 		if(arg.value?.type === RType.Symbol) {
 			const defs = resolveByName(arg.value.lexeme, data.environment);
-			const indices = defs
-				?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? [])
-				.flatMap(indices => indices.indices);
-			// console.log('indices of', arg.value.lexeme, ':', indices);
-			newIndex = {
-				...newIndex,
-				subIndices: indices,
-			};
+			const indices = defs?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? []);
+			if(indices) {
+				newIndex = {
+					...newIndex,
+					subIndices: indices,
+				};
+			}
 		}
 
 		namedArguments.push(newIndex);

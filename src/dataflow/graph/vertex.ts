@@ -13,19 +13,57 @@ export enum VertexType {
 	FunctionDefinition = 'function-definition'
 }
 
+/**
+ * A single index of a container, which is not a container itself.
+ * 
+ * This can be e.g. a string, number or boolean index.
+ */
 export interface ContainerLeafIndex {
+	/**
+	 * Destinctive lexeme of index e.g 'name' for `list(name = 'John')`
+	 */
 	readonly lexeme: string,
+	
+	/**
+	 * NodeId of index in graph.
+	 */
 	readonly nodeId: NodeId,
 }
+
+/**
+ * A single index of a container, which is a container itself.
+ * 
+ * This can be e.g. a list, vector or data frame.
+ */
 export interface ContainerParentIndex extends ContainerLeafIndex {
-	readonly subIndices: ContainerIndex[],
+	/**
+	 * Sub-indices of index.
+	 */
+	readonly subIndices: ContainerIndices[],
 }
+
+/**
+ * A single index of a container.
+ */
 export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
+
+/**
+ * List of indices of a single statement.
+ */
 export interface ContainerIndices {
 	readonly indices:       ContainerIndex[],
-	// Differentiate between single and multiple indices (a list with one index is not a single index)
+	/**
+	 * Differentiate between single and multiple indices.
+	 * 
+	 * For `list(name = 'John')` `isSingleIndex` would be true, because a list may define more than one index.
+	 * `isSingleIndex` is true for e.g. single index assignments like `person$name <- 'John'`.
+	 */
 	readonly isSingleIndex: boolean,
 }
+
+/**
+ * Collection of Indices of several statements.
+ */
 export type ContainerIndicesCollection = ContainerIndices[] | undefined
 
 /**

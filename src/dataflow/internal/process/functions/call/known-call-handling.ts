@@ -58,7 +58,7 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name,args, rootId,data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 

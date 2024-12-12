@@ -8,6 +8,7 @@ export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
 
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
+	public readonly name = 'tree-sitter';
 	public readonly parser:  Parser;
 	private static language: Parser.Language;
 

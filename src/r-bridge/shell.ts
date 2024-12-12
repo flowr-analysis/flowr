@@ -139,6 +139,7 @@ export function getDefaultRShellOptions(): RShellOptions {
  */
 export class RShell implements AsyncParser<string>{
 
+	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	private session:         RShellSession;

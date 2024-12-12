@@ -26,8 +26,6 @@ import { expensiveTrace } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
-import type { SyncParser } from '../../../../../../r-bridge/parser';
-import type { Tree } from 'web-tree-sitter';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -93,7 +91,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	let dataflow: DataflowInformation;
 	try {
 		const file = request.request === 'file' ? request.content : undefined;
-		const parsed = (!data.parser.async ? data.parser as SyncParser<string | Tree> : new RShellExecutor()).parse(request);
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ parsed }, getId, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {

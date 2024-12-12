@@ -1,6 +1,11 @@
 import type { RParseRequest, RParseRequests } from './retriever';
+import type { RShell } from './shell';
+import type { RShellExecutor } from './shell-executor';
+import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
 
-interface ParserContent<T = unknown> {
+interface ParserContent<T> {
+
+    readonly name: string;
 
     // TODO use this for the server response message & repl output
     // description(): string;
@@ -9,9 +14,13 @@ interface ParserContent<T = unknown> {
 
     close(): void;
 }
-export type SyncParser<T = unknown> = ParserContent<Awaited<T>> & {readonly async?: false};
-export type AsyncParser<T = unknown> = ParserContent<Promise<T>> & {readonly async: true};
-export type Parser<T = unknown> = SyncParser<T> | AsyncParser<T>;
+export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};
+export type AsyncParser<T> = ParserContent<Promise<T>> & {readonly async: true};
+export type Parser<T> = SyncParser<T> | AsyncParser<T>;
+
+export type KnownParser = RShell | RShellExecutor | TreeSitterExecutor;
+export type KnownParserType = Awaited<ReturnType<KnownParser['parse']>>;
+export type KnownParserName = KnownParser['name']
 
 export interface ParseRequiredInput<T> {
     /** This is the {@link RShell}, {@link RShellExecutor} or {@link TreeSitterExecutor} connection to be used to obtain the original parses AST of the R code */
@@ -25,7 +34,7 @@ export interface ParseStepOutput<T> {
     readonly parsed: T
 }
 
-export async function parseRequests<T>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
+export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
 	const request = (Array.isArray(input.request) ? input.request[0] : input.request) as RParseRequest;
 	if(input.parser?.async){

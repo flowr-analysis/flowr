@@ -10,10 +10,10 @@ import type {
 import type { REnvironmentInformation } from './environments/environment';
 import type { RParseRequest } from '../r-bridge/retriever';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { Parser } from '../r-bridge/parser';
+import type { KnownParserType, Parser } from '../r-bridge/parser';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:              Parser
+	readonly parser:              Parser<KnownParserType>
    /**
    * Initial and frozen ast-information
    */

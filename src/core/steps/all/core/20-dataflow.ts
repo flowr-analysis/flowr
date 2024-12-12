@@ -11,7 +11,7 @@ import type { DeepReadonly } from 'ts-essentials';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RParseRequests } from '../../../../r-bridge/retriever';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
-import type { Parser } from '../../../../r-bridge/parser';
+import type { KnownParserType, Parser } from '../../../../r-bridge/parser';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -27,8 +27,8 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const;
 
-function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser }) {
-	return produceDataFlowGraph(input.parser as Parser, input.request as RParseRequests, results.normalize as NormalizedAst);
+function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<KnownParserType> }) {
+	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst);
 }
 
 export const STATIC_DATAFLOW = {

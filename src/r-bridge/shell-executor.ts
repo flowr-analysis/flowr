@@ -27,6 +27,10 @@ export class RShellExecutor implements SyncParser<string> {
 		return this;
 	}
 
+	public rVersion(): Promise<string | 'unknown' | 'none'> {
+		return Promise.resolve(this.usedRVersion()?.format() ?? 'unknown');
+	}
+
 	public usedRVersion(): SemVer | null{
 		const version = this.run(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`);
 		expensiveTrace(executorLog, () => `raw version: ${JSON.stringify(version)}`);

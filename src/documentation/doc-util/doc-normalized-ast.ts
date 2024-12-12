@@ -1,7 +1,7 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
 import { PipelineExecutor } from '../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_NORMALIZE_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -65,8 +65,7 @@ ${normalizedAstToMermaid(result.normalize.ast, prefix)}
 /** returns resolved expected df graph */
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
-	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
+	const info = await createDataflowPipeline(shell, {
 		request: requestFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();

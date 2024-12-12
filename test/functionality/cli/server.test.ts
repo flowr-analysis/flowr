@@ -33,8 +33,9 @@ describe('flowr', () => {
 				type:       'hello',
 				clientName: 'client-0',
 				versions:   {
-					r:     knownVersion.r,
-					flowr: knownVersion.flowr
+					r:      knownVersion.r,
+					flowr:  knownVersion.flowr,
+					engine: knownVersion.engine
 				}
 			}, 'Expected hello message to have the predefined format');
 		}));

@@ -137,7 +137,7 @@ export function getDefaultRShellOptions(): RShellOptions {
  * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
  * as a legacy mode :D)
  */
-export class RShell implements AsyncParser<string>{
+export class RShell implements AsyncParser<string> {
 
 	public readonly name = 'r-shell';
 	public readonly async = true;
@@ -146,7 +146,7 @@ export class RShell implements AsyncParser<string>{
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;
 	// should never be more than one, but let's be sure
-	private tempDirs         = new Set<string>();
+	private tempDirs = new Set<string>();
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(), ...options };
@@ -176,14 +176,18 @@ export class RShell implements AsyncParser<string>{
 	}
 
 	/**
-   * sends the given command directly to the current R session
-   * will not do anything to alter input markers!
-   */
+	 * sends the given command directly to the current R session
+	 * will not do anything to alter input markers!
+	 */
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`);
 		}
 		this._sendCommand(command);
+	}
+
+	public async rVersion(): Promise<string | 'unknown' | 'none'> {
+		return (await this.usedRVersion())?.format() ?? 'unknown';
 	}
 
 	public async usedRVersion(): Promise<SemVer | null> {

@@ -25,6 +25,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+	// TODO if we set multiple engines, we should have to specify a default one
 	/**
 	 * The engines to use for interacting with R code. Currently supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 */

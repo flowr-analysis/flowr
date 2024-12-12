@@ -24,10 +24,15 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		this.parser.setLanguage(TreeSitterExecutor.language);
 	}
 
+	public rVersion(): Promise<string | 'unknown' | 'none'> {
+		return Promise.resolve('none');
+	}
+
 	public parse(request: RParseRequest): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file' ){
 			// TODO what base path should this be based on (pass one like in RShell?)
+			//  currently, this only works when running main-dev, not when running in built
 			sourceCode = fs.readFileSync(request.content, 'utf8');
 		} else {
 			sourceCode = request.content;

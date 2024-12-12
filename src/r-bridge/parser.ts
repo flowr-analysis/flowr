@@ -7,8 +7,7 @@ interface ParserContent<T> {
 
     readonly name: string;
 
-    // TODO use this for the server response message & repl output
-    // description(): string;
+    rVersion(): Promise<string | 'unknown' | 'none'>;
 
     parse(request: RParseRequest): T;
 

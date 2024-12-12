@@ -1,7 +1,5 @@
 import type { ReplCommand } from './repl-main';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { RShell } from '../../../r-bridge/shell';
+import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
@@ -11,14 +9,14 @@ import type { DataflowGraphEdge } from '../../../dataflow/graph/edge';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
+import type { KnownParser } from '../../../r-bridge/parser';
 
 function splitAt(str: string, idx: number) {
 	return [str.slice(0, idx), str.slice(idx)];
 }
 
-async function getDfg(shell: RShell, remainingLine: string) {
-	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
+async function getDfg(parser: KnownParser, remainingLine: string) {
+	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

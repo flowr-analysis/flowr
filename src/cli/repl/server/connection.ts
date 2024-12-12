@@ -11,7 +11,6 @@ import type { ILogObj, Logger } from 'tslog';
 import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/message-repl';
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { LogLevel } from '../../../util/log';
 import type { ControlFlowInformation } from '../../../util/cfg/cfg';
 import { cfg2quads, extractCFG } from '../../../util/cfg/cfg';
@@ -24,8 +23,7 @@ import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/ansi';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
-import { DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { RShell } from '../../../r-bridge/shell';
+import { createSlicePipeline, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DeepPartial } from 'ts-essentials';
@@ -42,7 +40,7 @@ import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-de
 import type { QueryRequestMessage, QueryResponseMessage } from './messages/message-query';
 import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
-import type { ParseStepOutput } from '../../../r-bridge/parser';
+import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -50,7 +48,7 @@ import type { ParseStepOutput } from '../../../r-bridge/parser';
  */
 export class FlowRServerConnection {
 	private readonly socket:              Socket;
-	private readonly shell:               RShell;
+	private readonly parser:              KnownParser;
 	private readonly name:                string;
 	private readonly logger:              Logger<ILogObj>;
 	private readonly allowRSessionAccess: boolean;
@@ -58,13 +56,13 @@ export class FlowRServerConnection {
 	// maps token to information
 	private readonly fileMap = new Map<string, {
 		filename?: string,
-		pipeline:  PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
+		pipeline:  ReturnType<typeof createSlicePipeline>
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, shell: RShell, allowRSessionAccess: boolean) {
+	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean) {
 		this.socket = socket;
-		this.shell = shell;
+		this.parser = parser;
 		this.name = name;
 		this.logger = serverLog.getSubLogger({ name });
 		this.socket.on('data', data => this.handleData(String(data)));
@@ -201,8 +199,7 @@ export class FlowRServerConnection {
 			throw new Error('Either content or filepath must be defined.');
 		}
 
-		const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
-			parser:    this.shell,
+		const slicer = createSlicePipeline(this.parser, {
 			request,
 			criterion: [] // currently unknown
 		});
@@ -286,7 +283,7 @@ export class FlowRServerConnection {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, request.expression, this.shell,
+		}, request.expression, this.parser,
 		this.allowRSessionAccess
 		).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {

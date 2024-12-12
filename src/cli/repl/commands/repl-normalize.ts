@@ -1,13 +1,11 @@
 import type { ReplCommand } from './repl-main';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
-import { DEFAULT_NORMALIZE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { RShell } from '../../../r-bridge/shell';
+import { createNormalizePipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
+import type { KnownParser } from '../../../r-bridge/parser';
 
-async function normalize(shell: RShell, remainingLine: string) {
-	return await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser:  shell,
+async function normalize(parser: KnownParser, remainingLine: string) {
+	return await createNormalizePipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

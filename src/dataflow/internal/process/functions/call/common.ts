@@ -9,7 +9,7 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference } from '../../../../environments/identifier';
+import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import { ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
@@ -77,7 +77,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 
 
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -115,7 +115,12 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.controlDependencies)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					// When only a single index is referenced, we don't need to reference the whole object
+					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
+					const isSingleIndex = resolvedInGraphDef?.indicesCollection?.every((indices) => indices.isSingleIndex);
+					if(!isSingleIndex) {
+						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					}
 				}
 				if(assumeItMayHaveAHigherTarget) {
 					remainingReadInArgs.push(ingoing);

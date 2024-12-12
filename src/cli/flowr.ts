@@ -13,7 +13,7 @@ import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
-import { parseConfig, setConfig, setConfigFile } from '../config';
+import { getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
 
 
 import { guard } from '../util/assert';
@@ -27,6 +27,7 @@ import { repl, replProcessAnswer } from './repl/core';
 import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 export const toolName = 'flowr';
 
@@ -90,6 +91,7 @@ if(!usedConfig) {
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 
+// TODO rewrite this to allow the tree-sitter executor instead
 function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)
 	let opts: Partial<RShellOptions> = {
@@ -122,9 +124,17 @@ async function mainRepl() {
 	}
 
 	if(options.version) {
-		const shell = new RShell();
-		process.on('exit', () => shell.close());
-		await printVersionInformation(standardReplOutput, shell);
+		if(getEngineConfig('r-shell')) {
+			const shell = new RShell();
+			process.on('exit', () => shell.close());
+			await printVersionInformation(standardReplOutput, shell);
+		}
+		if(getEngineConfig('tree-sitter')) {
+			await TreeSitterExecutor.initTreeSitter();
+			const executor = new TreeSitterExecutor();
+			process.on('exit', () => executor.close());
+			await printVersionInformation(standardReplOutput, executor);
+		}
 		process.exit(0);
 	}
 

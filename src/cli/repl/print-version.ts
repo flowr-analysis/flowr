@@ -3,5 +3,5 @@ import type { RShell } from '../../r-bridge/shell';
 
 export async function printVersionRepl(shell: RShell): Promise<void> {
 	const version = await retrieveVersionInformation(shell);
-	console.log(`flowR repl using flowR ${version.flowr}, R ${version.r}`);
+	console.log(`flowR repl using flowR ${version.flowr}, R ${version.r}, engine ${version.engine}`);
 }

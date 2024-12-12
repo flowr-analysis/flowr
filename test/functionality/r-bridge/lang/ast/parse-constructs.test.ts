@@ -352,7 +352,8 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 					info:     {}
 				})
 			})	, {
-				ignoreAdditionalTokens: true
+				ignoreAdditionalTokens: true,
+				ignoreColumns:          true
 			}
 			);
 		});

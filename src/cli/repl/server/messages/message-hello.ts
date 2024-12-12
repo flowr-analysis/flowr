@@ -28,8 +28,9 @@ export const helloMessageDefinition: MessageDefinition<FlowrHelloResponseMessage
 		id:         Joi.any().forbidden().description('The id of the message is always undefined (as it is the initial message and not requested).'),
 		clientName: Joi.string().required().description('A unique name that is assigned to each client. It has no semantic meaning and is only used/useful for debugging.'),
 		versions:   Joi.object({
-			flowr: Joi.string().required().description('The version of the flowr server running in semver format.'),
-			r:     Joi.string().required().description('The version of the underlying R shell running in semver format.')
+			flowr:  Joi.string().required().description('The version of the flowr server running in semver format.'),
+			r:      Joi.string().required().description('The version of the underlying R shell running in semver format.'),
+			engine: Joi.string().required().description('The parser backend that is used to parse the R code.')
 		}).required()
 	}).required()
 };

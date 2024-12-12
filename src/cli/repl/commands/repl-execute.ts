@@ -1,6 +1,6 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { italic } from '../../../util/ansi';
-import type { RShell } from '../../../r-bridge/shell';
+import { RShell } from '../../../r-bridge/shell';
 
 
 export async function executeRShellCommand(output: ReplOutput, shell: RShell, statement: string) {
@@ -22,6 +22,11 @@ export const executeCommand: ReplCommand = {
 	aliases:      [ 'e', 'r' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		await executeRShellCommand(output, shell, remainingLine);
+		// TODO this should only work when the R shell access is actually enabled in the repl
+		if(shell instanceof RShell) {
+			await executeRShellCommand(output, shell, remainingLine);
+		} else {
+			// TODO error message somehow
+		}
 	}
 };

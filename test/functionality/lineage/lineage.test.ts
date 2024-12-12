@@ -18,7 +18,7 @@ describe.sequential('Test lineage', withShell(shell => {
 
 		return test(effectiveName, async() => {
 			const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				shell,
+				parser:  shell,
 				request: requestFromInput(request)
 			}).allRemainingSteps();
 			const lineageIds = getLineage(criterion, result.dataflow.graph);

@@ -7,10 +7,13 @@ import semver from 'semver/preload';
 import { expensiveTrace, log } from '../util/log';
 import { initCommand } from './init';
 import { ts2r } from './lang-4.x/convert-values';
+import type { SyncParser } from './parser';
+import { retrieveParseDataFromRCode, type RParseRequest } from './retriever';
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
 
-export class RShellExecutor {
+export class RShellExecutor implements SyncParser<string> {
+	public readonly name = 'r-shell';
 	public readonly options:        Readonly<RShellExecutionOptions>;
 	private readonly prerequisites: string[];
 
@@ -22,6 +25,10 @@ export class RShellExecutor {
 	public addPrerequisites(commands: string | string[]): this {
 		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands));
 		return this;
+	}
+
+	public rVersion(): Promise<string | 'unknown' | 'none'> {
+		return Promise.resolve(this.usedRVersion()?.format() ?? 'unknown');
 	}
 
 	public usedRVersion(): SemVer | null{
@@ -44,4 +51,9 @@ export class RShellExecutor {
 		return (returnErr ? returns.stderr : returns.stdout).trim();
 	}
 
+	public parse(request: RParseRequest): string {
+		return retrieveParseDataFromRCode(request, this);
+	}
+
+	public close(): void { /* noop */ }
 }

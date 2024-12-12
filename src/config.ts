@@ -107,6 +107,8 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
 		const validate = flowrConfigFileSchema.validate(parsed);
 		if(!validate.error) {
+			// TODO this is a bad way to merge, since the new engine configs don't play well with this
+			//  (they always include the default values, which are r-shell and tree-sitter, so removing them is impossible)
 			// assign default values to all config options except for the specified ones
 			return deepMergeObject(defaultConfigOptions, parsed);
 		} else {

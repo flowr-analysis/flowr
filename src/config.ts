@@ -128,6 +128,11 @@ export function setConfig(config: FlowrConfigOptions) {
 	currentConfig = config;
 }
 
+export function amendConfig(amendment: Partial<FlowrConfigOptions>) {
+	setConfig(deepMergeObject(getConfig(), amendment));
+	log.trace(`Amending config with ${JSON.stringify(amendment)}, resulting in ${JSON.stringify(getConfig())}}`);
+}
+
 export function getConfig(): FlowrConfigOptions {
 	// lazy-load the config based on the current settings
 	if(currentConfig === undefined) {

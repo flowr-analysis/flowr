@@ -13,13 +13,12 @@ import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
-import { getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
+import { amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
 
 
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
-import type { RShellOptions } from '../r-bridge/shell';
 import { RShell, RShellReviveOptions } from '../r-bridge/shell';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
@@ -45,6 +44,12 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+
+	'engine.r-shell.disabled': boolean
+	'engine.r-shell.r-path':   string | undefined
+	
+	'engine.tree-sitter.disabled':  boolean
+	'engine.tree-sitter.wasm-path': string | undefined
 }
 
 export const optionHelp = [
@@ -91,21 +96,25 @@ if(!usedConfig) {
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 
+// for all options that we manually supply that have a config equivalent, set them in the config
+if(!options['engine.r-shell.disabled']) {
+	amendConfig({ engines: [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }] });
+}
+if(!options['engine.tree-sitter.disabled']){
+	amendConfig({ engines: [{ type: 'tree-sitter', wasmPath: options['engine.tree-sitter.wasm-path'] }] });
+}
+
 // TODO rewrite this to allow the tree-sitter executor instead
 function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)
-	let opts: Partial<RShellOptions> = {
+	return new RShell({
 		revive:   RShellReviveOptions.Always,
 		onRevive: (code, signal) => {
 			const signalText = signal == null ? '' : ` and signal ${signal}`;
 			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }));
 			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`));
 		}
-	};
-	if(options['r-path']) {
-		opts = { ...opts, pathToRExecutable: options['r-path'] };
-	}
-	return new RShell(opts);
+	});
 }
 
 async function mainRepl() {

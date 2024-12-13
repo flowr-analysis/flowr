@@ -104,6 +104,12 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		type:        String,
 		description: 'The path to the tree-sitter-r WASM binary to use. Defaults to the one shipped with flowR.',
 		multiple:    false
+	},
+	{
+		name:        'default-engine',
+		type:        String,
+		description: 'The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.',
+		multiple:    false
 	}
 ];
 

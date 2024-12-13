@@ -6,6 +6,7 @@ import { log } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
+import type { KnownParser } from './r-bridge/parser';
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
@@ -25,12 +26,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
-	// TODO if we set multiple engines, we should have to specify a default one
 	/**
 	 * The engines to use for interacting with R code. Currently supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
-	readonly engines: readonly EngineConfig[]
+	readonly engines:        readonly EngineConfig[]
+	/**
+	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
+	 */
+	readonly defaultEngine?: EngineConfig['type'];
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -50,6 +54,7 @@ export interface RShellEngineConfig extends MergeableRecord {
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
+export type KnownEngines = { [T in EngineConfig['type']]?: KnownParser }
 
 const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type: T } } = {
 	'tree-sitter': { type: 'tree-sitter' },
@@ -67,7 +72,8 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
-	engines: []
+	engines:       [],
+	defaultEngine: 'r-shell'
 };
 
 export const flowrConfigFileSchema = Joi.object({
@@ -89,7 +95,8 @@ export const flowrConfigFileSchema = Joi.object({
 			type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
 			rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
 		}).description('The configuration for the R shell engine.')
-	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.')
+	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
+	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.')
 }).description('The configuration file format for flowR.');
 
 // we don't load from a config file at all by default unless setConfigFile is called

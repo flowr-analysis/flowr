@@ -13,7 +13,11 @@ import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
 import commandLineArgs from 'command-line-args';
-import { amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
+import type { EngineConfig, KnownEngines } from '../config';
+import { getConfig ,   amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
+
+
+
 
 
 import { guard } from '../util/assert';
@@ -27,6 +31,7 @@ import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { KnownParser } from '../r-bridge/parser';
 
 export const toolName = 'flowr';
 
@@ -44,6 +49,7 @@ export interface FlowrCliOptions {
 	verbose:            boolean
 	version:            boolean
 	ws:                 boolean
+	'default-engine':   string
 
 	'engine.r-shell.disabled': boolean
 	'engine.r-shell.r-path':   string | undefined
@@ -103,18 +109,34 @@ if(!options['engine.r-shell.disabled']) {
 if(!options['engine.tree-sitter.disabled']){
 	amendConfig({ engines: [{ type: 'tree-sitter', wasmPath: options['engine.tree-sitter.wasm-path'] }] });
 }
+if(options['default-engine']) {
+	amendConfig({ defaultEngine: options['default-engine'] as EngineConfig['type'] });
+}
 
-// TODO rewrite this to allow the tree-sitter executor instead
-function retrieveShell(): RShell {
-	// we keep an active shell session to allow other parse investigations :)
-	return new RShell({
-		revive:   RShellReviveOptions.Always,
-		onRevive: (code, signal) => {
-			const signalText = signal == null ? '' : ` and signal ${signal}`;
-			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }));
-			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`));
-		}
-	});
+async function retrieveEngineInstances(): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
+	const engines: KnownEngines = {};
+	if(getEngineConfig('r-shell')) {
+		// we keep an active shell session to allow other parse investigations :)
+		engines['r-shell'] = new RShell({
+			revive:   RShellReviveOptions.Always,
+			onRevive: (code, signal) => {
+				const signalText = signal == null ? '' : ` and signal ${signal}`;
+				console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }));
+				console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`));
+			}
+		});
+	}
+	if(getEngineConfig('tree-sitter')) {
+		await TreeSitterExecutor.initTreeSitter();
+		engines['tree-sitter'] = new TreeSitterExecutor();
+	}
+	let defaultEngine = getConfig().defaultEngine;
+	if(!defaultEngine || !engines[defaultEngine]) {
+		// if a default engine isn't specified, we just take the first one we have
+		defaultEngine = Object.keys(engines)[0] as keyof KnownEngines;
+	}
+	log.info(`Using engines ${Object.keys(engines).join(', ')} with default ${defaultEngine}`);
+	return { engines, default: defaultEngine };
 }
 
 async function mainRepl() {
@@ -132,28 +154,22 @@ async function mainRepl() {
 		process.exit(0);
 	}
 
+	const engines = await retrieveEngineInstances();
+	const defaultEngine = engines.engines[engines.default] as KnownParser;
+
 	if(options.version) {
-		if(getEngineConfig('r-shell')) {
-			const shell = new RShell();
-			process.on('exit', () => shell.close());
-			await printVersionInformation(standardReplOutput, shell);
-		}
-		if(getEngineConfig('tree-sitter')) {
-			await TreeSitterExecutor.initTreeSitter();
-			const executor = new TreeSitterExecutor();
-			process.on('exit', () => executor.close());
-			await printVersionInformation(standardReplOutput, executor);
+		for(const engine of Object.values(engines.engines)) {
+			await printVersionInformation(standardReplOutput, engine);
+			engine?.close();
 		}
 		process.exit(0);
 	}
-
-	const shell = retrieveShell();
 
 	const end = () => {
 		if(options.execute === undefined) {
 			console.log(`\n${italic('Exiting...')}`);
 		}
-		shell.close();
+		Object.values(engines.engines).forEach(e => e?.close());
 		process.exit(0);
 	};
 
@@ -163,29 +179,29 @@ async function mainRepl() {
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;
 	if(options.execute) {
-		await replProcessAnswer(standardReplOutput, options.execute, shell, allowRSessionAccess);
+		await replProcessAnswer(standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
 	} else {
-		await printVersionRepl(shell);
-		await repl({ shell, allowRSessionAccess });
+		await printVersionRepl(defaultEngine);
+		await repl({ defaultEngine, allowRSessionAccess });
 	}
 	process.exit(0);
 }
 
 async function mainServer(backend: Server = new NetServer()) {
-	const shell = retrieveShell();
+	const engines = await retrieveEngineInstances();
 
 	const end = () => {
 		if(options.execute === undefined) {
 			console.log(`\n${italic('Exiting...')}`);
 		}
-		shell.close();
+		Object.values(engines.engines).forEach(e => e?.close());
 		process.exit(0);
 	};
 
 	// hook some handlers
 	process.on('SIGINT', end);
 	process.on('SIGTERM', end);
-	await new FlowRServer(shell, options['r-session-access'], backend).start(options.port);
+	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], backend).start(options.port);
 }
 
 

@@ -12,9 +12,9 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public readonly parser:  Parser;
 	private static language: Parser.Language;
 
-	public static async initTreeSitter(wasmPath?: string): Promise<void> {
+	public static async initTreeSitter(): Promise<void> {
 		await Parser.init();
-		const path = wasmPath ?? getEngineConfig('tree-sitter')?.wasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
+		const path = getEngineConfig('tree-sitter')?.wasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		TreeSitterExecutor.language = await Parser.Language.load(path);
 	}
 

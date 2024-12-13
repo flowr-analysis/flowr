@@ -118,7 +118,7 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, parser
  */
 export interface FlowrReplOptions extends MergeableRecord {
 	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
-	readonly shell?:               RShell
+	readonly parser?:              KnownParser
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
@@ -146,7 +146,7 @@ export interface FlowrReplOptions extends MergeableRecord {
  *
  */
 export async function repl({
-	shell = new RShell({ revive: RShellReviveOptions.Always }),
+	parser = new RShell({ revive: RShellReviveOptions.Always }),
 	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION),
 	output = standardReplOutput,
 	historyFile = defaultHistoryFile,
@@ -162,7 +162,7 @@ export async function repl({
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
 				rl.pause();
-				replProcessAnswer(output, answer, shell, allowRSessionAccess).then(() => {
+				replProcessAnswer(output, answer, parser, allowRSessionAccess).then(() => {
 					rl.resume();
 					resolve();
 				}).catch(reject);

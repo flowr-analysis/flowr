@@ -28,6 +28,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	// TODO if we set multiple engines, we should have to specify a default one
 	/**
 	 * The engines to use for interacting with R code. Currently supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
+	 * An empty array means all available engines will be used.
 	 */
 	readonly engines: readonly EngineConfig[]
 }
@@ -50,6 +51,11 @@ export interface RShellEngineConfig extends MergeableRecord {
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
 
+const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type: T } } = {
+	'tree-sitter': { type: 'tree-sitter' },
+	'r-shell':     { type: 'r-shell' }
+};
+
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false,
 	rPath:             undefined,
@@ -61,7 +67,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
-	engines: [{ type: 'tree-sitter' }, { type: 'r-shell' }]
+	engines: []
 };
 
 export const flowrConfigFileSchema = Joi.object({
@@ -83,7 +89,7 @@ export const flowrConfigFileSchema = Joi.object({
 			type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
 			rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
 		}).description('The configuration for the R shell engine.')
-	)).min(1).description('The engine or set of engines to use for interacting with R code.')
+	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.')
 }).description('The configuration file format for flowR.');
 
 // we don't load from a config file at all by default unless setConfigFile is called
@@ -107,8 +113,6 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
 		const validate = flowrConfigFileSchema.validate(parsed);
 		if(!validate.error) {
-			// TODO this is a bad way to merge, since the new engine configs don't play well with this
-			//  (they always include the default values, which are r-shell and tree-sitter, so removing them is impossible)
 			// assign default values to all config options except for the specified ones
 			return deepMergeObject(defaultConfigOptions, parsed);
 		} else {
@@ -133,7 +137,12 @@ export function getConfig(): FlowrConfigOptions {
 }
 
 export function getEngineConfig<T extends EngineConfig['type']>(engine: T): EngineConfig & { type: T } | undefined {
-	return getConfig().engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
+	const config = getConfig().engines;
+	if(!config.length) {
+		return defaultEngineConfigs[engine];
+	} else {
+		return config.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
+	}
 }
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {

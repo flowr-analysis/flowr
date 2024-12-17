@@ -11,7 +11,7 @@ import type { MergeableRecord } from '../util/objects';
 import type { DataflowInformation } from '../dataflow/info';
 import type { SliceResult } from '../slicing/static/slicer-types';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
-import { PipelineExecutor } from '../core/pipeline-executor';
+import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/strings';
 import type {
@@ -24,8 +24,9 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import type { TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
-import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_SLICING_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
+
 
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
@@ -36,11 +37,11 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
-import type { KnownParserType, Parser } from '../r-bridge/parser';
+import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
-import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -91,23 +92,21 @@ export class BenchmarkSlicer {
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
-	private readonly parser:   Parser<KnownParserType>;
-	private readonly pipeline: SupportedPipelines;
-	private stats:             SlicerStats | undefined;
-	private loadedXml:         KnownParserType | undefined;
-	private dataflow:          DataflowInformation | undefined;
-	private normalizedAst:     NormalizedAst | undefined;
-	private totalStopwatch:    IStoppableStopwatch;
+	private readonly parser: KnownParser;
+	private stats:           SlicerStats | undefined;
+	private loadedXml:       KnownParserType | undefined;
+	private dataflow:        DataflowInformation | undefined;
+	private normalizedAst:   NormalizedAst | undefined;
+	private totalStopwatch:  IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
-	private executor:          PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
+	private executor:        PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
 
-	constructor(pipeline: SupportedPipelines) {
+	constructor(parser: KnownParserName) {
 		this.totalStopwatch = this.commonMeasurements.start('total');
-		this.pipeline = pipeline;
 		this.parser = this.commonMeasurements.measure(
 			'initialize R session',
-			() => pipeline === DEFAULT_SLICING_PIPELINE ? new RShell() : new TreeSitterExecutor()
+			() => parser === 'r-shell' ? new RShell() : new TreeSitterExecutor()
 		);
 	}
 
@@ -119,8 +118,7 @@ export class BenchmarkSlicer {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
-		this.executor = new PipelineExecutor(this.pipeline as typeof DEFAULT_SLICING_PIPELINE, {
-			parser:    this.parser as Parser<string>,
+		this.executor = createSlicePipeline(this.parser, {
 			request:   { ...request },
 			criterion: [],
 			autoSelectIf
@@ -139,7 +137,7 @@ export class BenchmarkSlicer {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
 		let numberOfRTokens: number;
 		let numberOfRTokensNoComments: number;
-		if(this.pipeline === DEFAULT_SLICING_PIPELINE) {
+		if(this.parser.name === 'r-shell') {
 			// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
 			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);

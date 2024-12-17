@@ -7,7 +7,6 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
-import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 
 
 export interface SingleBenchmarkCliOptions {
@@ -54,7 +53,7 @@ async function benchmark() {
 
 	const request: RParseRequestFromFile = { request: 'file', content: options.input };
 
-	const slicer = new BenchmarkSlicer(DEFAULT_SLICING_PIPELINE);
+	const slicer = new BenchmarkSlicer('r-shell');
 	try {
 		await slicer.init(request);
 

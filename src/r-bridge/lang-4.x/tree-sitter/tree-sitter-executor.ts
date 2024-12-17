@@ -30,7 +30,6 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public parse(request: RParseRequest): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file' ){
-			// TODO what base path should this be based on?
 			sourceCode = fs.readFileSync(request.content, 'utf8');
 		} else {
 			sourceCode = request.content;

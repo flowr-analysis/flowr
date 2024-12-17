@@ -4,8 +4,6 @@ import fs from 'fs';
 import type { SyncParser } from '../../parser';
 import { getEngineConfig } from '../../../config';
 
-// TODO what base path should this be based on (pass one like in RShell?)
-//  currently, this only works when running main-dev, not when running in built
 export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
 
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {

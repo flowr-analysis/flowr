@@ -164,7 +164,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		defs?.forEach(v => definitions.add(v));
 	}
 
-	return definitions.values().toArray();
+	return [...definitions];
 }
 
 export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {

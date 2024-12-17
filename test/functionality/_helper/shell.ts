@@ -402,23 +402,23 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, includeTreeSitter?: boolean },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean },
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
-	test.skipIf(skip)(fullname, async() => {
-		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
-			getId,
-			request:      requestFromInput(input),
-			parser:       shell,
-			criterion:    criteria,
-			autoSelectIf: userConfig?.autoSelectIf
-		}).allRemainingSteps();
-		testSlice(result);
-	});
-	if(userConfig?.includeTreeSitter) {
-		test.skipIf(skip)(`${fullname} (tree-sitter)`, async() => {
+	describe.skipIf(skip)(fullname, () => {
+		test('shell', async() => {
+			const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
+				getId,
+				request:      requestFromInput(input),
+				parser:       shell,
+				criterion:    criteria,
+				autoSelectIf: userConfig?.autoSelectIf
+			}).allRemainingSteps();
+			testSlice(result);
+		});
+		test.skipIf(userConfig?.skipTreeSitter)('tree-sitter', async() => {
 			const result = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
 				getId,
 				request:      requestFromInput(input),
@@ -428,7 +428,7 @@ export function assertSliced(
 			}).allRemainingSteps();
 			testSlice(result);
 		});
-	}
+	});
 	handleAssertOutput(name, shell, input, userConfig);
 
 	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>) {

@@ -11,6 +11,7 @@ export enum TreeSitterType {
     WhileStatement = 'while_statement',
     RepeatStatement = 'repeat_statement',
     Call = 'call',
+    Return= 'return',
     FunctionDefinition = 'function_definition',
     String = 'string',
     Float = 'float',

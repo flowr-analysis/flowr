@@ -101,7 +101,7 @@ interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly type:      InGraphReferenceType
 	/** The assignment (the arrow operator for e.g. `x <- 3`, or whatever) node which ultimately defined this identifier */
 	readonly definedAt: NodeId
-	readonly value:     NodeId[] | undefined
+	readonly value?:    NodeId[]
 }
 
 /**

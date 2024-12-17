@@ -113,7 +113,7 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 
 
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const definitions: NodeId[] = [];
+	const definitions: Set<NodeId> = new Set<NodeId>();
 
 	for(const sourceId of sourceIds) {
 		const info = dataflow.getVertex(sourceId);
@@ -123,7 +123,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 
 		if(info.tag === VertexType.Value) {
 			// Source is constant
-			definitions.push(sourceId);
+			definitions.add(sourceId);
 		} else if(info.tag === VertexType.Use) {
 
 			// Source is Symbol -> resolve definitions of symbol
@@ -144,9 +144,9 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 					if(def.value === undefined) {
 						return undefined; 
 					}
-					definitions.push(...def.value);
+					def.value.forEach(v => definitions.add(v));
 				} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
-					definitions.push(def.nodeId);
+					definitions.add(def.nodeId);
 				} else {
 					return undefined;
 				}
@@ -157,7 +157,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		}
 	}
 
-	return [...new Set(definitions)];
+	return definitions.values().toArray();
 }
 
 export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {

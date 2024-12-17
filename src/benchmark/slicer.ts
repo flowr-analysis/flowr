@@ -92,22 +92,20 @@ export class BenchmarkSlicer {
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
-	private readonly parser: KnownParser;
-	private stats:           SlicerStats | undefined;
-	private loadedXml:       KnownParserType | undefined;
-	private dataflow:        DataflowInformation | undefined;
-	private normalizedAst:   NormalizedAst | undefined;
-	private totalStopwatch:  IStoppableStopwatch;
+	private readonly parserName: KnownParserName;
+	private stats:               SlicerStats | undefined;
+	private loadedXml:           KnownParserType | undefined;
+	private dataflow:            DataflowInformation | undefined;
+	private normalizedAst:       NormalizedAst | undefined;
+	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
-	private executor:        PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
+	private executor:            PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
+	private parser:              KnownParser  = null as unknown as KnownParser;
 
-	constructor(parser: KnownParserName) {
+	constructor(parserName: KnownParserName) {
 		this.totalStopwatch = this.commonMeasurements.start('total');
-		this.parser = this.commonMeasurements.measure(
-			'initialize R session',
-			() => parser === 'r-shell' ? new RShell() : new TreeSitterExecutor()
-		);
+		this.parserName = parserName;
 	}
 
 	/**
@@ -118,6 +116,16 @@ export class BenchmarkSlicer {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
+		this.parser = await this.commonMeasurements.measure(
+			'initialize R session', async() => {
+				if(this.parserName === 'r-shell') {
+					return new RShell();
+				} else {
+					await TreeSitterExecutor.initTreeSitter();
+					return new TreeSitterExecutor();
+				}
+			}
+		);
 		this.executor = createSlicePipeline(this.parser, {
 			request:   { ...request },
 			criterion: [],

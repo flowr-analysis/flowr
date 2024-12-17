@@ -18,12 +18,12 @@ const BuiltInConstantTargetTypes = ReferenceType.BuiltInConstant | ReferenceType
 const BuiltInFunctionTargetTypes = ReferenceType.BuiltInFunction | ReferenceType.Unknown;
 
 const TargetTypePredicate = {
-	[ReferenceType.Unknown]: () => true,
-	[ReferenceType.Function]: ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
-	[ReferenceType.Variable]: ({ type }: IdentifierDefinition) => isReferenceType(type, VariableTargetTypes),
-	[ReferenceType.Constant]: ({ type }: IdentifierDefinition) => isReferenceType(type, ConstantTargetTypes),
-	[ReferenceType.Parameter]: () => true,
-	[ReferenceType.Argument]: () => true,
+	[ReferenceType.Unknown]:         () => true,
+	[ReferenceType.Function]:        ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
+	[ReferenceType.Variable]:        ({ type }: IdentifierDefinition) => isReferenceType(type, VariableTargetTypes),
+	[ReferenceType.Constant]:        ({ type }: IdentifierDefinition) => isReferenceType(type, ConstantTargetTypes),
+	[ReferenceType.Parameter]:       () => true,
+	[ReferenceType.Argument]:        () => true,
 	[ReferenceType.BuiltInConstant]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInConstantTargetTypes),
 	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes)
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
@@ -41,22 +41,22 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	let current: IEnvironment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
-	do {
+	do{
 		const definition = current.memory.get(name);
-		if (definition !== undefined) {
+		if(definition !== undefined) {
 			const filtered = definition.filter(wantedType);
-			if (filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
+			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
-			} else if (filtered.length > 0) {
+			} else if(filtered.length > 0) {
 				definitions ??= [];
 				definitions.push(...filtered);
 			}
 		}
 		current = current.parent;
-	} while (current.id !== BuiltInEnvironment.id);
+	} while(current.id !== BuiltInEnvironment.id);
 
 	const builtIns = current.memory.get(name);
-	if (definitions) {
+	if(definitions) {
 		return builtIns === undefined ? definitions : [...definitions, ...builtIns];
 	} else {
 		return builtIns;
@@ -64,26 +64,26 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 }
 
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
-	if (name === undefined) {
+	if(name === undefined) {
 		return Ternary.Never;
 	}
 	const definition = resolveByName(name, environment, ReferenceType.Constant);
 
-	if (definition === undefined) {
+	if(definition === undefined) {
 		return Ternary.Never;
 	}
 
 	let all = true;
 	let some = false;
-	for (const def of definition) {
-		if (def.type === ReferenceType.BuiltInConstant && def.value === wantedValue) {
+	for(const def of definition) {
+		if(def.type === ReferenceType.BuiltInConstant && def.value === wantedValue) {
 			some = true;
 		} else {
 			all = false;
 		}
 	}
 
-	if (all) {
+	if(all) {
 		return Ternary.Always;
 	} else {
 		return some ? Ternary.Maybe : Ternary.Never;
@@ -92,29 +92,29 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 
 export interface ResolveResult<T = unknown> {
 	value: T,
-	from: ReferenceType
+	from:  ReferenceType
 }
 
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult[] | undefined {
-	if (name === undefined) {
+	if(name === undefined) {
 		return undefined;
 	}
 
 	const definitions = resolveByName(name, environment, ReferenceType.Constant);
-	if (definitions === undefined) {
+	if(definitions === undefined) {
 		return undefined;
 	}
 
 	return definitions.map<ResolveResult>(def => ({
 		value: (def as BuiltInIdentifierConstant).value,
-		from: def.type
+		from:  def.type
 	}));
 }
 
 const AliasHandler = {
-	[VertexType.Value]: (sourceId: NodeId) => [sourceId],
-	[VertexType.Use]: getUseAlias,
-	[VertexType.FunctionCall]: () => undefined,
+	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
+	[VertexType.Use]:                getUseAlias,
+	[VertexType.FunctionCall]:       () => undefined,
 	[VertexType.FunctionDefinition]: () => undefined,
 	[VertexType.VariableDefinition]: () => undefined
 } as const satisfies Record<VertexType, (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined>;
@@ -124,24 +124,24 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 
 	// Source is Symbol -> resolve definitions of symbol
 	const identifier = recoverName(sourceId, dataflow.idMap);
-	if (identifier === undefined) {
+	if(identifier === undefined) {
 		return undefined;
 	}
 
 	const defs = resolveByName(identifier, environment);
-	if (defs === undefined) {
+	if(defs === undefined) {
 		return undefined;
 	}
 
-	for (const def of defs) {
+	for(const def of defs) {
 		// If one definition is not constant (or a variable aliasing a constant) 
 		// we can't say for sure what value the source has 
-		if (def.type === ReferenceType.Variable) {
-			if (def.value === undefined) {
+		if(def.type === ReferenceType.Variable) {
+			if(def.value === undefined) {
 				return undefined;
 			}
 			definitions.push(...def.value);
-		} else if (def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
+		} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
 			definitions.push(def.nodeId);
 		} else {
 			return undefined;
@@ -154,9 +154,9 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: Set<NodeId> = new Set<NodeId>();
 
-	for (const sourceId of sourceIds) {
+	for(const sourceId of sourceIds) {
 		const info = dataflow.getVertex(sourceId);
-		if (info === undefined) {
+		if(info === undefined) {
 			return undefined;
 		}
 
@@ -168,26 +168,26 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {
-	if (identifier === undefined) {
+	if(identifier === undefined) {
 		return undefined;
 	}
 
 	const defs = resolveByName(identifier, environment);
-	if (defs === undefined) {
+	if(defs === undefined) {
 		return undefined;
 	}
 
 	const values: unknown[] = [];
-	for (const def of defs) {
-		if (def.type === ReferenceType.BuiltInConstant) {
+	for(const def of defs) {
+		if(def.type === ReferenceType.BuiltInConstant) {
 			values.push(def.value);
-		} else if (def.type === ReferenceType.BuiltInFunction) {
+		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// TODO: nothing?
 		} else {
-			if (def.value !== undefined) {
-				for (const id of def.value) {
+			if(def.value !== undefined) {
+				for(const id of def.value) {
 					const value = graph.idMap?.get(id)?.content;
-					if (value !== undefined) {
+					if(value !== undefined) {
 						values.push(value);
 					}
 				}
@@ -195,7 +195,7 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 		}
 	}
 
-	if (values.length == 0) {
+	if(values.length == 0) {
 		return undefined;
 	}
 

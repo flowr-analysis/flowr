@@ -172,6 +172,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.Null:
 		case TreeSitterType.Dots:
 		case TreeSitterType.Identifier:
+		case TreeSitterType.Return:
 			return {
 				type:      RType.Symbol,
 				location:  range,

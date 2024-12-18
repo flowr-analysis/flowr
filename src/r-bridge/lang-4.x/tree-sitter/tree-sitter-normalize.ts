@@ -176,7 +176,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			return {
 				type:      RType.Symbol,
 				location:  range,
-				content:   removeRQuotes(node.text),
+				content:   startAndEndsWith(node.text, '`') ? node.text.slice(1, -1) : removeRQuotes(node.text),
 				lexeme:    node.text,
 				namespace: undefined,
 				...defaultInfo

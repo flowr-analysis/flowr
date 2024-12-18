@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-11-22, 12:56:10 UTC presenting an overview of flowR's normalized ast (v2.1.7, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-12-18, 13:38:35 UTC presenting an overview of flowR's normalized ast (v2.1.8, using R v4.4.0)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -51,7 +51,7 @@ x"])
 
 ```
 	
-(The analysis required _10.72 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
+(The analysis required _16.95 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 
 
 
@@ -85,7 +85,7 @@ direction RL
 class RNode~Info = NoInfo~
     <<type>> RNode
 style RNode opacity:.35,fill:#FAFAFA
-click RNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62;  All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
+click RNode href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L166" "The #96;RNode#96; type is the union of all possible nodes in the R#45;ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes. #60;p#62;  All other subtypes (like; #60;code#62;RLoopConstructs#60;/code#62;; ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes."
 class RExpressionList~Info = NoInfo~
     <<interface>> RExpressionList
     RExpressionList : type#58; RType.ExpressionList
@@ -279,7 +279,7 @@ class RNumber~Info = NoInfo~
     <<interface>> RNumber
     RNumber : type#58; RType.Number
     RNumber : content#58; RNumberValue
-click RNumber href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L6" "includes numeric, integer, and complex"
+click RNumber href "https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L10" "A number like #96;3#96;, #96;#45;2.14#96;, #96;1L#96;, or #96;2i#96;. Includes numeric, integer, and complex. See; #60;code#62;RNumberValue#60;/code#62;; for more information."
     RNumber : location#58; SourceRange [from Location]
 class RString~Info = NoInfo~
     <<interface>> RString
@@ -380,7 +380,7 @@ Info .. RNode
 ```
 
 
-_The generation of the class diagram required 820.33 ms._
+_The generation of the class diagram required 834.61 ms._
 </details>
 
 Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
@@ -393,7 +393,7 @@ In summary, we have the following types:
 
 <details><summary style="color:black">Normalized AST Node Types</summary>
 
- * [RNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163)   
+ * [RNode](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L166)   
    The `RNode` type is the union of all possible nodes in the R-ast.
    It should be used whenever you either not care what kind of
    node you are dealing with or if you want to handle all possible nodes.
@@ -403,7 +403,7 @@ In summary, we have the following types:
    ) listed above
    can be used to restrict the kind of node. They do not have to be
    exclusive, some nodes can appear in multiple subtypes.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L163">./src/r-bridge/lang-4.x/ast/model/model.ts#L163</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/model.ts#L166">./src/r-bridge/lang-4.x/ast/model/model.ts#L166</a></summary>
    
    
    ```ts
@@ -416,6 +416,9 @@ In summary, we have the following types:
     * All other subtypes (like {@link RLoopConstructs}) listed above
     * can be used to restrict the kind of node. They do not have to be
     * exclusive, some nodes can appear in multiple subtypes.
+    *
+    * @see {@link recoverName} - to receive the name/lexeme from such a node
+    * @see {@link recoverContent} - for a more rigorous approach to get the content of a node within a {@link DataflowGraph|dataflow graph}
     */
    export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
        | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
@@ -972,13 +975,21 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L6)**   
-         includes numeric, integer, and complex
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L6">./src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L6</a></summary>
+       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L10)**   
+         A number like `3`, `-2.14`, `1L`, or `2i`.
+         Includes numeric, integer, and complex.
+         See
+         <code>RNumberValue</code>
+         for more information.
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L10">./src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L10</a></summary>
          
          
          ```ts
-         /** includes numeric, integer, and complex */
+         /**
+          * A number like `3`, `-2.14`, `1L`, or `2i`.
+          * Includes numeric, integer, and complex.
+          * See {@link RNumberValue} for more information.
+          */
          export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
              readonly type: RType.Number
              content:       RNumberValue

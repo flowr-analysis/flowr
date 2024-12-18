@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-12-04, 12:49:17 UTC presenting an overview of flowR's dataflow graph (v2.1.8, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-12-18, 13:38:14 UTC presenting an overview of flowR's dataflow graph (v2.1.8, using R v4.4.0)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -68,7 +68,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _17.27 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _16.66 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -161,35 +161,35 @@ direction RL
 class DataflowGraphVertexInfo
     <<type>> DataflowGraphVertexInfo
 style DataflowGraphVertexInfo opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L108" ""
+click DataflowGraphVertexInfo href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L147" "This is the union type of all possible vertices that appear within a; #60;code#62;dataflow graph#60;/code#62;; , they can be constructed passing a; #60;code#62;DataflowGraphVertexArgument#60;/code#62;; to the graph.  See; #60;code#62;DataflowGraphVertices#60;/code#62;; for an id#45;based mapping."
 class DataflowGraphVertexArgument
     <<type>> DataflowGraphVertexArgument
 style DataflowGraphVertexArgument opacity:.35,fill:#FAFAFA
-click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L107" ""
+click DataflowGraphVertexArgument href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L139" "What is to be passed to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;"
 class DataflowGraphVertexUse
     <<interface>> DataflowGraphVertexUse
     DataflowGraphVertexUse : tag#58; VertexType.Use
     DataflowGraphVertexUse : environment#58; undefined
-click DataflowGraphVertexUse href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56" "Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph."
+click DataflowGraphVertexUse href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L76" "Arguments required to construct a vertex which represents the usage of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexBase
     <<interface>> DataflowGraphVertexBase
     DataflowGraphVertexBase : tag#58; VertexType
     DataflowGraphVertexBase : id#58; NodeId
     DataflowGraphVertexBase : environment#58; REnvironmentInformation
     DataflowGraphVertexBase : controlDependencies#58; ControlDependency#91;#93;
-click DataflowGraphVertexBase href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25" "Arguments required to construct a vertex in the dataflow graph."
+click DataflowGraphVertexBase href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23" "Arguments required to construct a vertex in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexVariableDefinition
     <<interface>> DataflowGraphVertexVariableDefinition
     DataflowGraphVertexVariableDefinition : tag#58; VertexType.VariableDefinition
     DataflowGraphVertexVariableDefinition : environment#58; undefined
-click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L85" "Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph."
+click DataflowGraphVertexVariableDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L109" "Arguments required to construct a vertex which represents the definition of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionDefinition
     <<interface>> DataflowGraphVertexFunctionDefinition
     DataflowGraphVertexFunctionDefinition : tag#58; VertexType.FunctionDefinition
     DataflowGraphVertexFunctionDefinition : subflow#58; DataflowFunctionFlowInformation
     DataflowGraphVertexFunctionDefinition : exitPoints#58; readonly NodeId#91;#93;
     DataflowGraphVertexFunctionDefinition : environment#58; REnvironmentInformation
-click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L91" ""
+click DataflowGraphVertexFunctionDefinition href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L120" "Arguments required to construct a vertex which represents the definition of a function in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexFunctionCall
     <<interface>> DataflowGraphVertexFunctionCall
     DataflowGraphVertexFunctionCall : tag#58; VertexType.FunctionCall
@@ -197,12 +197,12 @@ class DataflowGraphVertexFunctionCall
     DataflowGraphVertexFunctionCall : args#58; FunctionArgument#91;#93;
     DataflowGraphVertexFunctionCall : onlyBuiltin#58; boolean
     DataflowGraphVertexFunctionCall : environment#58; REnvironmentInformation
-click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65" "Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph."
+click DataflowGraphVertexFunctionCall href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L87" "Arguments required to construct a vertex which represents the usage of a variable in the; #60;code#62;dataflow graph#60;/code#62;; ."
 class DataflowGraphVertexValue
     <<interface>> DataflowGraphVertexValue
     DataflowGraphVertexValue : tag#58; VertexType.Value
     DataflowGraphVertexValue : environment#58; undefined
-click DataflowGraphVertexValue href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47" "Marker vertex for a value in the dataflow of the program."
+click DataflowGraphVertexValue href "https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L66" "Marker vertex for a value in the dataflow of the program. This does not contain the #95;value#95; of the referenced constant as this is available with the; #60;code#62;id#60;/code#62;; in the; #60;code#62;normalized AST#60;/code#62;; (or more specifically the; #60;code#62;AstIdMap#60;/code#62;; ).  If you have a; #60;code#62;dataflow graph#60;/code#62;; named #96;graph#96; with an; #60;code#62;AstIdMap#60;/code#62;; and a value vertex object with name #96;value#96; the following Code should work#58;"
 DataflowGraphVertexArgument .. DataflowGraphVertexInfo
 DataflowGraphVertexUse .. DataflowGraphVertexArgument
 DataflowGraphVertexBase <|-- DataflowGraphVertexUse
@@ -312,7 +312,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.02 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.95 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -341,18 +341,50 @@ flowchart LR
 Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
- * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47)**   
+ * **[DataflowGraphVertexValue](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L66)**   
    Marker vertex for a value in the dataflow of the program.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L47">./src/dataflow/graph/vertex.ts#L47</a></summary>
+   This does not contain the _value_ of the referenced constant
+   as this is available with the
+   <code>id</code>
+   in the
+   <code>normalized AST</code>
+   (or more specifically the
+   <code>AstIdMap</code>
+   ).
+    If you have a
+   <code>dataflow graph</code>
+   named `graph`
+   with an
+   <code>AstIdMap</code>
+   and a value vertex object with name `value` the following Code should work:
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L66">./src/dataflow/graph/vertex.ts#L66</a></summary>
    
    
    ```ts
    /**
     * Marker vertex for a value in the dataflow of the program.
+    * This does not contain the _value_ of the referenced constant
+    * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
+    * (or more specifically the {@link AstIdMap}).
+    *
+    * If you have a {@link DataflowGraph|dataflow graph} named `graph`
+    * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+    *
+    * @example
+    * ```ts
+    * const node = graph.idMap.get(value.id)
+    * ```
+    *
+    * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
+    * an {@link RNumber} or {@link RString}.
+    *
+    * This works similarly for {@link IdentifierReference|identifier references}
+    * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
+    *
+    * @see {@link isValueVertex} - to check if a vertex is a value vertex
     */
    export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Value
-       /* currently without containing the 'real' value as it is part of the normalized AST as well */
        readonly environment?: undefined
    }
    ```
@@ -362,14 +394,16 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
    
     <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
 
-   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
-     Arguments required to construct a vertex in the dataflow graph.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23)**   
+     Arguments required to construct a vertex in the
+     <code>dataflow graph</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23">./src/dataflow/graph/vertex.ts#L23</a></summary>
      
      
      ```ts
      /**
-      * Arguments required to construct a vertex in the dataflow graph.
+      * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
       *
       * @see DataflowGraphVertexUse
       * @see DataflowGraphVertexVariableDefinition
@@ -381,7 +415,9 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
           */
          readonly tag:        VertexType
          /**
-          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+          * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+          * as well as the corresponding {@link NormalizedAst|normalized AST}.
           */
          id:                  NodeId
          /**
@@ -389,7 +425,7 @@ In general, the respective vertex is more or less a dummy vertex as you can see 
           */
          environment?:        REnvironmentInformation | undefined
          /**
-          * See {@link IdentifierReference}
+          * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
          controlDependencies: ControlDependency[] | undefined
      }
@@ -442,7 +478,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.26 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _2.95 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -504,7 +540,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.01 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.93 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -535,14 +571,18 @@ Describes symbol/variable references which are read (or potentially read at a gi
 Similar to the [value vertex](#value-vertex) described above, this is more a marker vertex as 
 you can see from the implementation.
 
- * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56)**   
-   Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L56">./src/dataflow/graph/vertex.ts#L56</a></summary>
+ * **[DataflowGraphVertexUse](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L76)**   
+   Arguments required to construct a vertex which represents the usage of a variable in the
+   <code>dataflow graph</code>
+   .
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L76">./src/dataflow/graph/vertex.ts#L76</a></summary>
    
    
    ```ts
    /**
-    * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+    * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
+    *
+    * @see {@link isUseVertex} - to check if a vertex is a use vertex
     */
    export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
        readonly tag:          VertexType.Use
@@ -556,14 +596,16 @@ you can see from the implementation.
    
     <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
 
-   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
-     Arguments required to construct a vertex in the dataflow graph.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23)**   
+     Arguments required to construct a vertex in the
+     <code>dataflow graph</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23">./src/dataflow/graph/vertex.ts#L23</a></summary>
      
      
      ```ts
      /**
-      * Arguments required to construct a vertex in the dataflow graph.
+      * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
       *
       * @see DataflowGraphVertexUse
       * @see DataflowGraphVertexVariableDefinition
@@ -575,7 +617,9 @@ you can see from the implementation.
           */
          readonly tag:        VertexType
          /**
-          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+          * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+          * as well as the corresponding {@link NormalizedAst|normalized AST}.
           */
          id:                  NodeId
          /**
@@ -583,7 +627,7 @@ you can see from the implementation.
           */
          environment?:        REnvironmentInformation | undefined
          /**
-          * See {@link IdentifierReference}
+          * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
          controlDependencies: ControlDependency[] | undefined
      }
@@ -712,7 +756,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.62 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _3.61 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 ```r
@@ -830,7 +874,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.48 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis required _4.54 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
 
 ```r
@@ -979,7 +1023,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.00 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _5.09 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
 
 ```r
@@ -1161,7 +1205,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.36 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _9.44 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
 
 ```r
@@ -1298,7 +1342,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.10 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.97 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1331,14 +1375,18 @@ the _name_ of the called function, the passed _arguments_, and the _environment_
 However, the implementation reveals that it may hold an additional `onlyBuiltin` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being `false` even though all calls resolve to builtins).
 	 
- * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65)**   
-   Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L65">./src/dataflow/graph/vertex.ts#L65</a></summary>
+ * **[DataflowGraphVertexFunctionCall](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L87)**   
+   Arguments required to construct a vertex which represents the usage of a variable in the
+   <code>dataflow graph</code>
+   .
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L87">./src/dataflow/graph/vertex.ts#L87</a></summary>
    
    
    ```ts
    /**
-    * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
+    * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
+    *
+    * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
     */
    export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
        readonly tag:  VertexType.FunctionCall
@@ -1363,14 +1411,16 @@ and it should not be relied on as it may under-approximate the actual calling ta
    
     <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
 
-   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
-     Arguments required to construct a vertex in the dataflow graph.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23)**   
+     Arguments required to construct a vertex in the
+     <code>dataflow graph</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23">./src/dataflow/graph/vertex.ts#L23</a></summary>
      
      
      ```ts
      /**
-      * Arguments required to construct a vertex in the dataflow graph.
+      * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
       *
       * @see DataflowGraphVertexUse
       * @see DataflowGraphVertexVariableDefinition
@@ -1382,7 +1432,9 @@ and it should not be relied on as it may under-approximate the actual calling ta
           */
          readonly tag:        VertexType
          /**
-          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+          * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+          * as well as the corresponding {@link NormalizedAst|normalized AST}.
           */
          id:                  NodeId
          /**
@@ -1390,7 +1442,7 @@ and it should not be relied on as it may under-approximate the actual calling ta
           */
          environment?:        REnvironmentInformation | undefined
          /**
-          * See {@link IdentifierReference}
+          * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
          controlDependencies: ControlDependency[] | undefined
      }
@@ -1403,9 +1455,9 @@ and it should not be relied on as it may under-approximate the actual calling ta
 </details>
     
 The related function argument references are defined like this:
- * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L50)   
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L64)   
    Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L50">./src/dataflow/graph/graph.ts#L50</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L64">./src/dataflow/graph/graph.ts#L64</a></summary>
    
    
    ```ts
@@ -1418,18 +1470,25 @@ The related function argument references are defined like this:
    
     <details><summary style="color:black">View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
 
-   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L36)**   
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45)**   
+     A reference with a name, e.g. `a` and `b` in the following function call:
+     
      ```r
      foo(a = 3, b = 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L36">./src/dataflow/graph/graph.ts#L36</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45">./src/dataflow/graph/graph.ts#L45</a></summary>
      
      
      ```ts
      /**
+      * A reference with a name, e.g. `a` and `b` in the following function call:
+      *
       * ```r
       * foo(a = 3, b = 2)
       * ```
+      *
+      * @see #isNamedArgument
+      * @see PositionalFunctionArgument
       */
      export interface NamedFunctionArgument extends IdentifierReference {
          readonly name: string
@@ -1439,21 +1498,48 @@ The related function argument references are defined like this:
      
      </details>
      
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L47)**   
-       Something like `a` in `b <- a`.
-       Without any surrounding information, `a` will produce the identifier reference `a`.
-       Similarly, `b` will create a reference.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L47">./src/dataflow/environments/identifier.ts#L47</a></summary>
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L72)**   
+       An identifier reference points to a variable like `a` in `b <- a`.
+       Without any surrounding code, `a` will produce the identifier reference `a`.
+       Similarly, `b` will create a reference (although it will be an
+       <code>identifier definition</code>
+       which adds even more information).
+        In general,
+       references are merely pointers (with meta-information) to a vertex in the
+       <code>dataflow graph</code>
+       .
+       In the context of the extractor, for example,
+       they indicate the references that are currently (during the analysis at this given node)
+       <code>read (`in`)</code>
+       ,
+       <code>written (`out`)</code>
+       ,
+       or
+       <code>unknown (`unknownReferences`)</code>
+       .
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L72">./src/dataflow/environments/identifier.ts#L72</a></summary>
        
        
        ```ts
        /**
-        * Something like `a` in `b <- a`.
-        * Without any surrounding information, `a` will produce the identifier reference `a`.
-        * Similarly, `b` will create a reference.
+        * An identifier reference points to a variable like `a` in `b <- a`.
+        * Without any surrounding code, `a` will produce the identifier reference `a`.
+        * Similarly, `b` will create a reference (although it will be an {@link IdentifierDefinition|identifier definition}
+        * which adds even more information).
+        *
+        * In general,
+        * references are merely pointers (with meta-information) to a vertex in the {@link DataflowGraph|dataflow graph}.
+        * In the context of the extractor, for example,
+        * they indicate the references that are currently (during the analysis at this given node)
+        * {@link DataflowInformation#in|read (`in`)}, {@link DataflowInformation#out|written (`out`)},
+        * or {@link DataflowInformation#unknownReferences|unknown (`unknownReferences`)}.
+        *
+        * @see {@link InGraphIdentifierDefinition}
         */
        export interface IdentifierReference {
-           /** Node which represents the reference in the AST */
+           /**
+            * The id of the node which represents the reference in the {@link NormalizedAst|normalized AST} and the {@link DataflowGraph|dataflow graph}.
+            */
            readonly nodeId:     NodeId
            /** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
            readonly name:       Identifier | undefined
@@ -1470,18 +1556,25 @@ The related function argument references are defined like this:
        
        </details>
        
-   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45)**   
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L59)**   
+     A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
+     
      ```r
      foo(3, 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45">./src/dataflow/graph/graph.ts#L45</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L59">./src/dataflow/graph/graph.ts#L59</a></summary>
      
      
      ```ts
      /**
+      * A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
+      *
       * ```r
       * foo(3, 2)
       * ```
+      *
+      * @see #isPositionalArgument
+      * @see NamedFunctionArgument
       */
      export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
          readonly name?: undefined
@@ -1534,7 +1627,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _6.26 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis required _6.86 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1615,18 +1708,32 @@ as the `type` of these references is a bit-mask, encoding one of the following r
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L12)**   
-   Each reference only has exactly one reference type, stored as the respective number.
-   However, when checking we may want to allow for one of several types,
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L20)**   
+   Each reference has exactly one reference type, stored as the respective number.
+   However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L12">./src/dataflow/environments/identifier.ts#L12</a></summary>
+    Having reference types is important as R separates a variable definition from
+   a function when resolving an
+   <code>identifier</code>
+   .
+   In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
+   while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/environments/identifier.ts#L20">./src/dataflow/environments/identifier.ts#L20</a></summary>
    
    
    ```ts
    /**
-    * Each reference only has exactly one reference type, stored as the respective number.
-    * However, when checking we may want to allow for one of several types,
+    * Each reference has exactly one reference type, stored as the respective number.
+    * However, when checking, we may want to allow for one of several types,
     * allowing the combination of the respective bitmasks.
+    *
+    * Having reference types is important as R separates a variable definition from
+    * a function when resolving an {@link Identifier|identifier}.
+    * In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
+    * while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
+    *
+    * @see {@link isReferenceType} - for checking if a (potentially joint) reference type contains a certain type
+    * @see {@link ReferenceTypeReverseMapping} - for debugging
     */
    export enum ReferenceType {
        /** The identifier type is unknown */
@@ -1696,7 +1803,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _2.40 ms_ (incl. parse and normalize) within the generation environment. 
+> The analysis required _2.84 ms_ (incl. parse and normalize) within the generation environment. 
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -1797,7 +1904,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _2.14 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> The analysis required _1.89 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -1924,7 +2031,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.88 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> The analysis required _1.91 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -2098,7 +2205,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _3.11 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> The analysis required _3.28 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -2468,7 +2575,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.57 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.63 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2676,7 +2783,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.00 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+The analysis required _2.05 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2827,7 +2934,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.59 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+The analysis required _1.76 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2937,7 +3044,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.21 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.09 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3004,7 +3111,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.30 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.15 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3044,14 +3151,18 @@ flowchart LR
 
 The implementation is relatively sparse and similar to the other marker vertices:
 
- * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L85)**   
-   Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L85">./src/dataflow/graph/vertex.ts#L85</a></summary>
+ * **[DataflowGraphVertexVariableDefinition](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L109)**   
+   Arguments required to construct a vertex which represents the definition of a variable in the
+   <code>dataflow graph</code>
+   .
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L109">./src/dataflow/graph/vertex.ts#L109</a></summary>
    
    
    ```ts
    /**
-    * Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
+    * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.
+    *
+    * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
     */
    export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
        readonly tag:          VertexType.VariableDefinition
@@ -3065,14 +3176,16 @@ The implementation is relatively sparse and similar to the other marker vertices
    
     <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
 
-   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
-     Arguments required to construct a vertex in the dataflow graph.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23)**   
+     Arguments required to construct a vertex in the
+     <code>dataflow graph</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23">./src/dataflow/graph/vertex.ts#L23</a></summary>
      
      
      ```ts
      /**
-      * Arguments required to construct a vertex in the dataflow graph.
+      * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
       *
       * @see DataflowGraphVertexUse
       * @see DataflowGraphVertexVariableDefinition
@@ -3084,7 +3197,9 @@ The implementation is relatively sparse and similar to the other marker vertices
           */
          readonly tag:        VertexType
          /**
-          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+          * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+          * as well as the corresponding {@link NormalizedAst|normalized AST}.
           */
          id:                  NodeId
          /**
@@ -3092,7 +3207,7 @@ The implementation is relatively sparse and similar to the other marker vertices
           */
          environment?:        REnvironmentInformation | undefined
          /**
-          * See {@link IdentifierReference}
+          * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
          controlDependencies: ControlDependency[] | undefined
      }
@@ -3140,7 +3255,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.54 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.42 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3219,7 +3334,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.29 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.21 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3294,7 +3409,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.36 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.32 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3419,7 +3534,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.03 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _5.82 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3560,7 +3675,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.15 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _1.03 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3597,12 +3712,19 @@ end
 Defining a function does do a lot of things: 1) it creates a new scope, 2) it may introduce parameters which act as promises and which are only evaluated if they are actually required in the body, 3) it may access the enclosing environments and the callstack.
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
- * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L91)**   
-   
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L91">./src/dataflow/graph/vertex.ts#L91</a></summary>
+ * **[DataflowGraphVertexFunctionDefinition](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L120)**   
+   Arguments required to construct a vertex which represents the definition of a function in the
+   <code>dataflow graph</code>
+   .
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L120">./src/dataflow/graph/vertex.ts#L120</a></summary>
    
    
    ```ts
+   /**
+    * Arguments required to construct a vertex which represents the definition of a function in the {@link DataflowGraph|dataflow graph}.
+    *
+    * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
+    */
    export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
        readonly tag: VertexType.FunctionDefinition
        /**
@@ -3625,14 +3747,16 @@ The vertex object in the dataflow graph stores multiple things, including all ex
    
     <details><summary style="color:black">View more (DataflowGraphVertexBase)</summary>
 
-   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25)**   
-     Arguments required to construct a vertex in the dataflow graph.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L25">./src/dataflow/graph/vertex.ts#L25</a></summary>
+   * **[DataflowGraphVertexBase](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23)**   
+     Arguments required to construct a vertex in the
+     <code>dataflow graph</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/vertex.ts#L23">./src/dataflow/graph/vertex.ts#L23</a></summary>
      
      
      ```ts
      /**
-      * Arguments required to construct a vertex in the dataflow graph.
+      * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
       *
       * @see DataflowGraphVertexUse
       * @see DataflowGraphVertexVariableDefinition
@@ -3644,7 +3768,9 @@ The vertex object in the dataflow graph stores multiple things, including all ex
           */
          readonly tag:        VertexType
          /**
-          * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+          * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+          * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+          * as well as the corresponding {@link NormalizedAst|normalized AST}.
           */
          id:                  NodeId
          /**
@@ -3652,7 +3778,7 @@ The vertex object in the dataflow graph stores multiple things, including all ex
           */
          environment?:        REnvironmentInformation | undefined
          /**
-          * See {@link IdentifierReference}
+          * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
           */
          controlDependencies: ControlDependency[] | undefined
      }
@@ -3665,12 +3791,21 @@ The vertex object in the dataflow graph stores multiple things, including all ex
 </details>
     
 The subflow is defined like this:
- * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L29)   
-   
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L29">./src/dataflow/graph/graph.ts#L29</a></summary>
+ * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L33)   
+   Describes the information we store per function body.
+   The
+   <code>DataflowFunctionFlowInformation#exitPoints</code>
+   are stored within the enclosing
+   <code>DataflowGraphVertexFunctionDefinition</code>
+   vertex.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L33">./src/dataflow/graph/graph.ts#L33</a></summary>
    
    
    ```ts
+   /**
+    * Describes the information we store per function body.
+    * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+    */
    export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
    ```
    
@@ -3680,23 +3815,51 @@ The subflow is defined like this:
     <details><summary style="color:black">View more (Omit, DataflowInformation, 'graph' | 'exitPoints')</summary>
 
 
-   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L52)**   
-     The dataflow information is continuously updated during the dataflow analysis
+   * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L89)**   
+     The dataflow information is one of the fundamental structures we have in the dataflow analysis.
+     It is continuously updated during the dataflow analysis
      and holds its current state for the respective subtree processed.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L52">./src/dataflow/info.ts#L52</a></summary>
+     Each processor during the dataflow analysis may use the information from its children
+     to produce a new state of the dataflow information.
+      You may initialize a new dataflow information with
+     <code>initializeCleanDataflowInformation</code>
+     .
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L89">./src/dataflow/info.ts#L89</a></summary>
      
      
      ```ts
      /**
-      * The dataflow information is continuously updated during the dataflow analysis
+      * The dataflow information is one of the fundamental structures we have in the dataflow analysis.
+      * It is continuously updated during the dataflow analysis
       * and holds its current state for the respective subtree processed.
+      * Each processor during the dataflow analysis may use the information from its children
+      * to produce a new state of the dataflow information.
+      *
+      * You may initialize a new dataflow information with {@link initializeCleanDataflowInformation}.
+      *
+      * @see {@link DataflowCfgInformation} - the control flow aspects
       */
      export interface DataflowInformation extends DataflowCfgInformation {
-         /** References that have not been identified as read or write and will be so on higher */
+         /**
+          * References that have not been identified as read or write and will be so on higher processors.
+          *
+          * For example, when we analyze the `x` vertex in `x <- 3`, we will first create an unknown reference for `x`
+          * as we have not yet seen the assignment!
+          *
+          * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+          */
          unknownReferences: readonly IdentifierReference[]
-         /** References which are read */
+         /**
+          * References which are read within the current subtree.
+          *
+          * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+          * */
          in:                readonly IdentifierReference[]
-         /** References which are written to */
+         /**
+          * References which are written to within the current subtree
+          *
+          * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+          */
          out:               readonly IdentifierReference[]
          /** Current environments used for name resolution, probably updated on the next expression-list processing */
          environment:       REnvironmentInformation
@@ -3708,9 +3871,9 @@ The subflow is defined like this:
      
      </details>
      
-     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L41)**   
+     * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L71)**   
        The control flow information for the current DataflowInformation.
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L41">./src/dataflow/info.ts#L41</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L71">./src/dataflow/info.ts#L71</a></summary>
        
        
        ```ts
@@ -3731,18 +3894,33 @@ The subflow is defined like this:
 </details>
     
 And if you are interested in the exit points, they are defined like this:
- * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L27)**   
-   
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L27">./src/dataflow/info.ts#L27</a></summary>
+ * **[ExitPoint](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L49)**   
+   An exit point describes the position which ends the current control flow structure.
+   This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L49">./src/dataflow/info.ts#L49</a></summary>
    
    
    ```ts
+   /**
+    * An exit point describes the position which ends the current control flow structure.
+    * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
+    *
+    * @see {@link ExitPointType} - for the different types of exit points
+    * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
+    * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
+    * @see {@link filterOutLoopExitPoints} - to remove loop exit points from a list
+    */
    export interface ExitPoint {
        /** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
        readonly type:                ExitPointType,
        /** The id of the node which causes the exit point! */
        readonly nodeId:              NodeId,
-       /** Control dependencies which influence if the exit point triggers (e.g., if the `return` is contained within an `if` statement) */
+       /**
+        * Control dependencies which influence if the exit point triggers
+        * (e.g., if the `return` is contained within an `if` statement).
+        *
+        * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
+        */
        readonly controlDependencies: ControlDependency[] | undefined
    }
    ```
@@ -3832,7 +4010,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.86 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
+> The analysis required _1.97 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -3983,7 +4161,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _2.10 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
+> The analysis required _2.11 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -4096,7 +4274,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > ```
 > 	
-> (The analysis required _1.32 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
+> (The analysis required _1.26 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 > 
 > 
 > 	
@@ -4117,7 +4295,7 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.38 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.33 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 
@@ -4239,7 +4417,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.53 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.43 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 ```r
@@ -4350,7 +4528,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.89 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
+> The analysis required _1.84 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
 > We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
 > 
 > ```r
@@ -4477,7 +4655,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.86 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
+> The analysis required _1.76 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -4603,7 +4781,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.52 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.44 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -4705,7 +4883,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _1.56 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -4798,7 +4976,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.69 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.10 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -4864,7 +5042,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.23 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.18 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -4952,7 +5130,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.25 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _1.71 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5036,7 +5214,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.24 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.26 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5136,7 +5314,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.36 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.38 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5246,7 +5424,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.31 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.52 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5371,7 +5549,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.45 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5511,7 +5689,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.50 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.52 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5617,7 +5795,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.11 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.12 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5729,7 +5907,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.29 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5835,7 +6013,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.14 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.07 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5913,7 +6091,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.38 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
+> The analysis required _1.28 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -5983,7 +6161,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.78 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
+> The analysis required _1.72 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -6063,7 +6241,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.30 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
+The analysis required _1.24 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6148,7 +6326,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.46 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.41 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6235,7 +6413,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.48 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.41 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6322,7 +6500,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.35 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.28 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6432,7 +6610,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.62 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.56 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6590,7 +6768,7 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":1162,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["pdf",[{"type":128,"definedAt":"built-in","name":"pdf","nodeId":"built-in"}]],["jpeg",[{"type":128,"definedAt":"built-in","name":"jpeg","nodeId":"built-in"}]],["png",[{"type":128,"definedAt":"built-in","name":"png","nodeId":"built-in"}]],["windows",[{"type":128,"definedAt":"built-in","name":"windows","nodeId":"built-in"}]],["postscript",[{"type":128,"definedAt":"built-in","name":"postscript","nodeId":"built-in"}]],["xfig",[{"type":128,"definedAt":"built-in","name":"xfig","nodeId":"built-in"}]],["bitmap",[{"type":128,"definedAt":"built-in","name":"bitmap","nodeId":"built-in"}]],["pictex",[{"type":128,"definedAt":"built-in","name":"pictex","nodeId":"built-in"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in","name":"cairo_pdf","nodeId":"built-in"}]],["svg",[{"type":128,"definedAt":"built-in","name":"svg","nodeId":"built-in"}]],["bmp",[{"type":128,"definedAt":"built-in","name":"bmp","nodeId":"built-in"}]],["tiff",[{"type":128,"definedAt":"built-in","name":"tiff","nodeId":"built-in"}]],["X11",[{"type":128,"definedAt":"built-in","name":"X11","nodeId":"built-in"}]],["quartz",[{"type":128,"definedAt":"built-in","name":"quartz","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["message",[{"type":128,"definedAt":"built-in","name":"message","nodeId":"built-in"}]],["warning",[{"type":128,"definedAt":"built-in","name":"warning","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["plot.new",[{"type":128,"definedAt":"built-in","name":"plot.new","nodeId":"built-in"}]],["curve",[{"type":128,"definedAt":"built-in","name":"curve","nodeId":"built-in"}]],["map",[{"type":128,"definedAt":"built-in","name":"map","nodeId":"built-in"}]],["image",[{"type":128,"definedAt":"built-in","name":"image","nodeId":"built-in"}]],["boxplot",[{"type":128,"definedAt":"built-in","name":"boxplot","nodeId":"built-in"}]],["dotchart",[{"type":128,"definedAt":"built-in","name":"dotchart","nodeId":"built-in"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in","name":"sunflowerplot","nodeId":"built-in"}]],["barplot",[{"type":128,"definedAt":"built-in","name":"barplot","nodeId":"built-in"}]],["matplot",[{"type":128,"definedAt":"built-in","name":"matplot","nodeId":"built-in"}]],["hist",[{"type":128,"definedAt":"built-in","name":"hist","nodeId":"built-in"}]],["stem",[{"type":128,"definedAt":"built-in","name":"stem","nodeId":"built-in"}]],["density",[{"type":128,"definedAt":"built-in","name":"density","nodeId":"built-in"}]],["smoothScatter",[{"type":128,"definedAt":"built-in","name":"smoothScatter","nodeId":"built-in"}]],["contour",[{"type":128,"definedAt":"built-in","name":"contour","nodeId":"built-in"}]],["persp",[{"type":128,"definedAt":"built-in","name":"persp","nodeId":"built-in"}]],["points",[{"type":128,"definedAt":"built-in","name":"points","nodeId":"built-in"}]],["abline",[{"type":128,"definedAt":"built-in","name":"abline","nodeId":"built-in"}]],["mtext",[{"type":128,"definedAt":"built-in","name":"mtext","nodeId":"built-in"}]],["lines",[{"type":128,"definedAt":"built-in","name":"lines","nodeId":"built-in"}]],["text",[{"type":128,"definedAt":"built-in","name":"text","nodeId":"built-in"}]],["legend",[{"type":128,"definedAt":"built-in","name":"legend","nodeId":"built-in"}]],["title",[{"type":128,"definedAt":"built-in","name":"title","nodeId":"built-in"}]],["axis",[{"type":128,"definedAt":"built-in","name":"axis","nodeId":"built-in"}]],["polygon",[{"type":128,"definedAt":"built-in","name":"polygon","nodeId":"built-in"}]],["polypath",[{"type":128,"definedAt":"built-in","name":"polypath","nodeId":"built-in"}]],["pie",[{"type":128,"definedAt":"built-in","name":"pie","nodeId":"built-in"}]],["rect",[{"type":128,"definedAt":"built-in","name":"rect","nodeId":"built-in"}]],["segments",[{"type":128,"definedAt":"built-in","name":"segments","nodeId":"built-in"}]],["arrows",[{"type":128,"definedAt":"built-in","name":"arrows","nodeId":"built-in"}]],["symbols",[{"type":128,"definedAt":"built-in","name":"symbols","nodeId":"built-in"}]],["tiplabels",[{"type":128,"definedAt":"built-in","name":"tiplabels","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["data",[{"type":128,"definedAt":"built-in","name":"data","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}],".meta":{"timing":1}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":1162,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["pdf",[{"type":128,"definedAt":"built-in","name":"pdf","nodeId":"built-in"}]],["jpeg",[{"type":128,"definedAt":"built-in","name":"jpeg","nodeId":"built-in"}]],["png",[{"type":128,"definedAt":"built-in","name":"png","nodeId":"built-in"}]],["windows",[{"type":128,"definedAt":"built-in","name":"windows","nodeId":"built-in"}]],["postscript",[{"type":128,"definedAt":"built-in","name":"postscript","nodeId":"built-in"}]],["xfig",[{"type":128,"definedAt":"built-in","name":"xfig","nodeId":"built-in"}]],["bitmap",[{"type":128,"definedAt":"built-in","name":"bitmap","nodeId":"built-in"}]],["pictex",[{"type":128,"definedAt":"built-in","name":"pictex","nodeId":"built-in"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in","name":"cairo_pdf","nodeId":"built-in"}]],["svg",[{"type":128,"definedAt":"built-in","name":"svg","nodeId":"built-in"}]],["bmp",[{"type":128,"definedAt":"built-in","name":"bmp","nodeId":"built-in"}]],["tiff",[{"type":128,"definedAt":"built-in","name":"tiff","nodeId":"built-in"}]],["X11",[{"type":128,"definedAt":"built-in","name":"X11","nodeId":"built-in"}]],["quartz",[{"type":128,"definedAt":"built-in","name":"quartz","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["message",[{"type":128,"definedAt":"built-in","name":"message","nodeId":"built-in"}]],["warning",[{"type":128,"definedAt":"built-in","name":"warning","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["plot.new",[{"type":128,"definedAt":"built-in","name":"plot.new","nodeId":"built-in"}]],["curve",[{"type":128,"definedAt":"built-in","name":"curve","nodeId":"built-in"}]],["map",[{"type":128,"definedAt":"built-in","name":"map","nodeId":"built-in"}]],["image",[{"type":128,"definedAt":"built-in","name":"image","nodeId":"built-in"}]],["boxplot",[{"type":128,"definedAt":"built-in","name":"boxplot","nodeId":"built-in"}]],["dotchart",[{"type":128,"definedAt":"built-in","name":"dotchart","nodeId":"built-in"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in","name":"sunflowerplot","nodeId":"built-in"}]],["barplot",[{"type":128,"definedAt":"built-in","name":"barplot","nodeId":"built-in"}]],["matplot",[{"type":128,"definedAt":"built-in","name":"matplot","nodeId":"built-in"}]],["hist",[{"type":128,"definedAt":"built-in","name":"hist","nodeId":"built-in"}]],["stem",[{"type":128,"definedAt":"built-in","name":"stem","nodeId":"built-in"}]],["density",[{"type":128,"definedAt":"built-in","name":"density","nodeId":"built-in"}]],["smoothScatter",[{"type":128,"definedAt":"built-in","name":"smoothScatter","nodeId":"built-in"}]],["contour",[{"type":128,"definedAt":"built-in","name":"contour","nodeId":"built-in"}]],["persp",[{"type":128,"definedAt":"built-in","name":"persp","nodeId":"built-in"}]],["points",[{"type":128,"definedAt":"built-in","name":"points","nodeId":"built-in"}]],["abline",[{"type":128,"definedAt":"built-in","name":"abline","nodeId":"built-in"}]],["mtext",[{"type":128,"definedAt":"built-in","name":"mtext","nodeId":"built-in"}]],["lines",[{"type":128,"definedAt":"built-in","name":"lines","nodeId":"built-in"}]],["text",[{"type":128,"definedAt":"built-in","name":"text","nodeId":"built-in"}]],["legend",[{"type":128,"definedAt":"built-in","name":"legend","nodeId":"built-in"}]],["title",[{"type":128,"definedAt":"built-in","name":"title","nodeId":"built-in"}]],["axis",[{"type":128,"definedAt":"built-in","name":"axis","nodeId":"built-in"}]],["polygon",[{"type":128,"definedAt":"built-in","name":"polygon","nodeId":"built-in"}]],["polypath",[{"type":128,"definedAt":"built-in","name":"polypath","nodeId":"built-in"}]],["pie",[{"type":128,"definedAt":"built-in","name":"pie","nodeId":"built-in"}]],["rect",[{"type":128,"definedAt":"built-in","name":"rect","nodeId":"built-in"}]],["segments",[{"type":128,"definedAt":"built-in","name":"segments","nodeId":"built-in"}]],["arrows",[{"type":128,"definedAt":"built-in","name":"arrows","nodeId":"built-in"}]],["symbols",[{"type":128,"definedAt":"built-in","name":"symbols","nodeId":"built-in"}]],["tiplabels",[{"type":128,"definedAt":"built-in","name":"tiplabels","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["data",[{"type":128,"definedAt":"built-in","name":"data","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}],".meta":{"timing":0}}
 ```
 
 
@@ -6598,23 +6776,51 @@ _As the information is pretty long, we inhibit pretty printing and syntax highli
 
 You may be interested in its implementation:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L52)**   
-   The dataflow information is continuously updated during the dataflow analysis
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L89)**   
+   The dataflow information is one of the fundamental structures we have in the dataflow analysis.
+   It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L52">./src/dataflow/info.ts#L52</a></summary>
+   Each processor during the dataflow analysis may use the information from its children
+   to produce a new state of the dataflow information.
+    You may initialize a new dataflow information with
+   <code>initializeCleanDataflowInformation</code>
+   .
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L89">./src/dataflow/info.ts#L89</a></summary>
    
    
    ```ts
    /**
-    * The dataflow information is continuously updated during the dataflow analysis
+    * The dataflow information is one of the fundamental structures we have in the dataflow analysis.
+    * It is continuously updated during the dataflow analysis
     * and holds its current state for the respective subtree processed.
+    * Each processor during the dataflow analysis may use the information from its children
+    * to produce a new state of the dataflow information.
+    *
+    * You may initialize a new dataflow information with {@link initializeCleanDataflowInformation}.
+    *
+    * @see {@link DataflowCfgInformation} - the control flow aspects
     */
    export interface DataflowInformation extends DataflowCfgInformation {
-       /** References that have not been identified as read or write and will be so on higher */
+       /**
+        * References that have not been identified as read or write and will be so on higher processors.
+        *
+        * For example, when we analyze the `x` vertex in `x <- 3`, we will first create an unknown reference for `x`
+        * as we have not yet seen the assignment!
+        *
+        * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+        */
        unknownReferences: readonly IdentifierReference[]
-       /** References which are read */
+       /**
+        * References which are read within the current subtree.
+        *
+        * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+        * */
        in:                readonly IdentifierReference[]
-       /** References which are written to */
+       /**
+        * References which are written to within the current subtree
+        *
+        * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
+        */
        out:               readonly IdentifierReference[]
        /** Current environments used for name resolution, probably updated on the next expression-list processing */
        environment:       REnvironmentInformation
@@ -6628,9 +6834,9 @@ You may be interested in its implementation:
    
     <details><summary style="color:black">View more (DataflowCfgInformation)</summary>
 
-   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L41)**   
+   * **[DataflowCfgInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L71)**   
      The control flow information for the current DataflowInformation.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L41">./src/dataflow/info.ts#L41</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/info.ts#L71">./src/dataflow/info.ts#L71</a></summary>
      
      
      ```ts
@@ -6724,7 +6930,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.61 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _3.76 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
 
 ```r
@@ -6810,7 +7016,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.85 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _2.91 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 ```r

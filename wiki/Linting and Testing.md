@@ -9,14 +9,15 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
     - [Running Only Some Tests](#running-only-some-tests)
   - [System Tests](#system-tests)
   - [Performance Tests](#performance-tests)
-  - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
   - [Testing Within Your IDE](#testing-within-your-ide)
-    - [Using Visual Studio Code](#vs-code)
-    - [Using WebStorm](#webstorm)
+    - [VS Code](#vs-code)
+    - [Webstorm](#webstorm)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
   - [License Checker](#license-checker)
+- [Debugging](#debugging)
+  - [VS Code](#vs-code-1)
 
 ## Testing Suites
 
@@ -246,3 +247,9 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 
 *flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](https://github.com/flowr-analysis/flowr/tree/main//package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 
+## Debugging
+
+### VS Code
+
+When working with VS Code, you can attach a debugger to the REPL. This works automatically by running the `Start Debugging` command (`F5` by default).
+You can also set the `Auto Attach Filter` setting to automatically attach the debugger, when running `npm run flowr`.

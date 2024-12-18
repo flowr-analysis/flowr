@@ -263,7 +263,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:    func.text,
 				...defaultInfo
 			};
-			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator) {
+			if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 				let funcNode = convertTreeNode(func) as RSymbol | RString;
 				if(funcNode.type === RType.String) {
 					funcNode = {

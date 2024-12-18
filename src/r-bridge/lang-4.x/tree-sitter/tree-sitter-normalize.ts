@@ -118,7 +118,9 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					}],
 					named:        true,
 					infixSpecial: true,
-					info:         {}
+					info:         {
+						additionalTokens: comments
+					}
 				};
 			} else if(op.text === '|>') {
 				return {
@@ -127,7 +129,12 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					lhs:      lhsAsArg,
 					rhs,
 					lexeme:   op.text,
-					...defaultInfo
+					...defaultInfo,
+					info:     {
+						fullRange:        range,
+						additionalTokens: comments,
+						fullLexeme:       node.text
+					}
 				};
 			} else {
 				return {
@@ -457,14 +464,6 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			}
 
 		}
-		case TreeSitterType.Comment:
-			return {
-				type:     RType.Comment,
-				location: range,
-				content:  node.text.slice(1),
-				lexeme:   node.text,
-				...defaultInfo
-			};
 		default:
 			throw new ParseError(`unexpected node type ${node.type}`);
 	}

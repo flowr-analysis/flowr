@@ -2,9 +2,14 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
-import { isReferenceType , ReferenceType } from './identifier';
+import { isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { BuiltInIdentifierConstant } from './built-in';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { VertexType } from '../graph/vertex';
+import type { DataflowGraph } from '../graph/graph';
+
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -105,3 +110,95 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 		from:  def.type
 	}));
 }
+
+const AliasHandler = {
+	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
+	[VertexType.Use]:                getUseAlias,
+	[VertexType.FunctionCall]:       () => undefined,
+	[VertexType.FunctionDefinition]: () => undefined,
+	[VertexType.VariableDefinition]: () => undefined
+} as const satisfies Record<VertexType, (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined>;
+
+function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: NodeId[] = [];
+
+	// Source is Symbol -> resolve definitions of symbol
+	const identifier = recoverName(sourceId, dataflow.idMap);
+	if(identifier === undefined) {
+		return undefined;
+	}
+
+	const defs = resolveByName(identifier, environment);
+	if(defs === undefined) {
+		return undefined;
+	}
+
+	for(const def of defs) {
+		// If one definition is not constant (or a variable aliasing a constant) 
+		// we can't say for sure what value the source has 
+		if(def.type === ReferenceType.Variable) {
+			if(def.value === undefined) {
+				return undefined;
+			}
+			definitions.push(...def.value);
+		} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
+			definitions.push(def.nodeId);
+		} else {
+			return undefined;
+		}
+	}
+	
+	return definitions;
+}
+
+export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: Set<NodeId> = new Set<NodeId>();
+
+	for(const sourceId of sourceIds) {
+		const info = dataflow.getVertex(sourceId);
+		if(info === undefined) {
+			return undefined;
+		}
+
+		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
+		defs?.forEach(v => definitions.add(v));
+	}
+
+	return [...definitions];
+}
+
+export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {
+	if(identifier === undefined) {
+		return undefined;
+	}
+
+	const defs = resolveByName(identifier, environment);
+	if(defs === undefined) {
+		return undefined;
+	}
+
+	const values: unknown[] = [];
+	for(const def of defs) {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			values.push(def.value);
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// TODO: nothing?
+		} else {
+			if(def.value !== undefined) {
+				for(const id of def.value) {
+					const value = graph.idMap?.get(id)?.content;
+					if(value !== undefined) {
+						values.push(value);
+					}
+				}
+			}
+		}
+	}
+
+	if(values.length == 0) {
+		return undefined;
+	}
+
+	return values;
+}
+

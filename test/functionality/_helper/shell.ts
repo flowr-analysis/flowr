@@ -402,7 +402,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
@@ -430,7 +430,7 @@ export function assertSliced(
 		});
 		test('shell', () => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>));
 		test.skipIf(userConfig?.skipTreeSitter)('tree-sitter', () => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>));
-		test.skipIf(userConfig?.skipTreeSitter)('compare', function() {
+		test.skipIf(userConfig?.skipTreeSitter || userConfig?.skipCompare)('compare', function() {
 			const tsAst = tsResult?.normalize.ast as RNodeWithParent;
 			const shellAst = shellResult?.normalize.ast as RNodeWithParent;
 			assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);

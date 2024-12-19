@@ -8,6 +8,7 @@ import { TheGlobalLabelMap } from './_helper/label';
 import fs from 'fs';
 import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
+import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 /* eslint-disable no-var */
 declare global {
@@ -39,6 +40,8 @@ await (async() => {
 	} finally {
 		shell?.close();
 	}
+
+	await TreeSitterExecutor.initTreeSitter();
 })();
 
 /* we persist the `TheGlobalLabelMap` for the summary in the ultimate teardown */

@@ -33,8 +33,9 @@ describe('flowr', () => {
 				type:       'hello',
 				clientName: 'client-0',
 				versions:   {
-					r:     knownVersion.r,
-					flowr: knownVersion.flowr
+					r:      knownVersion.r,
+					flowr:  knownVersion.flowr,
+					engine: knownVersion.engine
 				}
 			}, 'Expected hello message to have the predefined format');
 		}));
@@ -81,7 +82,7 @@ describe('flowr', () => {
 
 			// we are testing the server and not the slicer here!
 			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				shell,
+				parser:  shell,
 				request: requestFromInput('1 + 1'),
 			}).allRemainingSteps());
 

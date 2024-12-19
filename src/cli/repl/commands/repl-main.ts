@@ -1,6 +1,6 @@
 import type { OutputFormatter } from '../../../util/ansi';
 import { formatter } from '../../../util/ansi';
-import type { RShell } from '../../../r-bridge/shell';
+import type { KnownParser } from '../../../r-bridge/parser';
 
 /**
  * Defines the main interface for output of the repl.
@@ -43,5 +43,5 @@ export interface ReplCommand {
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (output: ReplOutput, shell: RShell, remainingLine: string) => Promise<void> | void
+	fn:           (output: ReplOutput, parser: KnownParser, remainingLine: string) => Promise<void> | void
 }

@@ -1,13 +1,11 @@
 import type { ReplCommand } from './repl-main';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { RShell } from '../../../r-bridge/shell';
+import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
+import type { KnownParser } from '../../../r-bridge/parser';
 
-async function dataflow(shell: RShell, remainingLine: string) {
-	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+async function dataflow(parser: KnownParser, remainingLine: string) {
+	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }

@@ -67,7 +67,7 @@ export function assertQuery<
 		}
 
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();

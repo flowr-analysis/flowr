@@ -127,7 +127,7 @@ a`);
 			shell, `
 #line 42 "foo.R"
 a <- 5
-    `, ['3@a'], 'a <- 5');
+    `, ['3@a'], 'a <- 5', { skipTreeSitter: true /* directives aren't supported yet! */ });
 	});
 	describe('The classic', () => {
 		const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'call-normal', 'newlines', 'unnamed-arguments', 'for-loop', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities, 'strings', 'precedence'];

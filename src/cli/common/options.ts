@@ -29,7 +29,8 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `Directory to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline file}' }
+	{ name: 'output',       alias: 'o', type: String,  description: `Directory to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline file}' },
+	{ name: 'parser', type: String, description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' }
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
@@ -40,6 +41,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'run-num',      alias: 'r', type: Number, description: 'The n-th time that the file with the given file-id is being benchmarked' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
+	{ name: 'parser', type: String, description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' }
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

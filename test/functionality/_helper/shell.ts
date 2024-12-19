@@ -431,7 +431,9 @@ export function assertSliced(
 		test('shell', () => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>));
 		test.skipIf(userConfig?.skipTreeSitter)('tree-sitter', () => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>));
 		test.skipIf(userConfig?.skipTreeSitter)('compare', function() {
-			assertAstEqual(tsResult?.normalize.ast as RNode, shellResult?.normalize.ast as RNode, true, true, () => `tree-sitter ast: ${JSON.stringify(tsResult?.normalize.ast)}, vs. shell ast: ${JSON.stringify(shellResult?.normalize.ast)}`, false);
+			const tsAst = tsResult?.normalize.ast as RNodeWithParent;
+			const shellAst = shellResult?.normalize.ast as RNodeWithParent;
+			assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
 		});
 	});
 	handleAssertOutput(name, shell, input, userConfig);

@@ -8,7 +8,6 @@ import type { SourceRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
-import type { RComment } from '../ast/model/nodes/r-comment';
 import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
@@ -16,6 +15,8 @@ import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import type { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
+
+type SyntaxAndRNode = [SyntaxNode, RNode];
 
 export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
 	const root = convertTreeNode(tree.rootNode);
@@ -39,15 +40,15 @@ function convertTreeNode(node: SyntaxNode): RNode {
 	switch(node.type as TreeSitterType) {
 		case TreeSitterType.Program: {
 			const [comments, children] = splitComments(node.children);
+			const body = children.map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
+			const remainingComments = linkCommentsToNextNodes(body, comments);
 			return {
 				type:     RType.ExpressionList,
-				children: children.map(convertTreeNode),
+				children: body.map(n => n[1]),
 				grouping: undefined,
 				lexeme:   undefined,
 				info:     {
-					fullRange:        undefined,
-					additionalTokens: comments,
-					fullLexeme:       undefined
+					additionalTokens: remainingComments.map(c => c[1])
 				}
 			};
 		}
@@ -55,13 +56,14 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.ParenthesizedExpression: {
 			const [comments, children] = splitComments(node.children);
 			const opening = children[0];
-			const body = children.slice(1, -1);
+			const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
+			const remainingComments = linkCommentsToNextNodes(body, comments);
 			const closing = children[children.length - 1];
 			return {
 				type:     RType.ExpressionList,
 				location: undefined,
 				lexeme:   undefined,
-				children: body.map(n => convertTreeNode(n)),
+				children: body.map(n => n[1]),
 				grouping: [
 					{
 						type:      RType.Symbol,
@@ -79,13 +81,16 @@ function convertTreeNode(node: SyntaxNode): RNode {
 						...defaultInfo
 					}
 				],
-				info: { additionalTokens: comments, }
+				info: {
+					additionalTokens: remainingComments.map(c => c[1])
+				}
 			};
 		}
 		case TreeSitterType.BinaryOperator: {
 			const lhs = convertTreeNode(node.children[0]);
 			const rhs = convertTreeNode(node.children[node.children.length - 1]);
-			const [comments, [op]] = splitComments(node.children.slice(1, -1));
+			const [commentsBoth, [op]] = splitComments(node.children.slice(1, -1));
+			const comments = commentsBoth.map(c => c[1]);
 			const opSource = makeSourceRange(op);
 			const lhsAsArg: RArgument = {
 				type:     RType.Argument,
@@ -227,7 +232,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:   forNode.text,
 				info:     {
 					fullRange:        range,
-					additionalTokens: [...variableComments, ...sequenceComments],
+					additionalTokens: [...variableComments, ...sequenceComments].map(c => c[1]),
 					fullLexeme:       node.text
 				}
 			};
@@ -285,7 +290,11 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					type:         RType.FunctionCall,
 					functionName: {
 						...funcNode,
-						...defaultInfo
+						info: {
+							fullRange:        range,
+							additionalTokens: [],
+							fullLexeme:       node.text
+						}
 					},
 					named: true
 				};
@@ -478,27 +487,51 @@ function makeSourceRange(node: SyntaxNode): SourceRange {
 	];
 }
 
-function splitComments(nodes: SyntaxNode[]): [RComment[], SyntaxNode[]] {
-	const comments: RComment[] = [];
+function splitComments(nodes: SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
+	const comments: SyntaxAndRNode[] = [];
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {
 		if(node.type === TreeSitterType.Comment) {
-			const range = makeSourceRange(node);
-			comments.push({
+			comments.push([node, {
 				type:     RType.Comment,
-				location: range,
+				location: makeSourceRange(node),
 				content:  node.text.slice(1),
 				lexeme:   node.text,
 				info:     {
 					additionalTokens: [],
 					fullLexeme:       node.text
 				}
-			});
+			}]);
 		} else {
 			others.push(node);
 		}
 	}
 	return [comments, others];
+}
+
+function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
+	const remain: SyntaxAndRNode[] = [];
+	for(const [commentSyntaxNode, commentNode] of comments) {
+		let sibling: SyntaxNode | null;
+		if(commentSyntaxNode.previousSibling?.endIndex === commentSyntaxNode.startIndex) {
+			// if there is a sibling on the same line, we link the comment to that node
+			sibling = commentSyntaxNode.previousSibling;
+		} else {
+			sibling = commentSyntaxNode.nextSibling;
+			while(sibling && sibling.type === TreeSitterType.Comment) {
+				sibling = sibling.nextSibling;
+			}
+		}
+		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
+		const [, node] = (sibling ? nodes.find(([s]) => s.equals(sibling)) : undefined) ?? nodes[0] ?? [];
+		if(node) {
+			node.info.additionalTokens ??= [];
+			node.info.additionalTokens.push(commentNode);
+		} else {
+			remain.push([commentSyntaxNode, commentNode]);
+		}
+	}
+	return remain;
 }
 
 function getNodesUntil(nodes: SyntaxNode[], type: TreeSitterType | string, startIndex = 0): SyntaxNode[] {

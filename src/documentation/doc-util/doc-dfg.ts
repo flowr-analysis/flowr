@@ -31,7 +31,6 @@ export interface PrintDataflowGraphOptions {
 	readonly codeOpen?:           boolean;
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
-	readonly hideEnvInMermaid?:   boolean;
 }
 
 export function formatSideEffect(ef: UnknownSidEffect): string {
@@ -44,7 +43,7 @@ export function formatSideEffect(ef: UnknownSidEffect): string {
 
 export async function printDfGraphForCode(shell: RShell, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
 export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, hideEnvInMermaid = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
@@ -75,19 +74,6 @@ We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown si
 
 ${switchCodeAndGraph ? dfGraph : codeText}
 
-<details>
-
-<summary style="color:gray">Mermaid Code ${(mark?.size ?? 0) > 0 ? '(without markings)' : ''}</summary>
-
-\`\`\`
-${graphToMermaid({
-		graph:               result.dataflow.graph,
-		prefix:              'flowchart LR', 
-		includeEnvironments: !hideEnvInMermaid
-	}).string}
-\`\`\`
-
-</details>
 
 </details>
 

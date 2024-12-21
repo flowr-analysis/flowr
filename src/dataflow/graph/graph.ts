@@ -1,6 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge } from './edge';
-import { EdgeType } from './edge';
+import type { DataflowGraphEdge , EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import { equalFunctionArguments } from './diff';
 import type {
@@ -8,10 +7,9 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	DataflowGraphVertices } from './vertex';
-import {
-	VertexType
+	DataflowGraphVertices
 } from './vertex';
+import { VertexType } from './vertex';
 import { arrayEqual } from '../../util/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
@@ -307,9 +305,6 @@ export class DataflowGraph<
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this
 	/**
-	 * Will insert a new edge into the graph,
-	 * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
-	 * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
 	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this {
@@ -331,27 +326,11 @@ export class DataflowGraph<
 			} else {
 				existingFrom.set(toId, edge);
 			}
-			if(type === EdgeType.DefinesOnCall) {
-				this.installDefinesOnCallEdge(toId, fromId, edge);
-			}
 		} else {
 			// adding the type
 			edgeInFrom.types |= type;
 		}
 		return this;
-	}
-
-	private installDefinesOnCallEdge(toId: NodeId, fromId: NodeId, edge: Edge) {
-		const otherEdge: Edge = {
-			...edge,
-			types: EdgeType.DefinedByOnCall
-		};
-		const existingTo = this.edgeInformation.get(toId);
-		if(existingTo === undefined) {
-			this.edgeInformation.set(toId, new Map([[fromId, otherEdge]]));
-		} else {
-			existingTo.set(fromId, otherEdge);
-		}
 	}
 
 	/**

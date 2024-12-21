@@ -85,6 +85,19 @@
       "**/node_modules/**/*",
       "**/index.ts"
     ],
+    "highlightLanguages": [
+      "bash",
+      "console",
+      "css",
+      "html",
+      "javascript",
+      "json",
+      "jsonc",
+      "json5",
+      "tsx",
+      "typescript",
+      "r"
+    ],
     "theme": "hierarchy",
     "out": "doc",
     "readme": "README.md",

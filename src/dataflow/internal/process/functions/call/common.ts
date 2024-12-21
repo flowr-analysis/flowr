@@ -67,7 +67,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
-			const resolved = resolveByName(ref.name, env, ref.type) ?? [];
+			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
 			for(const resolve of resolved) {
 				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}

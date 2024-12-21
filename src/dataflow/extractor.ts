@@ -24,6 +24,9 @@ import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import {
+	updateNestedFunctionCalls
+} from './internal/process/functions/call/built-in/built-in-function-definition';
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -101,6 +104,9 @@ export function produceDataFlowGraph<OtherInfo>(
 			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df);
 		}
 	}
+
+	// finally, resolve linkages
+	updateNestedFunctionCalls(df.graph, df.environment);
 
 	resolveLinkToSideEffects(ast, df.graph);
 	return df;

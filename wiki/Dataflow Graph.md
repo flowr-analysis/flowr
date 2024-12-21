@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-12-18, 13:38:14 UTC presenting an overview of flowR's dataflow graph (v2.1.8, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-dataflow-graph-wiki.ts' on 2024-12-21, 17:13:19 UTC presenting an overview of flowR's dataflow graph (v2.1.8, using R v4.4.2)._
 
 This page briefly summarizes flowR's dataflow graph, represented by DataflowGraph in [`./src/dataflow/graph/graph.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/graph.ts).
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in [`./src/dataflow/graph/dataflowgraph-builder.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/dataflow/graph/dataflowgraph-builder.ts).
@@ -68,7 +68,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _16.66 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _12.92 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -312,7 +312,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.95 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.93 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -478,7 +478,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.95 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _3.17 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -540,7 +540,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.93 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.16 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -683,7 +683,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.87 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _2.62 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -756,7 +756,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.61 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _3.56 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 ```r
@@ -874,7 +874,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _4.54 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
+The analysis required _4.17 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 10->0, 10->4}.
 We encountered unknown side effects (with ids: 12 (linked)) during the analysis.
 
 ```r
@@ -1023,7 +1023,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.09 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _3.91 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
 
 ```r
@@ -1205,7 +1205,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _9.44 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _5.30 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
 
 ```r
@@ -1342,7 +1342,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.97 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.06 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1455,9 +1455,9 @@ and it should not be relied on as it may under-approximate the actual calling ta
 </details>
     
 The related function argument references are defined like this:
- * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L64)   
+ * [FunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L62)   
    Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L64">./src/dataflow/graph/graph.ts#L64</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L62">./src/dataflow/graph/graph.ts#L62</a></summary>
    
    
    ```ts
@@ -1470,13 +1470,13 @@ The related function argument references are defined like this:
    
     <details><summary style="color:black">View more (NamedFunctionArgument, PositionalFunctionArgument)</summary>
 
-   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45)**   
+   * **[NamedFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43)**   
      A reference with a name, e.g. `a` and `b` in the following function call:
      
      ```r
      foo(a = 3, b = 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L45">./src/dataflow/graph/graph.ts#L45</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L43">./src/dataflow/graph/graph.ts#L43</a></summary>
      
      
      ```ts
@@ -1556,13 +1556,13 @@ The related function argument references are defined like this:
        
        </details>
        
-   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L59)**   
+   * **[PositionalFunctionArgument](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L57)**   
      A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
      
      ```r
      foo(3, 2)
      ```
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L59">./src/dataflow/graph/graph.ts#L59</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L57">./src/dataflow/graph/graph.ts#L57</a></summary>
      
      
      ```ts
@@ -1627,7 +1627,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _6.86 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis required _6.53 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -1803,7 +1803,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _2.84 ms_ (incl. parse and normalize) within the generation environment. 
+> The analysis required _2.34 ms_ (incl. parse and normalize) within the generation environment. 
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -1880,7 +1880,7 @@ For more information on the types of references, please consult the implementati
 >     (0, 3)`"]]
 >     %% Environment of 6 [level: 0]:
 >     %% Built-in
->     %% 155----------------------------------------
+>     %% 157----------------------------------------
 >     %%   foo: {**foo** (id: 0, type: Function, def. @4)}
 >     6[["`#91;RFunctionCall#93; foo
 >       (6)
@@ -1904,7 +1904,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.89 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> The analysis required _2.58 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -1937,7 +1937,7 @@ For more information on the types of references, please consult the implementati
 >     (0, 3)`"]]
 >     %% Environment of 6 [level: 0]:
 >     %% Built-in
->     %% 155----------------------------------------
+>     %% 157----------------------------------------
 >     %%   foo: {**foo** (id: 0, type: Function, def. @4)}
 >     6[["`#91;RFunctionCall#93; foo
 >       (6)
@@ -2003,7 +2003,7 @@ For more information on the types of references, please consult the implementati
 >     (5, 6)`"]]
 >     %% Environment of 9 [level: 0]:
 >     %% Built-in
->     %% 176----------------------------------------
+>     %% 179----------------------------------------
 >     %%   f: {**f** (id: 0, type: Function, def. @4)}
 >     %%   g: {**g** (id: 5, type: Unknown, def. @7)}
 >     9[["`#91;RFunctionCall#93; g
@@ -2031,7 +2031,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.91 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> The analysis required _2.17 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -2075,7 +2075,7 @@ For more information on the types of references, please consult the implementati
 >     (5, 6)`"]]
 >     %% Environment of 9 [level: 0]:
 >     %% Built-in
->     %% 176----------------------------------------
+>     %% 179----------------------------------------
 >     %%   f: {**f** (id: 0, type: Function, def. @4)}
 >     %%   g: {**g** (id: 5, type: Unknown, def. @7)}
 >     9[["`#91;RFunctionCall#93; g
@@ -2170,7 +2170,7 @@ For more information on the types of references, please consult the implementati
 >     (0, 19)`"]]
 >     %% Environment of 22 [level: 0]:
 >     %% Built-in
->     %% 222----------------------------------------
+>     %% 226----------------------------------------
 >     %%   f: {**f** (id: 0, type: Function, def. @20)}
 >     22[["`#91;RFunctionCall#93; f
 >       (22)
@@ -2205,7 +2205,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _3.28 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> The analysis required _2.98 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -2276,7 +2276,7 @@ For more information on the types of references, please consult the implementati
 >     (0, 19)`"]]
 >     %% Environment of 22 [level: 0]:
 >     %% Built-in
->     %% 222----------------------------------------
+>     %% 226----------------------------------------
 >     %%   f: {**f** (id: 0, type: Function, def. @20)}
 >     22[["`#91;RFunctionCall#93; f
 >       (22)
@@ -2349,7 +2349,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">Dataflow Graph of the R Code</summary>
 > 
-> The analysis required _2.49 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
+> The analysis required _2.42 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2391,7 +2391,7 @@ For more information on the types of references, please consult the implementati
 >     style 9 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
 >     %% Environment of 11 [level: 0]:
 >     %% Built-in
->     %% 244----------------------------------------
+>     %% 249----------------------------------------
 >     %%   x:  {**x** (id: 0, type: Variable, def. @2)}
 >     %%   <-: {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
 >     11[["`#91;RBinaryOp#93; #60;#45;
@@ -2466,7 +2466,7 @@ For more information on the types of references, please consult the implementati
 >       *3.1*`"]
 >     %% Environment of 11 [level: 0]:
 >     %% Built-in
->     %% 244----------------------------------------
+>     %% 249----------------------------------------
 >     %%   x:  {**x** (id: 0, type: Variable, def. @2)}
 >     %%   <-: {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
 >     11[["`#91;RBinaryOp#93; #60;#45;
@@ -2575,7 +2575,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.63 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.37 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2660,7 +2660,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.74 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
+The analysis required _4.59 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2722,8 +2722,8 @@ flowchart LR
 subgraph "flow-8" [function 8]
     %% Environment of 4 [level: 1]:
     %% Built-in
-    %% 275----------------------------------------
-    %% 276----------------------------------------
+    %% 282----------------------------------------
+    %% 283----------------------------------------
     4["`#91;RFunctionDefinition#93; function
       (4)
       *1.26-37*`"]
@@ -2748,14 +2748,14 @@ end
     (0, 8)`"]]
     %% Environment of 11 [level: 0]:
     %% Built-in
-    %% 295----------------------------------------
+    %% 302----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @9)}
     11[["`#91;RFunctionCall#93; foo
       (11)
       *2.1-5*`"]]
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 296----------------------------------------
+    %% 303----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @9)}
     12[["`#91;RFunctionCall#93; foo()
       (12)
@@ -2783,7 +2783,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.05 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+The analysis required _2.08 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2804,8 +2804,8 @@ flowchart LR
 subgraph "flow-8" [function 8]
     %% Environment of 4 [level: 1]:
     %% Built-in
-    %% 275----------------------------------------
-    %% 276----------------------------------------
+    %% 282----------------------------------------
+    %% 283----------------------------------------
     4["`#91;RFunctionDefinition#93; function
       (4)
       *1.26-37*`"]
@@ -2830,14 +2830,14 @@ end
     (0, 8)`"]]
     %% Environment of 11 [level: 0]:
     %% Built-in
-    %% 295----------------------------------------
+    %% 302----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @9)}
     11[["`#91;RFunctionCall#93; foo
       (11)
       *2.1-5*`"]]
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 296----------------------------------------
+    %% 303----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @9)}
     12[["`#91;RFunctionCall#93; foo()
       (12)
@@ -2880,7 +2880,7 @@ In this case, you may encounter the [`side-effect-on-call`](#side-effect-on-call
 flowchart LR
     %% Environment of 5 [level: 0]:
     %% Built-in
-    %% 316----------------------------------------
+    %% 325----------------------------------------
     %%   x: {**x** (id: 1, type: Variable, def. @3)}
     5["`#91;RFunctionDefinition#93; function
       (5)
@@ -2907,7 +2907,7 @@ end
     (0, 5)`"]]
     %% Environment of 8 [level: 0]:
     %% Built-in
-    %% 324----------------------------------------
+    %% 333----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @6)}
     8[["`#91;RFunctionCall#93; f
       (8)
@@ -2934,7 +2934,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.76 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+The analysis required _1.78 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -2950,7 +2950,7 @@ f <- function() x <<- 3
 flowchart LR
     %% Environment of 5 [level: 0]:
     %% Built-in
-    %% 316----------------------------------------
+    %% 325----------------------------------------
     %%   x: {**x** (id: 1, type: Variable, def. @3)}
     5["`#91;RFunctionDefinition#93; function
       (5)
@@ -2977,7 +2977,7 @@ end
     (0, 5)`"]]
     %% Environment of 8 [level: 0]:
     %% Built-in
-    %% 324----------------------------------------
+    %% 333----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @6)}
     8[["`#91;RFunctionCall#93; f
       (8)
@@ -3044,7 +3044,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.09 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.03 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3111,7 +3111,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.15 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.27 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3255,7 +3255,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.42 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3334,7 +3334,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.21 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.55 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3409,7 +3409,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.32 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.23 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3534,7 +3534,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _5.82 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _2.21 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3675,7 +3675,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.03 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _1.11 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -3791,14 +3791,14 @@ The vertex object in the dataflow graph stores multiple things, including all ex
 </details>
     
 The subflow is defined like this:
- * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L33)   
+ * [DataflowFunctionFlowInformation](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L31)   
    Describes the information we store per function body.
    The
    <code>DataflowFunctionFlowInformation#exitPoints</code>
    are stored within the enclosing
    <code>DataflowGraphVertexFunctionDefinition</code>
    vertex.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L33">./src/dataflow/graph/graph.ts#L33</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/graph.ts#L31">./src/dataflow/graph/graph.ts#L31</a></summary>
    
    
    ```ts
@@ -3959,8 +3959,8 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > subgraph "flow-9" [function 9]
 >     %% Environment of 6 [level: 1]:
 >     %% Built-in
->     %% 393----------------------------------------
->     %% 394----------------------------------------
+>     %% 403----------------------------------------
+>     %% 404----------------------------------------
 >     6["`#91;RFunctionDefinition#93; function
 >       (6)
 >       *1.24-35*`"]
@@ -4010,7 +4010,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.97 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
+> The analysis required _1.82 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -4030,8 +4030,8 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > subgraph "flow-9" [function 9]
 >     %% Environment of 6 [level: 1]:
 >     %% Built-in
->     %% 393----------------------------------------
->     %% 394----------------------------------------
+>     %% 403----------------------------------------
+>     %% 404----------------------------------------
 >     6["`#91;RFunctionDefinition#93; function
 >       (6)
 >       *1.24-35*`"]
@@ -4161,7 +4161,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _2.11 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
+> The analysis required _1.99 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -4274,7 +4274,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > ```
 > 	
-> (The analysis required _1.26 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
+> (The analysis required _1.33 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 > 
 > 
 > 	
@@ -4295,7 +4295,7 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.33 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.45 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 
@@ -4417,7 +4417,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.43 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _1.70 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 ```r
@@ -4528,7 +4528,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.84 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
+> The analysis required _2.12 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
 > We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
 > 
 > ```r
@@ -4655,7 +4655,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.76 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
+> The analysis required _1.72 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -4760,7 +4760,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 645----------------------------------------
+    %% 681----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -4781,7 +4781,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.44 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _1.53 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -4813,7 +4813,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 645----------------------------------------
+    %% 681----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -4976,7 +4976,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.10 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _1.05 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5042,7 +5042,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.18 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.33 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5130,7 +5130,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.71 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _1.31 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5214,7 +5214,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.26 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
+The analysis required _1.39 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {0->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5293,7 +5293,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 815----------------------------------------
+    %% 854----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -5314,7 +5314,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.38 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.39 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5346,7 +5346,7 @@ end
     (0, 4)`"]]
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 815----------------------------------------
+    %% 854----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @5)}
     7[["`#91;RFunctionCall#93; foo
       (7)
@@ -5403,7 +5403,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 857----------------------------------------
+    %% 899----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -5424,7 +5424,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.52 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
+The analysis required _1.35 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {6->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5457,7 +5457,7 @@ end
     (0, 3)`"]]
     %% Environment of 6 [level: 0]:
     %% Built-in
-    %% 857----------------------------------------
+    %% 899----------------------------------------
     %%   foo: {**foo** (id: 0, type: Function, def. @4)}
     6[["`#91;RFunctionCall#93; foo
       (6)
@@ -5522,7 +5522,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 920----------------------------------------
+    %% 965----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -5549,7 +5549,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _2.02 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5590,7 +5590,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 920----------------------------------------
+    %% 965----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -5617,9 +5617,155 @@ end
 
 
 
-**This edge is automatically joined with [`defined-by-on-call`](#defined-by-on-call)!**
+*This edge is usually joined with [`defined-by-on-call`](#defined-by-on-call)!*
 
- Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.
+ Links an Argument to whichever parameter they cause to be defined if the related function call is invoked.
+ 
+ In the context of functions which access their closure environment these edges play another tricky role as there are many cases 
+ made more difficult by R's way of allowing closure environments to later receive variables.
+ Consider the following scenario in which we first define a function which returns the value of a variable named `x` and then define `x`
+ only after we defined the function:
+   
+
+
+```r
+f <- function() x
+x <- 3
+f()
+```
+<details open>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis required _1.63 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
+We encountered no unknown side effects during the analysis.
+
+
+```mermaid
+flowchart LR
+    3["`#91;RFunctionDefinition#93; function
+      (3)
+      *1.6-17*`"]
+
+subgraph "flow-3" [function 3]
+    1(["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"])
+    style 1 stroke:teal,stroke-width:7px,stroke-opacity:.8; 
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    4[["`#91;RBinaryOp#93; #60;#45;
+      (4)
+      *1.1-17*
+    (0, 3)`"]]
+    6{{"`#91;RNumber#93; 3
+      (6)
+      *2.6*`"}}
+    5["`#91;RSymbol#93; x
+      (5)
+      *2.1*`"]
+    7[["`#91;RBinaryOp#93; #60;#45;
+      (7)
+      *2.1-6*
+    (5, 6)`"]]
+    %% Environment of 9 [level: 0]:
+    %% Built-in
+    %% 603----------------------------------------
+    %%   f: {**f** (id: 0, type: Function, def. @4)}
+    %%   x: {**x** (id: 5, type: Variable, def. @7)}
+    9[["`#91;RFunctionCall#93; f
+      (9)
+      *3.1-3*`"]]
+    1 -->|"defined-by-on-call"| 5
+    linkStyle 0 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+3 -.-|function| flow-3
+
+    0 -->|"defined-by"| 3
+    0 -->|"defined-by"| 4
+    4 -->|"argument"| 3
+    4 -->|"returns, argument"| 0
+    5 -->|"defined-by"| 6
+    5 -->|"defined-by"| 7
+    7 -->|"argument"| 6
+    7 -->|"returns, argument"| 5
+    9 -->|"reads"| 0
+    9 -->|"defines-on-call"| 5
+    linkStyle 11 stroke:teal,stroke-width:4.2px,stroke-opacity:.8
+    9 -->|"returns"| 1
+    9 -->|"calls"| 3
+```
+	
+
+<details>
+
+<summary style="color:gray">Mermaid Code (without markings)</summary>
+
+```
+flowchart LR
+    3["`#91;RFunctionDefinition#93; function
+      (3)
+      *1.6-17*`"]
+
+subgraph "flow-3" [function 3]
+    1(["`#91;RSymbol#93; x
+      (1)
+      *1.17*`"])
+end
+    0["`#91;RSymbol#93; f
+      (0)
+      *1.1*`"]
+    4[["`#91;RBinaryOp#93; #60;#45;
+      (4)
+      *1.1-17*
+    (0, 3)`"]]
+    6{{"`#91;RNumber#93; 3
+      (6)
+      *2.6*`"}}
+    5["`#91;RSymbol#93; x
+      (5)
+      *2.1*`"]
+    7[["`#91;RBinaryOp#93; #60;#45;
+      (7)
+      *2.1-6*
+    (5, 6)`"]]
+    %% Environment of 9 [level: 0]:
+    %% Built-in
+    %% 603----------------------------------------
+    %%   f: {**f** (id: 0, type: Function, def. @4)}
+    %%   x: {**x** (id: 5, type: Variable, def. @7)}
+    9[["`#91;RFunctionCall#93; f
+      (9)
+      *3.1-3*`"]]
+    1 -->|"defined-by-on-call"| 5
+3 -.-|function| flow-3
+
+    0 -->|"defined-by"| 3
+    0 -->|"defined-by"| 4
+    4 -->|"argument"| 3
+    4 -->|"returns, argument"| 0
+    5 -->|"defined-by"| 6
+    5 -->|"defined-by"| 7
+    7 -->|"argument"| 6
+    7 -->|"returns, argument"| 5
+    9 -->|"reads"| 0
+    9 -->|"defines-on-call"| 5
+    9 -->|"returns"| 1
+    9 -->|"calls"| 3
+```
+
+</details>
+
+</details>
+
+
+
+ The final call evaluates to `3` (similar to if we would have defined `x` before the function definition).
+ Within a dataflow graph you can see this with two edges. The `x` within the function body will have a [`defined-by-on-call`](#defined-by-on-call) 
+ to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of `x` will have a
+ [`defines-on-call`](#defines-on-call) edge to the definition(s) it causes to be active within the function body. 
+ 
 
 
 	
@@ -5662,7 +5808,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 983----------------------------------------
+    %% 1031----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -5689,7 +5835,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.52 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
+The analysis required _1.77 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {11->1, 1->11}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5730,7 +5876,7 @@ end
       *2.3*`"])
     %% Environment of 12 [level: 0]:
     %% Built-in
-    %% 983----------------------------------------
+    %% 1031----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @7)}
     12[["`#91;RFunctionCall#93; f
       (12)
@@ -5757,9 +5903,9 @@ end
 
 
 
-**This edge is automatically joined with [`defines-on-call`](#defines-on-call)!**
+*This edge is usually joined with [`defines-on-call`](#defines-on-call)!*
 
- This represents the other direction of [`defines-on-call`](#defines-on-call) (i.e., links the parameter to the argument). This is just for completeness.
+ This represents the other direction of [`defines-on-call`](#defines-on-call) (i.e., links the parameter to the argument).
 
 
 	
@@ -5795,7 +5941,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.12 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.08 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5849,7 +5995,7 @@ Type: `128`
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 1085----------------------------------------
+    %% 1139----------------------------------------
     %%   x: {**x** (id: 3, type: Variable, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -5880,7 +6026,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 1093----------------------------------------
+    %% 1147----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -5907,7 +6053,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.65 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.92 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -5923,7 +6069,7 @@ f()
 flowchart LR
     %% Environment of 7 [level: 0]:
     %% Built-in
-    %% 1085----------------------------------------
+    %% 1139----------------------------------------
     %%   x: {**x** (id: 3, type: Variable, def. @5)}
     7["`#91;RFunctionDefinition#93; function
       (7)
@@ -5954,7 +6100,7 @@ end
     (0, 7)`"]]
     %% Environment of 10 [level: 0]:
     %% Built-in
-    %% 1093----------------------------------------
+    %% 1147----------------------------------------
     %%   f: {**f** (id: 0, type: Function, def. @8)}
     10[["`#91;RFunctionCall#93; f
       (10)
@@ -6013,7 +6159,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.07 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.16 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6091,7 +6237,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.28 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
+> The analysis required _1.39 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -6161,7 +6307,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.72 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
+> The analysis required _1.57 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {1, 3->1}.
 > We encountered no unknown side effects during the analysis.
 > 
 > ```r
@@ -6241,7 +6387,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.24 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
+The analysis required _1.38 ms_ (incl. parse and normalize) within the generation environment. The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6326,7 +6472,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.41 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.18 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6413,7 +6559,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.41 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.26 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6500,7 +6646,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.28 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.22 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6610,7 +6756,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.56 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _2.85 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 ```r
@@ -6768,7 +6914,7 @@ However, the dataflow information contains more, quite a lot of information in f
 _As the information is pretty long, we inhibit pretty printing and syntax highlighting:_
 
 ```text
-{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":1162,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["pdf",[{"type":128,"definedAt":"built-in","name":"pdf","nodeId":"built-in"}]],["jpeg",[{"type":128,"definedAt":"built-in","name":"jpeg","nodeId":"built-in"}]],["png",[{"type":128,"definedAt":"built-in","name":"png","nodeId":"built-in"}]],["windows",[{"type":128,"definedAt":"built-in","name":"windows","nodeId":"built-in"}]],["postscript",[{"type":128,"definedAt":"built-in","name":"postscript","nodeId":"built-in"}]],["xfig",[{"type":128,"definedAt":"built-in","name":"xfig","nodeId":"built-in"}]],["bitmap",[{"type":128,"definedAt":"built-in","name":"bitmap","nodeId":"built-in"}]],["pictex",[{"type":128,"definedAt":"built-in","name":"pictex","nodeId":"built-in"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in","name":"cairo_pdf","nodeId":"built-in"}]],["svg",[{"type":128,"definedAt":"built-in","name":"svg","nodeId":"built-in"}]],["bmp",[{"type":128,"definedAt":"built-in","name":"bmp","nodeId":"built-in"}]],["tiff",[{"type":128,"definedAt":"built-in","name":"tiff","nodeId":"built-in"}]],["X11",[{"type":128,"definedAt":"built-in","name":"X11","nodeId":"built-in"}]],["quartz",[{"type":128,"definedAt":"built-in","name":"quartz","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["message",[{"type":128,"definedAt":"built-in","name":"message","nodeId":"built-in"}]],["warning",[{"type":128,"definedAt":"built-in","name":"warning","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["plot.new",[{"type":128,"definedAt":"built-in","name":"plot.new","nodeId":"built-in"}]],["curve",[{"type":128,"definedAt":"built-in","name":"curve","nodeId":"built-in"}]],["map",[{"type":128,"definedAt":"built-in","name":"map","nodeId":"built-in"}]],["image",[{"type":128,"definedAt":"built-in","name":"image","nodeId":"built-in"}]],["boxplot",[{"type":128,"definedAt":"built-in","name":"boxplot","nodeId":"built-in"}]],["dotchart",[{"type":128,"definedAt":"built-in","name":"dotchart","nodeId":"built-in"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in","name":"sunflowerplot","nodeId":"built-in"}]],["barplot",[{"type":128,"definedAt":"built-in","name":"barplot","nodeId":"built-in"}]],["matplot",[{"type":128,"definedAt":"built-in","name":"matplot","nodeId":"built-in"}]],["hist",[{"type":128,"definedAt":"built-in","name":"hist","nodeId":"built-in"}]],["stem",[{"type":128,"definedAt":"built-in","name":"stem","nodeId":"built-in"}]],["density",[{"type":128,"definedAt":"built-in","name":"density","nodeId":"built-in"}]],["smoothScatter",[{"type":128,"definedAt":"built-in","name":"smoothScatter","nodeId":"built-in"}]],["contour",[{"type":128,"definedAt":"built-in","name":"contour","nodeId":"built-in"}]],["persp",[{"type":128,"definedAt":"built-in","name":"persp","nodeId":"built-in"}]],["points",[{"type":128,"definedAt":"built-in","name":"points","nodeId":"built-in"}]],["abline",[{"type":128,"definedAt":"built-in","name":"abline","nodeId":"built-in"}]],["mtext",[{"type":128,"definedAt":"built-in","name":"mtext","nodeId":"built-in"}]],["lines",[{"type":128,"definedAt":"built-in","name":"lines","nodeId":"built-in"}]],["text",[{"type":128,"definedAt":"built-in","name":"text","nodeId":"built-in"}]],["legend",[{"type":128,"definedAt":"built-in","name":"legend","nodeId":"built-in"}]],["title",[{"type":128,"definedAt":"built-in","name":"title","nodeId":"built-in"}]],["axis",[{"type":128,"definedAt":"built-in","name":"axis","nodeId":"built-in"}]],["polygon",[{"type":128,"definedAt":"built-in","name":"polygon","nodeId":"built-in"}]],["polypath",[{"type":128,"definedAt":"built-in","name":"polypath","nodeId":"built-in"}]],["pie",[{"type":128,"definedAt":"built-in","name":"pie","nodeId":"built-in"}]],["rect",[{"type":128,"definedAt":"built-in","name":"rect","nodeId":"built-in"}]],["segments",[{"type":128,"definedAt":"built-in","name":"segments","nodeId":"built-in"}]],["arrows",[{"type":128,"definedAt":"built-in","name":"arrows","nodeId":"built-in"}]],["symbols",[{"type":128,"definedAt":"built-in","name":"symbols","nodeId":"built-in"}]],["tiplabels",[{"type":128,"definedAt":"built-in","name":"tiplabels","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["data",[{"type":128,"definedAt":"built-in","name":"data","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}],".meta":{"timing":0}}
+{"unknownReferences":[],"in":[{"nodeId":2,"name":"<-","type":2},{"nodeId":5,"name":"+","type":2}],"out":[{"nodeId":0,"name":"x","type":4,"definedAt":2}],"environment":{"current":{"id":1217,"parent":{"id":0,"memory":[["NULL",[{"type":64,"definedAt":"built-in","value":null,"name":"NULL","nodeId":"built-in"}]],["NA",[{"type":64,"definedAt":"built-in","value":null,"name":"NA","nodeId":"built-in"}]],["TRUE",[{"type":64,"definedAt":"built-in","value":true,"name":"TRUE","nodeId":"built-in"}]],["T",[{"type":64,"definedAt":"built-in","value":true,"name":"T","nodeId":"built-in"}]],["FALSE",[{"type":64,"definedAt":"built-in","value":false,"name":"FALSE","nodeId":"built-in"}]],["F",[{"type":64,"definedAt":"built-in","value":false,"name":"F","nodeId":"built-in"}]],["~",[{"type":128,"definedAt":"built-in","name":"~","nodeId":"built-in"}]],["+",[{"type":128,"definedAt":"built-in","name":"+","nodeId":"built-in"}]],["-",[{"type":128,"definedAt":"built-in","name":"-","nodeId":"built-in"}]],["*",[{"type":128,"definedAt":"built-in","name":"*","nodeId":"built-in"}]],["/",[{"type":128,"definedAt":"built-in","name":"/","nodeId":"built-in"}]],["^",[{"type":128,"definedAt":"built-in","name":"^","nodeId":"built-in"}]],["!",[{"type":128,"definedAt":"built-in","name":"!","nodeId":"built-in"}]],["?",[{"type":128,"definedAt":"built-in","name":"?","nodeId":"built-in"}]],["**",[{"type":128,"definedAt":"built-in","name":"**","nodeId":"built-in"}]],["==",[{"type":128,"definedAt":"built-in","name":"==","nodeId":"built-in"}]],["!=",[{"type":128,"definedAt":"built-in","name":"!=","nodeId":"built-in"}]],[">",[{"type":128,"definedAt":"built-in","name":">","nodeId":"built-in"}]],["<",[{"type":128,"definedAt":"built-in","name":"<","nodeId":"built-in"}]],[">=",[{"type":128,"definedAt":"built-in","name":">=","nodeId":"built-in"}]],["<=",[{"type":128,"definedAt":"built-in","name":"<=","nodeId":"built-in"}]],["%%",[{"type":128,"definedAt":"built-in","name":"%%","nodeId":"built-in"}]],["%/%",[{"type":128,"definedAt":"built-in","name":"%/%","nodeId":"built-in"}]],["%*%",[{"type":128,"definedAt":"built-in","name":"%*%","nodeId":"built-in"}]],["%in%",[{"type":128,"definedAt":"built-in","name":"%in%","nodeId":"built-in"}]],[":",[{"type":128,"definedAt":"built-in","name":":","nodeId":"built-in"}]],["list",[{"type":128,"definedAt":"built-in","name":"list","nodeId":"built-in"}]],["rep",[{"type":128,"definedAt":"built-in","name":"rep","nodeId":"built-in"}]],["seq",[{"type":128,"definedAt":"built-in","name":"seq","nodeId":"built-in"}]],["seq_len",[{"type":128,"definedAt":"built-in","name":"seq_len","nodeId":"built-in"}]],["seq_along",[{"type":128,"definedAt":"built-in","name":"seq_along","nodeId":"built-in"}]],["seq.int",[{"type":128,"definedAt":"built-in","name":"seq.int","nodeId":"built-in"}]],["gsub",[{"type":128,"definedAt":"built-in","name":"gsub","nodeId":"built-in"}]],["which",[{"type":128,"definedAt":"built-in","name":"which","nodeId":"built-in"}]],["class",[{"type":128,"definedAt":"built-in","name":"class","nodeId":"built-in"}]],["dimnames",[{"type":128,"definedAt":"built-in","name":"dimnames","nodeId":"built-in"}]],["min",[{"type":128,"definedAt":"built-in","name":"min","nodeId":"built-in"}]],["max",[{"type":128,"definedAt":"built-in","name":"max","nodeId":"built-in"}]],["intersect",[{"type":128,"definedAt":"built-in","name":"intersect","nodeId":"built-in"}]],["subset",[{"type":128,"definedAt":"built-in","name":"subset","nodeId":"built-in"}]],["match",[{"type":128,"definedAt":"built-in","name":"match","nodeId":"built-in"}]],["sqrt",[{"type":128,"definedAt":"built-in","name":"sqrt","nodeId":"built-in"}]],["abs",[{"type":128,"definedAt":"built-in","name":"abs","nodeId":"built-in"}]],["round",[{"type":128,"definedAt":"built-in","name":"round","nodeId":"built-in"}]],["floor",[{"type":128,"definedAt":"built-in","name":"floor","nodeId":"built-in"}]],["ceiling",[{"type":128,"definedAt":"built-in","name":"ceiling","nodeId":"built-in"}]],["signif",[{"type":128,"definedAt":"built-in","name":"signif","nodeId":"built-in"}]],["trunc",[{"type":128,"definedAt":"built-in","name":"trunc","nodeId":"built-in"}]],["log",[{"type":128,"definedAt":"built-in","name":"log","nodeId":"built-in"}]],["log10",[{"type":128,"definedAt":"built-in","name":"log10","nodeId":"built-in"}]],["log2",[{"type":128,"definedAt":"built-in","name":"log2","nodeId":"built-in"}]],["sum",[{"type":128,"definedAt":"built-in","name":"sum","nodeId":"built-in"}]],["mean",[{"type":128,"definedAt":"built-in","name":"mean","nodeId":"built-in"}]],["unique",[{"type":128,"definedAt":"built-in","name":"unique","nodeId":"built-in"}]],["paste",[{"type":128,"definedAt":"built-in","name":"paste","nodeId":"built-in"}]],["paste0",[{"type":128,"definedAt":"built-in","name":"paste0","nodeId":"built-in"}]],["read.csv",[{"type":128,"definedAt":"built-in","name":"read.csv","nodeId":"built-in"}]],["stop",[{"type":128,"definedAt":"built-in","name":"stop","nodeId":"built-in"}]],["is.null",[{"type":128,"definedAt":"built-in","name":"is.null","nodeId":"built-in"}]],["numeric",[{"type":128,"definedAt":"built-in","name":"numeric","nodeId":"built-in"}]],["as.character",[{"type":128,"definedAt":"built-in","name":"as.character","nodeId":"built-in"}]],["as.integer",[{"type":128,"definedAt":"built-in","name":"as.integer","nodeId":"built-in"}]],["as.logical",[{"type":128,"definedAt":"built-in","name":"as.logical","nodeId":"built-in"}]],["as.numeric",[{"type":128,"definedAt":"built-in","name":"as.numeric","nodeId":"built-in"}]],["as.matrix",[{"type":128,"definedAt":"built-in","name":"as.matrix","nodeId":"built-in"}]],["rbind",[{"type":128,"definedAt":"built-in","name":"rbind","nodeId":"built-in"}]],["nrow",[{"type":128,"definedAt":"built-in","name":"nrow","nodeId":"built-in"}]],["ncol",[{"type":128,"definedAt":"built-in","name":"ncol","nodeId":"built-in"}]],["tryCatch",[{"type":128,"definedAt":"built-in","name":"tryCatch","nodeId":"built-in"}]],["expression",[{"type":128,"definedAt":"built-in","name":"expression","nodeId":"built-in"}]],["factor",[{"type":128,"definedAt":"built-in","name":"factor","nodeId":"built-in"}]],["missing",[{"type":128,"definedAt":"built-in","name":"missing","nodeId":"built-in"}]],["as.data.frame",[{"type":128,"definedAt":"built-in","name":"as.data.frame","nodeId":"built-in"}]],["data.frame",[{"type":128,"definedAt":"built-in","name":"data.frame","nodeId":"built-in"}]],["na.omit",[{"type":128,"definedAt":"built-in","name":"na.omit","nodeId":"built-in"}]],["rownames",[{"type":128,"definedAt":"built-in","name":"rownames","nodeId":"built-in"}]],["names",[{"type":128,"definedAt":"built-in","name":"names","nodeId":"built-in"}]],["order",[{"type":128,"definedAt":"built-in","name":"order","nodeId":"built-in"}]],["length",[{"type":128,"definedAt":"built-in","name":"length","nodeId":"built-in"}]],["any",[{"type":128,"definedAt":"built-in","name":"any","nodeId":"built-in"}]],["dim",[{"type":128,"definedAt":"built-in","name":"dim","nodeId":"built-in"}]],["matrix",[{"type":128,"definedAt":"built-in","name":"matrix","nodeId":"built-in"}]],["cbind",[{"type":128,"definedAt":"built-in","name":"cbind","nodeId":"built-in"}]],["nchar",[{"type":128,"definedAt":"built-in","name":"nchar","nodeId":"built-in"}]],["pdf",[{"type":128,"definedAt":"built-in","name":"pdf","nodeId":"built-in"}]],["jpeg",[{"type":128,"definedAt":"built-in","name":"jpeg","nodeId":"built-in"}]],["png",[{"type":128,"definedAt":"built-in","name":"png","nodeId":"built-in"}]],["windows",[{"type":128,"definedAt":"built-in","name":"windows","nodeId":"built-in"}]],["postscript",[{"type":128,"definedAt":"built-in","name":"postscript","nodeId":"built-in"}]],["xfig",[{"type":128,"definedAt":"built-in","name":"xfig","nodeId":"built-in"}]],["bitmap",[{"type":128,"definedAt":"built-in","name":"bitmap","nodeId":"built-in"}]],["pictex",[{"type":128,"definedAt":"built-in","name":"pictex","nodeId":"built-in"}]],["cairo_pdf",[{"type":128,"definedAt":"built-in","name":"cairo_pdf","nodeId":"built-in"}]],["svg",[{"type":128,"definedAt":"built-in","name":"svg","nodeId":"built-in"}]],["bmp",[{"type":128,"definedAt":"built-in","name":"bmp","nodeId":"built-in"}]],["tiff",[{"type":128,"definedAt":"built-in","name":"tiff","nodeId":"built-in"}]],["X11",[{"type":128,"definedAt":"built-in","name":"X11","nodeId":"built-in"}]],["quartz",[{"type":128,"definedAt":"built-in","name":"quartz","nodeId":"built-in"}]],["c",[{"type":128,"definedAt":"built-in","name":"c","nodeId":"built-in"}]],["t",[{"type":128,"definedAt":"built-in","name":"t","nodeId":"built-in"}]],["options",[{"type":128,"definedAt":"built-in","name":"options","nodeId":"built-in"}]],["mapply",[{"type":128,"definedAt":"built-in","name":"mapply","nodeId":"built-in"}]],["Mapply",[{"type":128,"definedAt":"built-in","name":"Mapply","nodeId":"built-in"}]],["lapply",[{"type":128,"definedAt":"built-in","name":"lapply","nodeId":"built-in"}]],["sapply",[{"type":128,"definedAt":"built-in","name":"sapply","nodeId":"built-in"}]],["vapply",[{"type":128,"definedAt":"built-in","name":"vapply","nodeId":"built-in"}]],["Lapply",[{"type":128,"definedAt":"built-in","name":"Lapply","nodeId":"built-in"}]],["Sapply",[{"type":128,"definedAt":"built-in","name":"Sapply","nodeId":"built-in"}]],["Vapply",[{"type":128,"definedAt":"built-in","name":"Vapply","nodeId":"built-in"}]],["apply",[{"type":128,"definedAt":"built-in","name":"apply","nodeId":"built-in"}]],["tapply",[{"type":128,"definedAt":"built-in","name":"tapply","nodeId":"built-in"}]],["Tapply",[{"type":128,"definedAt":"built-in","name":"Tapply","nodeId":"built-in"}]],["print",[{"type":128,"definedAt":"built-in","name":"print","nodeId":"built-in"}]],["message",[{"type":128,"definedAt":"built-in","name":"message","nodeId":"built-in"}]],["warning",[{"type":128,"definedAt":"built-in","name":"warning","nodeId":"built-in"}]],["plot",[{"type":128,"definedAt":"built-in","name":"plot","nodeId":"built-in"}]],["plot.new",[{"type":128,"definedAt":"built-in","name":"plot.new","nodeId":"built-in"}]],["curve",[{"type":128,"definedAt":"built-in","name":"curve","nodeId":"built-in"}]],["map",[{"type":128,"definedAt":"built-in","name":"map","nodeId":"built-in"}]],["image",[{"type":128,"definedAt":"built-in","name":"image","nodeId":"built-in"}]],["boxplot",[{"type":128,"definedAt":"built-in","name":"boxplot","nodeId":"built-in"}]],["dotchart",[{"type":128,"definedAt":"built-in","name":"dotchart","nodeId":"built-in"}]],["sunflowerplot",[{"type":128,"definedAt":"built-in","name":"sunflowerplot","nodeId":"built-in"}]],["barplot",[{"type":128,"definedAt":"built-in","name":"barplot","nodeId":"built-in"}]],["matplot",[{"type":128,"definedAt":"built-in","name":"matplot","nodeId":"built-in"}]],["hist",[{"type":128,"definedAt":"built-in","name":"hist","nodeId":"built-in"}]],["stem",[{"type":128,"definedAt":"built-in","name":"stem","nodeId":"built-in"}]],["density",[{"type":128,"definedAt":"built-in","name":"density","nodeId":"built-in"}]],["smoothScatter",[{"type":128,"definedAt":"built-in","name":"smoothScatter","nodeId":"built-in"}]],["contour",[{"type":128,"definedAt":"built-in","name":"contour","nodeId":"built-in"}]],["persp",[{"type":128,"definedAt":"built-in","name":"persp","nodeId":"built-in"}]],["points",[{"type":128,"definedAt":"built-in","name":"points","nodeId":"built-in"}]],["abline",[{"type":128,"definedAt":"built-in","name":"abline","nodeId":"built-in"}]],["mtext",[{"type":128,"definedAt":"built-in","name":"mtext","nodeId":"built-in"}]],["lines",[{"type":128,"definedAt":"built-in","name":"lines","nodeId":"built-in"}]],["text",[{"type":128,"definedAt":"built-in","name":"text","nodeId":"built-in"}]],["legend",[{"type":128,"definedAt":"built-in","name":"legend","nodeId":"built-in"}]],["title",[{"type":128,"definedAt":"built-in","name":"title","nodeId":"built-in"}]],["axis",[{"type":128,"definedAt":"built-in","name":"axis","nodeId":"built-in"}]],["polygon",[{"type":128,"definedAt":"built-in","name":"polygon","nodeId":"built-in"}]],["polypath",[{"type":128,"definedAt":"built-in","name":"polypath","nodeId":"built-in"}]],["pie",[{"type":128,"definedAt":"built-in","name":"pie","nodeId":"built-in"}]],["rect",[{"type":128,"definedAt":"built-in","name":"rect","nodeId":"built-in"}]],["segments",[{"type":128,"definedAt":"built-in","name":"segments","nodeId":"built-in"}]],["arrows",[{"type":128,"definedAt":"built-in","name":"arrows","nodeId":"built-in"}]],["symbols",[{"type":128,"definedAt":"built-in","name":"symbols","nodeId":"built-in"}]],["tiplabels",[{"type":128,"definedAt":"built-in","name":"tiplabels","nodeId":"built-in"}]],["(",[{"type":128,"definedAt":"built-in","name":"(","nodeId":"built-in"}]],["load",[{"type":128,"definedAt":"built-in","name":"load","nodeId":"built-in"}]],["load_all",[{"type":128,"definedAt":"built-in","name":"load_all","nodeId":"built-in"}]],["setwd",[{"type":128,"definedAt":"built-in","name":"setwd","nodeId":"built-in"}]],["set.seed",[{"type":128,"definedAt":"built-in","name":"set.seed","nodeId":"built-in"}]],["eval",[{"type":128,"definedAt":"built-in","name":"eval","nodeId":"built-in"}]],["body",[{"type":128,"definedAt":"built-in","name":"body","nodeId":"built-in"}]],["formals",[{"type":128,"definedAt":"built-in","name":"formals","nodeId":"built-in"}]],["environment",[{"type":128,"definedAt":"built-in","name":"environment","nodeId":"built-in"}]],["cat",[{"type":128,"definedAt":"built-in","name":"cat","nodeId":"built-in"}]],["switch",[{"type":128,"definedAt":"built-in","name":"switch","nodeId":"built-in"}]],["return",[{"type":128,"definedAt":"built-in","name":"return","nodeId":"built-in"}]],["break",[{"type":128,"definedAt":"built-in","name":"break","nodeId":"built-in"}]],["next",[{"type":128,"definedAt":"built-in","name":"next","nodeId":"built-in"}]],["{",[{"type":128,"definedAt":"built-in","name":"{","nodeId":"built-in"}]],["source",[{"type":128,"definedAt":"built-in","name":"source","nodeId":"built-in"}]],["[",[{"type":128,"definedAt":"built-in","name":"[","nodeId":"built-in"}]],["[[",[{"type":128,"definedAt":"built-in","name":"[[","nodeId":"built-in"}]],["$",[{"type":128,"definedAt":"built-in","name":"$","nodeId":"built-in"}]],["@",[{"type":128,"definedAt":"built-in","name":"@","nodeId":"built-in"}]],["if",[{"type":128,"definedAt":"built-in","name":"if","nodeId":"built-in"}]],["ifelse",[{"type":128,"definedAt":"built-in","name":"ifelse","nodeId":"built-in"}]],["get",[{"type":128,"definedAt":"built-in","name":"get","nodeId":"built-in"}]],["library",[{"type":128,"definedAt":"built-in","name":"library","nodeId":"built-in"}]],["require",[{"type":128,"definedAt":"built-in","name":"require","nodeId":"built-in"}]],["<-",[{"type":128,"definedAt":"built-in","name":"<-","nodeId":"built-in"}]],["=",[{"type":128,"definedAt":"built-in","name":"=","nodeId":"built-in"}]],[":=",[{"type":128,"definedAt":"built-in","name":":=","nodeId":"built-in"}]],["assign",[{"type":128,"definedAt":"built-in","name":"assign","nodeId":"built-in"}]],["delayedAssign",[{"type":128,"definedAt":"built-in","name":"delayedAssign","nodeId":"built-in"}]],["<<-",[{"type":128,"definedAt":"built-in","name":"<<-","nodeId":"built-in"}]],["->",[{"type":128,"definedAt":"built-in","name":"->","nodeId":"built-in"}]],["->>",[{"type":128,"definedAt":"built-in","name":"->>","nodeId":"built-in"}]],["&&",[{"type":128,"definedAt":"built-in","name":"&&","nodeId":"built-in"}]],["&",[{"type":128,"definedAt":"built-in","name":"&","nodeId":"built-in"}]],["||",[{"type":128,"definedAt":"built-in","name":"||","nodeId":"built-in"}]],["|",[{"type":128,"definedAt":"built-in","name":"|","nodeId":"built-in"}]],["|>",[{"type":128,"definedAt":"built-in","name":"|>","nodeId":"built-in"}]],["%>%",[{"type":128,"definedAt":"built-in","name":"%>%","nodeId":"built-in"}]],["function",[{"type":128,"definedAt":"built-in","name":"function","nodeId":"built-in"}]],["\\",[{"type":128,"definedAt":"built-in","name":"\\","nodeId":"built-in"}]],["quote",[{"type":128,"definedAt":"built-in","name":"quote","nodeId":"built-in"}]],["substitute",[{"type":128,"definedAt":"built-in","name":"substitute","nodeId":"built-in"}]],["bquote",[{"type":128,"definedAt":"built-in","name":"bquote","nodeId":"built-in"}]],["for",[{"type":128,"definedAt":"built-in","name":"for","nodeId":"built-in"}]],["repeat",[{"type":128,"definedAt":"built-in","name":"repeat","nodeId":"built-in"}]],["while",[{"type":128,"definedAt":"built-in","name":"while","nodeId":"built-in"}]],["do.call",[{"type":128,"definedAt":"built-in","name":"do.call","nodeId":"built-in"}]],["on.exit",[{"type":128,"definedAt":"built-in","name":"on.exit","nodeId":"built-in"}]],["sys.on.exit",[{"type":128,"definedAt":"built-in","name":"sys.on.exit","nodeId":"built-in"}]],["par",[{"type":128,"definedAt":"built-in","name":"par","nodeId":"built-in"}]],["setnames",[{"type":128,"definedAt":"built-in","name":"setnames","nodeId":"built-in"}]],["setNames",[{"type":128,"definedAt":"built-in","name":"setNames","nodeId":"built-in"}]],["setkey",[{"type":128,"definedAt":"built-in","name":"setkey","nodeId":"built-in"}]],["setkeyv",[{"type":128,"definedAt":"built-in","name":"setkeyv","nodeId":"built-in"}]],["setindex",[{"type":128,"definedAt":"built-in","name":"setindex","nodeId":"built-in"}]],["setindexv",[{"type":128,"definedAt":"built-in","name":"setindexv","nodeId":"built-in"}]],["setattr",[{"type":128,"definedAt":"built-in","name":"setattr","nodeId":"built-in"}]],["sink",[{"type":128,"definedAt":"built-in","name":"sink","nodeId":"built-in"}]],["requireNamespace",[{"type":128,"definedAt":"built-in","name":"requireNamespace","nodeId":"built-in"}]],["loadNamespace",[{"type":128,"definedAt":"built-in","name":"loadNamespace","nodeId":"built-in"}]],["attachNamespace",[{"type":128,"definedAt":"built-in","name":"attachNamespace","nodeId":"built-in"}]],["asNamespace",[{"type":128,"definedAt":"built-in","name":"asNamespace","nodeId":"built-in"}]],["library.dynam",[{"type":128,"definedAt":"built-in","name":"library.dynam","nodeId":"built-in"}]],["install.packages",[{"type":128,"definedAt":"built-in","name":"install.packages","nodeId":"built-in"}]],["install",[{"type":128,"definedAt":"built-in","name":"install","nodeId":"built-in"}]],["install_github",[{"type":128,"definedAt":"built-in","name":"install_github","nodeId":"built-in"}]],["install_gitlab",[{"type":128,"definedAt":"built-in","name":"install_gitlab","nodeId":"built-in"}]],["install_bitbucket",[{"type":128,"definedAt":"built-in","name":"install_bitbucket","nodeId":"built-in"}]],["install_url",[{"type":128,"definedAt":"built-in","name":"install_url","nodeId":"built-in"}]],["install_git",[{"type":128,"definedAt":"built-in","name":"install_git","nodeId":"built-in"}]],["install_svn",[{"type":128,"definedAt":"built-in","name":"install_svn","nodeId":"built-in"}]],["install_local",[{"type":128,"definedAt":"built-in","name":"install_local","nodeId":"built-in"}]],["install_version",[{"type":128,"definedAt":"built-in","name":"install_version","nodeId":"built-in"}]],["update_packages",[{"type":128,"definedAt":"built-in","name":"update_packages","nodeId":"built-in"}]],["attach",[{"type":128,"definedAt":"built-in","name":"attach","nodeId":"built-in"}]],["unname",[{"type":128,"definedAt":"built-in","name":"unname","nodeId":"built-in"}]],["data",[{"type":128,"definedAt":"built-in","name":"data","nodeId":"built-in"}]],["[<-",[{"type":128,"definedAt":"built-in","name":"[<-","nodeId":"built-in"}]],["[<<-",[{"type":128,"definedAt":"built-in","name":"[<<-","nodeId":"built-in"}]],["[[<-",[{"type":128,"definedAt":"built-in","name":"[[<-","nodeId":"built-in"}]],["[[<<-",[{"type":128,"definedAt":"built-in","name":"[[<<-","nodeId":"built-in"}]],["$<-",[{"type":128,"definedAt":"built-in","name":"$<-","nodeId":"built-in"}]],["$<<-",[{"type":128,"definedAt":"built-in","name":"$<<-","nodeId":"built-in"}]],["@<-",[{"type":128,"definedAt":"built-in","name":"@<-","nodeId":"built-in"}]],["@<<-",[{"type":128,"definedAt":"built-in","name":"@<<-","nodeId":"built-in"}]],["names<-",[{"type":128,"definedAt":"built-in","name":"names<-","nodeId":"built-in"}]],["names<<-",[{"type":128,"definedAt":"built-in","name":"names<<-","nodeId":"built-in"}]],["dimnames<-",[{"type":128,"definedAt":"built-in","name":"dimnames<-","nodeId":"built-in"}]],["dimnames<<-",[{"type":128,"definedAt":"built-in","name":"dimnames<<-","nodeId":"built-in"}]],["attributes<-",[{"type":128,"definedAt":"built-in","name":"attributes<-","nodeId":"built-in"}]],["attributes<<-",[{"type":128,"definedAt":"built-in","name":"attributes<<-","nodeId":"built-in"}]],["attr<-",[{"type":128,"definedAt":"built-in","name":"attr<-","nodeId":"built-in"}]],["attr<<-",[{"type":128,"definedAt":"built-in","name":"attr<<-","nodeId":"built-in"}]],["class<-",[{"type":128,"definedAt":"built-in","name":"class<-","nodeId":"built-in"}]],["class<<-",[{"type":128,"definedAt":"built-in","name":"class<<-","nodeId":"built-in"}]],["levels<-",[{"type":128,"definedAt":"built-in","name":"levels<-","nodeId":"built-in"}]],["levels<<-",[{"type":128,"definedAt":"built-in","name":"levels<<-","nodeId":"built-in"}]],["rownames<-",[{"type":128,"definedAt":"built-in","name":"rownames<-","nodeId":"built-in"}]],["rownames<<-",[{"type":128,"definedAt":"built-in","name":"rownames<<-","nodeId":"built-in"}]],["colnames<-",[{"type":128,"definedAt":"built-in","name":"colnames<-","nodeId":"built-in"}]],["colnames<<-",[{"type":128,"definedAt":"built-in","name":"colnames<<-","nodeId":"built-in"}]],["body<-",[{"type":128,"definedAt":"built-in","name":"body<-","nodeId":"built-in"}]],["body<<-",[{"type":128,"definedAt":"built-in","name":"body<<-","nodeId":"built-in"}]],["environment<-",[{"type":128,"definedAt":"built-in","name":"environment<-","nodeId":"built-in"}]],["environment<<-",[{"type":128,"definedAt":"built-in","name":"environment<<-","nodeId":"built-in"}]],["formals<-",[{"type":128,"definedAt":"built-in","name":"formals<-","nodeId":"built-in"}]],["formals<<-",[{"type":128,"definedAt":"built-in","name":"formals<<-","nodeId":"built-in"}]]]},"memory":[["x",[{"nodeId":0,"name":"x","type":4,"definedAt":2}]]]},"level":0},"graph":{"_idMap":{"size":13,"k2v":[[0,{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],[1,{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[2,{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],[3,{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],[4,{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],[5,{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],[6,{"type":"RExpressionList","children":[{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}},{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],"info":{"additionalTokens":[],"id":6,"nesting":0,"role":"root","index":0}}],["2-arg",{"type":"RBinaryOp","location":[1,3,1,4],"lhs":{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"<-","lexeme":"<-","info":{"fullRange":[1,1,1,6],"additionalTokens":[],"id":2,"parent":6,"nesting":0,"index":0,"role":"expr-list-child"}}],["5-arg",{"type":"RBinaryOp","location":[2,3,2,3],"lhs":{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}},"rhs":{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}},"operator":"+","lexeme":"+","info":{"fullRange":[2,1,2,5],"additionalTokens":[],"id":5,"parent":6,"nesting":0,"index":1,"role":"expr-list-child"}}],["0-arg",{"type":"RSymbol","location":[1,1,1,1],"content":"x","lexeme":"x","info":{"fullRange":[1,1,1,1],"additionalTokens":[],"id":0,"parent":2,"role":"binop-lhs","index":0,"nesting":0}}],["1-arg",{"location":[1,6,1,6],"lexeme":"1","info":{"fullRange":[1,6,1,6],"additionalTokens":[],"id":1,"parent":2,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}],["3-arg",{"type":"RSymbol","location":[2,1,2,1],"content":"x","lexeme":"x","info":{"fullRange":[2,1,2,1],"additionalTokens":[],"id":3,"parent":5,"role":"binop-lhs","index":0,"nesting":0}}],["4-arg",{"location":[2,5,2,5],"lexeme":"1","info":{"fullRange":[2,5,2,5],"additionalTokens":[],"id":4,"parent":5,"role":"binop-rhs","index":1,"nesting":0},"type":"RNumber","content":{"num":1,"complexNumber":false,"markedAsInt":false}}]],"v2k":{}},"_unknownSideEffects":[],"rootVertices":[1,0,2,3,4,5],"vertexInformation":[[1,{"tag":"value","id":1}],[0,{"tag":"variable-definition","id":0}],[2,{"tag":"function-call","id":2,"name":"<-","onlyBuiltin":true,"args":[{"nodeId":0,"type":32},{"nodeId":1,"type":32}]}],[3,{"tag":"use","id":3}],[4,{"tag":"value","id":4}],[5,{"tag":"function-call","id":5,"name":"+","onlyBuiltin":true,"args":[{"nodeId":3,"type":32},{"nodeId":4,"type":32}]}]],"edgeInformation":[[2,[[1,{"types":64}],[0,{"types":72}]]],[0,[[1,{"types":2}],[2,{"types":2}]]],[3,[[0,{"types":1}]]],[5,[[3,{"types":65}],[4,{"types":65}]]]]},"entryPoint":2,"exitPoints":[{"type":0,"nodeId":5}],".meta":{"timing":1}}
 ```
 
 
@@ -6930,7 +7076,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.76 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _3.45 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
 
 ```r
@@ -7016,7 +7162,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _2.91 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _3.21 ms_ (incl. parse and normalize) within the generation environment. 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 ```r

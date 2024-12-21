@@ -21,9 +21,15 @@ export enum EdgeType {
 	Calls = 4,
 	/** The source returns target on call */
 	Returns = 8,
-	/** The edge determines that source (probably argument) defines the target (probably parameter) */
+	/**
+	 * The edge determines that source (probably argument) defines the target (probably parameter).
+	 * This may also link a function call to definitions it causes to be active (as part of the closure) of the called function definition.
+	 */
 	DefinesOnCall = 16,
-	/** Usually the inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */
+	/**
+	 * Usually the inverse of `defines-on-call` (in the context of arguments and parameters).
+	 * This may also link an open read (within a function) to the definition that is active at the call site.
+	 */
 	DefinedByOnCall = 32,
 	/** Formal used as argument to a function call */
 	Argument = 64,

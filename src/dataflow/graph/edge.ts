@@ -21,9 +21,9 @@ export enum EdgeType {
 	Calls = 4,
 	/** The source returns target on call */
 	Returns = 8,
-	/** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */
+	/** The edge determines that source (probably argument) defines the target (probably parameter) */
 	DefinesOnCall = 16,
-	/** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */
+	/** Usually the inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */
 	DefinedByOnCall = 32,
 	/** Formal used as argument to a function call */
 	Argument = 64,
@@ -95,8 +95,8 @@ export const enum TraverseEdge {
 	Never = 0,
 	/** Traverse the edge as a side effect */
 	SideEffect = 1,
-	/** Traverse this edge if the definition is relevant */
-	DefinedByOnCall = 2,
+	/** Traverse this edge if the definition is relevant (i.e., if two matching edges trigger this state) */
+	OnlyIfBoth = 2,
 	/** Always traverse this edge */
 	Always = 3
 }
@@ -124,13 +124,15 @@ export function edgeDoesNotIncludeType(type: EdgeTypeBits, types: EdgeTypeBits):
 }
 
 
-const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls | EdgeType.DefinesOnCall;
+const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Argument | EdgeType.Calls;
+
+const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
 export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
 	if(edgeIncludesType(types, alwaysTraverseEdgeTypes)) {
 		return TraverseEdge.Always;
-	} else if(edgeIncludesType(types, EdgeType.DefinedByOnCall)) {
-		return TraverseEdge.DefinedByOnCall;
+	} else if(edgeIncludesType(types, definedByOnCallTypes)) {
+		return TraverseEdge.OnlyIfBoth;
 	} else if(edgeIncludesType(types, EdgeType.SideEffectOnCall)) {
 		return TraverseEdge.SideEffect;
 	}

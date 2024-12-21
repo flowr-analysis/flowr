@@ -670,23 +670,23 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		shell:       shell,
 		name:        'DefinesOnCall Edge',
 		type:        EdgeType.DefinesOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
 
  Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.`,
 		code:             'f <- function(x) {}\nf(x=1)',
 		// here we use the ids as the argument wrappers are not easily selected with slicing criteria
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
-
+	// TODO: document usage with closures
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
 		shell:       shell,
 		name:        'DefinedByOnCall Edge',
 		type:        EdgeType.DefinedByOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!*
 
- This represents the other direction of ${linkEdgeName(EdgeType.DefinesOnCall)} (i.e., links the parameter to the argument). This is just for completeness.`,
+ This represents the other direction of ${linkEdgeName(EdgeType.DefinesOnCall)} (i.e., links the parameter to the argument).`,
 		code:             'f <- function(x) {}\nf(x=1)',
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Argument, [{

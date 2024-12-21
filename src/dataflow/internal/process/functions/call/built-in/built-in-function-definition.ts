@@ -2,7 +2,12 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { ExitPointType } from '../../../../../info';
-import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
+import {
+	getAllFunctionCallTargets,
+	linkCircularRedefinitionsWithinALoop,
+	linkInputs,
+	produceNameSharedIdMap
+} from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { unpackArgument } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
@@ -106,7 +111,7 @@ export function processFunctionDefinition<OtherInfo>(
 		environment:       outEnvironment
 	};
 
-	updateNestedFunctionClosures(subgraph, outEnvironment, name);
+	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
 	const exitPoints = body.exitPoints;
 
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
@@ -130,16 +135,40 @@ export function processFunctionDefinition<OtherInfo>(
 	};
 }
 
+// this is no longer necessary when we update environments to be back to front (e.g., with a list of environments)
+// this favors the bigger environment
+export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 
+	callerEnvironment ??= initializeCleanEnvironments(true);
+	let level = callerEnvironment.level ?? 0;
 
-function updateNestedFunctionClosures<OtherInfo>(
-	subgraph: DataflowGraph,
+	if(baseEnvironment.level !== level) {
+		while(baseEnvironment.level < level) {
+			baseEnvironment = pushLocalEnvironment(baseEnvironment);
+		}
+		while(baseEnvironment.level > level) {
+			callerEnvironment = pushLocalEnvironment(callerEnvironment);
+			level = callerEnvironment.level;
+		}
+	}
+
+	return overwriteEnvironment(baseEnvironment, callerEnvironment);
+}
+
+/**
+ * Update the closure links of all nested function definitions
+ * @param graph          - dataflow graph to collect the function definitions from and to update the closure links for
+ * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
+ * @param fnId           - id of the function definition to update the closure links for
+ */
+export function updateNestedFunctionClosures(
+	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
-	name: RSymbol<OtherInfo & ParentInformation>
+	fnId: NodeId
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow, tag }] of subgraph.vertices(true)) {
+	for(const [id, { subflow, tag }] of graph.vertices(true)) {
 		if(tag !== VertexType.FunctionDefinition) {
 			continue;
 		}
@@ -152,13 +181,73 @@ function updateNestedFunctionClosures<OtherInfo>(
 				remainingIn.push(ingoing);
 				continue;
 			}
-			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`);
+			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
 			for(const ref of resolved) {
-				subgraph.addEdge(ingoing, ref, EdgeType.Reads);
+				graph.addEdge(ingoing, ref, EdgeType.Reads);
 			}
 		}
-		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${name.info.id}`);
+		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
 		subflow.in = remainingIn;
+	}
+}
+
+
+/**
+ * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
+ * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
+ * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
+ */
+export function updateNestedFunctionCalls(
+	graph: DataflowGraph,
+	outEnvironment: REnvironmentInformation
+) {
+	// track *all* function definitions - including those nested within the current graph,
+	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+	for(const [id, { onlyBuiltin, tag, environment, name }] of graph.vertices(true)) {
+		if(tag !== VertexType.FunctionCall || !name || onlyBuiltin) {
+			continue;
+		}
+
+		// only the call environment counts!
+		if(environment) {
+			while(outEnvironment.level > environment.level) {
+				outEnvironment = popLocalEnvironment(outEnvironment);
+			}
+			while(outEnvironment.level < environment.level) {
+				outEnvironment = pushLocalEnvironment(outEnvironment);
+			}
+		}
+
+		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
+
+		const targets = getAllFunctionCallTargets(id, graph, effectiveEnvironment);
+		for(const target of targets) {
+			const targetVertex = graph.getVertex(target);
+			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+				// support reads on symbols
+				if(targetVertex?.tag === VertexType.Use) {
+					graph.addEdge(id, target, EdgeType.Reads);
+				}
+				continue;
+			}
+			graph.addEdge(id, target, EdgeType.Calls);
+			const ingoingRefs = targetVertex.subflow.in;
+			const remainingIn: IdentifierReference[] = [];
+			for(const ingoing of ingoingRefs) {
+				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
+				if(resolved === undefined) {
+					remainingIn.push(ingoing);
+					continue;
+				}
+				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
+				for(const def of resolved) {
+					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				}
+			}
+			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
+			targetVertex.subflow.in = remainingIn;
+		}
 	}
 }
 

@@ -32,13 +32,15 @@ a(i)`);
 foo(x, y)
 foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)');
-		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
-			shell, `
+		describe('yy', () => {
+			assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
+				shell, `
 x. <- function (x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
 foo(x, x.(3))`);
+		});
 		assertSliced(label('Using ...', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
 			shell, `
 f1 <- function (a,b) { WW }
@@ -240,7 +242,8 @@ x`);
 f()
 cat(x)
     `, ['3@x'], 'x');
-		assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
+	});
+	assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   a()
@@ -254,6 +257,7 @@ b <- f()
         a()
     }
 b <- f()`);
+	describe('xs', () => {
 		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
 		// however, this read edge should not apply when the call happens within the same scope
 		assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
@@ -542,13 +546,28 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			assertSliced(label('Empty Function in Reconstruct', ['function-definitions']), shell,
 				'x <- 2\nfoo <- function(n, x = 3) { print(x) }\nprint(x)', ['3@x'], 'x <- 2\nx');
 		});
+		describe('Super Side-Effects', () => {
+			assertSliced(label('No recursion'), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  4
+}
+x()`, ['6@x'], 'x <- function() { 4 }\nx()');
+			assertSliced(label('With recursion'), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  x()
+}
+x()`, ['6@x'], 'x <- function() { x() }\nx()');
+		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
 				shell, 'create <- function() function() 3\ng <- create()\nc <- g()', ['3@c'], 'create <- function() function() 3\ng <- create()\nc <- g()');
 			assertSliced(label('Call from Lower', ['function-calls', 'lexicographic-scope']),
 				shell, 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()', ['3@c'], 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()');
-			assertSliced(label('Higher Base', ['function-calls', 'lexicographic-scope']),
-				shell, `
+			describe('qq', () => {
+				assertSliced(label('Higher Base', ['function-calls', 'lexicographic-scope']),
+					shell, `
 x <- function() b()
 c <- (function() {
 a <- function() b() + x()
@@ -567,6 +586,7 @@ c <- (function() {
         h()
     })()
 `.trim());
+			});
 		});
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {

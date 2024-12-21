@@ -544,18 +544,29 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 				'x <- 2\nfoo <- function(n, x = 3) { print(x) }\nprint(x)', ['3@x'], 'x <- 2\nx');
 		});
 		describe('Super Side-Effects', () => {
-			assertSliced(label('No recursion'), shell, `calls <- 0
+			assertSliced(label('No recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
 x <- function() {
   calls <<- calls + 1
   4
 }
 x()`, ['6@x'], 'x <- function() { 4 }\nx()');
-			assertSliced(label('With recursion'), shell, `calls <- 0
+			assertSliced(label('With recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
 x <- function() {
   calls <<- calls + 1
   x()
 }
 x()`, ['6@x'], 'x <- function() { x() }\nx()');
+			assertSliced(label('Counting fibonacci', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+fib <- function() {
+  calls <<- calls + 1
+  if(n <= 1) {
+    n
+  } else {
+    fib(n - 1) + fib(n - 2)
+  }
+}
+fib(42)`, ['10@fib'], 'fib <- function() { if(n <= 1) { n } else\n' +
+				'    { fib(n - 1) + fib(n - 2) } }\nfib(42)');
 		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),

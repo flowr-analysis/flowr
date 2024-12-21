@@ -32,15 +32,13 @@ a(i)`);
 foo(x, y)
 foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)');
-		describe('yy', () => {
-			assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
-				shell, `
+		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
+			shell, `
 x. <- function (x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
 foo(x, x.(3))`);
-		});
 		assertSliced(label('Using ...', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'formals-dot-dot-dot', 'formals-named', 'implicit-return', 'call-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
 			shell, `
 f1 <- function (a,b) { WW }
@@ -257,10 +255,10 @@ b <- f()
         a()
     }
 b <- f()`);
-	describe('xs', () => {
-		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
-		// however, this read edge should not apply when the call happens within the same scope
-		assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
+	// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
+	// however, this read edge should not apply when the call happens within the same scope
+	// we have to separate on the exit points for this and re-resolve for each exit point
+	assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   b <- a()
@@ -277,11 +275,10 @@ b <- f()
         b
     }
 b <- f()`);
-		assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
-		assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
-	});
+	assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+	assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	describe('Early return of function', () => {
 		const code = `x <- (function() {
   g <- function() { y }
@@ -565,9 +562,8 @@ x()`, ['6@x'], 'x <- function() { x() }\nx()');
 				shell, 'create <- function() function() 3\ng <- create()\nc <- g()', ['3@c'], 'create <- function() function() 3\ng <- create()\nc <- g()');
 			assertSliced(label('Call from Lower', ['function-calls', 'lexicographic-scope']),
 				shell, 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()', ['3@c'], 'g <- function() 3\ncreate <- function() function() g()\nc <- create()()');
-			describe('qq', () => {
-				assertSliced(label('Higher Base', ['function-calls', 'lexicographic-scope']),
-					shell, `
+			assertSliced(label('Higher Base', ['function-calls', 'lexicographic-scope']),
+				shell, `
 x <- function() b()
 c <- (function() {
 a <- function() b() + x()
@@ -586,7 +582,6 @@ c <- (function() {
         h()
     })()
 `.trim());
-			});
 		});
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {

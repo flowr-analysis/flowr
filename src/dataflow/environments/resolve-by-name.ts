@@ -9,6 +9,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
+import { getConfig } from '../../config';
+import { assertUnreachable } from '../../util/assert';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -90,12 +92,7 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	}
 }
 
-export interface ResolveResult<T = unknown> {
-	value: T,
-	from:  ReferenceType
-}
-
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult[] | undefined {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): unknown[] | undefined {
 	if(name === undefined) {
 		return undefined;
 	}
@@ -105,10 +102,7 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 		return undefined;
 	}
 
-	return definitions.map<ResolveResult>(def => ({
-		value: (def as BuiltInIdentifierConstant).value,
-		from:  def.type
-	}));
+	return definitions.map(def => (def as BuiltInIdentifierConstant).value);
 }
 
 const AliasHandler = {
@@ -167,7 +161,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	return [...definitions];
 }
 
-export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph) {
+export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -200,5 +194,16 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 	}
 
 	return values;
+}
+
+export function resolve(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+	const resolve = getConfig().resolve;
+
+	switch(resolve) {
+		case 'alias': return resolveToValues(identifier, environment, graph);
+		case 'builtin': return resolveToConstants(identifier, environment);
+		case 'disabled': return [];
+		default: assertUnreachable(resolve);
+	}
 }
 

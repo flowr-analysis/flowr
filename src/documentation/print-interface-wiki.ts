@@ -198,7 +198,8 @@ ${codeBlock('json', JSON.stringify(
 						]
 					}
 				}
-			}
+			},
+			resolve: 'alias'
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }

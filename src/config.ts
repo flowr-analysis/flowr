@@ -29,6 +29,14 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+
+	/**
+	 * How to resolve constants 
+	 * disabled: don't resolve constants at all
+	 * alias: use alias tracking to resolve
+	 * builtin: only resolve directly assigned builtin constants
+	 */
+	readonly resolve: 'disabled' | 'alias' | 'builtin'
 }
 
 export const defaultConfigOptions: FlowrConfigOptions = {
@@ -41,7 +49,8 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 				definitions:  []
 			}
 		}
-	}
+	},
+	resolve: 'alias'
 };
 
 export const flowrConfigFileSchema = Joi.object({

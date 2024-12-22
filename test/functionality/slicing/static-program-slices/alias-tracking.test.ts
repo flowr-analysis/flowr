@@ -28,7 +28,7 @@ while(x) {
   if(runif(1)) 
      x <- FALSE
 }`, 'x', [true, false]]
-	])('%s should resolve %s to %o', async (code, identifier, expectedValues) => {
+	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
 		const values = resolveToValues(identifier as Identifier, result.dataflow.environment, result.dataflow.graph);
 		expect(values).toEqual(expectedValues);

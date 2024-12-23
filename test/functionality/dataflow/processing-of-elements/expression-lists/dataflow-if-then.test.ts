@@ -333,8 +333,10 @@ f()`,  emptyGraph()
 				.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)
 				.call('12', '<-', [argumentInCall('3'), argumentInCall('11')], { returns: ['3'], reads: [BuiltIn], environment: defaultEnv().defineVariable('a', '0', '2') })
 				.argument('12', ['11', '3'])
-				.call('14', 'f', [], { returns: ['10'], reads: ['3', '0'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
+				.call('14', 'f', [], { returns: ['10'], reads: ['3'], environment: defaultEnv().defineVariable('a', '0', '2').defineFunction('f', '3', '12') })
 				.calls('14', '11')
+				.definesOnCall('14', '0')
+				.definedByOnCall('7', '0')
 				.constant('1')
 				.defineVariable('0', 'a', { definedBy: ['1', '2'] })
 				.defineFunction('11', ['10'], {
@@ -424,8 +426,8 @@ x`, emptyGraph()
 				.use('7@x')
 			, { resolveIdsAsCriterion: true });
 
-	});	
-	
+	});
 
-	
+
+
 }));

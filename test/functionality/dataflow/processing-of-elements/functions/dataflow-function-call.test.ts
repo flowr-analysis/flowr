@@ -22,6 +22,7 @@ describe.sequential('Function Call', withShell(shell => {
 				.use('13', 'i', undefined)
 				.reads('13', '0')
 				.definesOnCall('13', '4')
+				.definedByOnCall('4', '13')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 				.call('9', '{', [argumentInCall('8')], {
 					returns:     ['8'],
@@ -62,6 +63,7 @@ describe.sequential('Function Call', withShell(shell => {
 				.use('16', 'i', undefined)
 				.reads('16', '0')
 				.definesOnCall('16', '4')
+				.definedByOnCall('4', '16')
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 				.call('9', '{', [argumentInCall('8')], {
 					returns:     ['8'],
@@ -107,6 +109,7 @@ a(i)`, emptyGraph()
 			.use('19', 'i', undefined)
 			.reads('19', '0')
 			.definesOnCall('19', '4')
+			.definedByOnCall('4', '19')
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 			.call('10', '<-', [argumentInCall('8'), argumentInCall('9')], {
 				returns:     ['8'],
@@ -182,7 +185,8 @@ a(i)`, emptyGraph()
 				environment:       defaultEnv().pushEnv().defineParameter('x', '2', '3')
 			})
 			.constant('12', undefined)
-			.definesOnCall('12', '2');
+			.definesOnCall('12', '2')
+			.definedByOnCall('2', '12');
 
 		assertDataflow(label('Calling with constant argument using lambda', ['lambda-syntax', 'implicit-return', 'binary-operator', 'infix-calls', 'call-anonymous', 'unnamed-arguments', 'numbers', ...OperatorDatabase['+'].capabilities]), shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
@@ -300,9 +304,11 @@ a()()`, emptyGraph()
 			})
 			.call('11', 'a', [], {
 				returns:     ['4'],
-				reads:       ['0', '7'],
+				reads:       ['0'],
 				environment: defaultEnv().defineFunction('a', '0', '6').defineVariable('y', '7', '9')
 			})
+			.definesOnCall('11', '7')
+			.definedByOnCall('3', '7')
 			.calls('11', '5')
 			.defineFunction('5', ['4'], {
 				out:               [],
@@ -349,6 +355,7 @@ a(,3)`, emptyGraph()
 			.defineVariable('0', 'a', { definedBy: ['10', '11'] })
 			.constant('13')
 			.definesOnCall('13', '4')
+			.definedByOnCall('4', '13')
 		);
 	});
 	describe('Reuse parameters in call', () => {

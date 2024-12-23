@@ -7,6 +7,16 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 
+
+export enum VariableResolve {
+	/** Don't resolve constants at all */
+	Disabled = 'disabled',
+	/** Use alias tracking to resolve */
+	Alias = 'alias',
+	/** Only resolve directly assigned builtin constants */
+	Builtin = 'builtin'
+}
+
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
@@ -29,14 +39,14 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+	/** How to resolve constants, constraints, cells, ... */
+	readonly solver: {
+		/**
+		 * How to resolve variables and their values
+		 */
+		readonly variables: VariableResolve
+	}
 
-	/**
-	 * How to resolve constants 
-	 * disabled: don't resolve constants at all
-	 * alias: use alias tracking to resolve
-	 * builtin: only resolve directly assigned builtin constants
-	 */
-	readonly resolve: 'disabled' | 'alias' | 'builtin'
 }
 
 export const defaultConfigOptions: FlowrConfigOptions = {
@@ -50,7 +60,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
-	resolve: 'alias'
+	solver: {
+		variables: VariableResolve.Alias
+	}
 };
 
 export const flowrConfigFileSchema = Joi.object({
@@ -63,7 +75,10 @@ export const flowrConfigFileSchema = Joi.object({
 				definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 		}).optional().description('Semantics regarding the handlings of the environment.')
-	}).description('Configure language semantics and how flowR handles them.')
+	}).description('Configure language semantics and how flowR handles them.'),
+	solver: Joi.object({
+		variables: Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.')
+	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 
 // we don't load from a config file at all by default unless setConfigFile is called

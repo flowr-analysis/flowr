@@ -9,7 +9,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
-import { getConfig } from '../../config';
+import { getConfig, VariableResolve } from '../../config';
 import { assertUnreachable } from '../../util/assert';
 
 
@@ -98,12 +98,11 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 	}
 
 	const definitions = resolveByName(name, environment, ReferenceType.Constant);
-	if(definitions === undefined) {
-		return undefined;
-	}
 
-	return definitions.map(def => (def as BuiltInIdentifierConstant).value);
+	return definitions?.map(def => (def as BuiltInIdentifierConstant).value);
 }
+
+type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined;
 
 const AliasHandler = {
 	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
@@ -111,7 +110,7 @@ const AliasHandler = {
 	[VertexType.FunctionCall]:       () => undefined,
 	[VertexType.FunctionDefinition]: () => undefined,
 	[VertexType.VariableDefinition]: () => undefined
-} as const satisfies Record<VertexType, (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined>;
+} as const satisfies Record<VertexType, AliasHandler>;
 
 function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: NodeId[] = [];
@@ -128,8 +127,8 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	}
 
 	for(const def of defs) {
-		// If one definition is not constant (or a variable aliasing a constant) 
-		// we can't say for sure what value the source has 
+		// If one definition is not constant (or a variable aliasing a constant)
+		// we can't say for sure what value the source has
 		if(def.type === ReferenceType.Variable) {
 			if(def.value === undefined) {
 				return undefined;
@@ -141,7 +140,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 			return undefined;
 		}
 	}
-	
+
 	return definitions;
 }
 
@@ -176,14 +175,16 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 		if(def.type === ReferenceType.BuiltInConstant) {
 			values.push(def.value);
 		} else if(def.type === ReferenceType.BuiltInFunction) {
-			// TODO: nothing?
-		} else {
-			if(def.value !== undefined) {
-				for(const id of def.value) {
-					const value = graph.idMap?.get(id)?.content;
-					if(value !== undefined) {
-						values.push(value);
-					}
+			// Tracked in #1207
+		} else if(def.value !== undefined) {
+			/** if there is at least one location for which we have no idea, we have to give up for now! */
+			if(def.value.length === 0) {
+				return undefined;
+			}
+			for(const id of def.value) {
+				const value = graph.idMap?.get(id)?.content;
+				if(value !== undefined) {
+					values.push(value);
 				}
 			}
 		}
@@ -196,13 +197,17 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 	return values;
 }
 
-export function resolve(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
-	const resolve = getConfig().resolve;
+/**
+ * Convenience function using the variable resolver as specified within the configuration file
+ * In the future we may want to have this set once at the start of the analysis
+ */
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+	const resolve = getConfig().solver.variables;
 
 	switch(resolve) {
-		case 'alias': return resolveToValues(identifier, environment, graph);
-		case 'builtin': return resolveToConstants(identifier, environment);
-		case 'disabled': return [];
+		case VariableResolve.Alias: return resolveToValues(identifier, environment, graph);
+		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
+		case VariableResolve.Disabled: return [];
 		default: assertUnreachable(resolve);
 	}
 }

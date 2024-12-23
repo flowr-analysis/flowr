@@ -13,7 +13,7 @@ import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import type { FlowrConfigOptions } from '../config';
-import { flowrConfigFileSchema } from '../config';
+import { flowrConfigFileSchema, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -179,6 +179,7 @@ The following summarizes the configuration options:
 - \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
+- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -199,7 +200,9 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-			resolve: 'alias'
+			solver: {
+				variables: VariableResolve.Alias
+			}
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }
@@ -246,7 +249,7 @@ _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classe
 ### Using the \`${RShell.name}\` to Interact with R
 
 The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
-For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
 > Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.

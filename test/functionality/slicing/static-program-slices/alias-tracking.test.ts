@@ -24,7 +24,8 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['x <- TRUE; y <- FALSE; if(x) { y <- TRUE; }; print(y);', 'y', [true]],
 		['x <- TRUE; while(x) { if(runif(1)) { x <- FALSE } }', 'x', [true, false]],
 		['k <- 4; if(u) { x <- 2; } else { x <- 3; }; y <- x; print(y);', 'y', [numVal(2), numVal(3)]],
-		['f <- function(a = u) { if(k) { u <- 1; } else { u <- 2; }; print(a); }; f();', 'a', undefined] // Note: This should result in a in [1,2] in the future
+		['f <- function(a = u) { if(k) { u <- 1; } else { u <- 2; }; print(a); }; f();', 'a', undefined], // Note: This should result in a in [1,2] in the future
+		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', undefined]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
 		const values = resolveToValues(identifier as Identifier, result.dataflow.environment, result.dataflow.graph);

@@ -179,7 +179,7 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// Tracked in #1207
 		} else if(def.value !== undefined) {
-			/** if there is at least one location for which we have no idea, we have to give up for now! */
+			/* if there is at least one location for which we have no idea, we have to give up for now! */
 			if(def.value.length === 0) {
 				return undefined;
 			}

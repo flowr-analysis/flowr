@@ -99,8 +99,12 @@ export interface IdentifierReference {
  */
 interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly type:      InGraphReferenceType
-	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
+	/**
+	 * The assignment node which ultimately defined this identifier
+	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
+	 */
 	readonly definedAt: NodeId
+	readonly value?:    NodeId[]
 }
 
 /**

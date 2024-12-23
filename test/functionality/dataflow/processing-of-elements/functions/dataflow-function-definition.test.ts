@@ -499,6 +499,7 @@ print(g())`, emptyGraph()
 				.defineVariable('0', 'f', { definedBy: ['10', '11'] })
 				.constant('14')
 				.definesOnCall('14', '1')
+				.definedByOnCall('1', '14')
 				.defineVariable('12', 'g', { definedBy: ['16', '17'] })
 				.markIdForUnknownSideEffects('22')
 		);
@@ -572,6 +573,7 @@ print(g())`, emptyGraph()
 				.defineVariable('0', 'f', { definedBy: ['26', '27'] })
 				.constant('30')
 				.definesOnCall('30', '1')
+				.definedByOnCall('1', '30')
 				.defineVariable('28', 'g', { definedBy: ['32', '33'] })
 				.markIdForUnknownSideEffects('38'),
 			{ minRVersion: MIN_VERSION_LAMBDA });
@@ -608,7 +610,9 @@ print(x)`, emptyGraph()
 				.argument('18', ['17', '16'])
 				.call('20', 'f', [], { returns: ['13'], reads: ['0'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
 				.calls('20', '14')
-				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['11'], reads: ['20', '16'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
+				.call('21', `${UnnamedFunctionCallPrefix}21`, [], { returns: ['11'], reads: ['20'], environment: defaultEnv().defineFunction('f', '0', '15').defineVariable('x', '16', '18') })
+				.definesOnCall('21', '16')
+				.definedByOnCall('6', '16')
 				.calls('21', ['20', '12'])
 				.argument('25', '23')
 				.reads('25', '23')
@@ -682,7 +686,8 @@ f(5)`, emptyGraph()
 				})
 				.defineVariable('0', 'f', { definedBy: ['22', '23'] })
 				.constant('25')
-				.definesOnCall('25', '1'));
+				.definesOnCall('25', '1')
+				.definedByOnCall('1', '25'));
 		assertDataflow(label('return in if',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments', 'if']),
 			shell, `f <- function(x) {
    x <- 3 * x
@@ -736,7 +741,8 @@ f(5)`, emptyGraph()
 				})
 				.defineVariable('0', 'f', { definedBy: ['30', '31'] })
 				.constant('33')
-				.definesOnCall('33', '1'));
+				.definesOnCall('33', '1')
+				.definedByOnCall('1', '33'));
 	});
 
 	describe('Side Effects', () => {
@@ -811,8 +817,10 @@ f(3)`, emptyGraph()
 					environment:       defaultEnv().pushEnv().defineParameter('x', '21', '22')
 				})
 				.definesOnCall('27', '10')
+				.definedByOnCall('10', '27')
 				.constant('31')
-				.definesOnCall('31', '21'), { minRVersion: MIN_VERSION_LAMBDA });
+				.definesOnCall('31', '21')
+				.definedByOnCall('21', '31'), { minRVersion: MIN_VERSION_LAMBDA });
 	});
 	describe('Failures in Practice', () => {
 		assertDataflow(label('linking within nested named arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'formals-named', 'function-definitions', 'function-calls', 'logical']),

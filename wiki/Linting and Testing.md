@@ -11,12 +11,14 @@ for the latest benchmark results, see the [benchmark results](https://flowr-anal
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
   - [Testing Within Your IDE](#testing-within-your-ide)
-    - [Using Visual Studio Code](#vs-code)
-    - [Using WebStorm](#webstorm)
+    - [VS Code](#vs-code)
+    - [Webstorm](#webstorm)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
   - [License Checker](#license-checker)
+- [Debugging](#debugging)
+  - [VS Code](#vs-code-1)
 
 ## Testing Suites
 
@@ -65,7 +67,7 @@ npm run test-full
 
 
 However, depending on your local version of&nbsp;R, your network connection, and other factors (each test may have a set of criteria), 
-some tests may be skipped automatically as they do not apply to your current system setup (or can not be tested with the current prerequisites). 
+some tests may be skipped automatically as they do not apply to your current system setup (or cannot be tested with the current prerequisites). 
 Each test can specify such requirements as part of the `TestConfiguration`, which is then used in the `test.skipIf` function of _vitest_.
 It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests run.
 
@@ -237,7 +239,7 @@ npm run lint-local -- --fix
 ### Oh no, the linter fails
 
 By now, the rules should be rather stable and so, if the linter fails,
-it is usually best if you (if necessary) read the respective description and fix the respective problem.
+it is usually best if you (when necessary) read the respective description and fix the respective problem.
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose).
@@ -245,4 +247,10 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 ### License Checker
 
 *flowR* is licensed under the [GPLv3 License](https://github.com/flowr-analysis/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [`license-compat`](https://github.com/flowr-analysis/flowr/tree/main//package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](https://github.com/flowr-analysis/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+
+
+## Debugging
+### VS Code
+When working with VS Code, you can attach a debugger to the REPL. This works automatically by running the `Start Debugging` command (`F5` by default).
+You can also set the `Auto Attach Filter` setting to automatically attach the debugger, when running `npm run flowr`.
 

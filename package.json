@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -84,6 +84,19 @@
     "exclude": [
       "**/node_modules/**/*",
       "**/index.ts"
+    ],
+    "highlightLanguages": [
+      "bash",
+      "console",
+      "css",
+      "html",
+      "javascript",
+      "json",
+      "jsonc",
+      "json5",
+      "tsx",
+      "typescript",
+      "r"
     ],
     "theme": "hierarchy",
     "out": "doc",

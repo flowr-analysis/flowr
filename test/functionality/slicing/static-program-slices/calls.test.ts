@@ -240,7 +240,8 @@ x`);
 f()
 cat(x)
     `, ['3@x'], 'x');
-		assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
+	});
+	assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   a()
@@ -254,9 +255,10 @@ b <- f()
         a()
     }
 b <- f()`);
-		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
-		// however, this read edge should not apply when the call happens within the same scope
-		assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
+	// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
+	// however, this read edge should not apply when the call happens within the same scope
+	// we have to separate on the exit points for this and re-resolve for each exit point
+	assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   b <- a()
@@ -273,11 +275,10 @@ b <- f()
         b
     }
 b <- f()`);
-		assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
-		assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
-	});
+	assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+	assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	describe('Early return of function', () => {
 		const code = `x <- (function() {
   g <- function() { y }
@@ -541,6 +542,31 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 		describe('empty functions', () => {
 			assertSliced(label('Empty Function in Reconstruct', ['function-definitions']), shell,
 				'x <- 2\nfoo <- function(n, x = 3) { print(x) }\nprint(x)', ['3@x'], 'x <- 2\nx');
+		});
+		describe('Super Side-Effects', () => {
+			assertSliced(label('No recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  4
+}
+x()`, ['6@x'], 'x <- function() { 4 }\nx()');
+			assertSliced(label('With recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  x()
+}
+x()`, ['6@x'], 'x <- function() { x() }\nx()');
+			assertSliced(label('Counting fibonacci', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+fib <- function() {
+  calls <<- calls + 1
+  if(n <= 1) {
+    n
+  } else {
+    fib(n - 1) + fib(n - 2)
+  }
+}
+fib(42)`, ['10@fib'], 'fib <- function() { if(n <= 1) { n } else\n' +
+				'    { fib(n - 1) + fib(n - 2) } }\nfib(42)');
 		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),

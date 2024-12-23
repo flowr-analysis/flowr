@@ -8,6 +8,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../criterion/parse';
 import { convertAllSlicingCriteriaToIds } from '../criterion/parse';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -22,7 +23,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  *
  * @param graph     - The dataflow graph to conduct the slicing on.
  * @param ast       - The normalized AST of the code (used to get static nesting information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
- * @param criteria  - The criteras to slice on.
+ * @param criteria  - The criterias to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  */
 export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
@@ -86,7 +87,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 				sliceForCall(current, currentVertex, graph, queue);
 			}
 
-			const ret = handleReturns(queue, currentEdges, baseEnvFingerprint, baseEnvironment);
+			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);
 			if(ret) {
 				continue;
 			}
@@ -99,12 +100,8 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 			const t = shouldTraverseEdge(types);
 			if(t === TraverseEdge.Always) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-			} else if(t === TraverseEdge.DefinedByOnCall) {
-				const n = queue.potentialArguments.get(target);
-				if(n) {
-					queue.add(target, n.baseEnvironment, envFingerprint(n.baseEnvironment), n.onlyForSideEffects);
-					queue.potentialArguments.delete(target);
-				}
+			} else if(t === TraverseEdge.OnlyIfBoth) {
+				updatePotentialAddition(queue, id, target, baseEnvironment);
 			} else if(t === TraverseEdge.SideEffect) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true);
 			}
@@ -112,4 +109,21 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	}
 
 	return { ...queue.status(), decodedCriteria };
+}
+
+export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation): void {
+	const n = queue.potentialAdditions.get(target);
+	if(n) {
+		const [addedBy, { baseEnvironment, onlyForSideEffects }] = n;
+		if(addedBy !== id) {
+			queue.add(target, baseEnvironment, envFingerprint(baseEnvironment), onlyForSideEffects);
+			queue.potentialAdditions.delete(target);
+		}
+	} else {
+		queue.potentialAdditions.set(target, [id, {
+			id:                 target,
+			baseEnvironment,
+			onlyForSideEffects: false
+		}]);
+	}
 }

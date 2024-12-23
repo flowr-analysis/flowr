@@ -243,6 +243,15 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
+	 * Adds a **defined-by-on-call edge** with from as definition, and to as variable.
+	 *
+	 * @see reads for parameters.
+	 */
+	public definedByOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.DefinedByOnCall);
+	}
+
+	/**
 	 * Adds an **argument edge** (E9) with from as function call, and to as argument.
 	 *
 	 * @see reads for parameters.

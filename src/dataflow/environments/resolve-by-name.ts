@@ -154,7 +154,9 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		}
 
 		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
-		defs?.forEach(v => definitions.add(v));
+		for(const def of defs ?? []) {
+			definitions.add(def);
+		}
 	}
 
 	return [...definitions];

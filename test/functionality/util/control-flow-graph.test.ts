@@ -30,7 +30,7 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 		return test(code, async()=> {
 			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-				shell,
+				parser:  shell,
 				request: requestFromInput(code)
 			}).allRemainingSteps();
 			const cfg = extractCFG(result.normalize);
@@ -123,7 +123,7 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 		const context = 'test';
 
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput('if(TRUE) 1')
 		}).allRemainingSteps();
 		const cfg = extractCFG(result.normalize);
@@ -175,4 +175,3 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 `);
 	});
 }));
-

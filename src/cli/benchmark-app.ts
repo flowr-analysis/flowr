@@ -6,6 +6,7 @@ import { log } from '../util/log';
 import { LimitedThreadPool } from '../util/parallel';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
+import type { KnownParserName } from '../r-bridge/parser';
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -16,6 +17,7 @@ export interface BenchmarkCliOptions {
 	parallel: number
 	limit?:   number
 	runs?:    number
+	parser:   KnownParserName
 }
 
 
@@ -75,7 +77,8 @@ async function benchmark() {
 		'--input', f.request.content,
 		'--file-id', `${i}`,
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
-		'--slice', options.slice, ...verboseAdd]);
+		'--slice', options.slice, ...verboseAdd,
+		'--parser', options.parser]);
 
 	const runs = options.runs ?? 1;
 	for(let i = 1; i <= runs; i++) {

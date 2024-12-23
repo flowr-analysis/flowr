@@ -96,7 +96,7 @@ const parser = new DOMParser();
 
 async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
 	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		request, shell
+		request, parser: shell
 	}).allRemainingSteps();
 
 	// retrieve parsed xml through (legacy) xmlparsedata

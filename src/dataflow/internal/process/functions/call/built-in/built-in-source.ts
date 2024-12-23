@@ -1,12 +1,10 @@
-import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
 import { getConfig } from '../../../../../../config';
-import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever';
-import { retrieveParseDataFromRCode , requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever';
+import {  requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever';
 import type {
 	IdGenerator,
 	NormalizedAst,
@@ -26,6 +24,8 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace } from '../../../../../../util/log';
 import fs from 'fs';
+import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
+import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -85,14 +85,15 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 			return information;
 		}
 	}
-	const executor = new RShellExecutor();
 
 	// parse, normalize and dataflow the sourced file
 	let normalized: NormalizedAst<OtherInfo & ParentInformation>;
 	let dataflow: DataflowInformation;
 	try {
-		const parsed = retrieveParseDataFromRCode(request, executor);
-		normalized = normalize({ parsed }, getId, request.request === 'file' ? request.content : undefined) as NormalizedAst<OtherInfo & ParentInformation>;
+		const file = request.request === 'file' ? request.content : undefined;
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
+		normalized = (typeof parsed !== 'string' ?
+			normalizeTreeSitter({ parsed }, getId, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

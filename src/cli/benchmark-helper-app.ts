@@ -7,6 +7,7 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
+import type { KnownParserName } from '../r-bridge/parser';
 
 
 export interface SingleBenchmarkCliOptions {
@@ -17,6 +18,7 @@ export interface SingleBenchmarkCliOptions {
 	'run-num'?: number
 	slice:      string
 	output?:    string
+	parser:     KnownParserName
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -53,7 +55,7 @@ async function benchmark() {
 
 	const request: RParseRequestFromFile = { request: 'file', content: options.input };
 
-	const slicer = new BenchmarkSlicer();
+	const slicer = new BenchmarkSlicer(options.parser);
 	try {
 		await slicer.init(request);
 

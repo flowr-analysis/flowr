@@ -1,7 +1,7 @@
 import { retrieveVersionInformation } from './commands/repl-version';
-import type { RShell } from '../../r-bridge/shell';
+import type { KnownParser } from '../../r-bridge/parser';
 
-export async function printVersionRepl(shell: RShell): Promise<void> {
-	const version = await retrieveVersionInformation(shell);
-	console.log(`flowR repl using flowR ${version.flowr}, R ${version.r}`);
+export async function printVersionRepl(parser: KnownParser): Promise<void> {
+	const version = await retrieveVersionInformation(parser);
+	console.log(`flowR repl using flowR ${version.flowr}, R ${version.r}, engine ${version.engine}`);
 }

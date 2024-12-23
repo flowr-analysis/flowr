@@ -15,7 +15,11 @@ describe.sequential('Parse the line directive', withShell(shell => {
 			location: rangeFrom(1, 1, 1, 16),
 			line:     42,
 			file:     'foo.R'
-		})
+		}),
+		{
+			// https://github.com/r-lib/tree-sitter-r/issues/160
+			skipTreeSitter: true
+		}
 	);
 })
 );

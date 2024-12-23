@@ -70,7 +70,10 @@ describe.sequential('Constant Parsing', withShell(shell => {
 						lexeme:   number.str,
 						content:  number.val,
 						info:     {}
-					})
+					}), {
+						// https://github.com/r-lib/tree-sitter-r/issues/159
+						skipTreeSitter: /[pP]/.test(number.str)
+					}
 				);
 			}
 		});

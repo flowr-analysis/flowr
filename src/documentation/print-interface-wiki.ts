@@ -198,7 +198,8 @@ ${codeBlock('json', JSON.stringify(
 						]
 					}
 				}
-			}
+			},
+			engines: [{ type: 'r-shell' }]
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }

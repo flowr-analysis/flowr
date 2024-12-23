@@ -3,7 +3,7 @@
 ### Gets a suite name benchmarks the complete suite using the `benchmark` script and summarizes the results.
 
 if [[ -z "$1" || -z "$2" ]]; then
-  printf "No suite name or output file given.\nUsage: %s <suite-name> <output-file> (<process-count>) (<amount-of-runs>)\n" "$0"
+  printf "No suite name or output file given.\nUsage: %s <suite-name> <output-file> (<process-count>) (<amount-of-runs>) (<parser-to-use>)\n" "$0"
   exit 1
 fi
 
@@ -17,6 +17,7 @@ RAW_OUTPUT="${OUT_BASE}-raw"
 PARALLEL="${3-1}"
 # default to running 1 time
 RUNS="${4-1}"
+PARSER="${5-"r-shell"}"
 
 SUITE="suite-${SUITE_NAME}"
 SETUP_SCRIPT="setup.sh"
@@ -37,7 +38,7 @@ echo "done."
 FILES_DIR="$(pwd)/files/"
 
 ## run the benchmark script for each file
-CMD=(npm run benchmark -- --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" "${FILES_DIR}")
+CMD=(npm run benchmark -- --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"

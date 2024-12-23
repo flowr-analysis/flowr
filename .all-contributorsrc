@@ -86,6 +86,16 @@
         "code",
         "test"
       ]
+    },
+    {
+      "login": "Slartibartfass2",
+      "name": "Felix Schlegel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/40503329?v=4",
+      "profile": "https://github.com/Slartibartfass2",
+      "contributions": [
+        "code",
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,

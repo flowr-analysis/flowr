@@ -52,7 +52,8 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 					// Filter existing indices with same name
 					newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
 				}
-				if(newIndices.length > 0) {
+
+				if(indices.isContainer || newIndices.length > 0) {
 					newIndicesCollection.push({
 						...indices,
 						indices: newIndices,

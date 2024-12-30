@@ -39,23 +39,21 @@ person$age <- 33
 result <- person`
 		);
 
-		it.fails('When arguments are added to an empty list, then original list is in slice', () => {
-			assertSliced(
-				label('When arguments are added to an empty list, then original list is in slice', []), shell,
-				`person <- list()
+		assertSliced(
+			label('When arguments are added to an empty list, then original list is in slice', []), shell,
+			`person <- list()
 person$is_male <- FALSE
 person$name <- "Alice"
 person$age <- 33
 result <- person`,
-				['5@result'],
-				`person <- list()
+			['5@result'],
+			`person <- list()
 person$is_male <- FALSE
 person$name <- "Alice"
 person$age <- 33
 result <- person`
-			);
-		});
-		
+		);
+
 		assertSliced(
 			label('When whole list is redefined, then every list assignment before is not in slice', []), shell,
 			`person <- list(age = 24, name = "John")

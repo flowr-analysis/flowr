@@ -28,7 +28,7 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
 	// When new definition is not a single index, e.g. a list redefinition, then reset existing definition
 	// TODO: what happens when indicesCollection has more than one element?
-	if(definition.indicesCollection !== undefined && definition.indicesCollection?.some(indices => !indices.isSingleIndex)) {
+	if(definition.indicesCollection !== undefined && definition.indicesCollection?.some(indices => indices.isContainer)) {
 		return [definition];
 	}
 	// console.log('merging');
@@ -45,7 +45,7 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 			const newIndicesCollection: ContainerIndicesCollection = [];
 			for(const indices of existingDef.indicesCollection) {
 				let newIndices: ContainerIndex[];
-				if(!indices.isSingleIndex) {
+				if(indices.isContainer) {
 					// If indices are not a single, e.g. a list, take whole definition
 					newIndices = indices.indices;
 				} else {

@@ -117,8 +117,8 @@ export function processAllArguments<OtherInfo>(
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
 					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
-					const isSingleIndex = resolvedInGraphDef?.indicesCollection?.every((indices) => indices.isSingleIndex);
-					if(!isSingleIndex) {
+					const isContainer = resolvedInGraphDef?.indicesCollection?.every((indices) => indices.isContainer) ?? true;
+					if(isContainer) {
 						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 					}
 				}

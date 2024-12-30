@@ -53,8 +53,8 @@ export function processList<OtherInfo>(
 	}
 
 	const indices: ContainerIndices = {
-		indices:       namedArguments,
-		isSingleIndex: false,
+		indices:     namedArguments,
+		isContainer: true,
 	};
 	return processKnownFunctionCall({ name, args, rootId, data }, [indices]).information;
 }

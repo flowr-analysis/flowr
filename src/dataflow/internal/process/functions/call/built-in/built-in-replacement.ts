@@ -44,8 +44,8 @@ export function processReplacementFunction<OtherInfo>(
 			// use access node as reference to get complete line in slice
 			indices = [
 				{
-					indices:       [ { lexeme: indexArg.lexeme, nodeId: accessedArg.info.parent ?? '' } ],
-					isSingleIndex: true
+					indices:     [ { lexeme: indexArg.lexeme, nodeId: accessedArg.info.parent ?? '' } ],
+					isContainer: false
 				}
 			];
 		}

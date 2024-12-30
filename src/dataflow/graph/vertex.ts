@@ -51,14 +51,14 @@ export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
  * List of indices of a single statement.
  */
 export interface ContainerIndices {
-	readonly indices:       ContainerIndex[],
+	readonly indices:     ContainerIndex[],
 	/**
 	 * Differentiate between single and multiple indices.
 	 * 
-	 * For `list(name = 'John')` `isSingleIndex` would be true, because a list may define more than one index.
-	 * `isSingleIndex` is true for e.g. single index assignments like `person$name <- 'John'`.
+	 * For `list(name = 'John')` `isContainer` would be true, because a list may define more than one index.
+	 * `isContainer` is true for e.g. single index assignments like `person$name <- 'John'`.
 	 */
-	readonly isSingleIndex: boolean,
+	readonly isContainer: boolean,
 }
 
 /**

@@ -277,8 +277,8 @@ function filterIndices<OtherInfo>(
 
 		accessedIndicesCollection ??= [];
 		accessedIndicesCollection.push({
-			indices:       filteredIndices,
-			isSingleIndex: indices.isSingleIndex
+			indices:     filteredIndices,
+			isContainer: indices.isContainer
 		});
 	}
 	return accessedIndicesCollection;

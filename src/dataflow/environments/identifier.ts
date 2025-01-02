@@ -106,8 +106,10 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 */
 	readonly definedAt: NodeId
 
-	readonly value?: NodeId[]
-
+	readonly value?:    NodeId[]
+	/**
+	 * this attribute links a definition to indices (pointer links) it may be affected by or related to
+	 */
 	indicesCollection?: ContainerIndicesCollection
 }
 

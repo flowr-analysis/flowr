@@ -17,6 +17,7 @@ import { BuiltIn } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
+import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { filterIndices, resolveSingleIndex } from '../../../../../../util/list-access';
@@ -215,7 +216,7 @@ function processStringBasedAccess<OtherInfo>(
 		}
 	}
 
-	// Add indices to vertex afterwards
+	// Add indices to vertex afterward
 	if(accessedIndicesCollection) {
 		const vertex = fnCall.information.graph.getVertex(rootId);
 		if(vertex) {
@@ -235,10 +236,11 @@ function processStringBasedAccess<OtherInfo>(
 }
 
 /**
- * Creates edges of type {@link EdgeType.Reads} to the {@link accessedIndices} and their sub-indices starting from
+ * Creates edges of type {@link EdgeType.Reads} to the accessed Indices and their sub-indices starting from
  * the node with {@link parentNodeId}.
  *
- * @param accessedIndices - All indices that were accessed by the access operation
+ * @param accessedIndicesCollection - All indices that were accessed by the access operation
+ * @param fnCall - The {@link ProcessKnownFunctionCallResult} of the access operation
  * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
  */
 function referenceIndices(
@@ -250,7 +252,7 @@ function referenceIndices(
 
 	for(const accessedIndex of accessedIndices ?? []) {
 		fnCall.information.graph.addEdge(parentNodeId, accessedIndex.nodeId, EdgeType.Reads);
-		const accessedSubIndices = ('subIndices' in accessedIndex) ? accessedIndex.subIndices : undefined;
+		const accessedSubIndices = isParentContainerIndex(accessedIndex) ? accessedIndex.subIndices : undefined;
 		referenceIndices(accessedSubIndices, fnCall, accessedIndex.nodeId);
 	}
 }

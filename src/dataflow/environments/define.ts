@@ -5,6 +5,7 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
+import { isParentContainerIndex } from '../graph/vertex';
 
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
@@ -26,16 +27,15 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 }
 
 function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
-	// When new definition is not a single index, e.g. a list redefinition, then reset existing definition
-	// TODO: what happens when indicesCollection has more than one element?
-	if(definition.indicesCollection !== undefined && definition.indicesCollection?.some(indices => indices.isContainer)) {
+	// When new definition is not a single index, e.g., a list redefinition, then reset existing definition
+	if(definition.indicesCollection?.some(indices => indices.isContainer)) {
 		return [definition];
 	}
-	// console.log('merging');
+
 	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
 	const overwriteIndices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
-	// Compare existing and new definitions, add new definitions and remove existing
-	// definitons that are overwritten by new definition
+	// Compare existing and new definitions,
+	// add new definitions and remove existing definitions that are overwritten by new definition
 	const newExistingDefs: InGraphIdentifierDefinition[] = [];
 	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
@@ -54,7 +54,7 @@ function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphI
 			}
 		}
 	}
-	// store changed existing definitons and add new one
+	// store changed existing definitions and add new one
 	return [...newExistingDefs, definition];
 }
 
@@ -66,11 +66,11 @@ function overwriteContainerIndices(
 
 	for(const indices of existingIndices) {
 		let newIndices: ContainerIndex[];
-		// When overwrite index is container itself, then only overwrite sub index
-		if('subIndices' in overwriteIndex) {
-			newIndices ??= [];
+		// When overwrite index is container itself, then only overwrite sub-index
+		if(isParentContainerIndex(overwriteIndex)) {
+			newIndices = [];
 			for(const index of indices.indices) {
-				if(index.lexeme === overwriteIndex.lexeme && 'subIndices' in index) {
+				if(index.lexeme === overwriteIndex.lexeme && isParentContainerIndex(index)) {
 					const overwriteSubIndices = overwriteIndex.subIndices.flatMap(a => a.indices);
 
 					let newSubIndices: ContainerIndices[] = index.subIndices;
@@ -85,18 +85,16 @@ function overwriteContainerIndices(
 						});
 					}
 				}
-				if(index.lexeme !== overwriteIndex.lexeme || !('subIndices' in index)) {
+				if(index.lexeme !== overwriteIndex.lexeme || !isParentContainerIndex(index)) {
 					newIndices.push(index);
 				}
 			}
+		} else if(indices.isContainer) {
+			// If indices are not a single, e.g., a list, take the whole definition
+			newIndices = indices.indices;
 		} else {
-			if(indices.isContainer) {
-				// If indices are not a single, e.g. a list, take whole definition
-				newIndices = indices.indices;
-			} else {
-				// Filter existing indices with same name
-				newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
-			}
+			// Filter existing indices with the same name
+			newIndices = indices.indices.filter(def => def.lexeme !== overwriteIndex.lexeme);
 		}
 
 		if(indices.isContainer || newIndices.length > 0) {

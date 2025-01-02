@@ -33,7 +33,10 @@ export interface ContainerLeafIndex {
 /**
  * A single index of a container, which is a container itself.
  *
- * This can be e.g. a list, vector or data frame.
+ * This can be, e.g., a list, vector, or data frame.
+ *
+ * @see {@link ContainerLeafIndex} - for a single index of a container which is not a container itself
+ * @see {@link isParentContainerIndex} - to check if an index is a parent container index
  */
 export interface ContainerParentIndex extends ContainerLeafIndex {
 	/**
@@ -42,13 +45,17 @@ export interface ContainerParentIndex extends ContainerLeafIndex {
 	readonly subIndices: ContainerIndices[],
 }
 
+export function isParentContainerIndex(index: ContainerIndex): index is ContainerParentIndex {
+	return 'subIndices' in index;
+}
+
 /**
  * A single index of a container.
  */
 export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
 
 /**
- * List of indices of a single statement.
+ * List of indices of a single statement like `list(a=3, b=2)`
  */
 export interface ContainerIndices {
 	readonly indices:     ContainerIndex[],
@@ -87,13 +94,15 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?:        REnvironmentInformation | undefined
+	environment?:        REnvironmentInformation
 	/**
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
 	controlDependencies: ControlDependency[] | undefined
-
-	indicesCollection?: ContainerIndicesCollection
+	/**
+	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
+	 */
+	indicesCollection?:  ContainerIndicesCollection
 }
 
 /**

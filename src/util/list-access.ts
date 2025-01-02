@@ -1,7 +1,13 @@
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
-import type { ContainerIndex, ContainerIndices, ContainerIndicesCollection } from '../dataflow/graph/vertex';
+import type {
+	ContainerIndex,
+	ContainerIndices,
+	ContainerIndicesCollection } from '../dataflow/graph/vertex';
+import {
+	isParentContainerIndex
+} from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -115,7 +121,7 @@ export function addSubIndicesToLeafIndices(
 
 		for(const index of indices.indices) {
 			let newSubIndices: ContainerIndices[] = [];
-			if('subIndices' in index) {
+			if(isParentContainerIndex(index)) {
 				newSubIndices = addSubIndicesToLeafIndices(index.subIndices, leafSubIndices);
 			} else {
 				newSubIndices = leafSubIndices;

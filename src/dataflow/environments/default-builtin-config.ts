@@ -32,7 +32,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:  'function',
 		names: [
-			'c', 't'
+			'c', 't', 'aperm' /* vector construction, concatenation, transpose function, permutation generation */
 		],
 		processor:       'builtin:default',
 		config:          { readAllArguments: true },

@@ -57,7 +57,7 @@ function getEffectiveOrder<T>(config: {
 export interface AssignmentConfiguration extends ForceArguments {
 	readonly superAssignment?:     boolean
 	readonly swapSourceAndTarget?: boolean
-	/* Make maybe if assigned to symbol */
+	/** Make maybe if assigned to symbol */
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean

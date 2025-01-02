@@ -10,6 +10,7 @@ import type { ContainerIndices, ContainerIndex } from '../../../../../graph/vert
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { getConfig } from '../../../../../../config';
 
 /**
  * Process a list call.
@@ -25,6 +26,9 @@ export function processList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
+	if(!getConfig().solver.pointerTracking) {
+		return processKnownFunctionCall({ name, args, rootId, data }).information;
+	}
 	const namedArguments: ContainerIndex[] = [];
 	for(const arg of args) {
 		// Skip non named arguments
@@ -37,7 +41,7 @@ export function processList<OtherInfo>(
 			nodeId: arg.info.id,
 		};
 
-		// Check whether argument value is non-primitve
+		// Check whether argument value is non-primitive
 		if(arg.value?.type === RType.Symbol) {
 			const defs = resolveByName(arg.value.lexeme, data.environment);
 			const indices = defs?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? []);

@@ -15,7 +15,7 @@ export enum VertexType {
 
 /**
  * A single index of a container, which is not a container itself.
- * 
+ *
  * This can be e.g. a string, number or boolean index.
  */
 export interface ContainerLeafIndex {
@@ -23,7 +23,7 @@ export interface ContainerLeafIndex {
 	 * Destinctive lexeme of index e.g 'name' for `list(name = 'John')`
 	 */
 	readonly lexeme: string,
-	
+
 	/**
 	 * NodeId of index in graph.
 	 */
@@ -32,7 +32,7 @@ export interface ContainerLeafIndex {
 
 /**
  * A single index of a container, which is a container itself.
- * 
+ *
  * This can be e.g. a list, vector or data frame.
  */
 export interface ContainerParentIndex extends ContainerLeafIndex {
@@ -54,7 +54,7 @@ export interface ContainerIndices {
 	readonly indices:     ContainerIndex[],
 	/**
 	 * Differentiate between single and multiple indices.
-	 * 
+	 *
 	 * For `list(name = 'John')` `isContainer` would be true, because a list may define more than one index.
 	 * `isContainer` is true for e.g. single index assignments like `person$name <- 'John'`.
 	 */
@@ -92,7 +92,7 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
 	controlDependencies: ControlDependency[] | undefined
-	
+
 	indicesCollection?: ContainerIndicesCollection
 }
 

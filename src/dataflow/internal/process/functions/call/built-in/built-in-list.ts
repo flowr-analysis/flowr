@@ -13,7 +13,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 
 /**
  * Process a list call.
- * 
+ *
  * Example:
  * ```r
  * list(a = 1, b = 2)

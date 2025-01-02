@@ -12,12 +12,14 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { EmptyArgument, type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
+import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { constructNestedAccess } from '../../../../../../util/list-access';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -39,20 +41,36 @@ export function processReplacementFunction<OtherInfo>(
 	if(name.content === '$<-') {
 		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
 		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-		const indexArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
-		if(indexArg !== undefined && accessedArg != undefined) {
-			// use access node as reference to get complete line in slice
-			indices = [
-				{
-					indices:     [ { lexeme: indexArg.lexeme, nodeId: accessedArg.info.parent ?? '' } ],
-					isContainer: false
-				}
-			];
+		const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+		if(accessArg !== undefined && accessedArg != undefined) {
+			const leafIndex: ContainerLeafIndex = { lexeme: accessArg.lexeme, nodeId: accessedArg.info.parent ?? '' };
+			const accessIndices: ContainerIndices = {
+				indices:     [ leafIndex ],
+				isContainer: false
+			};
+
+			// Check for nested access
+			if(accessedArg.value?.type === RType.Access) {
+				indices = constructNestedAccess(accessedArg.value, accessIndices);
+			} else {
+				// use access node as reference to get complete line in slice
+				indices = [ accessIndices ];
+			}
 		}
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = processAssignment(name, [args[0], args[args.length - 1]], rootId, data, { superAssignment: config.assignmentOperator === '<<-', makeMaybe: indices !== undefined ? false : config.makeMaybe, indicesCollection: indices });
+	const res = processAssignment(
+		name,
+		[args[0], args[args.length - 1]],
+		rootId,
+		data,
+		{
+			superAssignment:   config.assignmentOperator === '<<-',
+			makeMaybe:         indices !== undefined ? false : config.makeMaybe,
+			indicesCollection: indices
+		}
+	);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
 	const { callArgs } = processAllArguments({
@@ -68,7 +86,6 @@ export function processReplacementFunction<OtherInfo>(
 		() => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)}) ${graphToMermaidUrl(res.graph)}`
 	);
 	fn.args = [fn.args[0], ...callArgs, fn.args[1]];
-
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {

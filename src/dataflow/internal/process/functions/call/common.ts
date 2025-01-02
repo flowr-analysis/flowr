@@ -14,7 +14,7 @@ import { ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
+import type { ContainerIndicesCollection, DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
 import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
@@ -117,8 +117,8 @@ export function processAllArguments<OtherInfo>(
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
 					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
-					const isContainer = resolvedInGraphDef?.indicesCollection?.every((indices) => indices.isContainer) ?? true;
-					if(isContainer) {
+					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
+					if(isContainer || isContainer === undefined) {
 						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 					}
 				}
@@ -168,4 +168,14 @@ export function patchFunctionCall<OtherInfo>(
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
+}
+
+/**
+ * Check whether passed {@link indices} are containers or whether their sub-indices are containers.
+ */
+function checkForContainer(indices: ContainerIndicesCollection): boolean | undefined {
+	return indices?.every((indices) => {
+		const areSubIndicesContainers = indices.indices.every(index => 'subIndices' in index && checkForContainer(index.subIndices));
+		return indices.isContainer || areSubIndicesContainers;
+	});
 }

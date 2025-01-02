@@ -105,8 +105,9 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
 	readonly definedAt: NodeId
-	readonly value?:    NodeId[]
-	
+
+	readonly value?: NodeId[]
+
 	indicesCollection?: ContainerIndicesCollection
 }
 

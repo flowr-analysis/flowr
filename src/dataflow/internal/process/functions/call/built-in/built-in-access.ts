@@ -38,7 +38,7 @@ function tableAssignmentProcessor<OtherInfo>(
 
 /**
  * Processes different types of access operations.
- * 
+ *
  * Example:
  * ```r
  * a[i]
@@ -110,7 +110,7 @@ export function processAccess<OtherInfo>(
 
 /**
  * Processes different types of number-based access operations.
- * 
+ *
  * Example:
  * ```r
  * a[i]
@@ -153,7 +153,7 @@ function processNumberBasedAccess<OtherInfo>(
 
 /**
  * Processes different types of string-based access operations.
- * 
+ *
  * Example:
  * ```r
  * a$foo
@@ -235,10 +235,9 @@ function processStringBasedAccess<OtherInfo>(
 }
 
 /**
- * 
  * Creates edges of type {@link EdgeType.Reads} to the {@link accessedIndices} and their sub-indices starting from
  * the node with {@link parentNodeId}.
- * 
+ *
  * @param accessedIndices - All indices that were accessed by the access operation
  * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
  */

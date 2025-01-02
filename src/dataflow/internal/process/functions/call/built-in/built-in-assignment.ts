@@ -34,6 +34,7 @@ import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases } from '../../../../../environments/resolve-by-name';
+import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -165,7 +166,7 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 }
 
 /**
- * Promotes the ingoing/unknown references of target (an assignment) to defitions   
+ * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
@@ -266,10 +267,19 @@ export function markAsAssignment(
 	let indicesCollection: ContainerIndicesCollection = undefined;
 	if(sourceIds.length === 1) {
 		// support for tracking indices
+		// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
 		indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
 	}
+	// Indices defined by replacement operation e.g. $<-
 	if(config?.indicesCollection !== undefined) {
-		indicesCollection = (indicesCollection ?? []).concat(config.indicesCollection);
+		// If there were indices stored in the vertex, then a container was defined
+		// and assigned to the index of another container e.g. a$b <- list(c = 1)
+		if(indicesCollection) {
+			indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
+		} else {
+			// No indices were defined for the vertex e.g. a$b <- 2
+			indicesCollection = config.indicesCollection;
+		}
 	}
 	nodeToDefine.indicesCollection ??= indicesCollection;
 

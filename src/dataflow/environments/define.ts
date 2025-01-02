@@ -4,7 +4,7 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
-import type { ContainerIndex, ContainerIndicesCollection } from '../graph/vertex';
+import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
 
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
@@ -13,7 +13,7 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	// When there are defined indices, merge the definitions
 	const inGraphDefinition = definition as InGraphIdentifierDefinition;
 	if(existing !== undefined && inGraphDefinition.indicesCollection !== undefined && inGraphDefinition.controlDependencies === undefined) {
-		newEnvironments.memory.set(name, mergeIndices(existing, inGraphDefinition));
+		newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
 		return;
 	}
 
@@ -25,7 +25,7 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	}
 }
 
-function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
 	// When new definition is not a single index, e.g. a list redefinition, then reset existing definition
 	// TODO: what happens when indicesCollection has more than one element?
 	if(definition.indicesCollection !== undefined && definition.indicesCollection?.some(indices => indices.isContainer)) {
@@ -33,33 +33,17 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 	}
 	// console.log('merging');
 	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
-	const indices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
+	const overwriteIndices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
 	// Compare existing and new definitions, add new definitions and remove existing
 	// definitons that are overwritten by new definition
 	const newExistingDefs: InGraphIdentifierDefinition[] = [];
-	for(const overwriteIndex of indices) {
+	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
 			if(existingDef.indicesCollection === undefined) {
 				continue;
 			}
-			const newIndicesCollection: ContainerIndicesCollection = [];
-			for(const indices of existingDef.indicesCollection) {
-				let newIndices: ContainerIndex[];
-				if(indices.isContainer) {
-					// If indices are not a single, e.g. a list, take whole definition
-					newIndices = indices.indices;
-				} else {
-					// Filter existing indices with same name
-					newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
-				}
 
-				if(indices.isContainer || newIndices.length > 0) {
-					newIndicesCollection.push({
-						...indices,
-						indices: newIndices,
-					});
-				}
-			}
+			const newIndicesCollection = overwriteContainerIndices(existingDef.indicesCollection, overwriteIndex);
 
 			// if indices are now empty list, don't keep empty definition
 			if(newIndicesCollection.length > 0) {
@@ -72,6 +56,58 @@ function mergeIndices(existing: IdentifierDefinition[], definition: InGraphIdent
 	}
 	// store changed existing definitons and add new one
 	return [...newExistingDefs, definition];
+}
+
+function overwriteContainerIndices(
+	existingIndices: ContainerIndices[],
+	overwriteIndex: ContainerIndex
+): ContainerIndices[] {
+	const newIndicesCollection: ContainerIndices[] = [];
+
+	for(const indices of existingIndices) {
+		let newIndices: ContainerIndex[];
+		// When overwrite index is container itself, then only overwrite sub index
+		if('subIndices' in overwriteIndex) {
+			newIndices ??= [];
+			for(const index of indices.indices) {
+				if(index.lexeme === overwriteIndex.lexeme && 'subIndices' in index) {
+					const overwriteSubIndices = overwriteIndex.subIndices.flatMap(a => a.indices);
+
+					let newSubIndices: ContainerIndices[] = index.subIndices;
+					for(const overwriteSubIndex of overwriteSubIndices) {
+						newSubIndices = overwriteContainerIndices(newSubIndices, overwriteSubIndex);
+					}
+
+					if(newSubIndices.length > 0) {
+						newIndices.push({
+							...index,
+							subIndices: newSubIndices,
+						});
+					}
+				}
+				if(index.lexeme !== overwriteIndex.lexeme || !('subIndices' in index)) {
+					newIndices.push(index);
+				}
+			}
+		} else {
+			if(indices.isContainer) {
+				// If indices are not a single, e.g. a list, take whole definition
+				newIndices = indices.indices;
+			} else {
+				// Filter existing indices with same name
+				newIndices = indices.indices.filter((def) => def.lexeme !== overwriteIndex.lexeme);
+			}
+		}
+
+		if(indices.isContainer || newIndices.length > 0) {
+			newIndicesCollection.push({
+				...indices,
+				indices: newIndices,
+			});
+		}
+	}
+
+	return newIndicesCollection;
 }
 
 /**

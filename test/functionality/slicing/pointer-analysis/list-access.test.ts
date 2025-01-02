@@ -134,10 +134,10 @@ print(person$age)`,
 				['4@print'],
 				`person <- list(age = 24)
 if(u) person$age <- 33
-print(person$age)`)
-	assertSliced(label('Potential wipe', basicCapabilities),
-		shell,
-`person <- list(age = 24)
+print(person$age)`);
+			assertSliced(label('Potential wipe', basicCapabilities),
+				shell,
+				`person <- list(age = 24)
 if(u) {
 	person$age <- 33
 } else {
@@ -145,35 +145,35 @@ if(u) {
 	person <- list()
 }
 print(person$age)`,
-['8@print'],
-`person <- list(age = 24)
+				['8@print'],
+				`person <- list(age = 24)
 if(u) { person$age <- 33 } else
 { person <- list() }
-print(person$age)`)
-assertSliced(label('Potential addition in nesting', basicCapabilities),
-shell,
-`person <- list(age = 24)
+print(person$age)`);
+			assertSliced(label('Potential addition in nesting', basicCapabilities),
+				shell,
+				`person <- list(age = 24)
 if(u) person$name <- "peter"
 wrapper <- list(person = person)
 print(wrapper$person$name)`,
-['4@print'],
-`person <- list(age = 24)
+				['4@print'],
+				`person <- list(age = 24)
 if(u) person$name <- "peter"
 wrapper <- list(person = person)
-print(wrapper$person$name)`)
-it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
-	assertSliced(label('Potential addition in nesting (not needed)', basicCapabilities),
-	shell,
-	`person <- list(age = 24)
-	if(u) person$name <- "peter"
-	wrapper <- list(person = person)
-	print(wrapper$person$age)`,
-	['4@print'],
-	`person <- list(age = 24)
-	wrapper <- list(person = person)
-	print(wrapper$person$age)`)
-})
-			})
+print(wrapper$person$name)`);
+			it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
+				assertSliced(label('Potential addition in nesting (not needed)', basicCapabilities),
+					shell,
+					`person <- list(age = 24)
+if(u) person$name <- "peter"
+wrapper <- list(person = person)
+print(wrapper$person$age)`,
+					['4@print'],
+					`person <- list(age = 24)
+wrapper <- list(person = person)
+print(wrapper$person$age)`);
+			});
+		});
 	});
 	
 	describe('Nested lists', () => {

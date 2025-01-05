@@ -14,6 +14,66 @@ export enum VertexType {
 }
 
 /**
+ * A single index of a container, which is not a container itself.
+ *
+ * This can be e.g. a string, number or boolean index.
+ */
+export interface ContainerLeafIndex {
+	/**
+	 * Destinctive lexeme of index e.g 'name' for `list(name = 'John')`
+	 */
+	readonly lexeme: string,
+
+	/**
+	 * NodeId of index in graph.
+	 */
+	readonly nodeId: NodeId,
+}
+
+/**
+ * A single index of a container, which is a container itself.
+ *
+ * This can be, e.g., a list, vector, or data frame.
+ *
+ * @see {@link ContainerLeafIndex} - for a single index of a container which is not a container itself
+ * @see {@link isParentContainerIndex} - to check if an index is a parent container index
+ */
+export interface ContainerParentIndex extends ContainerLeafIndex {
+	/**
+	 * Sub-indices of index.
+	 */
+	readonly subIndices: ContainerIndices[],
+}
+
+export function isParentContainerIndex(index: ContainerIndex): index is ContainerParentIndex {
+	return 'subIndices' in index;
+}
+
+/**
+ * A single index of a container.
+ */
+export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
+
+/**
+ * List of indices of a single statement like `list(a=3, b=2)`
+ */
+export interface ContainerIndices {
+	readonly indices:     ContainerIndex[],
+	/**
+	 * Differentiate between single and multiple indices.
+	 *
+	 * For `list(name = 'John')` `isContainer` would be true, because a list may define more than one index.
+	 * `isContainer` is true for e.g. single index assignments like `person$name <- 'John'`.
+	 */
+	readonly isContainer: boolean,
+}
+
+/**
+ * Collection of Indices of several statements.
+ */
+export type ContainerIndicesCollection = ContainerIndices[] | undefined
+
+/**
  * Arguments required to construct a vertex in the {@link DataflowGraph|dataflow graph}.
  *
  * @see DataflowGraphVertexUse
@@ -34,11 +94,15 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?:        REnvironmentInformation | undefined
+	environment?:        REnvironmentInformation
 	/**
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
 	controlDependencies: ControlDependency[] | undefined
+	/**
+	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
+	 */
+	indicesCollection?:  ContainerIndicesCollection
 }
 
 /**

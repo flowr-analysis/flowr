@@ -17,8 +17,8 @@ import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
-	IdentifierDefinition,
 	IdentifierReference,
+	InGraphIdentifierDefinition,
 	InGraphReferenceType } from '../../../../../environments/identifier';
 import { ReferenceType
 } from '../../../../../environments/identifier';
@@ -27,12 +27,14 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases } from '../../../../../environments/resolve-by-name';
+import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -55,12 +57,13 @@ function getEffectiveOrder<T>(config: {
 export interface AssignmentConfiguration extends ForceArguments {
 	readonly superAssignment?:     boolean
 	readonly swapSourceAndTarget?: boolean
-	/* Make maybe if assigned to symbol */
+	/** Make maybe if assigned to symbol */
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
+	readonly indicesCollection?:   ContainerIndicesCollection
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -163,9 +166,9 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 }
 
 /**
- * Promotes the ingoing/unknown references of target (an assignment) to defitions   
+ * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
 		type:                referenceType,
@@ -256,15 +259,33 @@ export function markAsAssignment(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: IdentifierDefinition,
+	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	quoteSource?: boolean,
-	superAssignment?: boolean,
+	config?: AssignmentConfiguration | undefined,
 ) {
-	information.environment = define(nodeToDefine, superAssignment, information.environment);
+	let indicesCollection: ContainerIndicesCollection = undefined;
+	if(sourceIds.length === 1) {
+		// support for tracking indices
+		// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
+		indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
+	}
+	// Indices defined by replacement operation e.g. $<-
+	if(config?.indicesCollection !== undefined) {
+		// If there were indices stored in the vertex, then a container was defined
+		// and assigned to the index of another container e.g. a$b <- list(c = 1)
+		if(indicesCollection) {
+			indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
+		} else {
+			// No indices were defined for the vertex e.g. a$b <- 2
+			indicesCollection = config.indicesCollection;
+		}
+	}
+	nodeToDefine.indicesCollection ??= indicesCollection;
+
+	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
-	if(!quoteSource) {
+	if(!config?.quoteSource) {
 		for(const sourceId of sourceIds) {
 			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
@@ -283,18 +304,8 @@ export function markAsAssignment(
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
-function processAssignmentToSymbol<OtherInfo>({
-	nameOfAssignmentFunction,
-	source,
-	args: [targetArg, sourceArg],
-	target,
-	rootId,
-	data,
-	information,
-	superAssignment,
-	makeMaybe,
-	quoteSource
-}: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
@@ -315,7 +326,7 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment);
+		markAsAssignment(information, write, [source.info.id], rootId, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

@@ -1,6 +1,7 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
+import type { ContainerIndicesCollection } from '../graph/vertex';
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -97,14 +98,19 @@ export interface IdentifierReference {
  *
  * @see {@link IdentifierReference}
  */
-interface InGraphIdentifierDefinition extends IdentifierReference {
+export interface InGraphIdentifierDefinition extends IdentifierReference {
 	readonly type:      InGraphReferenceType
 	/**
 	 * The assignment node which ultimately defined this identifier
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
 	readonly definedAt: NodeId
+
 	readonly value?:    NodeId[]
+	/**
+	 * this attribute links a definition to indices (pointer links) it may be affected by or related to
+	 */
+	indicesCollection?: ContainerIndicesCollection
 }
 
 /**

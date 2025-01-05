@@ -179,7 +179,7 @@ The following summarizes the configuration options:
 - \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
-- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
+- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -201,7 +201,8 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			solver: {
-				variables: VariableResolve.Alias
+				variables:       VariableResolve.Alias,
+				pointerTracking: true
 			}
 		} satisfies FlowrConfigOptions,
 		null, 2))

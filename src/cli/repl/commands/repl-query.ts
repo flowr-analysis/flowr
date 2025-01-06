@@ -26,8 +26,10 @@ function printHelp(output: ReplOutput) {
 	output.stdout('The query is an array of query objects to represent multiple queries. Each query object may have the following properties:');
 	output.stdout(describeSchema(AnyQuerySchema(), output.formatter));
 	output.stdout(`\n\nThe example ${italic(':query "[{\\"type\\": \\"call-context\\", \\"callName\\": \\"mean\\" }]" mean(1:10)', output.formatter)} would return the call context of the mean function.`);
-	output.stdout('As a convenience, we interpret any (non-help) string not starting with \'[\' as a regex for the simple call-context query.');
+	output.stdout('As a convenience, we interpret any (non-help, non-@) string not starting with \'[\' as a regex for the simple call-context query.');
 	output.stdout(`Hence, ${italic(':query "mean" mean(1:10)', output.formatter)} is equivalent to the above example.`);
+	output.stdout(`Similarly, '@<type>' is interpreted as a query of the given type.`);
+	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
 async function processQueryArgs(line: string, shell: RShell, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
@@ -44,7 +46,15 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 	}
 
 	let parsedQuery: Query[] = [];
-	if(query.startsWith('[')) {
+	if(query.startsWith('@')) {
+		parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
+		const validationResult = QueriesSchema().validate(parsedQuery);
+		if(validationResult.error) {
+			output.stderr(`Invalid query: ${validationResult.error.message}`);
+			printHelp(output);
+			return;
+		}
+	} else if(query.startsWith('[')) {
 		parsedQuery = JSON.parse(query) as Query[];
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {

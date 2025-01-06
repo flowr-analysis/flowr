@@ -3,9 +3,9 @@ import { executeLocationMapQuery } from './location-map-query-executor';
 import { bold, type OutputFormatter } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
+import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
-import { summarizeIdsIfTooLong } from '../../query-print';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
@@ -25,5 +25,5 @@ export const LocationMapQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
-	}).description('The id map query retrieves the location of every id in the ast.')
+	}).description('The location map query retrieves the location of every id in the ast.')
 } as const;

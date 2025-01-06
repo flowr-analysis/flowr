@@ -20,6 +20,7 @@ import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess } from '../../../../../../util/list-access';
+import { getConfig } from '../../../../../../config';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -38,7 +39,7 @@ export function processReplacementFunction<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
 
 	let indices: ContainerIndicesCollection = undefined;
-	if(name.content === '$<-') {
+	if(name.content === '$<-' && getConfig().solver.pointerTracking) {
 		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
 		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
 		const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);

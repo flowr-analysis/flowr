@@ -35,6 +35,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
+import { getConfig } from '../../../../../../config';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -251,8 +252,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param quoteSource        - whether to quote the source (i.e., define `x` without a direct reference to `v`)
- * @param superAssignment    - whether this is a super assignment (i.e., `<<-`)
+ * @param config             - configuration for the assignment processing
  */
 export function markAsAssignment(
 	information: {
@@ -264,24 +264,26 @@ export function markAsAssignment(
 	rootIdOfAssignment: NodeId,
 	config?: AssignmentConfiguration | undefined,
 ) {
-	let indicesCollection: ContainerIndicesCollection = undefined;
-	if(sourceIds.length === 1) {
-		// support for tracking indices
-		// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
-		indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
-	}
-	// Indices defined by replacement operation e.g. $<-
-	if(config?.indicesCollection !== undefined) {
-		// If there were indices stored in the vertex, then a container was defined
-		// and assigned to the index of another container e.g. a$b <- list(c = 1)
-		if(indicesCollection) {
-			indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
-		} else {
-			// No indices were defined for the vertex e.g. a$b <- 2
-			indicesCollection = config.indicesCollection;
+	if(getConfig().solver.pointerTracking) {
+		let indicesCollection: ContainerIndicesCollection = undefined;
+		if(sourceIds.length === 1) {
+			// support for tracking indices
+			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
+			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
 		}
+		// Indices defined by replacement operation e.g. $<-
+		if(config?.indicesCollection !== undefined) {
+			// If there were indices stored in the vertex, then a container was defined
+			// and assigned to the index of another container e.g. a$b <- list(c = 1)
+			if(indicesCollection) {
+				indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
+			} else {
+				// No indices were defined for the vertex e.g. a$b <- 2
+				indicesCollection = config.indicesCollection;
+			}
+		}
+		nodeToDefine.indicesCollection ??= indicesCollection;
 	}
-	nodeToDefine.indicesCollection ??= indicesCollection;
 
 	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
@@ -291,12 +293,14 @@ export function markAsAssignment(
 		}
 	}
 	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
-	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
-	for(const [id,edge] of (out?? [])) {
-		edge.types &= ~EdgeType.Reads;
-		if(edge.types == 0) {
-			out?.delete(id);
+	if(getConfig().solver.pointerTracking) {
+		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+		const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
+		for(const [id, edge] of (out ?? [])) {
+			edge.types &= ~EdgeType.Reads;
+			if(edge.types == 0) {
+				out?.delete(id);
+			}
 		}
 	}
 }

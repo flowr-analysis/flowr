@@ -1,9 +1,11 @@
 import { describe, it } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
+import { useConfigForTest } from '../../_helper/config';
 
 describe.sequential('List access', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting'] as const;
+	useConfigForTest({ solver: { pointerTracking: true } });
 	describe('Simple access', () => {
 		assertSliced(label('List with single element', basicCapabilities), shell,
 			'person <- list(name = "John")\nprint(person$name)',
@@ -123,7 +125,7 @@ result <- person$age`,
 			`person <- list(age = 24, name = "John", is_male = TRUE)
 result <- person$age`,
 		);
-		
+
 		describe('Access within conditionals', () => {
 			assertSliced(label('Only a potential overwrite', basicCapabilities),
 				shell,
@@ -175,7 +177,7 @@ print(wrapper$person$age)`);
 			});
 		});
 	});
-	
+
 	describe('Nested lists', () => {
 		assertSliced(label('When index of nested list is overwritten, then overwrite is also in slice', basicCapabilities),
 			shell,
@@ -381,5 +383,18 @@ person$name$first_name <- "John"
 result <- person$name`,
 			);
 		});
+	});
+
+	describe('Config flag', () => {
+		useConfigForTest({ solver: { pointerTracking: false } });
+		assertSliced(label('When flag is false, then list access is not in slice', ['call-normal']), shell,
+			`person <- list(age = 24, name = "John")
+person$name <- "Jane"
+person$age <- 23
+print(person$name)`, ['4@print'], `person <- list(age = 24, name = "John")
+person$name <- "Jane"
+person$age <- 23
+print(person$name)`
+		);
 	});
 }));

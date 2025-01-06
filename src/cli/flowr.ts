@@ -27,6 +27,7 @@ import { repl, replProcessAnswer } from './repl/core';
 import { printVersionInformation } from './repl/commands/repl-version';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import fs from 'fs';
 
 export const toolName = 'flowr';
 
@@ -87,6 +88,13 @@ if(options['config-json']) {
 	}
 }
 if(!usedConfig) {
+	if(options['config-file']) {
+		// validate it exists
+		if(!fs.existsSync(options['config-file'])) {
+			log.error(`Config file '${options['config-file']}' does not exist`);
+			process.exit(1);
+		}
+	}
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 

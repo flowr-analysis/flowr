@@ -30,6 +30,7 @@ import { getReplCommand } from './doc-util/doc-cli-option';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { executeLocationMapQuery } from '../queries/catalog/location-map-query/location-map-query-executor';
 import { CallTargets } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { executeConfigQuery } from '../queries/catalog/config-query/config-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -235,6 +236,19 @@ ${
 	}], { showCode: true, collapseQuery: true })
 }
 		`;
+	}
+});
+
+registerQueryDocumentation('config', {
+	name:             'Config Query',
+	type:             'active',
+	shortDescription: 'Returns the current configuration of flowR.',
+	functionName:     executeConfigQuery.name,
+	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
+	// eslint-disable-next-line @typescript-eslint/require-await -- no need for async here
+	buildExplanation: async() => {
+		return `
+This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.`;
 	}
 });
 

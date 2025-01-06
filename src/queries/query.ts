@@ -26,8 +26,11 @@ import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-p
 import Joi from 'joi';
 import type { LocationMapQuery } from './catalog/location-map-query/location-map-query-format';
 import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
+import type { ConfigQuery } from './catalog/config-query/config-query-format';
+import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 
 export type Query = CallContextQuery
+	| ConfigQuery
 	| DataflowQuery
 	| NormalizedAstQuery
 	| IdMapQuery
@@ -54,6 +57,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
 
 export const SupportedQueries = {
 	'call-context':     CallContextQueryDefinition,
+	'config':           ConfigQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'id-map':           IdMapQueryDefinition,
 	'normalized-ast':   NormalizedAstQueryDefinition,

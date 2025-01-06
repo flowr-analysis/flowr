@@ -37,7 +37,8 @@ const TargetTypePredicate = {
  * @param environment  - The current environment used for name resolution
  * @param target       - The target (meta) type of the identifier to resolve
  *
- * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
+ * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
+ *          if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;

@@ -38,11 +38,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
-	readonly type:      'tree-sitter'
+	readonly type:                'tree-sitter'
 	/**
-	 * The path to the tree-sitter-r WASM binary to use. If this is undefined, {@link DEFAULT_TREE_SITTER_WASM_PATH} will be used.
+	 * The path to the tree-sitter-r WASM binary to use. If this is undefined, {@link DEFAULT_TREE_SITTER_R_WASM_PATH} will be used.
 	 */
-	readonly wasmPath?: string
+	readonly wasmPath?:           string
+	/**
+	 * The path to the tree-sitter WASM binary to use. If this is undefined, the path specified by the tree-sitter package will be used.
+	 */
+	readonly treeSitterWasmPath?: string
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
@@ -88,8 +92,9 @@ export const flowrConfigFileSchema = Joi.object({
 	}).description('Configure language semantics and how flowR handles them.'),
 	engines: Joi.array().items(Joi.alternatives(
 		Joi.object({
-			type:     Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
-			wasmPath: Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.')
+			type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
+			wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
+			treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, the path specified by the tree-sitter package will be used.')
 		}).description('The configuration for the tree sitter engine.'),
 		Joi.object({
 			type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),

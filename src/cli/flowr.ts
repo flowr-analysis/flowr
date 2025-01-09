@@ -54,8 +54,9 @@ export interface FlowrCliOptions {
 	'engine.r-shell.disabled': boolean
 	'engine.r-shell.r-path':   string | undefined
 	
-	'engine.tree-sitter.disabled':  boolean
-	'engine.tree-sitter.wasm-path': string | undefined
+	'engine.tree-sitter.disabled':              boolean
+	'engine.tree-sitter.wasm-path':             string | undefined
+	'engine.tree-sitter.tree-sitter-wasm-path': string | undefined
 }
 
 export const optionHelp = [
@@ -107,7 +108,11 @@ if(!options['engine.r-shell.disabled']) {
 	amendConfig({ engines: [{ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] }] });
 }
 if(!options['engine.tree-sitter.disabled']){
-	amendConfig({ engines: [{ type: 'tree-sitter', wasmPath: options['engine.tree-sitter.wasm-path'] }] });
+	amendConfig({ engines: [{
+		type:               'tree-sitter',
+		wasmPath:           options['engine.tree-sitter.wasm-path'],
+		treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path']
+	}] });
 }
 if(options['default-engine']) {
 	amendConfig({ defaultEngine: options['default-engine'] as EngineConfig['type'] });

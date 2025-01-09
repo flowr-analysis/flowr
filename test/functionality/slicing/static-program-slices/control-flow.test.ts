@@ -70,7 +70,7 @@ x`);
    return(x)
 }
 
-f(5)`, ['9@f'],`f <- function(x) {
+f(5)`, ['9@f'], `f <- function(x) {
         x <- 3 * x
         return(x)
     }
@@ -141,4 +141,23 @@ if(FALSE) {
 print(y)`, ['12@y'], 'y <- TRUE\ny');
 	});
 
+	describe('Alias Tracking', () => {
+		assertSliced(label('useless branch with alias', ['control-flow', 'built-in', 'if']),
+			shell, `
+x <- TRUE 
+y <- TRUE
+if(x) {
+   y <- FALSE
+}
+print(y)`, ['7@y'], 'y <- FALSE\ny');
+
+		assertSliced(label('useless branch with alias ||', ['control-flow', 'built-in', 'if']),
+			shell, `
+x <- FALSE 
+y <- TRUE
+if(x) {
+   y <- FALSE
+}
+print(y)`, ['7@y'], 'y <- TRUE\ny');
+	});
 }));

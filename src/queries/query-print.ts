@@ -1,5 +1,5 @@
 import type { OutputFormatter } from '../util/ansi';
-import { markdownFormatter , bold, italic } from '../util/ansi';
+import { markdownFormatter, bold, italic } from '../util/ansi';
 import type { QueryResults, SupportedQueryTypes } from './query';
 import { SupportedQueries } from './query';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';

@@ -240,7 +240,8 @@ x`);
 f()
 cat(x)
     `, ['3@x'], 'x');
-		assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
+	});
+	assertSliced(label('Nested Side-Effect For Last', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'implicit-return', 'numbers', 'call-normal', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   a()
@@ -254,9 +255,10 @@ b <- f()
         a()
     }
 b <- f()`);
-		// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
-		// however, this read edge should not apply when the call happens within the same scope
-		assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
+	// that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
+	// however, this read edge should not apply when the call happens within the same scope
+	// we have to separate on the exit points for this and re-resolve for each exit point
+	assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, `f <- function() {
   a <- function() { x }
   x <- 3
   b <- a()
@@ -273,11 +275,10 @@ b <- f()
         b
     }
 b <- f()`);
-		assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
-		assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
-			shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
-	});
+	assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+	assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+		shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	describe('Early return of function', () => {
 		const code = `x <- (function() {
   g <- function() { y }
@@ -538,6 +539,35 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
 	});
 	describe('Failures in Practice', () => {
+		describe('empty functions', () => {
+			assertSliced(label('Empty Function in Reconstruct', ['function-definitions']), shell,
+				'x <- 2\nfoo <- function(n, x = 3) { print(x) }\nprint(x)', ['3@x'], 'x <- 2\nx');
+		});
+		describe('Super Side-Effects', () => {
+			assertSliced(label('No recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  4
+}
+x()`, ['6@x'], 'x <- function() { 4 }\nx()');
+			assertSliced(label('With recursion', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+x <- function() {
+  calls <<- calls + 1
+  x()
+}
+x()`, ['6@x'], 'x <- function() { x() }\nx()');
+			assertSliced(label('Counting fibonacci', ['super-left-assignment', 'lexicographic-scope']), shell, `calls <- 0
+fib <- function() {
+  calls <<- calls + 1
+  if(n <= 1) {
+    n
+  } else {
+    fib(n - 1) + fib(n - 2)
+  }
+}
+fib(42)`, ['10@fib'], 'fib <- function() { if(n <= 1) { n } else\n' +
+				'    { fib(n - 1) + fib(n - 2) } }\nfib(42)');
+		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
 				shell, 'create <- function() function() 3\ng <- create()\nc <- g()', ['3@c'], 'create <- function() function() 3\ng <- create()\nc <- g()');
@@ -807,6 +837,51 @@ x`);
 			'plot <- function() {}\nplot(f)\npoints(g)', ['3@points'],
 			'points(g)'
 		);
+		describe('maps::map', () => {
+			assertSliced(label('Link to the last map', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map(f)\nx <- points(g)', ['2@points'],
+				'map(f)\npoints(g)'
+			);
+			assertSliced(label('Link to the last map (print)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map(f)\nx <- points(g)\nprint(x)', ['3@print'],
+				'map(f)\nx <- points(g)\nprint(x)'
+			);
+			assertSliced(label('Link to the last map (with par)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)', ['3@x'],
+				'par(mar=c(1,1,1,1))\nmap(f)\nx <- points(g)'
+			);
+			assertSliced(label('Link to the last map (multiple map)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("x")\nmap("y")\nx <- points(g)', ['3@x'],
+				'map("y")\nx <- points(g)'
+			);
+			assertSliced(label('Link to the last map (map with foo)', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", foo=c(-1))\npoints(x)', ['2@points'],
+				'map("a", foo=c(-1))\npoints(x)'
+			);
+			assertSliced(label('An added map should be included', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=TRUE)\npoints(x)', ['2@points'],
+				'map("a", add=TRUE)\npoints(x)'
+			);
+			assertSliced(label('A not-added map should be kept', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=FALSE)\npoints(x)', ['2@points'],
+				'map("a", add=FALSE)\npoints(x)'
+			);
+			assertSliced(label('Map-Add should cascade', ['functions-with-global-side-effects', 'redefinition-of-built-in-functions-primitives']), shell,
+				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)', ['3@points'],
+				'map("a", add=FALSE)\nmap("b", add=TRUE)\npoints(x)'
+			);
+		});
+		describe('unknown assigns', () => {
+			assertSliced(label('Same assign target', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign("x", 3)\nprint(x)', ['2@x'], 'assign("x", 3)\nx');
+			assertSliced(label('Different assign target', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign("y", 3)\nprint(x)', ['2@x'], 'x');
+			assertSliced(label('Variable assign target (different)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(y, 3)\nprint(x)', ['2@x'], 'assign(y, 3)\nx'); /* as we do not know the target of `y`, we mark as unknown */
+			assertSliced(label('Variable assign target (same)', ['functions-with-global-side-effects', 'name-normal', 'call-normal']),
+				shell, 'assign(x, 3)\nprint(x)', ['2@x'], 'assign(x, 3)\nx'); /* as we do not know the target of `x`, we mark as unknown */
+
+		});
 	});
 	describe('Array Overwriting Loops', () => {
 		assertSliced(label('Overwrite in For-Loop', [

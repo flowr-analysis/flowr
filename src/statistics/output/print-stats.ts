@@ -3,12 +3,13 @@ import { ColorEffect, Colors, formatter } from '../../util/ansi';
 import { jsonReplacer } from '../../util/json';
 import type { FeatureKey, FeatureStatistics } from '../features/feature';
 import { ALL_FEATURES } from '../features/feature';
+import { arraySum } from '../../util/arrays';
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
 export function minMaxAvgAndMedian(data: number[]): MinMaxAvgMedian {
 	data  = data.sort((a, b) => a - b);
-	const sum = data.reduce((a, b) => a + b, 0);
+	const sum = arraySum(data);
 	return {
 		sum,
 		min:    data[0],

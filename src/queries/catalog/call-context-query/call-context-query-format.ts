@@ -10,6 +10,9 @@ import { asciiCallContext } from '../../query-print';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import { CallTargets } from './identify-link-to-last-call-relation';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
+import type { CascadeAction } from './cascade-action';
 
 export interface FileFilter<FilterType> {
 	/**
@@ -56,9 +59,19 @@ export interface DefaultCallContextQueryFormat<RegexType extends RegExp | string
  * In short, this means that we are unable to detect origins over function call boundaries but plan on being more precise in the future.
  */
 interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
-	readonly type:     'link-to-last-call';
+	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
-	readonly callName: CallName;
+	readonly callName:   CallName;
+	/**
+	 * Should we ignore this (source) call?
+	 * Currently, there is no well working serialization for this.
+	 */
+	readonly ignoreIf?:  (id: NodeId, graph: DataflowGraph) => boolean;
+	/**
+	 * Should we continue searching after the link was created?
+	 * Currently, there is no well working serialization for this.
+	 */
+	readonly cascadeIf?: (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction;
 }
 
 export type LinkTo<CallName extends RegExp | string> = LinkToLastCall<CallName>;
@@ -118,8 +131,10 @@ export const CallContextQueryDefinition = {
 			includeUndefinedFiles: Joi.boolean().optional().description('If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.')
 		}).optional().description('Filter that, when set, a node\'s file attribute must match to be considered'),
 		linkTo: Joi.object({
-			type:     Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
-			callName: Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.')
+			type:      Joi.string().valid('link-to-last-call').required().description('The type of the linkTo sub-query.'),
+			callName:  Joi.string().required().description('Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression.'),
+			ignoreIf:  Joi.function().optional().description('Should we ignore this (source) call? Currently, there is no well working serialization for this.'),
+			cascadeIf: Joi.function().optional().description('Should we continue searching after the link was created? Currently, there is no well working serialization for this.')
 		}).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
 	}).description('Call context query used to find calls in the dataflow graph')
 } as const;

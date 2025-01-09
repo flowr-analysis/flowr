@@ -5,6 +5,7 @@ import { DefaultMap } from '../../../util/defaultmap';
 import { guard, isNotUndefined } from '../../../util/assert';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import type { Table } from '../../../util/files';
+import { arraySum } from '../../../util/arrays';
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).
@@ -112,7 +113,7 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
 
 	const header = ['bin', 'from', 'to', ...histograms.map(h => JSON.stringify(h.name))];
 
-	const sums = histograms.map(h => h.bins.reduce((a, b) => a + b, 0));
+	const sums = histograms.map(h => arraySum(h.bins));
 
 	const rows: string[][] = [];
 

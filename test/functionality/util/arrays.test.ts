@@ -1,7 +1,17 @@
-import { allPermutations, getUniqueCombinationsOfSize, splitArrayOn } from '../../../src/util/arrays';
+import { allPermutations, arrayEqual, getUniqueCombinationsOfSize, splitArrayOn, arraySum } from '../../../src/util/arrays';
 import { describe, assert, test } from 'vitest';
 
 describe('Arrays', () => {
+	describe('sum', () => {
+		const check = (title: string, arr: number[], expected: number): void => {
+			test(title, () => {
+				assert.strictEqual(arraySum(arr), expected, `${JSON.stringify(arr)}`);
+			});
+		};
+		check('empty array', [], 0);
+		check('single element', [1], 1);
+		check('multiple elements', [1, 2, 3], 6);
+	});
 	describe('splitArrayOn', () => {
 		const check = <T>(title: string, arr: T[], predicate: (elem: T) => boolean, expected: T[][]): void => {
 			test(title, () => {
@@ -45,5 +55,21 @@ describe('Arrays', () => {
 		check('higher sizes', [1,2,3], 1, 2, [1], [2], [3], [1,2], [1, 3], [2, 3]);
 		check('higher sizes', [1,2,3], 2, 2, [1,2], [1, 3], [2, 3]);
 		check('higher sizes', [1,2,3], 3, 3, [1,2,3]);
+	});
+	describe('arrayEqual', () => {
+		const check = <T>(title: string, a: readonly T[] | undefined, b: readonly T[] | undefined, expected: boolean): void => {
+			test(title, () => {
+				assert.strictEqual(arrayEqual(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`);
+			});
+		};
+		check('empty arrays', [], [], true);
+		check('undefined left', undefined, [], false);
+		check('undefined right', [], undefined, false);
+		check('empty right', [1], [], false);
+		check('empty left',  [], [1], false);
+		check('one element', [1], [1], true);
+		check('one different element', [1], [2], false);
+		check('two elements', [1, 2], [1, 2], true);
+		check('different order', [1, 2], [2, 1], false);
 	});
 });

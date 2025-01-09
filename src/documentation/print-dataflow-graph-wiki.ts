@@ -666,27 +666,48 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
 	}, []]);
 
+
+	const lateBindingExample = `
+f <- function() x
+x <- 3
+f()
+	`.trim();
+
+	const dfInfo = await printDfGraphForCode(shell, lateBindingExample, { switchCodeAndGraph: true, codeOpen: true, mark: new Set([1, '1->5', '9->5']) });
+
 	edgeExplanations.set(EdgeType.DefinesOnCall, [{
 		shell:       shell,
 		name:        'DefinesOnCall Edge',
 		type:        EdgeType.DefinesOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
 
- Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.`,
+ Links an Argument to whichever parameter they cause to be defined if the related function call is invoked.
+ 
+ In the context of functions which access their closure environment these edges play another tricky role as there are many cases 
+ made more difficult by R's way of allowing closure environments to later receive variables.
+ Consider the following scenario in which we first define a function which returns the value of a variable named \`x\` and then define \`x\`
+ only after we defined the function:
+   
+${dfInfo}
+
+ The final call evaluates to \`3\` (similar to if we would have defined \`x\` before the function definition).
+ Within a dataflow graph you can see this with two edges. The \`x\` within the function body will have a ${linkEdgeName(EdgeType.DefinedByOnCall)} 
+ to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of \`x\` will have a
+ ${linkEdgeName(EdgeType.DefinesOnCall)} edge to the definition(s) it causes to be active within the function body. 
+ `,
 		code:             'f <- function(x) {}\nf(x=1)',
 		// here we use the ids as the argument wrappers are not easily selected with slicing criteria
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
-
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
 		shell:       shell,
 		name:        'DefinedByOnCall Edge',
 		type:        EdgeType.DefinedByOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!*
 
- This represents the other direction of ${linkEdgeName(EdgeType.DefinesOnCall)} (i.e., links the parameter to the argument). This is just for completeness.`,
+ This represents the other part of the ${linkEdgeName(EdgeType.DefinesOnCall)} edge (e.g., links the parameter to the argument). Please look there for further documentation.`,
 		code:             'f <- function(x) {}\nf(x=1)',
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Argument, [{
@@ -721,7 +742,7 @@ ${
 	block({
 		type:    'NOTE',
 		content: `
-What to do if you encounter this vertex? 
+What to do if you encounter a vertex marked with this edge? 
 
 This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
 Yet, you may choose to follow these references for other queries. For now, _flowR's_ support for non-standard evaluation is limited.

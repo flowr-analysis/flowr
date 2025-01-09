@@ -13,7 +13,7 @@ import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import type { FlowrConfigOptions } from '../config';
-import { flowrConfigFileSchema } from '../config';
+import { flowrConfigFileSchema, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -170,6 +170,11 @@ function explainConfigFile(): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory). 
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` [Query](${FlowrWikiBaseRef}/Query%20API).
+Within the REPL this works by running the following:
+
+${codeBlock('shell', ':query @config')}
+
 
 The following summarizes the configuration options:
 
@@ -179,6 +184,7 @@ The following summarizes the configuration options:
 - \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
+- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -198,6 +204,10 @@ ${codeBlock('json', JSON.stringify(
 						]
 					}
 				}
+			},
+			solver: {
+				variables:       VariableResolve.Alias,
+				pointerTracking: true
 			}
 		} satisfies FlowrConfigOptions,
 		null, 2))
@@ -215,8 +225,8 @@ ${codeBlock('json', JSON.stringify(
 - \`loadDefaults\` (boolean, initially \`true\`): If set to \`true\`, the default built-in definitions are loaded before applying the custom definitions. Setting this flag to \`false\` explicitly disables the loading of the default definitions.
 - \`definitions\` (array, initially empty): Allows to overwrite or define new built-in elements. Each object within must have a \`type\` which is one of the below. Furthermore, they may define a string array of \`names\` which specifies the identifiers to bind the definitions to. You may use \`assumePrimitive\` to specify whether _flowR_ should assume that this is a primitive non-library definition (so you probably just do not want to specify the key).
 
-  | Type          | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
-  | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+  | Type            | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
+  | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
   | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
@@ -245,7 +255,7 @@ _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classe
 ### Using the \`${RShell.name}\` to Interact with R
 
 The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
-For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
 > Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.

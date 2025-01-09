@@ -12,14 +12,17 @@ async function dataflow(shell: RShell, remainingLine: string) {
 	}).allRemainingSteps();
 }
 
+function handleString(code: string): string {
+	return code.startsWith('"') ? JSON.parse(code) as string : code;
+}
+
 export const dataflowCommand: ReplCommand = {
 	description:  `Get mermaid code for the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await dataflow(shell, remainingLine);
-
+		const result = await dataflow(shell, handleString(remainingLine));
 		output.stdout(graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string);
 	}
 };
@@ -30,8 +33,7 @@ export const dataflowStarCommand: ReplCommand = {
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await dataflow(shell, remainingLine);
-
+		const result = await dataflow(shell, handleString(remainingLine));
 		output.stdout(graphToMermaidUrl(result.dataflow.graph, false));
 	}
 };

@@ -34,8 +34,14 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "Setup completed."
 fi
 
-echo "Linting project (local mode)..."
-$NPM_CMD run lint-local
+# check if the latest commit starts with "[release"
+if git log -1 --pretty=%B | grep -q "\[release"; then
+  echo "Latest commit is a release commit, doing full checkup..."
+  $NPM_CMD run checkup
+else
+  echo "Linting project (local mode)..."
+  $NPM_CMD run lint-local
+fi
 
 
 # shellcheck disable=SC2124 # we want the argument splitting

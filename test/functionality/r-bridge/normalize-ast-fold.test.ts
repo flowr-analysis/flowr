@@ -7,10 +7,13 @@ import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/pro
 import type { RBinaryOp } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
-describe('normalize-visitor', withShell(shell => {
+describe.sequential('normalize-visitor', withShell(shell => {
 	let normalized: NormalizedAst | undefined;
+	let mathAst: NormalizedAst | undefined;
 	beforeAll(async() => {
 		normalized = await retrieveNormalizedAst(shell, 'x <- 42\ny <- "hello world"\nprint("foo")');
+		mathAst = await retrieveNormalizedAst(shell, '1 + 3 * 2');
+
 	});
 	test('find the number', () => {
 		let marker = false;
@@ -42,7 +45,7 @@ describe('normalize-visitor', withShell(shell => {
 		const result = astFold.fold(normalized?.ast);
 		expect(result).toBe(2);
 	});
-	test('do basic math (monoid)', async() => {
+	test('do basic math (monoid)', () => {
 		class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
 			constructor() {
 				super(0);
@@ -67,11 +70,10 @@ describe('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyMathFold();
-		const math = await retrieveNormalizedAst(shell, '1 + 3 * 2');
-		const result = astFold.fold(math?.ast);
+		const result = astFold.fold(mathAst?.ast);
 		expect(result).toBe(7);
 	});
-	test('fold should stop if overwritten and no continue', async() => {
+	test('fold should stop if overwritten and no continue', () => {
 		let foundNumber = false;
 		class MyMathFold<Info> extends DefaultNormalizedAstFold<void, Info> {
 			override foldRNumber(_node: RNumber<Info>) {
@@ -83,8 +85,7 @@ describe('normalize-visitor', withShell(shell => {
 			}
 		}
 		const astFold = new MyMathFold();
-		const math = await retrieveNormalizedAst(shell, '1 + 3 * 2');
-		astFold.fold(math?.ast);
+		astFold.fold(mathAst?.ast);
 		expect(foundNumber).toBe(false);
 	});
 }));

@@ -14,11 +14,11 @@ import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
-	IdentifierDefinition,
 	IdentifierReference,
+	InGraphIdentifierDefinition,
 	InGraphReferenceType } from '../../../../../environments/identifier';
 import { ReferenceType
 } from '../../../../../environments/identifier';
@@ -27,11 +27,15 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
+import { getAliases } from '../../../../../environments/resolve-by-name';
+import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
+import { getConfig } from '../../../../../../config';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -54,10 +58,13 @@ function getEffectiveOrder<T>(config: {
 export interface AssignmentConfiguration extends ForceArguments {
 	readonly superAssignment?:     boolean
 	readonly swapSourceAndTarget?: boolean
-	/* Make maybe if assigned to symbol */
+	/** Make maybe if assigned to symbol */
 	readonly makeMaybe?:           boolean
 	readonly quoteSource?:         boolean
 	readonly canBeReplacement?:    boolean
+	/** is the target a variable pointing at the actual name? */
+	readonly targetVariable?:      boolean
+	readonly indicesCollection?:   ContainerIndicesCollection
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -94,7 +101,7 @@ export function processAssignment<OtherInfo>(
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name);
 	const { type, named } = target;
 
-	if(type === RType.Symbol) {
+	if(!config.targetVariable && type === RType.Symbol) {
 		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs });
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
@@ -142,8 +149,11 @@ export function processAssignment<OtherInfo>(
 		return processAssignmentToString(target, args, name, rootId, data, config, source);
 	}
 
-	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`);
-	return processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
+
+	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	info.graph.markIdForUnknownSideEffects(rootId);
+	return info;
 }
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
@@ -156,12 +166,16 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 	return { source, target };
 }
 
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean): IdentifierDefinition[] {
+/**
+ * Promotes the ingoing/unknown references of target (an assignment) to definitions
+ */
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): InGraphIdentifierDefinition[] {
 	return [...target.in, ...target.unknownReferences].map(ref => ({
 		...ref,
 		type:                referenceType,
 		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined)
+		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
+		value:               value
 	}));
 }
 
@@ -238,34 +252,55 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param quoteSource        - whether to quote the source (i.e., define `x` without a direct reference to `v`)
- * @param superAssignment    - whether this is a super assignment (i.e., `<<-`)
+ * @param config             - configuration for the assignment processing
  */
 export function markAsAssignment(
 	information: {
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: IdentifierDefinition,
+	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	quoteSource?: boolean,
-	superAssignment?: boolean,
+	config?: AssignmentConfiguration | undefined,
 ) {
-	information.environment = define(nodeToDefine, superAssignment, information.environment);
+	if(getConfig().solver.pointerTracking) {
+		let indicesCollection: ContainerIndicesCollection = undefined;
+		if(sourceIds.length === 1) {
+			// support for tracking indices
+			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
+			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
+		}
+		// Indices defined by replacement operation e.g. $<-
+		if(config?.indicesCollection !== undefined) {
+			// If there were indices stored in the vertex, then a container was defined
+			// and assigned to the index of another container e.g. a$b <- list(c = 1)
+			if(indicesCollection) {
+				indicesCollection = addSubIndicesToLeafIndices(config.indicesCollection, indicesCollection);
+			} else {
+				// No indices were defined for the vertex e.g. a$b <- 2
+				indicesCollection = config.indicesCollection;
+			}
+		}
+		nodeToDefine.indicesCollection ??= indicesCollection;
+	}
+
+	information.environment = define(nodeToDefine, config?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
-	if(!quoteSource) {
+	if(!config?.quoteSource) {
 		for(const sourceId of sourceIds) {
 			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
 		}
 	}
 	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
-	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
-	for(const [id,edge] of (out?? [])) {
-		edge.types &= ~EdgeType.Reads;
-		if(edge.types == 0) {
-			out?.delete(id);
+	if(getConfig().solver.pointerTracking) {
+		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+		const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
+		for(const [id, edge] of (out ?? [])) {
+			edge.types &= ~EdgeType.Reads;
+			if(edge.types == 0) {
+				out?.delete(id);
+			}
 		}
 	}
 }
@@ -273,21 +308,12 @@ export function markAsAssignment(
 /**
  * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
  */
-function processAssignmentToSymbol<OtherInfo>({
-	nameOfAssignmentFunction,
-	source,
-	args: [targetArg, sourceArg],
-	target,
-	rootId,
-	data,
-	information,
-	superAssignment,
-	makeMaybe,
-	quoteSource
-}: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
+	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], target, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(source, sourceArg);
 
-	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false);
+	const aliases = getAliases([source.info.id], information.graph, information.environment);
+	const writeNodes = produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
@@ -304,7 +330,7 @@ function processAssignmentToSymbol<OtherInfo>({
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, quoteSource, superAssignment);
+		markAsAssignment(information, write, [source.info.id], rootId, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

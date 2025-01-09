@@ -2,9 +2,16 @@ import type { IEnvironment, REnvironmentInformation } from './environment';
 import { BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
-import { isReferenceType , ReferenceType } from './identifier';
+import { isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import type { BuiltInIdentifierConstant } from './built-in';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { VertexType } from '../graph/vertex';
+import type { DataflowGraph } from '../graph/graph';
+import { getConfig, VariableResolve } from '../../config';
+import { assertUnreachable } from '../../util/assert';
+
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -30,7 +37,8 @@ const TargetTypePredicate = {
  * @param environment  - The current environment used for name resolution
  * @param target       - The target (meta) type of the identifier to resolve
  *
- * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
+ * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
+ *          if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType = ReferenceType.Unknown): IdentifierDefinition[] | undefined {
 	let current: IEnvironment = environment.current;
@@ -85,23 +93,125 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	}
 }
 
-export interface ResolveResult<T = unknown> {
-	value: T,
-	from:  ReferenceType
-}
-
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult[] | undefined {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): unknown[] | undefined {
 	if(name === undefined) {
 		return undefined;
 	}
 
 	const definitions = resolveByName(name, environment, ReferenceType.Constant);
-	if(definitions === undefined) {
+
+	return definitions?.map(def => (def as BuiltInIdentifierConstant).value);
+}
+
+type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined;
+
+const AliasHandler = {
+	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
+	[VertexType.Use]:                getUseAlias,
+	[VertexType.FunctionCall]:       () => undefined,
+	[VertexType.FunctionDefinition]: () => undefined,
+	[VertexType.VariableDefinition]: () => undefined
+} as const satisfies Record<VertexType, AliasHandler>;
+
+function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: NodeId[] = [];
+
+	// Source is Symbol -> resolve definitions of symbol
+	const identifier = recoverName(sourceId, dataflow.idMap);
+	if(identifier === undefined) {
 		return undefined;
 	}
 
-	return definitions.map<ResolveResult>(def => ({
-		value: (def as BuiltInIdentifierConstant).value,
-		from:  def.type
-	}));
+	const defs = resolveByName(identifier, environment);
+	if(defs === undefined) {
+		return undefined;
+	}
+
+	for(const def of defs) {
+		// If one definition is not constant (or a variable aliasing a constant)
+		// we can't say for sure what value the source has
+		if(def.type === ReferenceType.Variable) {
+			if(def.value === undefined) {
+				return undefined;
+			}
+			definitions.push(...def.value);
+		} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
+			definitions.push(def.nodeId);
+		} else {
+			return undefined;
+		}
+	}
+
+	return definitions;
 }
+
+export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const definitions: Set<NodeId> = new Set<NodeId>();
+
+	for(const sourceId of sourceIds) {
+		const info = dataflow.getVertex(sourceId);
+		if(info === undefined) {
+			return undefined;
+		}
+
+		const defs = AliasHandler[info.tag](sourceId, dataflow, environment);
+		for(const def of defs ?? []) {
+			definitions.add(def);
+		}
+	}
+
+	return [...definitions];
+}
+
+export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+	if(identifier === undefined) {
+		return undefined;
+	}
+
+	const defs = resolveByName(identifier, environment);
+	if(defs === undefined) {
+		return undefined;
+	}
+
+	const values: unknown[] = [];
+	for(const def of defs) {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			values.push(def.value);
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// Tracked in #1207
+		} else if(def.value !== undefined) {
+			/* if there is at least one location for which we have no idea, we have to give up for now! */
+			if(def.value.length === 0) {
+				return undefined;
+			}
+			for(const id of def.value) {
+				const value = graph.idMap?.get(id)?.content;
+				if(value !== undefined) {
+					values.push(value);
+				}
+			}
+		}
+	}
+
+	if(values.length == 0) {
+		return undefined;
+	}
+
+	return values;
+}
+
+/**
+ * Convenience function using the variable resolver as specified within the configuration file
+ * In the future we may want to have this set once at the start of the analysis
+ */
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+	const resolve = getConfig().solver.variables;
+
+	switch(resolve) {
+		case VariableResolve.Alias: return resolveToValues(identifier, environment, graph);
+		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
+		case VariableResolve.Disabled: return [];
+		default: assertUnreachable(resolve);
+	}
+}
+

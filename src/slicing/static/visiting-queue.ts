@@ -4,15 +4,17 @@ import type { NodeToSlice, SliceResult } from './slicer-types';
 import { slicerLogger } from './static-slicer';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isNotUndefined } from '../../util/assert';
 
 export class VisitingQueue {
-	private readonly threshold: number;
-	private timesHitThreshold                 = 0;
-	private seen                              = new Map<Fingerprint, NodeId>();
-	private idThreshold                       = new Map<NodeId, number>();
-	private queue:              NodeToSlice[] = [];
-	// the set of potential arguments holds arguments which may be added if found with the `defined-by-on-call` edge
-	public potentialArguments = new Map<NodeId, NodeToSlice>();
+	private readonly threshold:   number;
+	private timesHitThreshold:    number                 = 0;
+	private readonly seen:        Map<Fingerprint, NodeId | undefined>           = new Map();
+	private readonly idThreshold: Map<NodeId, number>   = new Map();
+	private readonly queue:       NodeToSlice[] = [];
+	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
+	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
+	public potentialAdditions:    Map<NodeId, [NodeId, NodeToSlice]> = new Map();
 
 	constructor(threshold: number) {
 		this.threshold = threshold;
@@ -58,7 +60,7 @@ export class VisitingQueue {
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set(this.seen.values())
+			result:            new Set([...this.seen.values()].filter(isNotUndefined))
 		};
 	}
 }

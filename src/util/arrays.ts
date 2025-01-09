@@ -144,7 +144,7 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
 /**
  * Returns the sum of all elements in the given array
  */
-export function sum(arr: number[]): number {
+export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
 	for(const elem of arr) {
 		sum += elem;
@@ -170,7 +170,7 @@ export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | und
 	if(a.length !== b.length) {
 		return false;
 	}
-	for(let i = 0; i < a.length; ++i) {
+	for(let i = 0; i < a.length; i++) {
 		if(a[i] !== b[i]) {
 			return false;
 		}

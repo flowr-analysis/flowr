@@ -24,7 +24,7 @@ async function getText(shell: RShell) {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'search API', rVersion: rversion })}
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) and the 
-[Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) of a given R code.
+[Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
 Within code, you can execute a search using the ${shortLink('runSearch', types.info)} function.
 

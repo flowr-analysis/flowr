@@ -5,7 +5,6 @@ import type {
 	FlowrSearchGetFilter
 } from './flowr-search';
 import type { FlowrFilterExpression } from './flowr-search-filters';
-import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
 	FlowrSearchTransformerNode, GetOutputOfTransformer, TransformerNames
@@ -82,7 +81,7 @@ export const FlowrSearchGenerator = {
 	}
 } as const;
 
-export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
+export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
 
 type GetElements<F> = F extends FlowrSearchElements<infer Info, infer Elements> ? Elements extends FlowrSearchElement<Info>[] ? Elements : never : never;
 
@@ -93,7 +92,7 @@ type GetElements<F> = F extends FlowrSearchElements<infer Info, infer Elements> 
  * @typeParam Transformers - The list of transformers that are applied to the generator's output.
  */
 export interface FlowrSearch<
-	Info = NoInfo,
+	Info = ParentInformation,
 	// eslint-disable-next-line @typescript-eslint/naming-convention -- type is kept in sync
 	_Generator extends GeneratorNames = GeneratorNames,
 	// eslint-disable-next-line @typescript-eslint/naming-convention -- type is kept in sync
@@ -229,9 +228,9 @@ export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search 
 /**
  * Freezes any accepted {@link FlowrSearchLike} into a {@link FlowrSearch}.
  */
-export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search): SearchOutput<Search> {
+export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search, optimizeIfBuild = true): SearchOutput<Search> {
 	if(search instanceof FlowrSearchBuilder) {
-		return search.build() as SearchOutput<Search>;
+		return search.build(optimizeIfBuild) as SearchOutput<Search>;
 	}
 	return search as SearchOutput<Search>;
 }

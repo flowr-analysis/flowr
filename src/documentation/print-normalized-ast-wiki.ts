@@ -4,7 +4,7 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid } from './doc-util/doc-types';
+import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -22,7 +22,7 @@ async function getText(shell: RShell) {
 	const now = performance.now();
 	const types = getTypesFromFolderAsMermaid({
 		rootFolder:  path.resolve('./src/r-bridge/lang-4.x/ast/model/'),
-		files:       [path.resolve('./src/abstract-interpretation/normalized-ast-fold.ts')],
+		files:       [path.resolve('./src/abstract-interpretation/normalized-ast-fold.ts'), path.resolve('./src/core/steps/pipeline/default-pipelines.ts')],
 		typeName:    'RNode',
 		inlineTypes: mermaidHide
 	});
@@ -76,7 +76,7 @@ ${codeBlock('mermaid', types.text)}
 _The generation of the class diagram required ${printAsMs(elapsed)}._
 </details>
 
-Node types are controlled by the \`${'RType'}\` enum (see ${getFilePathMd('../r-bridge/lang-4.x/ast/model/type.ts')}), 
+Node types are controlled by the ${shortLink('RType', types.info)} enum (see ${getFilePathMd('../r-bridge/lang-4.x/ast/model/type.ts')}), 
 which is used to distinguish between different types of nodes.
 Additionally, every AST node is generic with respect to the \`Info\` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
 Most notably, the \`info\` field holds the \`id\` of the node, which is used to reference the node in the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
@@ -97,8 +97,8 @@ The following segments intend to give you an overview of how to work with the no
 ## How Get a Normalized AST
 
 As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#the-pipeline-executor) wiki page, you can use the 
-\`${PipelineExecutor.name}\` to get the normalized AST. If you are only interested in the normalization,
-a pipeline like the \`DEFAULT_NORMALIZE_PIPELINE\` suffices:
+\`${PipelineExecutor.name}\` to get the ${shortLink('NormalizedAst', types.info)}. If you are only interested in the normalization,
+a pipeline like the ${shortLink('DEFAULT_NORMALIZE_PIPELINE', types.info)} suffices:
 
 ${codeBlock('ts', `
 async function getAst(code: string): Promise<RNode> {

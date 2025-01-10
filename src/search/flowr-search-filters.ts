@@ -12,6 +12,7 @@ export enum FlowrFilter {
 }
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
+export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
 
 export const FlowrFilters = {
 	[FlowrFilter.DropEmptyArguments]: (n: RNode<ParentInformation>) => {

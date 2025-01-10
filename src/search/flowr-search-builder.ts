@@ -16,11 +16,15 @@ import { guard } from '../util/assert';
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
+/**
+ * This object holds all the methods to generate search queries.
+ * For compatibility, please use the {@link Q} identifier object to access these methods.
+ */
 export const FlowrSearchGenerator = {
 	/**
 	 * Initialize a search query with the given elements.
-	 * **This is not intended to serialize well wrt. the nodes,
-	 * see {@link FlowrSearchGenerator.criterion} for a serializable alternative. **
+	 * <b>This is not intended to serialize well</b> wrt. the nodes,
+	 * see {@link FlowrSearchGenerator.criterion} for a serializable alternative (passing the ids with `$id`).
 	 */
 	from(from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[]): FlowrSearchBuilder<'from'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from', args: { from } });
@@ -43,7 +47,9 @@ export const FlowrSearchGenerator = {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'get', args: { filter } });
 	},
 	/**
-	 * Returns all elements that match the given {@link SlicingCriteria|criteria}.
+	 * Returns all elements that match the given {@link SlicingCriteria|criteria}
+	 * (e.g., `criterion('2@x', '3@<-')`,
+	 * to retrieve the first use of `x` in the second line and the first `<-` assignment in the third line).
 	 * This will throw an error, if any criteria cannot be resolved to an id.
 	 */
 	criterion<Criteria extends SlicingCriteria>(...criterion: Criteria): FlowrSearchBuilder<'criterion', [], ParentInformation, FlowrCriteriaReturn<Criteria>> {
@@ -81,6 +87,12 @@ export const FlowrSearchGenerator = {
 	}
 } as const;
 
+/**
+ * This is the root object to use for creating searches.
+ * See the {@link FlowrSearchGenerator} for the available methods.
+ * After the query is generated,
+ * you can use what is provided by the {@link FlowrSearchBuilder} to further refine the search.
+ */
 export const Q = FlowrSearchGenerator;
 
 export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
@@ -114,6 +126,7 @@ type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extend
 
 /**
  * Allows you to construct a search query from a {@link FlowrSearchGeneratorNode}.
+ * Please use the {@link Q} object to create an object of this class!
  * In the end, you _can_ freeze the search by calling {@link FlowrSearchBuilder#build},
  * however, the search executors may do that for you.
  *
@@ -121,7 +134,7 @@ type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extend
  * @see {@link FlowrSearch}
  * @see {@link FlowrSearchLike}
  */
-class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers extends TransformerNames[] = [], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> {
+export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers extends TransformerNames[] = [], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> {
 	private readonly generator: FlowrSearchGeneratorNode;
 	private readonly search:    FlowrSearchTransformerNode[] = [];
 

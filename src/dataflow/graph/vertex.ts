@@ -13,7 +13,8 @@ export enum VertexType {
 	FunctionDefinition = 'function-definition'
 }
 
-export const ValidVertexTypes = new Set(Object.values(VertexType));
+export const ValidVertexTypes: Set<string> = new Set(Object.values(VertexType));
+export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexType).map(([k, v]) => [v, k]));
 
 /**
  * A single index of a container, which is not a container itself.

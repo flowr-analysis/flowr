@@ -1,9 +1,27 @@
 import { guard } from './assert';
+import type { AnyArray, Tail } from 'ts-essentials';
 
 /**
  * Returns the tail of an array (all elements except the first one).
  */
 export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
+
+/**
+ * Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty.
+ */
+export type TailTypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
+	U : T extends [unknown] ? U :Tail<T>[number]
+
+/**
+ * Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty.
+ */
+export type Tail2TypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
+	U : T extends [unknown] ? U : T extends [unknown, unknown] ? U : Tail<Tail<T>>[number]
+
+/**
+ * Returns the last element of an array
+ */
+export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? L : never;
 
 /**
  * Splits the array every time the given predicate fires.

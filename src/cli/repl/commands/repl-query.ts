@@ -68,7 +68,7 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 
 	const processed = await getDataflow(shell, args.join(' '));
 	return {
-		query: executeQueries({ graph: processed.dataflow.graph, ast: processed.normalize }, parsedQuery),
+		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize }, parsedQuery),
 		processed
 	};
 }

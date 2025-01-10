@@ -16,7 +16,7 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
@@ -806,7 +806,7 @@ async function getText(shell: RShell) {
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
-This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
+This page briefly summarizes flowR's dataflow graph, represented by ${shortLink('DataflowGraph', vertexType.info)} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
 This wiki page focuses on explaining what such a dataflow graph looks like!
 

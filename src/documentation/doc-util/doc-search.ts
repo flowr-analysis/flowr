@@ -1,74 +1,71 @@
 import type { RShell } from '../../r-bridge/shell';
-import type { Queries, QueryResults, SupportedQueryTypes } from '../../queries/query';
-import { executeQueries } from '../../queries/query';
+import type { SupportedQueryTypes } from '../../queries/query';
 import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { jsonReplacer } from '../../util/json';
-import { markdownFormatter } from '../../util/ansi';
-import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
+import { getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
-import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
-import { codeBlock, jsonWithLimit } from './doc-code';
+import { codeBlock } from './doc-code';
 import { printAsMs } from '../../util/time';
-import { asciiSummaryOfQueryResult } from '../../queries/query-print';
+import type { FlowrSearchLike } from '../../search/flowr-search-builder';
+import { runSearch } from '../../search/flowr-search-executor';
+import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
+import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { formatRange } from '../../util/mermaid/dfg';
 
-export interface ShowQueryOptions {
+export interface ShowSearchOptions {
 	readonly showCode?:       boolean;
 	readonly collapseResult?: boolean;
-	readonly collapseQuery?:  boolean;
 }
 
-export async function showQuery<
-	Base extends SupportedQueryTypes,
-	VirtualArguments extends VirtualCompoundConstraint<Base> = VirtualCompoundConstraint<Base>
->(shell: RShell, code: string, queries: Queries<Base, VirtualArguments>, { showCode, collapseResult, collapseQuery }: ShowQueryOptions = {}): Promise<string> {
+export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
-	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize }, queries);
+	const result = runSearch(search, analysis);
 	const duration = performance.now() - now;
 
 	const metaInfo = `
-The analysis required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
+The search required _${printAsMs(duration)}_ (including parsing and normalization and the query) within the generation environment.
 	`.trim();
 
-	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
 	return `
 
-${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
+${codeBlock('ts', flowrSearchToCode(search))}
+
+<details style="color:gray"> <summary>Search Visualization</summary>
+
+${codeBlock('mermaid', flowrSearchToMermaid(search))}
+
+In the code:
+
+${codeBlock('r', code)}
+
+<details style="color:gray"> <summary>JSON Representation</summary>
+
+${codeBlock('json', JSON.stringify(search, null, 2))}
+
+</details>
+
+</details>
+
 
 ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary>' : ''}
 
-_Results (prettified and summarized):_
-
+The query returns the following vetices (all references to \`x\` in the code):
 ${
-	asciiSummaryOfQueryResult(markdownFormatter, duration, results as QueryResults<SupportedQueryTypes>, analysis)
+	result.map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, analysis.dataflow.graph)}')</b> at L${formatRange(node.location)}`).join(', ')
 }
-
-<details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
 ${metaInfo}	
 
-In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
+The returned results are highlighted thick and blue within the dataflow graph:
 
-${jsonWithLimit(results)}
+${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.map(({ node }) => node.info.id )) } )}
 
-</details>
-
-${
-	showCode ? `
-<details> <summary style="color:gray">Original Code</summary>
-
-${await printDfGraphForCode(shell, code, { switchCodeAndGraph: true })}
-
-</details>
-	` : ''
-}
 
 ${collapseResult ? '</details>' : ''}
 

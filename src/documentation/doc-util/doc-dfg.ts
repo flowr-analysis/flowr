@@ -55,7 +55,7 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (incl. parse and normalize) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize) within the generation environment.`;
 	const dfGraph = printDfGraph(result.dataflow.graph, mark);
 	let resultText = '\n\n';
 

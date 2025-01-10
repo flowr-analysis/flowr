@@ -10,7 +10,7 @@ export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 	return JSON.stringify(query);
 }
 
-export function executeStaticSliceQuery({ graph, ast }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {
+export function executeStaticSliceQuery({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly StaticSliceQuery[]): StaticSliceQueryResult {
 	const start = Date.now();
 	const results: StaticSliceQueryResult['results'] = {};
 	for(const query of queries) {

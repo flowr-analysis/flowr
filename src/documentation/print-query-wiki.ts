@@ -31,6 +31,9 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { executeLocationMapQuery } from '../queries/catalog/location-map-query/location-map-query-executor';
 import { CallTargets } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { executeConfigQuery } from '../queries/catalog/config-query/config-query-executor';
+import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
+import { Q } from '../search/flowr-search-builder';
+import { VertexType } from '../dataflow/graph/vertex';
 
 
 registerQueryDocumentation('call-context', {
@@ -213,6 +216,28 @@ ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow-cluster'
 	}], { showCode: false, collapseQuery: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('search', {
+	name:             'Search Query',
+	type:             'active',
+	shortDescription: 'Provides access to flowR\'s search API',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/search-query/search-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
+		return `
+With this query you can use the [Search API](${FlowrWikiBaseRef}/Search%20API) to conduct searches on the flowR analysis result. 
+
+Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'search',
+		search: Q.var('x').filter(VertexType.Use).build()
+	}], { showCode: true, collapseQuery: false })
 }
 		`;
 	}

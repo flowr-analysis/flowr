@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2024-12-18, 13:38:35 UTC presenting an overview of flowR's normalized ast (v2.1.8, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-normalized-ast-wiki.ts' on 2025-01-10, 18:40:04 UTC presenting an overview of flowR's normalized ast (v2.1.11, using R v4.4.2)._
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST), 
 offering the following benefits:
@@ -51,7 +51,7 @@ x"])
 
 ```
 	
-(The analysis required _16.95 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
+(The analysis required _6.87 ms_ (including parsing with the R&nbsp;shell) within the generation environment.)
 
 
 
@@ -380,10 +380,10 @@ Info .. RNode
 ```
 
 
-_The generation of the class diagram required 834.61 ms._
+_The generation of the class diagram required 675.96 ms._
 </details>
 
-Node types are controlled by the `RType` enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
+Node types are controlled by the [<code><span title="Types as we use them for our normalized AST. See  RNode  for a union type of all normalized AST nodes in-use. For each enum member, the respective normalized AST node should be referenced in the corresponding comment.">RType</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/type.ts#L159) enum (see [`./src/r-bridge/lang-4.x/ast/model/type.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/lang-4.x/ast/model/type.ts)), 
 which is used to distinguish between different types of nodes.
 Additionally, every AST node is generic with respect to the `Info` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
 Most notably, the `info` field holds the `id` of the node, which is used to reference the node in the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph).
@@ -1128,8 +1128,8 @@ The following segments intend to give you an overview of how to work with the no
 ## How Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface#the-pipeline-executor) wiki page, you can use the 
-`PipelineExecutor` to get the normalized AST. If you are only interested in the normalization,
-a pipeline like the `DEFAULT_NORMALIZE_PIPELINE` suffices:
+`PipelineExecutor` to get the [<code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L119). If you are only interested in the normalization,
+a pipeline like the [<code><span title="The pipeline to use when you want to parse and normalize your R file, see  DEFAULT_DATAFLOW_PIPELINE  for the additional `dataflow` step">DEFAULT_NORMALIZE_PIPELINE</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/core/steps/pipeline/default-pipelines.ts#L23) suffices:
 
 
 ```ts

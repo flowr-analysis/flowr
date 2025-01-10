@@ -354,7 +354,7 @@ export class FlowRServerConnection {
 		const { dataflow: dfg, normalize: ast } = fileInformation.pipeline.getResults(true);
 		guard(dfg !== undefined, `Dataflow graph must be present (request: ${request.filetoken})`);
 		guard(ast !== undefined, `AST must be present (request: ${request.filetoken})`);
-		const results = executeQueries({ graph: dfg.graph, ast }, request.query);
+		const results = executeQueries({ dataflow: dfg, ast }, request.query);
 		sendMessage<QueryResponseMessage>(this.socket, {
 			type: 'response-query',
 			id:   request.id,

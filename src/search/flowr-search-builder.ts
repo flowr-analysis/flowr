@@ -2,30 +2,40 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	FlowrSearchElement,
 	FlowrSearchElements,
-	FlowrSearchGetFilters,
-	FlowrSearchInput
+	FlowrSearchGetFilters
 } from './flowr-search';
-import type { Pipeline } from '../core/steps/pipeline/pipeline';
 import type { FlowrFilterExpression } from './flowr-search-filters';
 import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
-import type { FlowrSearchGeneratorNode } from './search-executor/search-generators';
+import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
-	FlowrSearchTransformerNode,
-	GetOutputOfTransformer, GetTransformer, TransformerNames
+	FlowrSearchTransformerNode, GetOutputOfTransformer, TransformerNames
 } from './search-executor/search-transformer';
+import { optimize } from './search-optimizer/search-optimizer';
+import type { SlicingCriteria } from '../slicing/criterion/parse';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { guard } from '../util/assert';
 
 
-export type FlowrGenerator<P extends Pipeline> = Record<string, (input: FlowrSearchInput<P>) => FlowrSearchElements>
+type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
+	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
 export const FlowrSearchGenerator = {
-	all(): FlowrSearchBuilder<[], NoInfo> {
+	all(): FlowrSearchBuilder<'all'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'all', args: undefined });
 	},
 	/**
-	 * TODO TODO TODO
+	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
 	 */
-	get(filter: FlowrSearchGetFilters): FlowrSearchBuilder<[], NoInfo> {
+	get(filter: FlowrSearchGetFilters): FlowrSearchBuilder<'get'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'get', args: filter });
+	},
+	/**
+	 * Returns all elements that match the given {@link SlicingCriteria|criteria}.
+	 * This will throw an error, if any criteria cannot be resolved to an id.
+	 */
+	criterion<Criteria extends SlicingCriteria>(...criterion: Criteria): FlowrSearchBuilder<'criterion', [], ParentInformation, FlowrCriteriaReturn<Criteria>> {
+		guard(criterion.length > 0, 'At least one criterion must be provided');
+		return new FlowrSearchBuilder({ type: 'generator', name: 'criterion', args: criterion });
 	},
 	/**
 	 * Short form of {@link get} with only the
@@ -51,21 +61,28 @@ export const FlowrSearchGenerator = {
 	}
 } as const;
 
-export type FlowrSearchBuilderType<Transformers extends FlowrSearchTransformerNode[] = FlowrSearchTransformerNode[], Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Transformers, Info, ElementType>;
+export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
 
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.
+ *
+ * @typeParam Transformers - The list of transformers that are applied to the generator's output.
  */
-export interface FlowrSearch<Transformers extends readonly TransformerNames[] = readonly TransformerNames[]> {
+export interface FlowrSearch<
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- type is kept in sync
+	_Generator extends GeneratorNames = GeneratorNames,
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- type is kept in sync
+	_Transformers extends readonly TransformerNames[] = readonly TransformerNames[],
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- type is kept in sync
+	_ElementType = FlowrSearchElements<NoInfo, FlowrSearchElement<NoInfo>[]>
+> {
 	readonly generator: FlowrSearchGeneratorNode;
 	readonly search:    readonly FlowrSearchTransformerNode[];
 }
 
 
-type FlowrSearchBuilderOut<Transformers extends FlowrSearchTransformerNode[], Info, Transformer extends TransformerNames> = FlowrSearchBuilder<[...Transformers, Transformer], Info, GetOutputOfTransformer<Transformer['name']>>;
-
-export type FlowrSearchBuilderTransformerNames<Builder> = Builder extends FlowrSearchBuilder<infer Transformers, infer _, infer _> ? Transformers[number]['name'] : never;
+type FlowrSearchBuilderOut<Generator extends GeneratorNames, Transformers extends TransformerNames[], Info, Transformer extends TransformerNames> = FlowrSearchBuilder<Generator,[...Transformers, Transformer], Info, GetOutputOfTransformer<Transformer>>;
 
 /**
  * Allows you to construct a search query from a {@link FlowrSearchGeneratorNode}.
@@ -76,9 +93,9 @@ export type FlowrSearchBuilderTransformerNames<Builder> = Builder extends FlowrS
  * @see {@link FlowrSearch}
  * @see {@link FlowrSearchLike}
  */
-class FlowrSearchBuilder<Transformers extends FlowrSearchTransformerNode[] = [], Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> {
+class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers extends TransformerNames[] = [], Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> {
 	private readonly generator: FlowrSearchGeneratorNode;
-	private readonly search:    Transformers = [] as unknown as Transformers;
+	private readonly search:    FlowrSearchTransformerNode[] = [];
 
 	constructor(generator: FlowrSearchGeneratorNode) {
 		this.generator = generator;
@@ -89,63 +106,60 @@ class FlowrSearchBuilder<Transformers extends FlowrSearchTransformerNode[] = [],
 	 *
 	 * As filter does not change the type of any contained elements, we can return the same type for type safety checks.
 	 */
-	filter<Expression extends FlowrFilterExpression>(filter: Expression): FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'filter'> & { args: { filter: Expression }}> {
+	filter(filter: FlowrFilterExpression): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
 		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter } });
-		return this as unknown as FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'filter'> & { args: { filter: Expression }}>;
+		return this;
 	}
 
 	/**
 	 * first either returns the first element of the search or nothing, if no elements are present.
 	 */
-	first(): FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'first'>> {
+	first(): FlowrSearchBuilderOut<Generator, Transformers,Info, 'first'> {
 		this.search.push({ type: 'transformer', name: 'first', args: undefined });
-		return this as unknown as FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'first'>>;
+		return this;
 	}
 
 	/**
 	 * last either returns the last element of the search or nothing, if no elements are present.
 	 */
-	last(): FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'last'>> {
+	last(): FlowrSearchBuilderOut<Generator, Transformers,Info, 'last'> {
 		this.search.push({ type: 'transformer', name: 'last', args: undefined });
-		return this as unknown as FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'last'>>;
+		return this;
 	}
 	/**
 	 * index returns the element at the given index if it exists
 	 */
-	index<Idx extends number>(index: Idx): FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'index'> & { args: { index: Idx }}> {
+	index<Idx extends number>(index: Idx): FlowrSearchBuilderOut<Generator, Transformers,Info, 'index'> {
 		this.search.push({ type: 'transformer', name: 'index', args: { index } });
-		return this as unknown as FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'index'> & { args: { index: Idx }}>;
+		return this;
 	}
 
 	/**
 	 * tail returns all elements of the search except the first one.
 	 */
-	tail(): FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'tail'>> {
+	tail(): FlowrSearchBuilderOut<Generator, Transformers,Info, 'tail'> {
 		this.search.push({ type: 'transformer', name: 'tail', args: undefined });
-		return this as unknown as FlowrSearchBuilderOut<Transformers,Info, GetTransformer<'tail'>>;
+		return this;
 	}
 
 	/**
 	 * take returns the first `count` elements of the search.
 	 */
-	take<Count extends number>(count: Count): FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'take'> & { args: { count: Count }}> {
+	take<Count extends number>(count: Count): FlowrSearchBuilderOut<Generator, Transformers, Info, 'take'> {
 		this.search.push({ type: 'transformer', name: 'take', args: { count } });
-		return this as unknown as FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'take'> & { args: { count: Count }}>;
+		return this;
 	}
 
 	/**
 	 * skip returns all elements of the search except the first `count` ones.
 	 */
-	skip<Count extends number>(count: Count): FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'skip'> & { args: { count: Count }}> {
+	skip<Count extends number>(count: Count): FlowrSearchBuilderOut<Generator, Transformers, Info, 'skip'> {
 		this.search.push({ type: 'transformer', name: 'skip', args: { count } });
-		return this as unknown as FlowrSearchBuilderOut<Transformers, Info, GetTransformer<'skip'> & { args: { count: Count }}>;
+		return this;
 	}
 
-	build(): FlowrSearch<Transformers> {
-		return {
-			generator: this.generator,
-			search:    this.search
-		};
+	build(): FlowrSearch<Generator, Transformers, ElementType> {
+		return optimize(this.generator, this.search);
 	}
 }
 
@@ -155,13 +169,15 @@ class FlowrSearchBuilder<Transformers extends FlowrSearchTransformerNode[] = [],
  */
 export type FlowrSearchLike = FlowrSearch | FlowrSearchBuilderType;
 
+export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search extends FlowrSearchBuilderType<infer Generator, infer Transformers, infer _, infer Elements> ? FlowrSearch<Generator, Transformers, Elements> : never;
+
 /**
  * Freezes any accepted {@link FlowrSearchLike} into a {@link FlowrSearch}.
  */
-export function getFlowrSearch(search: FlowrSearchLike): FlowrSearch {
+export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search): SearchOutput<Search> {
 	if(search instanceof FlowrSearchBuilder) {
-		return search.build();
+		return search.build() as SearchOutput<Search>;
 	}
-	return search;
+	return search as SearchOutput<Search>;
 }
 

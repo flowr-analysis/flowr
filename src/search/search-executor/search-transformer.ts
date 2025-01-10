@@ -28,7 +28,6 @@ export type GetTransformer<Name extends TransformerNames> = FlowrSearchTransform
 
 export type GetOutputOfTransformer<Name extends TransformerNames> = ReturnType<typeof transformers[Name]>;
 
-
 /**
  * All supported generators!
  */
@@ -41,6 +40,14 @@ export const transformers = {
 	skip:   getSkip,
 	filter: getFilter
 } as const;
+
+
+export function getTransformer<Name extends TransformerNames>(name: Name): typeof transformers[Name] {
+	if(!transformers[name]) {
+		throw new Error(`Unknown transformer: ${name}`);
+	}
+	return transformers[name];
+}
 
 /** If we already have no more elements, cascade will not add any but keep the empty elements, otherwise it will now be NewElements */
 type CascadeEmpty<Info, Elements extends FlowrSearchElement<Info>[], NewElements extends FlowrSearchElement<Info>[]> =

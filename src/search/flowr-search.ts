@@ -21,10 +21,27 @@ export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Rec
 		FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilters extends Record<string, unknown> {
-    readonly line?:   number;
-    readonly column?: number;
-    readonly name?:   string;
-    readonly id?:     NodeId;
+	/**
+	 * The node must be in the given line.
+	 */
+    readonly line?:     number;
+	/**
+	 * The node must be in the given column.
+	 */
+    readonly column?:   number;
+	/**
+	 * The node must have the given name.
+	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilters#nameIsRegex} to true.
+	 */
+    readonly name?:     string;
+	/**
+	 * Only useful in combination with `name`. If true, the name is treated as a regular expression.
+	 */
+	readonly nameIsRegex?: boolean;
+	/**
+	 * The node must have the given id.
+	 */
+    readonly id?:       NodeId;
 }
 
 type MinimumInputForFlowrSearch<P extends Pipeline> =
@@ -41,6 +58,12 @@ export type FlowrSearchInput<
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	private elements: Elements = [] as unknown as Elements;
+
+	public constructor(elements?: Elements) {
+		if(elements) {
+			this.elements = elements;
+		}
+	}
 
 	public add(this: FlowrSearchElements<Info, Elements>, element: FlowrSearchElement<Info>): FlowrSearchElements<Info, FlowrSearchElement<Info>[]> {
 		this.elements.push(element);

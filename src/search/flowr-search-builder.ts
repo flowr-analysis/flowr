@@ -1,13 +1,11 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	FlowrSearchElement,
-	FlowrSearchElements,
-	FlowrSearchGetFilter
-} from './flowr-search';
+import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
 import type { FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
-	FlowrSearchTransformerNode, GetOutputOfTransformer, TransformerNames
+	FlowrSearchTransformerNode,
+	GetOutputOfTransformer,
+	TransformerNames
 } from './search-executor/search-transformer';
 import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
@@ -35,10 +33,12 @@ export const FlowrSearchGenerator = {
 	},
 	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
+	 * You may pass a negative line number to count from the back.
+	 * Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for "production".
 	 */
 	get(filter: FlowrSearchGetFilter): FlowrSearchBuilder<'get'> {
 		guard(!filter.nameIsRegex || filter.name, 'If nameIsRegex is set, a name should be provided');
-		guard(!filter.line || filter.line > 0, 'If line is set, it must be greater than 0, but was ' + filter.line);
+		guard(!filter.line || filter.line != 0, 'If line is set, it must be different from 0 as there is no 0 line');
 		guard(!filter.column || filter.column > 0, 'If column is set, it must be greater than 0, but was ' + filter.column);
 		return new FlowrSearchBuilder({ type: 'generator', name: 'get', args: { filter } });
 	},

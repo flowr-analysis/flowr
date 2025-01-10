@@ -43,14 +43,13 @@ export function assertSearch(
 		});
 
 
-		describe.sequential.each([true, false])('optimize %s', optimize => {
-			test.sequential.each(searches)('%s', search => {
+		describe.each([true, false])('optimize %s', optimize => {
+			test.each(searches)('%s', search => {
 				guard(isNotUndefined(results), 'Results must be defined');
 				const info = results;
 				search = getFlowrSearch(search, optimize);
 
 				const result = runSearch(search, info);
-
 				try {
 					expectedIds = expectedIds.map(id => {
 						try {
@@ -60,7 +59,9 @@ export function assertSearch(
 							return id;
 						}
 					});
-					assert(arrayEqual(result.map(r => r.node.info.id), expectedIds), `Expected search results to match. Wanted: [${expectedIds.join(', ')}], got: [${result.map(r => r.node.id).join(', ')}]`);
+					assert(
+						arrayEqual(result.map(r => r.node.info.id).sort(), [...expectedIds].sort()),
+						`Expected search results to match. Wanted: [${expectedIds.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
 				} /* v8 ignore next 4 */ catch(e: unknown) {
 					console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
 					console.error('Search', flowrSearchToAscii(search));

@@ -39,12 +39,31 @@ export const generators = {
 } as const;
 
 function generateAll(data: FlowrSearchInput<Pipeline>): FlowrSearchElements<ParentInformation> {
-	return new FlowrSearchElements([...data.normalize.idMap.values()].map(node => ({ node })));
+	return new FlowrSearchElements(getAllNodes(data)
+		.map(node => ({ node })));
+}
+
+function getAllNodes(data: FlowrSearchInput<Pipeline>): RNodeWithParent[] {
+	return [...new Map([... data.normalize.idMap.values()].map(n => [n.info.id, n]))
+		.values()];
 }
 
 
 function generateGet(data: FlowrSearchInput<Pipeline>, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): FlowrSearchElements<ParentInformation> {
-	let potentials = (id ? [data.normalize.idMap.get(id)] : [...data.normalize.idMap.values()]).filter(isNotUndefined);
+	let potentials = (id ?
+		[data.normalize.idMap.get(id)].filter(isNotUndefined) :
+		getAllNodes(data)
+	);
+
+	if(line && line < 0) {
+		const maxLines = data.normalize.ast.info.fullRange?.[2] ??
+			(id ? getAllNodes(data) : potentials).reduce(
+				(maxLine, { location }) => location && location[2] > maxLine ? location[2] : maxLine,
+				0
+			);
+
+		line = maxLines + line + 1;
+	}
 
 	if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);

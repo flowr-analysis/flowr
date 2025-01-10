@@ -37,12 +37,20 @@ export function optimize<
 function optimizeGenerator(generator: FlowrSearchGeneratorNode): FlowrSearchGeneratorNode {
 	return dropAnyNameRegex(generator);
 }
-
+/*
+ * Ideas:
+ * Replace .tail().last() with .last()
+ * Replace .take(1) with '.first()'
+ * Remove duplicate indices in a .select
+ * Provide unification step after merge (id based)
+ * Install caches if sorting is required multiple times (especially for repeated use of generators)
+ */
 function optimizeSearch(
 	search: FlowrSearchTransformerNode[],
 	_generator: FlowrSearchGeneratorNode
 ): FlowrSearchTransformerNode[] {
 	search = dropDuplicateNoops(search);
+	search = selectWithSingleCanBeIndex(search);
 	return search;
 }
 
@@ -54,12 +62,25 @@ function dropDuplicateNoops(transformers: FlowrSearchTransformerNode[]): FlowrSe
 	for(const transformer of transformers) {
 		if(lastTransformer === undefined || lastTransformer.name !== transformer.name || !noopTransformers.has(transformer.name)) {
 			newTransformers.push(transformer);
-		} else {
-			console.log(`Dropping duplicate noop transformer: ${transformer.name}`);
 		}
 		lastTransformer = transformer;
 	}
 	return newTransformers;
+}
+
+function selectWithSingleCanBeIndex(transformers: FlowrSearchTransformerNode[]): FlowrSearchTransformerNode[]  {
+	return transformers.map(transformer => {
+		if(transformer.name === 'select' && transformer.args.select.length === 1) {
+			return {
+				...transformer,
+				name: 'index',
+				args: {
+					index: transformer.args.select[0]
+				}
+			};
+		}
+		return transformer;
+	});
 }
 
 function dropAnyNameRegex(generator: FlowrSearchGeneratorNode): FlowrSearchGeneratorNode {
@@ -67,7 +88,6 @@ function dropAnyNameRegex(generator: FlowrSearchGeneratorNode): FlowrSearchGener
 		return generator;
 	}
 	if(generator.args.filter.name === '.') {
-		console.log('Dropping any name regex');
 		return {
 			...generator,
 			args: {

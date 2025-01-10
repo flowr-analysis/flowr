@@ -1,7 +1,4 @@
-
-
-import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import { RType , ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
 import { ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -11,13 +8,15 @@ import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 export type FlowrFilterName = keyof typeof FlowrFilters;
 
 export enum FlowrFilter {
-	CustomDummy = 'custom-dummy'
+	DropEmptyArguments = 'drop-empty-arguments'
 }
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 
 export const FlowrFilters = {
-	'custom-dummy': 'custom-dummy'
+	[FlowrFilter.DropEmptyArguments]: (n: RNode<ParentInformation>) => {
+		return n.type !== RType.Argument || n.name !== undefined;
+	}
 } as const;
 
 
@@ -172,7 +171,11 @@ const evalVisit = {
 		node.type === value,
 	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, node }: FilterData) =>
 		graph.getVertex(node.info.id)?.tag === value,
-	'special': ({ value }: LeafSpecial) => {
+	'special': ({ value }: LeafSpecial, { node }: FilterData) => {
+		const getHandler = FlowrFilters[value as FlowrFilterName];
+		if(getHandler) {
+			return getHandler(node);
+		}
 		throw new Error(`Special filter not implemented: ${value}`);
 	}
 };

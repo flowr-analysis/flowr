@@ -100,8 +100,6 @@ export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorN
 type GetElements<F> = F extends FlowrSearchElements<infer Info, infer Elements> ? Elements extends FlowrSearchElement<Info>[] ? Elements : never : never;
 
 
-// TODO: allow to reuse existing queries including generators (with merge
-// TODO: allow to name queries for reuse
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.

@@ -16,7 +16,6 @@ export interface SearchQuery extends BaseQueryFormat {
 }
 
 export interface SearchQueryResult extends BaseQueryResult {
-	// TODO: find a better way to link these queries
 	readonly results: { ids: NodeId[], search: FlowrSearch }[]
 }
 
@@ -25,7 +24,7 @@ export const SearchQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'search'>['search'];
 		result.push(`Query: ${bold('search', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [i, { ids, search }] of out.results.entries()) {
+		for(const [, { ids, search }] of out.results.entries()) {
 			result.push(`   ╰ [query](${mermaidCodeToUrl(flowrSearchToMermaid(search))}): {${summarizeIdsIfTooLong(formatter, ids)}}`);
 		}
 		return true;

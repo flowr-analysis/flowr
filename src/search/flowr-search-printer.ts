@@ -83,7 +83,6 @@ export function flowrSearchToCode(search: FlowrSearchLike): string {
 
 function flowrTransformerToCode(node: FlowrSearchTransformerNode): string {
 	if(node.name === 'filter') {
-		// TODO: improved tree support!
 		const a = node.args.filter;
 		if(ValidVertexTypes.has(String(a))) {
 			return `${node.name}(VertexType.${ValidVertexTypeReverse[String(a)]})`;

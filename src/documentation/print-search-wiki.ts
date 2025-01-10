@@ -26,6 +26,7 @@ async function getText(shell: RShell) {
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) and the 
 [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) of a given R code.
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+Within code, you can execute a search using the ${shortLink('runSearch', types.info)} function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -61,7 +62,11 @@ ${
 		).join('\n')
 }
 
-TODO: internally, uses flowr search element, strives for type safety, has optimizer passes, explain .build
+Every search (and consequently the search pipeline) works with an array of ${shortLink('FlowrSearchElement', types.info)} (neatly wrapped in ${shortLink('FlowrSearchElements', types.info)}).
+Hence, even operations such as \`.first\` or \`.last\` return an array of elements (albeit with a single or no element).
+The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
+In addition, it offers optimizer passes to optimize the search pipeline before execution.
+They are executed with \`.build\` which may happen automatically, whenever you want to run a search using ${shortLink('runSearch', types.info)}.
 
 `;
 }

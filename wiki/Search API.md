@@ -1,8 +1,9 @@
-_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 19:45:04 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.2)._
+_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 19:51:41 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.2)._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph) and the 
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki//Normalized%20AST) of a given R code.
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to access this API.
+Within code, you can execute a search using the [<code><span title="Run a search with the given search query and data.">runSearch</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-executor.ts#L19) function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -60,7 +61,7 @@ x <- x * x
 The query returns the following vetices (all references to `x` in the code):
 <b>0 ('x')</b> at L1.1, <b>1 ('x')</b> at L1.6, <b>2 ('x')</b> at L1.10
 
-The search required _10.55 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _10.22 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 Highlighted within the dataflow graph:
 
@@ -97,7 +98,7 @@ flowchart LR
     4 -->|"returns, argument"| 0
 ```
 	
-(The analysis required _2.40 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _3.09 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -184,7 +185,7 @@ x <- 2
 The query returns the following vetices (all references to `x` in the code):
 <b>9 ('x')</b> at L3.1, <b>18 ('x')</b> at L5.1
 
-The search required _7.00 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _6.92 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 Highlighted within the dataflow graph:
 
@@ -277,7 +278,7 @@ flowchart LR
     20 -->|"returns, argument"| 18
 ```
 	
-(The analysis required _4.30 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _3.70 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -369,6 +370,10 @@ tail returns all elements of the search except the first one.
 - [<code><span title="take returns the first #96;count#96; elements of the search.">FlowrSearchBuilder::<b>take</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L188)\
 take returns the first `count` elements of the search.
 
-TODO: internally, uses flowr search element, strives for type safety, has optimizer passes, explain .build
+Every search (and consequently the search pipeline) works with an array of [<code><span title="Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc. just for the respective search.">FlowrSearchElement</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search.ts#L11) (neatly wrapped in [<code><span title="Intentionally, we abstract away from an array to avoid the use of conventional typescript operations">FlowrSearchElements</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search.ts#L62)).
+Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
+The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
+In addition, it offers optimizer passes to optimize the search pipeline before execution.
+They are executed with `.build` which may happen automatically, whenever you want to run a search using [<code><span title="Run a search with the given search query and data.">runSearch</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-executor.ts#L19).
 
 

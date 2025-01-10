@@ -1,7 +1,7 @@
-_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 20:09:54 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.2)._
+_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 20:21:58 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.0)._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph) and the 
-[Normalized AST](https://github.com/flowr-analysis/flowr/wiki//Normalized%20AST) of a given R code.
+[Normalized AST](https://github.com/flowr-analysis/flowr/wiki//Normalized%20AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to access this API.
 Within code, you can execute a search using the [<code><span title="Run a search with the given search query and data.">runSearch</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-executor.ts#L19) function.
 
@@ -61,7 +61,7 @@ x <- x * x
 The query returns the following vetices (all references to `x` in the code):
 <b>0 ('x')</b> at L1.1, <b>1 ('x')</b> at L1.6, <b>2 ('x')</b> at L1.10
 
-The search required _41.88 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _24.89 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -98,7 +98,7 @@ flowchart LR
     4 -->|"returns, argument"| 0
 ```
 	
-(The analysis required _6.49 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _6.24 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -185,7 +185,7 @@ x <- 2
 The query returns the following vetices (all references to `x` in the code):
 <b>9 ('x')</b> at L3.1, <b>18 ('x')</b> at L5.1
 
-The search required _17.65 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _17.23 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -278,7 +278,7 @@ flowchart LR
     20 -->|"returns, argument"| 18
 ```
 	
-(The analysis required _5.35 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _12.45 ms_ (including parse and normalize) within the generation environment.)
 
 
 

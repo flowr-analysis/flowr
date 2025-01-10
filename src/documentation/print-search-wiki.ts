@@ -40,7 +40,7 @@ For example, let's have every definition of \`x\` in the code but the first one:
 ${await showSearch(shell, 'x <- x * x\nprint(x)\nx <- y <- 3\nprint(x)\nx <- 2', Q.var('x').filter(VertexType.VariableDefinition).skip(1))}
 
 In summary, every search has two parts. It is initialized with a _generator_ (such as \`Q.var('x')\`)
-and can be further redefined with _transformers_ or _modifiers_.
+and can be further refined with _transformers_ or _modifiers_.
 Such queries can be constructed starting from the ${shortLink('Q', types.info)} object (backed by ${shortLink('FlowrSearchGenerator', types.info)}) and
 are fully serializable so you can use them when communicating with the [Query API](${FlowrWikiBaseRef}/Query%20API).
 

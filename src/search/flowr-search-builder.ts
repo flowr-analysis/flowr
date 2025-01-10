@@ -48,6 +48,24 @@ export const FlowrSearchGenerator = {
 
 export type FlowrSearchBuilderType<Info = NoInfo, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Info, ElementType>;
 
+/**
+ * The search query is a combination of a generator and a list of transformers
+ * and allows this view to pass such queries in a serialized form.
+ */
+export interface FlowrSearch {
+	readonly generator: FlowrSearchGeneratorNode;
+	readonly search:    readonly FlowrSearchTransformerNode[];
+}
+
+/**
+ * Allows you to construct a search query from a {@link FlowrSearchGeneratorNode}.
+ * In the end, you _can_ freeze the search by calling {@link FlowrSearchBuilder#build},
+ * however, the search executors may do that for you.
+ *
+ * @see {@link FlowrSearchGenerator}
+ * @see {@link FlowrSearch}
+ * @see {@link FlowrSearchLike}
+ */
 class FlowrSearchBuilder<Info, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> {
 	private generator: FlowrSearchGeneratorNode;
 	private search:    FlowrSearchTransformerNode[] = [];
@@ -111,4 +129,28 @@ class FlowrSearchBuilder<Info, ElementType = FlowrSearchElements<Info, FlowrSear
 		this.search.push({ type: 'transformer', name: 'skip', args: { count } });
 		return this;
 	}
+
+	build(): FlowrSearch {
+		return {
+			generator: this.generator,
+			search:    this.search
+		};
+	}
 }
+
+/**
+ * This type summarizes all types that can be used in places in which the API expects you to provide a search query.
+ * @see {@link FlowrSearch}
+ */
+export type FlowrSearchLike = FlowrSearch | FlowrSearchBuilderType;
+
+/**
+ * Freezes any accepted {@link FlowrSearchLike} into a {@link FlowrSearch}.
+ */
+export function getFlowrSearch(search: FlowrSearchLike): FlowrSearch {
+	if(search instanceof FlowrSearchBuilder) {
+		return search.build();
+	}
+	return search;
+}
+

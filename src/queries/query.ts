@@ -28,9 +28,12 @@ import type { LocationMapQuery } from './catalog/location-map-query/location-map
 import { LocationMapQueryDefinition } from './catalog/location-map-query/location-map-query-format';
 import type { ConfigQuery } from './catalog/config-query/config-query-format';
 import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
+import type { SearchQuery } from './catalog/search-query/search-query-format';
+import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
+	| SearchQuery
 	| DataflowQuery
 	| NormalizedAstQuery
 	| IdMapQuery
@@ -65,7 +68,8 @@ export const SupportedQueries = {
 	'static-slice':     StaticSliceQueryDefinition,
 	'lineage':          LineageQueryDefinition,
 	'dependencies':     DependenciesQueryDefinition,
-	'location-map':     LocationMapQueryDefinition
+	'location-map':     LocationMapQueryDefinition,
+	'search':           SearchQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

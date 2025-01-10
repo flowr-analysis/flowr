@@ -81,10 +81,15 @@ export const FlowrSearchGenerator = {
 	}
 } as const;
 
+export const Q = FlowrSearchGenerator;
+
 export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
 
 type GetElements<F> = F extends FlowrSearchElements<infer Info, infer Elements> ? Elements extends FlowrSearchElement<Info>[] ? Elements : never : never;
 
+
+// TODO: allow to reuse existing queries including generators (with merge
+// TODO: allow to name queries for reuse
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.

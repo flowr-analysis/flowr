@@ -72,7 +72,7 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ graph: info.dataflow.graph, ast: info.normalize }, queries);
+		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize }, queries);
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 

@@ -3,7 +3,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 
 
-export function executeDataflowQuery({ graph }: BasicQueryData, queries: readonly DataflowQuery[]): DataflowQueryResult {
+export function executeDataflowQuery({ dataflow: { graph } }: BasicQueryData, queries: readonly DataflowQuery[]): DataflowQueryResult {
 	if(queries.length !== 1) {
 		log.warn('Dataflow query expects only up to one query, but got', queries.length);
 	}

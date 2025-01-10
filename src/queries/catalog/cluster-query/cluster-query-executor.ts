@@ -4,7 +4,7 @@ import { findAllClusters } from '../../../dataflow/cluster';
 import type { BasicQueryData } from '../../base-query-format';
 
 
-export function executeDataflowClusterQuery({ graph }: BasicQueryData, queries: readonly DataflowClusterQuery[]): DataflowClusterQueryResult {
+export function executeDataflowClusterQuery({ dataflow: { graph } }: BasicQueryData, queries: readonly DataflowClusterQuery[]): DataflowClusterQueryResult {
 	if(queries.length !== 1) {
 		log.warn('The dataflow cluster query expects only up to one query, but got', queries.length);
 	}

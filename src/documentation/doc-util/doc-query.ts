@@ -29,7 +29,7 @@ export async function showQuery<
 		shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
-	const results = executeQueries({ graph: analysis.dataflow.graph, ast: analysis.normalize }, queries);
+	const results = executeQueries({ dataflow: analysis.dataflow, ast: analysis.normalize }, queries);
 	const duration = performance.now() - now;
 
 	const metaInfo = `

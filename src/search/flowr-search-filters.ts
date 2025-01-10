@@ -1,16 +1,23 @@
 
 
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
+import { ValidVertexTypes } from '../dataflow/graph/vertex';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../dataflow/info';
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 
 export enum FlowrFilter {
-
+	CustomDummy = 'custom-dummy'
 }
 
-export const FlowrFilters = {
+export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 
+export const FlowrFilters = {
+	'custom-dummy': 'custom-dummy'
 } as const;
 
 
@@ -30,7 +37,12 @@ interface BooleanUnaryNode<Composite> {
 	readonly operand: Composite;
 }
 
-type Leaf = ValidFilterTypes;
+type LeafRType = { readonly type: 'r-type', readonly value: RType };
+type LeafVertexType = { readonly type: 'vertex-type', readonly value: VertexType };
+type LeafSpecial = { readonly type: 'special', readonly value: string };
+
+type Leaf = LeafRType | LeafVertexType | LeafSpecial;
+
 
 type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| BooleanUnaryNode<BooleanNode>
@@ -39,6 +51,11 @@ type BooleanNode = BooleanBinaryNode<BooleanNode>
 
 type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator
 
+/**
+ * @see {@link FlowrFilterCombinator.is}
+ * @see {@link evalFilter}
+ * @see {@link binaryTreeToString}
+ */
 export class FlowrFilterCombinator {
 	private tree: BooleanNode;
 
@@ -46,27 +63,37 @@ export class FlowrFilterCombinator {
 		this.tree = this.unpack(init);
 	}
 
-	public static is(value: BooleanNodeOrCombinator): FlowrFilterCombinator {
-		return new this(value);
+	public static is(value: BooleanNodeOrCombinator | ValidFilterTypes): FlowrFilterCombinator {
+		if(typeof value === 'object') {
+			return new this(value);
+		} else if(ValidRTypes.has(value as RType)) {
+			return new this({ type: 'r-type', value: value as RType });
+		} else if(ValidVertexTypes.has(value as VertexType)) {
+			return new this({ type: 'vertex-type', value: value as VertexType });
+		} else if(ValidFlowrFilters.has(value)) {
+			return new this({ type: 'special', value: value as FlowrFilter });
+		} else {
+			throw new Error(`Invalid filter value: ${value}`);
+		}
 	}
 
-	public and(right: BooleanNodeOrCombinator): this {
+	public and(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
 		return this.binaryRight('and', right);
 	}
 
-	public or(right: BooleanNodeOrCombinator): this {
+	public or(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
 		return this.binaryRight('or', right);
 	}
 
-	public xor(right: BooleanNodeOrCombinator): this {
+	public xor(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
 		return this.binaryRight('xor', right);
 	}
 
-	private binaryRight(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator): this {
+	private binaryRight(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes): this {
 		this.tree = {
 			type:  op,
 			left:  this.tree,
-			right: this.unpack(right)
+			right: this.unpack(FlowrFilterCombinator.is(right))
 		};
 		return this;
 	}
@@ -85,6 +112,10 @@ export class FlowrFilterCombinator {
 
 	private unpack(val: BooleanNodeOrCombinator): BooleanNode {
 		return val instanceof FlowrFilterCombinator ? val.tree : val;
+	}
+
+	public get(): BooleanNode {
+		return this.tree;
 	}
 }
 
@@ -106,8 +137,8 @@ const typeToSymbol: Record<BooleanBinaryNode<BooleanNode>['type'] | BooleanUnary
 };
 
 function treeToStringImpl(tree: BooleanNode, depth: number): string {
-	if(typeof tree === 'string') {
-		return tree;
+	if(tree.type === 'r-type' || tree.type === 'vertex-type' || tree.type === 'special') {
+		return tree.value;
 	}
 	if(tree.type === 'not') {
 		return `${typeToSymbol[tree.type]}${treeToStringImpl(tree.operand, depth)}`;
@@ -120,4 +151,39 @@ function treeToStringImpl(tree: BooleanNode, depth: number): string {
 
 export function isBinaryTree(tree: unknown): tree is { tree: BooleanNode } {
 	return typeof tree === 'object' && tree !== null && 'tree' in tree;
+}
+
+interface FilterData {
+	readonly node:      RNode<ParentInformation>,
+	readonly normalize: NormalizedAst,
+	readonly dataflow:  DataflowInformation
+}
+
+const evalVisit = {
+	and: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) && evalTree(right, data),
+	or: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) || evalTree(right, data),
+	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) !== evalTree(right, data),
+	not: ({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
+		!evalTree(operand, data),
+	'r-type': ({ value }: LeafRType, { node }: FilterData) =>
+		node.type === value,
+	'vertex-type': ({ value }: LeafVertexType, { dataflow: { graph }, node }: FilterData) =>
+		graph.getVertex(node.info.id)?.tag === value,
+	'special': ({ value }: LeafSpecial) => {
+		throw new Error(`Special filter not implemented: ${value}`);
+	}
+};
+
+function evalTree(tree: BooleanNode, data: FilterData): boolean {
+	/* we ensure that the types fit */
+	return evalVisit[tree.type](tree as never, data);
+}
+
+export function evalFilter(filter: FlowrFilterExpression, data: FilterData): boolean {
+	/* common lift, this can be improved easily :D */
+	const tree = FlowrFilterCombinator.is(filter);
+	return evalTree(tree.get(), data);
 }

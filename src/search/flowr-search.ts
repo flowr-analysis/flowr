@@ -4,6 +4,10 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowInformation } from '../dataflow/info';
 
+/**
+ * Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc.
+ * just for the respective search.
+ */
 export interface FlowrSearchElement<Info> {
     readonly node: RNode<Info>;
 }
@@ -14,13 +18,12 @@ export interface FlowrSearchNodeBase<Type extends string, Name extends string, A
     readonly args: Args;
 }
 
-/* Input extends FlowrSearchElements<Info>, Output extends FlowrSearchElements<Info> = Input */
 export type FlowrSearchGeneratorNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
 		FlowrSearchNodeBase<'generator', Name, Args>;
 export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
 		FlowrSearchNodeBase<'transformer', Name, Args>;
 
-export interface FlowrSearchGetFilters extends Record<string, unknown> {
+export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	/**
 	 * The node must be in the given line.
 	 */
@@ -31,7 +34,7 @@ export interface FlowrSearchGetFilters extends Record<string, unknown> {
     readonly column?:   number;
 	/**
 	 * The node must have the given name.
-	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilters#nameIsRegex} to true.
+	 * To treat this name as a regular expression, set {@link FlowrSearchGetFilter#nameIsRegex} to true.
 	 */
     readonly name?:     string;
 	/**
@@ -65,8 +68,13 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		}
 	}
 
-	public add(this: FlowrSearchElements<Info, Elements>, element: FlowrSearchElement<Info>): FlowrSearchElements<Info, FlowrSearchElement<Info>[]> {
+	public add(element: FlowrSearchElement<Info>): this {
 		this.elements.push(element);
+		return this;
+	}
+
+	public addAll(elements: FlowrSearchElement<Info>[]): this {
+		this.elements.push(...elements);
 		return this;
 	}
 

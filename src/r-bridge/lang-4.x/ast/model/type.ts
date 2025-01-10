@@ -208,6 +208,8 @@ export enum RType {
 }
 
 
+export const ValidRTypes = new Set(Object.values(RType));
+
 const validSymbolTypes = new Set([
 	RawRType.Symbol,
 	RawRType.SymbolPackage,

@@ -13,6 +13,8 @@ export enum VertexType {
 	FunctionDefinition = 'function-definition'
 }
 
+export const ValidVertexTypes = new Set(Object.values(VertexType));
+
 /**
  * A single index of a container, which is not a container itself.
  *

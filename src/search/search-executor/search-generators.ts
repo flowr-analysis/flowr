@@ -1,6 +1,7 @@
 import type {
+	FlowrSearchElement,
 	FlowrSearchGeneratorNodeBase,
-	FlowrSearchGetFilters,
+	FlowrSearchGetFilter,
 	FlowrSearchInput
 } from '../flowr-search';
 import { FlowrSearchElements
@@ -10,6 +11,7 @@ import type { TailTypesOrUndefined } from '../../util/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
+import { isNotUndefined } from '../../util/assert';
 
 /**
  * This is a union of all possible generator node types
@@ -32,22 +34,41 @@ export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode
 export const generators = {
 	all:       generateAll,
 	get:       generateGet,
-	criterion: generateCriterion
+	criterion: generateCriterion,
+	from:      generateFrom
 } as const;
 
 function generateAll(data: FlowrSearchInput<Pipeline>): FlowrSearchElements<ParentInformation> {
 	return new FlowrSearchElements([...data.normalize.idMap.values()].map(node => ({ node })));
 }
 
-function generateGet(data: FlowrSearchInput<Pipeline>, filter: FlowrSearchGetFilters): FlowrSearchElements<ParentInformation> {
-	/* TODO: */
-	return generators.all(data);
+
+function generateGet(data: FlowrSearchInput<Pipeline>, { filter: { line, column, id, name, nameIsRegex } }: { filter: FlowrSearchGetFilter }): FlowrSearchElements<ParentInformation> {
+	let potentials = (id ? [data.normalize.idMap.get(id)] : [...data.normalize.idMap.values()]).filter(isNotUndefined);
+
+	if(line && column) {
+		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
+	} else if(line) {
+		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line);
+	} else if(column) {
+		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[1] === column);
+	}
+	if(nameIsRegex && name) {
+		const nameFilter = new RegExp(name);
+		potentials = potentials.filter(({ lexeme }: RNodeWithParent) => lexeme && nameFilter.test(lexeme));
+	} else if(name) {
+		potentials = potentials.filter(({ lexeme }: RNodeWithParent) => lexeme === name);
+	}
+	return new FlowrSearchElements(potentials.map(node => ({ node })));
 }
 
-// TODO: allow to filter for a single criteria
-function generateCriterion(data: FlowrSearchInput<Pipeline>, criterion: SlicingCriteria): FlowrSearchElements<ParentInformation> {
+function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[] }): FlowrSearchElements<ParentInformation> {
+	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
+}
+
+function generateCriterion(data: FlowrSearchInput<Pipeline>, args: { criterion: SlicingCriteria }): FlowrSearchElements<ParentInformation> {
 	return new FlowrSearchElements(
-		criterion.map(c => ({ node: data.normalize.idMap.get(slicingCriterionToId(c, data.normalize.idMap)) as RNodeWithParent }))
+		args.criterion.map(c => ({ node: data.normalize.idMap.get(slicingCriterionToId(c, data.normalize.idMap)) as RNodeWithParent }))
 	);
 }
 

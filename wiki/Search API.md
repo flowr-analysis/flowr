@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 19:51:41 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.2)._
+_This document was generated from 'src/documentation/print-search-wiki.ts' on 2025-01-10, 20:09:54 UTC presenting an overview of flowR's search API (v2.1.11, using R v4.4.2)._
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki//Dataflow%20Graph) and the 
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki//Normalized%20AST) of a given R code.
@@ -61,9 +61,9 @@ x <- x * x
 The query returns the following vetices (all references to `x` in the code):
 <b>0 ('x')</b> at L1.1, <b>1 ('x')</b> at L1.6, <b>2 ('x')</b> at L1.10
 
-The search required _10.22 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _41.88 ms_ (including parsing and normalization and the query) within the generation environment.	
 
-Highlighted within the dataflow graph:
+The returned results are highlighted thick and blue within the dataflow graph:
 
 
 
@@ -98,7 +98,7 @@ flowchart LR
     4 -->|"returns, argument"| 0
 ```
 	
-(The analysis required _3.09 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _6.49 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -185,9 +185,9 @@ x <- 2
 The query returns the following vetices (all references to `x` in the code):
 <b>9 ('x')</b> at L3.1, <b>18 ('x')</b> at L5.1
 
-The search required _6.92 ms_ (including parsing and normalization and the query) within the generation environment.	
+The search required _17.65 ms_ (including parsing and normalization and the query) within the generation environment.	
 
-Highlighted within the dataflow graph:
+The returned results are highlighted thick and blue within the dataflow graph:
 
 
 
@@ -278,7 +278,7 @@ flowchart LR
     20 -->|"returns, argument"| 18
 ```
 	
-(The analysis required _3.70 ms_ (including parse and normalize) within the generation environment.)
+(The analysis required _5.35 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -288,7 +288,7 @@ flowchart LR
 	
 
 In summary, every search has two parts. It is initialized with a _generator_ (such as `Q.var('x')`)
-and can be further redefined with _transformers_ or _modifiers_.
+and can be further refined with _transformers_ or _modifiers_.
 Such queries can be constructed starting from the [<code><span title="This is the root object to use for creating searches. See the FlowrSearchGenerator for the available methods. After the query is generated, you can use what is provided by the FlowrSearchBuilder to further refine the search.">Q</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L96) object (backed by [<code><span title="This object holds all the methods to generate search queries. For compatibility, please use the Q identifier object to access these methods.">FlowrSearchGenerator</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L23)) and
 are fully serializable so you can use them when communicating with the [Query API](https://github.com/flowr-analysis/flowr/wiki//Query%20API).
 
@@ -349,25 +349,25 @@ filters:
 
 Likewise, we have a palette of _transformers_ and _modifiers_:
 
-- [<code><span title="Construct the final search (this may happen automatically with most search handlers).">FlowrSearchBuilder::<b>build</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L230)\
+- [<code><span title="Construct the final search (this may happen automatically with most search handlers).">FlowrSearchBuilder::<b>build</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L228)\
 Construct the final search (this may happen automatically with most search handlers).
-- [<code><span title="only returns the elements that match the given filter.">FlowrSearchBuilder::<b>filter</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L148)\
+- [<code><span title="only returns the elements that match the given filter.">FlowrSearchBuilder::<b>filter</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L146)\
 only returns the elements that match the given filter.
-- [<code><span title="first either returns the first element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>first</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L156)\
+- [<code><span title="first either returns the first element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>first</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L154)\
 first either returns the first element of the search or nothing, if no elements are present.
-- [<code><span title="index returns the element at the given index if it exists">FlowrSearchBuilder::<b>index</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L171)\
+- [<code><span title="index returns the element at the given index if it exists">FlowrSearchBuilder::<b>index</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L169)\
 index returns the element at the given index if it exists
-- [<code><span title="last either returns the last element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>last</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L164)\
+- [<code><span title="last either returns the last element of the search or nothing, if no elements are present.">FlowrSearchBuilder::<b>last</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L162)\
 last either returns the last element of the search or nothing, if no elements are present.
-- [<code><span title="merge combines the search results with those of another search.">FlowrSearchBuilder::<b>merge</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L217)\
+- [<code><span title="merge combines the search results with those of another search.">FlowrSearchBuilder::<b>merge</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L215)\
 merge combines the search results with those of another search.
-- [<code><span title="select returns only the elements at the given indices.">FlowrSearchBuilder::<b>select</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L206)\
+- [<code><span title="select returns only the elements at the given indices.">FlowrSearchBuilder::<b>select</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L204)\
 select returns only the elements at the given indices.
-- [<code><span title="skip returns all elements of the search except the first #96;count#96; ones.">FlowrSearchBuilder::<b>skip</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L197)\
+- [<code><span title="skip returns all elements of the search except the first #96;count#96; ones.">FlowrSearchBuilder::<b>skip</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L195)\
 skip returns all elements of the search except the first `count` ones.
-- [<code><span title="tail returns all elements of the search except the first one.">FlowrSearchBuilder::<b>tail</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L180)\
+- [<code><span title="tail returns all elements of the search except the first one.">FlowrSearchBuilder::<b>tail</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L178)\
 tail returns all elements of the search except the first one.
-- [<code><span title="take returns the first #96;count#96; elements of the search.">FlowrSearchBuilder::<b>take</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L188)\
+- [<code><span title="take returns the first #96;count#96; elements of the search.">FlowrSearchBuilder::<b>take</b></span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search-builder.ts#L186)\
 take returns the first `count` elements of the search.
 
 Every search (and consequently the search pipeline) works with an array of [<code><span title="Yes, for now we do technically not need a wrapper around the RNode, but this allows us to attach caches etc. just for the respective search.">FlowrSearchElement</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search.ts#L11) (neatly wrapped in [<code><span title="Intentionally, we abstract away from an array to avoid the use of conventional typescript operations">FlowrSearchElements</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/search/flowr-search.ts#L62)).

@@ -62,7 +62,7 @@ ${
 
 ${metaInfo}	
 
-Highlighted within the dataflow graph:
+The returned results are highlighted thick and blue within the dataflow graph:
 
 ${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.map(({ node }) => node.info.id )) } )}
 

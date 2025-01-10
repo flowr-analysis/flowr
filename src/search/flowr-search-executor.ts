@@ -22,7 +22,7 @@ export function runSearch<S extends FlowrSearchLike, P extends Pipeline>(
 	return s.search.reduce(
 		(acc: FlowrSearchElements<ParentInformation>, transformer) =>
 			getTransformer(transformer.name)(data, acc, transformer.args as never),
-		/* TODO: support multiple arguments? */
+		/* support multiple arguments may be abstracted away in search frontend */
 		getGenerator(s.generator.name)(data, s.generator.args as never)
 	).getElements() as GetSearchElements<SearchOutput<S>>;
 }

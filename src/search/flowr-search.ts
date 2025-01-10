@@ -74,14 +74,9 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this.elements;
 	}
 
-	/* TODO: conventional operations */
-
 	public mutate<OutElements extends Elements>(mutator: (elements: Elements) => OutElements): this {
 		this.elements = mutator(this.elements);
 		return this;
 	}
 }
-
-/* TODO: differentiate generators, transformer, and terminators */
-
 

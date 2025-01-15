@@ -23,9 +23,9 @@ export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexTy
  */
 export interface ContainerLeafIndex {
 	/**
-	 * Distinctive lexeme of index e.g. 'name' for `list(name = 'John')`
+	 * Distinctive lexeme of index e.g 'name' for `list(name = 'John')` or 1 for `c(5)`.
 	 */
-	readonly lexeme: string,
+	readonly lexeme: string | number,
 
 	/**
 	 * NodeId of index in graph.

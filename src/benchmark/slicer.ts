@@ -407,6 +407,6 @@ export class BenchmarkSlicer {
    * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
    */
 	public ensureSessionClosed(): void {
-		this.parser.close();
+		this.parser?.close();
 	}
 }

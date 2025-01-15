@@ -234,6 +234,7 @@ jobs:
       matrix:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
         name: ['artificial', 'social-science']
+        parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
@@ -260,12 +261,12 @@ jobs:
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}"
+        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ matrix.name }}
+          name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
     outputs:
       version: ${{ needs.release.outputs.version }}
@@ -274,6 +275,10 @@ jobs:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
     needs: [ performance-test ]
+    strategy:
+      fail-fast: true
+      matrix:
+        parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
@@ -284,12 +289,6 @@ jobs:
           # check out the release ref so that the upload action finds the commit
           ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
 
-      - name: "⬇️ Get benchmark Artifacts (artificial)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-artificial
-          path: benchmark-ai/
-
       - name: "⚙️ Name and Email for Git (config) and update"
         # we fetch just to be totally sure
         run: |
@@ -297,14 +296,20 @@ jobs:
           git config --local user.name "GitHub Action"
           git fetch --tags
 
+      - name: "⬇️ Get benchmark Artifacts (artificial)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-artificial-${{ matrix.parser }}
+          path: benchmark-ai-${{ matrix.parser }}/
+
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
       - name: "🥄 Merge and Produce Performance Results (artificial)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"artificial" Benchmark Suite'
+          name: '"artificial" Benchmark Suite (${{ matrix.parser }})'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/artificial-summarized-graph.json
+          output-file-path: benchmark-ai/artificial/${{ matrix.parser }}/artificial-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -320,15 +325,15 @@ jobs:
       - name: "⬇️ Get benchmark Artifacts (social-science)"
         uses: actions/download-artifact@v4
         with:
-          name: benchmark-results-social-science
-          path: benchmark-ss/
+          name: benchmark-results-social-science-${{ matrix.parser }}
+          path: benchmark-ss-${{ matrix.parser }}/
 
       - name: "🥄 Merge and Produce Performance Results (social-science)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite'
+          name: '"social-science" Benchmark Suite (${{ matrix.parser }})'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-ss/social-science/${{ matrix.parser }}/social-science-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false

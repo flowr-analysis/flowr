@@ -43,5 +43,5 @@ export interface ReplCommand {
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (output: ReplOutput, parser: KnownParser, remainingLine: string) => Promise<void> | void
+	fn:           (output: ReplOutput, parser: KnownParser, remainingLine: string, allowRSessionAccess: boolean) => Promise<void> | void
 }

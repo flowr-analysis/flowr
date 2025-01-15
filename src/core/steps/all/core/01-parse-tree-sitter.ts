@@ -17,8 +17,7 @@ export const PARSE_WITH_TREE_SITTER_STEP = {
 	executed:          PipelineStepStage.OncePerFile,
 	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
-		[StepOutputFormat.Json]:     JSON.stringify,
-		// TODO [StepOutputFormat.RdfQuads]: ({ parsed }, config: QuadSerializationConfiguration) => parseToQuads(parsed, config)
+		[StepOutputFormat.Json]:     JSON.stringify
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput<Tree>

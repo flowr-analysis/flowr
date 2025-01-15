@@ -82,7 +82,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn(output, parser, statement.slice(command.length + 2).trim());
+				await processor.fn(output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess);
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 			}

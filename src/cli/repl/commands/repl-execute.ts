@@ -1,5 +1,5 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { italic } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles, italic } from '../../../util/ansi';
 import { RShell } from '../../../r-bridge/shell';
 
 
@@ -21,12 +21,13 @@ export const executeCommand: ReplCommand = {
 	usageExample: ':execute',
 	aliases:      [ 'e', 'r' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		// TODO this should only work when the R shell access is actually enabled in the repl
-		if(shell instanceof RShell) {
+	fn:           async(output, shell, remainingLine, allowRSessionAccess) => {
+		if(!allowRSessionAccess){
+			output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
+		} else if(shell instanceof RShell) {
 			await executeRShellCommand(output, shell, remainingLine);
 		} else {
-			// TODO error message somehow
+			output.stderr(`Executing arbitrary R code is only possible when using the r-shell engine as the default engine. Enable it using the configuration file or the ${output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold })} command line option.`);
 		}
 	}
 };

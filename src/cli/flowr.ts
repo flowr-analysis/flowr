@@ -187,7 +187,7 @@ async function mainRepl() {
 		await replProcessAnswer(standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
 	} else {
 		await printVersionRepl(defaultEngine);
-		await repl({ defaultEngine, allowRSessionAccess });
+		await repl({ parser: defaultEngine, allowRSessionAccess });
 	}
 	process.exit(0);
 }

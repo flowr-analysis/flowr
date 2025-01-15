@@ -88,7 +88,7 @@ async function benchmark() {
 	} catch(e: unknown) {
 		if(e instanceof Error) {
 			if(!e.message.includes('unable to parse R')) {
-				console.log(`${prefix} Non R-Side error : ${e.message}`);
+				console.log(`${prefix} Non R-Side error : ${e.name} ${e.message} ${e.stack}`);
 			}
 		}
 		slicer.ensureSessionClosed(); // ensure finish

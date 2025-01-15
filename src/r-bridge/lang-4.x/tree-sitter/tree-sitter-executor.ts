@@ -5,6 +5,7 @@ import type { SyncParser } from '../../parser';
 import { getEngineConfig } from '../../../config';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
+export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter.wasm`;
 
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
@@ -14,12 +15,12 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public static async initTreeSitter(): Promise<void> {
 		const config = getEngineConfig('tree-sitter');
-		const treeSitterWasmPath = config?.treeSitterWasmPath;
+		const treeSitterWasmPath = config?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		// noinspection JSUnusedGlobalSymbols - this is used by emscripten, see https://emscripten.org/docs/api_reference/module.html
 		await Parser.init({
 			locateFile: (path: string, prefix: string) => {
 				// allow setting a custom path for the tree sitter wasm file
-				if(path.endsWith('tree-sitter.wasm') && treeSitterWasmPath) {
+				if(path.endsWith('tree-sitter.wasm')) {
 					return treeSitterWasmPath;
 				}
 				return prefix + path;

@@ -228,7 +228,7 @@ jobs:
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
     runs-on: ubuntu-22.04
-    timeout-minutes: 400
+    timeout-minutes: 60
     strategy:
       fail-fast: true
       matrix:

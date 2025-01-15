@@ -309,7 +309,7 @@ jobs:
         with:
           name: '"artificial" Benchmark Suite (${{ matrix.parser }})'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/${{ matrix.parser }}/artificial-summarized-graph.json
+          output-file-path: benchmark-ai-${{ matrix.parser }}/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -333,7 +333,7 @@ jobs:
         with:
           name: '"social-science" Benchmark Suite (${{ matrix.parser }})'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/${{ matrix.parser }}/social-science-summarized-graph.json
+          output-file-path: benchmark-ss-${{ matrix.parser }}/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false

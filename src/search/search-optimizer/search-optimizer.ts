@@ -87,7 +87,7 @@ function dropAnyNameRegex(generator: FlowrSearchGeneratorNode): FlowrSearchGener
 	if(generator.name !== 'get' || !generator.args.filter.nameIsRegex) {
 		return generator;
 	}
-	if(generator.args.filter.name === '.') {
+	if(generator.args.filter.name === '.*') {
 		return {
 			...generator,
 			args: {

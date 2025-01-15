@@ -275,10 +275,6 @@ jobs:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
     needs: [ performance-test ]
-    strategy:
-      fail-fast: true
-      matrix:
-        parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
@@ -296,20 +292,20 @@ jobs:
           git config --local user.name "GitHub Action"
           git fetch --tags
 
-      - name: "⬇️ Get benchmark Artifacts (artificial)"
+      - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
         with:
-          name: benchmark-results-artificial-${{ matrix.parser }}
-          path: benchmark-ai-${{ matrix.parser }}/
+          name: benchmark-results-artificial-r-shell
+          path: benchmark-ai-r-shell/
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
-      - name: "🥄 Merge and Produce Performance Results (artificial)"
+      - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"artificial" Benchmark Suite (${{ matrix.parser }})'
+          name: '"artificial" Benchmark Suite (r-shell)'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai-${{ matrix.parser }}/artificial/artificial-summarized-graph.json
+          output-file-path: benchmark-ai-r-shell/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -322,18 +318,68 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬇️ Get benchmark Artifacts (social-science)"
+      - name: "⬇️ Get benchmark Artifacts (social-science, r-shell)"
         uses: actions/download-artifact@v4
         with:
-          name: benchmark-results-social-science-${{ matrix.parser }}
-          path: benchmark-ss-${{ matrix.parser }}/
+          name: benchmark-results-social-science-r-shell
+          path: benchmark-ss-r-shell/
 
-      - name: "🥄 Merge and Produce Performance Results (social-science)"
+      - name: "🥄 Merge and Produce Performance Results (social-science, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite (${{ matrix.parser }})'
+          name: '"social-science" Benchmark Suite (r-shell)'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss-${{ matrix.parser }}/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-ss-r-shell/social-science/social-science-summarized-graph.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (artificial, tree-sitter)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-artificial-tree-sitter
+          path: benchmark-ai-tree-sitter/
+
+      # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
+      # Furthermore, you have to update the git reset command when pushing!
+      - name: "🥄 Merge and Produce Performance Results (artificial, tree-sitter)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"artificial" Benchmark Suite (tree-sitter)'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-ai-tree-sitter/artificial/artificial-summarized-graph.json
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          fail-on-alert: false
+          summary-always: false
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          max-items-in-chart: 100
+          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/
+          auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (social-science, tree-sitter)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-social-science-tree-sitter
+          path: benchmark-ss-tree-sitter/
+
+      - name: "🥄 Merge and Produce Performance Results (social-science, tree-sitter)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"social-science" Benchmark Suite (tree-sitter)'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark-ss-tree-sitter/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
           fail-on-alert: false
           summary-always: false

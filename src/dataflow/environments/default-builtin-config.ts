@@ -32,7 +32,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:  'function',
 		names: [
-			'c', 't', 'aperm' /* vector construction, concatenation, transpose function, permutation generation */
+			't', 'aperm' /* vector construction, concatenation, transpose function, permutation generation */
 		],
 		processor:       'builtin:default',
 		config:          { readAllArguments: true },
@@ -118,6 +118,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
 	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                           assumePrimitive: true  },
+	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                           assumePrimitive: true  },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],

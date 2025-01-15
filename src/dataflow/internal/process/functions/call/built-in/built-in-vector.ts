@@ -4,8 +4,6 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { ContainerIndices, ContainerIndex } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
@@ -13,14 +11,14 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { getConfig } from '../../../../../../config';
 
 /**
- * Process a list call.
+ * Process a vector call.
  *
  * Example:
  * ```r
- * list(a = 1, b = 2)
+ * c(1, 2, 3, 4)
  * ```
  */
-export function processList<OtherInfo>(
+export function processVector<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
@@ -30,35 +28,26 @@ export function processList<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data }).information;
 	}
 
-	const namedArguments: ContainerIndex[] = [];
-	for(const arg of args) {
-		// Skip non named arguments
-		if(arg === EmptyArgument || arg.type !== RType.Argument || arg.name === undefined) {
+	const vectorArguments: ContainerIndex[] = [];
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		
+		// Skip invalid arguments
+		if(arg === EmptyArgument || arg.type !== RType.Argument
+			|| arg.name !== undefined || arg.value?.type !== RType.Number) {
 			continue;
 		}
 
-		let newIndex: ContainerIndex = {
-			lexeme: arg.name.content,
+		const newIndex: ContainerIndex = {
+			lexeme: arg.info.index,
 			nodeId: arg.info.id,
 		};
 
-		// Check whether argument value is non-primitive
-		if(arg.value?.type === RType.Symbol) {
-			const defs = resolveByName(arg.value.lexeme, data.environment);
-			const indices = defs?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? []);
-			if(indices) {
-				newIndex = {
-					...newIndex,
-					subIndices: indices,
-				};
-			}
-		}
-
-		namedArguments.push(newIndex);
+		vectorArguments.push(newIndex);
 	}
 
 	const indices: ContainerIndices = {
-		indices:     namedArguments,
+		indices:     vectorArguments,
 		isContainer: true,
 	};
 	return processKnownFunctionCall({ name, args, rootId, data }, [indices]).information;

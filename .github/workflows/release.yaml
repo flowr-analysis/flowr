@@ -303,7 +303,7 @@ jobs:
       - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"artificial" Benchmark Suite (r-shell)'
+          name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark-ai-r-shell/artificial/artificial-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}
@@ -327,7 +327,7 @@ jobs:
       - name: "🥄 Merge and Produce Performance Results (social-science, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite (r-shell)'
+          name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark-ss-r-shell/social-science/social-science-summarized-graph.json
           github-token: ${{ secrets.RELEASE_TOKEN }}

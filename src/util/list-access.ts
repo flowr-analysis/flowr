@@ -89,7 +89,10 @@ export function constructNestedAccess<OtherInfo>(
 		const newIndices: ContainerIndices = {
 			indices: [
 				{
-					identifier: { lexeme: access.lexeme, },
+					identifier: {
+						index:  undefined,
+						lexeme: access.lexeme,
+					},
 					nodeId:     access.info.id,
 					subIndices: [ leafIndices ],
 				}

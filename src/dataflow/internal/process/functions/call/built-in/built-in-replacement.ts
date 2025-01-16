@@ -45,8 +45,11 @@ export function processReplacementFunction<OtherInfo>(
 		const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
 		if(accessArg !== undefined && accessedArg != undefined) {
 			const leafIndex: ContainerLeafIndex = {
-				identifier: { lexeme: accessArg.lexeme },
-				nodeId:     accessedArg.info.parent ?? ''
+				identifier: {
+					index:  undefined,
+					lexeme: accessArg.lexeme
+				},
+				nodeId: accessedArg.info.parent ?? ''
 			};
 			const accessIndices: ContainerIndices = {
 				indices:     [ leafIndex ],

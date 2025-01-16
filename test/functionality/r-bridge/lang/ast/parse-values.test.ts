@@ -90,7 +90,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 						info:     {}
 					}),
 					{
-						// just a hackey way to not outright flag all
+						// just a hacky way to not outright flag all
 						minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
 					}
 				);

@@ -197,7 +197,7 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 	ignoreColumns:          boolean,
 	skipTreeSitter:         boolean
 }>) {
-	const skip = skipTestBecauseConfigNotMet();
+	const skip = skipTestBecauseConfigNotMet(userConfig);
 	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
 	const skipTreeSitter = userConfig?.skipTreeSitter;
 	if(!skipTreeSitter) {

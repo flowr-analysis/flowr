@@ -6,6 +6,7 @@ import type {
 	ContainerIndices,
 	ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import {
+	isAccessed,
 	isParentContainerIndex
 } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -26,10 +27,11 @@ export function resolveSingleIndex(
 	accessedArg: { lexeme: string },
 	accessArg: { lexeme: string },
 	environment: REnvironmentInformation,
+	accessIndexOfIndex: boolean,
 ): ContainerIndicesCollection {
 	const definitions = resolveByName(accessedArg.lexeme, environment);
 	const indicesCollection = definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
-	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg);
+	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, accessIndexOfIndex);
 	return accessedIndicesCollection;
 }
 
@@ -43,10 +45,11 @@ export function resolveSingleIndex(
 export function filterIndices(
 	indicesCollection: ContainerIndicesCollection,
 	accessArg: { lexeme: string },
+	accessIndexOfIndex: boolean,
 ): ContainerIndicesCollection {
 	let accessedIndicesCollection: ContainerIndicesCollection = undefined;
 	for(const indices of indicesCollection ?? []) {
-		const filteredIndices = indices.indices.filter(index => accessArg.lexeme === index.lexeme);
+		const filteredIndices = indices.indices.filter(index => isAccessed(index, accessArg.lexeme, accessIndexOfIndex));
 
 		if(filteredIndices.length == 0) {
 			continue;
@@ -86,7 +89,7 @@ export function constructNestedAccess<OtherInfo>(
 		const newIndices: ContainerIndices = {
 			indices: [
 				{
-					lexeme:     access.lexeme,
+					identifier: { lexeme: access.lexeme, },
 					nodeId:     access.info.id,
 					subIndices: [ leafIndices ],
 				}

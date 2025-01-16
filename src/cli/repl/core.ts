@@ -5,12 +5,12 @@
  */
 import { prompt } from './prompt';
 import * as readline from 'readline';
-import { executeRShellCommand } from './commands/repl-execute';
+import { tryExecuteRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/args';
-import { ColorEffect, Colors, FontStyles } from '../../util/ansi';
+import { FontStyles } from '../../util/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -89,10 +89,8 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		} else {
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
-	} else if(allowRSessionAccess && parser instanceof RShell) {
-		await executeRShellCommand(output, parser, statement);
 	} else {
-		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
+		await tryExecuteRShellCommand(output, parser, statement, allowRSessionAccess);
 	}
 }
 

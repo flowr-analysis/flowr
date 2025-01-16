@@ -17,15 +17,45 @@ export const ValidVertexTypes: Set<string> = new Set(Object.values(VertexType));
 export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexType).map(([k, v]) => [v, k]));
 
 /**
+ * Identifier for arguments e.g. for `3` in `c(2, 3, 5)` the identifier would be
+ * ```ts
+ * {
+ *   index: 2
+ * }
+ * ```
+ */
+export interface ArgumentId {
+	readonly index: number,
+}
+
+/**
+ * Identifier for named arguments e.g. for `age` in `list(name = 'John', age = 8)`
+ * the indentifier would be
+ * ```ts
+ * {
+ *   index: 2,
+ *   lexeme: 'age'
+ * }
+ * ```
+ */
+export interface NamedArgumentId /* extends ArgumentId */ {
+	readonly lexeme: string,
+}
+
+function isNamedArgumentId(identifier: ArgumentId | NamedArgumentId): identifier is NamedArgumentId {
+	return 'lexeme' in identifier;
+}
+
+/**
  * A single index of a container, which is not a container itself.
  *
  * This can be e.g. a string, number or boolean index.
  */
 export interface ContainerLeafIndex {
 	/**
-	 * Distinctive lexeme of index e.g 'name' for `list(name = 'John')` or 1 for `c(5)`.
+	 * Distinctive identifier of index, see {@link ArgumentId} and {@link NamedArgumentId}.
 	 */
-	readonly lexeme: string | number,
+	readonly identifier: ArgumentId | NamedArgumentId,
 
 	/**
 	 * NodeId of index in graph.
@@ -56,6 +86,39 @@ export function isParentContainerIndex(index: ContainerIndex): index is Containe
  * A single index of a container.
  */
 export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
+
+/**
+ * Checks whether {@link index} is accessed by {@link accessLexeme}.
+ * 
+ * @param index - The {@link ContainerIndex}, which is accessed
+ * @param accessLexeme - The access lexeme
+ * @param accessIndexOfIndex - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
+ * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise 
+ */
+export function isAccessed(index: ContainerIndex, accessLexeme: string, accessIndexOfIndex: boolean) {
+	if(accessIndexOfIndex && !isNamedArgumentId(index.identifier)) { // TODO: remove isNamedArgumentIndex check
+		return index.identifier.index === Number(accessLexeme);
+	}
+
+	if(isNamedArgumentId(index.identifier)) {
+		return index.identifier.lexeme === accessLexeme;
+	}
+
+	return false;
+}
+
+export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
+	if(isNamedArgumentId(a.identifier) && isNamedArgumentId(b.identifier)) {
+		return a.identifier.lexeme === b.identifier.lexeme;
+	}
+
+	// TODO: remove check
+	if('index' in a.identifier && 'index' in b.identifier) {
+		return a.identifier.index === b.identifier.index;
+	}
+
+	return false;
+}
 
 /**
  * List of indices of a single statement like `list(a=3, b=2)`

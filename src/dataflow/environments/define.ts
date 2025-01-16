@@ -5,7 +5,7 @@ import type { IEnvironment, REnvironmentInformation  } from './environment';
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
-import { isParentContainerIndex } from '../graph/vertex';
+import { isParentContainerIndex, isSameIndex } from '../graph/vertex';
 
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
@@ -70,7 +70,7 @@ function overwriteContainerIndices(
 		if(isParentContainerIndex(overwriteIndex)) {
 			newIndices = [];
 			for(const index of indices.indices) {
-				if(index.lexeme === overwriteIndex.lexeme && isParentContainerIndex(index)) {
+				if(isSameIndex(index, overwriteIndex) && isParentContainerIndex(index)) {
 					const overwriteSubIndices = overwriteIndex.subIndices.flatMap(a => a.indices);
 
 					let newSubIndices: ContainerIndices[] = index.subIndices;
@@ -85,7 +85,7 @@ function overwriteContainerIndices(
 						});
 					}
 				}
-				if(index.lexeme !== overwriteIndex.lexeme || !isParentContainerIndex(index)) {
+				if(!isSameIndex(index, overwriteIndex) || !isParentContainerIndex(index)) {
 					newIndices.push(index);
 				}
 			}
@@ -94,7 +94,7 @@ function overwriteContainerIndices(
 			newIndices = indices.indices;
 		} else {
 			// Filter existing indices with the same name
-			newIndices = indices.indices.filter(def => def.lexeme !== overwriteIndex.lexeme);
+			newIndices = indices.indices.filter(def => !isSameIndex(def, overwriteIndex));
 		}
 
 		if(indices.isContainer || newIndices.length > 0) {

@@ -39,8 +39,8 @@ export function processVector<OtherInfo>(
 		}
 
 		const newIndex: ContainerIndex = {
-			lexeme: arg.info.index,
-			nodeId: arg.info.id,
+			identifier: { index: arg.info.index },
+			nodeId:     arg.value.info.id,
 		};
 
 		vectorArguments.push(newIndex);

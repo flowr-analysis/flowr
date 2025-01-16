@@ -30,6 +30,11 @@ import type { ConfigQuery } from './catalog/config-query/config-query-format';
 import { ConfigQueryDefinition } from './catalog/config-query/config-query-format';
 import type { SearchQuery } from './catalog/search-query/search-query-format';
 import { SearchQueryDefinition } from './catalog/search-query/search-query-format';
+import type {
+	HappensBeforeQuery } from './catalog/happens-before-query/happens-before-query-format';
+import {
+	HappensBeforeQueryDefinition
+} from './catalog/happens-before-query/happens-before-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -41,7 +46,8 @@ export type Query = CallContextQuery
 	| StaticSliceQuery
 	| LineageQuery
 	| DependenciesQuery
-	| LocationMapQuery;
+	| LocationMapQuery
+	| HappensBeforeQuery;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -69,7 +75,8 @@ export const SupportedQueries = {
 	'lineage':          LineageQueryDefinition,
 	'dependencies':     DependenciesQueryDefinition,
 	'location-map':     LocationMapQueryDefinition,
-	'search':           SearchQueryDefinition
+	'search':           SearchQueryDefinition,
+	'happens-before':   HappensBeforeQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

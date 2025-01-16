@@ -243,6 +243,29 @@ ${
 	}
 });
 
+registerQueryDocumentation('happens-before', {
+	name:             'Happens-Before Query',
+	type:             'active',
+	shortDescription: 'Check whether one normalized AST node happens before another in the CFG.',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/happens-before-query/happens-before-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1;y <- 2';
+		return `
+With this query you can analyze the control flow graph:
+
+Using the example code \`${exampleCode}\`, the following query returns that the first assignment happens always before the other:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'happens-before',
+		a:    '1@x',
+		b:    '2@y'
+	}], { showCode: true, collapseQuery: false })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('id-map', {
 	name:             'Id-Map Query',
 	type:             'active',

@@ -6,7 +6,7 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
 import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
-import { printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
+import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { requestFromInput } from '../r-bridge/retriever';
@@ -16,7 +16,7 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
 import { block, details } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
@@ -666,27 +666,48 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
 	}, []]);
 
+
+	const lateBindingExample = `
+f <- function() x
+x <- 3
+f()
+	`.trim();
+
+	const dfInfo = await printDfGraphForCode(shell, lateBindingExample, { switchCodeAndGraph: true, codeOpen: true, mark: new Set([1, '1->5', '9->5']) });
+
 	edgeExplanations.set(EdgeType.DefinesOnCall, [{
 		shell:       shell,
 		name:        'DefinesOnCall Edge',
 		type:        EdgeType.DefinesOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
 
- Link an Argument to whichever parameter they cause to be defined if the related function call is invoked.`,
+ Links an Argument to whichever parameter they cause to be defined if the related function call is invoked.
+ 
+ In the context of functions which access their closure environment these edges play another tricky role as there are many cases 
+ made more difficult by R's way of allowing closure environments to later receive variables.
+ Consider the following scenario in which we first define a function which returns the value of a variable named \`x\` and then define \`x\`
+ only after we defined the function:
+   
+${dfInfo}
+
+ The final call evaluates to \`3\` (similar to if we would have defined \`x\` before the function definition).
+ Within a dataflow graph you can see this with two edges. The \`x\` within the function body will have a ${linkEdgeName(EdgeType.DefinedByOnCall)} 
+ to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of \`x\` will have a
+ ${linkEdgeName(EdgeType.DefinesOnCall)} edge to the definition(s) it causes to be active within the function body. 
+ `,
 		code:             'f <- function(x) {}\nf(x=1)',
 		// here we use the ids as the argument wrappers are not easily selected with slicing criteria
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
-
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
 		shell:       shell,
 		name:        'DefinedByOnCall Edge',
 		type:        EdgeType.DefinedByOnCall,
-		description: `**This edge is automatically joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!**
+		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!*
 
- This represents the other direction of ${linkEdgeName(EdgeType.DefinesOnCall)} (i.e., links the parameter to the argument). This is just for completeness.`,
+ This represents the other part of the ${linkEdgeName(EdgeType.DefinesOnCall)} edge (e.g., links the parameter to the argument). Please look there for further documentation.`,
 		code:             'f <- function(x) {}\nf(x=1)',
-		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1')
+		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Argument, [{
@@ -721,7 +742,7 @@ ${
 	block({
 		type:    'NOTE',
 		content: `
-What to do if you encounter this vertex? 
+What to do if you encounter a vertex marked with this edge? 
 
 This depends on your analysis. To handle many real-world sources correctly you are probably fine with just ignoring it.
 Yet, you may choose to follow these references for other queries. For now, _flowR's_ support for non-standard evaluation is limited.
@@ -785,7 +806,7 @@ async function getText(shell: RShell) {
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
-This page briefly summarizes flowR's dataflow graph, represented by ${DataflowGraph.name} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
+This page briefly summarizes flowR's dataflow graph, represented by ${shortLink('DataflowGraph', vertexType.info)} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
 In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
 This wiki page focuses on explaining what such a dataflow graph looks like!
 
@@ -969,6 +990,24 @@ ${await printDfGraphForCode(shell,'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
+
+#### Linked Unknown Side Effects
+
+Not all side effects are created equal in the sense that they stem from a specific function call.
+Consider R's basic [\`graphics\`](https://www.rdocumentation.org/packages/graphics/) which
+implicitly draws on the current device and does not explicitly link a function like \`points\` to the last call opening a new graphic device. In such a scenario, we use a linked side effect to mark the relation:
+
+${await (async() => {
+			const [result, df] = await printDfGraphForCode(shell, 'plot(data)\npoints(data2)', { exposeResult: true });
+			return `
+${result}
+
+Such side effects are not marked explicitly (with a big edge) but they are part of the unknown side effects: [${[...df.dataflow.graph.unknownSideEffects].map(formatSideEffect).join(',')}].
+Additionally, we express this by a ${linkEdgeName(EdgeType.Reads)} edge.
+	`;
+		})()}
+ 
+
 	`;
 
 	})()

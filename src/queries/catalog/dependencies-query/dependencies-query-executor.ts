@@ -110,7 +110,7 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 
 function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: (id: NodeId, vertex: DataflowGraphVertexFunctionCall, argument: string | undefined, linkedIds: undefined | readonly NodeId[]) => T | undefined, additionalAllowedTypes?: RType[]) {
 	return Object.entries(results?.kinds[kind]?.subkinds ?? {}).flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
-		const vertex = data.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
+		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 		let index = info.argIdx;
 		if(info.argName) {
@@ -127,7 +127,7 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 	})).filter(isNotUndefined) ?? [];
 }
 
-function getArgumentValue({ graph }: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, argumentIndex: number | 'unnamed', additionalAllowedTypes: RType[] | undefined): (string | undefined)[] | undefined {
+function getArgumentValue({ dataflow: { graph } }: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, argumentIndex: number | 'unnamed', additionalAllowedTypes: RType[] | undefined): (string | undefined)[] | undefined {
 	if(vertex) {
 		if(argumentIndex === 'unnamed') {
 			// return all unnamed arguments

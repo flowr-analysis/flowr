@@ -300,14 +300,14 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 }
 
 
-function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: unknown, configuration: ReconstructionConfiguration): Code {
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, defaultValue: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, parameter)) {
 		return plain(getLexeme(parameter));
 	}
 	if(parameter.defaultValue !== undefined && name.length > 0) {
 		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`);
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {
-		return plain(getLexeme(parameter.defaultValue));
+		return defaultValue ?? [];
 	} else {
 		return name;
 	}

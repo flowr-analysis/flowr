@@ -8,6 +8,15 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 
+export enum VariableResolve {
+	/** Don't resolve constants at all */
+	Disabled = 'disabled',
+	/** Use alias tracking to resolve */
+	Alias = 'alias',
+	/** Only resolve directly assigned builtin constants */
+	Builtin = 'builtin'
+}
+
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
@@ -35,6 +44,20 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
 	readonly defaultEngine?: EngineConfig['type'];
+	/** How to resolve constants, constraints, cells, ... */
+	readonly solver: {
+		/**
+		 * How to resolve variables and their values
+		 */
+		readonly variables:       VariableResolve,
+		/**
+		 * Whether to track pointers in the dataflow graph,
+		 * if not, the graph will be over-approximated wrt.
+		 * containers and accesses
+		 */
+		readonly pointerTracking: boolean
+	}
+
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -77,7 +100,11 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		}
 	},
 	engines:       [],
-	defaultEngine: 'r-shell'
+	defaultEngine: 'r-shell',
+	solver: {
+		variables:       VariableResolve.Alias,
+		pointerTracking: true
+	}
 };
 
 export const flowrConfigFileSchema = Joi.object({
@@ -101,7 +128,11 @@ export const flowrConfigFileSchema = Joi.object({
 			rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
 		}).description('The configuration for the R shell engine.')
 	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
-	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.')
+	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
+	solver: Joi.object({
+		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.')
+	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 
 // we don't load from a config file at all by default unless setConfigFile is called

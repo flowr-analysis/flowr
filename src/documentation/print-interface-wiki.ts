@@ -13,13 +13,15 @@ import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import type { FlowrConfigOptions } from '../config';
-import { flowrConfigFileSchema } from '../config';
+import { flowrConfigFileSchema, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { block } from './doc-util/doc-structure';
+import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import path from 'path';
 
 async function explainServer(shell: RShell): Promise<string> {
 	documentAllServerMessages();
@@ -170,6 +172,11 @@ function explainConfigFile(): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory). 
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
+To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` [Query](${FlowrWikiBaseRef}/Query%20API).
+Within the REPL this works by running the following:
+
+${codeBlock('shell', ':query @config')}
+
 
 The following summarizes the configuration options:
 
@@ -179,6 +186,7 @@ The following summarizes the configuration options:
 - \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
+- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -199,7 +207,11 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-			engines: [{ type: 'r-shell' }]
+			engines: [{ type: 'r-shell' }],
+			solver: {
+				variables:       VariableResolve.Alias,
+				pointerTracking: true
+			}
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }
@@ -216,8 +228,8 @@ ${codeBlock('json', JSON.stringify(
 - \`loadDefaults\` (boolean, initially \`true\`): If set to \`true\`, the default built-in definitions are loaded before applying the custom definitions. Setting this flag to \`false\` explicitly disables the loading of the default definitions.
 - \`definitions\` (array, initially empty): Allows to overwrite or define new built-in elements. Each object within must have a \`type\` which is one of the below. Furthermore, they may define a string array of \`names\` which specifies the identifiers to bind the definitions to. You may use \`assumePrimitive\` to specify whether _flowR_ should assume that this is a primitive non-library definition (so you probably just do not want to specify the key).
 
-  | Type          | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
-  | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+  | Type            | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
+  | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
   | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
@@ -237,37 +249,44 @@ ${describeSchema(flowrConfigFileSchema, markdownFormatter)}
 }
 
 function explainWritingCode(shell: RShell): string {
+	const types = getTypesFromFolderAsMermaid({
+		rootFolder:  path.resolve('./src/r-bridge/'),
+		files:       [path.resolve('./src/core/pipeline-executor.ts'), path.resolve('./src/core/steps/pipeline/default-pipelines.ts')],
+		typeName:    'RShell',
+		inlineTypes: mermaidHide
+	});
+
 	return `
 
 
 _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classes and interfaces that are interesting for extension writers 
 (see the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the [core](${FlowrWikiBaseRef}/Core) wiki page for more information).
 
-### Using the \`${RShell.name}\` to Interact with R
+### Using the ${shortLink(RShell.name, types.info)} to Interact with R
 
-The \`${RShell.name}\` class allows to interface with the \`R\`&nbsp;ecosystem installed on the host system.
-For now there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+The ${shortLink(RShell.name, types.info)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
+For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
 
 > [!IMPORTANT]
-> Each \`${RShell.name}\` controls a new instance of the R&nbsp;interpreter, make sure to call \`${RShell.name}::${shell.close.name}()\` when you’re done.
+> Each ${shortLink(RShell.name, types.info)} controls a new instance of the R&nbsp;interpreter, make sure to call <code>${shortLink(RShell.name, types.info, false)}::${shell.close.name}()</code> when you’re done.
 
-You can start a new "session" simply by constructing a new object with \`new ${RShell.name}()\`.
+You can start a new "session" simply by constructing a new object with <code>new ${shortLink(RShell.name, types.info, false)}()</code>.
 
-However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
+However, there are several options that may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-With a shell object (let's call it \`shell\`), you can execute R code by using \`${RShell.name}::${shell.sendCommand.name}\`, 
+With a shell object (let's call it \`shell\`), you can execute R code by using <code>${shortLink(RShell.name, types.info, false)}::${shell.sendCommand.name}</code>, 
 for example \`shell.${shell.sendCommand.name}("1 + 1")\`. 
-However, this does not return anything, so if you want to collect the output of your command, use \`${RShell.name}::${shell.sendCommandWithOutput.name}\` instead.
+However, this does not return anything, so if you want to collect the output of your command, use <code>${shortLink(RShell.name, types.info, false)}::${shell.sendCommandWithOutput.name}</code> instead.
 
-Besides that, the command \`${RShell.name}::${shell.tryToInjectHomeLibPath.name}\` may be of interest, as it enables all libraries available on the host system.
+Besides that, the command <code>${shortLink(RShell.name, types.info, false)}::${shell.tryToInjectHomeLibPath.name}</code> may be of interest, as it enables all libraries available on the host system.
 
 ### The Pipeline Executor
 
 Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
-However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow&20Graph) repeatedly proves to be the more interesting part.
+However, with continuous updates, the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) repeatedly proves to be the more interesting part.
 With this, we restructured _flowR_'s originally *hardcoded* pipeline to be far more flexible. 
 Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and what we call 'decorations' of these steps. 
-In short, if you still "just want to slice" you can do it like this:
+In short, if you still "just want to slice" you can do it like this with the ${shortLink(PipelineExecutor.name, types.info)}:
 
 ${
 	codeBlock('ts', `
@@ -286,9 +305,9 @@ const slice = await slicer.allRemainingSteps()
 <summary style='color:gray'>More Information</summary>
 
 If you compare this, with what you would have done with the old (and removed) \`SteppingSlicer\`, 
-this essentially just requires you to replace the \`SteppingSlicer\` with the \`${PipelineExecutor.name}\` 
-and to pass the \`DEFAULT_SLICING_PIPELINE\` as the first argument.
-The \`${PipelineExecutor.name}\`...
+this essentially just requires you to replace the \`SteppingSlicer\` with the ${shortLink(PipelineExecutor.name, types.info)}
+and to pass the ${shortLink('DEFAULT_SLICING_PIPELINE', types.info)} as the first argument.
+The ${shortLink(PipelineExecutor.name, types.info)}...
 
 1. allows investigating the results of all intermediate steps
 2. Can be executed step-by-step

@@ -4,15 +4,12 @@ import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
 
 interface ParserContent<T> {
-
     readonly name: string;
-
     rVersion(): Promise<string | 'unknown' | 'none'>;
-
     parse(request: RParseRequest): T;
-
     close(): void;
 }
+
 export type SyncParser<T> = ParserContent<Awaited<T>> & {readonly async?: false};
 export type AsyncParser<T> = ParserContent<Promise<T>> & {readonly async: true};
 export type Parser<T> = SyncParser<T> | AsyncParser<T>;

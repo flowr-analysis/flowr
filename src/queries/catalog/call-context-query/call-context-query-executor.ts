@@ -184,7 +184,7 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp> 
  *    This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
-export function executeCallContextQueries({ graph, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
+export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQueryData, queries: readonly CallContextQuery[]): CallContextQueryResult {
 	/* omit performance page load */
 	const now = Date.now();
 	/* the node id and call targets if present */
@@ -241,7 +241,7 @@ export function executeCallContextQueries({ graph, ast }: BasicQueryData, querie
 			let linkedIds: NodeId[] | undefined = undefined;
 			if(cfg && isSubCallQuery(query)) {
 				/* if we have a linkTo query, we have to find the last call */
-				const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, query.linkTo.callName);
+				const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, query.linkTo);
 				if(lastCall) {
 					linkedIds = lastCall;
 				}

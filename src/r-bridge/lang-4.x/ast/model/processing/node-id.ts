@@ -17,12 +17,17 @@ export function normalizeIdToNumberIfPossible(id: NodeId): NodeId {
 }
 
 /**
- * Recovers the lexeme of a node from its id in the idmap.
+ * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.
+ *
+ * @see {@link recoverContent} - to recover the content of a node
  */
 export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
 	return idMap?.get(id)?.lexeme;
 }
 
+/**
+ * Recovers the content of a {@link RNode|node} from its id in the {@link DataflowGraph|dataflow graph}.
+ */
 export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
 	const vertex = graph.getVertex(id);
 	if(vertex === undefined) {

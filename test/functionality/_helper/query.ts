@@ -72,7 +72,7 @@ export function assertQuery<
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();
 
-		const result = executeQueries<Queries['type'], VirtualArguments>({ graph: info.dataflow.graph, ast: info.normalize }, queries);
+		const result = executeQueries<Queries['type'], VirtualArguments>({ dataflow: info.dataflow, ast: info.normalize }, queries);
 
 		log.info(`total query time: ${result['.meta'].timing.toFixed(0)}ms (~1ms accuracy)`);
 
@@ -83,7 +83,7 @@ export function assertQuery<
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			const expectedNormalized = normalizeResults(typeof expected === 'function' ? await expected(info) : expected);
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
-		} catch(e: unknown) {
+		} /* v8 ignore next 3 */ catch(e: unknown) {
 			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(info.dataflow));
 			throw e;
 		}

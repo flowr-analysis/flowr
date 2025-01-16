@@ -9,12 +9,12 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference } from '../../../../environments/identifier';
+import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import { ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
+import type { ContainerIndicesCollection, DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
 import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
@@ -67,7 +67,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	// try to resolve them against the current environment
 	for(const ref of [...value.in, ...containedSubflowIn.flatMap(n => n.subflow.in)]) {
 		if(ref.name) {
-			const resolved = resolveByName(ref.name, env, ref.type) ?? [];
+			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
 			for(const resolve of resolved) {
 				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
@@ -77,7 +77,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 
 
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData = d => d }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -115,7 +115,12 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.controlDependencies)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					// When only a single index is referenced, we don't need to reference the whole object
+					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
+					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
+					if(isContainer || isContainer === undefined) {
+						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
+					}
 				}
 				if(assumeItMayHaveAHigherTarget) {
 					remainingReadInArgs.push(ingoing);
@@ -163,4 +168,14 @@ export function patchFunctionCall<OtherInfo>(
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
+}
+
+/**
+ * Check whether passed {@link indices} are containers or whether their sub-indices are containers.
+ */
+function checkForContainer(indices: ContainerIndicesCollection): boolean | undefined {
+	return indices?.every((indices) => {
+		const areSubIndicesContainers = indices.indices.every(index => 'subIndices' in index && checkForContainer(index.subIndices));
+		return indices.isContainer || areSubIndicesContainers;
+	});
 }

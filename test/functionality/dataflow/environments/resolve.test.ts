@@ -94,7 +94,7 @@ describe('Resolve', () => {
 				['NA',    null],
 			])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 				const defs = resolveToConstants(identifier, defaultEnv());
-				const all = defs?.every(d => d.value === wantedValue) ?? false;
+				const all = defs?.every(d => d === wantedValue) ?? false;
 				assert.isTrue(all, 'should be true');
 			});
 	
@@ -105,8 +105,8 @@ describe('Resolve', () => {
 				['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
 			])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
-				const some = defs?.some(d => d.value === wantedValue) ?? false;
-				const all = defs?.every(d => d.value === wantedValue) ?? false;
+				const some = defs?.some(d => d === wantedValue) ?? false;
+				const all = defs?.every(d => d === wantedValue) ?? false;
 				assert.isTrue(some, 'some should be True');
 				assert.isFalse(all, 'all should be False');
 			});
@@ -120,7 +120,7 @@ describe('Resolve', () => {
 				['FALSE',     false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
 			])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
-				const result = defs?.every(p => p.value === wantedValue) ?? false;
+				const result = defs?.every(p => p === wantedValue) ?? false;
 				assert.isFalse(result, 'result should be False');
 			});
 		});

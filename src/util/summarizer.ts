@@ -1,5 +1,5 @@
 import type { MergeableRecord } from './objects';
-import { sum } from './arrays';
+import { arraySum } from './arrays';
 
 export const enum SummarizerType {
 	Benchmark	 = 'benchmark',
@@ -63,10 +63,10 @@ export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: n
 	const min = sorted[0];
 	const max = sorted[sorted.length - 1];
 	const median = sorted[Math.floor(sorted.length / 2)];
-	const total = sum(sorted);
+	const total = arraySum(sorted);
 	const length = totalNumberOfDataPoints ?? sorted.length;
 	const mean = total / length;
 	// sqrt(sum(x-mean)^2 / n)
-	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / length);
+	const std = Math.sqrt(arraySum(sorted.map(x => (x - mean) ** 2)) / length);
 	return { min, max, median, mean, std, total };
 }

@@ -9,7 +9,7 @@ import {
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
 } from '../../../util/summarizer';
-import { sum } from '../../../util/arrays';
+import { arraySum } from '../../../util/arrays';
 import { readLineByLineSync } from '../../../util/files';
 import { guard } from '../../../util/assert';
 import type { FeatureStatistics, FeatureStatisticsWithMeta } from '../../features/feature';
@@ -59,7 +59,7 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 	out.write(`file,successfulParsed,${summarizedMeasurement2CsvHeader('processing')},failedRequests,${summarizedMeasurement2CsvHeader('line-length')},${summarizedMeasurement2CsvHeader('lines')},${summarizedMeasurement2CsvHeader('characters')},numberOfNormalizedNodes\n`);
 	for(const [file, info] of metaFeatureInformation) {
 		// we could retrieve these by summing later as well :thinking: however, this makes it more explicit
-		const characters = sum(info.stats.lines[0]);
+		const characters = arraySum(info.stats.lines[0]);
 		out.write(`${JSON.stringify(file)},${info.stats.successfulParsed},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.processingTimeMs))},`
 				+ `${info.stats.failedRequests.length},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.lines[0]))},${summarizedMeasurement2Csv(summarizeMeasurement([info.stats.lines[0].length]))},${summarizedMeasurement2Csv(summarizeMeasurement([characters]))},${info.stats.numberOfNormalizedNodes[0]}\n`
 		);
@@ -70,8 +70,8 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 		fileStatisticsSummary.characters.push(characters);
 		fileStatisticsSummary.numberOfNormalizedNodes.push(info.stats.numberOfNormalizedNodes[0]);
 	}
-	out.write(`all,${sum(fileStatisticsSummary.successfulParsed)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.processingTimeMs))},`
-		+ `${sum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.flat()))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.map(l => l.length)))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.characters))},${sum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
+	out.write(`all,${arraySum(fileStatisticsSummary.successfulParsed)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.processingTimeMs))},`
+		+ `${arraySum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.flat()))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.map(l => l.length)))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.characters))},${arraySum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
 	);
 	out.close();
 }

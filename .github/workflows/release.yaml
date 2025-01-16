@@ -84,7 +84,7 @@ jobs:
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
         uses: codecov/codecov-action@v4
@@ -159,7 +159,7 @@ jobs:
         run: npm ci
 
       - name: "⬆️ Publish on NPM"
-        # we use publish library because flowr itself is a runnable, and we do not want to publish something with extra
+        # we use publish-library because flowr itself is a runnable, and we do not want to publish something with extra
         # dist paths etc.
         # besides, we make dead-sure we have a clean directory to work on!
         run: |

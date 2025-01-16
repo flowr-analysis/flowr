@@ -36,6 +36,7 @@ describe('Post-Processing', () => {
 			type:            SummarizerType.Statistics,
 		});
 		/* remove the temp folder, as well as *-final and *-intermediate */
+		/* v8 ignore start */
 		process.on('exit', () => {
 			try {
 				fs.rmSync(tempfolder, { recursive: true, force: true });
@@ -45,5 +46,6 @@ describe('Post-Processing', () => {
 				console.error('Error during cleanup:', e);
 			}
 		});
+		/* v8 ignore stop */
 	});
 });

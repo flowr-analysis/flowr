@@ -32,7 +32,7 @@ export async function printNormalizedAstForCode(shell: RShell, code: string, { s
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the R&nbsp;shell) within the generation environment.`;
 
 	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
 <details>

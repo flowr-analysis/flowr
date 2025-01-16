@@ -96,10 +96,12 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
+			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			matchedParameters.add(name);
 		} else if(specialDotParameter !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
 			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
+			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 		}
 	}
 
@@ -116,6 +118,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 			if(specialDotParameter !== undefined) {
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`);
 				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
+				graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			} else {
 				dataflowLogger.warn(`skipping argument ${i} as there is no corresponding parameter - R should block that`);
 			}
@@ -124,6 +127,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		const param = remainingParameter[i];
 		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`);
 		graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
+		graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 	}
 }
 
@@ -159,7 +163,8 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const def of defs) {
-				graph.addEdge(id, def, EdgeType.Reads);
+				graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+				graph.addEdge(id, def, EdgeType.DefinesOnCall);
 			}
 		}
 	}
@@ -231,8 +236,10 @@ export function linkFunctionCalls(
 	return calledFunctionDefinitions;
 }
 
-/** convenience function returning all known call targets */
-export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph): NodeId[] {
+/**
+ * convenience function returning all known call targets, as well as the name source which defines them
+ */
+export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
 	const found = [];
 	const callVertex = graph.get(call, true);
 	if(callVertex === undefined) {
@@ -245,8 +252,8 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph): N
 		return [];
 	}
 
-	if(info.name !== undefined && info.environment !== undefined) {
-		const functionCallDefs = resolveByName(info.name, info.environment, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
+	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
+		const functionCallDefs = resolveByName(info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);

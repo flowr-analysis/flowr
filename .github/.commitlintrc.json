@@ -18,17 +18,17 @@
 		"scope-empty": [1, "never"],
 		"type-case": [2, "always", "kebab-case"],
 		"type-enum": [2, "always", [
-			"build", "build-fix",
+			"build", "build-fix", "builds", "builds-fix",
 			"ci", "ci-fix",
-			"doc", "docs", "doc-fix", "docs-fix",
+			"doc", "doc-fix", "docs", "docs-fix",
 			"feat", "feat-fix",
-			"perf",
+			"perf", "perf-fix",
 			"refactor",
 			"test", "tests", "test-fix", "tests-fix",
-			"dep",
+			"dep", "dep-fix", "deps", "deps-fix",
 			"lint", "lint-fix",
 			"wip",
-			"meta"
+			"meta", "meta-fix"
 		]],
 		"type-empty": [2, "never"],
 		"signed-off-by": [2, "never", "Signed-off-by:"]

@@ -10,14 +10,17 @@ async function normalize(parser: KnownParser, remainingLine: string) {
 	}).allRemainingSteps();
 }
 
+function handleString(code: string): string {
+	return code.startsWith('"') ? JSON.parse(code) as string : code;
+}
+
 export const normalizeCommand: ReplCommand = {
 	description:  `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await normalize(shell, remainingLine);
-
+		const result = await normalize(shell, handleString(remainingLine));
 		output.stdout(normalizedAstToMermaid(result.normalize.ast));
 	}
 };
@@ -28,8 +31,7 @@ export const normalizeStarCommand: ReplCommand = {
 	aliases:      [ 'n*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await normalize(shell, remainingLine);
-
+		const result = await normalize(shell, handleString(remainingLine));
 		output.stdout(normalizedAstToMermaidUrl(result.normalize.ast));
 	}
 };

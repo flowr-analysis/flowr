@@ -506,11 +506,12 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 
 function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): ControlFlowInformation {
 	const graph = operand.graph;
-	const result: ControlFlowInformation = { ...operand, graph, exitPoints: [unary.info.id] };
-
 	graph.addVertex({ id: unary.info.id, name: unary.type, type: CfgVertexType.EndMarker });
+	for(const entry of operand.exitPoints) {
+		graph.addEdge(unary.info.id, entry, { label: 'FD' });
+	}
 
-	return result;
+	return { ...operand, graph, exitPoints: [unary.info.id] };
 }
 
 

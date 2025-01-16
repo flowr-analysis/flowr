@@ -117,7 +117,10 @@ jobs:
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --forbid-only"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+
+      - name: "⚙️ Run System Tests"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
       - name: "⬆️ Upload Coverage Reports to Codecov"
         if: github.ref == 'refs/heads/main'

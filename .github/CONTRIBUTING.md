@@ -116,19 +116,19 @@ In general, these commits have the following shape:
 
 We support the following commit types:
 
-| name                                   | description                                                                                        |
-|:---------------------------------------|----------------------------------------------------------------------------------------------------|
-| `build`                                | Changes that affect the build system or external dependencies (e.g., npm).                         |
-| `ci`, `ci-fix`                         | Updates or fixes the continuous integration (ci) pipeline of *flowR*.                              |
-| `doc`/`docs`, `doc-fix`/`docs-fix`     | Changes that only affect documentation.                                                            |
-| `feat`, `feat-fix`                     | Introduces a new feature.                                                                          |
-| `perf`                                 | Improves performance.                                                                              |
-| `refactor`                             | Represents a refactoring of existing code.                                                         |
-| `test`/`tests`, `test-fix`/`tests-fix` | Introduces new or modifies existing tests.                                                         |
-| `dep`                                  | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
-| `lint`, `lint-fix`                     | Adapts or updates linter-issues.                                                                   |
-| `wip`                                  | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
-| `meta`                                 | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
+| name                                       | description                                                                                        |
+|:-------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `build`/`builds`, `build-fix`/`builds-fix` | Changes that affect the build system or external dependencies (e.g., npm).                         |
+| `ci`, `ci-fix`                             | Updates or fixes the continuous integration (ci) pipeline of *flowR*.                              |
+| `doc`/`docs`, `doc-fix`/`docs-fix`         | Changes that only affect documentation.                                                            |
+| `feat`, `feat-fix`                         | Introduces a new feature.                                                                          |
+| `perf`, `perf-fix`                         | Improves performance.                                                                              |
+| `refactor`                                 | Represents a refactoring of existing code.                                                         |
+| `test`/`tests`, `test-fix`/`tests-fix`     | Introduces new or modifies existing tests.                                                         |
+| `dep`/`deps`, `dep-fix`/`deps-fix`         | Regards the explicit update of dependencies (or the addition of new dependencies).                 |
+| `lint`, `lint-fix`                         | Adapts or updates linter-issues.                                                                   |
+| `wip`                                      | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
+| `meta`, `meta-fix`                         | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
 
 Although we have done that earlier, we do no longer allow more than one type (as enforced
 by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)).

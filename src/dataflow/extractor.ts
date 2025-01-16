@@ -25,6 +25,9 @@ import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
+import {
+	updateNestedFunctionCalls
+} from './internal/process/functions/call/built-in/built-in-function-definition';
 
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
@@ -64,11 +67,9 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		if(!cfg) {
-			cfg = extractCFG(ast).graph;
-		}
+		cfg ??= extractCFG(ast).graph;
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo.callName);
+		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -106,6 +107,9 @@ export function produceDataFlowGraph<OtherInfo>(
 			df = standaloneSourceFile(request[i] as RParseRequest, dfData, `root-${i}`, df);
 		}
 	}
+
+	// finally, resolve linkages
+	updateNestedFunctionCalls(df.graph, df.environment);
 
 	resolveLinkToSideEffects(ast, df.graph);
 	return df;

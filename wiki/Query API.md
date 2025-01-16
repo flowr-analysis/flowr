@@ -1,4 +1,4 @@
-_This document was generated from 'src/documentation/print-query-wiki.ts' on 2024-11-21, 16:14:48 UTC presenting an overview of flowR's query API (v2.1.7, using R v4.4.0)._
+_This document was generated from 'src/documentation/print-query-wiki.ts' on 2025-01-10, 20:21:50 UTC presenting an overview of flowR's query API (v2.1.11, using R v4.4.0)._
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/query.ts).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to access this API.
@@ -23,6 +23,8 @@ For now, we support the following **active** queries (which we will refer to sim
 
 1. [Call-Context Query](#call-context-query) (`call-context`):\
     Finds all calls in a set of files that matches specified criteria.
+1. [Config Query](#config-query) (`config`):\
+    Returns the current configuration of flowR.
 1. [Dataflow Cluster Query](#dataflow-cluster-query) (`dataflow-cluster`):\
     Calculates and returns all the clusters present in the dataflow graph.
 1. [Dataflow Query](#dataflow-query) (`dataflow`):\
@@ -37,6 +39,8 @@ For now, we support the following **active** queries (which we will refer to sim
     Returns a simple mapping of ids to their location in the source file
 1. [Normalized AST Query](#normalized-ast-query) (`normalized-ast`):\
     Returns the normalized AST of the given code.
+1. [Search Query](#search-query) (`search`):\
+    Provides access to flowR's search API
 1. [Static Slice Query](#static-slice-query) (`static-slice`):\
     Slice the dataflow graph reducing the code to just the parts relevant for the given criteria.
 
@@ -90,6 +94,15 @@ Valid item types:
                         Allows only the values: 'link-to-last-call'
                     - **callName** string [required]
                         _Regex regarding the function name of the last call. Similar to `callName`, strings are interpreted as a regular expression._
+                    - **ignoreIf** function [optional]
+                        _Should we ignore this (source) call? Currently, there is no well working serialization for this._
+                    - **cascadeIf** function [optional]
+                        _Should we continue searching after the link was created? Currently, there is no well working serialization for this._
+            - **.** object 
+                _The config query retrieves the current configuration of the flowR instance._
+                - **type** string [required]
+                    _The type of the query._
+                    Allows only the values: 'config'
             - **.** object 
                 _The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!_
                 - **type** string [required]
@@ -178,10 +191,17 @@ Valid item types:
                         - **argName** string [optional]
                             _The name of the argument that contains the library name._
             - **.** object 
-                _The id map query retrieves the location of every id in the ast._
+                _The location map query retrieves the location of every id in the ast._
                 - **type** string [required]
                     _The type of the query._
                     Allows only the values: 'location-map'
+            - **.** object 
+                _The id map query retrieves the id map from the normalized AST._
+                - **type** string [required]
+                    _The type of the query._
+                    Allows only the values: 'search'
+                - **search** object [required]
+                    _The search query to execute._
         - **.** alternatives 
             _Virtual queries (used for structure)_
             - **.** object 
@@ -496,7 +516,7 @@ flowchart LR
     89 -->|"reads, returns, argument"| 87
 ```
 	
-(The analysis required _23.99 ms_ (incl. parse and normalize) within the generation environment.)
+(The analysis required _24.89 ms_ (including parse and normalize) within the generation environment.)
 
 
 
@@ -537,14 +557,14 @@ Just as an example, the following [Call-Context Query](#call-context-query) find
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file**: _`read_csv`_ (L.6), _`read_csv`_ (L.7)\
 _All queries together required ≈1 ms (1ms accuracy, total 10 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _9.77 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _10.32 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -556,7 +576,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "input": {
@@ -773,14 +793,14 @@ Now let's say we want to query _all_ uses of the `my_test_function`:
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **.**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **.**: _`foo`_ (L.2) with 1 alias root (_`my_test_function`_ (L.1)), _`bar`_ (L.4) with 1 alias root (_`my_test_function`_ (L.1)), _`my_test_function`_ (L.5)\
-_All queries together required ≈1 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.70 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _5.03 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -792,7 +812,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "kinds": {
       ".": {
@@ -822,7 +842,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 0
   }
 }
 ```
@@ -846,6 +866,23 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Call-Context Query query is `executeCallContextQueries` in [`./src/queries/catalog/call-context-query/call-context-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/call-context-query/call-context-query-executor.ts).
+
+</details>	
+
+
+-----
+
+
+### Config Query
+
+
+This query provides access to the current configuration of the flowR instance. See the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on what the configuration represents.
+
+<details> 
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Config Query query is `executeConfigQuery` in [`./src/queries/catalog/config-query/config-query-format.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/config-query/config-query-format.ts).
 
 </details>	
 
@@ -885,11 +922,11 @@ _Results (prettified and summarized):_
 Query: **dataflow-cluster** (0ms)\
 &nbsp;&nbsp;&nbsp;╰ Found 1 cluster\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰  {3, 0, 1, 2} ([marked](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgIzkxO1JOdW1iZXIjOTM7IDFcbiAgICAgICgxKVxuICAgICAgKjEuNipgXCJ9fVxuICAgIHN0eWxlIDEgc3Ryb2tlOnRlYWwsc3Ryb2tlLXdpZHRoOjdweCxzdHJva2Utb3BhY2l0eTouODsgXG4gICAgMFtcImAjOTE7UlN5bWJvbCM5MzsgeFxuICAgICAgKDApXG4gICAgICAqMS4xKmBcIl1cbiAgICBzdHlsZSAwIHN0cm9rZTp0ZWFsLHN0cm9rZS13aWR0aDo3cHgsc3Ryb2tlLW9wYWNpdHk6Ljg7IFxuICAgIDJbW1wiYCM5MTtSQmluYXJ5T3AjOTM7ICM2MDsjNDU7XG4gICAgICAoMilcbiAgICAgICoxLjEtNipcbiAgICAoMCwgMSlgXCJdXVxuICAgIHN0eWxlIDIgc3Ryb2tlOnRlYWwsc3Ryb2tlLXdpZHRoOjdweCxzdHJva2Utb3BhY2l0eTouODsgXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICgzKVxuICAgICAgKjEuOSpgXCJdKVxuICAgIHN0eWxlIDMgc3Ryb2tlOnRlYWwsc3Ryb2tlLXdpZHRoOjdweCxzdHJva2Utb3BhY2l0eTouODsgXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDFcbiAgICAwIC0tPnxcImRlZmluZWQtYnlcInwgMlxuICAgIDIgLS0+fFwiYXJndW1lbnRcInwgMVxuICAgIDIgLS0+fFwicmV0dXJucywgYXJndW1lbnRcInwgMFxuICAgIDMgLS0+fFwicmVhZHNcInwgMCIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==))\
-_All queries together required ≈0 ms (1ms accuracy, total 3 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.42 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _2.47 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -961,7 +998,7 @@ _All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.61 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _1.67 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1033,11 +1070,11 @@ Query: **dataflow-cluster** (0ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ (has unknown side effect) {11, 9} ([marked](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgIzkxO1JTeW1ib2wjOTM7IGdncGxvdFxuICAgICAgKDEpXG4gICAgICAqMS45LTE0KmBcIn19XG4gICAgM1tbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGxpYnJhcnlcbiAgICAgICgzKVxuICAgICAgKjEuMS0xNSpcbiAgICAoMSlgXCJdXVxuICAgIHN0eWxlIDMgc3Ryb2tlOnJlZCxzdHJva2Utd2lkdGg6NXB4OyBcbiAgICA1e3tcImAjOTE7UlN5bWJvbCM5MzsgZHBseXJcbiAgICAgICg1KVxuICAgICAgKjIuOS0xMypgXCJ9fVxuICAgIDdbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBsaWJyYXJ5XG4gICAgICAoNylcbiAgICAgICoyLjEtMTQqXG4gICAgKDUpYFwiXV1cbiAgICBzdHlsZSA3IHN0cm9rZTpyZWQsc3Ryb2tlLXdpZHRoOjVweDsgXG4gICAgOXt7XCJgIzkxO1JTeW1ib2wjOTM7IHJlYWRyXG4gICAgICAoOSlcbiAgICAgICozLjktMTMqYFwifX1cbiAgICBzdHlsZSA5IHN0cm9rZTp0ZWFsLHN0cm9rZS13aWR0aDo3cHgsc3Ryb2tlLW9wYWNpdHk6Ljg7IFxuICAgIDExW1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgbGlicmFyeVxuICAgICAgKDExKVxuICAgICAgKjMuMS0xNCpcbiAgICAoOSlgXCJdXVxuICAgIHN0eWxlIDExIHN0cm9rZTp0ZWFsLHN0cm9rZS13aWR0aDo3cHgsc3Ryb2tlLW9wYWNpdHk6Ljg7IFxuICAgIHN0eWxlIDExIHN0cm9rZTpyZWQsc3Ryb2tlLXdpZHRoOjVweDsgXG4gICAgMTR7e1wiYCM5MTtSU3RyaW5nIzkzOyAjMzk7ZGF0YS5jc3YjMzk7XG4gICAgICAoMTQpXG4gICAgICAqNi4xOC0yNypgXCJ9fVxuICAgIDE2W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcmVhZCM5NTtjc3ZcbiAgICAgICgxNilcbiAgICAgICo2LjktMjgqXG4gICAgKDE0KWBcIl1dXG4gICAgMTJbXCJgIzkxO1JTeW1ib2wjOTM7IGRhdGFcbiAgICAgICgxMilcbiAgICAgICo2LjEtNCpgXCJdXG4gICAgMTdbW1wiYCM5MTtSQmluYXJ5T3AjOTM7ICM2MDsjNDU7XG4gICAgICAoMTcpXG4gICAgICAqNi4xLTI4KlxuICAgICgxMiwgMTYpYFwiXV1cbiAgICAyMHt7XCJgIzkxO1JTdHJpbmcjOTM7ICMzOTtkYXRhMi5jc3YjMzk7XG4gICAgICAoMjApXG4gICAgICAqNy4xOS0yOSpgXCJ9fVxuICAgIDIyW1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcmVhZCM5NTtjc3ZcbiAgICAgICgyMilcbiAgICAgICo3LjEwLTMwKlxuICAgICgyMClgXCJdXVxuICAgIDE4W1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDE4KVxuICAgICAgKjcuMS01KmBcIl1cbiAgICAyM1tbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzYwOyM0NTtcbiAgICAgICgyMylcbiAgICAgICo3LjEtMzAqXG4gICAgKDE4LCAyMilgXCJdXVxuICAgIDI2KFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YVxuICAgICAgKDI2KVxuICAgICAgKjkuMTEtMTQqYFwiXSlcbiAgICAyN3t7XCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICgyNylcbiAgICAgICo5LjExLTE2KmBcIn19XG4gICAgMjlbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoMjkpXG4gICAgICAqOS4xMS0xNipcbiAgICAoMjYsIDI3KWBcIl1dXG4gICAgMzFbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBtZWFuXG4gICAgICAoMzEpXG4gICAgICAqOS42LTE3KlxuICAgICgyOSlgXCJdXVxuICAgIDI0W1wiYCM5MTtSU3ltYm9sIzkzOyBtXG4gICAgICAoMjQpXG4gICAgICAqOS4xKmBcIl1cbiAgICAzMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzYwOyM0NTtcbiAgICAgICgzMilcbiAgICAgICo5LjEtMTcqXG4gICAgKDI0LCAzMSlgXCJdXVxuICAgIDM0KFtcImAjOTE7UlN5bWJvbCM5MzsgbVxuICAgICAgKDM0KVxuICAgICAgKjEwLjcqYFwiXSlcbiAgICAzNltbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IHByaW50XG4gICAgICAoMzYpXG4gICAgICAqMTAuMS04KlxuICAgICgzNClgXCJdXVxuICAgIDM4KFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YVxuICAgICAgKDM4KVxuICAgICAgKjEyLjEtNCpgXCJdKVxuICAgIDQzKFtcImAjOTE7UlN5bWJvbCM5MzsgeFxuICAgICAgKDQzKVxuICAgICAgKjEzLjI0KmBcIl0pXG4gICAgNDQoW1wiYCM5MTtSQXJndW1lbnQjOTM7IHhcbiAgICAgICg0NClcbiAgICAgICoxMy4yMCpgXCJdKVxuICAgIDQ2KFtcImAjOTE7UlN5bWJvbCM5MzsgeVxuICAgICAgKDQ2KVxuICAgICAgKjEzLjMxKmBcIl0pXG4gICAgNDcoW1wiYCM5MTtSQXJndW1lbnQjOTM7IHlcbiAgICAgICg0NylcbiAgICAgICoxMy4yNypgXCJdKVxuICAgIDQ4W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgYWVzXG4gICAgICAoNDgpXG4gICAgICAqMTMuMTYtMzIqXG4gICAgKHggKDQ0KSwgeSAoNDcpKWBcIl1dXG4gICAgNTBbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBnZ3Bsb3RcbiAgICAgICg1MClcbiAgICAgICoxMy45LTMzKlxuICAgICgzOCwgNDgpYFwiXV1cbiAgICA1MltbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGRhdGEgJSM2MjslXG5cdGdncGxvdChhZXMoeCA9IHgsIHkgPSB5KSlcbiAgICAgICg1MilcbiAgICAgICoxMi42LTgqXG4gICAgKDM4LCA1MClgXCJdXVxuICAgIDU0W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgZ2VvbSM5NTtwb2ludFxuICAgICAgKDU0KVxuICAgICAgKjE0LjktMjAqYFwiXV1cbiAgICA1NVtbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzQzO1xuICAgICAgKDU1KVxuICAgICAgKjEyLjEtMTQuMjAqXG4gICAgKDUyLCA1NClgXCJdXVxuICAgIDU3KFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YTJcbiAgICAgICg1NylcbiAgICAgICoxNi42LTEwKmBcIl0pXG4gICAgNTh7e1wiYCM5MTtSU3ltYm9sIzkzOyB4XG4gICAgICAoNTgpXG4gICAgICAqMTYuNi0xMipgXCJ9fVxuICAgIDYwW1tcImAjOTE7UkFjY2VzcyM5MzsgJFxuICAgICAgKDYwKVxuICAgICAgKjE2LjYtMTIqXG4gICAgKDU3LCA1OClgXCJdXVxuICAgIDYyKFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YTJcbiAgICAgICg2MilcbiAgICAgICoxNi4xNS0xOSpgXCJdKVxuICAgIDYze3tcImAjOTE7UlN5bWJvbCM5MzsgeVxuICAgICAgKDYzKVxuICAgICAgKjE2LjE1LTIxKmBcIn19XG4gICAgNjVbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNjUpXG4gICAgICAqMTYuMTUtMjEqXG4gICAgKDYyLCA2MylgXCJdXVxuICAgIDY3W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcGxvdFxuICAgICAgKDY3KVxuICAgICAgKjE2LjEtMjIqXG4gICAgKDYwLCA2NSlgXCJdXVxuICAgIDY5KFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YTJcbiAgICAgICg2OSlcbiAgICAgICoxNy44LTEyKmBcIl0pXG4gICAgNzB7e1wiYCM5MTtSU3ltYm9sIzkzOyB4XG4gICAgICAoNzApXG4gICAgICAqMTcuOC0xNCpgXCJ9fVxuICAgIDcyW1tcImAjOTE7UkFjY2VzcyM5MzsgJFxuICAgICAgKDcyKVxuICAgICAgKjE3LjgtMTQqXG4gICAgKDY5LCA3MClgXCJdXVxuICAgIDc0KFtcImAjOTE7UlN5bWJvbCM5MzsgZGF0YTJcbiAgICAgICg3NClcbiAgICAgICoxNy4xNy0yMSpgXCJdKVxuICAgIDc1e3tcImAjOTE7UlN5bWJvbCM5MzsgeVxuICAgICAgKDc1KVxuICAgICAgKjE3LjE3LTIzKmBcIn19XG4gICAgNzdbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNzcpXG4gICAgICAqMTcuMTctMjMqXG4gICAgKDc0LCA3NSlgXCJdXVxuICAgIDc5W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcG9pbnRzXG4gICAgICAoNzkpXG4gICAgICAqMTcuMS0yNCpcbiAgICAoNzIsIDc3KWBcIl1dXG4gICAgODIoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDgyKVxuICAgICAgKjE5LjEyLTE2KmBcIl0pXG4gICAgODN7e1wiYCM5MTtSU3ltYm9sIzkzOyBrXG4gICAgICAoODMpXG4gICAgICAqMTkuMTItMTgqYFwifX1cbiAgICA4NVtbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICg4NSlcbiAgICAgICoxOS4xMi0xOCpcbiAgICAoODIsIDgzKWBcIl1dXG4gICAgODdbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBtZWFuXG4gICAgICAoODcpXG4gICAgICAqMTkuNy0xOSpcbiAgICAoODUpYFwiXV1cbiAgICA4OVtbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IHByaW50XG4gICAgICAoODkpXG4gICAgICAqMTkuMS0yMCpcbiAgICAoODcpYFwiXV1cbiAgICAzIC0tPnxcImFyZ3VtZW50XCJ8IDFcbiAgICA3IC0tPnxcImFyZ3VtZW50XCJ8IDVcbiAgICAxMSAtLT58XCJhcmd1bWVudFwifCA5XG4gICAgMTYgLS0+fFwiYXJndW1lbnRcInwgMTRcbiAgICAxMiAtLT58XCJkZWZpbmVkLWJ5XCJ8IDE2XG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAxN1xuICAgIDE3IC0tPnxcImFyZ3VtZW50XCJ8IDE2XG4gICAgMTcgLS0+fFwicmV0dXJucywgYXJndW1lbnRcInwgMTJcbiAgICAyMiAtLT58XCJhcmd1bWVudFwifCAyMFxuICAgIDE4IC0tPnxcImRlZmluZWQtYnlcInwgMjJcbiAgICAxOCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDIzXG4gICAgMjMgLS0+fFwiYXJndW1lbnRcInwgMjJcbiAgICAyMyAtLT58XCJyZXR1cm5zLCBhcmd1bWVudFwifCAxOFxuICAgIDI2IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgMjkgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDI2XG4gICAgMjkgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDI3XG4gICAgMzEgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDI5XG4gICAgMjQgLS0+fFwiZGVmaW5lZC1ieVwifCAzMVxuICAgIDI0IC0tPnxcImRlZmluZWQtYnlcInwgMzJcbiAgICAzMiAtLT58XCJhcmd1bWVudFwifCAzMVxuICAgIDMyIC0tPnxcInJldHVybnMsIGFyZ3VtZW50XCJ8IDI0XG4gICAgMzQgLS0+fFwicmVhZHNcInwgMjRcbiAgICAzNiAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgMzRcbiAgICAzOCAtLT58XCJyZWFkc1wifCAxMlxuICAgIDQ0IC0tPnxcInJlYWRzXCJ8IDQzXG4gICAgNDcgLS0+fFwicmVhZHNcInwgNDZcbiAgICA0OCAtLT58XCJyZWFkc1wifCA0M1xuICAgIDQ4IC0tPnxcImFyZ3VtZW50XCJ8IDQ0XG4gICAgNDggLS0+fFwicmVhZHNcInwgNDZcbiAgICA0OCAtLT58XCJhcmd1bWVudFwifCA0N1xuICAgIDUwIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA0OFxuICAgIDUwIC0tPnxcImFyZ3VtZW50XCJ8IDM4XG4gICAgNTIgLS0+fFwiYXJndW1lbnRcInwgMzhcbiAgICA1MiAtLT58XCJhcmd1bWVudFwifCA1MFxuICAgIDU1IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA1MlxuICAgIDU1IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA1NFxuICAgIDU3IC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgNjAgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDU3XG4gICAgNjAgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDU4XG4gICAgNjIgLS0+fFwicmVhZHNcInwgMThcbiAgICA2NSAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgNjJcbiAgICA2NSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNjNcbiAgICA2NyAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNjBcbiAgICA2NyAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNjVcbiAgICA2OSAtLT58XCJyZWFkc1wifCAxOFxuICAgIDcyIC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCA2OVxuICAgIDcyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA3MFxuICAgIDc0IC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgNzcgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDc0XG4gICAgNzcgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDc1XG4gICAgNzkgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDcyXG4gICAgNzkgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDc3XG4gICAgNzkgLS0+fFwicmVhZHNcInwgNjdcbiAgICA4MiAtLT58XCJyZWFkc1wifCAxOFxuICAgIDg1IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCA4MlxuICAgIDg1IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA4M1xuICAgIDg3IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA4NVxuICAgIDg5IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCA4NyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==))\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ (has unknown side effect) {7, 5} ([marked](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgIzkxO1JTeW1ib2wjOTM7IGdncGxvdFxuICAgICAgKDEpXG4gICAgICAqMS45LTE0KmBcIn19XG4gICAgM1tbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGxpYnJhcnlcbiAgICAgICgzKVxuICAgICAgKjEuMS0xNSpcbiAgICAoMSlgXCJdXVxuICAgIHN0eWxlIDMgc3Ryb2tlOnJlZCxzdHJva2Utd2lkdGg6NXB4OyBcbiAgICA1e3tcImAjOTE7UlN5bWJvbCM5MzsgZHBseXJcbiAgICAgICg1KVxuICAgICAgKjIuOS0xMypgXCJ9fVxuICAgIHN0eWxlIDUgc3Ryb2tlOnRlYWwsc3Ryb2tlLXdpZHRoOjdweCxzdHJva2Utb3BhY2l0eTouODsgXG4gICAgN1tbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGxpYnJhcnlcbiAgICAgICg3KVxuICAgICAgKjIuMS0xNCpcbiAgICAoNSlgXCJdXVxuICAgIHN0eWxlIDcgc3Ryb2tlOnRlYWwsc3Ryb2tlLXdpZHRoOjdweCxzdHJva2Utb3BhY2l0eTouODsgXG4gICAgc3R5bGUgNyBzdHJva2U6cmVkLHN0cm9rZS13aWR0aDo1cHg7IFxuICAgIDl7e1wiYCM5MTtSU3ltYm9sIzkzOyByZWFkclxuICAgICAgKDkpXG4gICAgICAqMy45LTEzKmBcIn19XG4gICAgMTFbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBsaWJyYXJ5XG4gICAgICAoMTEpXG4gICAgICAqMy4xLTE0KlxuICAgICg5KWBcIl1dXG4gICAgc3R5bGUgMTEgc3Ryb2tlOnJlZCxzdHJva2Utd2lkdGg6NXB4OyBcbiAgICAxNHt7XCJgIzkxO1JTdHJpbmcjOTM7ICMzOTtkYXRhLmNzdiMzOTtcbiAgICAgICgxNClcbiAgICAgICo2LjE4LTI3KmBcIn19XG4gICAgMTZbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyByZWFkIzk1O2NzdlxuICAgICAgKDE2KVxuICAgICAgKjYuOS0yOCpcbiAgICAoMTQpYFwiXV1cbiAgICAxMltcImAjOTE7UlN5bWJvbCM5MzsgZGF0YVxuICAgICAgKDEyKVxuICAgICAgKjYuMS00KmBcIl1cbiAgICAxN1tbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzYwOyM0NTtcbiAgICAgICgxNylcbiAgICAgICo2LjEtMjgqXG4gICAgKDEyLCAxNilgXCJdXVxuICAgIDIwe3tcImAjOTE7UlN0cmluZyM5MzsgIzM5O2RhdGEyLmNzdiMzOTtcbiAgICAgICgyMClcbiAgICAgICo3LjE5LTI5KmBcIn19XG4gICAgMjJbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyByZWFkIzk1O2NzdlxuICAgICAgKDIyKVxuICAgICAgKjcuMTAtMzAqXG4gICAgKDIwKWBcIl1dXG4gICAgMThbXCJgIzkxO1JTeW1ib2wjOTM7IGRhdGEyXG4gICAgICAoMTgpXG4gICAgICAqNy4xLTUqYFwiXVxuICAgIDIzW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNjA7IzQ1O1xuICAgICAgKDIzKVxuICAgICAgKjcuMS0zMCpcbiAgICAoMTgsIDIyKWBcIl1dXG4gICAgMjYoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhXG4gICAgICAoMjYpXG4gICAgICAqOS4xMS0xNCpgXCJdKVxuICAgIDI3e3tcImAjOTE7UlN5bWJvbCM5MzsgeFxuICAgICAgKDI3KVxuICAgICAgKjkuMTEtMTYqYFwifX1cbiAgICAyOVtbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICgyOSlcbiAgICAgICo5LjExLTE2KlxuICAgICgyNiwgMjcpYFwiXV1cbiAgICAzMVtbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IG1lYW5cbiAgICAgICgzMSlcbiAgICAgICo5LjYtMTcqXG4gICAgKDI5KWBcIl1dXG4gICAgMjRbXCJgIzkxO1JTeW1ib2wjOTM7IG1cbiAgICAgICgyNClcbiAgICAgICo5LjEqYFwiXVxuICAgIDMyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNjA7IzQ1O1xuICAgICAgKDMyKVxuICAgICAgKjkuMS0xNypcbiAgICAoMjQsIDMxKWBcIl1dXG4gICAgMzQoW1wiYCM5MTtSU3ltYm9sIzkzOyBtXG4gICAgICAoMzQpXG4gICAgICAqMTAuNypgXCJdKVxuICAgIDM2W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcHJpbnRcbiAgICAgICgzNilcbiAgICAgICoxMC4xLTgqXG4gICAgKDM0KWBcIl1dXG4gICAgMzgoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhXG4gICAgICAoMzgpXG4gICAgICAqMTIuMS00KmBcIl0pXG4gICAgNDMoW1wiYCM5MTtSU3ltYm9sIzkzOyB4XG4gICAgICAoNDMpXG4gICAgICAqMTMuMjQqYFwiXSlcbiAgICA0NChbXCJgIzkxO1JBcmd1bWVudCM5MzsgeFxuICAgICAgKDQ0KVxuICAgICAgKjEzLjIwKmBcIl0pXG4gICAgNDYoW1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNDYpXG4gICAgICAqMTMuMzEqYFwiXSlcbiAgICA0NyhbXCJgIzkxO1JBcmd1bWVudCM5MzsgeVxuICAgICAgKDQ3KVxuICAgICAgKjEzLjI3KmBcIl0pXG4gICAgNDhbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBhZXNcbiAgICAgICg0OClcbiAgICAgICoxMy4xNi0zMipcbiAgICAoeCAoNDQpLCB5ICg0NykpYFwiXV1cbiAgICA1MFtbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGdncGxvdFxuICAgICAgKDUwKVxuICAgICAgKjEzLjktMzMqXG4gICAgKDM4LCA0OClgXCJdXVxuICAgIDUyW1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgZGF0YSAlIzYyOyVcblx0Z2dwbG90KGFlcyh4ID0geCwgeSA9IHkpKVxuICAgICAgKDUyKVxuICAgICAgKjEyLjYtOCpcbiAgICAoMzgsIDUwKWBcIl1dXG4gICAgNTRbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBnZW9tIzk1O3BvaW50XG4gICAgICAoNTQpXG4gICAgICAqMTQuOS0yMCpgXCJdXVxuICAgIDU1W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNDM7XG4gICAgICAoNTUpXG4gICAgICAqMTIuMS0xNC4yMCpcbiAgICAoNTIsIDU0KWBcIl1dXG4gICAgNTcoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDU3KVxuICAgICAgKjE2LjYtMTAqYFwiXSlcbiAgICA1OHt7XCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICg1OClcbiAgICAgICoxNi42LTEyKmBcIn19XG4gICAgNjBbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNjApXG4gICAgICAqMTYuNi0xMipcbiAgICAoNTcsIDU4KWBcIl1dXG4gICAgNjIoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDYyKVxuICAgICAgKjE2LjE1LTE5KmBcIl0pXG4gICAgNjN7e1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNjMpXG4gICAgICAqMTYuMTUtMjEqYFwifX1cbiAgICA2NVtbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICg2NSlcbiAgICAgICoxNi4xNS0yMSpcbiAgICAoNjIsIDYzKWBcIl1dXG4gICAgNjdbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBwbG90XG4gICAgICAoNjcpXG4gICAgICAqMTYuMS0yMipcbiAgICAoNjAsIDY1KWBcIl1dXG4gICAgNjkoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDY5KVxuICAgICAgKjE3LjgtMTIqYFwiXSlcbiAgICA3MHt7XCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICg3MClcbiAgICAgICoxNy44LTE0KmBcIn19XG4gICAgNzJbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNzIpXG4gICAgICAqMTcuOC0xNCpcbiAgICAoNjksIDcwKWBcIl1dXG4gICAgNzQoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDc0KVxuICAgICAgKjE3LjE3LTIxKmBcIl0pXG4gICAgNzV7e1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNzUpXG4gICAgICAqMTcuMTctMjMqYFwifX1cbiAgICA3N1tbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICg3NylcbiAgICAgICoxNy4xNy0yMypcbiAgICAoNzQsIDc1KWBcIl1dXG4gICAgNzlbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBwb2ludHNcbiAgICAgICg3OSlcbiAgICAgICoxNy4xLTI0KlxuICAgICg3MiwgNzcpYFwiXV1cbiAgICA4MihbXCJgIzkxO1JTeW1ib2wjOTM7IGRhdGEyXG4gICAgICAoODIpXG4gICAgICAqMTkuMTItMTYqYFwiXSlcbiAgICA4M3t7XCJgIzkxO1JTeW1ib2wjOTM7IGtcbiAgICAgICg4MylcbiAgICAgICoxOS4xMi0xOCpgXCJ9fVxuICAgIDg1W1tcImAjOTE7UkFjY2VzcyM5MzsgJFxuICAgICAgKDg1KVxuICAgICAgKjE5LjEyLTE4KlxuICAgICg4MiwgODMpYFwiXV1cbiAgICA4N1tbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IG1lYW5cbiAgICAgICg4NylcbiAgICAgICoxOS43LTE5KlxuICAgICg4NSlgXCJdXVxuICAgIDg5W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcHJpbnRcbiAgICAgICg4OSlcbiAgICAgICoxOS4xLTIwKlxuICAgICg4NylgXCJdXVxuICAgIDMgLS0+fFwiYXJndW1lbnRcInwgMVxuICAgIDcgLS0+fFwiYXJndW1lbnRcInwgNVxuICAgIDExIC0tPnxcImFyZ3VtZW50XCJ8IDlcbiAgICAxNiAtLT58XCJhcmd1bWVudFwifCAxNFxuICAgIDEyIC0tPnxcImRlZmluZWQtYnlcInwgMTZcbiAgICAxMiAtLT58XCJkZWZpbmVkLWJ5XCJ8IDE3XG4gICAgMTcgLS0+fFwiYXJndW1lbnRcInwgMTZcbiAgICAxNyAtLT58XCJyZXR1cm5zLCBhcmd1bWVudFwifCAxMlxuICAgIDIyIC0tPnxcImFyZ3VtZW50XCJ8IDIwXG4gICAgMTggLS0+fFwiZGVmaW5lZC1ieVwifCAyMlxuICAgIDE4IC0tPnxcImRlZmluZWQtYnlcInwgMjNcbiAgICAyMyAtLT58XCJhcmd1bWVudFwifCAyMlxuICAgIDIzIC0tPnxcInJldHVybnMsIGFyZ3VtZW50XCJ8IDE4XG4gICAgMjYgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyOSAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgMjZcbiAgICAyOSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMjdcbiAgICAzMSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMjlcbiAgICAyNCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDMxXG4gICAgMjQgLS0+fFwiZGVmaW5lZC1ieVwifCAzMlxuICAgIDMyIC0tPnxcImFyZ3VtZW50XCJ8IDMxXG4gICAgMzIgLS0+fFwicmV0dXJucywgYXJndW1lbnRcInwgMjRcbiAgICAzNCAtLT58XCJyZWFkc1wifCAyNFxuICAgIDM2IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCAzNFxuICAgIDM4IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgNDQgLS0+fFwicmVhZHNcInwgNDNcbiAgICA0NyAtLT58XCJyZWFkc1wifCA0NlxuICAgIDQ4IC0tPnxcInJlYWRzXCJ8IDQzXG4gICAgNDggLS0+fFwiYXJndW1lbnRcInwgNDRcbiAgICA0OCAtLT58XCJyZWFkc1wifCA0NlxuICAgIDQ4IC0tPnxcImFyZ3VtZW50XCJ8IDQ3XG4gICAgNTAgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDQ4XG4gICAgNTAgLS0+fFwiYXJndW1lbnRcInwgMzhcbiAgICA1MiAtLT58XCJhcmd1bWVudFwifCAzOFxuICAgIDUyIC0tPnxcImFyZ3VtZW50XCJ8IDUwXG4gICAgNTUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDUyXG4gICAgNTUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDU0XG4gICAgNTcgLS0+fFwicmVhZHNcInwgMThcbiAgICA2MCAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgNTdcbiAgICA2MCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNThcbiAgICA2MiAtLT58XCJyZWFkc1wifCAxOFxuICAgIDY1IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCA2MlxuICAgIDY1IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2M1xuICAgIDY3IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2MFxuICAgIDY3IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2NVxuICAgIDY5IC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgNzIgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDY5XG4gICAgNzIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDcwXG4gICAgNzQgLS0+fFwicmVhZHNcInwgMThcbiAgICA3NyAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgNzRcbiAgICA3NyAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzVcbiAgICA3OSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzJcbiAgICA3OSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzdcbiAgICA3OSAtLT58XCJyZWFkc1wifCA2N1xuICAgIDgyIC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgODUgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDgyXG4gICAgODUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDgzXG4gICAgODcgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDg1XG4gICAgODkgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDg3IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19))\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ (has unknown side effect) {3, 1} ([marked](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgIzkxO1JTeW1ib2wjOTM7IGdncGxvdFxuICAgICAgKDEpXG4gICAgICAqMS45LTE0KmBcIn19XG4gICAgc3R5bGUgMSBzdHJva2U6dGVhbCxzdHJva2Utd2lkdGg6N3B4LHN0cm9rZS1vcGFjaXR5Oi44OyBcbiAgICAzW1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgbGlicmFyeVxuICAgICAgKDMpXG4gICAgICAqMS4xLTE1KlxuICAgICgxKWBcIl1dXG4gICAgc3R5bGUgMyBzdHJva2U6dGVhbCxzdHJva2Utd2lkdGg6N3B4LHN0cm9rZS1vcGFjaXR5Oi44OyBcbiAgICBzdHlsZSAzIHN0cm9rZTpyZWQsc3Ryb2tlLXdpZHRoOjVweDsgXG4gICAgNXt7XCJgIzkxO1JTeW1ib2wjOTM7IGRwbHlyXG4gICAgICAoNSlcbiAgICAgICoyLjktMTMqYFwifX1cbiAgICA3W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgbGlicmFyeVxuICAgICAgKDcpXG4gICAgICAqMi4xLTE0KlxuICAgICg1KWBcIl1dXG4gICAgc3R5bGUgNyBzdHJva2U6cmVkLHN0cm9rZS13aWR0aDo1cHg7IFxuICAgIDl7e1wiYCM5MTtSU3ltYm9sIzkzOyByZWFkclxuICAgICAgKDkpXG4gICAgICAqMy45LTEzKmBcIn19XG4gICAgMTFbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBsaWJyYXJ5XG4gICAgICAoMTEpXG4gICAgICAqMy4xLTE0KlxuICAgICg5KWBcIl1dXG4gICAgc3R5bGUgMTEgc3Ryb2tlOnJlZCxzdHJva2Utd2lkdGg6NXB4OyBcbiAgICAxNHt7XCJgIzkxO1JTdHJpbmcjOTM7ICMzOTtkYXRhLmNzdiMzOTtcbiAgICAgICgxNClcbiAgICAgICo2LjE4LTI3KmBcIn19XG4gICAgMTZbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyByZWFkIzk1O2NzdlxuICAgICAgKDE2KVxuICAgICAgKjYuOS0yOCpcbiAgICAoMTQpYFwiXV1cbiAgICAxMltcImAjOTE7UlN5bWJvbCM5MzsgZGF0YVxuICAgICAgKDEyKVxuICAgICAgKjYuMS00KmBcIl1cbiAgICAxN1tbXCJgIzkxO1JCaW5hcnlPcCM5MzsgIzYwOyM0NTtcbiAgICAgICgxNylcbiAgICAgICo2LjEtMjgqXG4gICAgKDEyLCAxNilgXCJdXVxuICAgIDIwe3tcImAjOTE7UlN0cmluZyM5MzsgIzM5O2RhdGEyLmNzdiMzOTtcbiAgICAgICgyMClcbiAgICAgICo3LjE5LTI5KmBcIn19XG4gICAgMjJbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyByZWFkIzk1O2NzdlxuICAgICAgKDIyKVxuICAgICAgKjcuMTAtMzAqXG4gICAgKDIwKWBcIl1dXG4gICAgMThbXCJgIzkxO1JTeW1ib2wjOTM7IGRhdGEyXG4gICAgICAoMTgpXG4gICAgICAqNy4xLTUqYFwiXVxuICAgIDIzW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNjA7IzQ1O1xuICAgICAgKDIzKVxuICAgICAgKjcuMS0zMCpcbiAgICAoMTgsIDIyKWBcIl1dXG4gICAgMjYoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhXG4gICAgICAoMjYpXG4gICAgICAqOS4xMS0xNCpgXCJdKVxuICAgIDI3e3tcImAjOTE7UlN5bWJvbCM5MzsgeFxuICAgICAgKDI3KVxuICAgICAgKjkuMTEtMTYqYFwifX1cbiAgICAyOVtbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICgyOSlcbiAgICAgICo5LjExLTE2KlxuICAgICgyNiwgMjcpYFwiXV1cbiAgICAzMVtbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IG1lYW5cbiAgICAgICgzMSlcbiAgICAgICo5LjYtMTcqXG4gICAgKDI5KWBcIl1dXG4gICAgMjRbXCJgIzkxO1JTeW1ib2wjOTM7IG1cbiAgICAgICgyNClcbiAgICAgICo5LjEqYFwiXVxuICAgIDMyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNjA7IzQ1O1xuICAgICAgKDMyKVxuICAgICAgKjkuMS0xNypcbiAgICAoMjQsIDMxKWBcIl1dXG4gICAgMzQoW1wiYCM5MTtSU3ltYm9sIzkzOyBtXG4gICAgICAoMzQpXG4gICAgICAqMTAuNypgXCJdKVxuICAgIDM2W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcHJpbnRcbiAgICAgICgzNilcbiAgICAgICoxMC4xLTgqXG4gICAgKDM0KWBcIl1dXG4gICAgMzgoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhXG4gICAgICAoMzgpXG4gICAgICAqMTIuMS00KmBcIl0pXG4gICAgNDMoW1wiYCM5MTtSU3ltYm9sIzkzOyB4XG4gICAgICAoNDMpXG4gICAgICAqMTMuMjQqYFwiXSlcbiAgICA0NChbXCJgIzkxO1JBcmd1bWVudCM5MzsgeFxuICAgICAgKDQ0KVxuICAgICAgKjEzLjIwKmBcIl0pXG4gICAgNDYoW1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNDYpXG4gICAgICAqMTMuMzEqYFwiXSlcbiAgICA0NyhbXCJgIzkxO1JBcmd1bWVudCM5MzsgeVxuICAgICAgKDQ3KVxuICAgICAgKjEzLjI3KmBcIl0pXG4gICAgNDhbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBhZXNcbiAgICAgICg0OClcbiAgICAgICoxMy4xNi0zMipcbiAgICAoeCAoNDQpLCB5ICg0NykpYFwiXV1cbiAgICA1MFtbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IGdncGxvdFxuICAgICAgKDUwKVxuICAgICAgKjEzLjktMzMqXG4gICAgKDM4LCA0OClgXCJdXVxuICAgIDUyW1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgZGF0YSAlIzYyOyVcblx0Z2dwbG90KGFlcyh4ID0geCwgeSA9IHkpKVxuICAgICAgKDUyKVxuICAgICAgKjEyLjYtOCpcbiAgICAoMzgsIDUwKWBcIl1dXG4gICAgNTRbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBnZW9tIzk1O3BvaW50XG4gICAgICAoNTQpXG4gICAgICAqMTQuOS0yMCpgXCJdXVxuICAgIDU1W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAjNDM7XG4gICAgICAoNTUpXG4gICAgICAqMTIuMS0xNC4yMCpcbiAgICAoNTIsIDU0KWBcIl1dXG4gICAgNTcoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDU3KVxuICAgICAgKjE2LjYtMTAqYFwiXSlcbiAgICA1OHt7XCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICg1OClcbiAgICAgICoxNi42LTEyKmBcIn19XG4gICAgNjBbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNjApXG4gICAgICAqMTYuNi0xMipcbiAgICAoNTcsIDU4KWBcIl1dXG4gICAgNjIoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDYyKVxuICAgICAgKjE2LjE1LTE5KmBcIl0pXG4gICAgNjN7e1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNjMpXG4gICAgICAqMTYuMTUtMjEqYFwifX1cbiAgICA2NVtbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICg2NSlcbiAgICAgICoxNi4xNS0yMSpcbiAgICAoNjIsIDYzKWBcIl1dXG4gICAgNjdbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBwbG90XG4gICAgICAoNjcpXG4gICAgICAqMTYuMS0yMipcbiAgICAoNjAsIDY1KWBcIl1dXG4gICAgNjkoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDY5KVxuICAgICAgKjE3LjgtMTIqYFwiXSlcbiAgICA3MHt7XCJgIzkxO1JTeW1ib2wjOTM7IHhcbiAgICAgICg3MClcbiAgICAgICoxNy44LTE0KmBcIn19XG4gICAgNzJbW1wiYCM5MTtSQWNjZXNzIzkzOyAkXG4gICAgICAoNzIpXG4gICAgICAqMTcuOC0xNCpcbiAgICAoNjksIDcwKWBcIl1dXG4gICAgNzQoW1wiYCM5MTtSU3ltYm9sIzkzOyBkYXRhMlxuICAgICAgKDc0KVxuICAgICAgKjE3LjE3LTIxKmBcIl0pXG4gICAgNzV7e1wiYCM5MTtSU3ltYm9sIzkzOyB5XG4gICAgICAoNzUpXG4gICAgICAqMTcuMTctMjMqYFwifX1cbiAgICA3N1tbXCJgIzkxO1JBY2Nlc3MjOTM7ICRcbiAgICAgICg3NylcbiAgICAgICoxNy4xNy0yMypcbiAgICAoNzQsIDc1KWBcIl1dXG4gICAgNzlbW1wiYCM5MTtSRnVuY3Rpb25DYWxsIzkzOyBwb2ludHNcbiAgICAgICg3OSlcbiAgICAgICoxNy4xLTI0KlxuICAgICg3MiwgNzcpYFwiXV1cbiAgICA4MihbXCJgIzkxO1JTeW1ib2wjOTM7IGRhdGEyXG4gICAgICAoODIpXG4gICAgICAqMTkuMTItMTYqYFwiXSlcbiAgICA4M3t7XCJgIzkxO1JTeW1ib2wjOTM7IGtcbiAgICAgICg4MylcbiAgICAgICoxOS4xMi0xOCpgXCJ9fVxuICAgIDg1W1tcImAjOTE7UkFjY2VzcyM5MzsgJFxuICAgICAgKDg1KVxuICAgICAgKjE5LjEyLTE4KlxuICAgICg4MiwgODMpYFwiXV1cbiAgICA4N1tbXCJgIzkxO1JGdW5jdGlvbkNhbGwjOTM7IG1lYW5cbiAgICAgICg4NylcbiAgICAgICoxOS43LTE5KlxuICAgICg4NSlgXCJdXVxuICAgIDg5W1tcImAjOTE7UkZ1bmN0aW9uQ2FsbCM5MzsgcHJpbnRcbiAgICAgICg4OSlcbiAgICAgICoxOS4xLTIwKlxuICAgICg4NylgXCJdXVxuICAgIDMgLS0+fFwiYXJndW1lbnRcInwgMVxuICAgIDcgLS0+fFwiYXJndW1lbnRcInwgNVxuICAgIDExIC0tPnxcImFyZ3VtZW50XCJ8IDlcbiAgICAxNiAtLT58XCJhcmd1bWVudFwifCAxNFxuICAgIDEyIC0tPnxcImRlZmluZWQtYnlcInwgMTZcbiAgICAxMiAtLT58XCJkZWZpbmVkLWJ5XCJ8IDE3XG4gICAgMTcgLS0+fFwiYXJndW1lbnRcInwgMTZcbiAgICAxNyAtLT58XCJyZXR1cm5zLCBhcmd1bWVudFwifCAxMlxuICAgIDIyIC0tPnxcImFyZ3VtZW50XCJ8IDIwXG4gICAgMTggLS0+fFwiZGVmaW5lZC1ieVwifCAyMlxuICAgIDE4IC0tPnxcImRlZmluZWQtYnlcInwgMjNcbiAgICAyMyAtLT58XCJhcmd1bWVudFwifCAyMlxuICAgIDIzIC0tPnxcInJldHVybnMsIGFyZ3VtZW50XCJ8IDE4XG4gICAgMjYgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyOSAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgMjZcbiAgICAyOSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMjdcbiAgICAzMSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMjlcbiAgICAyNCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDMxXG4gICAgMjQgLS0+fFwiZGVmaW5lZC1ieVwifCAzMlxuICAgIDMyIC0tPnxcImFyZ3VtZW50XCJ8IDMxXG4gICAgMzIgLS0+fFwicmV0dXJucywgYXJndW1lbnRcInwgMjRcbiAgICAzNCAtLT58XCJyZWFkc1wifCAyNFxuICAgIDM2IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCAzNFxuICAgIDM4IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgNDQgLS0+fFwicmVhZHNcInwgNDNcbiAgICA0NyAtLT58XCJyZWFkc1wifCA0NlxuICAgIDQ4IC0tPnxcInJlYWRzXCJ8IDQzXG4gICAgNDggLS0+fFwiYXJndW1lbnRcInwgNDRcbiAgICA0OCAtLT58XCJyZWFkc1wifCA0NlxuICAgIDQ4IC0tPnxcImFyZ3VtZW50XCJ8IDQ3XG4gICAgNTAgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDQ4XG4gICAgNTAgLS0+fFwiYXJndW1lbnRcInwgMzhcbiAgICA1MiAtLT58XCJhcmd1bWVudFwifCAzOFxuICAgIDUyIC0tPnxcImFyZ3VtZW50XCJ8IDUwXG4gICAgNTUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDUyXG4gICAgNTUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDU0XG4gICAgNTcgLS0+fFwicmVhZHNcInwgMThcbiAgICA2MCAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgNTdcbiAgICA2MCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNThcbiAgICA2MiAtLT58XCJyZWFkc1wifCAxOFxuICAgIDY1IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmd1bWVudFwifCA2MlxuICAgIDY1IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2M1xuICAgIDY3IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2MFxuICAgIDY3IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCA2NVxuICAgIDY5IC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgNzIgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDY5XG4gICAgNzIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDcwXG4gICAgNzQgLS0+fFwicmVhZHNcInwgMThcbiAgICA3NyAtLT58XCJyZWFkcywgcmV0dXJucywgYXJndW1lbnRcInwgNzRcbiAgICA3NyAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzVcbiAgICA3OSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzJcbiAgICA3OSAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgNzdcbiAgICA3OSAtLT58XCJyZWFkc1wifCA2N1xuICAgIDgyIC0tPnxcInJlYWRzXCJ8IDE4XG4gICAgODUgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDgyXG4gICAgODUgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDgzXG4gICAgODcgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDg1XG4gICAgODkgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ3VtZW50XCJ8IDg3IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19))\
-_All queries together required ≈0 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.39 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.16 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1136,7 +1173,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     ]
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -1189,7 +1226,7 @@ _All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.81 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _2.00 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1217,7 +1254,7 @@ x + 1
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.59 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.67 ms_ (including parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 
@@ -1238,27 +1275,6 @@ flowchart LR
 ```
 	
 
-<details>
-
-<summary style="color:gray">Mermaid Code </summary>
-
-```
-flowchart LR
-    0(["`#91;RSymbol#93; x
-      (0)
-      *1.1*`"])
-    1{{"`#91;RNumber#93; 1
-      (1)
-      *1.5*`"}}
-    2[["`#91;RBinaryOp#93; #43;
-      (2)
-      *1.1-5*
-    (0, 1)`"]]
-    2 -->|"reads, argument"| 0
-    2 -->|"reads, argument"| 1
-```
-
-</details>
 
 </details>
 
@@ -1307,11 +1323,11 @@ Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Libraries\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `library`\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Node Id: 3, `x`\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.74 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _2.89 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1337,7 +1353,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     "writtenData": []
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -1398,11 +1414,11 @@ Query: **dependencies** (2 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Node Id: 37, `data2.csv`\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `print`\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Node Id: 41, `stdout`\
-_All queries together required ≈2 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.70 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _6.82 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1503,15 +1519,15 @@ In the meantime we offer several properties to overwrite the default behavior (e
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (0 ms)\
+Query: **dependencies** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ Libraries\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ `print`\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Node Id: 41, `hello world!`\
-_All queries together required ≈0 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.78 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _4.76 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1523,7 +1539,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "dependencies": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "libraries": [
       {
@@ -1537,7 +1553,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     "writtenData": []
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -1586,11 +1602,11 @@ _Results (prettified and summarized):_
 
 Query: **id-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="[0,1,2,3,'2-arg','0-arg','1-arg']">0, 1, 2, 3, 2-arg, 0-arg, ... (see JSON)</span>}\
-_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.71 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _1.38 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1618,7 +1634,7 @@ x + 1
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.63 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.18 ms_ (including parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 
@@ -1639,27 +1655,6 @@ flowchart LR
 ```
 	
 
-<details>
-
-<summary style="color:gray">Mermaid Code </summary>
-
-```
-flowchart LR
-    0(["`#91;RSymbol#93; x
-      (0)
-      *1.1*`"])
-    1{{"`#91;RNumber#93; 1
-      (1)
-      *1.5*`"}}
-    2[["`#91;RBinaryOp#93; #43;
-      (2)
-      *1.1-5*
-    (0, 1)`"]]
-    2 -->|"reads, argument"| 0
-    2 -->|"reads, argument"| 1
-```
-
-</details>
 
 </details>
 
@@ -1718,13 +1713,13 @@ For this, we use the criterion `2@x` (which is the first use of `x` in the secon
 
 _Results (prettified and summarized):_
 
-Query: **lineage** (1 ms)\
+Query: **lineage** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ 2@x: {3, 0, 1, 2}\
 _All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.62 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _1.75 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1736,7 +1731,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "lineage": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "lineages": {
       "2@x": [
@@ -1814,11 +1809,11 @@ _Results (prettified and summarized):_
 
 Query: **location-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','6','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 6, ... (see JSON)</span>}\
-_All queries together required ≈0 ms (1ms accuracy, total 1 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.45 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _1.55 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1962,7 +1957,7 @@ _All queries together required ≈0 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.14 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _1.18 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -1990,7 +1985,7 @@ x + 1
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.10 ms_ (incl. parse and normalize) within the generation environment. 
+The analysis required _1.13 ms_ (including parse and normalize) within the generation environment. 
 We encountered no unknown side effects during the analysis.
 
 
@@ -2011,27 +2006,6 @@ flowchart LR
 ```
 	
 
-<details>
-
-<summary style="color:gray">Mermaid Code </summary>
-
-```
-flowchart LR
-    0(["`#91;RSymbol#93; x
-      (0)
-      *1.1*`"])
-    1{{"`#91;RNumber#93; 1
-      (1)
-      *1.5*`"}}
-    2[["`#91;RBinaryOp#93; #43;
-      (2)
-      *1.1-5*
-    (0, 1)`"]]
-    2 -->|"reads, argument"| 0
-    2 -->|"reads, argument"| 1
-```
-
-</details>
 
 </details>
 
@@ -2050,6 +2024,164 @@ flowchart LR
 <summary style="color:gray">Implementation Details</summary>
 
 Responsible for the execution of the Normalized AST Query query is `executeNormalizedAstQuery` in [`./src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts).
+
+</details>	
+
+
+-----
+
+
+### Search Query
+
+
+With this query you can use the [Search API](https://github.com/flowr-analysis/flowr/wiki//Search%20API) to conduct searches on the flowR analysis result. 
+
+Using the example code `x + 1`, the following query returns all uses of 'x' in the code:
+
+
+
+```json
+[
+  {
+    "type": "search",
+    "search": {
+      "generator": {
+        "type": "generator",
+        "name": "get",
+        "args": {
+          "filter": {
+            "name": "x"
+          }
+        }
+      },
+      "search": [
+        {
+          "type": "transformer",
+          "name": "filter",
+          "args": {
+            "filter": "use"
+          }
+        }
+      ]
+    }
+  }
+]
+```
+
+
+
+
+_Results (prettified and summarized):_
+
+Query: **search** (1 ms)\
+&nbsp;&nbsp;&nbsp;╰ [query](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IExSXG4wKFwiPGI+Z2V0PC9iPihmaWx0ZXI6ICMxMjM7IzM0O25hbWUjMzQ7IzU4OyMzNDt4IzM0OyMxMjU7KTxici8+X2dlbmVyYXRvcl9cIikgLS0+IDFbXCI8Yj5maWx0ZXI8L2I+KGZpbHRlcjogIzM0O3VzZSMzNDspPGJyLz5fdHJhbnNmb3JtZXJfXCJdIiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19): {0}\
+_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _1.60 ms_ (including parsing and normalization and the query) within the generation environment.	
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
+
+
+
+
+```json
+{
+  "search": {
+    ".meta": {
+      "timing": 1
+    },
+    "results": [
+      {
+        "ids": [
+          0
+        ],
+        "search": {
+          "generator": {
+            "type": "generator",
+            "name": "get",
+            "args": {
+              "filter": {
+                "name": "x"
+              }
+            }
+          },
+          "search": [
+            {
+              "type": "transformer",
+              "name": "filter",
+              "args": {
+                "filter": "use"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  ".meta": {
+    "timing": 1
+  }
+}
+```
+
+
+
+</details>
+
+
+<details> <summary style="color:gray">Original Code</summary>
+
+
+
+```r
+x + 1
+```
+<details>
+
+<summary style="color:gray">Dataflow Graph of the R Code</summary>
+
+The analysis required _1.08 ms_ (including parse and normalize) within the generation environment. 
+We encountered no unknown side effects during the analysis.
+
+
+```mermaid
+flowchart LR
+    0(["`#91;RSymbol#93; x
+      (0)
+      *1.1*`"])
+    1{{"`#91;RNumber#93; 1
+      (1)
+      *1.5*`"}}
+    2[["`#91;RBinaryOp#93; #43;
+      (2)
+      *1.1-5*
+    (0, 1)`"]]
+    2 -->|"reads, argument"| 0
+    2 -->|"reads, argument"| 1
+```
+	
+
+
+</details>
+
+
+
+</details>
+	
+
+
+
+	
+		
+
+<details> 
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Search Query query is `executeSearch` in [`./src/queries/catalog/search-query/search-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/queries/catalog/search-query/search-query-executor.ts).
 
 </details>	
 
@@ -2101,7 +2233,7 @@ _All queries together required ≈2 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.56 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _3.60 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -2187,14 +2319,14 @@ you can use the `noReconstruction` flag.
 
 _Results (prettified and summarized):_
 
-Query: **static-slice** (1 ms)\
+Query: **static-slice** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ Slice for {3@x} no reconstruction\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Id List: {6, 0, 1, 2}\
-_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.42 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _2.41 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -2206,7 +2338,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "static-slice": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "results": {
       "{\"type\":\"static-slice\",\"criteria\":[\"3@x\"],\"noReconstruction\":true}": {
@@ -2225,14 +2357,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
             }
           ],
           ".meta": {
-            "timing": 1
+            "timing": 0
           }
         }
       }
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 0
   }
 }
 ```
@@ -2310,11 +2442,11 @@ _Results (prettified and summarized):_
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text**: _`mean`_ (L.9), _`print`_ (L.10), _`mean`_ (L.19), _`print`_ (L.19)\
-_All queries together required ≈0 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 6 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.76 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _5.95 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -2354,7 +2486,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -2390,14 +2522,14 @@ Of course, in this specific scenario, the following query would be equivalent:
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (0 ms)\
+Query: **call-context** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text**: _`mean`_ (L.9), _`print`_ (L.10), _`mean`_ (L.19), _`print`_ (L.19)\
-_All queries together required ≈0 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 6 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.08 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _5.68 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -2409,7 +2541,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 0
+      "timing": 1
     },
     "kinds": {
       "visualize": {
@@ -2437,7 +2569,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 0
+    "timing": 1
   }
 }
 ```
@@ -2488,14 +2620,14 @@ want to resolve to a local definition:
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **visualize**\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **text**: _`mean`_ (L.9) with 1 call (_built-in_), _`mean`_ (L.19) with 1 call (_built-in_)\
-_All queries together required ≈1 ms (1ms accuracy, total 8 ms)_
+_All queries together required ≈0 ms (1ms accuracy, total 8 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _7.50 ms_ (including parsing and normalization and the query) within the generation environment.	
+The analysis required _7.81 ms_ (including parsing and normalization and the query) within the generation environment.	
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Interface) wiki page for more information on how to get those.
@@ -2507,7 +2639,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
 {
   "call-context": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "kinds": {
       "visualize": {
@@ -2533,7 +2665,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki//Int
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 0
   }
 }
 ```

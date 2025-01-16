@@ -15,11 +15,6 @@ import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter,
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, KnownEngines } from '../config';
 import { getConfig ,   amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';
-
-
-
-
-
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -32,6 +27,7 @@ import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
+import fs from 'fs';
 
 export const toolName = 'flowr';
 
@@ -100,6 +96,13 @@ if(options['config-json']) {
 	}
 }
 if(!usedConfig) {
+	if(options['config-file']) {
+		// validate it exists
+		if(!fs.existsSync(options['config-file'])) {
+			log.error(`Config file '${options['config-file']}' does not exist`);
+			process.exit(1);
+		}
+	}
 	setConfigFile(options['config-file'] ?? defaultConfigFile, undefined, true);
 }
 

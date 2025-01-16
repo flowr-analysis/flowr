@@ -81,6 +81,8 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.ssd', argIdx: 0, argName: 'file' },
 	{ name: 'read.systat', argIdx: 0, argName: 'file' },
 	{ name: 'read.xport', argIdx: 0, argName: 'file' },
+	// car
+	{ name: 'Import', argIdx: 0, argName: 'file' },
 ] as const;
 export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'save', argIdx: 0, argName: '...' },
@@ -136,6 +138,8 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'tiff', argIdx: 0, argName: 'file' },
 	{ name: 'X11', argIdx: 0, argName: 'file' },
 	{ name: 'quartz', argIdx: 0, argName: 'file' },
+	// car
+	{ name: 'Export', argIdx: 0, argName: 'file' },
 ] as const;
 
 export interface FunctionInfo {

@@ -31,7 +31,7 @@ export type GuardMessage = string | (() => string)
  * @param message - if a string, we will use it as the error message, if it is a function, we will call it to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
-export function guard(assertion: boolean | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
+export function guard(assertion: unknown | undefined, message: GuardMessage = 'Assertion failed'): asserts assertion {
 	/* v8 ignore next 3 */
 	if(!assertion) {
 		throw new GuardError( typeof message === 'string' ? message : message());

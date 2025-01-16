@@ -211,7 +211,7 @@ function processStringBasedAccess<OtherInfo>(
 	let accessedIndicesCollection: ContainerIndicesCollection;
 	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
 	if(accessedArg.value?.type === RType.Symbol) {
-		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment);
+		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, false);
 	} else {
 		// Higher access call
 		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
@@ -220,7 +220,7 @@ function processStringBasedAccess<OtherInfo>(
 			?.flatMap(indices => indices.indices)
 			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
 		if(subIndices) {
-			accessedIndicesCollection = filterIndices(subIndices, accessArg);
+			accessedIndicesCollection = filterIndices(subIndices, accessArg, false);
 		}
 	}
 

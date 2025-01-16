@@ -38,8 +38,11 @@ export function processList<OtherInfo>(
 		}
 
 		let newIndex: ContainerIndex = {
-			identifier: { lexeme: arg.name.content },
-			nodeId:     arg.info.id,
+			identifier: {
+				index:  arg.info.index,
+				lexeme: arg.name.content
+			},
+			nodeId: arg.info.id,
 		};
 
 		// Check whether argument value is non-primitive

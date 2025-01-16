@@ -38,7 +38,12 @@ export interface ArgumentId {
  * }
  * ```
  */
-export interface NamedArgumentId /* extends ArgumentId */ {
+export interface NamedArgumentId {
+	/**
+	 * Index may be undefined, when no index information is available.
+	 */
+	readonly index: number | undefined;
+
 	readonly lexeme: string,
 }
 
@@ -96,7 +101,7 @@ export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
  * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise 
  */
 export function isAccessed(index: ContainerIndex, accessLexeme: string, accessIndexOfIndex: boolean) {
-	if(accessIndexOfIndex && !isNamedArgumentId(index.identifier)) { // TODO: remove isNamedArgumentIndex check
+	if(accessIndexOfIndex) {
 		return index.identifier.index === Number(accessLexeme);
 	}
 
@@ -112,12 +117,11 @@ export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
 		return a.identifier.lexeme === b.identifier.lexeme;
 	}
 
-	// TODO: remove check
-	if('index' in a.identifier && 'index' in b.identifier) {
-		return a.identifier.index === b.identifier.index;
+	if(a.identifier.index === undefined || b.identifier.index === undefined) {
+		return false;
 	}
 
-	return false;
+	return a.identifier.index === b.identifier.index;
 }
 
 /**

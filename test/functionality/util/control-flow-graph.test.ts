@@ -1,6 +1,5 @@
 import { withShell } from '../_helper/shell';
-import type {
-	ControlFlowInformation } from '../../../src/util/cfg/cfg';
+import type { ControlFlowInformation } from '../../../src/util/cfg/cfg';
 import {
 	cfg2quads,
 	CfgVertexType,
@@ -14,11 +13,17 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import { createNormalizePipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
-import { describe, assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { Ternary } from '../../../src/util/logic';
+import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { happensBefore } from '../../../src/util/cfg/happens-before';
+
 
 function normAllIds(ids: NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
@@ -59,9 +64,9 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 			.addVertex({ id: 3, name: RType.IfThenElse, type: CfgVertexType.Statement })
 			.addVertex({ id: '3-exit', name: 'if-exit', type: CfgVertexType.EndMarker })
 			.addEdge(0, 3, { label: 'FD' })
-			.addEdge(1, 0, { label: 'CD', when: RTrue })
+			.addEdge(1, 0, { label: 'CD', when: RTrue, caused: 3 })
 			.addEdge('3-exit', 1, { label: 'FD' })
-			.addEdge('3-exit', 0, { label: 'CD', when: RFalse })
+			.addEdge('3-exit', 0, { label: 'CD', when: RFalse, caused: 3 })
 	});
 
 	assertCfg('2 + 3', {
@@ -174,4 +179,45 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `);
 	});
+}));
+
+
+describe.sequential('Happens Before', withShell(shell => {
+	function assertHB(code: string, a: SingleSlicingCriterion, b: SingleSlicingCriterion, expected: Ternary) {
+		// shallow copy is important to avoid killing the CFG :c
+		return describe(code, () => {
+			test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
+				const result = await createNormalizePipeline(parser, {
+					request: requestFromInput(code)
+				}).allRemainingSteps();
+				const cfg = extractCFG(result.normalize);
+				const aResolved = slicingCriterionToId(a, result.normalize.idMap);
+				const bResolved = slicingCriterionToId(b, result.normalize.idMap);
+				try {
+					assert.strictEqual(happensBefore(cfg.graph, aResolved, bResolved), expected, `expected ${a} (resolved to ${aResolved}) to ${expected} happen before ${b} (resolved to ${bResolved})`);
+					if(expected === Ternary.Always) {
+						assert.strictEqual(happensBefore(cfg.graph, bResolved, aResolved), Ternary.Never, 'reversed');
+					} else if(expected === Ternary.Never) {
+						assert.strictEqual(happensBefore(cfg.graph, bResolved, aResolved), Ternary.Always, 'reversed');
+					}
+				} /* v8 ignore next 4 */ catch(e: unknown) {
+					console.error(`actual: ${cfgToMermaidUrl(cfg, result.normalize)}`);
+					throw e;
+				}
+			});
+		});
+	}
+
+	assertHB('x <- 1\ny <- 2', '1@<-', '2@<-', Ternary.Always);
+	assertHB('x <- 1\nprint(x)\ny <- 2\nprint(y)', '1@<-', '3@<-', Ternary.Always);
+	for(const criteria of ['1@x','1@<-', '1@4'] as const) {
+		assertHB('x <- 4\nrepeat { print(x) }', criteria, '2@print', Ternary.Always);
+	}
+	for(const [a, b, t] of [['1@x', '2@x', Ternary.Always], ['1@x', '3@<-', Ternary.Maybe], ['2@x', '3@x', Ternary.Maybe], ['2@<', '3@<-', Ternary.Maybe]] as const) {
+		assertHB('x <- 4\nwhile(x < 1)\nx <- 5', a, b, t);
+	}
+	for(const [a, b, t] of [['1@x', '2@x', Ternary.Maybe], ['1@x', '2@u', Ternary.Always], ['2@x', '3@x', Ternary.Always], ['1@x', '3@x', Ternary.Always]] as const) {
+		assertHB('x<-1\nif(u) x <- 2\nx <- 3', a, b, t);
+	}
+	assertHB('x<-1\nif(u) x <- 2 else x <- 3\nx <- 4', '1@x', '3@x', Ternary.Always);
 }));

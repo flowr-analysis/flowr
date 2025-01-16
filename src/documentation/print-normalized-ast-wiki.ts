@@ -103,7 +103,7 @@ a pipeline like the ${shortLink('DEFAULT_NORMALIZE_PIPELINE', types.info)} suffi
 ${codeBlock('ts', `
 async function getAst(code: string): Promise<RNode> {
     const result = await new ${PipelineExecutor.name}(DEFAULT_NORMALIZE_PIPELINE, {
-        shell: new ${RShell.name}(),
+        parser:  new ${RShell.name}(),
         request: ${requestFromInput.name}(code.trim())
     }).allRemainingSteps();
     return result.normalize.ast;

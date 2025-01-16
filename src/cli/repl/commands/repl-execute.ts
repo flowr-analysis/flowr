@@ -26,7 +26,7 @@ async function executeRShellCommand(output: ReplOutput, shell: RShell, statement
 }
 
 export const executeCommand: ReplCommand = {
-	description:  'Execute the given code as R code (essentially similar to using now command)',
+	description:  'Execute the given code as R code (essentially similar to using now command). This requires the `--r-session-access` flag to be set and requires the r-shell engine.',
 	usageExample: ':execute',
 	aliases:      [ 'e', 'r' ],
 	script:       false,

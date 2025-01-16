@@ -7,6 +7,9 @@ import { getEngineConfig } from '../../../config';
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
 export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter.wasm`;
 
+/**
+ * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
+ */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 	public readonly name = 'tree-sitter';

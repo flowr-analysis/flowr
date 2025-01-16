@@ -4,6 +4,7 @@
   * [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface)
     * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)
     * [Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
+    * [Engines](https://github.com/flowr-analysis/flowr/wiki/Engines)
   * [Core](https://github.com/flowr-analysis/flowr/wiki/Core)
     * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
     * [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)

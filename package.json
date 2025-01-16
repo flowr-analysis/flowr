@@ -28,6 +28,7 @@
     "wiki:df-graph": "ts-node src/documentation/print-dataflow-graph-wiki.ts",
     "wiki:normalized-ast": "ts-node src/documentation/print-normalized-ast-wiki.ts",
     "wiki:query-api": "ts-node src/documentation/print-query-wiki.ts",
+    "wiki:engines": "ts-node src/documentation/print-engines-wiki.ts",
     "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",

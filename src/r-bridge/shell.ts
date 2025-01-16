@@ -134,8 +134,8 @@ export function getDefaultRShellOptions(): RShellOptions {
  * You can configure it by {@link RShellOptions}.
  *
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
- * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
- * as a legacy mode :D)
+ * which allows us to install packages etc. However, this might and probably will change in the future
+ * (leaving this as a legacy mode :D)
  */
 export class RShell implements AsyncParser<string> {
 

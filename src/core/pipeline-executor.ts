@@ -72,7 +72,7 @@ import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-co
  *
  * ```ts
  * const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
- *    shell:     new RShell(),
+ *    parser:    new RShell(),
  *    // of course, the criterion and request given here are just examples, you can use whatever you want to slice!
  *    criterion: ['2@b'],
  *    request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),

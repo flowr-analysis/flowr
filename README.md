@@ -73,4 +73,3 @@ We welcome every contribution! Please check out the [contributing guidelines](ht
 [GPLv3 License](LICENSE).
 
 ----
-# abstract-interpretation-ltx

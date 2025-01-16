@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
+            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -63,6 +64,7 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
+            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -182,7 +184,7 @@ jobs:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v4
         with:
-            lfs: false
+            lfs: true
             submodules: true
 
       - name: "🔁 Do pull to ensure up-to-date"
@@ -240,6 +242,7 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
+            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions

@@ -250,11 +250,15 @@ registerQueryDocumentation('happens-before', {
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/happens-before-query/happens-before-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
-		const exampleCode = 'x <- 1;y <- 2';
+		const exampleCode = 'x <- 1\ny <- 2';
 		return `
 With this query you can analyze the control flow graph:
 
-Using the example code \`${exampleCode}\`, the following query returns that the first assignment happens always before the other:
+Using the example code:
+
+${codeBlock('r', exampleCode)}
+
+the following query returns that the first assignment happens always before the other:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'happens-before',

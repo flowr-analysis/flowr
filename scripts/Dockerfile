@@ -8,6 +8,8 @@ WORKDIR /app
 # (by doing this, we explicitly omit test sources)
 COPY ./src /app/src
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
+COPY ./src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm /app/dist/r-bridge/lang-4.x/tree-sitter/
+COPY ./src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm /app/dist/r-bridge/lang-4.x/tree-sitter/
 
 # install and build all modules
 RUN npm ci && npm run build

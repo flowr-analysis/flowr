@@ -32,6 +32,7 @@ flowchart TD
    root --> benchmark(benchmark)
    root --> stat(statistics)
    root --> queryapi(Query API)
+   root --> searchapi(Search API)
    root --> utility(utility)
 
    style utility stroke-dasharray: 5 5,opacity:0.5;

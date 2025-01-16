@@ -10,7 +10,7 @@ import { numVal } from '../../_helper/ast-builder';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell:   shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 }

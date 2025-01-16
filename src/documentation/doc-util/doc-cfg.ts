@@ -11,7 +11,7 @@ export async function getCfg(shell: RShell, code: string): Promise<{
 	ast:  NormalizedAst
 }> {
 	const steps = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	return {

@@ -59,7 +59,7 @@ print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${l
     x <- 2
     x <- 3
 }
-x`);
+x`, { skipCompare: true /* see https://github.com/flowr-analysis/flowr/issues/1209 */ });
 		});
 		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
@@ -74,7 +74,7 @@ f(5)`, ['9@f'], `f <- function(x) {
         x <- 3 * x
         return(x)
     }
-f(5)`);
+f(5)`, { skipCompare: true /* inconsistent comment placement in ast, see https://github.com/flowr-analysis/flowr/issues/1208 */ });
 		assertSliced(label('dead code (return in if)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'if', 'return', 'unnamed-arguments', 'comments']),
 			shell, `f <- function(x) {
    x <- 3 * x
@@ -92,7 +92,7 @@ f(5)`, ['12@f'], `f <- function(x) {
         if(k) return(x) else
         return(1)
     }
-f(5)`);
+f(5)`, { skipCompare: true /* inconsistent comment placement in ast, see https://github.com/flowr-analysis/flowr/issues/1208 */ });
 	});
 	describe('Redefinitions', () => {
 		assertSliced(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),

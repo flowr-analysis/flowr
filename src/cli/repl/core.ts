@@ -5,12 +5,12 @@
  */
 import { prompt } from './prompt';
 import * as readline from 'readline';
-import { executeRShellCommand } from './commands/repl-execute';
+import { tryExecuteRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/args';
-import { ColorEffect, Colors, FontStyles } from '../../util/ansi';
+import { FontStyles } from '../../util/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -18,6 +18,7 @@ import type { ReplOutput } from './commands/repl-main';
 import { standardReplOutput } from './commands/repl-main';
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
+import type { KnownParser } from '../../r-bridge/parser';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -74,24 +75,22 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	completer:               replCompleter
 };
 
-async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
+async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn(output, shell, statement.slice(command.length + 2).trim());
+				await processor.fn(output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess);
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 			}
 		} else {
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
-	} else if(allowRSessionAccess) {
-		await executeRShellCommand(output, shell, statement);
 	} else {
-		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
+		await tryExecuteRShellCommand(output, parser, statement, allowRSessionAccess);
 	}
 }
 
@@ -100,15 +99,15 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
  *
  * @param output              - Defines two methods that every function in the repl uses to output its data.
  * @param expr                - The expression to process.
- * @param shell               - The {@link RShell} to use (see {@link repl}).
+ * @param parser               - The {@link RShell} or {@link TreeSitterExecutor} to use (see {@link repl}).
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  */
-export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, allowRSessionAccess: boolean): Promise<void> {
+export async function replProcessAnswer(output: ReplOutput, expr: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(expr, false, ';');
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, shell, allowRSessionAccess);
+		await replProcessStatement(output, statement, parser, allowRSessionAccess);
 	}
 }
 
@@ -117,7 +116,7 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  */
 export interface FlowrReplOptions extends MergeableRecord {
 	/** The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'. */
-	readonly shell?:               RShell
+	readonly parser?:              KnownParser
 	/**
 	 * A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
     * If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
@@ -145,7 +144,7 @@ export interface FlowrReplOptions extends MergeableRecord {
  *
  */
 export async function repl({
-	shell = new RShell({ revive: RShellReviveOptions.Always }),
+	parser = new RShell({ revive: RShellReviveOptions.Always }),
 	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION),
 	output = standardReplOutput,
 	historyFile = defaultHistoryFile,
@@ -161,7 +160,7 @@ export async function repl({
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {
 				rl.pause();
-				replProcessAnswer(output, answer, shell, allowRSessionAccess).then(() => {
+				replProcessAnswer(output, answer, parser, allowRSessionAccess).then(() => {
 					rl.resume();
 					resolve();
 				}).catch(reject);

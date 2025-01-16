@@ -47,7 +47,7 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 	{
 		name:        'r-path',
 		type:        String,
-		description: 'The path to the R executable to use. Defaults to your PATH.',
+		description: 'The path to the R executable to use. Defaults to your PATH. This option is being phased out in favor of the engine configuration option "engine.r-shell.r-path", which should be used instead.',
 		multiple:    false
 	},
 	{
@@ -82,7 +82,41 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		type:        Boolean,
 		description: 'Provide information about the version of flowR as well as its underlying R system and exit.'
 	},
-	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' }
+	{ name: 'ws', type: Boolean, description: 'If the server flag is set, use websocket for messaging' },
+	{
+		name:        'engine.r-shell.disabled',
+		type:        Boolean,
+		description: 'Disable the R shell engine'
+	},
+	{
+		name:        'engine.r-shell.r-path',
+		type:        String,
+		description: 'The path to the R executable to use. Defaults to your PATH.',
+		multiple:    false
+	},
+	{
+		name:        'engine.tree-sitter.disabled',
+		type:        Boolean,
+		description: 'Disable the tree-sitter engine'
+	},
+	{
+		name:        'engine.tree-sitter.wasm-path',
+		type:        String,
+		description: 'The path to the tree-sitter-r WASM binary to use. Defaults to the one shipped with flowR.',
+		multiple:    false
+	},
+	{
+		name:        'engine.tree-sitter.tree-sitter-wasm-path',
+		type:        String,
+		description: 'The path to the tree-sitter WASM binary to use. Defaults to the path specified by the tree-sitter package.',
+		multiple:    false
+	},
+	{
+		name:        'default-engine',
+		type:        String,
+		description: 'The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.',
+		multiple:    false
+	}
 ];
 
 export const defaultConfigFile = 'flowr.json';

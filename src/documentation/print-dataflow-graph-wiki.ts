@@ -104,7 +104,7 @@ async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeRepor
 	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	vertexExplanations.set(VertexType.Value, [{
-		shell:       shell,
+		shell,
 		name:        'Value Vertex',
 		type:        VertexType.Value,
 		description: `
@@ -140,7 +140,7 @@ ${
 	}, []]);
 
 	vertexExplanations.set(VertexType.Use, [{
-		shell:       shell,
+		shell,
 		name:        'Use Vertex',
 		type:        VertexType.Use,
 		description: `
@@ -207,7 +207,7 @@ ${
 	}, []]);
 
 	vertexExplanations.set(VertexType.FunctionCall, [{
-		shell:       shell,
+		shell,
 		name:        'Function Call Vertex',
 		type:        VertexType.FunctionCall,
 		description: `
@@ -415,7 +415,7 @@ ${details('Example: Function Call with a Side-Effect', await printDfGraphForCode
 	}, []]);
 
 	vertexExplanations.set(VertexType.VariableDefinition, [{
-		shell:       shell,
+		shell,
 		name:        'Variable Definition Vertex',
 		type:        VertexType.VariableDefinition,
 		description: `
@@ -468,7 +468,7 @@ As you can see, _flowR_ is able to recognize that the initial definition of \`x\
 	}, []]);
 
 	vertexExplanations.set(VertexType.FunctionDefinition, [{
-		shell:       shell,
+		shell,
 		name:        'Function Definition Vertex',
 		type:        VertexType.FunctionDefinition,
 		description: `
@@ -581,7 +581,7 @@ async function getEdgesExplanations(shell: RShell): Promise<string> {
 	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
-		shell:       shell,
+		shell,
 		name:        'Reads Edge',
 		type:        EdgeType.Reads,
 		description: `
@@ -622,7 +622,7 @@ Please refer to the explanation of the respective vertices for more information.
 	}]]);
 
 	edgeExplanations.set(EdgeType.DefinedBy, [{
-		shell:       shell,
+		shell,
 		name:        'DefinedBy Edge', /* concat for link generation */
 		type:        EdgeType.DefinedBy,
 		description: `
@@ -649,7 +649,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 	}]]);
 
 	edgeExplanations.set(EdgeType.Calls, [{
-		shell:            shell,
+		shell,
 		name:             'Calls Edge',
 		type:             EdgeType.Calls,
 		description:      'Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called.',
@@ -658,7 +658,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Returns, [{
-		shell:            shell,
+		shell,
 		name:             'Returns Edge',
 		type:             EdgeType.Returns,
 		description:      'Link the [function call](#function-call-vertex)  to the exit points of the target definition (this may incorporate the call-context).',
@@ -676,7 +676,7 @@ f()
 	const dfInfo = await printDfGraphForCode(shell, lateBindingExample, { switchCodeAndGraph: true, codeOpen: true, mark: new Set([1, '1->5', '9->5']) });
 
 	edgeExplanations.set(EdgeType.DefinesOnCall, [{
-		shell:       shell,
+		shell,
 		name:        'DefinesOnCall Edge',
 		type:        EdgeType.DefinesOnCall,
 		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinedByOnCall)}!*
@@ -700,7 +700,7 @@ ${dfInfo}
 		expectedSubgraph: emptyGraph().definesOnCall('$11', '$1').definedByOnCall('$1', '$11')
 	}, []]);
 	edgeExplanations.set(EdgeType.DefinedByOnCall, [{
-		shell:       shell,
+		shell,
 		name:        'DefinedByOnCall Edge',
 		type:        EdgeType.DefinedByOnCall,
 		description: `*This edge is usually joined with ${linkEdgeName(EdgeType.DefinesOnCall)}!*
@@ -711,7 +711,7 @@ ${dfInfo}
 	}, []]);
 
 	edgeExplanations.set(EdgeType.Argument, [{
-		shell:       shell,
+		shell,
 		name:        'Argument Edge',
 		type:        EdgeType.Argument,
 		description: `Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
@@ -723,7 +723,7 @@ The exception to this is the [function definition](#function-definition-vertex) 
 	}, []]);
 
 	edgeExplanations.set(EdgeType.SideEffectOnCall, [{
-		shell:            shell,
+		shell,
 		name:             'SideEffectOnCall Edge',
 		type:             EdgeType.SideEffectOnCall,
 		description:      'Links a global side effect to an affected function call (e.g., a super definition within the function body)',
@@ -732,7 +732,7 @@ The exception to this is the [function definition](#function-definition-vertex) 
 	}, []]);
 
 	edgeExplanations.set(EdgeType.NonStandardEvaluation, [{
-		shell:       shell,
+		shell,
 		name:        'NonStandardEvaluation Edge',
 		type:        EdgeType.NonStandardEvaluation,
 		description: `
@@ -784,7 +784,7 @@ ${details('Example: While-Loop Body', await printDfGraphForCode(shell, 'while(TR
 async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
 	const shell = new RShell();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput('x <- 1\nx + 1')
 	}).allRemainingSteps();
 	shell.close();

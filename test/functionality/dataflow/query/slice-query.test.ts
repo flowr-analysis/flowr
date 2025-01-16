@@ -22,7 +22,7 @@ describe.sequential('Static Slice Query', withShell(shell => {
 			const results: StaticSliceQueryResult['results'] = {};
 			for(const query of queries) {
 				const out = await new PipelineExecutor(query.noReconstruction ?  DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE : DEFAULT_SLICING_PIPELINE, {
-					shell:        shell,
+					parser:       shell,
 					request:      requestFromInput(code),
 					criterion:    query.criteria,
 					autoSelectIf: query.noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)

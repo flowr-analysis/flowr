@@ -15,7 +15,7 @@ import type { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes
 describe.sequential('Retrieve fitting Argument', withShell(shell => {
 	async function retrieveArgOfCode(code: string, index: number, name?: string) {
 		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(code)
 		}).allRemainingSteps();
 		// we assume that the entry point of the graph is the function call

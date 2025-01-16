@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import type { DataflowProcessors } from './processor';
+import type { DataflowProcessorInformation, DataflowProcessors } from './processor';
 import { processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -24,6 +24,7 @@ import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import type { KnownParserType, Parser } from '../r-bridge/parser';
 import {
 	updateNestedFunctionCalls
 } from './internal/process/functions/call/built-in/built-in-function-definition';
@@ -79,6 +80,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 }
 
 export function produceDataFlowGraph<OtherInfo>(
+	parser: Parser<KnownParserType>,
 	request: RParseRequests,
 	ast:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -89,7 +91,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	} else {
 		firstRequest = request as RParseRequest;
 	}
-	const dfData = {
+	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+		parser:              parser,
 		completeAst:         ast,
 		environment:         initializeCleanEnvironments(),
 		processors,

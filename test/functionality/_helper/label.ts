@@ -20,7 +20,7 @@ function uniqueTestId(): string {
 }
 
 
-const TestLabelContexts = ['parse', 'desugar', 'dataflow', 'other', 'slice', 'output', 'lineage', 'query', 'search'] as const;
+const TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'other', 'slice', 'output', 'lineage', 'query', 'search'] as const;
 export type TestLabelContext = typeof TestLabelContexts[number]
 
 export interface TestLabel extends MergeableRecord {

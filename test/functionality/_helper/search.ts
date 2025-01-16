@@ -36,7 +36,7 @@ export function assertSearch(
 		let results: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> | undefined;
 		beforeAll(async() => {
 			results = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-				shell,
+				parser:  shell,
 				request: requestFromInput(code),
 				getId:   deterministicCountingIdGenerator(0)
 			}).allRemainingSteps();

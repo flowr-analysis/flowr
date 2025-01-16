@@ -9,6 +9,8 @@ You can download and build it from source, download the accompanying docker imag
 - [📜 Developing for _flowR_](#-developing-for-flowr)
 <!-- TOC -->
 
+If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/main//.github/CONTRIBUTING.md).
+
 ## 🗒️ Using the Visual Studio Code Extension
 
 The easiest way to use _flowR_ is to install the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
@@ -47,11 +49,19 @@ For more information, see the [Interface](https://github.com/flowr-analysis/flow
 
 ## ⚒️ Building From Scratch
 
-To use _flowR_, you need [_R_](https://www.r-project.org/) installed and on your path.
+To use _flowR_, you may need [_R_](https://www.r-project.org/) installed and on your path
+(this only affects the [`r-shell` engine][r-shell]).
+
+### Installing R
 Although there are several ways to do so, there is nothing wrong with installing&nbsp;R with the help of your favorite package manager or directly from the [website](https://cloud.r-project.org/).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-path/) for an explanation on how to add [_R_](https://www.r-project.org/) to your path variable.
+Again, you only require this for the [`r-shell` engine][r-shell].
+
+### Installing Node.js
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
+
+### Installing _flowR_
 
 After cloning the repository,<a href="#note2" id="note2ref"><sup>&lt;2&gt;</sup></a> you can install the dependencies with:
 
@@ -78,7 +88,7 @@ At the time of writing this, there is currently no page for frequently encounter
 
 ## 📜 Developing for _flowR_
 
-If you want to develop for _flowR_, see the [core](https://github.com/flowr-analysis/flowr/wiki/Core) wiki page.
+If you want to develop for _flowR_, explore the wiki.
 For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
 
 -----
@@ -86,3 +96,5 @@ For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https:
 
 <a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
 [git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository for more information).
+
+[r-shell]: (https://github.com/flowr-analysis/flowr/wiki/Engines)

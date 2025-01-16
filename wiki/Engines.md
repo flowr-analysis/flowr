@@ -1,0 +1,26 @@
+_This document was generated from 'src/documentation/print-engines-wiki.ts' on 2025-01-16, 14:30:31 UTC presenting an overview of flowR's engines (v2.1.12, using R v4.4.2)._
+
+To analyze R scripts, flowR needs to parse the R code and for that, we require a parser.
+Originally, flowR shipped with a [<code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions .  At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/shell.ts#L140), an asynchronous interface to the R interpreter, still available today.
+Later, we extended this with the [<code><span title="This is a synchronous alternative to the RShell . Please be aware that using this is expensive. Every request effectively causes a new initialization of the R interpreter.  With this class you can run(command) commands, that are potentially decorated with prerequisites . For compatibility, we provide parse(request) and rVersion() .">RShellExecutor</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/shell-executor.ts#L25), the synchronous counterpart to the [<code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions .  At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/shell.ts#L140).
+However, these interfaces are relatively slow as they require communication with an underlying R interpreter. 
+Using [tree-sitter](https://tree-sitter.github.io/tree-sitter/), with its [node bindings](https://github.com/tree-sitter/node-tree-sitter)
+and [R grammar](https://github.com/r-lib/tree-sitter-r), we can provide the [<code><span title="Synchronous and (way) faster alternative to the RShell using tree-sitter.">TreeSitterExecutor</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor.ts#L13) which
+is synchronous, faster, and no longer needs an R installation, but requires the appropriate bindings.
+To allow users of R to freely choose their backend between the R interpreter and the tree-sitter parser,
+we provide the concept of engines. 
+
+Engines can be loaded with [flowR's configuration file](https://github.com/flowr-analysis/flowr/wiki//Interface#configuring-flowr). Additionally, they
+are exposed with some command line options (e.g., when using the docker image of flowR):
+
+- <span title="Description (Command Line Argument): Disable the R shell engine">`--engine.r-shell.disabled`</span> to disable the [<code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions .  At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/shell.ts#L140) engine
+- <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH.">`--engine.r-shell.r-path`</span> (which is the canonical version of <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH. This option is being phased out in favor of the engine configuration option \"engine.r-shell.r-path\", which should be used instead.">`--r-path`</span>)
+- <span title="Description (Command Line Argument): Disable the tree-sitter engine">`--engine.tree-sitter.disabled`</span> to disable the [<code><span title="Synchronous and (way) faster alternative to the RShell using tree-sitter.">TreeSitterExecutor</span></code>](https://github.com/flowr-analysis/flowr/tree/main//src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor.ts#L13) engine
+- <span title="Description (Command Line Argument): The path to the tree-sitter-r WASM binary to use. Defaults to the one shipped with flowR.">`--engine.tree-sitter.wasm-path`</span> pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))
+- <span title="Description (Command Line Argument): The path to the tree-sitter WASM binary to use. Defaults to the path specified by the tree-sitter package.">`--engine.tree-sitter.tree-sitter-wasm-path`</span> pass the path to the wasm of tree-sitter (see [below](#tree-sitter))
+- <span title="Description (Command Line Argument): The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.">`--default-engine`</span> to set the default engine to use
+
+<a id="tree-sitter"></a>
+## Dealing with the Tree-Sitter Engine
+
+

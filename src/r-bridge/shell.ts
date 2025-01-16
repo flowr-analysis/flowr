@@ -9,8 +9,12 @@ import { getPlatform } from '../util/os';
 import fs from 'fs';
 import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
 import { initCommand } from './init';
-import { getConfig } from '../config';
+import { getEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
+import type { AsyncParser } from './parser';
+import type { RParseRequest } from './retriever';
+import {  retrieveParseDataFromRCode } from './retriever';
+
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -109,7 +113,7 @@ let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 export function getDefaultRShellOptions(): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {
 		DEFAULT_R_SHELL_OPTIONS = {
-			pathToRExecutable:  getConfig().rPath ?? DEFAULT_R_PATH,
+			pathToRExecutable:  getEngineConfig('r-shell')?.rPath ?? DEFAULT_R_PATH,
 			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
 			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
@@ -130,16 +134,19 @@ export function getDefaultRShellOptions(): RShellOptions {
  * You can configure it by {@link RShellOptions}.
  *
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
- * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
- * as a legacy mode :D)
+ * which allows us to install packages etc. However, this might and probably will change in the future
+ * (leaving this as a legacy mode :D)
  */
-export class RShell {
+export class RShell implements AsyncParser<string> {
+
+	public readonly name = 'r-shell';
+	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	private session:         RShellSession;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;
 	// should never be more than one, but let's be sure
-	private tempDirs         = new Set<string>();
+	private tempDirs = new Set<string>();
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(), ...options };
@@ -147,6 +154,10 @@ export class RShell {
 
 		this.session = new RShellSession(this.options, this.log);
 		this.revive();
+	}
+
+	public parse(request: RParseRequest): Promise<string> {
+		return retrieveParseDataFromRCode(request, this);
 	}
 
 	private revive() {
@@ -165,14 +176,18 @@ export class RShell {
 	}
 
 	/**
-   * sends the given command directly to the current R session
-   * will not do anything to alter input markers!
-   */
+	 * sends the given command directly to the current R session
+	 * will not do anything to alter input markers!
+	 */
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`);
 		}
 		this._sendCommand(command);
+	}
+
+	public async rVersion(): Promise<string | 'unknown' | 'none'> {
+		return (await this.usedRVersion())?.format() ?? 'unknown';
 	}
 
 	public async usedRVersion(): Promise<SemVer | null> {

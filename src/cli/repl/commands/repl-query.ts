@@ -1,6 +1,5 @@
-import type { RShell } from '../../../r-bridge/shell';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import type { ReplCommand, ReplOutput } from './repl-main';
 import { splitAtEscapeSensitive } from '../../../util/args';
@@ -11,11 +10,11 @@ import { AnyQuerySchema, QueriesSchema , executeQueries } from '../../../queries
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
+import type { KnownParser } from '../../../r-bridge/parser';
 
 
-async function getDataflow(shell: RShell, remainingLine: string) {
-	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+async function getDataflow(parser: KnownParser, remainingLine: string) {
+	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
 	}).allRemainingSteps();
 }
@@ -32,7 +31,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(line: string, shell: RShell, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -66,7 +65,7 @@ async function processQueryArgs(line: string, shell: RShell, output: ReplOutput)
 		parsedQuery = [{ type: 'call-context', callName: query }];
 	}
 
-	const processed = await getDataflow(shell, args.join(' '));
+	const processed = await getDataflow(parser, args.join(' '));
 	return {
 		query: executeQueries({ dataflow: processed.dataflow, ast: processed.normalize }, parsedQuery),
 		processed
@@ -78,9 +77,9 @@ export const queryCommand: ReplCommand = {
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
+	fn:           async(output, parser, remainingLine) => {
 		const totalStart = Date.now();
-		const results = await processQueryArgs(remainingLine, shell, output);
+		const results = await processQueryArgs(remainingLine, parser, output);
 		const totalEnd = Date.now();
 		if(results) {
 			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));

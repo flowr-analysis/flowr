@@ -11,7 +11,7 @@ import type { MergeableRecord } from '../util/objects';
 import type { DataflowInformation } from '../dataflow/info';
 import type { SliceResult } from '../slicing/static/slicer-types';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
-import { PipelineExecutor } from '../core/pipeline-executor';
+import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/strings';
 import type {
@@ -24,8 +24,10 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import { RShell } from '../r-bridge/shell';
-import { DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_SLICING_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
+
+
 import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever';
 import { retrieveNumberOfRTokensOfLastParse } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
@@ -35,6 +37,11 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
+import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
+import type { SyntaxNode, Tree } from 'web-tree-sitter';
+import { RShell } from '../r-bridge/shell';
+import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -77,29 +84,28 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  *
- * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE}.
+ * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
  */
+type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
-	private readonly shell: RShell;
-	private stats:          SlicerStats | undefined;
-	private loadedXml:      string | undefined;
-	private dataflow:       DataflowInformation | undefined;
-	private normalizedAst:  NormalizedAst | undefined;
-	private totalStopwatch: IStoppableStopwatch;
+	private readonly parserName: KnownParserName;
+	private stats:               SlicerStats | undefined;
+	private loadedXml:           KnownParserType | undefined;
+	private dataflow:            DataflowInformation | undefined;
+	private normalizedAst:       NormalizedAst | undefined;
+	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
-	private pipeline:       PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> = null as unknown as PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>;
+	private executor:            PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
+	private parser:              KnownParser  = null as unknown as KnownParser;
 
-	constructor() {
+	constructor(parserName: KnownParserName) {
 		this.totalStopwatch = this.commonMeasurements.start('total');
-		this.shell = this.commonMeasurements.measure(
-			'initialize R session',
-			() => new RShell()
-		);
+		this.parserName = parserName;
 	}
 
 	/**
@@ -109,8 +115,18 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, autoSelectIf?: AutoSelectPredicate) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
-		this.pipeline = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
-			shell:     this.shell,
+		// we know these are in sync so we just cast to one of them
+		this.parser = await this.commonMeasurements.measure(
+			'initialize R session', async() => {
+				if(this.parserName === 'r-shell') {
+					return new RShell();
+				} else {
+					await TreeSitterExecutor.initTreeSitter();
+					return new TreeSitterExecutor();
+				}
+			}
+		);
+		this.executor = createSlicePipeline(this.parser, {
 			request:   { ...request },
 			criterion: [],
 			autoSelectIf
@@ -120,16 +136,31 @@ export class BenchmarkSlicer {
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
 
-		this.pipeline.switchToRequestStage();
+		this.executor.switchToRequestStage();
 
 		await this.calculateStatsAfterInit(request);
 	}
 
 	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
-		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
-		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell);
-		const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.shell, true);
+		let numberOfRTokens: number;
+		let numberOfRTokensNoComments: number;
+		if(this.parser.name === 'r-shell') {
+			// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
+			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
+			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);
+		} else {
+			const countChildren = function(node: SyntaxNode, ignoreComments = false): number {
+				let ret = node.type === TreeSitterType.Comment && ignoreComments ? 0 : 1;
+				for(const child of node.children) {
+					ret += countChildren(child, ignoreComments);
+				}
+				return ret;
+			};
+			const root = (this.loadedXml as Tree).rootNode;
+			numberOfRTokens = countChildren(root);
+			numberOfRTokensNoComments = countChildren(root, true);
+		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization');
@@ -228,7 +259,7 @@ export class BenchmarkSlicer {
 		};
 		this.perSliceMeasurements.set(slicingCriteria, stats);
 
-		this.pipeline.updateRequest({ criterion: slicingCriteria });
+		this.executor.updateRequest({ criterion: slicingCriteria });
 
 		const totalStopwatch = measurements.start('total');
 
@@ -241,7 +272,7 @@ export class BenchmarkSlicer {
 		totalStopwatch.stop();
 
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`);
-		const results = this.pipeline.getResults(false);
+		const results = this.executor.getResults(false);
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
 			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
@@ -263,13 +294,13 @@ export class BenchmarkSlicer {
 	}
 
 	/** Bridging the gap between the new internal and the old names for the benchmarking */
-	private async measureCommonStep<Step extends PipelineStepNames<typeof DEFAULT_SLICING_PIPELINE>>(
+	private async measureCommonStep<Step extends PipelineStepNames<SupportedPipelines>>(
 		expectedStep: Step,
 		keyToMeasure: CommonSlicerMeasurements
-	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
+	): Promise<PipelineStepOutputWithName<SupportedPipelines, Step>> {
 		const memoryInit = process.memoryUsage();
 		const { result } = await this.commonMeasurements.measureAsync(
-			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
+			keyToMeasure, () => this.executor.nextStep(expectedStep)
 		);
 		const memoryEnd = process.memoryUsage();
 		this.deltas.set(keyToMeasure, {
@@ -278,19 +309,19 @@ export class BenchmarkSlicer {
 			external: memoryEnd.external - memoryInit.external,
 			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		});
-		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>;
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
 	}
 
-	private async measureSliceStep<Step extends PipelineStepNames<typeof DEFAULT_SLICING_PIPELINE>>(
+	private async measureSliceStep<Step extends PipelineStepNames<SupportedPipelines>>(
 		expectedStep: Step,
 		measure: Measurements<PerSliceMeasurements>,
 		keyToMeasure: PerSliceMeasurements
-	): Promise<PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>> {
+	): Promise<PipelineStepOutputWithName<SupportedPipelines, Step>> {
 		const { result } = await measure.measureAsync(
-			keyToMeasure, () => this.pipeline.nextStep(expectedStep)
+			keyToMeasure, () => this.executor.nextStep(expectedStep)
 		);
 
-		return result as PipelineStepOutputWithName<typeof DEFAULT_SLICING_PIPELINE, Step>;
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
 	}
 
 	private guardActive() {
@@ -338,7 +369,7 @@ export class BenchmarkSlicer {
 		if(!this.finished) {
 			this.commonMeasurements.measure(
 				'close R session',
-				() => this.shell.close()
+				() => this.parser.close()
 			);
 			this.totalStopwatch.stop();
 			this.finished = true;
@@ -366,7 +397,7 @@ export class BenchmarkSlicer {
 		};
 		return {
 			stats:     this.stats,
-			parse:     this.loadedXml as string,
+			parse:     typeof this.loadedXml === 'string' ? this.loadedXml : JSON.stringify(this.loadedXml),
 			dataflow:  this.dataflow as DataflowInformation,
 			normalize: this.normalizedAst as NormalizedAst
 		};
@@ -376,6 +407,6 @@ export class BenchmarkSlicer {
    * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
    */
 	public ensureSessionClosed(): void {
-		this.shell.close();
+		this.parser?.close();
 	}
 }

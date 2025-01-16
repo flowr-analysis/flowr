@@ -1,14 +1,13 @@
 import type { ReplCommand } from './repl-main';
 import type { OutputFormatter } from '../../../util/ansi';
 import { FontStyles } from '../../../util/ansi';
-import { PipelineExecutor } from '../../../core/pipeline-executor';
 import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { convertPreparedParsedData , prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import {
 	extractLocation,
 	getTokenType,
 } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
-import { DEFAULT_PARSE_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import { createParsePipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[]
@@ -114,9 +113,8 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await new PipelineExecutor(DEFAULT_PARSE_PIPELINE, {
-			shell,
+	fn:           async(output, parser, remainingLine) => {
+		const result = await createParsePipeline(parser, {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps();
 

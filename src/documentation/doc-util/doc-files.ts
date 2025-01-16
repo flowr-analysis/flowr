@@ -22,3 +22,7 @@ export function getFileContentFromRoot(path: string): string {
 	const fullpath = require.resolve('../../../' + path);
 	return fs.readFileSync(fullpath, 'utf-8');
 }
+
+export function linkFlowRSourceFile(path: string): string {
+	return `[${path}](${RemoteFlowrFilePathBaseRef}/${path})`;
+}

@@ -15,7 +15,7 @@ import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../src/uti
 describe('repl', () => {
 	async function analyze(shell: RShell, code: string): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
 		return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(code)
 		}).allRemainingSteps();
 	}

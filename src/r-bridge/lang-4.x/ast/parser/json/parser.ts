@@ -5,7 +5,9 @@ import { decorateAst , deterministicCountingIdGenerator } from '../../model/proc
 import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
-import type { ParseStepOutput } from '../../../../../core/steps/all/core/00-parse';
+import type { ParseStepOutputTS } from '../../../../../core/steps/all/core/01-parse-tree-sitter';
+import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
+import type { ParseStepOutput } from '../../../../parser';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -13,7 +15,7 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' });
  * Take the output as produced by the parse step and normalize the AST from the R parser.
  */
 export function normalize(
-	{ parsed }: ParseStepOutput,
+	{ parsed }: ParseStepOutput<string>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	file?: string
 ): NormalizedAst {
@@ -21,4 +23,12 @@ export function normalize(
 	const object = convertPreparedParsedData(prepareParsedData(parsed));
 
 	return decorateAst(normalizeRootObjToAst(data, object), { getId, file });
+}
+
+export function normalizeTreeSitter(
+	{ parsed }: ParseStepOutputTS,
+	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
+	file?: string
+): NormalizedAst {
+	return decorateAst(normalizeTreeSitterTreeToAst(parsed), { getId, file });
 }

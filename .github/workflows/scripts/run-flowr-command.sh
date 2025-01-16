@@ -26,6 +26,7 @@ if [[ -z "${1:-}" ]]; then
 fi
 
 ACTION=$1
+OTHER_ARGS=${*:2}
 
 set -eu
 
@@ -93,7 +94,7 @@ if [ "$ACTION" == "doc" ]; then
 fi
 
 group "Run action $ACTION"
-$NPM_CMD run $ACTION
+$NPM_CMD run $ACTION $OTHER_ARGS
 end_group
 
 if [ "$ACTION" == "doc" ]; then

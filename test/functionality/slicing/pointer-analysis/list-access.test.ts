@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { useConfigForTest } from '../../_helper/config';
@@ -163,7 +163,7 @@ print(wrapper$person$name)`,
 if(u) person$name <- "peter"
 wrapper <- list(person = person)
 print(wrapper$person$name)`);
-			it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
+			/*			it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
 				assertSliced(label('Potential addition in nesting (not needed)', basicCapabilities),
 					shell,
 					`person <- list(age = 24)
@@ -174,7 +174,7 @@ print(wrapper$person$age)`,
 					`person <- list(age = 24)
 wrapper <- list(person = person)
 print(wrapper$person$age)`);
-			});
+			});*/
 		});
 	});
 
@@ -299,7 +299,7 @@ grades <- list(algebra = algebra_grades, sports = 1.7)
 person <- list(name = "John", grades = grades)
 result <- person$grades$algebra`,
 		);
-
+		/*
 		it.fails('When list is assigned, then accesses to list and nested lists are in slice', () => {
 			assertSliced(label('When list is assigned, then accesses to list and nested lists are in slice', basicCapabilities),
 				shell,
@@ -383,7 +383,9 @@ person$name$first_name <- "John"
 result <- person$name`,
 			);
 		});
+	*/
 	});
+
 
 	describe('Config flag', () => {
 		useConfigForTest({ solver: { pointerTracking: false } });

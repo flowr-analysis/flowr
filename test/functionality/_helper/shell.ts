@@ -3,7 +3,7 @@ import { deepMergeObject } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
 import { guard } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
-import type { TestLabel } from './label';
+import type { TestLabel, TestLabelContext } from './label';
 import { modifyLabelName , decorateLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
@@ -17,10 +17,13 @@ import type {
 import {
 	deterministicCountingIdGenerator
 } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
+import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
+	DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_DATAFLOW_PIPELINE,
-	DEFAULT_NORMALIZE_PIPELINE, DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE
+	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
+
+
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
@@ -31,8 +34,10 @@ import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
 import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
-import { assert, test, afterAll } from 'vitest';
+import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
+import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -76,12 +81,15 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 	};
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean): T {
+function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting') {
+		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
 			return undefined;
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
+		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			value = [value[0], 0, value[2], 0];
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return value;
@@ -89,11 +97,11 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 }
 
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, message?: () => string): void {
-	const astCopy = removeInformation(ast, includeTokens);
-	const expectedCopy = removeInformation(expected, includeTokens);
+function assertAstEqual<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
+	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	expected = removeInformation(expected, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	try {
-		assert.deepStrictEqual(astCopy, expectedCopy);
+		assert.deepStrictEqual(ast, expected);
 	} catch(e) {
 		if(message) {
 			console.error(message());
@@ -105,7 +113,8 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileProtocol}${string}` | string): Promise<NormalizedAst> => {
 	const request = requestFromInput(input);
 	return (await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		shell, request
+		parser:	shell,
+		request
 	}).allRemainingSteps()).normalize;
 };
 
@@ -184,22 +193,58 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
-	ignoreAdditionalTokens: boolean
+	ignoreAdditionalTokens: boolean,
+	ignoreColumns:          boolean,
+	skipTreeSitter:         boolean
 }>) {
-	const fullname = decorateLabelContext(name, ['desugar']);
+	const skip = skipTestBecauseConfigNotMet();
+	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
+	const skipTreeSitter = userConfig?.skipTreeSitter;
+	if(!skipTreeSitter) {
+		labelContext.push('desugar-tree-sitter');
+	}
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${fullname} (input: ${input})`, async function() {
+	return describe.skipIf(skip)(`${decorateLabelContext(name, labelContext)} (input: ${input})`, () => {
+		let shellAst: RNode | undefined;
+		let tsAst: RNode | undefined;
+		beforeAll(async() => {
+			shellAst = await makeShellAst();
+			if(!skipTreeSitter) {
+				tsAst = await makeTsAst();
+			}
+		});
+		test('shell', function() {
+			assertAstEqual(shellAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
+		});
+		test.skipIf(skipTreeSitter)('tree-sitter', function() {
+			assertAstEqual(tsAst as RNode, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
+		});
+		test.skipIf(skipTreeSitter)('compare', function() {
+			// we still ignore columns because we know those to be different (tree-sitter crushes tabs at the start of lines)
+			assertAstEqual(tsAst as RNode, shellAst as RNode, true, userConfig?.ignoreColumns === true,
+				() => `tree-sitter ast: ${JSON.stringify(tsAst)}, vs. shell ast: ${JSON.stringify(shellAst)}`, false);
+		});
+	});
 
+	async function makeShellAst(): Promise<RNode> {
 		const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(input)
 		});
 		const result = await pipeline.allRemainingSteps();
-		const ast = result.normalize.ast;
+		return result.normalize.ast;
+	}
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
-			() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
-	});
+	async function makeTsAst(): Promise<RNode> {
+		const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
+			parser:  new TreeSitterExecutor(),
+			request: requestFromInput(input)
+		});
+		const result = await pipeline.allRemainingSteps();
+		return result.normalize.ast;
+	}
 }
 
 /** call within describeSession */
@@ -207,13 +252,13 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(name, async function() {
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds),
-			shell,
+			parser:  shell,
 			request: requestFromInput(input),
 		}).allRemainingSteps();
 
 		const ast = result.normalize.ast;
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
+		assertAstEqual(ast, expected, false, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`);
 	});
 }
 
@@ -279,7 +324,7 @@ export function assertDataflow(
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps();
@@ -334,7 +379,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 		const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
 			getId:   getId,
 			request: requestFromInput(input),
-			shell
+			parser:  shell
 		}).allRemainingSteps();
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
@@ -357,20 +402,43 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate },
-	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
 ) {
-	const fullname = decorateLabelContext(name, ['slice']);
+	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
+	const skip = skipTestBecauseConfigNotMet(userConfig);
+	describe.skipIf(skip)(fullname, () => {
+		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
+		beforeAll(async() => {
+			shellResult = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE, {
+				getId:        getId(),
+				request:      requestFromInput(input),
+				parser:       shell,
+				criterion:    criteria,
+				autoSelectIf: userConfig?.autoSelectIf,
+			}).allRemainingSteps();
+			if(!userConfig?.skipTreeSitter) {
+				tsResult = await new PipelineExecutor(TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE, {
+					getId:        getId(),
+					request:      requestFromInput(input),
+					parser:       new TreeSitterExecutor(),
+					criterion:    criteria,
+					autoSelectIf: userConfig?.autoSelectIf
+				}).allRemainingSteps();
+			}
+		});
+		test('shell', () => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>));
+		test.skipIf(userConfig?.skipTreeSitter)('tree-sitter', () => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>));
+		test.skipIf(userConfig?.skipTreeSitter || userConfig?.skipCompare)('compare', function() {
+			const tsAst = tsResult?.normalize.ast as RNodeWithParent;
+			const shellAst = shellResult?.normalize.ast as RNodeWithParent;
+			assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
+		});
+	});
+	handleAssertOutput(name, shell, input, userConfig);
 
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${JSON.stringify(criteria)} ${fullname}`, async function() {
-		const result = await new PipelineExecutor(DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE,{
-			getId,
-			request:      requestFromInput(input),
-			shell,
-			criterion:    criteria,
-			autoSelectIf: userConfig?.autoSelectIf
-		}).allRemainingSteps();
-
+	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>) {
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,
@@ -381,6 +449,6 @@ export function assertSliced(
 			console.error(normalizedAstToMermaidUrl(result.normalize.ast));
 			throw e;
 		} /* v8 ignore stop */
-	});
+	}
 	handleAssertOutput(name, shell, input, userConfig);
 }

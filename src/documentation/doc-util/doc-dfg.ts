@@ -46,7 +46,7 @@ export async function printDfGraphForCode(shell: RShell, code: string, options?:
 export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
@@ -89,7 +89,7 @@ ${switchCodeAndGraph ? dfGraph : codeText}
 export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
 	/* we verify that we get what we want first! */
 	const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
 	}).allRemainingSteps();

@@ -105,7 +105,7 @@ async function explainRepl(shell: RShell): Promise<string> {
 	return `
 > [!NOTE]
 > To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
-> Please be aware that this introduces a security risk.
+> Please be aware that this introduces a security risk and note that this relies on the [\`r-shell\` engine](${FlowrWikiBaseRef}/Engines).
 
 
 Although primarily meant for users to explore, 
@@ -177,9 +177,7 @@ Within the REPL this works by running the following:
 
 ${codeBlock('shell', ':query @config')}
 
-
 The following summarizes the configuration options:
-
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
 - \`rPath\`: The path to the R executable. If not set, _flowR_ will try to find the R executable in the system's PATH.
@@ -187,6 +185,8 @@ The following summarizes the configuration options:
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
+- \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
+- \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -207,7 +207,8 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-			solver: {
+			engines: [{ type: 'r-shell' }],
+			solver:  {
 				variables:       VariableResolve.Alias,
 				pointerTracking: true
 			}
@@ -256,15 +257,13 @@ function explainWritingCode(shell: RShell): string {
 	});
 
 	return `
-
-
 _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classes and interfaces that are interesting for extension writers 
 (see the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the [core](${FlowrWikiBaseRef}/Core) wiki page for more information).
 
 ### Using the ${shortLink(RShell.name, types.info)} to Interact with R
 
 The ${shortLink(RShell.name, types.info)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
-For now, there are no (real) alternatives, although we plan on providing more flexible drop-in replacements.
+Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives.
 
 > [!IMPORTANT]
 > Each ${shortLink(RShell.name, types.info)} controls a new instance of the R&nbsp;interpreter, make sure to call <code>${shortLink(RShell.name, types.info, false)}::${shell.close.name}()</code> when you’re done.
@@ -290,7 +289,7 @@ In short, if you still "just want to slice" you can do it like this with the ${s
 ${
 	codeBlock('ts', `
 const slicer = new ${PipelineExecutor.name}(DEFAULT_SLICING_PIPELINE, {
-  shell:     new ${RShell.name}(),
+  parser:    new ${RShell.name}(),
   request:   ${requestFromInput.name}('x <- 1\\nx + 1'),
   criterion: ['2@x']
 })

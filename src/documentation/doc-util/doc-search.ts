@@ -22,7 +22,7 @@ export interface ShowSearchOptions {
 export async function showSearch(shell: RShell, code: string, search: FlowrSearchLike, { collapseResult = true }: ShowSearchOptions = {}): Promise<string> {
 	const now = performance.now();
 	const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		shell,
+		parser:  shell,
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const result = runSearch(search, analysis);

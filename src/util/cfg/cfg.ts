@@ -47,8 +47,10 @@ interface CfgFlowDependencyEdge extends MergeableRecord {
 	label: 'FD'
 }
 interface CfgControlDependencyEdge extends MergeableRecord {
-	label: 'CD'
-	when:  typeof RTrue | typeof RFalse
+	label:  'CD'
+	/** the id which caused the control dependency */
+	caused: NodeId,
+	when:   typeof RTrue | typeof RFalse
 }
 
 export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
@@ -203,10 +205,10 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 
 	for(const exitPoint of condition.exitPoints) {
 		for(const entryPoint of then.entryPoints) {
-			graph.addEdge(entryPoint, exitPoint, { label: 'CD', when: RTrue });
+			graph.addEdge(entryPoint, exitPoint, { label: 'CD', when: RTrue, caused: ifNode.info.id });
 		}
 		for(const entryPoint of otherwise?.entryPoints ?? []) {
-			graph.addEdge(entryPoint, exitPoint, { label: 'CD', when: RFalse });
+			graph.addEdge(entryPoint, exitPoint, { label: 'CD', when: RFalse, caused: ifNode.info.id });
 		}
 	}
 	for(const entryPoint of condition.entryPoints) {
@@ -218,7 +220,7 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 	}
 	if(!otherwise) {
 		for(const exitPoint of condition.exitPoints) {
-			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD', when: RFalse });
+			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD', when: RFalse, caused: ifNode.info.id });
 		}
 	}
 
@@ -238,7 +240,7 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 	graph.addVertex({ id: repeat.info.id + '-exit', name: 'repeat-exit', type: CfgVertexType.EndMarker });
 
 	for(const entryPoint of body.entryPoints) {
-		graph.addEdge(repeat.info.id, entryPoint, { label: 'FD' });
+		graph.addEdge(entryPoint, repeat.info.id, { label: 'FD' });
 	}
 
 	// loops automatically
@@ -266,7 +268,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 
 	for(const exit of condition.exitPoints) {
 		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, exit, { label: 'CD', when: RTrue });
+			graph.addEdge(entry, exit, { label: 'CD', when: RTrue, caused: whileLoop.info.id });
 		}
 	}
 
@@ -283,7 +285,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 	}
 	// while can break on the condition as well
 	for(const exit of condition.exitPoints) {
-		graph.addEdge(whileLoop.info.id + '-exit', exit, { label: 'CD', when: RFalse });
+		graph.addEdge(whileLoop.info.id + '-exit', exit, { label: 'CD', when: RFalse, caused: whileLoop.info.id  });
 	}
 
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileLoop.info.id + '-exit'], entryPoints: [whileLoop.info.id] };
@@ -310,7 +312,7 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 
 	for(const exit of variable.exitPoints) {
 		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, exit, { label: 'CD', when: RTrue });
+			graph.addEdge(entry, exit, { label: 'CD', when: RTrue, caused: forLoop.info.id });
 		}
 	}
 
@@ -323,7 +325,7 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 	}
 	// while can break on the condition as well
 	for(const exit of variable.exitPoints) {
-		graph.addEdge(forLoop.info.id + '-exit', exit, { label: 'CD', when: RFalse });
+		graph.addEdge(forLoop.info.id + '-exit', exit, { label: 'CD', when: RFalse, caused: forLoop.info.id });
 	}
 
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [forLoop.info.id + '-exit'], entryPoints: [forLoop.info.id] };

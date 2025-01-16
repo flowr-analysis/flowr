@@ -1,6 +1,6 @@
 // diverging from boolean | maybe requires explicit handling
-export const enum Ternary {
-	Always,
-	Maybe,
-	Never
+export enum Ternary {
+	Always = 'always',
+	Maybe = 'maybe',
+	Never = 'never'
 }

@@ -434,7 +434,7 @@ export function shortLink(name: string, hierarchy: TypeElementInSource[], codeSt
 		return '';
 	}
 	const [pkg, mainName, node] = res;
-	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '') ?? '';
+	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/"/g, '\'') ?? '';
 	return `[${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<b>${mainName}</b>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name

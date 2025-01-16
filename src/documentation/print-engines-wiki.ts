@@ -49,8 +49,8 @@ are exposed with some command line options (e.g., when using the docker image of
 
 ${
 	block({
-		type:    'INFO',
-		content: 'AS the tree-sitter engine is only for parsing, it cannot execute R code.'
+		type:    'WARNING',
+		content: 'As the tree-sitter engine is only for parsing, it cannot execute R code.'
 	})
 }
 

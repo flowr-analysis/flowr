@@ -198,11 +198,11 @@ jobs:
         run: |
           docker run --rm flowr --version
 
-      - name: "🚀 Deploy the image"
+      - name: "🚀 Deploy the Image"
         run: |
           TAG="eagleoutice/flowr"
           VERSION="$(date '+%Y%m%d')"
-          FLOWR_VERSION="$(docker run --rm flowr --version |  grep -oP 'flowR:\s*\K[^ ]+')"
+          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
           docker tag flowr "${TAG}":"date-$VERSION"
           docker tag flowr "${TAG}":"$FLOWR_VERSION"
           docker tag flowr "${TAG}":latest

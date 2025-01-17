@@ -9,7 +9,7 @@ import { processAllArguments } from '../common';
 import { guard } from '../../../../../../util/assert';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { EmptyArgument, type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex } from '../../../../../graph/vertex';
@@ -17,9 +17,8 @@ import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { constructNestedAccess } from '../../../../../../util/list-access';
+import { constructNestedAccess, getAccessOperands } from '../../../../../../util/list-access';
 import { getConfig } from '../../../../../../config';
 
 export function processReplacementFunction<OtherInfo>(
@@ -40,9 +39,8 @@ export function processReplacementFunction<OtherInfo>(
 
 	let indices: ContainerIndicesCollection = undefined;
 	if(name.content === '$<-' && getConfig().solver.pointerTracking) {
-		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
-		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-		const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+		const { accessedArg, accessArg } = getAccessOperands(args);
+
 		if(accessArg !== undefined && accessedArg != undefined) {
 			const leafIndex: ContainerLeafIndex = {
 				identifier: {

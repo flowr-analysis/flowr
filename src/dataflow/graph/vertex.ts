@@ -97,11 +97,11 @@ export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
  * 
  * @param index - The {@link ContainerIndex}, which is accessed
  * @param accessLexeme - The access lexeme
- * @param accessIndexOfIndex - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
+ * @param isIndexBasedAccess - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
  * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise 
  */
-export function isAccessed(index: ContainerIndex, accessLexeme: string, accessIndexOfIndex: boolean) {
-	if(accessIndexOfIndex) {
+export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexBasedAccess: boolean) {
+	if(isIndexBasedAccess) {
 		return index.identifier.index === Number(accessLexeme);
 	}
 

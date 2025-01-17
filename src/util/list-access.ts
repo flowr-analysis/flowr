@@ -11,9 +11,26 @@ import {
 } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RFunctionArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+
+/**
+ * Returns the accessed and access argument of an access operation by filtering the operation arguments.
+ */
+export function getAccessOperands<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+): {
+	accessedArg: RArgument<OtherInfo & ParentInformation> | undefined,
+	accessArg:   RArgument<OtherInfo & ParentInformation> | undefined,
+} {
+	const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
+	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
+	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+	return { accessedArg, accessArg };
+}
 
 /**
  * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.

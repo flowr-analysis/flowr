@@ -18,8 +18,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { filterIndices, resolveSingleIndex } from '../../../../../../util/list-access';
+import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/list-access';
 import { getConfig } from '../../../../../../config';
 
 interface TableAssignmentProcessorMarker {
@@ -216,9 +215,7 @@ function referenceAccessedIndices<OtherInfo>(
 	isIndexBasedAccess: boolean,
 ) {
 	// Resolve access on the way up the fold
-	const nonEmptyArgs = newArgs.filter(arg => arg !== EmptyArgument);
-	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+	const { accessedArg, accessArg } = getAccessOperands(newArgs);
 
 	if(accessedArg === undefined || accessArg === undefined) {
 		return;

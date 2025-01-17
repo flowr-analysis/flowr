@@ -38,6 +38,9 @@ import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
+import { runSearch } from '../../../src/search/flowr-search-executor';
+import { isNamedArgumentId, type ContainerIndex } from '../../../src/dataflow/graph/vertex';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -490,4 +493,65 @@ export function assertSliced(
 		} /* v8 ignore stop */
 	}
 	handleAssertOutput(name, shell, input, userConfig);
+}
+
+export function assertContainerIndicesDefinition(
+	name: TestLabel,
+	shell: RShell,
+	input: string,
+	search: FlowrSearchLike,
+	expectedIndices: ContainerIndex[],
+	userConfig: Partial<TestConfiguration> = {},
+) {
+	const effectiveName = decorateLabelContext(name, ['dataflow']);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
+		const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+			shell,
+			request: requestFromInput(input),
+		}).allRemainingSteps();
+		const result = runSearch(search, analysis);
+
+		assert(result.length > 0, 'The result of the search was empty');
+
+		for(const element of result) {
+			const id = element.node.info.id;
+			const vertex = analysis.dataflow.graph.getVertex(id);
+			assert(vertex !== undefined, `vertex with id ${id} doesn't exist`);
+			assert(vertex.indicesCollection !== undefined, `indices collection for vertex with id ${id} doesn't exist`);
+			const actualIndices = vertex.indicesCollection.flatMap(collection => collection.indices) ?? [];
+			
+			for(const index of expectedIndices) {
+				const found = actualIndices.find(i => isEqualIndex(i, index));
+				assert(
+					found !== undefined,
+					`For '${input}' index ${JSON.stringify(index)} was expected but not found in\n${stringifyIndices(actualIndices)}`,
+				);
+			}
+			for(const index of actualIndices) {
+				const found = expectedIndices.find(i => isEqualIndex(index, i));
+				assert(
+					found !== undefined,
+					`For '${input}' index ${JSON.stringify(index)} wasn't expected but was found`,
+				);
+			}
+		}
+	});
+}
+
+function isEqualIndex(actualIndex: ContainerIndex, expectedIndex: ContainerIndex): boolean {
+	let isEqual = true;
+
+	const expectedId = expectedIndex.identifier;
+	const actualId = actualIndex.identifier;
+	if(isNamedArgumentId(expectedId)) {
+		isEqual &&= isNamedArgumentId(actualId) && expectedId.lexeme === actualId.lexeme;
+	}
+	isEqual &&= expectedId.index === actualId.index;
+	isEqual &&= expectedIndex.nodeId === actualIndex.nodeId;
+
+	return isEqual;
+}
+
+function stringifyIndices(indices: ContainerIndex[]): string {
+	return `[\n${indices.map(i => '  ' + JSON.stringify(i)).join('\n')}\n]`;
 }

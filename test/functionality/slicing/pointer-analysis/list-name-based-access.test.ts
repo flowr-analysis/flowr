@@ -6,6 +6,7 @@ import { useConfigForTest } from '../../_helper/config';
 describe.sequential('List access', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple'] as const;
 	useConfigForTest({ solver: { pointerTracking: true } });
+
 	describe('Simple access', () => {
 		assertSliced(label('List with single element', basicCapabilities), shell,
 			'person <- list(name = "John")\nprint(person$name)',
@@ -137,6 +138,7 @@ print(person$age)`,
 				`person <- list(age = 24)
 if(u) person$age <- 33
 print(person$age)`);
+
 			assertSliced(label('Potential wipe', basicCapabilities),
 				shell,
 				`person <- list(age = 24)
@@ -152,6 +154,7 @@ print(person$age)`,
 if(u) { person$age <- 33 } else
 { person <- list() }
 print(person$age)`);
+
 			assertSliced(label('Potential addition in nesting', basicCapabilities),
 				shell,
 				`person <- list(age = 24)
@@ -163,7 +166,8 @@ print(wrapper$person$name)`,
 if(u) person$name <- "peter"
 wrapper <- list(person = person)
 print(wrapper$person$name)`);
-			/*			it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
+
+			it.fails('Currently we can not handle the indirect passing minimally and include the name line', () => {
 				assertSliced(label('Potential addition in nesting (not needed)', basicCapabilities),
 					shell,
 					`person <- list(age = 24)
@@ -173,8 +177,9 @@ print(wrapper$person$age)`,
 					['4@print'],
 					`person <- list(age = 24)
 wrapper <- list(person = person)
-print(wrapper$person$age)`);
-			});*/
+print(wrapper$person$age)`
+                );
+			});
 		});
 	});
 
@@ -389,11 +394,14 @@ result <- person$name`,
 
 	describe('Config flag', () => {
 		useConfigForTest({ solver: { pointerTracking: false } });
-		assertSliced(label('When flag is false, then list access is not in slice', ['call-normal']), shell,
+		assertSliced(label('When flag is false, then list access is not in slice', ['call-normal']),
+			shell,
 			`person <- list(age = 24, name = "John")
 person$name <- "Jane"
 person$age <- 23
-print(person$name)`, ['4@print'], `person <- list(age = 24, name = "John")
+print(person$name)`,
+			['4@print'],
+			`person <- list(age = 24, name = "John")
 person$name <- "Jane"
 person$age <- 23
 print(person$name)`

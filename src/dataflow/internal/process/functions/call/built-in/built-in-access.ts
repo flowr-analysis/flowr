@@ -142,6 +142,7 @@ function processNumberBasedAccess<OtherInfo>(
 	}]);
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+
 	/* recover the environment */
 	if(existing !== undefined) {
 		data.environment.current.memory.set(':=', existing);
@@ -153,6 +154,11 @@ function processNumberBasedAccess<OtherInfo>(
 			rootId
 		);
 	}
+
+	if(getConfig().solver.pointerTracking) {
+		referenceAccessedIndices(args, data, fnCall, rootId, true);
+	}
+
 	return fnCall;
 }
 

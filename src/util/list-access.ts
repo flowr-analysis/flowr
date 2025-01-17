@@ -4,7 +4,9 @@ import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
 	ContainerIndex,
 	ContainerIndices,
-	ContainerIndicesCollection } from '../dataflow/graph/vertex';
+	ContainerIndicesCollection, 
+	IndexIdentifier,
+} from '../dataflow/graph/vertex';
 import {
 	isAccessed,
 	isParentContainerIndex
@@ -97,6 +99,7 @@ export function filterIndices(
 export function constructNestedAccess<OtherInfo>(
 	accessedArg: RAccess<OtherInfo & ParentInformation>,
 	leafIndices: ContainerIndices,
+	constructIdentifier: (arg: RArgument<OtherInfo & ParentInformation>) => IndexIdentifier,
 ): ContainerIndices[] {
 	const accessed = accessedArg.accessed;
 	const accesses = accessedArg.access.filter(arg => arg !== EmptyArgument).map(arg => arg as RArgument<OtherInfo & ParentInformation>);
@@ -106,10 +109,7 @@ export function constructNestedAccess<OtherInfo>(
 		const newIndices: ContainerIndices = {
 			indices: [
 				{
-					identifier: {
-						index:  undefined,
-						lexeme: access.lexeme,
-					},
+					identifier: constructIdentifier(access),
 					nodeId:     access.info.id,
 					subIndices: [ leafIndices ],
 				}
@@ -118,7 +118,7 @@ export function constructNestedAccess<OtherInfo>(
 		};
 
 		if(accessed.type === RType.Access) {
-			const nestedIndices = constructNestedAccess(accessed, newIndices);
+			const nestedIndices = constructNestedAccess(accessed, newIndices, constructIdentifier);
 			indices.push(...nestedIndices);
 		} else {
 			indices.push(newIndices);

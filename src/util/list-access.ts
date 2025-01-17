@@ -27,11 +27,11 @@ export function resolveSingleIndex(
 	accessedArg: { lexeme: string },
 	accessArg: { lexeme: string },
 	environment: REnvironmentInformation,
-	accessIndexOfIndex: boolean,
+	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
 	const definitions = resolveByName(accessedArg.lexeme, environment);
 	const indicesCollection = definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
-	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, accessIndexOfIndex);
+	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
 	return accessedIndicesCollection;
 }
 
@@ -45,11 +45,11 @@ export function resolveSingleIndex(
 export function filterIndices(
 	indicesCollection: ContainerIndicesCollection,
 	accessArg: { lexeme: string },
-	accessIndexOfIndex: boolean,
+	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
 	let accessedIndicesCollection: ContainerIndicesCollection = undefined;
 	for(const indices of indicesCollection ?? []) {
-		const filteredIndices = indices.indices.filter(index => isAccessed(index, accessArg.lexeme, accessIndexOfIndex));
+		const filteredIndices = indices.indices.filter(index => isAccessed(index, accessArg.lexeme, isIndexBasedAccess));
 
 		if(filteredIndices.length == 0) {
 			continue;

@@ -68,16 +68,42 @@ export function processVector<OtherInfo>(
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data }, [indices]);
 
+	flattenArgs(vectorArgs, unresolvedArgs, fnCall, rootId);
+
+	return fnCall.information;
+}
+
+/**
+ * Flattenes and merges resolved and unresolved arguments from the vector definition.
+ * Example:
+ * ```r
+ * c(1, 2, c(1, 2))
+ * // Index 1 and 2 are resolved right away, index 3 cannot
+ * // Results in flattened indices [1, 2, 1, 2]
+ * ```
+ * 
+ * @param vectorArgs - Arguments that could be resolved right away i.e. primitive args
+ * @param unresolvedArgs - Arguments that couldn't be resolved e.g. nested vectors/lists
+ * @returns 
+ */
+function flattenArgs(
+	vectorArgs: ContainerIndex[],
+	unresolvedArgs: UnresolvedArg[],
+	fnCall: ProcessKnownFunctionCallResult,
+	rootId: NodeId,
+) {
 	const vertex = fnCall.information.graph.getVertex(rootId);
 
+	// When there are no unresolved arguments, the indices don't have to be constructed again
 	if(!vertex || unresolvedArgs.length == 0) {
-		return fnCall.information;
+		return;
 	}
 
 	let vectorArgsIndex = 0;
 	let unresolvedArgsIndex = 0;
 	const newIndices: ContainerIndex[] = [];
 	let newIndex = 1;
+	// Stores a copy of the passed index with a new index as identifier
 	function addToIndices(index: ContainerIndex) {
 		newIndices.push({
 			...index,
@@ -87,6 +113,8 @@ export function processVector<OtherInfo>(
 		});
 	}
 
+	// Merge indices of both lists
+	// Always add the next index with the smaller index in the vector
 	while(vectorArgsIndex < vectorArgs.length && unresolvedArgsIndex < unresolvedArgs.length) {
 		const vectorArg = vectorArgs[vectorArgsIndex];
 		const unresolvedArg = unresolvedArgs[unresolvedArgsIndex];
@@ -112,9 +140,7 @@ export function processVector<OtherInfo>(
 		indices:     newIndices,
 		isContainer: true,
 	};
-	vertex.indicesCollection = [ resolvedIndices ];
-
-	return fnCall.information;
+	vertex.indicesCollection = [resolvedIndices];
 }
 
 function getVertexIndices(fnCall: ProcessKnownFunctionCallResult, arg: UnresolvedArg): ContainerIndex[] {

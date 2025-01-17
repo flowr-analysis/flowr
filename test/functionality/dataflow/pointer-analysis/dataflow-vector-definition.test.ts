@@ -8,9 +8,35 @@ describe.sequential('Vector Definition', withShell(shell => {
 
 	describe('Simple definition', () => {
 		assertContainerIndicesDefinition(
-			label('When values are defined in vector, then indices are created for them', basicCapabilities),
+			label('When numbers are defined in vector, then indices are created for them', basicCapabilities),
 			shell,
-			'c(1, 2, 3, 4)',
+			'c(1, 2.3, 3.1e4, 0xcafe)',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 1, },
+				{ identifier: { index: 2 }, nodeId: 3, },
+				{ identifier: { index: 3 }, nodeId: 5, },
+				{ identifier: { index: 4 }, nodeId: 7, },
+			]
+		);
+
+		assertContainerIndicesDefinition(
+			label('When strings are defined in vector, then indices are created for them', basicCapabilities),
+			shell,
+			'c("hello", \'world\', "This is an", \'example\')',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 1, },
+				{ identifier: { index: 2 }, nodeId: 3, },
+				{ identifier: { index: 3 }, nodeId: 5, },
+				{ identifier: { index: 4 }, nodeId: 7, },
+			]
+		);
+
+		assertContainerIndicesDefinition(
+			label('When logical values are defined in vector, then indices are created for them', basicCapabilities),
+			shell,
+			'c(TRUE, FALSE, TRUE, FALSE)',
 			Q.criterion('1@c'),
 			[
 				{ identifier: { index: 1 }, nodeId: 1, },

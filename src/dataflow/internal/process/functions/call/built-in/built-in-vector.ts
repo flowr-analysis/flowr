@@ -42,8 +42,9 @@ export function processVector<OtherInfo>(
 			continue;
 		}
 		
-		// Skip but store non number arguments
-		if(arg.value?.type !== RType.Number) {
+		// Skip but store non primitive arguments
+		// TODO: Handle symbols
+		if(arg.value === undefined || !isPrimitive(arg.value.type)) {
 			if(arg.value) {
 				unresolvedArgs.push({
 					index: arg.info.index,
@@ -71,6 +72,13 @@ export function processVector<OtherInfo>(
 	flattenArgs(vectorArgs, unresolvedArgs, fnCall, rootId);
 
 	return fnCall.information;
+}
+
+/**
+ * Checks whether the passed type is primitve i.e. number, logical or string.
+ */
+function isPrimitive(type: RType) {
+	return type === RType.Number || type === RType.Logical || type === RType.String;
 }
 
 /**

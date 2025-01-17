@@ -24,7 +24,7 @@ export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexTy
  * }
  * ```
  */
-export interface ArgumentId {
+export interface UnnamedArgumentId {
 	readonly index: number,
 }
 
@@ -47,9 +47,11 @@ export interface NamedArgumentId {
 	readonly lexeme: string,
 }
 
-export function isNamedArgumentId(identifier: ArgumentId | NamedArgumentId): identifier is NamedArgumentId {
+export function isNamedArgumentId(identifier: IndexIdentifier): identifier is NamedArgumentId {
 	return 'lexeme' in identifier;
 }
+
+export type IndexIdentifier = UnnamedArgumentId | NamedArgumentId;
 
 /**
  * A single index of a container, which is not a container itself.
@@ -58,9 +60,9 @@ export function isNamedArgumentId(identifier: ArgumentId | NamedArgumentId): ide
  */
 export interface ContainerLeafIndex {
 	/**
-	 * Distinctive identifier of index, see {@link ArgumentId} and {@link NamedArgumentId}.
+	 * Distinctive identifier of index, see {@link IndexIdentifier}.
 	 */
-	readonly identifier: ArgumentId | NamedArgumentId,
+	readonly identifier: IndexIdentifier,
 
 	/**
 	 * NodeId of index in graph.

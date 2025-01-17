@@ -47,7 +47,7 @@ export interface NamedArgumentId {
 	readonly lexeme: string,
 }
 
-function isNamedArgumentId(identifier: ArgumentId | NamedArgumentId): identifier is NamedArgumentId {
+export function isNamedArgumentId(identifier: ArgumentId | NamedArgumentId): identifier is NamedArgumentId {
 	return 'lexeme' in identifier;
 }
 

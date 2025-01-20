@@ -1,4 +1,4 @@
-_This document was generated automatically from '/home/runner/work/flowr/flowr/src/documentation/print-capabilities-markdown.ts' on 2024-09-27, 07:13:49 UTC summarizig flowR's current capabilities (version: 2.0.25)._
+_This document was generated from 'src/documentation/print-capabilities-markdown.ts' on 2025-01-20, 11:18:08 UTC summarizing flowR's current capabilities (v2.2.1)._
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
@@ -83,7 +83,7 @@ Besides, we use colored bullets like this:
           :green_square: _Detect calls like `x[i = 3]`, `x[[i=]]`, ..._
              6. **Access with Empty** (<a id='access-with-empty'>`access-with-empty`</a>)\
           :green_square: _Detect calls like `x[]`, `x[2,,42]`, ..._
-             7. **Subsetting** (<a id='subsetting-multiple'>`subsetting`</a>)\
+             7. **Subsetting (Multiple Indices)** (<a id='subsetting-multiple'>`subsetting-multiple`</a>)\
           :green_square: _Detect calls like `x[i > 3]`, `x[c(1,3)]`, ..._
          8. **Operators** (<a id='operators'>`operators`</a>)
              1. **Unary Operator** (<a id='unary-operator'>`unary-operator`</a>)\

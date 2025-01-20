@@ -3,7 +3,7 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { useConfigForTest } from '../../_helper/config';
 
-describe.sequential('List access', withShell(shell => {
+describe.sequential('List name based access', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple'] as const;
 	useConfigForTest({ solver: { pointerTracking: true } });
 

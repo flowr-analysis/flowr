@@ -1,5 +1,5 @@
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
-import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
+import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
 	ContainerIndex,
@@ -35,6 +35,18 @@ export function getAccessOperands<OtherInfo>(
 }
 
 /**
+ * Resolves the passed name in the passed environment and returns the indicesCollection of the resolved definitions.
+ * 
+ * @param name - Name to resolve
+ * @param environment - Environment in which name is resolved
+ * @returns The indicesCollection of the resolved definitions
+ */
+export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {
+	const definitions = resolveByName(name, environment);
+	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+}
+
+/**
  * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.
  *
  * @param accessedArg - The argument to resolve
@@ -48,8 +60,7 @@ export function resolveSingleIndex(
 	environment: REnvironmentInformation,
 	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
-	const definitions = resolveByName(accessedArg.lexeme, environment);
-	const indicesCollection = definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment);
 	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
 	return accessedIndicesCollection;
 }

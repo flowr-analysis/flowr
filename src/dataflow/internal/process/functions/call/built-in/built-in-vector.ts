@@ -9,8 +9,7 @@ import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { getConfig } from '../../../../../../config';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { resolveIndicesByName } from '../../../../../../util/containers';
 
 /**
  * Process a vector call.
@@ -49,11 +48,10 @@ export function processVector<OtherInfo>(
 			// Check whether argument value can be resolved
 			let indicesCollection: ContainerIndicesCollection;
 			if(arg.value.type === RType.Symbol) {
-				const defs = resolveByName(arg.value.lexeme, data.environment);
-				indicesCollection = defs?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? []);
+				indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment);
 			} else {
 				// Check whether argument is nested container
-				indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id ?? -1)?.indicesCollection;
+				indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id)?.indicesCollection;
 			}
 
 			const flattenedIndices = indicesCollection?.flatMap(indices => indices.indices)

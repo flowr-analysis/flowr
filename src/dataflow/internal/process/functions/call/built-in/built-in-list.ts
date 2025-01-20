@@ -4,13 +4,12 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { ContainerIndices, ContainerIndex } from '../../../../../graph/vertex';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { getConfig } from '../../../../../../config';
+import { resolveIndicesByName } from '../../../../../../util/containers';
 
 /**
  * Process a list call.
@@ -61,17 +60,16 @@ export function processList<OtherInfo>(
 
 		// Check whether argument value can be resolved
 		if(arg.value.type === RType.Symbol) {
-			const defs = resolveByName(arg.value.lexeme, data.environment);
-			const indices = defs?.flatMap(index => (index as InGraphIdentifierDefinition).indicesCollection ?? []);
-			if(indices) {
+			const indicesCollection = resolveIndicesByName(arg.value.lexeme, data.environment);
+			if(indicesCollection) {
 				newIndex = {
 					...newIndex,
-					subIndices: indices,
+					subIndices: indicesCollection,
 				};
 			}
 		} else {
 			// Check whether argument is nested container
-			const indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id ?? -1)?.indicesCollection;
+			const indicesCollection = fnCall.information.graph.getVertex(arg.value.info.id)?.indicesCollection;
 			if(indicesCollection) {
 				newIndex = {
 					...newIndex,

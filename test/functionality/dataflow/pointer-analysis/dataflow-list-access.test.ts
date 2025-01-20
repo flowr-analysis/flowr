@@ -6,7 +6,7 @@ import { label } from '../../_helper/label';
 describe.sequential('List Access', withShell(shell => {
 	describe('Access named argument', () => {
 		assertDataflow(
-			label('Assert reads edge to named argument', ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting']),
+			label('Assert reads edge to named argument', ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple']),
 			shell,
 			`person <- list(age = 24, name = "John")
 person$name`,

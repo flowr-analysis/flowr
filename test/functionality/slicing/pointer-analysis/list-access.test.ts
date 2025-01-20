@@ -4,7 +4,7 @@ import { label } from '../../_helper/label';
 import { useConfigForTest } from '../../_helper/config';
 
 describe.sequential('List access', withShell(shell => {
-	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting'] as const;
+	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple'] as const;
 	useConfigForTest({ solver: { pointerTracking: true } });
 	describe('Simple access', () => {
 		assertSliced(label('List with single element', basicCapabilities), shell,

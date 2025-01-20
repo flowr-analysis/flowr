@@ -236,8 +236,8 @@ export const flowrCapabilities = {
 									description: '_Detect calls like `x[]`, `x[2,,42]`, ..._'
 								},
 								{
-									name:        'Subsetting',
-									id:          'subsetting',
+									name:        'Subsetting (Multiple Indices)',
+									id:          'subsetting-multiple',
 									supported:   'fully',
 									description: '_Detect calls like `x[i > 3]`, `x[c(1,3)]`, ..._'
 								}

@@ -18,7 +18,7 @@ import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { constructNestedAccess, getAccessOperands } from '../../../../../../util/list-access';
+import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 

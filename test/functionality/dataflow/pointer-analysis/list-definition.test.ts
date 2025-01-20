@@ -118,6 +118,29 @@ describe.sequential('List Definition', withShell(shell => {
 					},
 				]
 			);
+
+			assertContainerIndicesDefinition(
+				label('When list has nested list passed as variable, then index has sub-indices', capabilitiesWithUnnamedArgs),
+				shell,
+				`a <- list(1, 2)
+				list(a = a)`,
+				Q.criterion('2@list'),
+				[
+					{
+						identifier: { index: 1, lexeme: 'a' },
+						nodeId:     11,
+						subIndices: [
+							{
+								indices: [
+									{ identifier: { index: 1 }, nodeId: 2 },
+									{ identifier: { index: 2 }, nodeId: 4 },
+								],
+								isContainer: true,
+							}
+						]
+					},
+				]
+			);
 		});
 	});
 
@@ -191,7 +214,7 @@ describe.sequential('List Definition', withShell(shell => {
 			);
 
 			assertContainerIndicesDefinition(
-				label('When list has nested list with unnamed arguments, then index has sub-indices', basicCapabilities),
+				label('When list has nested list with unnamed arguments, then index has sub-indices', capabilities),
 				shell,
 				'list(list(1, 2))',
 				Q.criterion('1@list'),
@@ -213,7 +236,7 @@ describe.sequential('List Definition', withShell(shell => {
 			);
 
 			assertContainerIndicesDefinition(
-				label('When list has nested vector, then index has sub-indices', basicCapabilities),
+				label('When list has nested vector, then index has sub-indices', capabilities),
 				shell,
 				'list(c(1, 2))',
 				Q.criterion('1@list'),
@@ -221,6 +244,29 @@ describe.sequential('List Definition', withShell(shell => {
 					{
 						identifier: { index: 1 },
 						nodeId:     6,
+						subIndices: [
+							{
+								indices: [
+									{ identifier: { index: 1 }, nodeId: 2 },
+									{ identifier: { index: 2 }, nodeId: 4 },
+								],
+								isContainer: true,
+							}
+						]
+					},
+				]
+			);
+
+			assertContainerIndicesDefinition(
+				label('When list has nested list passed as variable, then index has sub-indices', capabilities),
+				shell,
+				`a <- list(1, 2)
+				list(a)`,
+				Q.criterion('2@list'),
+				[
+					{
+						identifier: { index: 1 },
+						nodeId:     9,
 						subIndices: [
 							{
 								indices: [

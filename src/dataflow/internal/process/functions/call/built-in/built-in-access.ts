@@ -18,7 +18,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/list-access';
+import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 
 interface TableAssignmentProcessorMarker {

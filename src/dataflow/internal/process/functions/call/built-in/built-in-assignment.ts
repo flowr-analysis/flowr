@@ -34,7 +34,7 @@ import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases } from '../../../../../environments/resolve-by-name';
-import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
+import { addSubIndicesToLeafIndices } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {

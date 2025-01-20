@@ -169,4 +169,58 @@ describe.sequential('Vector Definition', withShell(shell => {
 			]
 		);
 	});
+
+	describe('Nested lists with unnamed arguments', () => {
+		assertContainerIndicesDefinition(
+			label('When vector starts with nested list, then indices are flattened and correctly defined', basicCapabilities),
+			shell,
+			'c(list(1, 2), 3, 4)',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 2, },
+				{ identifier: { index: 2 }, nodeId: 4, },
+				{ identifier: { index: 3 }, nodeId: 8, },
+				{ identifier: { index: 4 }, nodeId: 10, },
+			]
+		);
+	
+		assertContainerIndicesDefinition(
+			label('When vector has nested vector in the middle, then indices are flattened and correctly defined', basicCapabilities),
+			shell,
+			'c(1, list(2, 3), 4)',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 1, },
+				{ identifier: { index: 2 }, nodeId: 4, },
+				{ identifier: { index: 3 }, nodeId: 6, },
+				{ identifier: { index: 4 }, nodeId: 10, },
+			]
+		);
+	
+		assertContainerIndicesDefinition(
+			label('When vector ends with nested vector, then indices are flattened and correctly defined', basicCapabilities),
+			shell,
+			'c(1, 2, list(3, 4))',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 1, },
+				{ identifier: { index: 2 }, nodeId: 3, },
+				{ identifier: { index: 3 }, nodeId: 6, },
+				{ identifier: { index: 4 }, nodeId: 8, },
+			]
+		);
+
+		assertContainerIndicesDefinition(
+			label('When vector consists of nested vectors, then indices are flattened and correctly defined', basicCapabilities),
+			shell,
+			'c(list(1, 2), list(3, 4))',
+			Q.criterion('1@c'),
+			[
+				{ identifier: { index: 1 }, nodeId: 2, },
+				{ identifier: { index: 2 }, nodeId: 4, },
+				{ identifier: { index: 3 }, nodeId: 9, },
+				{ identifier: { index: 4 }, nodeId: 11, },
+			]
+		);
+	});
 }));

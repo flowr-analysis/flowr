@@ -40,7 +40,7 @@ import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/t
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
-import { isNamedArgumentId, type ContainerIndex } from '../../../src/dataflow/graph/vertex';
+import { type ContainerIndex } from '../../../src/dataflow/graph/vertex';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -519,37 +519,22 @@ export function assertContainerIndicesDefinition(
 			assert(vertex !== undefined, `vertex with id ${id} doesn't exist`);
 			assert(vertex.indicesCollection !== undefined, `indices collection for vertex with id ${id} doesn't exist`);
 			const actualIndices = vertex.indicesCollection.flatMap(collection => collection.indices) ?? [];
-			
-			for(const index of expectedIndices) {
-				const found = actualIndices.find(i => isEqualIndex(i, index));
-				assert(
-					found !== undefined,
-					`For '${input}' index ${JSON.stringify(index)} was expected but not found in\n${stringifyIndices(actualIndices)}`,
+
+			const actual = stringifyIndices(actualIndices);
+			const expected = stringifyIndices(expectedIndices);
+
+			try {
+				assert.strictEqual(
+					actual, expected,
+					`got: ${actual}, vs. expected: ${expected}, for input ${input}, url: ${graphToMermaidUrl(analysis.dataflow.graph, true)}`
 				);
-			}
-			for(const index of actualIndices) {
-				const found = expectedIndices.find(i => isEqualIndex(index, i));
-				assert(
-					found !== undefined,
-					`For '${input}' index ${JSON.stringify(index)} wasn't expected but was found`,
-				);
-			}
+			} /* v8 ignore start */ catch(e) {
+				console.error(`got:\n${actual}\nvs. expected:\n${expected}`);
+				console.error(normalizedAstToMermaidUrl(analysis.normalize.ast));
+				throw e;
+			} /* v8 ignore stop */
 		}
 	});
-}
-
-function isEqualIndex(actualIndex: ContainerIndex, expectedIndex: ContainerIndex): boolean {
-	let isEqual = true;
-
-	const expectedId = expectedIndex.identifier;
-	const actualId = actualIndex.identifier;
-	if(isNamedArgumentId(expectedId)) {
-		isEqual &&= isNamedArgumentId(actualId) && expectedId.lexeme === actualId.lexeme;
-	}
-	isEqual &&= expectedId.index === actualId.index;
-	isEqual &&= expectedIndex.nodeId === actualIndex.nodeId;
-
-	return isEqual;
 }
 
 function stringifyIndices(indices: ContainerIndex[]): string {

@@ -119,7 +119,7 @@ function constructAccessedIndices<OtherInfo>(
 		indices:     [leafIndex],
 		isContainer: false
 	};
-	
+
 	// Check for nested access
 	let indicesCollection: ContainerIndicesCollection = undefined;
 	if(accessedArg.value?.type === RType.Access) {

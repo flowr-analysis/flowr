@@ -29,8 +29,10 @@ export const dataflowCommand: ReplCommand = {
 		const result = await dataflow(shell, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
-		clipboard.writeSync(mermaid);
-		output.stdout(formatInfo(output, 'mermaid code'));
+		try {
+			clipboard.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid code'));
+		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };
 
@@ -43,7 +45,9 @@ export const dataflowStarCommand: ReplCommand = {
 		const result = await dataflow(shell, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
 		output.stdout(mermaid);
-		clipboard.writeSync(mermaid);
-		output.stdout(formatInfo(output, 'mermaid url'));
+		try {
+			clipboard.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid url'));
+		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };

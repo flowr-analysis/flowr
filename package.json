@@ -34,7 +34,7 @@
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
-    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --bundle --minify --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm-min",
+    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --bundle --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm-min",
     "build:copy-wasm": "mkdir -p dist/src/r-bridge/lang-4.x/tree-sitter/ && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/r-bridge/lang-4.x/tree-sitter/",
     "build:copy-wasm-min": "mkdir -p dist/src/cli && cp src/r-bridge/lang-4.x/tree-sitter/tree-sitter-r.wasm src/r-bridge/lang-4.x/tree-sitter/tree-sitter.wasm dist/src/cli",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",

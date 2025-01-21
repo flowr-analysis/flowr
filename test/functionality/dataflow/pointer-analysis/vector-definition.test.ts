@@ -60,7 +60,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 10, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector has nested vector in the middle, then indices are flattened and correctly defined', basicCapabilities),
 			shell,
@@ -73,7 +73,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 10, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector ends with nested vector, then indices are flattened and correctly defined', basicCapabilities),
 			shell,
@@ -141,7 +141,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 12, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector has nested list in the middle, then indices are flattened and correctly defined', capabilities),
 			shell,
@@ -154,7 +154,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 12, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector ends with nested list, then indices are flattened and correctly defined', capabilities),
 			shell,
@@ -207,7 +207,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 10, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector has nested list in the middle, then indices are flattened and correctly defined', basicCapabilities),
 			shell,
@@ -220,7 +220,7 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 10, },
 			]
 		);
-	
+
 		assertContainerIndicesDefinition(
 			label('When vector ends with nested list, then indices are flattened and correctly defined', basicCapabilities),
 			shell,

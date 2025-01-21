@@ -35,7 +35,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
-	
+
 				assertDataflow(
 					label('When single nested index is accessed, then access reads index', capabilities),
 					shell,
@@ -51,7 +51,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					}
 				);
 			});
-	
+
 			describe('Access with assignment', () => {
 				assertDataflow(
 					label('When single index is assigned, then access reads index in assignment and definition', capabilities),
@@ -69,7 +69,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
-	
+
 				assertDataflow(
 					label('When several indices are assigned, then access reads only correct index in assignment and definition', capabilities),
 					shell,
@@ -110,7 +110,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
-	
+
 				assertDataflow(
 					label('When single nested index is accessed, then access reads index', capabilities),
 					shell,
@@ -126,7 +126,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					}
 				);
 			});
-	
+
 			describe('Access with assignment', () => {
 				assertDataflow(
 					label('When single index is assigned, then access reads index in assignment and definition', capabilities),
@@ -144,7 +144,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
-	
+
 				assertDataflow(
 					label('When several indices are assigned, then access reads only correct index in assignment and definition', capabilities),
 					shell,

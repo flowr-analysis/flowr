@@ -21,6 +21,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -104,7 +105,7 @@ function constructAccessedIndices<OtherInfo>(
 ): ContainerIndicesCollection {
 	const { accessedArg, accessArg } = getAccessOperands(args);
 
-	if(accessedArg === undefined || accessArg === undefined || !isSupportedOperation(operation)) {
+	if(accessedArg === undefined || accessArg?.value === undefined || !isSupportedOperation(operation, accessArg.value)) {
 		return undefined;
 	}
 
@@ -120,16 +121,21 @@ function constructAccessedIndices<OtherInfo>(
 	};
 	
 	// Check for nested access
+	let indicesCollection: ContainerIndicesCollection = undefined;
 	if(accessedArg.value?.type === RType.Access) {
-		return constructNestedAccess(accessedArg.value, accessIndices, constructIdentifier);
+		indicesCollection = constructNestedAccess(accessedArg.value, accessIndices, constructIdentifier);
 	} else {
 		// use access node as reference to get complete line in slice
-		return [accessIndices];
+		indicesCollection = [accessIndices];
 	}
+
+	return indicesCollection;
 }
 
-function isSupportedOperation(operation: string) {
-	return operation === '$<-';
+function isSupportedOperation<OtherInfo>(operation: string, value: RNode<OtherInfo & ParentInformation>) {
+	const isNameBasedAccess = operation === '$<-' && value.type === RType.Symbol;
+	const isNumericalIndexBasedAccess = (operation === '[[<-' || operation === '[<-') && value.type === RType.Number;
+	return isNameBasedAccess || isNumericalIndexBasedAccess;
 }
 
 function getIdentifierBuilder<OtherInfo>(
@@ -144,5 +150,10 @@ function getIdentifierBuilder<OtherInfo>(
 		};
 	}
 
-	throw new Error('Not implemented');
+	// [[<- and [<-
+	return (arg) => {
+		return {
+			index: Number(arg.lexeme),
+		};
+	};
 }

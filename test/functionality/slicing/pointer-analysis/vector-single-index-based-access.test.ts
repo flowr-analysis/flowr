@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { useConfigForTest } from '../../_helper/config';
 import { label } from '../../_helper/label';
@@ -116,51 +116,45 @@ print(${acc('numbers', 1)})`,
 		});
 
 		describe('Access with assignment', () => {
-			it.fails('Currently not supported', () => {
-				assertSliced(
-					label('When there is more than one assignment to the same index, then the last assignment is in the slice', basicCapabilities),
-					shell,
-					`numbers <- c(1, 2)
+			assertSliced(
+				label('When there is more than one assignment to the same index, then the last assignment is in the slice', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2)
 ${acc('numbers', 1)} <- 3
 ${acc('numbers', 1)} <- 4
 ${acc('numbers', 1)} <- 5
 print(${acc('numbers', 1)})`,
-					['5@print'],
-					`numbers <- c(1, 2)
+				['5@print'],
+				`numbers <- c(1, 2)
 ${acc('numbers', 1)} <- 5
 print(${acc('numbers', 1)})`,
-				);
-			});
+			);
 
-			it.fails('Currently not supported', () => {
-				assertSliced(
-					label('When there are assignments to the other indices, then they are not in the slice', basicCapabilities),
-					shell,
-					`numbers <- c(1, 2, 3)
+			assertSliced(
+				label('When there are assignments to the other indices, then they are not in the slice', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2, 3)
 ${acc('numbers', 1)} <- 4
 ${acc('numbers', 2)} <- 5
 ${acc('numbers', 3)} <- 6
 print(${acc('numbers', 1)})`,
-					['5@print'],
-					`numbers <- c(1, 2, 3)
+				['5@print'],
+				`numbers <- c(1, 2, 3)
 ${acc('numbers', 1)} <- 4
 print(${acc('numbers', 1)})`,
-				);
-			});
+			);
 
-			it.fails('Currently not supported', () => {
-				assertSliced(
-					label('When there are assignments to only other indices, then only vector is in the slice', basicCapabilities),
-					shell,
-					`numbers <- c(1, 2, 3)
+			assertSliced(
+				label('When there are assignments to only other indices, then only vector is in the slice', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2, 3)
 ${acc('numbers', 2)} <- 5
 ${acc('numbers', 3)} <- 6
 print(${acc('numbers', 1)})`,
-					['4@print'],
-					`numbers <- c(1, 2, 3)
+				['4@print'],
+				`numbers <- c(1, 2, 3)
 print(${acc('numbers', 1)})`,
-				);
-			});
+			);
 
 			describe('Access within conditionals', () => {
 				assertSliced(

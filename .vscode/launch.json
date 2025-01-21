@@ -12,7 +12,7 @@
                 "node_modules/**"
             ],
             "program": "${workspaceFolder}/src/cli/flowr.ts",
-            "preLaunchTask": "npm: build:bundle-flowr",
+            "preLaunchTask": "npm: build-dev",
             "console": "integratedTerminal",
         },
         {

@@ -1,8 +1,10 @@
-import type { ReplCommand } from './repl-main';
+import type { ReplCommand, ReplOutput } from './repl-main';
 import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import type { KnownParser } from '../../../r-bridge/parser';
+import clipboard from 'clipboardy';
+import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 
 async function dataflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
@@ -14,6 +16,10 @@ function handleString(code: string): string {
 	return code.startsWith('"') ? JSON.parse(code) as string : code;
 }
 
+function formatInfo(out: ReplOutput, type: string): string {
+	return out.formatter.format(`Copied ${type} to clipboard.`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+}
+
 export const dataflowCommand: ReplCommand = {
 	description:  `Get mermaid code for the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':dataflow',
@@ -21,7 +27,10 @@ export const dataflowCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await dataflow(shell, handleString(remainingLine));
-		output.stdout(graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string);
+		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
+		output.stdout(mermaid);
+		clipboard.writeSync(mermaid);
+		output.stdout(formatInfo(output, 'mermaid code'));
 	}
 };
 
@@ -32,6 +41,9 @@ export const dataflowStarCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await dataflow(shell, handleString(remainingLine));
-		output.stdout(graphToMermaidUrl(result.dataflow.graph, false));
+		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
+		output.stdout(mermaid);
+		clipboard.writeSync(mermaid);
+		output.stdout(formatInfo(output, 'mermaid url'));
 	}
 };

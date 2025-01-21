@@ -79,5 +79,44 @@ describe.sequential('Vector Single Index Based Access', withShell(shell => {
 				}
 			);
 		});
+
+		describe('Access with assignment', () => {
+			assertDataflow(
+				label('When single index is assigned, then access reads index in assignment and definition', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2, 3, 4)
+				${acc('numbers', 1)} <- 5
+				${acc('numbers', 1)}`,
+				emptyGraph()
+					.defineVariable('1@numbers')
+					.reads('3@numbers', '1@numbers')
+					.reads(`3@${type}`, '2')
+					.reads(`3@${type}`, '15'),
+				{
+					expectIsSubgraph:      true,
+					resolveIdsAsCriterion: true,
+				}
+			);
+
+			assertDataflow(
+				label('When several indices are assigned, then access reads only correct index in assignment and definition', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2, 3, 4)
+				${acc('numbers', 1)} <- 4
+				${acc('numbers', 2)} <- 3
+				${acc('numbers', 3)} <- 2
+				${acc('numbers', 4)} <- 1
+				${acc('numbers', 1)}`,
+				emptyGraph()
+					.defineVariable('1@numbers')
+					.reads('6@numbers', '1@numbers')
+					.reads(`6@${type}`, '2')
+					.reads(`6@${type}`, '15'),
+				{
+					expectIsSubgraph:      true,
+					resolveIdsAsCriterion: true,
+				}
+			);
+		});
 	});
 }));

@@ -15,16 +15,70 @@ describe.sequential('List Name Based Access', withShell(shell => {
 		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
 	});
 
-	describe('Access named argument', () => {
+	describe('Simple access', () => {
 		assertDataflow(
-			label('Assert reads edge to named argument', basicCapabilities),
+			label('When single index is accessed, then access reads index', basicCapabilities),
 			shell,
-			`person <- list(age = 24, name = "John")
-person$name`,
+			`numbers <- list(a = 1, b = 2, c = 3, d = 4)
+			numbers$b`,
 			emptyGraph()
-				.defineVariable('1@person')
-				.reads('2@person', '1@person')
+				.defineVariable('1@numbers')
+				.reads('2@numbers', '1@numbers')
 				.reads('2@$', '7'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+			}
+		);
+
+		assertDataflow(
+			label('When single nested index is accessed, then access reads index', basicCapabilities),
+			shell,
+			`numbers <- list(a = 1, b = list(a = 2, b = 3), c = 4)
+			numbers$b$a`,
+			emptyGraph()
+				.defineVariable('1@numbers')
+				.reads('2@numbers', '1@numbers')
+				.reads('2@$', '9'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+			}
+		);
+	});
+
+	describe('Access with assignment', () => {
+		assertDataflow(
+			label('When single index is assigned, then access reads index in assignment and definition', basicCapabilities),
+			shell,
+			`numbers <- list(a = 1, b = 2, c = 3, d = 4)
+			numbers$a <- 5
+			numbers$a`,
+			emptyGraph()
+				.defineVariable('1@numbers')
+				.reads('3@numbers', '1@numbers')
+				.reads('3@$', '4')
+				.reads('3@$', '19'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+			}
+		);
+
+		assertDataflow(
+			label('When several indices are assigned, then access reads only correct index in assignment and definition', basicCapabilities),
+			shell,
+			`numbers <- list(a = 1, b = 2, c = 3, d = 4)
+			numbers$a <- 4
+			numbers$b <- 3
+			numbers$c <- 2
+			numbers$d <- 1
+			numbers$a`,
+			emptyGraph()
+				.defineVariable('1@numbers')
+				.reads('6@numbers', '1@numbers')
+				.reads('6@$', '4')
+				.reads('6@$', '19'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,

@@ -22,7 +22,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				]
 			);
-	
+
 			assertContainerIndicesDefinition(
 				label('When strings are defined in list, then indices are created for them', capabilities),
 				shell,
@@ -35,7 +35,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				]
 			);
-	
+
 			assertContainerIndicesDefinition(
 				label('When logical values are defined in list, then indices are created for them', capabilities),
 				shell,
@@ -160,7 +160,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 4 }, nodeId: 7, },
 				]
 			);
-	
+
 			assertContainerIndicesDefinition(
 				label('When strings are defined in list, then indices are created for them', capabilities),
 				shell,
@@ -173,7 +173,7 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 4 }, nodeId: 7, },
 				]
 			);
-	
+
 			assertContainerIndicesDefinition(
 				label('When logical values are defined in list, then indices are created for them', capabilities),
 				shell,

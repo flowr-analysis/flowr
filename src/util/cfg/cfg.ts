@@ -165,6 +165,11 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	}
 };
 
+/**
+ * Given a normalized AST this approximates the control flow graph of the program.
+ * This few is different from the computation of the dataflow graph and may differ,
+ * especially because it focuses on intra-procedural analysis.
+ */
 export function extractCFG<Info=ParentInformation>(ast: NormalizedAst<Info>): ControlFlowInformation {
 	return foldAst(ast.ast, cfgFolds);
 }

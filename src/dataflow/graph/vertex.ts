@@ -23,7 +23,7 @@ export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexTy
  */
 export interface ContainerLeafIndex {
 	/**
-	 * Destinctive lexeme of index e.g 'name' for `list(name = 'John')`
+	 * Distinctive lexeme of index e.g. 'name' for `list(name = 'John')`
 	 */
 	readonly lexeme: string,
 
@@ -222,35 +222,35 @@ export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = Dataf
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexValue|value vertex}.
  */
-export function isValueVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
-	return vertex.tag === VertexType.Value;
+export function isValueVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
+	return vertex?.tag === VertexType.Value;
 }
 
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexUse|use vertex}.
  */
-export function isUseVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
-	return vertex.tag === VertexType.Use;
+export function isUseVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
+	return vertex?.tag === VertexType.Use;
 }
 
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexFunctionCall|function call vertex}.
  */
-export function isFunctionCallVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
-	return vertex.tag === VertexType.FunctionCall;
+export function isFunctionCallVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
+	return vertex?.tag === VertexType.FunctionCall;
 }
 
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexVariableDefinition|variable definition vertex}.
  */
-export function isVariableDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
-	return vertex.tag === VertexType.VariableDefinition;
+export function isVariableDefinitionVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
+	return vertex?.tag === VertexType.VariableDefinition;
 }
 
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexFunctionDefinition|function definition vertex}.
  */
-export function isFunctionDefinitionVertex(vertex: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
-	return vertex.tag === VertexType.FunctionDefinition;
+export function isFunctionDefinitionVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
+	return vertex?.tag === VertexType.FunctionDefinition;
 }
 

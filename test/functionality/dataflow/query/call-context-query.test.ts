@@ -83,7 +83,8 @@ describe.sequential('Call Context Query', withShell(shell => {
 		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7], name: 'points' }]));
 		testQuery('Link to Self', 'plot(x)\nplot(y)', [q(/plot/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 3, linkedIds: [], name: 'plot' }, { id: 7, linkedIds: [3], name: 'plot' }]));
 		testQuery('Link to Meet', 'if(k) { plot(a) } else { plot(x) }\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 19, linkedIds: [13, 6], name: 'points' }]));
-		testQuery('Link to Loop Closure ', 'for(i in v) { points(a); plots(b) }', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 7, linkedIds: [11], name: 'points' }]));
+		testQuery('Link to Loop Closure', 'for(i in v) { points(a); plots(b) }', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 7, linkedIds: [11], name: 'points' }]));
+		testQuery('Link to last FN Call', 'f <- function() plot()\nf()\npoints()', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 9, linkedIds: [2], name: 'points' }]));
 	});
 	describe('Aliases', () => {
 		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));

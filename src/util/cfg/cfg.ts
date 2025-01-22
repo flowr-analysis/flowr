@@ -23,6 +23,9 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
+import { getAllFunctionCallTargets } from '../../dataflow/internal/linker';
+import { isFunctionDefinitionVertex } from '../../dataflow/graph/vertex';
 
 export const enum CfgVertexType {
 	/** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -134,7 +137,6 @@ export function emptyControlFlowInformation(): ControlFlowInformation {
 	};
 }
 
-
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	foldNumber:   cfgLeaf(CfgVertexType.Expression),
 	foldString:   cfgLeaf(CfgVertexType.Expression),
@@ -165,8 +167,29 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	}
 };
 
-export function extractCFG<Info=ParentInformation>(ast: NormalizedAst<Info>): ControlFlowInformation {
-	return foldAst(ast.ast, cfgFolds);
+function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInformation, ControlFlowInformation> {
+	return {
+		...cfgFolds,
+		functions: {
+			...cfgFolds.functions,
+			foldFunctionCall: cfgFunctionCallWithDataflow(dataflowGraph)
+		}
+	};
+}
+
+/**
+ * Given a normalized AST this approximates the control flow graph of the program.
+ * This few is different from the computation of the dataflow graph and may differ,
+ * especially because it focuses on intra-procedural analysis.
+ *
+ * @param ast - the normalized AST
+ * @param graph - additional dataflow facts to consider by the control flow extraction
+ */
+export function extractCFG<Info=ParentInformation>(
+	ast:    NormalizedAst<Info>,
+	graph?: DataflowGraph
+): ControlFlowInformation {
+	return foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds);
 }
 
 function cfgLeaf(type: CfgVertexType): (leaf: RNodeWithParent) => ControlFlowInformation {
@@ -351,6 +374,10 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 			graph.addEdge(fn.info.id + '-params', exit, { label: 'FD' });
 		}
 	}
+	if(params.length === 0) {
+		graph.addEdge(fn.info.id + '-params', fn.info.id, { label: 'FD' });
+	}
+
 	for(const entry of body.entryPoints) {
 		graph.addEdge(entry, fn.info.id + '-params',  { label: 'FD' });
 	}
@@ -406,6 +433,44 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 	// should not contain any breaks, nexts, or returns, (except for the body if something like 'break()')
 	return info;
+}
+
+function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
+	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation => {
+		const baseCFG = cfgFunctionCall(call, name, args);
+
+		/* try to resolve the call and link the target definitions */
+		const targets = getAllFunctionCallTargets(call.info.id, graph);
+
+
+		const exits: NodeId[] = [];
+		for(const target of targets) {
+			// we have to filter out non func-call targets as the call targets contains names and call ids
+			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
+				baseCFG.graph.addEdge(call.info.id, target, { label: 'FD' });
+				exits.push(target + '-exit');
+			}
+		}
+
+		if(exits.length > 0) {
+			baseCFG.graph.addVertex({
+				id:   call.info.id + '-resolved-call-exit',
+				name: 'resolved-call-exit',
+				type: CfgVertexType.EndMarker
+			});
+
+			for(const exit of [...baseCFG.exitPoints, ...exits]) {
+				baseCFG.graph.addEdge(call.info.id + '-resolved-call-exit', exit, { label: 'FD' });
+			}
+
+			return {
+				...baseCFG,
+				exitPoints: [call.info.id + '-resolved-call-exit']
+			};
+		} else {
+			return baseCFG;
+		}
+	};
 }
 
 function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformation | undefined, value: ControlFlowInformation | undefined): ControlFlowInformation {

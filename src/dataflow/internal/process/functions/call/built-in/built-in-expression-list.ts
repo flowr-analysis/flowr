@@ -162,7 +162,6 @@ export function processExpressionList<OtherInfo>(
 
 		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
 
-
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);

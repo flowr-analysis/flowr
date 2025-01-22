@@ -6,7 +6,6 @@ export interface DataflowGraphEdge {
 	types: EdgeTypeBits
 }
 
-
 /**
  * Represents the relationship between the source and the target vertex in the dataflow graph.
  * The actual value is represented as a bitmask so use {@link edgeTypesToNames} to get something more human-readable.
@@ -117,8 +116,8 @@ export const enum TraverseEdge {
  *
  * Counterpart of {@link edgeDoesNotIncludeType}.
  */
-export function edgeIncludesType(type: EdgeTypeBits, types: EdgeTypeBits): boolean {
-	return (types & type) !== 0;
+export function edgeIncludesType(type: EdgeTypeBits, typesToInclude: EdgeTypeBits): boolean {
+	return (typesToInclude & type) !== 0;
 }
 
 /**

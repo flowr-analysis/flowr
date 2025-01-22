@@ -194,6 +194,14 @@ export function getEngineConfig<T extends EngineConfig['type']>(engine: T): Engi
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {
+		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
+			log.trace(`Found config at ${configFile} (absolute)`);
+			const ret = parseConfig(fs.readFileSync(configFile, { encoding: 'utf-8' }));
+			if(ret) {
+				log.info(`Using config ${JSON.stringify(ret)}`);
+				return ret;
+			}
+		}
 		let searchPath = path.resolve(workingDirectory);
 		do{
 			const configPath = path.join(searchPath, configFile);

@@ -7,7 +7,7 @@ fi
 
 function make_var {
    export $1=${2:-}
-   echo "$1=${2:-}" >> $GITHUB_ENV
+   echo "$1=${2:-}" >> "$GITHUB_ENV"
 }
 
 make_var ACTION_NODE_VERSION "22.13.x"

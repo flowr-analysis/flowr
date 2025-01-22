@@ -40,11 +40,11 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.Calls]:                 'calls',
 	[EdgeType.Returns]:               'returns',
 	[EdgeType.DefinesOnCall]:         'definesOnCall',
-	[EdgeType.Argument]: 	            'argument',
+	[EdgeType.Argument]:              'argument',
 	[EdgeType.NonStandardEvaluation]: 'nse',
 	[EdgeType.SideEffectOnCall]:      'sideEffectOnCall',
-	/* treated specially as done by automated mirroring */
-	[EdgeType.DefinedByOnCall]:       undefined
+	[EdgeType.DefinedByOnCall]:       'definedByOnCall',
+	[EdgeType.Flow]:                  'flow',
 };
 
 class DataflowBuilderPrinter {

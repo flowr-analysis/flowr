@@ -198,8 +198,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **read edge** (E1).
 	 *
-	 * @param from - Vertex/NodeId
-	 * @param to   - see from
+	 * @param from - NodeId of the source vertex
+	 * @param to   - Either a single or multiple target ids.
+	 *               If you pass multiple this will construct a single edge for each of them.
 	 */
 	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Reads);
@@ -209,7 +210,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a **defined-by edge** (E2), with from as defined variable, and to
 	 * as a variable/function contributing to its definition.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definedBy(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinedBy);
@@ -218,7 +219,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **call edge** (E5) with from as caller, and to as callee.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public calls(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Calls);
@@ -227,7 +228,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **return edge** (E6) with from as function, and to as exit point.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public returns(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Returns);
@@ -236,7 +237,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **defines-on-call edge** (E7) with from as variable, and to as its definition
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinesOnCall);
@@ -245,7 +246,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **defined-by-on-call edge** with from as definition, and to as variable.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definedByOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinedByOnCall);
@@ -254,7 +255,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds an **argument edge** (E9) with from as function call, and to as argument.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Argument);
@@ -263,7 +264,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **non-standard evaluation edge** with from as vertex, and to as vertex.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public nse(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.NonStandardEvaluation);
@@ -272,12 +273,20 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
 	 *
-	 * @see reads for parameters.
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall);
 	}
 
+	/**
+	 * Adds a **flow edge** with from as vertex, and to as vertex.
+	 *
+	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
+	 */
+	public flow(from: NodeId, to: DataflowGraphEdgeTarget) {
+		return this.edgeHelper(from, to, EdgeType.Flow);
+	}
 
 	/**
 	 * explicitly overwrite the root ids of the graph,

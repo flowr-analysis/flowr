@@ -16,8 +16,8 @@ function handleString(code: string): string {
 	return code.startsWith('"') ? JSON.parse(code) as string : code;
 }
 
-function formatInfo(out: ReplOutput, type: string): string {
-	return out.formatter.format(`Copied ${type} to clipboard.`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+function formatInfo(out: ReplOutput, type: string, timing: number): string {
+	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${timing}ms).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
 export const dataflowCommand: ReplCommand = {
@@ -31,7 +31,7 @@ export const dataflowCommand: ReplCommand = {
 		output.stdout(mermaid);
 		try {
 			clipboard.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid code'));
+			output.stdout(formatInfo(output, 'mermaid code', result.dataflow['.meta'].timing));
 		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };
@@ -47,7 +47,7 @@ export const dataflowStarCommand: ReplCommand = {
 		output.stdout(mermaid);
 		try {
 			clipboard.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url'));
+			output.stdout(formatInfo(output, 'mermaid url', result.dataflow['.meta'].timing));
 		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };

@@ -195,7 +195,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCFG(ast);
+		cfg = extractCFG(ast, graph);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);

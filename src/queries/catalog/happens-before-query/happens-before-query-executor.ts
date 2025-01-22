@@ -9,10 +9,10 @@ import { extractCFG } from '../../../util/cfg/cfg';
 import { happensBefore } from '../../../util/cfg/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
-export function executeHappensBefore({ ast }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
+export function executeHappensBefore({ ast, dataflow }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
-	const cfg = extractCFG(ast);
+	const cfg = extractCFG(ast, dataflow.graph);
 	for(const query of queries) {
 		const { a, b } = query;
 		const fingerprint = `${a}<${b}`;

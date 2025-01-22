@@ -35,9 +35,7 @@ export enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 128,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 256,
-	/** The edge determines a basic flow dependency from the source to the target */
-	Flow = 512
+	NonStandardEvaluation = 256
 }
 
 /**
@@ -52,8 +50,7 @@ export const enum EdgeTypeName {
 	DefinedByOnCall       = 'defined-by-on-call',
 	Argument              = 'argument',
 	SideEffectOnCall      = 'side-effect-on-call',
-	NonStandardEvaluation = 'non-standard-evaluation',
-	Flow                  = 'flow'
+	NonStandardEvaluation = 'non-standard-evaluation'
 }
 
 export type EdgeTypeBits = number
@@ -67,8 +64,7 @@ const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map
 	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
 	[EdgeType.Argument,              EdgeTypeName.Argument             ],
 	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
-	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
-	[EdgeType.Flow,                  EdgeTypeName.Flow                 ]
+	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation]
 ]);
 
 /**

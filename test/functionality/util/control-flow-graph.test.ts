@@ -13,7 +13,11 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { createNormalizePipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
+import {
+	createNormalizePipeline,
+	DEFAULT_DATAFLOW_PIPELINE,
+	DEFAULT_NORMALIZE_PIPELINE
+} from '../../../src/core/steps/pipeline/default-pipelines';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
@@ -34,11 +38,11 @@ describe.sequential('Control Flow Graph', withShell(shell => {
 		// shallow copy is important to avoid killing the CFG :c
 		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 		return test(code, async()=> {
-			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
+			const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 				parser:  shell,
 				request: requestFromInput(code)
 			}).allRemainingSteps();
-			const cfg = extractCFG(result.normalize);
+			const cfg = extractCFG(result.normalize, result.dataflow?.graph);
 
 			try {
 				assert.deepStrictEqual(normAllIds(cfg.entryPoints), normAllIds(expected.entryPoints), 'entry points differ');

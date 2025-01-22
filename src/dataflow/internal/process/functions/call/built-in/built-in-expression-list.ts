@@ -109,16 +109,6 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return inputEnvironment;
 }
 
-function findNextUndefined<T>(arr: readonly (T | undefined)[], from: number): number {
-	for(let i = from; i < arr.length; i++) {
-		const el = arr[i];
-		if(el !== undefined) {
-			return i;
-		}
-	}
-	return -1;
-}
-
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -186,21 +176,6 @@ export function processExpressionList<OtherInfo>(
 		if(alwaysExits(processed)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
-			break;
-		}
-	}
-	// TODO: link flow edges everywhere (in ifs etc.)
-	let current = findNextUndefined(processedExpressions, 0);
-	while(current >= 0) {
-		const cur = processedExpressions[current]?.exitPoints;
-		const nextNum = findNextUndefined(processedExpressions, current + 1);
-		const next = nextNum >= 0 ? processedExpressions[nextNum]?.entryPoint : undefined;
-		if(cur && next) {
-			for(const exit of cur) {
-				nextGraph.addEdge(next, exit.nodeId, EdgeType.Flow);
-			}
-			current = nextNum;
-		} else {
 			break;
 		}
 	}

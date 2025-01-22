@@ -280,15 +280,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a **flow edge** with from as vertex, and to as vertex.
-	 *
-	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
-	 */
-	public flow(from: NodeId, to: DataflowGraphEdgeTarget) {
-		return this.edgeHelper(from, to, EdgeType.Flow);
-	}
-
-	/**
 	 * explicitly overwrite the root ids of the graph,
 	 * this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags.
 	 */

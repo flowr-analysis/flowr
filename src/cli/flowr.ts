@@ -28,6 +28,7 @@ import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from '.
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
+import path from 'path';
 
 export const toolName = 'flowr';
 
@@ -98,7 +99,7 @@ if(options['config-json']) {
 if(!usedConfig) {
 	if(options['config-file']) {
 		// validate it exists
-		if(!fs.existsSync(options['config-file'])) {
+		if(!fs.existsSync(path.resolve(options['config-file']))) {
 			log.error(`Config file '${options['config-file']}' does not exist`);
 			process.exit(1);
 		}

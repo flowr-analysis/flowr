@@ -90,7 +90,6 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false,
-	rPath:             undefined,
 	semantics:         {
 		environment: {
 			overwriteBuiltIns: {

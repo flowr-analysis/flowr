@@ -180,7 +180,6 @@ ${codeBlock('shell', ':query @config')}
 The following summarizes the configuration options:
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
-- \`rPath\`: The path to the R executable. If not set, _flowR_ will try to find the R executable in the system's PATH.
 - \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
@@ -197,7 +196,6 @@ So you can configure _flowR_ by adding a file like the following:
 ${codeBlock('json', JSON.stringify(
 		{
 			ignoreSourceCalls: true,
-			rPath:             '/usr/bin/R',
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {

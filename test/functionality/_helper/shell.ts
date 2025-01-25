@@ -28,7 +28,7 @@ import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/n
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
+import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
@@ -395,6 +395,15 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 	handleAssertOutput(name, shell, input, userConfig);
 }
 
+function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: string, testFunction: () => void) {
+	if(skip) {
+		test.skip(testName, testFunction);
+	} else if(shouldFail) {
+		test.fails(testName, testFunction);
+	} else {
+		test(testName, testFunction);
+	}
+}
 
 export function assertSliced(
 	name: TestLabel,
@@ -403,7 +412,8 @@ export function assertSliced(
 	criteria: SlicingCriteria,
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
-	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0)
+	testCaseFailType?: 'shell' | 'tree-sitter' | 'both' | undefined,
+	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
@@ -428,13 +438,31 @@ export function assertSliced(
 				}).allRemainingSteps();
 			}
 		});
-		test('shell', () => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>));
-		test.skipIf(userConfig?.skipTreeSitter)('tree-sitter', () => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>));
-		test.skipIf(userConfig?.skipTreeSitter || userConfig?.skipCompare)('compare', function() {
-			const tsAst = tsResult?.normalize.ast as RNodeWithParent;
-			const shellAst = shellResult?.normalize.ast as RNodeWithParent;
-			assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
-		});
+
+		testWrapper(
+			false,
+			testCaseFailType === 'both' || testCaseFailType === 'shell',
+			'shell',
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>),
+		);
+
+		testWrapper(
+			userConfig?.skipTreeSitter,
+			testCaseFailType === 'both' || testCaseFailType === 'tree-sitter',
+			'tree-sitter',
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>),
+		);
+
+		testWrapper(
+			userConfig?.skipTreeSitter || userConfig?.skipCompare,
+			false,
+			'compare',
+			function() {
+				const tsAst = tsResult?.normalize.ast as RNodeWithParent;
+				const shellAst = shellResult?.normalize.ast as RNodeWithParent;
+				assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
+			},
+		);
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 

@@ -405,6 +405,8 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 	}
 }
 
+export type TestCaseFailType = 'shell' | 'tree-sitter' | 'both' | undefined;
+
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
@@ -412,7 +414,7 @@ export function assertSliced(
 	criteria: SlicingCriteria,
 	expected: string,
 	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
-	testCaseFailType?: 'shell' | 'tree-sitter' | 'both' | undefined,
+	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;

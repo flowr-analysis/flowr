@@ -4,7 +4,7 @@ import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe.sequential('List Definition', withShell(shell => {
-	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting'] as const;
+	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
 
 	describe('Named Arguments', () => {
 		const capabilities = [...basicCapabilities, 'named-arguments'] as const;

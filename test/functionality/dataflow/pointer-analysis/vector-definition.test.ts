@@ -4,7 +4,7 @@ import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe.sequential('Vector Definition', withShell(shell => {
-	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting'] as const;
+	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
 
 	describe('Simple definition', () => {
 		assertContainerIndicesDefinition(

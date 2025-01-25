@@ -14,6 +14,11 @@ import { EdgeType } from './edge';
 import type { ControlDependency } from '../info';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { DefaultBuiltinConfig } from '../environments/default-builtin-config';
+import type { FlowrSearchLike } from '../../search/flowr-search-builder';
+import { runSearch } from '../../search/flowr-search-executor';
+import type { Pipeline } from '../../core/steps/pipeline/pipeline';
+import type { FlowrSearchInput } from '../../search/flowr-search';
+import { guard } from '../../util/assert';
 
 export function emptyGraph(idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(idMap);
@@ -204,6 +209,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public reads(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Reads);
+	}
+
+	public readsQuery<P extends Pipeline>(from: FlowrSearchLike, to: DataflowGraphEdgeTarget, data: FlowrSearchInput<P>) {
+		const result = runSearch(from, data);
+		guard(result.length == 1, 'query result should yield only one node');
+		return this.reads(result[0].node.info.id, to);
 	}
 
 	/**

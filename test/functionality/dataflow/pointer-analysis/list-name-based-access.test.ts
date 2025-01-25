@@ -3,6 +3,7 @@ import { assertDataflow, withShell } from '../../_helper/shell';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { label } from '../../_helper/label';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe.sequential('List Name Based Access', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple'] as const;
@@ -36,10 +37,10 @@ describe.sequential('List Name Based Access', withShell(shell => {
 			shell,
 			`numbers <- list(a = 1, b = list(a = 2, b = 3), c = 4)
 			numbers$b$a`,
-			emptyGraph()
+			(data) => emptyGraph()
 				.defineVariable('1@numbers')
 				.reads('2@numbers', '1@numbers')
-				.reads('2@$', '9'),
+				.readsQuery(Q.varInLine('$', 2).last(), '9', data),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,

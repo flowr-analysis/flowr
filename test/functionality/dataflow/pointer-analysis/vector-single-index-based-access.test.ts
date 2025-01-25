@@ -2,6 +2,7 @@ import { describe } from 'vitest';
 import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
+import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe.sequential('Vector Single Index Based Access', withShell(shell => {
 	describe.each([{ type: '[[' }, { type: '[' }])('Access using $type', ({ type }) => {
@@ -112,6 +113,27 @@ describe.sequential('Vector Single Index Based Access', withShell(shell => {
 					.reads('6@numbers', '1@numbers')
 					.reads(`6@${type}`, '2')
 					.reads(`6@${type}`, '15'),
+				{
+					expectIsSubgraph:      true,
+					resolveIdsAsCriterion: true,
+				}
+			);
+
+			assertDataflow(
+				label('When vector is self-redefined with previous assignment, then indices get passed', basicCapabilities),
+				shell,
+				`numbers <- c(1, 2)
+				numbers <- numbers
+				${acc('numbers', 1)} <- 1
+				print(${acc('numbers', 1)})`,
+				(data) => emptyGraph()
+					.defineVariable('1@numbers')
+					.readsQuery({ query: Q.varInLine('numbers', 2).last() }, { target: '1@numbers' }, data)
+					.definedByQuery(
+						{ query: Q.varInLine('numbers', 2).first() },
+						{ query: Q.varInLine('numbers', 2).last() },
+						data,
+					),
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,

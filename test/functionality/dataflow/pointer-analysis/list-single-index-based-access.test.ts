@@ -90,6 +90,27 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
+
+				assertDataflow(
+					label('When list is self-redefined with previous assignment, then indices get passed', capabilities),
+					shell,
+					`numbers <- list(a = 1, b = 2)
+					numbers <- numbers
+					${acc('numbers', 1)} <- 1
+					print(${acc('numbers', 1)})`,
+					(data) => emptyGraph()
+						.defineVariable('1@numbers')
+						.readsQuery({ query: Q.varInLine('numbers', 2).last() }, { target: '1@numbers' }, data)
+						.definedByQuery(
+							{ query: Q.varInLine('numbers', 2).first() },
+							{ query: Q.varInLine('numbers', 2).last() },
+							data,
+						),
+					{
+						expectIsSubgraph:      true,
+						resolveIdsAsCriterion: true,
+					}
+				);
 			});
 		});
 
@@ -160,6 +181,27 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 						.reads('6@numbers', '1@numbers')
 						.reads(`6@${type}`, '2')
 						.reads(`6@${type}`, '15'),
+					{
+						expectIsSubgraph:      true,
+						resolveIdsAsCriterion: true,
+					}
+				);
+
+				assertDataflow(
+					label('When list is self-redefined with previous assignment, then indices get passed', capabilities),
+					shell,
+					`numbers <- list(1, 2)
+					numbers <- numbers
+					${acc('numbers', 1)} <- 1
+					print(${acc('numbers', 1)})`,
+					(data) => emptyGraph()
+						.defineVariable('1@numbers')
+						.readsQuery({ query: Q.varInLine('numbers', 2).last() }, { target: '1@numbers' }, data)
+						.definedByQuery(
+							{ query: Q.varInLine('numbers', 2).first() },
+							{ query: Q.varInLine('numbers', 2).last() },
+							data,
+						),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,

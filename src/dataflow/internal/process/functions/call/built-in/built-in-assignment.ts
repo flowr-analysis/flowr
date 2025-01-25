@@ -34,7 +34,7 @@ import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases } from '../../../../../environments/resolve-by-name';
-import { addSubIndicesToLeafIndices } from '../../../../../../util/containers';
+import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
@@ -271,6 +271,15 @@ export function markAsAssignment(
 			// support for tracking indices
 			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
 			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
+
+			// support assignment of container e.g. container1 <- container2
+			// defined indices are passed
+			if(!indicesCollection) {
+				const node = information.graph.idMap?.get(sourceIds[0]);
+				if(node && node.type === RType.Symbol) {
+					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
+				}
+			}
 		}
 		// Indices defined by replacement operation e.g. $<-
 		if(config?.indicesCollection !== undefined) {

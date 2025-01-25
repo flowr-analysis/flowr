@@ -9,7 +9,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 		const basicCapabilities = [
 			'name-normal',
 			'function-calls',
-			'subsetting',
+			'subsetting-multiple',
 			type === '[[' ? 'double-bracket-access' : 'single-bracket-access'
 		] as const;
 

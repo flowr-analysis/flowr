@@ -9,7 +9,7 @@ describe.sequential('Vector Single Index Based Access', withShell(shell => {
 			'name-normal',
 			'function-calls',
 			'unnamed-arguments',
-			'subsetting',
+			'subsetting-multiple',
 			type === '[[' ? 'double-bracket-access' : 'single-bracket-access'
 		] as const;
 

@@ -18,7 +18,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			'name-normal',
 			'function-calls',
 			hasNamedArguments ? 'named-arguments' : 'unnamed-arguments',
-			'subsetting',
+			'subsetting-multiple',
 			type === '[[' ? 'double-bracket-access' : 'single-bracket-access'
 		] as const;
 		useConfigForTest({ solver: { pointerTracking: true } });
@@ -56,7 +56,9 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 		}
 
 		describe('Simple access', () => {
-			assertSliced(label('Container with single argument', basicCapabilities), shell,
+			assertSliced(
+				label('Container with single argument', basicCapabilities),
+				shell,
 				`numbers <- ${def('2')}
 print(${acc('numbers', 1)})`,
 				['2@print'],
@@ -65,7 +67,9 @@ print(${acc('numbers', 1)})`,
 			);
 
 			/* we reconstruct everything as every other modification could mess with the correctness of the result */
-			assertSliced(label('Container with several arguments', basicCapabilities), shell,
+			assertSliced(
+				label('Container with several arguments', basicCapabilities),
+				shell,
 				`numbers <- ${def('1', '2', '3', '4')}
 print(${acc('numbers', 1)})`,
 				['2@print'],

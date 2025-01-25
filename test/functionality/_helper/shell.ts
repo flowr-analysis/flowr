@@ -37,11 +37,10 @@ import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph'
 import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { PipelineOutput , Pipeline } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
 import { type ContainerIndex } from '../../../src/dataflow/graph/vertex';
-import type { Pipeline, PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
@@ -423,7 +422,7 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 	}
 }
 
-export type TestCaseFailType = 'shell' | 'tree-sitter' | 'both' | undefined;
+export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
 export function assertSliced(
 	name: TestLabel,
@@ -461,14 +460,14 @@ export function assertSliced(
 
 		testWrapper(
 			false,
-			testCaseFailType === 'both' || testCaseFailType === 'shell',
+			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
 			'shell',
 			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>),
 		);
 
 		testWrapper(
 			userConfig?.skipTreeSitter,
-			testCaseFailType === 'both' || testCaseFailType === 'tree-sitter',
+			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
 			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>),
 		);
@@ -512,7 +511,7 @@ export function assertContainerIndicesDefinition(
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			shell,
+			parser:  shell,
 			request: requestFromInput(input),
 		}).allRemainingSteps();
 		const result = runSearch(search, analysis);

@@ -250,5 +250,67 @@ ${acc('numbers', 2)} <- 4
 print(${acc('numbers', 1)})`
 			);
 		});
+
+		describe('Container assignment', () => {
+			assertSliced(
+				label('When container is self-redefined, then indices get passed'),
+				shell,
+				`numbers <- ${def('1', '2')}
+numbers <- numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`,
+				['4@print'],
+				`numbers <- ${def('1', '2')}
+numbers <- numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`
+			);
+
+			assertSliced(
+				label('When container is self-redefined with previous assignment, then indices get passed'),
+				shell,
+				`numbers <- ${def('1', '2')}
+${acc('numbers', 1)} <- 1
+numbers <- numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`,
+				['5@print'],
+				`numbers <- ${def('1', '2')}
+${acc('numbers', 1)} <- 1
+numbers <- numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`
+			);
+
+			assertSliced(
+				label('When container is defined from other container, then indices get passed'),
+				shell,
+				`other_numbers <- ${def('1', '2')}
+numbers <- other_numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`,
+				['4@print'],
+				`other_numbers <- ${def('1', '2')}
+numbers <- other_numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`
+			);
+
+			assertSliced(
+				label('When container is defined from other container with previous assignment, then indices get passed'),
+				shell,
+				`other_numbers <- ${def('1', '2')}
+${acc('other_numbers', 1)} <- 1
+numbers <- other_numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`,
+				['5@print'],
+				`other_numbers <- ${def('1', '2')}
+${acc('other_numbers', 1)} <- 1
+numbers <- other_numbers
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`
+			);
+		});
 	});
 }));

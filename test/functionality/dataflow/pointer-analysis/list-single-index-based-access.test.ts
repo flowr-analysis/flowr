@@ -2,6 +2,7 @@ import { describe } from 'vitest';
 import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
+import { Q } from '../../../../src/search/flowr-search-builder';
 
 describe.sequential('List Single Index Based Access', withShell(shell => {
 	describe.each([{ type: '[[' }, { type: '[' }])('Access using $type', ({ type }) => {
@@ -41,10 +42,10 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					shell,
 					`numbers <- list(a = 1, b = list(a = 2, b = 3), c = 4)
 					${acc(acc('numbers', 2), 1)}`,
-					emptyGraph()
+					(data) =>  emptyGraph()
 						.defineVariable('1@numbers')
 						.reads('2@numbers', '1@numbers')
-						.reads(`2@${type}`, '9'),
+						.readsQuery(Q.varInLine(type, 2).last(), '9', data),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -116,10 +117,10 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					shell,
 					`numbers <- list(1, list(2, 3), 4)
 					${acc(acc('numbers', 2), 1)}`,
-					emptyGraph()
+					(data) => emptyGraph()
 						.defineVariable('1@numbers')
 						.reads('2@numbers', '1@numbers')
-						.reads(`2@${type}`, '9'),
+						.readsQuery(Q.varInLine(type, 2).last(), '5', data),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,

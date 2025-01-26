@@ -1,6 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { guard } from '../../../../../../util/assert';
 import type { ProcessKnownFunctionCallResult } from '../known-call-handling';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -61,10 +60,12 @@ export function processAccess<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
 	}
 	const head = args[0];
-	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`);
 
 	let fnCall: ProcessKnownFunctionCallResult;
-	if(!config.treatIndicesAsString) {
+	if(head === EmptyArgument) {
+		// in this case we may be within a pipe
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	} else if(!config.treatIndicesAsString) {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
 		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, config, head);
@@ -74,7 +75,9 @@ export function processAccess<OtherInfo>(
 
 	const info = fnCall.information;
 
-	info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, EdgeType.Returns);
+	if(head !== EmptyArgument) {
+		info.graph.addEdge(name.info.id, fnCall.processedArguments[0]?.entryPoint ?? head.info.id, EdgeType.Returns);
+	}
 
 	/* access always reads all of its indices */
 	for(const arg of fnCall.processedArguments) {
@@ -100,7 +103,7 @@ export function processAccess<OtherInfo>(
 		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
-		in:                info.in.map(ref => {
+		in:                head === EmptyArgument ? info.in : info.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
 				return makeReferenceMaybe(ref, info.graph, info.environment, false);
 			} else {

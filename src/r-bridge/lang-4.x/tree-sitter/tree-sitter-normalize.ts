@@ -195,11 +195,12 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		case TreeSitterType.IfStatement: {
 			const [ifNode, /* ( */, condition,/* ) */,then, /* else */, ...otherwise] = node.children;
+			const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
 			return {
 				type:      RType.IfThenElse,
 				condition: convertTreeNode(condition),
 				then:      ensureExpressionList(convertTreeNode(then)),
-				otherwise: otherwise.length > 0 ? ensureExpressionList(convertTreeNode(otherwise[0])) : undefined,
+				otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
 				location:  makeSourceRange(ifNode),
 				lexeme:    ifNode.text,
 				...defaultInfo
@@ -481,7 +482,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		default:
-			throw new ParseError(`unexpected node type ${node.type}`);
+			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
 	}
 }
 

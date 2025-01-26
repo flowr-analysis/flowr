@@ -7,6 +7,7 @@ export enum TreeSitterType {
     NamespaceOperator = 'namespace_operator',
     Identifier = 'identifier',
     IfStatement = 'if_statement',
+    ElseStatement = 'else',
     ForStatement = 'for_statement',
     WhileStatement = 'while_statement',
     RepeatStatement = 'repeat_statement',

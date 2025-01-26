@@ -26,6 +26,10 @@ export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
 	return root;
 }
 
+function nonErrorChildren(node: SyntaxNode): SyntaxNode[] {
+	return node.children.filter(n => n.type !== TreeSitterType.Error);
+}
+
 function convertTreeNode(node: SyntaxNode): RNode {
 	// generally, the grammar source file dictates what children a node has in what order:
 	// https://github.com/r-lib/tree-sitter-r/blob/main/grammar.js
@@ -39,7 +43,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 	};
 	switch(node.type as TreeSitterType) {
 		case TreeSitterType.Program: {
-			const [comments, children] = splitComments(node.children);
+			const [comments, children] = splitComments(nonErrorChildren(node));
 			const body = children.map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
 			const remainingComments = linkCommentsToNextNodes(body, comments);
 			return {
@@ -54,7 +58,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		}
 		case TreeSitterType.BracedExpression:
 		case TreeSitterType.ParenthesizedExpression: {
-			const [comments, children] = splitComments(node.children);
+			const [comments, children] = splitComments(nonErrorChildren(node));
 			const opening = children[0];
 			const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
 			const remainingComments = linkCommentsToNextNodes(body, comments);
@@ -87,9 +91,10 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.BinaryOperator: {
-			const lhs = convertTreeNode(node.children[0]);
-			const rhs = convertTreeNode(node.children[node.children.length - 1]);
-			const [commentsBoth, [op]] = splitComments(node.children.slice(1, -1));
+			const children = nonErrorChildren(node);
+			const lhs = convertTreeNode(children[0]);
+			const rhs = convertTreeNode(children[children.length - 1]);
+			const [commentsBoth, [op]] = splitComments(children.slice(1, -1));
 			const comments = commentsBoth.map(c => c[1]);
 			const opSource = makeSourceRange(op);
 			const lhsAsArg: RArgument = {
@@ -157,7 +162,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			}
 		}
 		case TreeSitterType.UnaryOperator: {
-			const [op, operand] = node.children;
+			const [op, operand] = nonErrorChildren(node);
 			return {
 				type:     RType.UnaryOp,
 				operand:  convertTreeNode(operand),
@@ -168,7 +173,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.NamespaceOperator: {
-			const [lhs, /* :: or ::: */, rhs] = node.children;
+			const [lhs, /* :: or ::: */, rhs] = nonErrorChildren(node);
 			return {
 				type:      RType.Symbol,
 				location:  makeSourceRange(rhs),
@@ -183,6 +188,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.Na:
 		case TreeSitterType.Null:
 		case TreeSitterType.Dots:
+		case TreeSitterType.DotDotI:
 		case TreeSitterType.Identifier:
 		case TreeSitterType.Return:
 			return {
@@ -194,22 +200,24 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		case TreeSitterType.IfStatement: {
-			const [ifNode, /* ( */, condition,/* ) */,then, /* else */, ...otherwise] = node.children;
+			const [ifNode, /* ( */, condition,/* ) */,then, /* else */, ...otherwise] = nonErrorChildren(node);
+			const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
 			return {
 				type:      RType.IfThenElse,
 				condition: convertTreeNode(condition),
 				then:      ensureExpressionList(convertTreeNode(then)),
-				otherwise: otherwise.length > 0 ? ensureExpressionList(convertTreeNode(otherwise[0])) : undefined,
+				otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
 				location:  makeSourceRange(ifNode),
 				lexeme:    ifNode.text,
 				...defaultInfo
 			};
 		}
 		case TreeSitterType.ForStatement: {
-			const forNode = node.children[0]; // we follow with a (
-			const variable = getNodesUntil(node.children, 'in', 2); // we follow with the "in"
-			const sequence = getNodesUntil(node.children, ')', 2 + variable.length + 1); // we follow with a (
-			const body = node.children[2 + variable.length + 1 + sequence.length + 1];
+			const children = nonErrorChildren(node);
+			const forNode = children[0]; // we follow with a (
+			const variable = getNodesUntil(children, 'in', 2); // we follow with the "in"
+			const sequence = getNodesUntil(children, ')', 2 + variable.length + 1); // we follow with a (
+			const body = children[2 + variable.length + 1 + sequence.length + 1];
 			const [variableComments, [variableNode]] = splitComments(variable);
 			const [sequenceComments, [sequenceNode]] = splitComments(sequence);
 			return {
@@ -238,7 +246,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.WhileStatement: {
-			const [whileNode, /* ( */, condition, /* ) */, body] = node.children;
+			const [whileNode, /* ( */, condition, /* ) */, body] = nonErrorChildren(node);
 			return {
 				type:      RType.WhileLoop,
 				condition: convertTreeNode(condition),
@@ -249,7 +257,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.RepeatStatement: {
-			const [repeatNode, body] = node.children;
+			const [repeatNode, body] = nonErrorChildren(node);
 			return {
 				type:     RType.RepeatLoop,
 				body:     ensureExpressionList(convertTreeNode(body)),
@@ -259,7 +267,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.Call: {
-			const [func, argsParentheses] = node.children;
+			const [func, argsParentheses] = nonErrorChildren(node);
 			// tree-sitter wraps next and break in a function call, but we don't, so unwrap
 			if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
 				return {
@@ -267,7 +275,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					...defaultInfo
 				};
 			}
-			const args = splitArrayOn(argsParentheses.children.slice(1, -1), x => x.type === 'comma');
+			const args = splitArrayOn(nonErrorChildren(argsParentheses).slice(1, -1), x => x.type === 'comma');
 			const funcRange = makeSourceRange(func);
 			const call = {
 				arguments: args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument),
@@ -308,7 +316,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			}
 		}
 		case TreeSitterType.FunctionDefinition: {
-			const [name, paramsParens, body] = node.children;
+			const [name, paramsParens, body] = nonErrorChildren(node);
 			const params = splitArrayOn(paramsParens.children.slice(1, -1), x => x.type === 'comma');
 			return {
 				type:       RType.FunctionDefinition,
@@ -359,9 +367,9 @@ function convertTreeNode(node: SyntaxNode): RNode {
 		case TreeSitterType.Subset:
 		case TreeSitterType.Subset2: {
 			// subset has children like a and [x]
-			const [func, content] = node.children;
+			const [func, content] = nonErrorChildren(node);
 			// bracket is now [ or [[ and argsClosing is x] or x]]
-			const [bracket, ...argsClosing] = content.children;
+			const [bracket, ...argsClosing] = nonErrorChildren(content);
 			const args = splitArrayOn(argsClosing.slice(0, -1), x => x.type === 'comma');
 			return {
 				type:     RType.Access,
@@ -374,7 +382,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.ExtractOperator: {
-			const [lhs, operator, rhs] = node.children;
+			const [lhs, operator, rhs] = nonErrorChildren(node);
 			const rhsRange = makeSourceRange(rhs);
 			return {
 				type:     RType.Access,
@@ -401,11 +409,12 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.Parameter: {
-			const name = node.children[0];
+			const children = nonErrorChildren(node);
+			const name = children[0];
 			const nameRange = makeSourceRange(name);
 			let defaultValue: RNode | undefined = undefined;
-			if(node.children.length == 3){
-				defaultValue = convertTreeNode(node.children[2]);
+			if(children.length == 3){
+				defaultValue = convertTreeNode(children[2]);
 			}
 			return {
 				type: RType.Parameter,
@@ -433,8 +442,9 @@ function convertTreeNode(node: SyntaxNode): RNode {
 			};
 		}
 		case TreeSitterType.Argument: {
-			if(node.children.length == 1){
-				const [arg] = node.children;
+			const children = nonErrorChildren(node);
+			if(children.length == 1){
+				const [arg] = children;
 				return {
 					type:     RType.Argument,
 					name:     undefined,
@@ -444,7 +454,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					...defaultInfo
 				};
 			} else {
-				const [nameNode, /* = */, valueNode] = node.children;
+				const [nameNode, /* = */, valueNode] = children;
 				let name = convertTreeNode(nameNode) as RString | RSymbol;
 				// unescape argument names
 				if(name.type === RType.String){
@@ -461,7 +471,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				return {
 					type:     RType.Argument,
 					name:     name,
-					value:    convertTreeNode(valueNode),
+					value:    valueNode ? convertTreeNode(valueNode) : undefined,
 					location: nameRange,
 					lexeme:   nameNode.text,
 					info:     {
@@ -481,7 +491,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				...defaultInfo
 			};
 		default:
-			throw new ParseError(`unexpected node type ${node.type}`);
+			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
 	}
 }
 

@@ -118,8 +118,13 @@ export const parseCommand: ReplCommand = {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}).allRemainingSteps();
 
-		const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed));
+		if(parser.name === 'r-shell') {
+			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed));
 
-		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
+			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
+		} else {
+			// print the tree-sitter ast
+			output.stdout(JSON.stringify(result.parse.parsed, null, 2));
+		}
 	}
 };

@@ -461,7 +461,7 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				return {
 					type:     RType.Argument,
 					name:     name,
-					value:    convertTreeNode(valueNode),
+					value:    valueNode ? convertTreeNode(valueNode) : undefined,
 					location: nameRange,
 					lexeme:   nameNode.text,
 					info:     {

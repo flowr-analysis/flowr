@@ -108,6 +108,40 @@ describe.sequential('Parse function calls', withShell(shell => {
 		);
 	});
 	describe('functions with named arguments', () => {
+		assertAst(label('f(x=)', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, 'f(x=)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     rangeFrom(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:      RType.Symbol,
+					location:  rangeFrom(1, 1, 1, 1),
+					lexeme:    'f',
+					content:   'f',
+					namespace: undefined,
+					info:      {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: rangeFrom(1, 3, 1, 3),
+						name:     {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 3, 1, 3),
+							lexeme:    'x',
+							content:   'x',
+							namespace: undefined,
+							info:      {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  undefined
+					}
+				]
+			})
+		);
 		assertAst(label('f(1, x=2, 4, y=3)', ['name-normal', 'call-normal', 'unnamed-arguments', 'named-arguments', 'numbers']),
 			shell, 'f(1, x=2, 4, y=3)', exprList({
 				type:         RType.FunctionCall,

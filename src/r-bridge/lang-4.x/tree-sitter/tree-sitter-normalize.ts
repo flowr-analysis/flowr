@@ -471,8 +471,15 @@ function convertTreeNode(node: SyntaxNode): RNode {
 					}
 				};
 			}
-
 		}
+		case TreeSitterType.Comment:
+			return {
+				type:     RType.Comment,
+				location: range,
+				content:  node.text.slice(1),
+				lexeme:   node.text,
+				...defaultInfo
+			};
 		default:
 			throw new ParseError(`unexpected node type ${node.type}`);
 	}

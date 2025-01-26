@@ -19,6 +19,7 @@ import { standardReplOutput } from './commands/repl-main';
 import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
 import type { KnownParser } from '../../r-bridge/parser';
+import { log, LogLevel } from '../../util/log';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -85,6 +86,9 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 				await processor.fn(output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess);
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+				if(log.settings.minLevel < LogLevel.Fatal) {
+					console.error(e);
+				}
 			}
 		} else {
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);

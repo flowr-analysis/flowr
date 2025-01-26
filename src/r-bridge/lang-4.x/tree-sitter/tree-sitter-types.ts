@@ -32,6 +32,7 @@ export enum TreeSitterType {
     Parameter = 'parameter',
     Argument = 'argument',
     Dots = 'dots',
+    DotDotI = 'dot_dot_i',
     Comment = 'comment',
     Error = 'ERROR',
 }

@@ -35,7 +35,8 @@ import type {
 import {
 	HappensBeforeQueryDefinition
 } from './catalog/happens-before-query/happens-before-query-format';
-import { ResolveValueQuery, ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
+import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
+import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -79,7 +80,7 @@ export const SupportedQueries = {
 	'location-map':     LocationMapQueryDefinition,
 	'search':           SearchQueryDefinition,
 	'happens-before':   HappensBeforeQueryDefinition,
-	'resolve-value': ResolveValueQueryDefinition
+	'resolve-value':    ResolveValueQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

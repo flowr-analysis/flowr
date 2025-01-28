@@ -37,6 +37,7 @@ export function executeResolveValueQuery({ dataflow: { graph, environment } }: B
 			values: [...values]
 		};
 	}
+	
 	return {
 		'.meta': {
 			timing: Date.now() - start

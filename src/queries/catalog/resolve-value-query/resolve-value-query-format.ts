@@ -4,10 +4,10 @@ import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
-import Joi, { object } from 'joi';
+import Joi from 'joi';
 
 import { executeResolveValueQuery } from './resolve-value-query-executor';
-import { number2ts, RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
+import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 
 
 export interface ResolveValueQuery extends BaseQueryFormat {
@@ -26,12 +26,12 @@ function rValueToAscii(value: string | RNumberValue | RStringValue): string {
 	} else if(typeof value === 'string') {
 		return value;
 	} else if(typeof value === 'object') {	
-		if("num" in value) {
+		if('num' in value) {
 			return value.num.toString();
-		} else if ("str" in value) {
+		} else if('str' in value) {
 			return `${value.quotes}${value.str}${value.quotes}`;
 		} else {
-			console.warn("omega lul")
+			console.warn('omega lul');
 			return JSON.stringify(value);
 		}
 	} 

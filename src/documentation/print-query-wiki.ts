@@ -221,6 +221,28 @@ ${
 	}
 });
 
+registerQueryDocumentation('resolve-value', {
+	name:             'Resolve Value Query',
+	type:             'active',
+	shortDescription: 'Provides access to flowR\'s alias tracking',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's alias-tracking capabilities to resolve identifiers to their values. 
+
+Using the example code \`${exampleCode}\`, the following query returns all values of 'x' in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'resolve-value',
+		criteria: ["2@x"]
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('search', {
 	name:             'Search Query',
 	type:             'active',

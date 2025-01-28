@@ -1,8 +1,10 @@
-import type { ReplCommand } from './repl-main';
+import type { ReplCommand, ReplOutput } from './repl-main';
 import { createNormalizePipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import type { KnownParser } from '../../../r-bridge/parser';
+import clipboard from 'clipboardy';
+import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 
 async function normalize(parser: KnownParser, remainingLine: string) {
 	return await createNormalizePipeline(parser, {
@@ -14,6 +16,10 @@ function handleString(code: string): string {
 	return code.startsWith('"') ? JSON.parse(code) as string : code;
 }
 
+function formatInfo(out: ReplOutput, type: string, timing: number): string {
+	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${timing}ms).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+}
+
 export const normalizeCommand: ReplCommand = {
 	description:  `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':normalize',
@@ -21,7 +27,12 @@ export const normalizeCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await normalize(shell, handleString(remainingLine));
-		output.stdout(normalizedAstToMermaid(result.normalize.ast));
+		const mermaid = normalizedAstToMermaid(result.normalize.ast);
+		output.stdout(mermaid);
+		try {
+			clipboard.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
+		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };
 
@@ -32,6 +43,11 @@ export const normalizeStarCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await normalize(shell, handleString(remainingLine));
-		output.stdout(normalizedAstToMermaidUrl(result.normalize.ast));
+		const mermaid = normalizedAstToMermaidUrl(result.normalize.ast);
+		output.stdout(mermaid);
+		try {
+			clipboard.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
+		} catch(e) { /* do nothing this is a service thing */ }
 	}
 };

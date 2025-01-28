@@ -7,6 +7,7 @@ export enum TreeSitterType {
     NamespaceOperator = 'namespace_operator',
     Identifier = 'identifier',
     IfStatement = 'if_statement',
+    ElseStatement = 'else',
     ForStatement = 'for_statement',
     WhileStatement = 'while_statement',
     RepeatStatement = 'repeat_statement',
@@ -31,5 +32,7 @@ export enum TreeSitterType {
     Parameter = 'parameter',
     Argument = 'argument',
     Dots = 'dots',
-    Comment = 'comment'
+    DotDotI = 'dot_dot_i',
+    Comment = 'comment',
+    Error = 'ERROR',
 }

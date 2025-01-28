@@ -25,19 +25,15 @@ export function executeResolveValueQuery({ dataflow: { graph, environment } }: B
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
 		
-		const ids = query.criteria.map(criteria => slicingCriterionToId(criteria, idMap));
-		const values = new Set<unknown>();
+		const values = query.criteria
+			.map(criteria => recoverName(slicingCriterionToId(criteria, idMap), idMap))
+			.flatMap(ident => resolveToValues(ident, environment, graph))
 
-		for(const id of ids) {
-			resolveToValues(recoverName(id, idMap),  environment, graph)
-				?.forEach(v => values.add(v));
-		}
-		
 		results[key] = {
-			values: [...values]
+			values: [... new Set(values)]
 		};
 	}
-	
+
 	return {
 		'.meta': {
 			timing: Date.now() - start

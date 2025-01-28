@@ -235,8 +235,8 @@ With this query you can use flowR's alias-tracking capabilities to resolve ident
 Using the example code \`${exampleCode}\`, the following query returns all values of 'x' in the code:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:   'resolve-value',
-		criteria: ["2@x"]
+		type:     'resolve-value',
+		criteria: ['2@x']
 	}], { showCode: true })
 }
 		`;

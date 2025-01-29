@@ -108,10 +108,10 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
-		dataflow.graph.addControlDependency(dataflow.entryPoint, rootId);
+		dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
 	}
 	for(const out of dataflow.out) {
-		dataflow.graph.addControlDependency(out.nodeId, rootId);
+		dataflow.graph.addControlDependency(out.nodeId, rootId, true);
 	}
 
 	// update our graph with the sourced file's information

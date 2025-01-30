@@ -4,9 +4,6 @@ import { withShell } from '../../_helper/shell';
 import { assert, describe } from 'vitest';
 import type { ResolveValueQuery, ResolveValueQueryResult } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
 import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
-import { resolveToValues } from '../../../../src/dataflow/environments/resolve-by-name';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import { recoverName } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { numVal } from '../../_helper/ast-builder';
 
 describe.sequential('Resolve Value Query', withShell(shell => {

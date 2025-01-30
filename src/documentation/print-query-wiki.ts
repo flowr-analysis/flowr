@@ -221,6 +221,28 @@ ${
 	}
 });
 
+registerQueryDocumentation('resolve-value', {
+	name:             'Resolve Value Query',
+	type:             'active',
+	shortDescription: 'Provides access to flowR\'s value tracking (which is configurable)',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible). The extend to which flowR traces values (e.g. built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information). 
+
+Using the example code \`${exampleCode}\`, the following query returns all values of 'x' in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:     'resolve-value',
+		criteria: ['2@x']
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('search', {
 	name:             'Search Query',
 	type:             'active',

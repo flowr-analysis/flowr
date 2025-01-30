@@ -22,7 +22,7 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [], onlyBuiltIn: true })
 			.argument('2', ['1', '0'])
 			.call('-inline-@root-1-2', '<-', [argumentInCall('-inline-@root-1-0'), argumentInCall('-inline-@root-1-1')], { returns: ['-inline-@root-1-0'], reads: [], onlyBuiltIn: true })
-			.addControlDependency('-inline-@root-1-2', 'root-1')
+			.addControlDependency('-inline-@root-1-2', 'root-1', true)
 			.argument('-inline-@root-1-2', ['-inline-@root-1-1', '-inline-@root-1-0'])
 			.argument('-inline-@root-2-3', '-inline-@root-2-1')
 			.argument('-inline-@root-2-3', '-inline-@root-2-2')
@@ -30,12 +30,12 @@ describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
 			.argument('-inline-@root-2-5', '-inline-@root-2-3')
 			.reads('-inline-@root-2-5', '-inline-@root-2-3')
 			.call('-inline-@root-2-5', 'print', [argumentInCall('-inline-@root-2-3')], { returns: ['-inline-@root-2-3'], reads: [], onlyBuiltIn: true })
-			.addControlDependency('-inline-@root-2-5', 'root-2')
+			.addControlDependency('-inline-@root-2-5', 'root-2', true)
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 			.constant('-inline-@root-1-1')
 			.defineVariable('-inline-@root-1-0', 'y', { definedBy: ['-inline-@root-1-1', '-inline-@root-1-2'] })
-			.addControlDependency('-inline-@root-1-0', 'root-1')
+			.addControlDependency('-inline-@root-1-0', 'root-1', true)
 			.markIdForUnknownSideEffects('-inline-@root-2-5')
 	);
 

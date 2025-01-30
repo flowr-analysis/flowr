@@ -7,28 +7,22 @@ import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-valu
 import { resolveToValues } from '../../../../src/dataflow/environments/resolve-by-name';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { recoverName } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { numVal } from '../../_helper/ast-builder';
 
 describe.sequential('Resolve Value Query', withShell(shell => {
-	function testQuery(name: string, code: string, queries: readonly ResolveValueQuery[]) {
+	function testQuery(name: string, code: string, queries: readonly ResolveValueQuery[], expected: readonly unknown[][]) {
 		assertQuery(label(name), shell, code, queries, ({ dataflow }) => {
 			const results: ResolveValueQueryResult['results'] = {};
 			
 			const idMap = dataflow.graph.idMap;
 			assert(idMap !== undefined);
-
-			for(const query of queries) {
+			
+			queries.forEach((query, idx) => {
 				const key = fingerPrintOfQuery(query);
-				const identifiers = query.criteria
-					.map(criteria => slicingCriterionToId(criteria, idMap))
-					.map(id => recoverName(id, idMap));
-
-				const values = identifiers
-					.flatMap(id => resolveToValues(id, dataflow.environment, dataflow.graph));
-
 				results[key] = {
-					values: [... new Set(values)]
+					values: expected[idx]
 				};
-			}
+			});
 
 			return {
 				'resolve-value': { results }
@@ -36,6 +30,6 @@ describe.sequential('Resolve Value Query', withShell(shell => {
 		});
 	}
 
-	testQuery('Single dataflow', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }]);
-	testQuery('Multiple Queries', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }]);
+	testQuery('Single dataflow', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }], [[numVal(1)]]);
+	testQuery('Multiple Queries', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }], [[numVal(1)],[numVal(1)],[numVal(1)]]);
 }));

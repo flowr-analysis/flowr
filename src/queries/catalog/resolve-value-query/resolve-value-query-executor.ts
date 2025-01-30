@@ -22,7 +22,7 @@ export function executeResolveValueQuery({ dataflow: { graph, environment } }: B
 		const key = fingerPrintOfQuery(query);
 		
 		if(results[key]) {
-			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
+			log.warn(`Duplicate Key for resolve-value-query: ${key}, skipping...`);
 		}
 		
 		const values = query.criteria

@@ -9,13 +9,7 @@ export function fingerPrintOfQuery(query: ResolveValueQuery): string {
 	return JSON.stringify(query);
 }
 
-export function executeResolveValueQuery({ dataflow: { graph, environment } }: BasicQueryData, queries: readonly ResolveValueQuery[]): ResolveValueQueryResult {
-	const idMap = graph.idMap;
-
-	if(!idMap) {
-		throw new Error('idMap was undefined');
-	}
-
+export function executeResolveValueQuery({ dataflow: { graph, environment }, ast }: BasicQueryData, queries: readonly ResolveValueQuery[]): ResolveValueQueryResult {
 	const start = Date.now();
 	const results: ResolveValueQueryResult['results'] = {};
 	for(const query of queries) {
@@ -26,7 +20,7 @@ export function executeResolveValueQuery({ dataflow: { graph, environment } }: B
 		}
 		
 		const values = query.criteria
-			.map(criteria => recoverName(slicingCriterionToId(criteria, idMap), idMap))
+			.map(criteria => recoverName(slicingCriterionToId(criteria, ast.idMap), ast.idMap))
 			.flatMap(ident => resolveToValues(ident, environment, graph));
 
 		results[key] = {

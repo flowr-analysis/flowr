@@ -161,7 +161,6 @@ jobs:
           fi
 
           npm run release -- --increment "$step" --ci --verbose --github.releaseName="Release v\${version} (${title})"
-          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           # apparently, putting the message into an env variable first sanitizes it
@@ -181,8 +180,6 @@ jobs:
           npm run publish-library
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-    outputs:
-      version: ${{ steps.release.outputs.version }}
 
   deploy-docker:
     needs: ['release']
@@ -282,8 +279,6 @@ jobs:
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
-    outputs:
-      version: ${{ needs.release.outputs.version }}
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
@@ -296,8 +291,6 @@ jobs:
           submodules: true
           lfs:        true
           token:      ${{ secrets.RELEASE_TOKEN }}
-          # check out the release ref so that the upload action finds the commit
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
 
       - name: "⚙️ Name and Email for Git (config) and update"
         # we fetch just to be totally sure
@@ -327,7 +320,6 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -351,7 +343,6 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -377,7 +368,6 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
@@ -401,7 +391,6 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           max-items-in-chart: 100
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false

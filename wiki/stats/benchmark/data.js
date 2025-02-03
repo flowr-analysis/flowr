@@ -4381,7 +4381,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "87e0d906cf2af0afd4cca69261ecd3b5a9c94cba",
-          "message": "[release:patch] Several New Queries (Dataflow, Normalized AST, Id-Map, Clusters, Slice)",
+          "message": "[release:patch] Several New Queries (Dataflow, Normalized AST, Id-Map, Clusters, Slice) (Release v2.1.2)",
           "timestamp": "2024-10-12T21:16:01+02:00",
           "tree_id": "7189ce7de02572ec3e2615f5d14feda54c733e31",
           "url": "https://github.com/flowr-analysis/flowr/commit/87e0d906cf2af0afd4cca69261ecd3b5a9c94cba"
@@ -4484,7 +4484,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "96e933e11de9483de54200657c3dbf930f0c657b",
-          "message": "[release:patch] Lineage Query",
+          "message": "[release:patch] Lineage Query (Release v2.1.3)",
           "timestamp": "2024-10-13T11:49:17+02:00",
           "tree_id": "69ef18259b9d63b7cf73755c0c68ed84651cd0fb",
           "url": "https://github.com/flowr-analysis/flowr/commit/96e933e11de9483de54200657c3dbf930f0c657b"
@@ -4587,7 +4587,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "b1b2a4fc1891a2deaf0d8b8ad8a4e68997516598",
-          "message": "[release:patch] Dependencies Query",
+          "message": "[release:patch] Dependencies Query (Release v2.1.4)",
           "timestamp": "2024-11-03T19:08:28+01:00",
           "tree_id": "aeeada919a449d740b91787f92776ecd678c9482",
           "url": "https://github.com/flowr-analysis/flowr/commit/b1b2a4fc1891a2deaf0d8b8ad8a4e68997516598"
@@ -4690,7 +4690,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "0d1268dc84fe71880bd570ec306ef25f81b46329",
-          "message": "[release:patch] Fix: Dependency Query with Aliases",
+          "message": "[release:patch] Fix: Dependency Query with Aliases (Release v2.1.5)",
           "timestamp": "2024-11-04T20:00:23+01:00",
           "tree_id": "0f4be08b9ed899e2acb220fce2a76fbe7fe269bc",
           "url": "https://github.com/flowr-analysis/flowr/commit/0d1268dc84fe71880bd570ec306ef25f81b46329"
@@ -4793,7 +4793,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f2c385450bed779acacfd46a3b030ee57c48264c",
-          "message": "[release:patch] Include Source-File Information, Vitest, and Documentation",
+          "message": "[release:patch] Include Source-File Information, Vitest, and Documentation (Release v2.1.6)",
           "timestamp": "2024-11-14T17:17:14+01:00",
           "tree_id": "d078189bfab30293d38ae2019d0eb7bd14dd983b",
           "url": "https://github.com/flowr-analysis/flowr/commit/f2c385450bed779acacfd46a3b030ee57c48264c"
@@ -4896,7 +4896,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "23801137ca7083fd1edfe603a80c8ebf6d2d557a",
-          "message": "[release:patch] Fix: Static Slicing For Inverted Caller",
+          "message": "[release:patch] Fix: Static Slicing For Inverted Caller (Release v2.1.7)",
           "timestamp": "2024-11-17T19:53:11+01:00",
           "tree_id": "60b0536b0e628727fcdc94746a38538f3f6c5896",
           "url": "https://github.com/flowr-analysis/flowr/commit/23801137ca7083fd1edfe603a80c8ebf6d2d557a"
@@ -4999,7 +4999,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "db7ac2e228f8144da97c252a2affb26bd9ea4e0b",
-          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor",
+          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor (Release v2.1.8)",
           "timestamp": "2024-11-28T13:54:45+01:00",
           "tree_id": "54959f17cb72871023e10232c7b70ca57816b089",
           "url": "https://github.com/flowr-analysis/flowr/commit/db7ac2e228f8144da97c252a2affb26bd9ea4e0b"
@@ -5102,7 +5102,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "2b2a899bb137bbe37158d8b89b5d9ab797377c87",
-          "message": "[release:patch] Improved Closure Slicing, DFG docs, and Support for the Car Package",
+          "message": "[release:patch] Improved Closure Slicing, DFG docs, and Support for the Car Package (Release v2.1.9)",
           "timestamp": "2024-12-21T19:20:34+01:00",
           "tree_id": "5021a4d182f712192184590249ccca759e5c2361",
           "url": "https://github.com/flowr-analysis/flowr/commit/2b2a899bb137bbe37158d8b89b5d9ab797377c87"
@@ -5205,7 +5205,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "193493e9fb030ea261ae5f34cb1637c1dbdc8c0c",
-          "message": "[release:patch] First support for pointer analysis (named list arguments with `$`)",
+          "message": "[release:patch] First support for pointer analysis (named list arguments with `$`) (Release v2.1.10)",
           "timestamp": "2025-01-05T09:27:15+01:00",
           "tree_id": "0ff91a4015f58348ae7b57e9fcdf0c9beb6e0d66",
           "url": "https://github.com/flowr-analysis/flowr/commit/193493e9fb030ea261ae5f34cb1637c1dbdc8c0c"
@@ -5308,7 +5308,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "541c8774cb7fdf6746f88a6796dbdbd702f05b88",
-          "message": "[release:patch] Improved Configuration Retrieve and Config Query",
+          "message": "[release:patch] Improved Configuration Retrieve and Config Query (Release v2.1.11)",
           "timestamp": "2025-01-08T14:10:23+01:00",
           "tree_id": "fc705e512f52a0003e3980f292189ef33cd27b88",
           "url": "https://github.com/flowr-analysis/flowr/commit/541c8774cb7fdf6746f88a6796dbdbd702f05b88"
@@ -5411,7 +5411,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "7070a1878fcd8538f6608721a8b2fff257baa7b1",
-          "message": "[release:patch] Flowr Search API and Query (+wiki improvements)",
+          "message": "[release:patch] Flowr Search API and Query (+wiki improvements) (Release v2.1.12)",
           "timestamp": "2025-01-10T21:26:04+01:00",
           "tree_id": "25127a9bdefc846b50ba6b660e3404755fedacad",
           "url": "https://github.com/flowr-analysis/flowr/commit/7070a1878fcd8538f6608721a8b2fff257baa7b1"
@@ -5514,7 +5514,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e03f8209a04870aa9fd67af64ef1d5bd138b0162",
-          "message": "[release:minor] Tree-Sitter Engine",
+          "message": "[release:minor] Tree-Sitter Engine (Release v2.2.0)",
           "timestamp": "2025-01-16T17:07:49+01:00",
           "tree_id": "81d8ed434124b40723bab15b19f8da577a9e0f50",
           "url": "https://github.com/flowr-analysis/flowr/commit/e03f8209a04870aa9fd67af64ef1d5bd138b0162"
@@ -5617,7 +5617,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "a877df7af36cbd777d23162a0e1a009e8687de3a",
-          "message": "[release:patch] New Happens-Before Query",
+          "message": "[release:patch] New Happens-Before Query (Release v2.2.1)",
           "timestamp": "2025-01-16T19:36:36+01:00",
           "tree_id": "24f6ef9b2e4fb3189e7f9d9f381c59bf6af84079",
           "url": "https://github.com/flowr-analysis/flowr/commit/a877df7af36cbd777d23162a0e1a009e8687de3a"
@@ -10182,7 +10182,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "87e0d906cf2af0afd4cca69261ecd3b5a9c94cba",
-          "message": "[release:patch] Several New Queries (Dataflow, Normalized AST, Id-Map, Clusters, Slice)",
+          "message": "[release:patch] Several New Queries (Dataflow, Normalized AST, Id-Map, Clusters, Slice) (Release v2.1.2)",
           "timestamp": "2024-10-12T21:16:01+02:00",
           "tree_id": "7189ce7de02572ec3e2615f5d14feda54c733e31",
           "url": "https://github.com/flowr-analysis/flowr/commit/87e0d906cf2af0afd4cca69261ecd3b5a9c94cba"
@@ -10285,7 +10285,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "96e933e11de9483de54200657c3dbf930f0c657b",
-          "message": "[release:patch] Lineage Query",
+          "message": "[release:patch] Lineage Query (Release v2.1.3)",
           "timestamp": "2024-10-13T11:49:17+02:00",
           "tree_id": "69ef18259b9d63b7cf73755c0c68ed84651cd0fb",
           "url": "https://github.com/flowr-analysis/flowr/commit/96e933e11de9483de54200657c3dbf930f0c657b"
@@ -10388,7 +10388,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "b1b2a4fc1891a2deaf0d8b8ad8a4e68997516598",
-          "message": "[release:patch] Dependencies Query",
+          "message": "[release:patch] Dependencies Query (Release v2.1.4)",
           "timestamp": "2024-11-03T19:08:28+01:00",
           "tree_id": "aeeada919a449d740b91787f92776ecd678c9482",
           "url": "https://github.com/flowr-analysis/flowr/commit/b1b2a4fc1891a2deaf0d8b8ad8a4e68997516598"
@@ -10491,7 +10491,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "0d1268dc84fe71880bd570ec306ef25f81b46329",
-          "message": "[release:patch] Fix: Dependency Query with Aliases",
+          "message": "[release:patch] Fix: Dependency Query with Aliases (Release v2.1.5)",
           "timestamp": "2024-11-04T20:00:23+01:00",
           "tree_id": "0f4be08b9ed899e2acb220fce2a76fbe7fe269bc",
           "url": "https://github.com/flowr-analysis/flowr/commit/0d1268dc84fe71880bd570ec306ef25f81b46329"
@@ -10594,7 +10594,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "f2c385450bed779acacfd46a3b030ee57c48264c",
-          "message": "[release:patch] Include Source-File Information, Vitest, and Documentation",
+          "message": "[release:patch] Include Source-File Information, Vitest, and Documentation (Release v2.1.6)",
           "timestamp": "2024-11-14T17:17:14+01:00",
           "tree_id": "d078189bfab30293d38ae2019d0eb7bd14dd983b",
           "url": "https://github.com/flowr-analysis/flowr/commit/f2c385450bed779acacfd46a3b030ee57c48264c"
@@ -10697,7 +10697,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "23801137ca7083fd1edfe603a80c8ebf6d2d557a",
-          "message": "[release:patch] Fix: Static Slicing For Inverted Caller",
+          "message": "[release:patch] Fix: Static Slicing For Inverted Caller (Release v2.1.7)",
           "timestamp": "2024-11-17T19:53:11+01:00",
           "tree_id": "60b0536b0e628727fcdc94746a38538f3f6c5896",
           "url": "https://github.com/flowr-analysis/flowr/commit/23801137ca7083fd1edfe603a80c8ebf6d2d557a"
@@ -10800,7 +10800,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "db7ac2e228f8144da97c252a2affb26bd9ea4e0b",
-          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor",
+          "message": "[release:patch] Improved Dead-Code Detection, Location Restrictions for Call-Context Query, New Visitor (Release v2.1.8)",
           "timestamp": "2024-11-28T13:54:45+01:00",
           "tree_id": "54959f17cb72871023e10232c7b70ca57816b089",
           "url": "https://github.com/flowr-analysis/flowr/commit/db7ac2e228f8144da97c252a2affb26bd9ea4e0b"
@@ -10903,7 +10903,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "2b2a899bb137bbe37158d8b89b5d9ab797377c87",
-          "message": "[release:patch] Improved Closure Slicing, DFG docs, and Support for the Car Package",
+          "message": "[release:patch] Improved Closure Slicing, DFG docs, and Support for the Car Package (Release v2.1.9)",
           "timestamp": "2024-12-21T19:20:34+01:00",
           "tree_id": "5021a4d182f712192184590249ccca759e5c2361",
           "url": "https://github.com/flowr-analysis/flowr/commit/2b2a899bb137bbe37158d8b89b5d9ab797377c87"
@@ -11006,7 +11006,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "193493e9fb030ea261ae5f34cb1637c1dbdc8c0c",
-          "message": "[release:patch] First support for pointer analysis (named list arguments with `$`)",
+          "message": "[release:patch] First support for pointer analysis (named list arguments with `$`) (Release v2.1.10)",
           "timestamp": "2025-01-05T09:27:15+01:00",
           "tree_id": "0ff91a4015f58348ae7b57e9fcdf0c9beb6e0d66",
           "url": "https://github.com/flowr-analysis/flowr/commit/193493e9fb030ea261ae5f34cb1637c1dbdc8c0c"
@@ -11109,7 +11109,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "541c8774cb7fdf6746f88a6796dbdbd702f05b88",
-          "message": "[release:patch] Improved Configuration Retrieve and Config Query",
+          "message": "[release:patch] Improved Configuration Retrieve and Config Query (Release v2.1.11)",
           "timestamp": "2025-01-08T14:10:23+01:00",
           "tree_id": "fc705e512f52a0003e3980f292189ef33cd27b88",
           "url": "https://github.com/flowr-analysis/flowr/commit/541c8774cb7fdf6746f88a6796dbdbd702f05b88"
@@ -11212,7 +11212,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "7070a1878fcd8538f6608721a8b2fff257baa7b1",
-          "message": "[release:patch] Flowr Search API and Query (+wiki improvements)",
+          "message": "[release:patch] Flowr Search API and Query (+wiki improvements) (Release v2.1.12)",
           "timestamp": "2025-01-10T21:26:04+01:00",
           "tree_id": "25127a9bdefc846b50ba6b660e3404755fedacad",
           "url": "https://github.com/flowr-analysis/flowr/commit/7070a1878fcd8538f6608721a8b2fff257baa7b1"
@@ -11315,7 +11315,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e03f8209a04870aa9fd67af64ef1d5bd138b0162",
-          "message": "[release:minor] Tree-Sitter Engine",
+          "message": "[release:minor] Tree-Sitter Engine (Release v2.2.0)",
           "timestamp": "2025-01-16T17:07:49+01:00",
           "tree_id": "81d8ed434124b40723bab15b19f8da577a9e0f50",
           "url": "https://github.com/flowr-analysis/flowr/commit/e03f8209a04870aa9fd67af64ef1d5bd138b0162"
@@ -11418,7 +11418,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "a877df7af36cbd777d23162a0e1a009e8687de3a",
-          "message": "[release:patch] New Happens-Before Query",
+          "message": "[release:patch] New Happens-Before Query (Release v2.2.1)",
           "timestamp": "2025-01-16T19:36:36+01:00",
           "tree_id": "24f6ef9b2e4fb3189e7f9d9f381c59bf6af84079",
           "url": "https://github.com/flowr-analysis/flowr/commit/a877df7af36cbd777d23162a0e1a009e8687de3a"
@@ -11523,7 +11523,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e03f8209a04870aa9fd67af64ef1d5bd138b0162",
-          "message": "[release:minor] Tree-Sitter Engine",
+          "message": "[release:minor] Tree-Sitter Engine (Release v2.2.0)",
           "timestamp": "2025-01-16T17:07:49+01:00",
           "tree_id": "81d8ed434124b40723bab15b19f8da577a9e0f50",
           "url": "https://github.com/flowr-analysis/flowr/commit/e03f8209a04870aa9fd67af64ef1d5bd138b0162"
@@ -11626,7 +11626,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "a877df7af36cbd777d23162a0e1a009e8687de3a",
-          "message": "[release:patch] New Happens-Before Query",
+          "message": "[release:patch] New Happens-Before Query (Release v2.2.1)",
           "timestamp": "2025-01-16T19:36:36+01:00",
           "tree_id": "24f6ef9b2e4fb3189e7f9d9f381c59bf6af84079",
           "url": "https://github.com/flowr-analysis/flowr/commit/a877df7af36cbd777d23162a0e1a009e8687de3a"
@@ -11731,7 +11731,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "e03f8209a04870aa9fd67af64ef1d5bd138b0162",
-          "message": "[release:minor] Tree-Sitter Engine",
+          "message": "[release:minor] Tree-Sitter Engine (Release v2.2.0)",
           "timestamp": "2025-01-16T17:07:49+01:00",
           "tree_id": "81d8ed434124b40723bab15b19f8da577a9e0f50",
           "url": "https://github.com/flowr-analysis/flowr/commit/e03f8209a04870aa9fd67af64ef1d5bd138b0162"
@@ -11834,7 +11834,7 @@ window.BENCHMARK_DATA = {
           },
           "distinct": true,
           "id": "a877df7af36cbd777d23162a0e1a009e8687de3a",
-          "message": "[release:patch] New Happens-Before Query",
+          "message": "[release:patch] New Happens-Before Query (Release v2.2.1)",
           "timestamp": "2025-01-16T19:36:36+01:00",
           "tree_id": "24f6ef9b2e4fb3189e7f9d9f381c59bf6af84079",
           "url": "https://github.com/flowr-analysis/flowr/commit/a877df7af36cbd777d23162a0e1a009e8687de3a"

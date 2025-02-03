@@ -1,6 +1,11 @@
 import { guard } from './assert';
 
-// xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
+/**
+ * A source position in a file.
+ *
+ * Please note that some packages like `xmlparsedata` use their own start and end only to break ties
+ * (e.g., `xmlparsedata` calculates them on a max col width approximation)
+ */
 export type SourcePosition = [
 	/** starts with 1 */
 	line:   number,
@@ -8,6 +13,18 @@ export type SourcePosition = [
 	column: number
 ]
 
+/**
+ * Describe the start and end {@link SourcePosition|source position} of an element.
+ *
+ * @see {@link rangeFrom} - to create a range
+ * @see {@link mergeRanges} - to merge multiple ranges
+ * @see {@link getRangeStart} - to get the start of a range
+ * @see {@link getRangeEnd} - to get the end of a range
+ * @see {@link rangeStartsCompletelyBefore} - to check if one range starts before another
+ * @see {@link rangesOverlap} - to check if two ranges overlap
+ * @see {@link addRanges} - to add two ranges
+ * @see {@link rangeCompare} - to compare two ranges
+ */
 export type SourceRange = [
 	/** inclusive start position */
 	startLine:   number,
@@ -65,6 +82,9 @@ export function rangesOverlap([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2e
 	return r1sl <= r2el && r2sl <= r1el && r1sc <= r2ec && r2sc <= r1ec;
 }
 
+/**
+ * Calculate the component-wise sum of two ranges
+ */
 export function addRanges([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r2el,r2ec]: SourceRange): SourceRange {
 	return [r1sl+r2sl, r1sc+r2sc, r1el+r2el, r1ec+r2ec];
 }

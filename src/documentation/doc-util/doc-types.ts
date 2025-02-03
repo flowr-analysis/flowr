@@ -365,9 +365,9 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 
 	let text = node.comments?.join('\n') ?? '';
 	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
-	const init = showName ? ` * ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
-	return ` ${indent} ${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+	text += `\n${indent}<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
+	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {

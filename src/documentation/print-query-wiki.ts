@@ -34,6 +34,8 @@ import { executeConfigQuery } from '../queries/catalog/config-query/config-query
 import { executeSearch } from '../queries/catalog/search-query/search-query-executor';
 import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
+import { getTypesFromFolderAsMermaid, shortLink } from './doc-util/doc-types';
+import path from 'path';
 
 
 registerQueryDocumentation('call-context', {
@@ -500,6 +502,11 @@ registerQueryDocumentation('location-map', {
 	functionName:     executeLocationMapQuery.name,
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
+
+		const types = getTypesFromFolderAsMermaid({
+			files:    [path.resolve('./src/util/range.ts')],
+			typeName: 'SourceRange'
+		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a really big result, especially for larger scripts.
@@ -516,6 +523,8 @@ ${
 		type: 'location-map'
 	}], { showCode: false, collapseQuery: true })
 }
+
+All locations are given as a ${shortLink('SourceRange', types.info)} in the format \`[start-line, start-column, end-line, end-column]\`.	
 
 		`;
 	}

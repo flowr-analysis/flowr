@@ -142,8 +142,8 @@ jobs:
         id: release
         run: |
           step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
-          version=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (\d+\.\d+\.\d+) .*/\2/p')
-          title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (\d+\.\d+\.\d+) (.*)/\3/p')
+          version=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] ([0-9]+\.[0-9]+\.[0-9]+) .*/\2/p')
+          title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] ([0-9]+\.[0-9]+\.[0-9]+) (.*)/\3/p')
 
           if [ -z "$step" ]; then
             echo "fatal: Release step not found in commit message."

@@ -142,10 +142,21 @@ jobs:
         id: release
         run: |
           step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
-          title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
+          version=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (\d+\.\d+\.\d+) .*/\2/p')
+          title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (\d+\.\d+\.\d+) (.*)/\3/p')
 
           if [ -z "$step" ]; then
             echo "fatal: Release step not found in commit message."
+            exit 1
+          fi
+          if [ -z "$version" ]; then
+            echo "fatal: Expected version not found in commit message."
+            exit 1
+          fi
+          
+          expected_version=$(npm run release -- --increment "$step" --ci --dry-run --release-version | tail -1)
+          if [ "$version" != "$expected_version" ]; then
+            echo "fatal: Expected version $version does not match calculated version $expected_version."
             exit 1
           fi
 

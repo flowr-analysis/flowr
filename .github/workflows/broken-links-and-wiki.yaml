@@ -49,6 +49,9 @@ jobs:
         # just as a time-proven safety measure
         run: git lfs checkout
 
+      - name: "⚗️ Test Suite (full, for data)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+
       - name: "🛠️ Update the Generated Wiki Pages"
         run: |
           npm ci

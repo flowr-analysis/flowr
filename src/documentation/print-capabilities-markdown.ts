@@ -3,6 +3,7 @@ import { flowrCapabilities } from '../r-bridge/data/data';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { FlowrWikiBaseRef } from './doc-util/doc-files';
 
 const supportedSymbolMap: Map<string, string> = new Map([
 	['not',       ':red_circle:'          ],
@@ -14,7 +15,7 @@ function printSingleCapability(depth: number, index: number, capability: FlowrCa
 	const indent = '    '.repeat(depth);
 	const indexStr = index.toString().padStart(2, ' ');
 	const nextLineIndent = '  '.repeat(depth + indexStr.length);
-	const mainLine = `${indent}${indexStr}. **${capability.name}** (<a id='${capability.id}'>\`${capability.id}\`</a>)`;
+	const mainLine = `${indent}${indexStr}. **${capability.name}** (<a id='${capability.id}'>\`${capability.id}\`</a>) <a href="${FlowrWikiBaseRef}/Capabilities#${capability.id}">🔗</a>`;
 	let nextLine = '';
 
 	if(capability.supported) {

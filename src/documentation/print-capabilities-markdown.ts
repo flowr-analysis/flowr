@@ -4,7 +4,6 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { joinWithLast } from '../util/strings';
-import { block } from './doc-util/doc-structure';
 import { prefixLines } from './doc-util/doc-general';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { KnownParser } from '../r-bridge/parser';
@@ -90,10 +89,9 @@ async function printSingleCapability(info: CapabilityInformation, depth: number,
 	}
 	nextLine += ' Internal ID: `' + capability.id + '`';
 	if(capability.example) {
-		nextLine += `\n${nextLineIndent}${prefixLines(block({ 
-			type:    'INFO', 
-			content: typeof capability.example === 'string' ? capability.example : await capability.example(info.parser) 
-		}), nextLineIndent)}`;
+		nextLine += `\n${nextLineIndent}${prefixLines(
+			typeof capability.example === 'string' ? capability.example : await capability.example(info.parser),
+			nextLineIndent + '> ')}`;
 	}
 	return nextLine ? `${mainLine}\\\n${nextLineIndent}${nextLine}` : mainLine;
 }

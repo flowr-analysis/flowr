@@ -167,11 +167,11 @@
           }));
         }
 
-				const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(\d+\.\d+\.\d+)/;
+				const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
 				function getReleaseVersion(commit) {
 					const match = releaseRegex.exec(commit.message);
           if (match) {
-            return match[2];
+            return match.groups.version;
           }
           return commit.message.slice(0, 12);
 				}

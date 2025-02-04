@@ -69,7 +69,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 	for(const [context, count] of sorted) {
 		testString.push(`${context}: ${count}`);
 	}
-	return ` $\\color{gray}{\\textsf{\\footnotesize(${testString.join(', ')})}}$`;
+	return ` $\\color{gray}{\\textsf{(${testString.join(', ')})}}$`;
 }
 
 async function printSingleCapability(info: CapabilityInformation, depth: number, index: number, capability: FlowrCapability): Promise<string> {

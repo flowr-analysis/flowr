@@ -6,7 +6,8 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { joinWithLast } from '../util/strings';
 import { block } from './doc-util/doc-structure';
 import { prefixLines } from './doc-util/doc-general';
-import { RShell } from '../r-bridge/shell';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { KnownParser } from '../r-bridge/parser';
 
 const supportedSymbolMap: Map<string, string> = new Map([
 	['not',       '🔴' ],
@@ -14,7 +15,7 @@ const supportedSymbolMap: Map<string, string> = new Map([
 	['fully',     '🟩' ]
 ]);
 
-async function printSingleCapability(shell: RShell, depth: number, index: number, capability: FlowrCapability): Promise<string> {
+async function printSingleCapability(parser: KnownParser, depth: number, index: number, capability: FlowrCapability): Promise<string> {
 	const indent = '    '.repeat(depth);
 	const indexStr = index.toString().padStart(2, ' ');
 	const nextLineIndent = '  '.repeat(depth + indexStr.length);
@@ -32,18 +33,18 @@ async function printSingleCapability(shell: RShell, depth: number, index: number
 	}
 	nextLine += ' Internal ID: `' + capability.id + '`';
 	if(capability.example) {
-		nextLine += `\n${nextLineIndent}${prefixLines(block({ type: 'INFO', content: typeof capability.example === 'string' ? capability.example : await capability.example(shell) }), nextLineIndent)}`;
+		nextLine += `\n${nextLineIndent}${prefixLines(block({ type: 'INFO', content: typeof capability.example === 'string' ? capability.example : await capability.example(parser) }), nextLineIndent)}`;
 	}
 	return nextLine ? `${mainLine}\\\n${nextLineIndent}${nextLine}` : mainLine;
 }
 
-async function printAsMarkdown(shell: RShell, capabilities: readonly FlowrCapability[], depth = 0, lines: string[] = []): Promise<string> {
+async function printAsMarkdown(parser: KnownParser, capabilities: readonly FlowrCapability[], depth = 0, lines: string[] = []): Promise<string> {
 	for(let i = 0; i < capabilities.length; i++) {
 		const capability = capabilities[i];
-		const result = await printSingleCapability(shell, depth, i + 1, capability);
+		const result = await printSingleCapability(parser, depth, i + 1, capability);
 		lines.push(result);
 		if(capability.capabilities) {
-			await printAsMarkdown(shell, capability.capabilities, depth + 1, lines);
+			await printAsMarkdown(parser, capability.capabilities, depth + 1, lines);
 		}
 	}
 	return lines.join('\n');
@@ -66,17 +67,17 @@ Besides, we use colored bullets like this:
 `;
 }
 
-async function print(shell: RShell) {
-	return getPreamble() + await printAsMarkdown(shell, flowrCapabilities.capabilities);
+async function print(parser: KnownParser) {
+	return getPreamble() + await printAsMarkdown(parser, flowrCapabilities.capabilities);
 }
 
 /** if we run this script, we want a Markdown representation of the capabilities */
 if(require.main === module) {
 	setMinLevelOfAllLogs(LogLevel.Fatal);
-	const shell = new RShell();
-	void print(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
+	void TreeSitterExecutor.initTreeSitter().then(() => {
+		const parser = new TreeSitterExecutor();
+		void print(parser).then(str => {
+			console.log(str);
+		});
 	});
 }

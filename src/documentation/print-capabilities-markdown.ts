@@ -1,8 +1,8 @@
 import type { FlowrCapability } from '../r-bridge/data/types';
 import { flowrCapabilities } from '../r-bridge/data/data';
-import { flowrVersion } from '../util/version';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
+import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 const supportedSymbolMap: Map<string, string> = new Map([
 	['not',       ':red_circle:'          ],
@@ -42,9 +42,7 @@ function printAsMarkdown(capabilities: readonly FlowrCapability[], depth = 0, li
 }
 
 function getPreamble(): string {
-	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC');
-	const shortenFilename = module.filename.replace(/^.*src\//, 'src/');
-	return `_This document was generated from '${shortenFilename}' on ${currentDateAndTime} summarizing flowR's current capabilities (v${flowrVersion().format()})._
+	return `${autoGenHeader({ filename: module.filename, purpose: 'current capabilities' })}
 
 The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:

@@ -67,7 +67,15 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 		return;
 	}
 	const subflowId = `${idPrefix}flow-${nodeId}`;
-	mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
+	if(mermaid.simplified) {
+		// get parent
+		const idMap = mermaid.rootGraph.idMap;
+		const node = idMap?.get(nodeId);
+		const nodeLexeme = node?.info.fullLexeme ?? node?.lexeme ?? '??';
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme ?? 'function')}"]`);
+	} else {
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
+	}
 	const subgraph = graphToMermaidGraph(subflow.graph, {
 		graph:               mermaid.rootGraph,
 		rootGraph:           mermaid.rootGraph,
@@ -236,7 +244,7 @@ interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 

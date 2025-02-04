@@ -63,7 +63,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 		grouped.delete('desugar-tree-sitter');
 	}
 	grouped.delete('other'); // opinionated view on the categories
-	const testString: string[] = [`${totalTests.length}~test${totalTests.length !== 1 ? 's' : ''}`];
+	const testString: string[] = [`${totalTests.length} test${totalTests.length !== 1 ? 's' : ''}`];
 	// sort by count
 	const sorted = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
 	for(const [context, count] of sorted) {

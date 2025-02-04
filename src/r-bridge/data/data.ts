@@ -44,7 +44,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							name:        'Normal',
 							id:          'name-normal',
 							supported:   'fully',
-							description: '_Recognize constructs like `a`, `plot`, ..._',
+							description: '_Recognize symbol uses like `a`, `plot`, ..._  (i.e., "normal variables or function calls").',
 							url:         [
 								{ name: AdvancedR('Bindings'), href: 'https://adv-r.hadley.nz/names-values.html#binding-basics' },
 								{ name: RLang('Identifiers'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Identifiers-1' }
@@ -54,13 +54,19 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							name:        'Quoted',
 							id:          'name-quoted',
 							supported:   'fully',
-							description: "_Recognize `\"a\"`, `'plot'`, ..._"
+							description: "_Recognize `\"a\"`, `'plot'`, ..._ In general, R allows to envelop names in quotations to allow for special characters such as spaces in variable names. However, this only works in the context of definitions. To access these names as variables, one has to either use function such as `get` or escape the name with backticks.",
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
 						},
 						{
 							name:        'Escaped',
 							id:          'name-escaped',
 							supported:   'fully',
-							description: '_Recognize `` `a` ``, `` `plot` ``, ..._'
+							description: '_Recognize `` `a` ``, `` `plot` ``, ..._',
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
 						},
 						{
 							name:        'Created',

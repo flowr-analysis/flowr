@@ -30,10 +30,7 @@ export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
  */
 export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
 	const vertex = graph.getVertex(id);
-	if(vertex === undefined) {
-		return undefined;
-	}
-	if(vertex.tag === VertexType.FunctionCall && vertex.name) {
+	if(vertex && vertex.tag === VertexType.FunctionCall && vertex.name) {
 		return vertex.name;
 	}
 	const node = graph.idMap?.get(id);
@@ -41,7 +38,7 @@ export function recoverContent(id: NodeId, graph: DataflowGraph): string | undef
 		return undefined;
 	}
 	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(vertex.tag === VertexType.Use) {
+	if(vertex?.tag === VertexType.Use) {
 		return removeRQuotes(lexeme);
 	}
 	return lexeme;

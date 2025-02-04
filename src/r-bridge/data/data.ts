@@ -1,13 +1,40 @@
 import type { FlowrCapabilities } from './types';
+import { FlowrGithubBaseRef } from '../../documentation/doc-util/doc-files';
+import { codeBlock } from '../../documentation/doc-util/doc-code';
+import { printDfGraphForCode } from '../../documentation/doc-util/doc-dfg';
+
+const Joiner = '/';
+const AdvancedR = (subname: string) => 'Advanced R' + Joiner + subname;
+const RLang = (subname: string) => 'R Definition' + Joiner + subname;
+const Issue = (num: number) => `${FlowrGithubBaseRef}/flowr/issues/${num}`;
+const LinkTo = (id: string, label = id) => `[${label}](#${id})`;
 
 export const flowrCapabilities = {
 	name:         'Capabilities of flowR',
 	description:  'This is an evolving representation of what started with #636 to formulate capabilities in a structured format.',
-	version:      '0.0.1',
+	version:      '0.0.2',
 	capabilities: [
 		{
-			name:         'Names and Identifiers',
-			id:           'names-and-identifiers',
+			name:        'Names and Identifiers',
+			id:          'names-and-identifiers',
+			description: 'The recognition of syntactical and non-syntactical names, including their resolutions to corresponding definitions.',
+			example:     async parser => {
+				const code = '"f" <- function(x) { get("x") } \n`y x` <- 2\nprint(`y x` + f(3))';
+				return `
+Consider the following R code:
+${codeBlock('r', code)}
+Identifiers of interest are:
+
+- The symbols \`x\` (${LinkTo('name-normal')}), \`f\` (${LinkTo('name-quoted')}), and \`\` \`y x\` \`\` (${LinkTo('name-escaped')}).
+- The function calls \`<-\`, \`function\`, \`{\`, \`get\`, \`+\`, and \`print\` (${LinkTo('function-calls')}, all given with ${LinkTo('name-normal')}).
+  Especially \`{\` is identified as a ${LinkTo('grouping')} of the ${LinkTo('function-definitions', 'function-definitions\'')} body.
+- The quoted name created by a function call \`get\` (${LinkTo('name-created')}).
+
+Besides the parameter \`x\`, which is resolved in its ${LinkTo('lexicographic-scope')}, the other identifiers are resolved in the ${LinkTo('global-scope')}.
+
+${await printDfGraphForCode(parser, code, { simplified: true })}
+			`;
+			},
 			capabilities: [
 				{
 					name:         'Form',
@@ -17,19 +44,38 @@ export const flowrCapabilities = {
 							name:        'Normal',
 							id:          'name-normal',
 							supported:   'fully',
-							description: '_Recognize constructs like `a`, `plot`, ..._'
+							description: '_Recognize symbol uses like `a`, `plot`, ..._  (i.e., "normal variables or function calls").',
+							url:         [
+								{ name: AdvancedR('Bindings'), href: 'https://adv-r.hadley.nz/names-values.html#binding-basics' },
+								{ name: RLang('Identifiers'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Identifiers-1' }
+							]
 						},
 						{
 							name:        'Quoted',
 							id:          'name-quoted',
 							supported:   'fully',
-							description: "_Recognize `\"a\"`, `'plot'`, ..._"
+							description: "_Recognize `\"a\"`, `'plot'`, ..._ In general, R allows to envelop names in quotations to allow for special characters such as spaces in variable names. However, this only works in the context of definitions. To access these names as variables, one has to either use function such as `get` or escape the name with backticks.",
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
 						},
 						{
 							name:        'Escaped',
 							id:          'name-escaped',
 							supported:   'fully',
-							description: '_Recognize `` `a` ``, `` `plot` ``, ..._'
+							description: '_Recognize `` `a` ``, `` `plot` ``, ..._',
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
+						},
+						{
+							name:        'Created',
+							id:          'name-created',
+							supported:   'partially',
+							description: '_Recognize functions which resolve strings as identifiers, such as `get`, ..._',
+							url:         [
+								{ name: 'flowr#633', href: Issue(633) }
+							]
 						}
 					]
 				},
@@ -670,28 +716,28 @@ export const flowrCapabilities = {
 						{
 							name:        'S3',
 							id:          'oop-s3',
-							note:        'https://adv-r.hadley.nz/s3.html',
+							example:     'https://adv-r.hadley.nz/s3.html',
 							supported:   'not',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'S4',
 							id:          'oop-s4',
-							note:        'https://adv-r.hadley.nz/s4.html',
+							example:     'https://adv-r.hadley.nz/s4.html',
 							supported:   'not',
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'R6',
 							id:          'oop-r6',
-							note:        'https://adv-r.hadley.nz/r6.html',
+							example:     'https://adv-r.hadley.nz/r6.html',
 							supported:   'not',
 							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'R7/S7',
 							id:          'r7-s7',
-							note:        'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/, https://cran.r-project.org/web/packages/S7/index.html',
+							example:     'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/, https://cran.r-project.org/web/packages/S7/index.html',
 							supported:   'not',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
 						}

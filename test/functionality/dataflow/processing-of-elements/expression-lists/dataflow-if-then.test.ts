@@ -297,7 +297,7 @@ a()`,  emptyGraph()
 				})
 				.defineVariable('9', '"a"', { definedBy: ['13', '15'], controlDependencies: [{ id: '17', when: true }] }),
 			{ minRVersion: MIN_VERSION_LAMBDA });
-		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments']),
+		assertDataflow(label('assign from get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines', 'assignment-functions', 'strings', 'unnamed-arguments', 'name-created']),
 			shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', emptyGraph()
 				.use('7', '"b"')
 				.reads('7', '0')
@@ -318,7 +318,7 @@ a()`,  emptyGraph()
 				.defineVariable('4', '"a"', { definedBy: ['9', '11'] })
 				.markIdForUnknownSideEffects('15')
 		);
-		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal']),
+		assertDataflow(label('get in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'empty-arguments', 'newlines', 'implicit-return', 'call-normal', 'name-created']),
 			shell, `a <- 5
 f <- function() {
   get("a")
@@ -349,7 +349,7 @@ f()`,  emptyGraph()
 				})
 				.defineVariable('3', 'f', { definedBy: ['11', '12'] })
 		);
-		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return']),
+		assertDataflow(label('get in function argument', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'formals-default', 'strings', 'implicit-return', 'name-created']),
 			shell, `a <- 5
 f <- function(a = get("a")) {
   a

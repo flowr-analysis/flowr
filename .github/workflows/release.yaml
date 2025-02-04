@@ -17,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
-            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -64,7 +63,6 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
-            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -250,7 +248,6 @@ jobs:
         uses: actions/checkout@v4
         with:
             submodules: true
-            lfs: true
 
       - name: "🌍 Load Versions to Use"
         id: doc-global-versions
@@ -289,7 +286,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
-          lfs:        true
           token:      ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⚙️ Name and Email for Git (config) and update"

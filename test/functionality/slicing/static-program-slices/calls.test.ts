@@ -467,12 +467,12 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 				'delayedAssign("y", x)\ny'); // note: `x <- 5` should be part of the slice!
 		});
 		describe('Get', () => {
-			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope']),
+			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created']),
 				shell, 'x <- 42\ny <- get("x")', ['2@y'],
 				'x <- 42\ny <- get("x")');
-			assertSliced(label('function', ['name-normal', 'strings', 'newlines', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities]),
+			assertSliced(label('function', ['name-normal', 'strings', 'newlines', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'name-created']),
 				shell, 'a <- function() 1\nb <- get("a")\nb()', ['3@b'], 'a <- function() 1\nb <- get("a")\nb()');
-			assertSliced(label('get in function', ['name-normal', 'function-definitions', 'newlines', 'strings', 'implicit-return']),
+			assertSliced(label('get in function', ['name-normal', 'function-definitions', 'newlines', 'strings', 'implicit-return', 'name-created']),
 				shell, `a <- 5
 f <- function() {
   get("a")
@@ -480,7 +480,7 @@ f <- function() {
 f()`, ['5@f'], `a <- 5
 f <- function() { get("a") }
 f()`);
-			assertSliced(label('get in function argument', ['name-normal', 'formals-default', 'strings', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers']),
+			assertSliced(label('get in function argument', ['name-normal', 'formals-default', 'strings', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'newlines', 'numbers', 'name-created']),
 				shell, `a <- 5
 f <- function(a = get("a")) {
   a
@@ -489,9 +489,9 @@ f()`, ['5@f'], `f <- function(a=get("a")) { a }
 f()`);
 		});
 		describe('Combine get and assign', () => {
-			assertSliced(label('get in assign', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'assignment-functions', 'strings', 'unnamed-arguments', 'newlines']),
+			assertSliced(label('get in assign', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'assignment-functions', 'strings', 'unnamed-arguments', 'newlines', 'name-created']),
 				shell, 'b <- 5\nassign("a", get("b"))\nprint(a)', ['3@a'], 'b <- 5\nassign("a", get("b"))\na');
-			assertSliced(label('get-access a function call', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'function-definitions', 'call-normal']),
+			assertSliced(label('get-access a function call', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'function-definitions', 'call-normal', 'name-created']),
 				shell, `a <- function() 1
 b <- get("a")
 res <- b()`, ['3@res'], `a <- function() 1

@@ -42,6 +42,8 @@ interface MermaidGraph {
 	presentEdges:        Set<string>
 	// keep for sub-flows
 	rootGraph:           DataflowGraph
+	/** if given, the dataflow graph will only focus on the "important" parts */
+	simplified?:         boolean
 }
 
 /**
@@ -72,7 +74,8 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 		idPrefix,
 		includeEnvironments: mermaid.includeEnvironments,
 		mark:                mermaid.mark,
-		prefix:              null
+		prefix:              null,
+		simplified:          mermaid.simplified
 	});
 	mermaid.nodeLines.push(...subgraph.nodeLines);
 	mermaid.edgeLines.push(...subgraph.edgeLines);
@@ -175,13 +178,18 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	const node = mermaid.rootGraph.idMap?.get(info.id);
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
-	const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
 
-	const deps = info.controlDependencies ? ', :may:' + info.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
-	const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
-		fCall ? displayFunctionArgMapping(info.args) : ''
-	}\`"${close}`);
+	if(mermaid.simplified) {
+		const escapedName = '**' + escapeMarkdown(node ? `${lexeme}` : '??') + '**' + (node ? `\n*${node.type}*` : '');
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
+	} else {
+		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
+		const deps = info.controlDependencies ? ', :may:' + info.controlDependencies.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
+			fCall ? displayFunctionArgMapping(info.args) : ''
+		}\`"${close}`);
+	}
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
 	}
@@ -220,16 +228,17 @@ interface MermaidGraphConfiguration {
 	mark?:                ReadonlySet<MermaidMarkdownMark>,
 	markStyle?:           MermaidMarkStyle,
 	rootGraph?:           DataflowGraph,
-	presentEdges?:        Set<string>
+	presentEdges?:        Set<string>,
+	simplified?:          boolean
 }
 
 
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = true, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle };
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {

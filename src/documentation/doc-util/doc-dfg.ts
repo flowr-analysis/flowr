@@ -3,7 +3,7 @@ import type { RShell } from '../../r-bridge/shell';
 import type { MermaidMarkdownMark } from '../../util/mermaid/dfg';
 import { graphToMermaid } from '../../util/mermaid/dfg';
 import { PipelineExecutor } from '../../core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
@@ -12,14 +12,17 @@ import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { printAsMs } from '../../util/time';
+import type { KnownParser } from '../../r-bridge/parser';
+import { FlowrWikiBaseRef } from './doc-files';
 
-export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>) {
+export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
 \`\`\`mermaid
 ${graphToMermaid({
 		graph,
 		prefix: 'flowchart LR',
-		mark
+		mark,
+		simplified
 	}).string}
 \`\`\`
 	`;
@@ -31,6 +34,7 @@ export interface PrintDataflowGraphOptions {
 	readonly codeOpen?:           boolean;
 	readonly exposeResult?:       boolean;
 	readonly switchCodeAndGraph?: boolean;
+	readonly simplified?:         boolean;
 }
 
 export function formatSideEffect(ef: UnknownSidEffect): string {
@@ -41,12 +45,11 @@ export function formatSideEffect(ef: UnknownSidEffect): string {
 	}
 }
 
-export async function printDfGraphForCode(shell: RShell, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
-export async function printDfGraphForCode(shell: RShell, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
-export async function printDfGraphForCode(shell: RShell, code: string, { mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(parser: KnownParser, code: string, options: PrintDataflowGraphOptions & { exposeResult: true }): Promise<[string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]>;
+export async function printDfGraphForCode(parser: KnownParser, code: string, options?: PrintDataflowGraphOptions & { exposeResult?: false | undefined }): Promise<string>;
+export async function printDfGraphForCode(parser: KnownParser, code: string, { simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
-	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
+	const result = await createDataflowPipeline(parser, {
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
@@ -55,8 +58,9 @@ export async function printDfGraphForCode(shell: RShell, code: string, { mark, s
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize) within the generation environment.`;
-	const dfGraph = printDfGraph(result.dataflow.graph, mark);
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using [${parser.name}]${FlowrWikiBaseRef}/Engines) within the generation environment.`;
+	const dfGraph = printDfGraph(result.dataflow.graph, mark, simplified);
+	const simplyText = simplified ? '(simplified) ' : '';
 	let resultText = '\n\n';
 
 	if(showCode) {
@@ -67,7 +71,7 @@ ${code}
 		resultText += `
 <details${codeOpen ? ' open' : ''}>
 
-<summary style="color:gray">${switchCodeAndGraph ? 'Dataflow Graph of the R Code' : 'R Code of the Dataflow Graph'}</summary>
+<summary style="color:gray">${switchCodeAndGraph ? `${simplyText}Dataflow Graph of the R Code` : `R Code of the ${simplyText}Dataflow Graph`}</summary>
 
 ${metaInfo} ${mark ? `The following marks are used in the graph to highlight sub-parts (uses ids): {${[...mark].join(', ')}}.` : ''}
 We encountered ${result.dataflow.graph.unknownSideEffects.size > 0 ? 'unknown side effects (with ids: ' + [...result.dataflow.graph.unknownSideEffects].map(formatSideEffect).join(', ') + ')' : 'no unknown side effects'} during the analysis.

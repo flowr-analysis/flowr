@@ -52,8 +52,8 @@ jobs:
       - name: "⚗️ Test Suite (full, for data)"
         # we make sure we have a clean run
         run: |
-          bash rm -rf "coverage/"
-          bash rm -f "/tmp/flowr-label-summary.json"
+          rm -rf "coverage/"
+          rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
       - name: "🛠️ Update the Generated Wiki Pages"

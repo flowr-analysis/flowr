@@ -47,11 +47,12 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 		return '';
 	}
 	const totalTests = info.info.get(capability.id);
-	if(!totalTests || totalTests.length === 0) {
+	const uniqueTests = totalTests?.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+	if(!uniqueTests || uniqueTests.length === 0) {
 		return '';
 	}
 	const grouped = new Map<string, number>();
-	for(const { context } of totalTests) {
+	for(const { context } of uniqueTests) {
 		for(const c of context) {
 			grouped.set(c, (grouped.get(c) ?? 0) + 1);
 		}
@@ -62,7 +63,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 		grouped.delete('desugar-tree-sitter');
 	}
 	grouped.delete('other'); // opinionated view on the categories
-	const testString: string[] = [`${totalTests.length} test${totalTests.length !== 1 ? 's' : ''}`];
+	const testString: string[] = [`${uniqueTests.length} test${uniqueTests.length !== 1 ? 's' : ''}`];
 	// sort by count
 	const sorted = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
 	for(const [context, count] of sorted) {

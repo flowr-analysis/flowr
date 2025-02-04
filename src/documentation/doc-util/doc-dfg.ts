@@ -58,7 +58,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { s
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using [${parser.name}]${FlowrWikiBaseRef}/Engines) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
 	const dfGraph = printDfGraph(result.dataflow.graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';
 	let resultText = '\n\n';

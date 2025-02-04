@@ -32,6 +32,13 @@ export interface TestLabel extends MergeableRecord {
 	readonly context:      Set<TestLabelContext>
 }
 
+export interface SerializedTestLabel {
+	readonly id:           string
+	readonly name:         string
+	readonly capabilities: readonly SupportedFlowrCapabilityId[]
+	readonly context:      readonly TestLabelContext[]
+}
+
 
 /**
  * Wraps a test name with a unique identifier and label it with the given ids.

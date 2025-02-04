@@ -3,6 +3,7 @@ import { printMissingLabelSummary } from './_helper/label';
 import fs from 'fs';
 import { DefaultMap } from '../../src/util/defaultmap';
 import { GlobalSummaryFile } from './summary-def';
+import { jsonReplacer } from '../../src/util/json';
 
 export function setup() {
 	try {
@@ -39,6 +40,10 @@ export function teardown() {
 		}
 		printMissingLabelSummary(labelMap);
 	} catch(e) {
-		/* if we do not ifnd the summary, then this is not a big problem */
+		/* if we do not find the summary, then this is not a big problem */
 	}
+
+	// ensure we have a folder 'coverage/'
+	fs.mkdirSync('coverage', { recursive: true });
+	fs.writeFileSync('coverage/flowr-test-details.json', JSON.stringify([...labelMap.entries()], jsonReplacer));
 }

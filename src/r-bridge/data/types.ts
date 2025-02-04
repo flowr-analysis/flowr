@@ -1,3 +1,5 @@
+import type { KnownParser } from '../parser';
+
 const enum RequiredFeature {
 	/** https://github.com/flowr-analysis/flowr/labels/typing */
 	Typing,
@@ -16,7 +18,10 @@ export interface FlowrCapability {
 	/** A list of features that are required for the capability, extend at need. */
 	readonly needs?:        RequiredFeature[]
 	readonly description?:  string
-	readonly note?:         string
+	/* examples may be generated on demand */
+	readonly example?:      string | ((parser: KnownParser) => Promise<string>),
+	/** A list of URLs that provide additional information about the capability */
+	readonly url?:          { name: string, href: string }[]
 	/** The level of support for the capability, undefined if it is a meta-capability that does not need such an attribute */
 	readonly supported?:    'not' | 'partially' | 'fully'
 	readonly capabilities?: readonly FlowrCapability[]

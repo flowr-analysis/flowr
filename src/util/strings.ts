@@ -37,3 +37,16 @@ export function longestCommonPrefix(strings: string[]): string {
 
 	return prefix;
 }
+
+/**
+ * Join a list of strings, but with special handling for the last element/scenarios in which the array contains exactly two elements.
+ * The goal is to create (partial) sentences like `a, b, and c` or `a and b`.
+ */
+export function joinWithLast(strs: readonly string[], { join = ', ', last = ', and ', joinTwo = ' and ' }: { join?: string, last?: string, joinTwo?: string } = {}): string {
+	if(strs.length <= 1) {
+		return strs.join('');
+	} else if(strs.length === 2) {
+		return strs.join(joinTwo);
+	}
+	return strs.slice(0, -1).join(join) + last + strs[strs.length - 1];
+}

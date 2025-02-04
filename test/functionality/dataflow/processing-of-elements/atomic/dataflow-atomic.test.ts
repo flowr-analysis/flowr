@@ -712,7 +712,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				})
 				.constant('3', undefined, false)
 		);
-		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments']),
+		assertDataflow(label('simple get', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'implicit-return', 'newlines', 'strings', 'call-normal', 'unnamed-arguments', 'name-created']),
 			shell, 'a <- function() 1\nget("a")()', emptyGraph()
 				.call('9', `${UnnamedFunctionCallPrefix}9`, [], { returns: ['1'], reads: ['8'], environment: defaultEnv().defineFunction('a', '0', '4') })
 				.call('4', '<-', [argumentInCall('0'), argumentInCall('3')],{ returns: ['0'], reads: [BuiltIn] })

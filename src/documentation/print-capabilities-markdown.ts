@@ -5,9 +5,9 @@ import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 const supportedSymbolMap: Map<string, string> = new Map([
-	['not',       ':red_circle:'          ],
-	['partially', ':large_orange_diamond:'],
-	['fully',     ':green_square:'        ]
+	['not',       '🔴' ],
+	['partially', '🔶' ],
+	['fully',     '🟩' ]
 ]);
 
 function printSingleCapability(depth: number, index: number, capability: FlowrCapability) {
@@ -49,9 +49,9 @@ Besides, we use colored bullets like this:
 
 | <!-- -->               | <!-- -->                                              |
 | ---------------------- | ----------------------------------------------------- |
-| :green_square:         | _flowR_ is capable of handling this feature fully     |
-| :large_orange_diamond: | _flowR_ is capable of handling this feature partially |
-| :red_circle:           | _flowR_ is not capable of handling this feature       |
+| ${supportedSymbolMap.get('fully')} | _flowR_ is capable of handling this feature **fully**     |
+| ${supportedSymbolMap.get('partially')} | _flowR_ is capable of handling this feature **partially** |
+| ${supportedSymbolMap.get('not')} | _flowR_ is **not** capable of handling this feature     |
 
 :cloud: This could be a feature diagram... :cloud:
 

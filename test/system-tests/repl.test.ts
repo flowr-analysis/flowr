@@ -62,4 +62,14 @@ describe('repl', () => {
 		const output = await flowrRepl([':slicer -c "3@a" -r "a <- 3\\nb <- 4\\nprint(a)"', ':quit']);
 		assert.include(output, 'a <- 3\na');
 	});
+
+	describe(':query api', () => {
+		describe('dependencies', () => {
+			test('Provide Library Load', async() => {
+				const output = await flowrRepl([':query @dependencies "library(x)"', ':quit']);
+				assert.include(output, 'library');
+				assert.include(output, 'x');
+			});
+		});
+	});
 });

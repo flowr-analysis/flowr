@@ -69,7 +69,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 	for(const [context, count] of sorted) {
 		testString.push(`${context}: ${count}`);
 	}
-	return ` $\\color{gray}{\\textsf{(${testString.join(', ')})}}$`;
+	return ` (${testString.join(', ')})`;
 }
 
 async function printSingleCapability(info: CapabilityInformation, depth: number, index: number, capability: FlowrCapability): Promise<string> {
@@ -129,7 +129,7 @@ Besides, we use colored bullets like this:
 async function print(parser: KnownParser) {
 	/* check if the detailed test data is available */
 	if(!fs.existsSync(detailedInfoFile)) {
-		console.warn('No detailed test data available. Run the full tests (npm run test-full) to generate it.');
+		console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test-full) to generate it.\x1b[m');
 	}
 	return getPreamble() + await printAsMarkdown({ parser, info: obtainDetailedInfos() }, flowrCapabilities.capabilities);
 }

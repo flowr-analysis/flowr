@@ -25,7 +25,7 @@ function rValueToAscii(value: string | RNumberValue | RStringValue): string {
 		return 'undefined';
 	} else if(typeof value === 'string') {
 		return value;
-	} else if(typeof value === 'object') {	
+	} else if(typeof value === 'object') {
 		if('num' in value) {
 			return value.num.toString();
 		} else if('str' in value) {
@@ -34,8 +34,8 @@ function rValueToAscii(value: string | RNumberValue | RStringValue): string {
 			console.warn('omega lul');
 			return JSON.stringify(value);
 		}
-	} 
-		
+	}
+
 	return value;
 }
 
@@ -54,5 +54,5 @@ export const ResolveValueQueryDefinition = {
 	schema: Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),
-	}).description('Resolve Value query used to get definitions of an identifier')
+	}).description('The resolve value query used to get definitions of an identifier')
 } as const satisfies SupportedQuery<'resolve-value'>;

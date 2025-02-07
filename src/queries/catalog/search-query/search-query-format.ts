@@ -32,5 +32,5 @@ export const SearchQueryDefinition = {
 	schema: Joi.object({
 		type:   Joi.string().valid('search').required().description('The type of the query.'),
 		search: Joi.object().required().description('The search query to execute.')
-	}).description('The id map query retrieves the id map from the normalized AST.')
+	}).description('The search query searches the normalized AST and dataflow graph for nodes that match the given search query.')
 } as const satisfies SupportedQuery<'search'>;

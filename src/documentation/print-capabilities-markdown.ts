@@ -58,7 +58,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 		}
 	}
 	if(grouped.get('desugar-tree-sitter') !== undefined && grouped.get('desugar-tree-sitter') === grouped.get('desugar-shell')) {
-		grouped.set('desugar', (grouped.get('desugar-tree-sitter') ?? 0) * 2);
+		grouped.set('desugar', grouped.get('desugar-tree-sitter') ?? 0);
 		grouped.delete('desugar-shell');
 		grouped.delete('desugar-tree-sitter');
 	}

@@ -63,20 +63,29 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 		grouped.delete('desugar-tree-sitter');
 	}
 	grouped.delete('other'); // opinionated view on the categories
+	const output = grouped.get('output');
+	grouped.delete('output');
 	const testString: string[] = [`${uniqueTests.length} test${uniqueTests.length !== 1 ? 's' : ''}`];
 	// sort by count
 	const sorted = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
 	for(const [context, count] of sorted) {
 		testString.push(`${context}: ${count}`);
 	}
+	if(output) {
+		testString.push(`and backed with output: ${output}`);
+	}
 	return ` (${testString.join(', ')})`;
+}
+
+function escapeId(id: string): string {
+	return id.replace(/[^a-zA-Z0-9]/g, '_');
 }
 
 async function printSingleCapability(info: CapabilityInformation, depth: number, index: number, capability: FlowrCapability): Promise<string> {
 	const indent = '    '.repeat(depth);
 	const indexStr = index.toString().padStart(2, ' ');
 	const nextLineIndent = '  '.repeat(depth + indexStr.length);
-	const mainLine = `${indent}${indexStr}. <a id='${capability.id}'></a>**${capability.name}** <a href="#${capability.id}">🔗</a>${getTestDetails(info, capability)}`;
+	const mainLine = `${indent}${indexStr}. <a id='${capability.id}'></a>**${capability.name}** <a href="#${escapeId(capability.id)}">🔗</a>${getTestDetails(info, capability)}`;
 	let nextLine = '';
 
 	if(capability.supported) {
@@ -90,7 +99,7 @@ async function printSingleCapability(info: CapabilityInformation, depth: number,
 	}
 	nextLine += ' Internal ID: `' + capability.id + '`';
 	if(capability.example) {
-		nextLine += `\n${nextLineIndent}${prefixLines(
+		nextLine += `\n${prefixLines(
 			typeof capability.example === 'string' ? capability.example : await capability.example(info.parser),
 			nextLineIndent + '> ')}`;
 	}

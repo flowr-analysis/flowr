@@ -716,28 +716,37 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'S3',
 							id:          'oop-s3',
-							example:     'https://adv-r.hadley.nz/s3.html',
+							url: [
+								{ name: AdvancedR('S3'), href: 'https://adv-r.hadley.nz/s3.html' }
+							],
 							supported:   'not',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'S4',
 							id:          'oop-s4',
-							example:     'https://adv-r.hadley.nz/s4.html',
+							url: [
+								{ name: AdvancedR('S4'), href: 'https://adv-r.hadley.nz/s4.html' }
+							],
 							supported:   'not',
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'R6',
 							id:          'oop-r6',
-							example:     'https://adv-r.hadley.nz/r6.html',
+							url: [
+								{ name: AdvancedR('R6'), href: 'https://adv-r.hadley.nz/r6.html' }
+							],
 							supported:   'not',
 							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'R7/S7',
 							id:          'r7-s7',
-							example:     'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/, https://cran.r-project.org/web/packages/S7/index.html',
+							url: [
+								{ name: 'R7', href: 'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/' },
+								{ name: 'S7', href: 'https://cran.r-project.org/web/packages/S7/index.html' }
+							],
 							supported:   'not',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
 						}

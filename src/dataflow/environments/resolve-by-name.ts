@@ -11,6 +11,7 @@ import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
 import { getConfig, VariableResolve } from '../../config';
 import { assertUnreachable } from '../../util/assert';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -163,7 +164,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	return [...definitions];
 }
 
-export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -185,7 +186,7 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 				return undefined;
 			}
 			for(const id of def.value) {
-				const value = graph.idMap?.get(id)?.content;
+				const value = idMap?.get(id)?.content;
 				if(value !== undefined) {
 					values.push(value);
 				}
@@ -204,11 +205,11 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
  * Convenience function using the variable resolver as specified within the configuration file
  * In the future we may want to have this set once at the start of the analysis
  */
-export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, graph: DataflowGraph): unknown[] | undefined {
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	const resolve = getConfig().solver.variables;
 
 	switch(resolve) {
-		case VariableResolve.Alias: return resolveToValues(identifier, environment, graph);
+		case VariableResolve.Alias: return resolveToValues(identifier, environment, idMap);
 		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
 		case VariableResolve.Disabled: return [];
 		default: assertUnreachable(resolve);

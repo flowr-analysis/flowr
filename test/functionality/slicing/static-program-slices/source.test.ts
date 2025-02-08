@@ -16,6 +16,8 @@ describe.sequential('source', withShell(shell => {
 
 	assertSliced(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
 		shell, 'source("simple")\ncat(N)', ['2@N'], 'source("simple")\nN');
+	assertSliced(label('simple source with alias', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
+		shell, 'x <- "simple"\nsource(x)\ncat(N)', ['3@N'], 'x <- "simple"\nsource(x)\nN');
 	assertSliced(label('do not always include source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']),
 		shell, 'source("simple")\ncat(N)\nx <- 3', ['3@x'], 'x <- 3');
 	assertSliced(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),

@@ -21,7 +21,7 @@ export function executeResolveValueQuery({ dataflow: { graph, environment }, ast
 		
 		const values = query.criteria
 			.map(criteria => recoverName(slicingCriterionToId(criteria, ast.idMap), ast.idMap))
-			.flatMap(ident => resolveToValues(ident, environment, graph));
+			.flatMap(ident => resolveToValues(ident, environment, graph.idMap ?? ast.idMap));
 
 		results[key] = {
 			values: [... new Set(values)]

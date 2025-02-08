@@ -26,6 +26,8 @@ import { expensiveTrace } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
+import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
+import { isNotUndefined } from '../../../../../../util/assert';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -49,16 +51,30 @@ export function processSourceCall<OtherInfo>(
 		processKnownFunctionCall({ name, args, rootId, data }).information
 		: initializeCleanDataflowInformation(rootId, data);
 
-	const sourceFile = args[0];
+	const sourceFileArgument = args[0];
 
 	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
-		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`);
+		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
 		information.graph.markIdForUnknownSideEffects(rootId);
 		return information;
 	}
 
-	if(sourceFile !== EmptyArgument && sourceFile?.value?.type === RType.String) {
-		const path = removeRQuotes(sourceFile.lexeme);
+	let sourceFile: string[] | undefined;
+
+	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
+		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
+	} else if(sourceFileArgument !== EmptyArgument) {
+		sourceFile = resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap)?.map(x => {
+			if(typeof x === 'object' && x && 'str' in x) {
+				return x.str as string;
+			} else {
+				return undefined;
+			}
+		}).filter(isNotUndefined);
+	}
+
+	if(sourceFile && sourceFile.length === 1) {
+		const path = removeRQuotes(sourceFile[0]);
 		const request = sourceProvider.createRequest(path);
 
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it

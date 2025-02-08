@@ -118,9 +118,11 @@ interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<O
  */
 export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
-	idMap: AstIdMap<OtherInfo>
+	idMap:     AstIdMap<OtherInfo>
 	/** The root of the AST with parent information */
-	ast:   Node
+	ast:       Node
+	/** marks whether the AST contains potential syntax errors */
+	hasError?: boolean
 }
 
 const nestForElement: ReadonlySet<RType> = new Set([

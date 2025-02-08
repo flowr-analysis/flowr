@@ -30,5 +30,7 @@ export function normalizeTreeSitter(
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	file?: string
 ): NormalizedAst {
-	return decorateAst(normalizeTreeSitterTreeToAst(parsed), { getId, file });
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed), { getId, file });
+	result.hasError = parsed.rootNode.hasError;
+	return result;
 }

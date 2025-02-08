@@ -9,6 +9,7 @@ import {
 } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { createParsePipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever';
+import type Parser from 'web-tree-sitter';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[]
 
@@ -29,7 +30,49 @@ function toDepthMap(entry: JsonEntry): DepthList {
 
 		const nextDepth = current.depth + 1;
 
-		visit.push(...children.map(c => ({ depth: nextDepth, node: c })));
+		for(const c of children) {
+			visit.push({ depth: nextDepth, node: c });
+		}
+	}
+	return result;
+}
+
+function treeSitterToJsonEntry(node: Parser.SyntaxNode): JsonEntry {
+	return {
+		token:    node.type,
+		children: [],
+		text:     node.text,
+		id:       node.id,
+		parent:   node.parent?.id ?? -1,
+		terminal: node.isNamed,
+		line1:    node.startPosition.row + 1,
+		col1:     node.startPosition.column + 1,
+		line2:    node.endPosition.row + 1,
+		col2:     node.endPosition.column + 1
+	};
+}
+
+function treeSitterToDepthList(node: Parser.SyntaxNode): DepthList {
+	const visit: { depth: number, node: Parser.SyntaxNode }[] = [ { depth: 0, node } ];
+	const result: DepthList = [];
+
+	while(visit.length > 0) {
+		const current = visit.pop();
+		if(current === undefined) {
+			continue;
+		}
+
+		const children = current.node.children;
+
+		result.push({ depth: current.depth, node: treeSitterToJsonEntry(current.node), leaf: children.length === 0 });
+
+		children.reverse();
+
+		const nextDepth = current.depth + 1;
+
+		for(const c of children) {
+			visit.push({ depth: nextDepth, node: c });
+		}
 	}
 	return result;
 }
@@ -83,6 +126,10 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 	const deadDepths = new Set<number>();
 	let i = 0;
 	for(const { depth, node, leaf } of list) {
+		if(depth > 10) {
+			result += '...';
+			break;
+		}
 		const nextDepth = i + 1 < list.length ? list[i + 1].depth : 0;
 
 		deadDepths.delete(depth);
@@ -124,7 +171,7 @@ export const parseCommand: ReplCommand = {
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {
 			// print the tree-sitter ast
-			output.stdout(JSON.stringify(result.parse.parsed, null, 2));
+			output.stdout(depthListToTextTree(treeSitterToDepthList((result.parse.parsed as unknown as Parser.Tree).rootNode), output.formatter));
 		}
 	}
 };

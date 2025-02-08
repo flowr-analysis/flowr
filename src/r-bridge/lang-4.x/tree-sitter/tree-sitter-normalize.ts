@@ -27,7 +27,11 @@ export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
 }
 
 function nonErrorChildren(node: SyntaxNode): SyntaxNode[] {
-	return node.children.filter(n => n.type !== TreeSitterType.Error);
+	if(node.hasError) {
+		return [];
+	} else {
+		return node.children;
+	}
 }
 
 function convertTreeNode(node: SyntaxNode): RNode {

@@ -135,7 +135,7 @@ Besides, we use colored bullets like this:
 :cloud: This could be a feature diagram... :cloud:
 
 ${block({
-		type:    'INFO',
+		type:    'NOTE',
 		content: `
 The capabilities are a qualitative measure of the features that flowR can handle.
 Statements like "flowR can fully handle 50/80 capabilities" are discouraged as the capabilities may have a vastly different granularity.

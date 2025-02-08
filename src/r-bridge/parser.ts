@@ -3,7 +3,6 @@ import type { RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
 import type { SyntaxNode } from 'web-tree-sitter';
-import { TreeSitterType } from './lang-4.x/tree-sitter/tree-sitter-types';
 
 interface ParserContent<T> {
     readonly name: string;
@@ -33,16 +32,14 @@ export interface ParseStepOutput<T> {
     /** Additional meta information about the parse */
     readonly '.parse-meta'?: {
         /** The number of tokens in the AST */
-        readonly tokenCount:           number
-        /** The number of tokens in the AST excluding comments */
-        readonly tokenCountNoComments: number
+        readonly tokenCount: number
     }
 }
 
-function countChildren(node: SyntaxNode, ignoreComments: boolean): number {
-	let ret = node.type === TreeSitterType.Comment && ignoreComments ? 0 : 1;
+function countChildren(node: SyntaxNode): number {
+	let ret = 1;
 	for(const child of node.children) {
-		ret += countChildren(child, ignoreComments);
+		ret += countChildren(child);
 	}
 	return ret;
 }
@@ -57,8 +54,7 @@ export async function parseRequests<T extends KnownParserType>(_results: unknown
 		return {
 			parsed,
 			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-				tokenCount:           countChildren(parsed.rootNode, false),
-				tokenCountNoComments: countChildren(parsed.rootNode, true)
+				tokenCount: countChildren(parsed.rootNode),
 			} : undefined
 		};
 	} else {
@@ -66,8 +62,7 @@ export async function parseRequests<T extends KnownParserType>(_results: unknown
 		return {
 			parsed,
 			'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-				tokenCount:           countChildren(parsed.rootNode, false),
-				tokenCountNoComments: countChildren(parsed.rootNode, true)
+				tokenCount: countChildren(parsed.rootNode),
 			} : undefined
 		};
 	}

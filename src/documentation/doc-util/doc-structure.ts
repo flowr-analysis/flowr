@@ -17,7 +17,7 @@ ${content}
 }
 
 export interface BlockOptions {
-    readonly type:    'NOTE' | 'WARNING' | 'INFO' | 'TIP';
+    readonly type:    'NOTE' | 'WARNING' | 'TIP';
     readonly content: string;
 }
 export function block({ type, content }: BlockOptions): string {

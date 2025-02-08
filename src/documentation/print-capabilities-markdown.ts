@@ -9,6 +9,7 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import type { SerializedTestLabel, TestLabel } from '../../test/functionality/_helper/label';
+import { block } from './doc-util/doc-structure';
 
 const detailedInfoFile = 'coverage/flowr-test-details.json';
 
@@ -121,7 +122,8 @@ async function printAsMarkdown(info: CapabilityInformation, capabilities: readon
 function getPreamble(): string {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'current capabilities' })}
 
-The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
+Each capability has an id that can be used to link to it (use the link symbol to get a direct link to the capability).
+The internal id is also mentioned in the capability description. This id can be used to reference the capability in a labeled test within flowR.
 Besides, we use colored bullets like this:
 
 | <!-- -->               | <!-- -->                                              |
@@ -132,6 +134,14 @@ Besides, we use colored bullets like this:
 
 :cloud: This could be a feature diagram... :cloud:
 
+${block({
+		type:    'NOTE',
+		content: `
+The capabilities are a qualitative measure of the features that flowR can handle.
+Statements like "flowR can fully handle 50/80 capabilities" are discouraged as the capabilities may have a vastly different granularity.
+Please prefer using a statement like "flowR has only partial support for feature 'XY'" (or simply reference this document) within the flowR sources.
+	`
+	})}
 `;
 }
 

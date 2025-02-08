@@ -14,6 +14,9 @@ function mayObjectJson(d: unknown): string {
 }
 
 function objectJson(df: object): string {
+	if(df === null) {
+		return 'null';
+	}
 	const elems: [string, string][] = [];
 
 	for(const [key, value] of Object.entries(df)) {

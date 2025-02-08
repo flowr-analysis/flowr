@@ -17,14 +17,14 @@ import { cfg2quads, extractCFG } from '../../../util/cfg/cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
-import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
+import type { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import type { DataflowInformation } from '../../../dataflow/info';
-import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
-import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
+import type { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
+import type { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/ansi';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import { createSlicePipeline, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
-import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
+import type { Pipeline, PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -41,6 +41,7 @@ import type { QueryRequestMessage, QueryResponseMessage } from './messages/messa
 import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
+import type { PipelineExecutor } from '../../../core/pipeline-executor';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -136,7 +137,7 @@ export class FlowRServerConnection {
 		const tempFile = tmp.fileSync({ postfix: '.R' });
 		const slicer = this.createPipelineExecutorForRequest(message, tempFile.name);
 
-		await slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
+		await slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(slicer, results, message))
 			.catch(e => {
 				this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`);
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -151,7 +152,7 @@ export class FlowRServerConnection {
 		tempFile.removeCallback();
 	}
 
-	private async sendFileAnalysisResponse(results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
+	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
 			cfg = extractCFG(results.normalize as NormalizedAst, results.dataflow?.graph);
@@ -159,7 +160,11 @@ export class FlowRServerConnection {
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
 		const sanitizedResults = sanitizeAnalysisResults(results);
-
+		const pipeline = slicer.getPipeline();
+		const parseStep = pipeline.steps.get('parse') as typeof PARSE_WITH_R_SHELL_STEP;
+		const normalizedStep = pipeline.steps.get('normalize') as typeof NORMALIZE;
+		const dataflowStep = pipeline.steps.get('dataflow') as typeof STATIC_DATAFLOW;
+		guard(parseStep !== undefined && normalizedStep !== undefined && dataflowStep !== undefined, 'All steps must be present');
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -167,9 +172,9 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, sanitizedResults.parse as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
-					normalize: await printStepResult(NORMALIZE, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(STATIC_DATAFLOW, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
+					parse:     await printStepResult(parseStep, sanitizedResults.parse as ParseStepOutput<string>, StepOutputFormat.RdfQuads, config()),
+					normalize: await printStepResult(normalizedStep, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(dataflowStep, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			});
 		} else {

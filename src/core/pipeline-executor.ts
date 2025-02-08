@@ -125,6 +125,13 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 	/**
+	 * Retrieve the {@link Pipeline|pipeline} that is currently being.
+	 */
+	public getPipeline(): P {
+		return this.pipeline;
+	}
+
+	/**
 	 * Retrieve the current {@link PipelineStepStage|stage} the pipeline executor is in.
 	 *
 	 * @see currentExecutionStage

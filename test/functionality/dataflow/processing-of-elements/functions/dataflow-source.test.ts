@@ -104,15 +104,18 @@ describe.sequential('source', withShell(shell => {
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-3')
 	);
 
-	// we currently don't support (and ignore) source calls with non-constant arguments!
-	assertDataflow(label('non-constant source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "recursive1"\nsource(x)',  emptyGraph()
+	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "simple"\nsource(x)',  emptyGraph()
 		.use('4', 'x')
 		.reads('4', '0')
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2') })
+		.defineVariable('simple-2:1-2:6-0', 'N', { definedBy: ['simple-2:1-2:6-1', 'simple-2:1-2:6-2'] })
+		.call('simple-2:1-2:6-2', '<-', [argumentInCall('simple-2:1-2:6-0'), argumentInCall('simple-2:1-2:6-1')], { returns: ['simple-2:1-2:6-0'], reads: [BuiltIn] })
+		.addControlDependency('simple-2:1-2:6-2', '6', true)
+		.addControlDependency('simple-2:1-2:6-0', '6', true)
+		.constant('simple-2:1-2:6-1')
 		.constant('1')
 		.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-		.markIdForUnknownSideEffects('6')
 	);
 
 	assertDataflow(label('sourcing a closure', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'sourcing-external-files', 'newlines', 'normal-definition', 'implicit-return', 'closures', 'numbers']),

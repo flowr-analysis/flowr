@@ -10,6 +10,9 @@ import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import type { JsonEntry } from '../../../json/format';
 
 
+/**
+ * Takes the parse dta as object and produces an undecorated, normalized AST.
+ */
 export function normalizeRootObjToAst(
 	data: NormalizerData,
 	obj: JsonEntry

@@ -357,7 +357,7 @@ export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): M
 	return getTypesFromFileAsMermaid(files, options);
 }
 
-export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0): string {
+export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
 	const bold = node.kind === 'interface' || node.kind === 'enum' ? '**' : '';
@@ -365,38 +365,39 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 
 	let text = node.comments?.join('\n') ?? '';
 	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n${indent}<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	text += `\n${indent}<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
 	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {
 	readonly program:              ts.Program
-	readonly hierarchy:            TypeElementInSource[]
+	readonly info:                 TypeElementInSource[]
 	readonly root:                 string
 	readonly collapseFromNesting?: number
 	readonly initialNesting?:      number
 	readonly maxDepth?:            number
+	readonly openTop?:             boolean
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
-export function printHierarchy({ program, hierarchy, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20 }: PrintHierarchyArguments): string {
+export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
 	}
-	const node = hierarchy.find(e => e.name === root);
+	const node = info.find(e => e.name === root);
 	if(!node) {
 		return '';
 	}
 
-	const thisLine = implSnippet(node, program, true, initialNesting);
+	const thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop);
 	const result = [];
 
 	for(const baseType of node.extends) {
 		if(mermaidHide.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, hierarchy, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
+		const res = printHierarchy({ program, info: info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
 		result.push(res);
 	}
 

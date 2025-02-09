@@ -44,6 +44,11 @@ function countChildren(node: SyntaxNode): number {
 	return ret;
 }
 
+/**
+ * Takes an input program and parses it using the given parser.
+ * @param _results - just a proxy for the pipeline, signifies that this function does not need prior knowledge of the pipeline
+ * @param input    - the input to the parse step
+ */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>): Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
 	const request = (Array.isArray(input.request) ? input.request[0] : input.request) as RParseRequest;

@@ -137,7 +137,7 @@ use ${getReplCommand('dataflow*')} (or ${getReplCommand('dataflow')} to get the 
 
 ${await documentReplSession(shell, [{
 		command:     ':dataflow* y <- 1 + x',
-		description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(shell, 'y <- 1 + x')}.`
+		description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(shell, 'y <- 1 + x')}`
 	}])}
 
 For the slicing with ${getReplCommand('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).

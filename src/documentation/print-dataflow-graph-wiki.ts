@@ -112,7 +112,7 @@ Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexValue' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexValue' })
 }
 
 ${
@@ -150,7 +150,7 @@ Similar to the [value vertex](#value-vertex) described above, this is more a mar
 you can see from the implementation.
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexUse' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexUse' })
 }
 
 ${
@@ -219,11 +219,11 @@ However, the implementation reveals that it may hold an additional \`onlyBuiltin
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
 	 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionCall' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexFunctionCall' })
 }
 The related function argument references are defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'FunctionArgument' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'FunctionArgument' })
 }
 
 
@@ -268,7 +268,7 @@ In other words, we classify the references as ${
 			}.
 For more information on the types of references, please consult the implementation.
 
-${printHierarchy({ program: identifierType.program, hierarchy: identifierType.info, root: 'ReferenceType' })}
+${printHierarchy({ program: identifierType.program, info: identifierType.info, root: 'ReferenceType' })}
 	`;
 		})())
 }
@@ -426,7 +426,7 @@ ${details('Example: Super Definition (<code><<-</code>)', await printDfGraphForC
 The implementation is relatively sparse and similar to the other marker vertices:
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexVariableDefinition' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexVariableDefinition' })
 }
 
 Of course, there are not just operators that define variables, but also functions, like \`assign\`.
@@ -476,15 +476,15 @@ Defining a function does do a lot of things: 1) it creates a new scope, 2) it ma
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionDefinition' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexFunctionDefinition' })
 }
 The subflow is defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowFunctionFlowInformation' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowFunctionFlowInformation' })
 }
 And if you are interested in the exit points, they are defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'ExitPoint' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'ExitPoint' })
 }
 
 
@@ -945,7 +945,7 @@ ${codeBlock('text', JSON.stringify(result.dataflow, jsonReplacer))}
 You may be interested in its implementation:
 
 ${
-		printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowInformation' })
+		printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowInformation' })
 		}
 
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.

@@ -85,7 +85,7 @@ In summary, we have the following types:
 
 ${
 	details('Normalized AST Node Types', 
-		printHierarchy({ program: types.program, hierarchy: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
+		printHierarchy({ program: types.program, info: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
 	)
 }
 
@@ -139,7 +139,7 @@ Using this class, you can create your own fold behavior by overwriting the defau
 By default, the class provides a monoid abstraction using the _empty_ from the constructor and the _concat_ method.
 
  
-${printHierarchy({ program: types.program, hierarchy: types.info, root: 'DefaultNormalizedAstFold' })}
+${printHierarchy({ program: types.program, info: types.info, root: 'DefaultNormalizedAstFold' })}
 
 Now, of course, we could provide hundreds of examples here, but we use tests to verify that the fold behaves as expected
 and happily point to them at ${getFilePathMd('../../test/functionality/r-bridge/normalize-ast-fold.test.ts')}.

@@ -8,6 +8,7 @@ import { voidFormatter } from '../../util/ansi';
 import { DockerName } from './doc-docker';
 import { rawPrompt } from '../../cli/repl/prompt';
 import { codeBlock } from './doc-code';
+import { versionReplString } from '../../cli/repl/print-version';
 
 function printHelpForScript(script: [string, ReplCommand], starredVersion?: ReplCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
@@ -51,6 +52,8 @@ export interface DocumentReplSessionOptions {
 	hideEntry?:           boolean;
 	/** defaults to false and allows access to the R session */
 	allowRSessionAccess?: boolean;
+	/** defaults to false and opens the details section by default */
+	openOutput?:          boolean;
 }
 
 export interface DocumentReplCommand {
@@ -78,7 +81,10 @@ export async function documentReplSession(shell: RShell, commands: readonly Docu
 	}
 
 	let result = '';
-	let cache = options?.hideEntry ?  '' : `docker run -it --rm ${DockerName}\n`;
+	let cache = options?.hideEntry ?  '' : `$ docker run -it --rm ${DockerName}\n`;
+	if(!options?.hideEntry) {
+		cache += await versionReplString(shell) + '\n';
+	}
 
 	for(const { command, lines } of collect) {
 		if(lines.length === 0) {
@@ -87,12 +93,12 @@ export async function documentReplSession(shell: RShell, commands: readonly Docu
 		}
 		result += `
 ${codeBlock('shell', cache + rawPrompt + ' ' + command.command)}
-<details>
+<details${options?.openOutput ? ' open' : ''}>
 <summary style='color:gray'>Output</summary>
 
-${command.description}
-
 ${codeBlock('text', lines.join('\n'))}
+
+${command.description}
 
 </details>
 

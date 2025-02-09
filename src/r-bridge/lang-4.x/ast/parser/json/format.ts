@@ -46,6 +46,9 @@ export interface NamedJsonEntry {
 
 type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string]
 
+/**
+ * Takes the raw {@link RShell} output and extracts the csv information contained
+ */
 export function prepareParsedData(data: string): CsvEntry[] {
 	let json: unknown;
 	try {
@@ -78,6 +81,9 @@ export function prepareParsedData(data: string): CsvEntry[] {
 	return roots;
 }
 
+/**
+ * Takes the CSV-Entries and maps them to the old json format for compatibility.
+ */
 export function convertPreparedParsedData(roots: readonly CsvEntry[]): JsonEntry {
 	const partialEntry = {
 		token:  RawRType.ExpressionList,

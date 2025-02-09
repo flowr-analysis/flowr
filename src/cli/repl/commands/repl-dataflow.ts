@@ -6,9 +6,12 @@ import type { KnownParser } from '../../../r-bridge/parser';
 import clipboard from 'clipboardy';
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 
-async function dataflow(parser: KnownParser, remainingLine: string) {
+/**
+ * Obtain the dataflow graph using a known parser (such as the {@link RShell} or {@link TreeSitterExecutor}).
+ */
+async function replGetDataflow(parser: KnownParser, code: string) {
 	return await createDataflowPipeline(parser, {
-		request: requestFromInput(remainingLine.trim())
+		request: requestFromInput(code.trim())
 	}).allRemainingSteps();
 }
 
@@ -26,7 +29,7 @@ export const dataflowCommand: ReplCommand = {
 	aliases:      [ 'd', 'df' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await dataflow(shell, handleString(remainingLine));
+		const result = await replGetDataflow(shell, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
@@ -42,7 +45,7 @@ export const dataflowStarCommand: ReplCommand = {
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
-		const result = await dataflow(shell, handleString(remainingLine));
+		const result = await replGetDataflow(shell, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
 		output.stdout(mermaid);
 		try {

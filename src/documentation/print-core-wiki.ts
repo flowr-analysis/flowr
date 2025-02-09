@@ -64,7 +64,7 @@ We recommend to use commands like ${getReplCommand('dataflow', true)} or ${getRe
 
 At the core of every analysis by flowR is the ${shortLink('PipelineExecutor', info)} class which takes a sequence of analysis steps (in the form of a ${shortLink('Pipeline', info)}) and executes it
 on a given input. In general, these pipeline steps are analysis agnostic and may use arbitrary input and ordering. However, two important and predefined pipelines, 
-the ${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)} and the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} adequatly cover the most common analysis steps (differentiated only by the [Engine](${FlowrWikiBaseRef}/Engines) used).
+the ${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)} and the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)} adequately cover the most common analysis steps (differentiated only by the [Engine](${FlowrWikiBaseRef}/Engines) used).
 
 ${block({
 		type:    'TIP',
@@ -195,7 +195,7 @@ to produce a new dataflow information to pass upwards in the fold. The ${shortLi
 * control flow information in ${shortLink('DataflowCfgInformation', info)} which is used to enrich the dataflow information with control flow information
 * and sets of currently ingoing (read), outgoing (write) and unknown ${shortLink('IdentifierReference', info)}s.
 
-While, all of them are essentially empty, when processing an "uninteresting leaf", handling a constant is slightly more interesting with ${shortLink('processValue', info)}:
+While all of them are essentially empty, when processing an "uninteresting leaf", handling a constant is slightly more interesting with ${shortLink('processValue', info)}:
 
 ${printHierarchy({ program, info, root: 'processValue', maxDepth: 2, openTop: true })}
 
@@ -205,14 +205,14 @@ which holds a reference to the constant.
 But again, this is not very interesting. When looking at the {shortLink('processors', info)} object you may be confused by
 many lines just mapping the node to the ${shortLink('processAsNamedCall', info)} function.
 This is because during the dataflow analysis we actually "desugar" the AST, and treat syntax constructs like binary operators (e.g. \`x + y\`) as function calls (e.g. \`\` \`+\`(x, y) \`\`).
-We do this because R does it the same way, and allows to even overwrite these operators (including \`if\`, \`<-\`, etc.) by their name.
+We do this, because R does it the same way, and allows to even overwrite these operators (including \`if\`, \`<-\`, etc.) by their name.
 By treating them like R, as function calls, we get support for these overwrites for free, courtesy of flowR's call resolution.
 
 But where are all of the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](${FlowrWikiBaseRef}/Interface#configuring-flowr).
 FlowR's heart and soul resides in the ${shortLink('DefaultBuiltinConfig', info)} object, which is used to configure the built-in environment
 by mapping function names to ${shortLink('BuiltInProcessorMapper', info)} functions.
-There you can find functions like ${shortLink(processAccess.name, info)} which handles the (subsetting) access to a variable, 
+There you can find functions like ${shortLink(processAccess.name, info)} which handles the (subset) access to a variable, 
 or ${shortLink(processForLoop.name, info)} which handles the primitive for loop construct (whenever it is not overwritten).
 
 Just as an example, we want to have a look at the ${shortLink(processRepeatLoop.name, info)} function, as it is one of the simplest built-in processors
@@ -225,9 +225,9 @@ as well as the passed arguments. The \`rootId\` refers to what caused th call to
 while \`data\` is our good old backpack, carrying all the information we need to produce a dataflow graph.
 
 After a couple of common sanity checks at the beginning which we use to check whether the repeat loop is used in a way that we expect,
-we start by issuing the fold continouation by procesing its arguments. Given we expect \`repeat <body>\`, we expect only a single argument.
-During the processing we make sure to stich in the correct control dependencies, adding the repeat loop to the mix.
-For just the repeat loop the sticthing is actually not necessary, but this way the handling is consistent for all looping constructs.
+we start by issuing the fold continuation by processing its arguments. Given we expect \`repeat <body>\`, we expect only a single argument.
+During the processing we make sure to stitch in the correct control dependencies, adding the repeat loop to the mix.
+For just the repeat loop the stitching is actually not necessary, but this way the handling is consistent for all looping constructs.
 
 Afterwards, we tak the \`processedArguments\`, perform another round of sanity checks and then use two special functions to apply the
 semantic effects of the repeat loop. We first use one of flowR's linkers to

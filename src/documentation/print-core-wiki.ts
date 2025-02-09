@@ -26,7 +26,7 @@ import { processForLoop } from '../dataflow/internal/process/functions/call/buil
 import { processRepeatLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-repeat-loop';
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { staticSlicing } from '../slicing/static/static-slicer';
-import { filterOutLoopExitPoints } from '../dataflow/info';
+import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -176,7 +176,7 @@ The core of the dataflow graph generation works as a stateful fold, mainly contr
 and its ${shortLink('processors', info)} object which maps each type in the normalized AST to an appropriate handler.
 
 To understand these handlers, let's start with the simplest one, ${shortLink(processUninterestingLeaf.name, info)} signals that 
-we do not care about this node and just produce an empty dataflow information. Looking at the function reveals a view things:
+we do not care about this node and just produce an empty dataflow information (using ${shortLink(initializeCleanDataflowInformation.name, info)}). Looking at the function reveals a view things:
 
 ${printHierarchy({ program, info, root: 'processUninterestingLeaf', maxDepth: 2, openTop: true })}
 

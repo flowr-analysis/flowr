@@ -40,7 +40,7 @@ describe.sequential('List Name Based Access', withShell(shell => {
 			(data) => emptyGraph()
 				.defineVariable('1@numbers')
 				.reads('2@numbers', '1@numbers')
-				.readsQuery(Q.varInLine('$', 2).last(), '9', data),
+				.readsQuery({ query: Q.varInLine('$', 2).last() }, { target: '9' }, data),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,

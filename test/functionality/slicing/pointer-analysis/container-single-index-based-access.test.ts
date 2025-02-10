@@ -3,37 +3,70 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { useConfigForTest } from '../../_helper/config';
 import { label } from '../../_helper/label';
 
+const enum AccessType {
+	DoubleBracket = '[[',
+	SingleBracket = '[',
+	Dollar = '$',
+}
+
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 	describe.each(
 		[
-			{ container: 'c',    type: '[[', hasNamedArguments: false },
-			{ container: 'c',    type: '[',  hasNamedArguments: false },
-			{ container: 'list', type: '[[', hasNamedArguments: false },
-			{ container: 'list', type: '[',  hasNamedArguments: false },
-			{ container: 'list', type: '[[', hasNamedArguments: true  },
-			{ container: 'list', type: '[',  hasNamedArguments: true  },
+			{ container: 'c',    type: AccessType.DoubleBracket, hasNamedArguments: false },
+			{ container: 'c',    type: AccessType.SingleBracket, hasNamedArguments: false },
+			{ container: 'list', type: AccessType.DoubleBracket, hasNamedArguments: false },
+			{ container: 'list', type: AccessType.SingleBracket, hasNamedArguments: false },
+			{ container: 'list', type: AccessType.DoubleBracket, hasNamedArguments: true  },
+			{ container: 'list', type: AccessType.SingleBracket, hasNamedArguments: true  },
+			{ container: 'list', type: AccessType.Dollar,        hasNamedArguments: true  },
 		]
 	)('Access for container $container using $type and hasNamedArguments $hasNamedArguments', ({ container, type, hasNamedArguments }) => {
+		let accessCapability: 'double-bracket-access' | 'single-bracket-access' | 'dollar-access';
+		switch(type) {
+			case AccessType.DoubleBracket:
+				accessCapability = 'double-bracket-access';
+				break;
+			case AccessType.SingleBracket:
+				accessCapability = 'single-bracket-access';
+				break;
+			case AccessType.Dollar:
+				accessCapability = 'dollar-access';
+				break;
+		}
+
 		const basicCapabilities = [
 			'name-normal',
 			'function-calls',
 			hasNamedArguments ? 'named-arguments' : 'unnamed-arguments',
 			'subsetting-multiple',
-			type === '[[' ? 'double-bracket-access' : 'single-bracket-access'
+			accessCapability,
 		] as const;
 		useConfigForTest({ solver: { pointerTracking: true } });
 
 		/**
 		 * Creates access string
 		 * 
-		 * Example for name='numbers', index=1 and type='[[':
+		 * Example for name='numbers', index=1 and type=AccessType.DoubleBracket:
 		 * ```r
 		 * numbers[[1]]
 		 * ```
 		 */
 		function acc(name: string, index: number) {
-			const closingBracket = type === '[[' ? ']]' : ']';
-			return `${name}${type}${index}${closingBracket}`;
+			let closingBracket: string;
+			switch(type) {
+				case AccessType.DoubleBracket:
+					closingBracket = ']]';
+					break;
+				case AccessType.SingleBracket:
+					closingBracket = ']';
+					break;
+				case AccessType.Dollar:
+					closingBracket = '';
+					break;
+			}
+			const indexString = type === AccessType.Dollar ? `arg${index}` : index.toString();
+
+			return `${name}${type}${indexString}${closingBracket}`;
 		}
 
 		/**

@@ -200,8 +200,29 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), type);
 	}
 
+	private queryHelper(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<Pipeline>, type: EdgeType) {
+		let fromId: NodeId;
+		if('nodeId' in from) {
+			fromId = from.nodeId;
+		} else {
+			const result = runSearch(from.query, data);
+			guard(result.length == 1, 'from query result should yield only one node');
+			fromId = result[0].node.info.id;
+		}
+
+		let toIds: DataflowGraphEdgeTarget;
+		if('target' in to) {
+			toIds = to.target;
+		} else {
+			const result = runSearch(to.query, data);
+			toIds = result.map(r => r.node.info.id);
+		}
+
+		return this.edgeHelper(fromId, toIds, type);
+	}
+
 	/**
-	 * Adds a **read edge** (E1).
+	 * Adds a **read edge**.
 	 *
 	 * @param from - NodeId of the source vertex
 	 * @param to   - Either a single or multiple target ids.
@@ -211,14 +232,19 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this.edgeHelper(from, to, EdgeType.Reads);
 	}
 
-	public readsQuery<P extends Pipeline>(from: FlowrSearchLike, to: DataflowGraphEdgeTarget, data: FlowrSearchInput<P>) {
-		const result = runSearch(from, data);
-		guard(result.length == 1, 'query result should yield only one node');
-		return this.reads(result[0].node.info.id, to);
+	/**
+	 * Adds a **read edge** with a query for the from and/or to vertices.
+	 * 
+	 * @param from - Either a node id or a query to find the node id.
+	 * @param to - Either a node id or a query to find the node id.
+	 * @param data - The data to search in i.e. the dataflow graph.
+	 */
+	public readsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.Reads);
 	}
 
 	/**
-	 * Adds a **defined-by edge** (E2), with from as defined variable, and to
+	 * Adds a **defined-by edge** with from as defined variable, and to
 	 * as a variable/function contributing to its definition.
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
@@ -228,7 +254,16 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a **call edge** (E5) with from as caller, and to as callee.
+	 * Adds a **defined-by edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public definedByQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.DefinedBy);
+	}
+
+	/**
+	 * Adds a **call edge** with from as caller, and to as callee.
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
@@ -237,7 +272,16 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a **return edge** (E6) with from as function, and to as exit point.
+	 * Adds a **call edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public callsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.Calls);
+	}
+
+	/**
+	 * Adds a **return edge** with from as function, and to as exit point.
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
@@ -246,12 +290,30 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a **defines-on-call edge** (E7) with from as variable, and to as its definition
+	 * Adds a **return edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public returnsQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.Returns);
+	}
+
+	/**
+	 * Adds a **defines-on-call edge** with from as variable, and to as its definition
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.DefinesOnCall);
+	}
+
+	/**
+	 * Adds a **defines-on-call edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public definesOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.DefinesOnCall);
 	}
 
 	/**
@@ -264,12 +326,30 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds an **argument edge** (E9) with from as function call, and to as argument.
+	 * Adds a **defined-by-on-call edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public definedByOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.DefinedByOnCall);
+	}
+
+	/**
+	 * Adds an **argument edge** with from as function call, and to as argument.
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public argument(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.Argument);
+	}
+
+	/**
+	 * Adds a **argument edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public argumentQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.Argument);
 	}
 
 	/**
@@ -282,12 +362,30 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
+	 * Adds a **non-standard evaluation edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public nseQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.NonStandardEvaluation);
+	}
+
+	/**
 	 * Adds a **side-effect-on-call edge** with from as vertex, and to as vertex.
 	 *
 	 * @see {@link DataflowGraphBuilder#reads|reads} for parameters.
 	 */
 	public sideEffectOnCall(from: NodeId, to: DataflowGraphEdgeTarget) {
 		return this.edgeHelper(from, to, EdgeType.SideEffectOnCall);
+	}
+
+	/**
+	 * Adds a **side-effect-on-call edge** with a query for the from and/or to vertices.
+	 * 
+	 * @see {@link DataflowGraphBuilder#readsQuery|readsQuery} for parameters.
+	 */
+	public sideEffectOnCallQuery<P extends Pipeline>(from: FromQueryParam, to: ToQueryParam, data: FlowrSearchInput<P>) {
+		return this.queryHelper(from, to, data, EdgeType.SideEffectOnCall);
 	}
 
 	/**
@@ -307,3 +405,19 @@ export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
 	}
 	return (got?.config as { hasUnknownSideEffects: LinkTo<RegExp> | undefined }).hasUnknownSideEffects;
 }
+
+interface Query {
+	query: FlowrSearchLike;
+}
+
+type FromQueryParam =
+  | {
+      nodeId: NodeId;
+    }
+  | Query;
+
+type ToQueryParam =
+  | {
+      target: DataflowGraphEdgeTarget;
+    }
+  | Query;

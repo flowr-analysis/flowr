@@ -45,7 +45,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					(data) =>  emptyGraph()
 						.defineVariable('1@numbers')
 						.reads('2@numbers', '1@numbers')
-						.readsQuery(Q.varInLine(type, 2).last(), '9', data),
+						.readsQuery({ query: Q.varInLine(type, 2).last() }, { target: '9' }, data),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,
@@ -141,7 +141,7 @@ describe.sequential('List Single Index Based Access', withShell(shell => {
 					(data) => emptyGraph()
 						.defineVariable('1@numbers')
 						.reads('2@numbers', '1@numbers')
-						.readsQuery(Q.varInLine(type, 2).last(), '5', data),
+						.readsQuery({ query: Q.varInLine(type, 2).last() }, { target: '5' }, data),
 					{
 						expectIsSubgraph:      true,
 						resolveIdsAsCriterion: true,

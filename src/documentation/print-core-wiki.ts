@@ -1,8 +1,6 @@
 import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
-
-
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
@@ -28,8 +26,10 @@ import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linke
 import { staticSlicing } from '../slicing/static/static-slicer';
 import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
-import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, createNormalizePipeline } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
+import { jsonReplacer } from '../util/json';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -168,7 +168,7 @@ Especially when you are just starting with flowR, we recommend to use the REPL t
 
 ${block({ 
 		type:    'NOTE', 
-		content: 'Maybe you are left with the question on what is tree-sitter doing different. Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+		content: 'Maybe you are left with the question on what is tree-sitter doing differently. Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine:
@@ -193,19 +193,47 @@ ${await (async() => {
 
 ### Parsing
 
-This uses the ${shortLink(RShell.name, info)} to parse the input program.
+The parsing step uses the ${shortLink(RShell.name, info)} to parse the input program (or, of course, the ${shortLink(TreeSitterExecutor.name, info)} when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines)).
 To speed up the process, we use the ${shortLink(initCommand.name, info)} function to compile the parsing function and rely on a 
-custom serialization.
+custom serialization, which outputs the information in a CSV-like format.
+This means, that the ${getReplCommand('parse')} command actually kind-of lies to you, as it does pretty print the serialized version which looks more like the following (this uses the ${shortLink(retrieveParseDataFromRCode.name, info)} function with the sample code \`${sampleCode}\`):
 
-_This is currently work in progress._
+${details(`Raw parse output for <code>${sampleCode}</code>`, `For the code \`${sampleCode}\`:\n\n` + codeBlock('csv',await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell)))}
 
+Beautiful, right? I thought so too! In fact, the output is a little bit nicer, when we put it into a table-format and add the appropriate headers:
+
+<details open>
+<summary>Parse output in table format</summary>
+
+For the code \`${sampleCode}\`:
+
+| line-start | col-start | line-end | col-end | id | parent | token type | terminal | text |
+| ---------: | --------: | -------: | ------: | -: | -----: | ---------- | -------- | ---- |
+${await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell).then(data =>
+		(JSON.parse('[' + data + ']') as string[][]).map(([line1, col1, line2, col2, id, parent, type, terminal, text]) => `| ${line1} | ${col1} | ${line2} | ${col2} | ${id} | ${parent} | \`${type}\` | ${terminal} | ${text} |`).join('\n')
+	)}
+
+</details>
+
+In fact, this data is merely, what R's [\`base::parse\`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/parse.html) and [\`utils::getParseData\`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/getParseData.html) functions provide.
+We then use this data in the [normalization](#normalization) step to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
 
 ### Normalization
 
 The normalization takes the output from the previous steps and uses the ${shortLink(prepareParsedData.name, info)} and 
-${shortLink(convertPreparedParsedData.name, info)} functions to
-first transform the serialized parsing output to an object. Next, ${shortLink(normalizeRootObjToAst.name, info)} transforms this object to
-an normalized AST and ${shortLink(decorateAst.name, info)} adds additional information to the AST (like roles, ids, depth, etc.).
+${shortLink(convertPreparedParsedData.name, info)} functions to first transform the serialized parsing output to an object. 
+Next, ${shortLink(normalizeRootObjToAst.name, info)} transforms this object to a normalized AST and ${shortLink(decorateAst.name, info)} adds additional information to the AST (like roles, ids, depth, etc.).
+While looking at the mermaid visualization of such an AST is nice and usually sufficient, looking at the objects themselves shows you the full range of information the AST provides (all encompassed within the ${shortLink('RNode', info)} type).
+
+Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
+
+${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json', 
+		JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+	))}
+
+There is... a lot! We get the type from the ${shortLink('RType', info)} enum, the lexeme, location information, an id, the children of the node, and their parents.
+While the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page provides you with information on how to interpret this data, we will focus on how we get it from the
+table provided by the [parsing](#parsing) step.
 
 _This is currently work in progress._
 

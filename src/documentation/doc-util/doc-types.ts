@@ -364,8 +364,11 @@ export function implSnippet(node: TypeElementInSource | undefined, program: ts.P
 	const sep = node.comments ? '  \n' : '\n';
 
 	let text = node.comments?.join('\n') ?? '';
+	if(text.trim() !== '') {
+		text = '  ' + text;
+	}
 	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n${indent}<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
 	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
@@ -409,7 +412,7 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 	}
 }
 
-function retrieveNode(name: string, hierarchy: TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split('::');
@@ -429,13 +432,13 @@ function retrieveNode(name: string, hierarchy: TypeElementInSource[]): [string |
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  */
-export function shortLink(name: string, hierarchy: TypeElementInSource[], codeStyle = true): string {
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
 		return '';
 	}
 	const [pkg, mainName, node] = res;
-	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/"/g, '\'') ?? '';
+	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `[${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<b>${mainName}</b>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name

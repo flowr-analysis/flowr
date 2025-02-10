@@ -229,7 +229,7 @@ ${await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell).then(dat
 
 </details>
 
-In fact, this data is merely, what R’s [\`base::parse\`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/parse.html) and [\`utils::getParseData\`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/getParseData.html) functions provide.
+In fact, this data is merely what R’s [\`base::parse\`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/parse.html) and [\`utils::getParseData\`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/getParseData.html) functions provide.
 We then use this data in the [normalization](#normalization) step to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
 
 If you are interested in the raw token types that we may encounter, have a look at the ${shortLink('RawRType', info)} enum.

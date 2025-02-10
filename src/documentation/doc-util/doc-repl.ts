@@ -2,13 +2,13 @@ import type { ReplCommand, ReplOutput } from '../../cli/repl/commands/repl-main'
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { getReplCommand } from './doc-cli-option';
 import { textWithTooltip } from '../../util/html-hover-over';
-import type { RShell } from '../../r-bridge/shell';
 import { replProcessAnswer } from '../../cli/repl/core';
 import { voidFormatter } from '../../util/ansi';
 import { DockerName } from './doc-docker';
 import { rawPrompt } from '../../cli/repl/prompt';
 import { codeBlock } from './doc-code';
 import { versionReplString } from '../../cli/repl/print-version';
+import type { KnownParser } from '../../r-bridge/parser';
 
 function printHelpForScript(script: [string, ReplCommand], starredVersion?: ReplCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
@@ -54,6 +54,8 @@ export interface DocumentReplSessionOptions {
 	allowRSessionAccess?: boolean;
 	/** defaults to false and opens the details section by default */
 	openOutput?:          boolean;
+	/** additional arguments to pass to the repl */
+	args?:                string;
 }
 
 export interface DocumentReplCommand {
@@ -61,7 +63,7 @@ export interface DocumentReplCommand {
 	description: string;
 }
 
-export async function documentReplSession(shell: RShell, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
+export async function documentReplSession(parser: KnownParser, commands: readonly DocumentReplCommand[], options?: DocumentReplSessionOptions): Promise<string> {
 	const collect: Collect[] = [];
 
 
@@ -76,14 +78,14 @@ export async function documentReplSession(shell: RShell, commands: readonly Docu
 				entry.lines.push(msg);
 			}
 		};
-		await replProcessAnswer(collectingOutput, command.command, shell, options?.allowRSessionAccess ?? false);
+		await replProcessAnswer(collectingOutput, command.command, parser, options?.allowRSessionAccess ?? false);
 		collect.push(entry);
 	}
 
 	let result = '';
-	let cache = options?.hideEntry ?  '' : `$ docker run -it --rm ${DockerName}\n`;
+	let cache = options?.hideEntry ?  '' : `$ docker run -it --rm ${DockerName} ${options?.args ? options?.args + ' ' : ''}# or npm run flowr ${options?.args ? '-- ' + options?.args : ''}\n`;
 	if(!options?.hideEntry) {
-		cache += await versionReplString(shell) + '\n';
+		cache += await versionReplString(parser) + '\n';
 	}
 
 	for(const { command, lines } of collect) {

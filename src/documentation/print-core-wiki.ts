@@ -4,9 +4,9 @@ import { LogLevel } from '../util/log';
 
 
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { block } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
-import { getReplCommand } from './doc-util/doc-cli-option';
+import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolderAsMermaid, mermaidHide, printHierarchy, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import { codeBlock } from './doc-util/doc-code';
@@ -27,13 +27,16 @@ import { processRepeatLoop } from '../dataflow/internal/process/functions/call/b
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
 import { staticSlicing } from '../slicing/static/static-slicer';
 import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
+import { processDataflowFor } from '../dataflow/processor';
+import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	const sampleCode = 'x <- 1; print(x)';
 	const { info, program } = getTypesFromFolderAsMermaid({
 		rootFolder:  path.resolve('./src'),
-		typeName:    'RShell',
+		typeName:    RShell.name,
 		inlineTypes: mermaidHide
 	});
 
@@ -47,7 +50,15 @@ ${block({
 		type:    'NOTE',
 		content: `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the [Interface](${FlowrWikiBaseRef}/Interface#using-the-repl) wiki page).
-We recommend to use commands like ${getReplCommand('dataflow', true)} or ${getReplCommand('parse')} to explore the output of flowR using your own samples.
+We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow', true)} to explore the output of flowR using your own samples.
+As a quickstart you may use:
+
+${await documentReplSession(shell, [{
+		command:     `:parse "${sampleCode}"`,
+		description: `Retrieves the AST from the ${shortLink(RShell.name,info)}.`
+	}])}
+	
+If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
 `
 	})}
 	
@@ -85,7 +96,8 @@ const result = await executor.allRemainingSteps();
 `)}
 
 This is, roughly, what the ${shortLink('replGetDataflow', info)} function does for the ${getReplCommand('dataflow')} REPL command when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
-
+In general, however, most flowR-internal function which are tasked with generating dataflow prefer the use of ${createDataflowPipeline.name} as this function
+automatically selects the correct pipeline based on the engine used.
 
 ### Understanding Pipeline Steps
 
@@ -96,7 +108,7 @@ using the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) of the program.
 
 ### Shape of a Pipeline Step
 
-Using code, you can provide an arbitrary pipeline step to the executor, as long as it complies with the ${shortLink('IPipelineStep', info)} interface:
+Using code, you can provide an arbitrary pipeline step to the executor, as long as it implements the ${shortLink('IPipelineStep', info)} interface:
 
 ${printHierarchy({ program, info, root: 'IPipelineStep', maxDepth: 0 })}
 
@@ -108,7 +120,7 @@ The pipeline executor should do a good job of scheduling these steps, and inferr
 ${block({
 		type:    'NOTE',
 		content: `
-Under the hood there is a subtype of a step called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise).
+Under the hood there is a step-subtype called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise, re-adding debug info, ...).
 To mark a step as a decoration, you can use the \`decorates\` field in the ${shortLink('IPipelineStepOrder', info)} interface.
 However, as such steps are currently not relevant for any of flowR's core analyses we will not go into detail here. It suffices to know how "real" steps work.
 `
@@ -117,8 +129,8 @@ However, as such steps are currently not relevant for any of flowR's core analys
 ## How flowR Produces Dataflow Graphs
 
 This section focuses on the generation of a [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) from a given R program, using the [RShell Engine](${FlowrWikiBaseRef}/Engines) and hence the 
-${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)}. The [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) uses the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)}) uses 
-a slightly different pipeline, replacing the parser with the integrated tree-sitter parser and hence uses a slightly adapted normalization step to produce a similar [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
+${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)}. The [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) uses the ${shortLink('TREE_SITTER_DATAFLOW_PIPELINE', info)}), 
+which replaces the parser with the integrated tree-sitter parser and hence uses a slightly adapted normalization step to produce a similar [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
 The [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) should be the same for both engines (although [\`tree-sitter\`](${FlowrWikiBaseRef}/Engines) is faster and may be able to parse more files).
 
 ### Overview
@@ -129,7 +141,7 @@ ${printHierarchy({ program, info, root: 'DEFAULT_DATAFLOW_PIPELINE', maxDepth: 0
 
 We can see that it relies on three steps:
 
-1. **${shortLink('PARSE_WITH_R_SHELL_STEP', info, false)}** ([parsing](#parsing)): Uses the ${shortLink('RShell', info)} to parse the input program.\\
+1. **${shortLink('PARSE_WITH_R_SHELL_STEP', info, false)}** ([parsing](#parsing)): Uses the ${shortLink(RShell.name, info)} to parse the input program.\\
    _Its main function linked as the processor is the ${shortLink(parseRequests.name, info, false)} function._
 2. **${shortLink('NORMALIZE', info, false)}** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST)).\\
    _Its main function linked as the processor is the ${shortLink(normalize.name, info, false)} function._
@@ -140,7 +152,7 @@ To explore these steps, let's use the REPL with the (very simple and contrived) 
 
 ${await documentReplSession(shell, [{
 		command:     `:parse "${sampleCode}"`,
-		description: `Parse the R code \`${sampleCode}\` and retrieve the AST from the ${shortLink('RShell',info)}.`
+		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(RShell.name,info)}. See the ${shortLink(initCommand.name, info)} function for more information on how we request a parse.`
 	},
 	{
 		command:     `:normalize* "${sampleCode}"`,	
@@ -152,9 +164,36 @@ ${await documentReplSession(shell, [{
 	}
 	], { openOutput: false })}
 	
+Especially when you are just starting with flowR, we recommend to use the REPL to explore the output of the different steps.
+
+${block({ 
+		type:    'NOTE', 
+		content: 'Maybe you are left with the question on what is tree-sitter doing different. Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+
+Essentially not much! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
+Below you can see the Repl commands for the tree-sitter engine:
+
+${await (async() => {
+		const exec = new TreeSitterExecutor(); 
+		return await documentReplSession(exec, [{
+			command:     `:parse "${sampleCode}"`,
+			description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(TreeSitterExecutor.name, info)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
+		},
+		{
+			command:     `:normalize* "${sampleCode}"`,
+			description: `Following the link output should show the following:\n${await printNormalizedAstForCode(exec, sampleCode, { showCode: false })}`
+		},
+		{
+			command:     `:dataflow* "${sampleCode}"`,
+			description: `Following the link output should show the following:\n${await printDfGraphForCode(exec, sampleCode, { showCode: false })}`
+		}], { openOutput: false, args: '--default-engine tree-sitter' });
+	}
+	)()}
+`) })}
+
 ### Parsing
 
-This uses the ${shortLink('RShell', info)} to parse the input program.
+This uses the ${shortLink(RShell.name, info)} to parse the input program.
 To speed up the process, we use the ${shortLink(initCommand.name, info)} function to compile the parsing function and rely on a 
 custom serialization.
 
@@ -172,11 +211,15 @@ _This is currently work in progress._
 
 ### Dataflow Graph Generation
 
-The core of the dataflow graph generation works as a stateful fold, mainly controlled by the ${shortLink(produceDataFlowGraph.name, info)} function
-and its ${shortLink('processors', info)} object which maps each type in the normalized AST to an appropriate handler.
+The core of the dataflow graph generation works as a "stateful [fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function))", 
+which uses the tree-like structure of the AST to combine the dataflow information of the children, while tracking the currently active variables and control flow 
+information as a "backpack" (state).	
+We use the ${shortLink(produceDataFlowGraph.name, info)} function as an entry point to the dataflow generation (the actual fold entry is in ${shortLink(processDataflowFor.name, info)}).
+The function is mainly backed by its ${shortLink('processors', info)} object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 
 To understand these handlers, let's start with the simplest one, ${shortLink(processUninterestingLeaf.name, info)} signals that 
-we do not care about this node and just produce an empty dataflow information (using ${shortLink(initializeCleanDataflowInformation.name, info)}). Looking at the function reveals a view things:
+we do not care about this node and just produce an empty dataflow information (using ${shortLink(initializeCleanDataflowInformation.name, info)}). 
+Looking at the function showcases the general structure of a processor:
 
 ${printHierarchy({ program, info, root: 'processUninterestingLeaf', maxDepth: 2, openTop: true })}
 
@@ -191,18 +234,18 @@ Essentially, these processors should use the dataflow information from their chi
 to produce a new dataflow information to pass upwards in the fold. The ${shortLink('DataflowInformation', info)} contains:
 
 * the ${shortLink('DataflowGraph', info)} of the current sub-tree 
-* the currently active ${shortLink('REnvironmentInformation', info)} as an abstraction of all active definitions linking to potential definition locations
+* the currently active ${shortLink('REnvironmentInformation', info)} as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in ${shortLink('DataflowCfgInformation', info)} which is used to enrich the dataflow information with control flow information
 * and sets of currently ingoing (read), outgoing (write) and unknown ${shortLink('IdentifierReference', info)}s.
 
-While all of them are essentially empty, when processing an "uninteresting leaf", handling a constant is slightly more interesting with ${shortLink('processValue', info)}:
+While all of them are essentially empty when processing an "uninteresting leaf", handling a constant is slightly more interesting with ${shortLink('processValue', info)}:
 
 ${printHierarchy({ program, info, root: 'processValue', maxDepth: 2, openTop: true })}
 
 Please note, that we add the [value vertex](${FlowrWikiBaseRef}/Dataflow-Graph#value-vertex) to the newly created dataflow graph,
 which holds a reference to the constant. 
 
-But again, this is not very interesting. When looking at the {shortLink('processors', info)} object you may be confused by
+But again, this is not very interesting. When looking at the ${shortLink('processors', info)} object you may be confused by
 many lines just mapping the node to the ${shortLink('processAsNamedCall', info)} function.
 This is because during the dataflow analysis we actually "desugar" the AST, and treat syntax constructs like binary operators (e.g. \`x + y\`) as function calls (e.g. \`\` \`+\`(x, y) \`\`).
 We do this, because R does it the same way, and allows to even overwrite these operators (including \`if\`, \`<-\`, etc.) by their name.
@@ -221,7 +264,7 @@ we have:
 ${printHierarchy({ program, info, root: 'processRepeatLoop', maxDepth: 2, openTop: true })}
 
 Similar to any other built-in processor, we get the name of the function call which caused us to land here,
-as well as the passed arguments. The \`rootId\` refers to what caused th call to happen (and is usually jus the function call),
+as well as the passed arguments. The \`rootId\` refers to what caused the call to happen (and is usually just the function call),
 while \`data\` is our good old backpack, carrying all the information we need to produce a dataflow graph.
 
 After a couple of common sanity checks at the beginning which we use to check whether the repeat loop is used in a way that we expect,
@@ -241,6 +284,7 @@ to produce a new dataflow information.
 
 Given the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), you can do a lot more!
 You can issue [queries](${FlowrWikiBaseRef}/Query-API) to explore the graph, or, for example, request a [static backward slice](#static-backward-slicing).
+Of course, all of these endeavors work not just with the ${shortLink(RShell.name, info)} but also with the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines). 
 
 ### Static Backward Slicing 
 
@@ -264,12 +308,14 @@ ${await documentReplSession(shell, [{
 
 /** if we run this script, we want a Markdown representation of the capabilities */
 if(require.main === module) {
-	setMinLevelOfAllLogs(LogLevel.Fatal);
+	void TreeSitterExecutor.initTreeSitter().then(() => {
+		setMinLevelOfAllLogs(LogLevel.Fatal);
 
-	const shell = new RShell();
-	void getText(shell).then(str => {
-		console.log(str);
-	}).finally(() => {
-		shell.close();
+		const shell = new RShell();
+		void getText(shell).then(str => {
+			console.log(str);
+		}).finally(() => {
+			shell.close();
+		});
 	});
 }

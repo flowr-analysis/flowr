@@ -108,6 +108,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * Construct a new pipeline executor.
 	 * The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration} of each step in the `pipeline`.
 	 *
+	 * Please see {@link createDataflowPipeline} and friends for engine agnostic shortcuts to create a pipeline executor.
+	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
 	 */

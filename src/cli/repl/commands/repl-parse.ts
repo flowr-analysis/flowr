@@ -115,6 +115,8 @@ function retrieveLocationString(locationRaw: JsonEntry) {
 	const extracted = extractLocation(locationRaw);
 	if(extracted[0] === extracted[2] && extracted[1] === extracted[3]) {
 		return ` (${extracted[0]}:${extracted[1]})`;
+	} else if(extracted[0] === extracted[2]) {
+		return ` (${extracted[0]}:${extracted[1]}─${extracted[3]})`;
 	} else {
 		return ` (${extracted[0]}:${extracted[1]}─${extracted[2]}:${extracted[3]})`;
 	}

@@ -1,7 +1,9 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
-import { PipelineExecutor } from '../../core/pipeline-executor';
-import { createDataflowPipeline, DEFAULT_NORMALIZE_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
+import {
+	createDataflowPipeline,
+	createNormalizePipeline
+} from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -11,6 +13,8 @@ import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { printAsMs } from '../../util/time';
+import type { KnownParser } from '../../r-bridge/parser';
+import { FlowrWikiBaseRef } from './doc-files';
 
 export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
@@ -24,15 +28,14 @@ export interface PrintNormalizedAstOptions {
 	readonly showCode?: boolean;
 	readonly prefix?:   string;
 }
-export async function printNormalizedAstForCode(shell: RShell, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
+export async function printNormalizedAstForCode(parser: KnownParser, code: string, { showCode = true, prefix = 'flowchart TD\n' }: PrintNormalizedAstOptions = {}) {
 	const now = performance.now();
-	const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-		parser:  shell,
+	const result = await createNormalizePipeline(parser, {
 		request: requestFromInput(code)
 	}).allRemainingSteps();
 	const duration = performance.now() - now;
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the R&nbsp;shell) within the generation environment.`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
 
 	return '\n\n' +  printNormalizedAst(result.normalize.ast, prefix) + (showCode ? `
 <details>

@@ -384,7 +384,7 @@ ${await documentReplSession(shell, [{
 
 When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
 While coding, however, you can use the ${setMinLevelOfAllLogs.name} function to set the minimum level of logs to be displayed (this works with the ${shortLink(FlowrLogger.name, info)} abstraction).
-In general, you can configure the levels of individual logs, such as the general ${shortLink('log', info)} or the ${shortLink('parseLog', info)}.
+In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${shortLink('getActiveLog', info)}) or the ${shortLink('parseLog', info)}.
 Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
 If you are an implementor and want to add logging, please make sure that there are no larger runtime impliciations when logging is disabled. 
 Have a look at the ${shortLink(expensiveTrace.name, info)} function for example, which uses a function to generate the log message only when the log level is reached.

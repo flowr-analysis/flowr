@@ -1,18 +1,50 @@
 import type { REnvironmentInformation } from '../dataflow/environments/environment';
-import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
+import type { Identifier, InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
 	ContainerIndex,
 	ContainerIndices,
-	ContainerIndicesCollection } from '../dataflow/graph/vertex';
+	ContainerIndicesCollection, 
+	IndexIdentifier,
+} from '../dataflow/graph/vertex';
 import {
+	isAccessed,
 	isParentContainerIndex
 } from '../dataflow/graph/vertex';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RFunctionArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+
+/**
+ * Returns the accessed and access argument of an access operation by filtering the operation arguments.
+ */
+export function getAccessOperands<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+): {
+	accessedArg: RArgument<OtherInfo & ParentInformation> | undefined,
+	accessArg:   RArgument<OtherInfo & ParentInformation> | undefined,
+} {
+	const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
+	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
+	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
+	return { accessedArg, accessArg };
+}
+
+/**
+ * Resolves the passed name in the passed environment and returns the indicesCollection of the resolved definitions.
+ * 
+ * @param name - Name to resolve
+ * @param environment - Environment in which name is resolved
+ * @returns The indicesCollection of the resolved definitions
+ */
+export function resolveIndicesByName(name: Identifier, environment: REnvironmentInformation) {
+	const definitions = resolveByName(name, environment);
+	return definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
+}
 
 /**
  * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.
@@ -26,10 +58,10 @@ export function resolveSingleIndex(
 	accessedArg: { lexeme: string },
 	accessArg: { lexeme: string },
 	environment: REnvironmentInformation,
+	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
-	const definitions = resolveByName(accessedArg.lexeme, environment);
-	const indicesCollection = definitions?.flatMap(def => (def as InGraphIdentifierDefinition)?.indicesCollection ?? []);
-	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg);
+	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment);
+	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
 	return accessedIndicesCollection;
 }
 
@@ -43,10 +75,11 @@ export function resolveSingleIndex(
 export function filterIndices(
 	indicesCollection: ContainerIndicesCollection,
 	accessArg: { lexeme: string },
+	isIndexBasedAccess: boolean,
 ): ContainerIndicesCollection {
 	let accessedIndicesCollection: ContainerIndicesCollection = undefined;
 	for(const indices of indicesCollection ?? []) {
-		const filteredIndices = indices.indices.filter(index => accessArg.lexeme === index.lexeme);
+		const filteredIndices = indices.indices.filter(index => isAccessed(index, accessArg.lexeme, isIndexBasedAccess));
 
 		if(filteredIndices.length == 0) {
 			continue;
@@ -77,6 +110,7 @@ export function filterIndices(
 export function constructNestedAccess<OtherInfo>(
 	accessedArg: RAccess<OtherInfo & ParentInformation>,
 	leafIndices: ContainerIndices,
+	constructIdentifier: (arg: RArgument<OtherInfo & ParentInformation>) => IndexIdentifier,
 ): ContainerIndices[] {
 	const accessed = accessedArg.accessed;
 	const accesses = accessedArg.access.filter(arg => arg !== EmptyArgument).map(arg => arg as RArgument<OtherInfo & ParentInformation>);
@@ -86,7 +120,7 @@ export function constructNestedAccess<OtherInfo>(
 		const newIndices: ContainerIndices = {
 			indices: [
 				{
-					lexeme:     access.lexeme,
+					identifier: constructIdentifier(access),
 					nodeId:     access.info.id,
 					subIndices: [ leafIndices ],
 				}
@@ -95,7 +129,7 @@ export function constructNestedAccess<OtherInfo>(
 		};
 
 		if(accessed.type === RType.Access) {
-			const nestedIndices = constructNestedAccess(accessed, newIndices);
+			const nestedIndices = constructNestedAccess(accessed, newIndices, constructIdentifier);
 			indices.push(...nestedIndices);
 		} else {
 			indices.push(newIndices);

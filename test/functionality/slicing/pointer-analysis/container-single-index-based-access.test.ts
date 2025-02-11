@@ -2,37 +2,21 @@ import { describe } from 'vitest';
 import { assertSliced, withShell } from '../../_helper/shell';
 import { useConfigForTest } from '../../_helper/config';
 import { label } from '../../_helper/label';
-
-const enum AccessType {
-	DoubleBracket = '[[',
-	SingleBracket = '[',
-	Dollar = '$',
-}
+import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
 	describe.each(
 		[
-			{ container: 'c',    type: AccessType.DoubleBracket, hasNamedArguments: false },
-			{ container: 'c',    type: AccessType.SingleBracket, hasNamedArguments: false },
-			{ container: 'list', type: AccessType.DoubleBracket, hasNamedArguments: false },
-			{ container: 'list', type: AccessType.SingleBracket, hasNamedArguments: false },
-			{ container: 'list', type: AccessType.DoubleBracket, hasNamedArguments: true  },
-			{ container: 'list', type: AccessType.SingleBracket, hasNamedArguments: true  },
-			{ container: 'list', type: AccessType.Dollar,        hasNamedArguments: true  },
+			{ container: ContainerType.Vector, type: AccessType.DoubleBracket, hasNamedArguments: false },
+			{ container: ContainerType.Vector, type: AccessType.SingleBracket, hasNamedArguments: false },
+			{ container: ContainerType.List,   type: AccessType.DoubleBracket, hasNamedArguments: false },
+			{ container: ContainerType.List,   type: AccessType.SingleBracket, hasNamedArguments: false },
+			{ container: ContainerType.List,   type: AccessType.DoubleBracket, hasNamedArguments: true  },
+			{ container: ContainerType.List,   type: AccessType.SingleBracket, hasNamedArguments: true  },
+			{ container: ContainerType.List,   type: AccessType.Dollar,        hasNamedArguments: true  },
 		]
 	)('Access for container $container using $type and hasNamedArguments $hasNamedArguments', ({ container, type, hasNamedArguments }) => {
-		let accessCapability: 'double-bracket-access' | 'single-bracket-access' | 'dollar-access';
-		switch(type) {
-			case AccessType.DoubleBracket:
-				accessCapability = 'double-bracket-access';
-				break;
-			case AccessType.SingleBracket:
-				accessCapability = 'single-bracket-access';
-				break;
-			case AccessType.Dollar:
-				accessCapability = 'dollar-access';
-				break;
-		}
+		const { acc, def, accessCapability } = setupContainerFunctions(container, type, hasNamedArguments);
 
 		const basicCapabilities = [
 			'name-normal',
@@ -42,51 +26,6 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			accessCapability,
 		] as const;
 		useConfigForTest({ solver: { pointerTracking: true } });
-
-		/**
-		 * Creates access string
-		 * 
-		 * Example for name='numbers', index=1 and type=AccessType.DoubleBracket:
-		 * ```r
-		 * numbers[[1]]
-		 * ```
-		 */
-		function acc(name: string, index: number) {
-			let closingBracket: string;
-			switch(type) {
-				case AccessType.DoubleBracket:
-					closingBracket = ']]';
-					break;
-				case AccessType.SingleBracket:
-					closingBracket = ']';
-					break;
-				case AccessType.Dollar:
-					closingBracket = '';
-					break;
-			}
-			const indexString = type === AccessType.Dollar ? `arg${index}` : index.toString();
-
-			return `${name}${type}${indexString}${closingBracket}`;
-		}
-
-		/**
-		 * Creates definition string
-		 * 
-		 * Example for values=['1', '2', '3', '4'], container='list' and hasNamedArguments=true:
-		 * ```r
-		 * list(arg1 = 1, arg2 = 2, arg3 = 3, arg4 = 4)
-		 * ```
-		 */
-		function def(...values: string[]) {
-			const parameterList = values.map((value, i) => {
-				if(hasNamedArguments) {
-					return `arg${i + 1} = ${value}`;
-				} else {
-					return value;
-				}
-			}).join(', ');
-			return `${container}(${parameterList})`;
-		}
 
 		describe('Simple access', () => {
 			assertSliced(

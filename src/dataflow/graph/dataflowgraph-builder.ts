@@ -206,7 +206,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			fromId = from.nodeId;
 		} else {
 			const result = runSearch(from.query, data);
-			guard(result.length == 1, 'from query result should yield only one node');
+			guard(result.length === 1, `from query result should yield exactly one node, but yielded ${result.length}`);
 			fromId = result[0].node.info.id;
 		}
 

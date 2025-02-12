@@ -3,8 +3,16 @@ import { LogLevel } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, FlowrWikiBaseRef, getFilePathMd, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
+import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
+import path from 'path';
 
 function getText() {
+	const { info } = getTypesFromFolderAsMermaid({
+		rootFolder:  path.resolve('./test'),
+		files:       [path.resolve('./src/dataflow/graph/dataflowgraph-builder.ts')],
+		typeName:    'parameter',
+		inlineTypes: mermaidHide
+	});
 	return `
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
 for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
@@ -53,7 +61,7 @@ If you want to run the tests without the watch mode, you can use:
 
 ${codeBlock('shell', 'npm run test -- --no-watch')}
 
-To run all tests, including a coverage report and label summary, run: 
+To run all tests, including a coverage report and label summary, run:
 
 ${codeBlock('shell', 'npm run test-full')}
 
@@ -64,7 +72,7 @@ It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensu
 
 #### Test Structure
 
-All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}test/functionality).
+All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}/test/functionality).
 
 This folder contains three special and important elements:
 
@@ -76,19 +84,23 @@ ${block({
 		type:    'WARNING',
 		content: `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
-Whenever this is not possible (e.g., when using \`withShell\`), please use \`describe.sequential\`
+Whenever this is impossible (e.g., when using ${shortLink('withShell', info)}), please use _\`describe.sequential\`_
 to disable parallel execution for the respective test (otherwise, such tests are flaky).
 ` 
 	})}
 
 #### Writing a Test
 
-Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
+Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, …) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
-Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}. The resulting labels are used in the test report that is generated as part of the test output. They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported. 
+Generally, tests should be [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. 
+The set of currently supported capabilities and their IDs can be found in ${getFilePathMd('../r-bridge/data/data.ts')}. 
+The resulting labels are used in the test report that is generated as part of the test output. 
+They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
 
-Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
+Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. 
+These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 
 For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/processing-of-elements/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
@@ -96,11 +108,14 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 	'x', emptyGraph().use('0', 'x')
 );
 `)}
+Have a look at ${shortLink('assertDataflow', info)}, ${shortLink('label', info)}, and ${shortLink('emptyGraph', info)} for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- \`expectIsSubgraph\` indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- \`resolveIdsAsCriterion\` indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion) rather than actual ids. For example, passing \`12@a\` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
+- ${shortLink('expectIsSubgraph', info)} indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+  The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
+- ${shortLink('resolveIdsAsCriterion', info)} indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion) rather than actual ids. 
+  For example, passing \`12@a\` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:
 ${codeBlock('typescript', `

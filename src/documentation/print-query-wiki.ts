@@ -182,7 +182,7 @@ ${
 }
 
 In this simple scenario, the _lineage_ is equivalent to the slice (and in-fact the complete code). 
-In general the lineage is smaller and makes no executability guarantees. 
+In general the lineage is smaller and makes no guarantees on executability. 
 It is just a quick and neither complete nor sound way to get information on where the variable originates from.
 
 This query replaces the old [\`request-lineage\`](${FlowrWikiBaseRef}/Interface#message-request-lineage) message.
@@ -415,7 +415,7 @@ ${
 	}], { showCode: false })
 }
 
-In general you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
+In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
 you can use the \`noReconstruction\` flag.
 
 ${
@@ -509,7 +509,7 @@ registerQueryDocumentation('location-map', {
 		});
 		const exampleCode = 'x + 1\nx * 2';
 		return `
-A query like the ${linkToQueryOfName('id-map')} query can return a really big result, especially for larger scripts.
+A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
 
 Consider you have the following code:
@@ -556,7 +556,7 @@ Queries are JSON arrays of query objects, each of which uses a \`type\` property
 In general, we separate two types of queries:
 
 1. **Active Queries**: Are exactly what you would expect from a query (e.g., the ${linkToQueryOfName('call-context')}). They fetch information from the dataflow graph.
-2. **Virtual Queries**: Are used to structure your queries (e.g., the ${linkToQueryOfName('compound')}). 
+2. **Virtual Queries**: Are used to structure your queries (e.g., the ${linkToQueryOfName('compound')}).
 
 We separate these from a concept perspective. 
 For now, we support the following **active** queries (which we will refer to simply as a \`query\`):

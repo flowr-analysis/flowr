@@ -64,7 +64,7 @@ ${block({
 		type:    'NOTE',
 		content: `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the [Interface](${FlowrWikiBaseRef}/Interface#using-the-repl) wiki page).
-We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow', true)} to explore the output of flowR using your own samples.
+We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
 
 ${await documentReplSession(shell, [{

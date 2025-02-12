@@ -11,6 +11,7 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { getDocumentationForType, getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
 import type { FlowrSearchGeneratorNode } from '../search/search-executor/search-generators';
+import { runSearch } from '../search/flowr-search-executor';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -26,7 +27,7 @@ async function getText(shell: RShell) {
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) and the 
 [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the ${shortLink('runSearch', types.info)} function.
+Within code, you can execute a search using the ${shortLink(runSearch.name, types.info)} function.
 
 For an initial motivation, let's have a look at the following example:
 

@@ -56,7 +56,9 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) =>
 let testShell: RShell | undefined = undefined;
 
 /**
- * produces a shell session for you, can be used within a `describe` block
+ * Produces a shell session for you, can be used within a `describe` block.
+ * Please use **describe.sequential** as the RShell does not fare well with parallelization.
+ *
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
  */
@@ -313,6 +315,13 @@ function cropIfTooLong(str: string): string {
 	return str.length > 100 ? str.substring(0, 100) + '...' : str;
 }
 
+/**
+ * Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected.
+ *
+ * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
+ * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
+ * flexible matching of the expected graph.
+ */
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,

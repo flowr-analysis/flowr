@@ -58,7 +58,7 @@ npm run test -- --no-watch
 ```
 
 
-To run all tests, including a coverage report and label summary, run: 
+To run all tests, including a coverage report and label summary, run:
 
 
 ```shell
@@ -73,7 +73,7 @@ It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensu
 
 #### Test Structure
 
-All functionality tests are to be located under [test/functionality](https://github.com/flowr-analysis/flowr/tree/main/test/functionality).
+All functionality tests are to be located under [test/functionality](https://github.com/flowr-analysis/flowr/tree/main//test/functionality).
 
 This folder contains three special and important elements:
 
@@ -85,19 +85,23 @@ This folder contains three special and important elements:
 > [!WARNING]
 > 
 > We name all test files using the `.test.ts` suffix and try to run them in parallel.
-> Whenever this is not possible (e.g., when using `withShell`), please use `describe.sequential`
+> Whenever this is impossible (e.g., when using [<code><span title="Produces a shell session for you, can be used within a describe block. Please use **describe.sequential** as the RShell does not fare well with parallelization.">withShell</span></code>](https://github.com/flowr-analysis/flowr/tree/main///home/limerent/GitHub/phd/flowr/test/functionality/_helper/shell.ts#L65)), please use _`describe.sequential`_
 > to disable parallel execution for the respective test (otherwise, such tests are flaky).
 > 
 
 
 #### Writing a Test
 
-Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) 
+Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, …) 
 and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
-Generally, tests should be [labeled](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. The set of currently supported capabilities and their IDs can be found in [`./src/r-bridge/data/data.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/data/data.ts). The resulting labels are used in the test report that is generated as part of the test output. They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported. 
+Generally, tests should be [labeled](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. 
+The set of currently supported capabilities and their IDs can be found in [`./src/r-bridge/data/data.ts`](https://github.com/flowr-analysis/flowr/tree/main/./src/r-bridge/data/data.ts). 
+The resulting labels are used in the test report that is generated as part of the test output. 
+They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
 
-Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. These can be found in [the `_helper` subdirectory](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper).
+Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. 
+These can be found in [the `_helper` subdirectory](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper).
 
 For example, an [existing test](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/dataflow/processing-of-elements/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 
@@ -107,11 +111,14 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
+Have a look at [<code>assertDataflow</code>](https://github.com/flowr-analysis/flowr/tree/main///home/limerent/GitHub/phd/flowr/test/functionality/_helper/shell.ts#L318), [<code><span title="Wraps a test name with a unique identifier and label it with the given ids.">label</span></code>](https://github.com/flowr-analysis/flowr/tree/main///home/limerent/GitHub/phd/flowr/test/functionality/_helper/label.ts#L49), and [<code>emptyGraph</code>](https://github.com/flowr-analysis/flowr/tree/main//src/dataflow/graph/dataflowgraph-builder.ts#L18) for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- `expectIsSubgraph` indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- `resolveIdsAsCriterion` indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki//Terminology#slicing-criterion) rather than actual ids. For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
+- [<code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code>](https://github.com/flowr-analysis/flowr/tree/main///home/limerent/GitHub/phd/flowr/test/functionality/_helper/shell.ts#L303) indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+  The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
+- [<code><span title="This changes the way the test treats the NodeId s in your expected graph. Before running the verification, the test environment will transform the graph, resolving all Ids as if they are slicing criteria. In other words, you can use the criteria 12@a which will be resolved to the corresponding id before comparing. Please be aware that this is currently a work in progress.">resolveIdsAsCriterion</span></code>](https://github.com/flowr-analysis/flowr/tree/main///home/limerent/GitHub/phd/flowr/test/functionality/_helper/shell.ts#L311) indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
+  For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:
 

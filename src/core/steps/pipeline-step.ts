@@ -78,9 +78,7 @@ export interface IPipelineStep<
 	readonly description:       string
 	/** The main processor that essentially performs the logic of this step */
 	readonly processor:         (...input: Parameters<Fn>) => ReturnType<Fn>
-	/**
-	 * How to visualize the results of the respective step to the user?
-	 */
+	/** How to visualize the results of the respective step to the user? */
 	readonly printer: {
 		[K in StepOutputFormat]?: IPipelineStepPrinter<Fn, K, never[]>
 	} & {

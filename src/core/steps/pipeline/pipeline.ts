@@ -129,7 +129,7 @@ export type PipelineOutput<P extends Pipeline> = {
  *
  * 0) the collection of {@link IPipelineStep|steps} is not empty
  * 1) all {@link IPipelineStepOrder#name|names} of {@link IPipelineStep|steps} are unique for the given pipeline
- * 2) all {@link IPipelineStepOrder#dependencies|dependencies} of all {@link IPipelineStep|steps} are exist
+ * 2) all {@link IPipelineStepOrder#dependencies|dependencies} of all {@link IPipelineStep|steps} exist
  * 3) there are no cycles in the dependency graph
  * 4) the target of a {@link IPipelineStepOrder#decorates|step's decoration} exists
  * 5) if a {@link IPipelineStepOrder#decorates|decoration} applies, all of its {@link IPipelineStepOrder#dependencies|dependencies} are already in the pipeline

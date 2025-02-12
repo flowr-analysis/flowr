@@ -4,7 +4,7 @@ import { RShell } from '../r-bridge/shell';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
 import { VertexType } from '../dataflow/graph/vertex';
 import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
-import { emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
+import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
@@ -112,7 +112,7 @@ Describes a constant value (numbers, booleans/logicals, strings, ...).
 In general, the respective vertex is more or less a dummy vertex as you can see from its implementation.
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexValue' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexValue' })
 }
 
 ${
@@ -150,7 +150,7 @@ Similar to the [value vertex](#value-vertex) described above, this is more a mar
 you can see from the implementation.
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexUse' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexUse' })
 }
 
 ${
@@ -215,15 +215,15 @@ Describes any kind of function call, including unnamed calls and those that happ
 In general the vertex provides you with information about 
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
 
-However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance
+However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
 	 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionCall' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexFunctionCall' })
 }
 The related function argument references are defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'FunctionArgument' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'FunctionArgument' })
 }
 
 
@@ -268,7 +268,7 @@ In other words, we classify the references as ${
 			}.
 For more information on the types of references, please consult the implementation.
 
-${printHierarchy({ program: identifierType.program, hierarchy: identifierType.info, root: 'ReferenceType' })}
+${printHierarchy({ program: identifierType.program, info: identifierType.info, root: 'ReferenceType' })}
 	`;
 		})())
 }
@@ -353,7 +353,7 @@ However, they are actually linked with the call of the built-in function \`{\` (
 
 ${details('3) the function resolves to a mix of both', `
 
-Users may write... interesting pieces of code - for reasons we should not be interested in!
+Users may write… interesting pieces of code - for reasons we should not be interested in!
 Consider a case in which you have a built-in function (like the assignment operator \`<-\`) and a user that wants to redefine the meaning of the function call _sometimes_:
 
 ${await (async() => {
@@ -399,7 +399,7 @@ Function calls are the most complicated mechanism in R as essentially everything
 Even **control structures** like \`if(p) a else b\` are desugared into function calls (e.g., as \`if\`(p, a, b)).
 ${details('Example: <code>if</code> as a Function Call', await printDfGraphForCode(shell, 'if(p) a else b'))}
 
-Similarly you should be aware of calls to **anonymous functions**, which may appear given directly (e.g. as \`(function() 1)()\`) or indirectly, with code
+Similarly, you should be aware of calls to **anonymous functions**, which may appear given directly (e.g. as \`(function() 1)()\`) or indirectly, with code
 directly calling the return of another function call: \`foo()()\`.
 ${details('Example: Anonymous Function Call (given directly)', await printDfGraphForCode(shell, '(function() 1)()', { mark: new Set([6, '6->4']) }))}
 
@@ -426,7 +426,7 @@ ${details('Example: Super Definition (<code><<-</code>)', await printDfGraphForC
 The implementation is relatively sparse and similar to the other marker vertices:
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexVariableDefinition' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexVariableDefinition' })
 }
 
 Of course, there are not just operators that define variables, but also functions, like \`assign\`.
@@ -476,15 +476,15 @@ Defining a function does do a lot of things: 1) it creates a new scope, 2) it ma
 The vertex object in the dataflow graph stores multiple things, including all exit points, the enclosing environment if necessary, and the information of the subflow (the "body" of the function).
 
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowGraphVertexFunctionDefinition' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowGraphVertexFunctionDefinition' })
 }
 The subflow is defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowFunctionFlowInformation' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowFunctionFlowInformation' })
 }
 And if you are interested in the exit points, they are defined like this:
 ${
-	printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'ExitPoint' })
+	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'ExitPoint' })
 }
 
 
@@ -577,7 +577,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 	return results.join('\n');
 }
 
-async function getEdgesExplanations(shell: RShell): Promise<string> {
+async function getEdgesExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {
 	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
@@ -593,8 +593,8 @@ ${
 		content: `
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
-are currently tailored to what we need in _flowR_. Hence we offer a function like \`${getAllFunctionCallTargets.name}\` (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}),
-as well as \`${resolvesToBuiltInConstant.name}\` (defined in ${getFilePathMd('../dataflow/environments/resolve-by-name.ts')}) which do this for specific cases.
+are currently tailored to what we need in _flowR_. Hence, we offer a function like ${shortLink(getAllFunctionCallTargets.name, vertexType.info)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}),
+as well as ${shortLink(resolvesToBuiltInConstant.name, vertexType.info)} (defined in ${getFilePathMd('../dataflow/environments/resolve-by-name.ts')}) which do this for specific cases.
 
 ${details('Example: Multi-Level Reads', await printDfGraphForCode(shell,  'x <- 3\ny <- x\nprint(y)', { mark: new Set(['9->7', '7->3', '4->0']) }))}
 
@@ -661,7 +661,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		shell,
 		name:             'Returns Edge',
 		type:             EdgeType.Returns,
-		description:      'Link the [function call](#function-call-vertex)  to the exit points of the target definition (this may incorporate the call-context).',
+		description:      'Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).',
 		code:             'foo <- function() x\nfoo()',
 		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
 	}, []]);
@@ -690,7 +690,7 @@ f()
    
 ${dfInfo}
 
- The final call evaluates to \`3\` (similar to if we would have defined \`x\` before the function definition).
+ The final call evaluates to \`3\` (similar to if we defined \`x\` before the function definition).
  Within a dataflow graph you can see this with two edges. The \`x\` within the function body will have a ${linkEdgeName(EdgeType.DefinedByOnCall)} 
  to every definition it _may_ refer to. In turn, each call vertex calling the function which encloses the use of \`x\` will have a
  ${linkEdgeName(EdgeType.DefinesOnCall)} edge to the definition(s) it causes to be active within the function body. 
@@ -716,7 +716,7 @@ ${dfInfo}
 		type:        EdgeType.Argument,
 		description: `Links a [function call](#function-call-vertex) to the entry point of its arguments. If we do not know the target of such a call, we automatically assume that all arguments are read by the call as well!
 		
-The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are no implicit in the structure).
+The exception to this is the [function definition](#function-definition-vertex) which does no longer hold these argument relationships (as they are not implicit in the structure).
 		`,
 		code:             'f(x,y)',
 		expectedSubgraph: emptyGraph().argument('1@f', '1@x').reads('1@f', '1@x').argument('1@f', '1@y').reads('1@f', '1@y')
@@ -795,7 +795,7 @@ async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
 	/* we collect type information on the graph */
 	const vertexType = getTypesFromFolderAsMermaid({
-		files:       [path.resolve('./src/dataflow/graph/vertex.ts'), path.resolve('./src/dataflow/graph/graph.ts'), path.resolve('./src/dataflow/environments/identifier.ts'), path.resolve('./src/dataflow/info.ts')],
+		rootFolder:  path.resolve('./src/'),
 		typeName:    'DataflowGraphVertexInfo',
 		inlineTypes: ['MergeableRecord']
 	});
@@ -806,8 +806,8 @@ async function getText(shell: RShell) {
 	});
 	return `${autoGenHeader({ filename: module.filename, purpose: 'dataflow graph', rVersion: rversion })}
 
-This page briefly summarizes flowR's dataflow graph, represented by ${shortLink('DataflowGraph', vertexType.info)} in ${getFilePathMd('../dataflow/graph/graph.ts')}.
-In case you want to manually build such a graph (e.g., for testing), you can use the builder in ${getFilePathMd('../dataflow/graph/dataflowgraph-builder.ts')}.
+This page briefly summarizes flowR's dataflow graph, represented by the ${shortLink(DataflowGraph.name, vertexType.info)}.
+In case you want to manually build such a graph (e.g., for testing), you can use the ${shortLink(DataflowGraphBuilder.name, vertexType.info)}.
 This wiki page focuses on explaining what such a dataflow graph looks like!
 
 Please be aware that the accompanied [dataflow information](#dataflow-information) returned by _flowR_ contains things besides the graph,
@@ -819,7 +819,7 @@ Additionally, you may be interested in the set of [Unknown Side Effects](#unknow
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('dataflow*')}
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information). When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use \`${DataflowGraph.name}::${DataflowGraph.fromJson.name}\` to retrieve the graph from the JSON representation.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${shortLink(`${DataflowGraph.name}::${DataflowGraph.fromJson.name}`, vertexType.info, true, 'i')} to retrieve the graph from the JSON representation.
 
 ${await printDfGraphForCode(shell,'x <- 3\ny <- x + 1\ny')}
 
@@ -864,9 +864,9 @@ The following sections present details on the different types of vertices and ed
 > [!NOTE]
 > Every dataflow vertex holds an \`id\` which links it to the respective node in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST).
 > So if you want more information about the respective vertex, you can usually access more information
-> using the \`${DataflowGraph.name}::idMap\` linked to the dataflow graph:
+> using the <code>${shortLink(`${DataflowGraph.name}`, vertexType.info, false, 'i')}::idMap</code> linked to the dataflow graph:
 ${prefixLines(codeBlock('ts', 'const node = graph.idMap.get(id);'), '> ')}
-> In case you just need the name (\`lexeme\`) of the respective vertex, ${recoverName.name} (defined in ${getFilePathMd('../r-bridge/lang-4.x/ast/model/processing/node-id.ts')}) can help you out:
+> In case you just need the name (\`lexeme\`) of the respective vertex, ${shortLink(recoverName.name, vertexType.info)} can help you out:
 ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap);`), '> ')}
 
 ## Vertices
@@ -875,7 +875,7 @@ ${await getVertexExplanations(shell, vertexType)}
 
 ## Edges
 
-${await getEdgesExplanations(shell)}
+${await getEdgesExplanations(shell, vertexType)}
 
 ## Control Dependencies
 
@@ -899,7 +899,7 @@ ${details('Example: Nested Conditionals', await printDfGraphForCode(shell, 'if(x
 ## Dataflow Information
 
 Using _flowR's_ code interface (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more), you can generate the dataflow information
-for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows:
+for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows (using the ${shortLink(RShell.name, vertexType.info)} and the ${shortLink(PipelineExecutor.name, vertexType.info)} classes):
 
 ${codeBlock('ts', `
 const shell = new ${RShell.name}()
@@ -945,7 +945,7 @@ ${codeBlock('text', JSON.stringify(result.dataflow, jsonReplacer))}
 You may be interested in its implementation:
 
 ${
-		printHierarchy({ program: vertexType.program, hierarchy: vertexType.info, root: 'DataflowInformation' })
+		printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'DataflowInformation' })
 		}
 
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result.dataflow).map(k => `\`${k}\``).join(', ')}.
@@ -966,9 +966,7 @@ The **environment** property contains the active environment information of the 
 In other words, this is a linked list of tables (scopes), mapping identifiers to their respective definitions.
 A summarized version of the produced environment looks like this:
 
-${
-		printEnvironmentToMarkdown(result.dataflow.environment.current)
-		}
+${printEnvironmentToMarkdown(result.dataflow.environment.current)}
 
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.

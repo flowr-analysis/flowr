@@ -115,6 +115,8 @@ function retrieveLocationString(locationRaw: JsonEntry) {
 	const extracted = extractLocation(locationRaw);
 	if(extracted[0] === extracted[2] && extracted[1] === extracted[3]) {
 		return ` (${extracted[0]}:${extracted[1]})`;
+	} else if(extracted[0] === extracted[2]) {
+		return ` (${extracted[0]}:${extracted[1]}─${extracted[3]})`;
 	} else {
 		return ` (${extracted[0]}:${extracted[1]}─${extracted[2]}:${extracted[3]})`;
 	}
@@ -166,7 +168,7 @@ export const parseCommand: ReplCommand = {
 		}).allRemainingSteps();
 
 		if(parser.name === 'r-shell') {
-			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed));
+			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed as unknown as string));
 
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {

@@ -357,46 +357,50 @@ export function getTypesFromFolderAsMermaid(options: GetTypesAsMermaidOption): M
 	return getTypesFromFileAsMermaid(files, options);
 }
 
-export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0): string {
+export function implSnippet(node: TypeElementInSource | undefined, program: ts.Program, showName = true, nesting = 0, open = false): string {
 	guard(node !== undefined, 'Node must be defined => invalid change of type name?');
 	const indent = ' '.repeat(nesting * 2);
 	const bold = node.kind === 'interface' || node.kind === 'enum' ? '**' : '';
 	const sep = node.comments ? '  \n' : '\n';
 
 	let text = node.comments?.join('\n') ?? '';
+	if(text.trim() !== '') {
+		text = '  ' + text;
+	}
 	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-	text += `\n${indent}<details><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+	text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
 	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {
 	readonly program:              ts.Program
-	readonly hierarchy:            TypeElementInSource[]
+	readonly info:                 TypeElementInSource[]
 	readonly root:                 string
 	readonly collapseFromNesting?: number
 	readonly initialNesting?:      number
 	readonly maxDepth?:            number
+	readonly openTop?:             boolean
 }
 
 export const mermaidHide = ['Leaf', 'Location', 'Namespace', 'Base', 'WithChildren', 'Partial', 'RAccessBase'];
-export function printHierarchy({ program, hierarchy, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20 }: PrintHierarchyArguments): string {
+export function printHierarchy({ program, info, root, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, openTop }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
 		return '';
 	}
-	const node = hierarchy.find(e => e.name === root);
+	const node = info.find(e => e.name === root);
 	if(!node) {
 		return '';
 	}
 
-	const thisLine = implSnippet(node, program, true, initialNesting);
+	const thisLine = implSnippet(node, program, true, initialNesting, initialNesting === 0 && openTop);
 	const result = [];
 
 	for(const baseType of node.extends) {
 		if(mermaidHide.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, hierarchy, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
+		const res = printHierarchy({ program, info: info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth });
 		result.push(res);
 	}
 
@@ -408,7 +412,7 @@ export function printHierarchy({ program, hierarchy, root, collapseFromNesting =
 	}
 }
 
-function retrieveNode(name: string, hierarchy: TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split('::');
@@ -424,20 +428,22 @@ function retrieveNode(name: string, hierarchy: TypeElementInSource[]): [string |
 
 /**
  * Create a short link to a type in the documentation
- * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g. `MyContainer::MyType` (this works with function nestings too)
+ * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
+ * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
  */
-export function shortLink(name: string, hierarchy: TypeElementInSource[], codeStyle = true): string {
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
+		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
 	const [pkg, mainName, node] = res;
-	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/"/g, '\'') ?? '';
+	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `[${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
-			textWithTooltip(pkg ? `${pkg}::<b>${mainName}</b>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
+			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
 	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
 }
 

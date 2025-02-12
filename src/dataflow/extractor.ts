@@ -29,6 +29,10 @@ import {
 	updateNestedFunctionCalls
 } from './internal/process/functions/call/built-in/built-in-function-definition';
 
+/**
+ * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
+ * Maps every {@link RType} in the normalized AST to a processor.
+ */
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processValue,
 	[RType.String]:             processValue,
@@ -79,6 +83,12 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 	}
 }
 
+/**
+ * This is the main function to produce the dataflow graph from a given request and normalized AST.
+ * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
+ * (e.g., in the event of a `source` call).
+ * For the actual, canonical fold entry point, see {@link processDataflowFor}.
+ */
 export function produceDataFlowGraph<OtherInfo>(
 	parser: Parser<KnownParserType>,
 	request: RParseRequests,

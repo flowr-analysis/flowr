@@ -428,20 +428,22 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): 
 
 /**
  * Create a short link to a type in the documentation
- * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g. `MyContainer::MyType` (this works with function nestings too)
+ * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
+ * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true): string {
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
+		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
 	const [pkg, mainName, node] = res;
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `[${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
-			textWithTooltip(pkg ? `${pkg}::<b>${mainName}</b>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
+			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) : node.name
 	}${codeStyle ? '</code>' : ''}](${getTypePathLink(node)})`;
 }
 

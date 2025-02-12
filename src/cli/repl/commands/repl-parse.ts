@@ -168,7 +168,7 @@ export const parseCommand: ReplCommand = {
 		}).allRemainingSteps();
 
 		if(parser.name === 'r-shell') {
-			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed));
+			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed as unknown as string));
 
 			output.stdout(depthListToTextTree(toDepthMap(object), output.formatter));
 		} else {

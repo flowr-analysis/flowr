@@ -97,9 +97,6 @@ export const Q = FlowrSearchGenerator;
 
 export type FlowrSearchBuilderType<Generator extends GeneratorNames = GeneratorNames, Transformers extends TransformerNames[] = TransformerNames[], Info = ParentInformation, ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>> = FlowrSearchBuilder<Generator, Transformers, Info, ElementType>;
 
-type GetElements<F> = F extends FlowrSearchElements<infer Info, infer Elements> ? Elements extends FlowrSearchElement<Info>[] ? Elements : never : never;
-
-
 /**
  * The search query is a combination of a generator and a list of transformers
  * and allows this view to pass such queries in a serialized form.
@@ -214,10 +211,9 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 */
 	merge<Generator2 extends GeneratorNames, Transformers2 extends TransformerNames[], OtherElementType extends FlowrSearchElements<Info, FlowrSearchElement<Info>[]>>(
 		other: FlowrSearchBuilder<Generator2, Transformers2, Info, OtherElementType> /* | FlowrSearch<Info, Generator2, Transformers2, OtherElementType> */
-		// @ts-expect-error -- this works when merging, there is no info disparity
-	): FlowrSearchBuilder<Generator, Transformers, Info, FlowrSearchElements<Info, [...GetElements<ElementType>, ...GetElements<OtherElementType>]>> {
+	): FlowrSearchBuilder<Generator, Transformers, Info> {
 		this.search.push({ type: 'transformer', name: 'merge', args: { generator: other.generator, search: other.search  } });
-		return this as unknown as FlowrSearchBuilder<Generator, Transformers, Info, [...GetElements<ElementType>, ...GetElements<OtherElementType>]>;
+		return this as unknown as FlowrSearchBuilder<Generator, Transformers, Info>;
 	}
 
 	/**

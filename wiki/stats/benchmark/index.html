@@ -1,25 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+      :root {
+        /* Colors */
+        --color-primary: #FF4D00;
+      }
       html {
-        font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-family: BlinkMacSystemFont,-apple-system,"Fira Sans","Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
         -webkit-font-smoothing: antialiased;
         background-color: #fff;
         font-size: 16px;
       }
       body {
-        color: #4a4a4a;
-        margin: 8px;
+        color: #3a3a3a;
+        margin: 10px;
         font-size: 1em;
         font-weight: 400;
       }
+      /* change highlight color to purple */
+      ::selection {
+        background-color: var(--color-primary);
+        color: #fff;
+      }
       header {
         margin-bottom: 8px;
+        padding-top: 1em;
         display: flex;
         flex-direction: column;
+        align-items: center;
       }
       main {
         width: 100%;
@@ -27,22 +39,39 @@
         flex-direction: column;
       }
       a {
-        color: #3273dc;
+        transition: 500ms;
+        color: var(--color-primary);
         cursor: pointer;
         text-decoration: none;
       }
       a:hover {
         color: #000;
       }
+      .icon-link {
+        transition: 400ms;
+        color: #000;
+      }
+      .icon-link:hover {
+        color: var(--color-primary);
+      }
+      .icon-link:active {
+        color: #888;
+      }
+      .title {
+        font-size: 4rem;
+        font-weight: 600;
+      }
       button {
-        color: #fff;
-        background-color: #3298dc;
+        color: #000;
+        background-color: #fff;
         border-color: transparent;
         cursor: pointer;
         text-align: center;
+        transition: 450ms;
       }
       button:hover {
-        background-color: #2793da;
+        background-color: #fff;
+        color: var(--color-primary);
         flex: none;
       }
       .spacer {
@@ -55,9 +84,6 @@
         margin-top: 16px;
         display: flex;
         align-items: center;
-      }
-      .header-label {
-        margin-right: 4px;
       }
       .benchmark-set {
         margin: 8px 0;
@@ -82,26 +108,50 @@
       .benchmark-chart {
         max-width: 1000px;
       }
+      .upper-right {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+      .benchmark-set h1 {
+        /* align to left */
+        text-align: left;
+      }
+      .description {
+        padding-top: 3em;
+      }
+      
+      .text {
+        max-width: 70vw;
+        margin: 0 auto;
+      }
     </style>
-    <title>Benchmarks</title>
+    <title>flowR Performance Benchmarks</title>
   </head>
 
   <body>
     <header id="header">
       <div class="header-item">
-        <strong class="header-label">Last Update:</strong>
-        <span id="last-update"></span>
+        <strong class="title">flowR Performance Benchmarks</strong>
       </div>
       <div class="header-item">
-        <strong class="header-label">Repository:</strong>
-        <a id="repository-link" rel="noopener"></a>
+        <strong class="header-label">Last Update:</strong>
+        <span id="last-update"><span style="color:gray;user-select:none;">fetching date...</span></span>
       </div>
     </header>
+    <div class="upper-right">
+      <button id="dl-button"><i class="fa fa-download"></i></button>
+      <a id="repository-link" rel="noopener" class="icon-link"><i class="fa fa-github"></i></a>
+    </div>
+    <div class="description text">
+      These pages continuously track the performance of flowR comparing both <a href="https://github.com/flowr-analysis/flowr/wiki/Engines">Engines</a> on an artificial and a real-world dataset.
+      Please have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/performance">performance test documentation</a> for more information on the used files and the benchmarking process.
+    </div>
     <main id="main"></main>
     <footer>
-      <button id="dl-button">Download data as JSON</button>
+      
       <div class="spacer"></div>
-      <div class="small">Powered by <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a></div>
+      <div class="small">We use <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a> to collect the benchmark information</div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
@@ -110,6 +160,7 @@
       'use strict';
       (function() {
         const cycleColors = [
+          '#FF4D00',
           '#00add8',
           '#38ff38',
           '#a270ba',
@@ -146,14 +197,22 @@
           const data = window.BENCHMARK_DATA;
 
           // Render header
-          document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
+          const lastUpdate = new Date(data.lastUpdate);
+          document.getElementById('last-update').innerText = lastUpdate.toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            timeZoneName: 'short',
+          });
           const repoLink = document.getElementById('repository-link');
           repoLink.href = data.repoUrl;
-          repoLink.textContent = data.repoUrl;
 
           // Render footer
           document.getElementById('dl-button').onclick = () => {
-            const dataUrl = 'data:,' + JSON.stringify(data, null, 2);
+            const dataUrl = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
             const a = document.createElement('a');
             a.href = dataUrl;
             a.download = 'benchmark_data.json';
@@ -177,7 +236,6 @@
 				}
 
         function renderAllChars(dataSets) {
-
           function renderGraph(parent, name, dataset, i) {
             const canvas = document.createElement('canvas');
             canvas.className = 'benchmark-chart';

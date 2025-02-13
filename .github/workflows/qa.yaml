@@ -146,6 +146,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: true
+          fetch-depth: 2
 
       - name: "🌍 Retrieve the latest version"
         id: get-version

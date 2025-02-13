@@ -32,7 +32,7 @@ import {
 	createParsePipeline, TREE_SITTER_PARSE_PIPELINE
 } from '../core/steps/pipeline/default-pipelines';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
+import { fileProtocol, requestFromInput, retrieveParseDataFromRCode } from '../r-bridge/retriever';
 import { jsonReplacer } from '../util/json';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { normalizeSingleNode } from '../r-bridge/lang-4.x/ast/parser/main/internal/structure/normalize-single-node';
@@ -185,7 +185,14 @@ ${await documentReplSession(shell, [{
 	}
 	], { openOutput: false })}
 	
-Especially when you are just starting with flowR, we recommend to use the REPL to explore the output of the different steps.
+${block({
+		type:    'TIP',
+		content: `
+	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
+	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
+	})}	
+
+Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
 ${block({ 
 		type:    'NOTE', 

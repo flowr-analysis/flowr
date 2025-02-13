@@ -142,6 +142,11 @@ jobs:
           )
         }}
     steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
       - name: "🌍 Retrieve the latest version"
         id: get-version
         run: |
@@ -163,12 +168,6 @@ jobs:
               echo "Skipping dev release, no changes in src/ directory or in package.json"
               echo "::set-output makeRelease=false"
           fi 
-
-      - name: "🛒 Checkout Repository"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        uses: actions/checkout@v4
-        with:
-          submodules: true
 
       - name: "🌍 Load Versions to Use"
         if: steps.get-version.outputs.makeRelease == 'true'

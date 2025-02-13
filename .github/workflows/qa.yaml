@@ -142,34 +142,63 @@ jobs:
           )
         }}
     steps:
+      - name: "🌍 Retrieve the latest version"
+        id: get-version
+        run: |
+          git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^src/|package.json'
+          if [ $? -eq 0 ]; then
+              VERSION="$(npm show @eagleoutice/flowr-dev version)"
+              # parse the date contained in the 0.0.YYYY-MM-DD-HH-MM version
+              DATE=$(echo $VERSION | sed -n 's/0.0.\([0-9]*-[0-9]*-[0-9]*\)-[0-9]*-[0-9]*/\1/p')
+              NOW=$(date +'%Y-%m-%d')
+              SECONDS_IN_DAY=86400
+              if [ $(( ( $(date --date="$NOW" +%s) - $(date --date="$DATE" +%s) ) / $SECONDS_IN_DAY )) -ge 1 ]; then
+                    echo "Making dev release, last release was more than a day ago, last release was $DATE"
+                  echo "::set-output makeRelease=true"
+              else
+                  echo "Skipping dev release, last release was less than a day ago"
+                  echo "::set-output makeRelease=false"
+              fi
+          else
+              echo "Skipping dev release, no changes in src/ directory or in package.json"
+              echo "::set-output makeRelease=false"
+          fi 
+
       - name: "🛒 Checkout Repository"
+        if: steps.get-version.outputs.makeRelease == 'true'
         uses: actions/checkout@v4
         with:
           submodules: true
 
       - name: "🌍 Load Versions to Use"
+        if: steps.get-version.outputs.makeRelease == 'true'
         id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
+        if: steps.get-version.outputs.makeRelease == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
 
       - name: "⬇️ Setup R"
+        if: steps.get-version.outputs.makeRelease == 'true'
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
+        if: steps.get-version.outputs.makeRelease == 'true'
         shell: Rscript {0}
         run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
 
       - name: "📦 Install Dependencies"
+        if: steps.get-version.outputs.makeRelease == 'true'
         run: npm ci
 
       - name: "🌟 Prerelease"
+        if: steps.get-version.outputs.makeRelease == 'true'
         run: |
           sed -i -e 's/"name":.*"@eagleoutice\/flowr"/"name": "@eagleoutice\/flowr-dev"/g' package.json
           npm version 0.0.$(date +'%Y-%m-%d-%H-%M') --no-git-tag-version

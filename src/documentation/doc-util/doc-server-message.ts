@@ -119,7 +119,7 @@ export async function documentServerMessageResponse({
 			} else {
 				try {
 					await socket.waitForMessage(metaMessage.expectedType, 20);
-				} catch(e) {
+				} catch{
 					console.error('Failed to receive message', metaMessage.expectedType, 'has', socket.getMessages());
 				}
 			}

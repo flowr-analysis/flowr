@@ -81,13 +81,13 @@ This folder contains three special and important elements:
 - \`test-summary.ts\` which may produce a summary of the covered capabilities.
 
 ${block({
-		type:    'WARNING',
-		content: `
+	type:    'WARNING',
+	content: `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
 Whenever this is impossible (e.g., when using ${shortLink('withShell', info)}), please use _\`describe.sequential\`_
 to disable parallel execution for the respective test (otherwise, such tests are flaky).
 ` 
-	})}
+})}
 
 #### Writing a Test
 

@@ -8,7 +8,7 @@ import { jsonReplacer } from '../../src/util/json';
 export function setup() {
 	try {
 		fs.unlinkSync(GlobalSummaryFile);
-	} catch(e) {
+	} catch{
 		/* if it does not work it is not a big deal, this is just for summary reasons */
 	}
 }
@@ -34,12 +34,12 @@ export function teardown() {
 					/** offset all ids by currentMax to ensure unique */
 					labelMap.get(key).push(...value);
 				}
-			} catch(e) {
+			} catch{
 				/* skip line */
 			}
 		}
 		printMissingLabelSummary(labelMap);
-	} catch(e) {
+	} catch{
 		/* if we do not find the summary, then this is not a big problem */
 	}
 

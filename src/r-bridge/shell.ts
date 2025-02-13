@@ -432,7 +432,7 @@ class RShellSession {
 			for(const f of filesToUnlink) {
 				try {
 					fs.rmSync(f, { recursive: true, force: true });
-				} catch(e) {
+				} catch{
 					log.error(`failed to unlink file ${f}`);
 				}
 			}

@@ -453,9 +453,9 @@ See [above](#message-request-file-analysis) for the general structure of the res
 				filetoken: 'x',
 				query:     [
 					{
-						type:            'compound',
-						query:           'call-context',
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- otherwise we would have to carry generic typing information through the test infrastrcuture
+						type:  'compound',
+						query: 'call-context',
+						 
 						commonArguments: {
 							kind:        'visualize',
 							subkind:     'text',

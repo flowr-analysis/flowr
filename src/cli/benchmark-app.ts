@@ -45,7 +45,7 @@ function removeIfExists(summarizedRaw: string) {
 		console.log(`Removing existing ${summarizedRaw}`);
 		try {
 			fs.rmSync(summarizedRaw, { recursive: true });
-		} catch(e) {
+		} catch{
 			log.error('failure in cleanup');
 		}
 	}

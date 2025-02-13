@@ -136,9 +136,9 @@ To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataf
 use ${getReplCommand('dataflow*')} (or ${getReplCommand('dataflow')} to get the mermaid code in the cli):
 
 ${await documentReplSession(shell, [{
-		command:     ':dataflow* y <- 1 + x',
-		description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(shell, 'y <- 1 + x')}`
-	}])}
+	command:     ':dataflow* y <- 1 + x',
+	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(shell, 'y <- 1 + x')}`
+}])}
 
 For the slicing with ${getReplCommand('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
 
@@ -149,8 +149,8 @@ if the argument starts with \`${fileProtocol}\`.
 If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${getReplCommand('parse')} command:
 
 ${await documentReplSession(shell, [{
-		command:     `:parse ${fileProtocol}test/testfiles/example.R`,
-		description: `Retrieve the parsed AST of the example file.
+	command:     `:parse ${fileProtocol}test/testfiles/example.R`,
+	description: `Retrieve the parsed AST of the example file.
 
 <details>
 
@@ -162,7 +162,7 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
 As _flowR_ directly transforms this AST the output focuses on being human-readable instead of being machine-readable. 
 		`
-	}])}
+}])}
 `;
 }
 

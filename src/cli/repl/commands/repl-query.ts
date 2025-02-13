@@ -27,7 +27,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`\n\nThe example ${italic(':query "[{\\"type\\": \\"call-context\\", \\"callName\\": \\"mean\\" }]" mean(1:10)', output.formatter)} would return the call context of the mean function.`);
 	output.stdout('As a convenience, we interpret any (non-help, non-@) string not starting with \'[\' as a regex for the simple call-context query.');
 	output.stdout(`Hence, ${italic(':query "mean" mean(1:10)', output.formatter)} is equivalent to the above example.`);
-	output.stdout(`Similarly, '@<type>' is interpreted as a query of the given type.`);
+	output.stdout('Similarly, \'@<type>\' is interpreted as a query of the given type.');
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
@@ -36,7 +36,7 @@ async function processQueryArgs(line: string, parser: KnownParser, output: ReplO
 	const query = args.shift();
 
 	if(!query) {
-		output.stderr(`No query provided, use ':query help' to get more information.`);
+		output.stderr('No query provided, use \':query help\' to get more information.');
 		return;
 	}
 	if(query === 'help') {

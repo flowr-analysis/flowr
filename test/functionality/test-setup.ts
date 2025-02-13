@@ -48,7 +48,7 @@ await (async() => {
 afterAll(() => {
 	try {
 		fs.appendFileSync(GlobalSummaryFile, JSON.stringify(TheGlobalLabelMap, jsonReplacer) + '\n');
-	} catch(e) {
+	} catch{
 		/* if it does not work it is not a big deal, this is just for summary reasons */
 	}
 });

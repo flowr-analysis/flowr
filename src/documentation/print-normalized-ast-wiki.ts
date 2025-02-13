@@ -82,8 +82,8 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${details('Normalized AST Node Types', 
-		printHierarchy({ program: types.program, info: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
-	)}
+	printHierarchy({ program: types.program, info: types.info, root: 'RNode', collapseFromNesting: Number.MAX_VALUE })
+)}
 
 The following segments intend to give you an overview of how to work with the normalized AST:
 
@@ -184,13 +184,13 @@ console.log(result); // -> 7
 `)}
 
 ${block({
-		type:    'NOTE',
-		content: `
+	type:    'NOTE',
+	content: `
 If you want to retrieve the normalized AST with the [Tree-Sitter Engine](${FlowrWikiBaseRef}/Engines),
 you may use the ${shortLink('TREE_SITTER_NORMALIZE_PIPELINE', types.info)} or directly rely on one of the
 helper functions like ${shortLink(createNormalizePipeline.name, types.info)}.
 		`
-	})}
+})}
 `;
 }
 

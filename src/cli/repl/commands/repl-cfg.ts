@@ -35,7 +35,7 @@ export const controlflowCommand: ReplCommand = {
 		try {
 			clipboard.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid code'));
-		} catch(e) { /* do nothing this is a service thing */ }
+		} catch{ /* do nothing this is a service thing */ }
 	}
 };
 
@@ -53,6 +53,6 @@ export const controlflowStarCommand: ReplCommand = {
 		try {
 			clipboard.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url'));
-		} catch(e) { /* do nothing this is a service thing */ }
+		} catch{ /* do nothing this is a service thing */ }
 	}
 };

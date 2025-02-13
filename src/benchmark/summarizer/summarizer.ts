@@ -18,7 +18,7 @@ import { log } from '../../util/log';
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
-	 * If given, produce graph data output (e.g. for the benchmark visualization) to the given path
+	 * If given, produce graph data output (e.g., for the benchmark visualization) to the given path
 	 */
 	graphOutputPath?:       string
 	/**
@@ -97,7 +97,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 			this.log(`Removing existing ${path}`);
 			try {
 				fs.rmSync(path, { recursive: true });
-			} catch(e) {
+			} catch{
 				log.error('failure in cleanup');
 			}
 		}

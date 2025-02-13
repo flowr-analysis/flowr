@@ -96,7 +96,7 @@ function hasModule(path: string): boolean {
 	try {
 		require.resolve(path);
 		return true;
-	} catch(e) {
+	} catch{
 		return false;
 	}
 }

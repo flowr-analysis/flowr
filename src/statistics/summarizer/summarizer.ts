@@ -117,7 +117,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			this.log(`Removing existing ${path}`);
 			try {
 				fs.rmSync(path, { recursive: true, force: true });
-			} catch(e) {
+			} catch{
 				log.error('failure in cleanup');
 			}
 		}
@@ -157,7 +157,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		return Promise.resolve();
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
+	 
 	public async summarizePhase(): Promise<unknown> {
 		// detect all subfolders in the current folder (default, test...) for each: concat.
 		this.removeIfExists(this.config.outputPath);

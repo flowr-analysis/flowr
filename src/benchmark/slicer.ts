@@ -247,7 +247,7 @@ export class BenchmarkSlicer {
 
 		const measurements = new Measurements<PerSliceMeasurements>();
 		const stats: PerSliceStats = {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			 
 			measurements:                undefined as never,
 			slicingCriteria:             [],
 			numberOfDataflowNodesSliced: 0,

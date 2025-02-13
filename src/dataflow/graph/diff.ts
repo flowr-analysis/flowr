@@ -233,8 +233,8 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = lInfo.name ?? recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = rInfo.name ?? recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = (lInfo.name as string | undefined) ?? recoverName(id, ctx.left.idMap) ?? '??';
+			const rname = (rInfo.name as string | undefined) ?? recoverName(id, ctx.right.idMap) ?? '??';
 			if(lname !== rname) {
 				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
 					tag: 'vertex',

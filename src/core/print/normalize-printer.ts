@@ -11,7 +11,7 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
 		if(k === 'fullLexeme') {
 			return undefined;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		 
 		return jsonReplacer(k, v);
 	});
 }

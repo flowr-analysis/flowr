@@ -18,7 +18,7 @@ import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/ansi';
 
 function compressFolder(folder: string, target: string) {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+	 
 	return create({
 		gzip:          true,
 		file:          target,

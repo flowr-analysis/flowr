@@ -49,7 +49,7 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 		process.exit(0);
 	} else if(requireAdditionally.length > 0) {
 		const keys = new Set(Object.keys(options));
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- we know that they are not given if undefined
+		 
 		const missing = requireAdditionally.filter(k => !keys.has(k as string) || options[k] === undefined);
 		if(missing.length > 0) {
 			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`));

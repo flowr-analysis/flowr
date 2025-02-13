@@ -159,7 +159,7 @@ export async function repl({
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
-	// eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
+	 
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(prompt(), answer => {

@@ -31,7 +31,7 @@ describe('Resolve', () => {
 				const xVar = variable('foo', '_1');
 				const env = defaultEnv().defineInEnv(xVar);
 				const result = resolveByName('foo', env, ReferenceType.Function);
-				expect(result, 'there should be no result').to.be.undefined;
+				assert.isUndefined(result, 'there should be no result');
 			});
 		});
 		describe('Resolve Variable', () => {
@@ -39,7 +39,7 @@ describe('Resolve', () => {
 				const xVar = asFunction('foo', '_1');
 				const env = defaultEnv().defineInEnv(xVar);
 				const result = resolveByName('foo', env, ReferenceType.Variable);
-				expect(result, 'there should be no result').to.be.undefined;
+				assert.isUndefined(result, 'there should be no result');
 			});
 		});
 	});

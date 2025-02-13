@@ -54,7 +54,7 @@ export function assertSearch(
 					expectedIds = expectedIds.map(id => {
 						try {
 							return slicingCriterionToId(id as SingleSlicingCriterion, info.normalize.idMap);
-						} catch(e) {
+						} catch{
 							/* just keep it :D */
 							return id;
 						}

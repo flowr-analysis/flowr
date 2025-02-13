@@ -84,12 +84,12 @@ export function flowrSearchToCode(search: FlowrSearchLike): string {
 function flowrTransformerToCode(node: FlowrSearchTransformerNode): string {
 	if(node.name === 'filter') {
 		const a = node.args.filter;
-		if(ValidVertexTypes.has(String(a))) {
-			return `${node.name}(VertexType.${ValidVertexTypeReverse[String(a)]})`;
-		} else if(ValidRTypes.has(String(a))) {
-			return `${node.name}(RType.${ValidRTypesReverse[String(a)]})`;
-		} else if(ValidFlowrFilters.has(String(a))) {
-			return `${node.name}(FlowrFilter.${ValidFlowrFiltersReverse[String(a)]})`;
+		if(ValidVertexTypes.has(String(a as string))) {
+			return `${node.name}(VertexType.${ValidVertexTypeReverse[String(a as string)]})`;
+		} else if(ValidRTypes.has(String(a as string))) {
+			return `${node.name}(RType.${ValidRTypesReverse[String(a as string)]})`;
+		} else if(ValidFlowrFilters.has(String(a as string))) {
+			return `${node.name}(FlowrFilter.${ValidFlowrFiltersReverse[String(a as string)]})`;
 		}
 	}
 	return `${node.name}(${argsToCodeString(node.args)})`;

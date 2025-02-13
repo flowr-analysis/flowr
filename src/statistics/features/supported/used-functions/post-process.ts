@@ -127,7 +127,7 @@ function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatistics
 	writeFunctionCallsMetaInformationToCsv(outputPath, data);
 
 	for(const [index, arg] of data.args.entries()) {
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		 
 		if(!arg) {
 			// we treat the first/0-argument entry separate for legacy reasons
 			continue;

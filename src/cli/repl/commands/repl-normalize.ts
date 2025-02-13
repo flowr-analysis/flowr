@@ -32,7 +32,7 @@ export const normalizeCommand: ReplCommand = {
 		try {
 			clipboard.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
-		} catch(e) { /* do nothing this is a service thing */ }
+		} catch{ /* do nothing this is a service thing */ }
 	}
 };
 
@@ -48,6 +48,6 @@ export const normalizeStarCommand: ReplCommand = {
 		try {
 			clipboard.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
-		} catch(e) { /* do nothing this is a service thing */ }
+		} catch{ /* do nothing this is a service thing */ }
 	}
 };

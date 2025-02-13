@@ -1,5 +1,5 @@
 // to get the types within JSON.stringify
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
 import {
 	BuiltInEnvironment,
@@ -10,7 +10,7 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
 		return undefined;
 	} else if(value instanceof Map || value instanceof Set) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		 
 		return [...value];
 	} else if(typeof value === 'bigint') {
 		return `${value.toString()}n`;

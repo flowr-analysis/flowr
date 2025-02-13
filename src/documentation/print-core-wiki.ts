@@ -61,21 +61,21 @@ In case you are new and want to develop for flowR, please check out the relevant
 and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md).
 
 ${block({
-		type:    'NOTE',
-		content: `
+	type:    'NOTE',
+	content: `
 Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the [Interface](${FlowrWikiBaseRef}/Interface#using-the-repl) wiki page).
 We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
 
 ${await documentReplSession(shell, [{
-		command:     `:parse "${sampleCode}"`,
-		description: `Retrieves the AST from the ${shortLink(RShell.name,info)}.`
-	}])}
+	command:     `:parse "${sampleCode}"`,
+	description: `Retrieves the AST from the ${shortLink(RShell.name,info)}.`
+}])}
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
 See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more information.
 `
-	})}
+})}
 	
 * [Pipelines and their Execution](#pipelines-and-their-execution)
 * [How flowR Produces Dataflow Graphs](#how-flowr-produces-dataflow-graphs)
@@ -95,12 +95,12 @@ the ${shortLink('DEFAULT_DATAFLOW_PIPELINE', info)} and the ${shortLink('TREE_SI
 (differentiated only by the [Engine](${FlowrWikiBaseRef}/Engines) used).
 
 ${block({
-		type:    'TIP',
-		content: `
+	type:    'TIP',
+	content: `
 	You can hover over most links within these wiki pages to get access to the tsdoc comment of the respective element. 
 	The links should direct you to the up-to-date implementation.
 `
-	})}
+})}
 	
 Using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) you can request a dataflow analysis of a sample piece of R code like the following:
 
@@ -139,13 +139,13 @@ the ${shortLink('PARSE_WITH_R_SHELL_STEP', info)} or the ${shortLink('STATIC_DAT
 The pipeline executor should do a good job of scheduling these steps (usually using a topological sort), and inferring the required inputs in the type system (have a look at the ${shortLink(createPipeline.name, info)} function if you want to know more).
 
 ${block({
-		type:    'NOTE',
-		content: `
+	type:    'NOTE',
+	content: `
 Under the hood there is a step-subtype called a decoration. Such a step can be added to a pipeline to decorate the output of another one (e.g., making it more precise, re-adding debug info, ...).
 To mark a step as a decoration, you can use the \`decorates\` field in the ${shortLink('IPipelineStepOrder', info)} interface.
 However, as such steps are currently not relevant for any of flowR's core analyses we will not go into detail here. It suffices to know how "real" steps work.
 `
-	})}
+})}
 	
 ## How flowR Produces Dataflow Graphs
 
@@ -172,51 +172,51 @@ We can see that it relies on three steps:
 To explore these steps, let's use the REPL with the (very simple and contrived) R code: \`${sampleCode}\`.
 
 ${await documentReplSession(shell, [{
-		command:     `:parse "${sampleCode}"`,
-		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(RShell.name,info)}. See the ${shortLink(initCommand.name, info)} function for more information on how we request a parse.`
-	},
-	{
-		command:     `:normalize* "${sampleCode}"`,	
-		description: `Following the link output should show the following:\n${await printNormalizedAstForCode(shell, sampleCode, { showCode: false })}`
-	},
-	{
-		command:     `:dataflow* "${sampleCode}"`,
-		description: `Following the link output should show the following:\n${await printDfGraphForCode(shell, sampleCode, { showCode: false })}`
-	}
-	], { openOutput: false })}
+	command:     `:parse "${sampleCode}"`,
+	description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(RShell.name,info)}. See the ${shortLink(initCommand.name, info)} function for more information on how we request a parse.`
+},
+{
+	command:     `:normalize* "${sampleCode}"`,	
+	description: `Following the link output should show the following:\n${await printNormalizedAstForCode(shell, sampleCode, { showCode: false })}`
+},
+{
+	command:     `:dataflow* "${sampleCode}"`,
+	description: `Following the link output should show the following:\n${await printDfGraphForCode(shell, sampleCode, { showCode: false })}`
+}
+], { openOutput: false })}
 	
 ${block({
-		type:    'TIP',
-		content: `
+	type:    'TIP',
+	content: `
 	All of these commands accept file paths as well, so you can write longer R code within a file, and then pass 
 	the file path prefixed with \`${fileProtocol}\` (e.g., \`${fileProtocol}test/testfiles/example.R\`) to the commands.`
-	})}	
+})}	
 
 Especially when you are just starting with flowR, we recommend using the REPL to explore the output of the different steps.
 
 ${block({ 
-		type:    'NOTE', 
-		content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
+	type:    'NOTE', 
+	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
 Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
 ${await (async() => {
-		const exec = new TreeSitterExecutor(); 
-		return await documentReplSession(exec, [{
-			command:     `:parse "${sampleCode}"`,
-			description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(TreeSitterExecutor.name, info)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
-		},
-		{
-			command:     `:normalize* "${sampleCode}"`,
-			description: `Following the link output should show the following:\n${await printNormalizedAstForCode(exec, sampleCode, { showCode: false })}`
-		},
-		{
-			command:     `:dataflow* "${sampleCode}"`,
-			description: `Following the link output should show the following:\n${await printDfGraphForCode(exec, sampleCode, { showCode: false })}`
-		}], { openOutput: false, args: '--default-engine tree-sitter' });
-	}
-	)()}
+	const exec = new TreeSitterExecutor(); 
+	return await documentReplSession(exec, [{
+		command:     `:parse "${sampleCode}"`,
+		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${shortLink(TreeSitterExecutor.name, info)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
+	},
+	{
+		command:     `:normalize* "${sampleCode}"`,
+		description: `Following the link output should show the following:\n${await printNormalizedAstForCode(exec, sampleCode, { showCode: false })}`
+	},
+	{
+		command:     `:dataflow* "${sampleCode}"`,
+		description: `Following the link output should show the following:\n${await printDfGraphForCode(exec, sampleCode, { showCode: false })}`
+	}], { openOutput: false, args: '--default-engine tree-sitter' });
+}
+)()}
 `) })}
 
 ### Parsing
@@ -238,8 +238,8 @@ For the code \`${sampleCode}\`:
 | line-start | col-start | line-end | col-end | id | parent | token type | terminal | text |
 | ---------: | --------: | -------: | ------: | -: | -----: | ---------- | -------- | ---- |
 ${await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell).then(data =>
-		(JSON.parse('[' + data + ']') as string[][]).map(([line1, col1, line2, col2, id, parent, type, terminal, text]) => `| ${line1} | ${col1} | ${line2} | ${col2} | ${id} | ${parent} | \`${type}\` | ${terminal} | ${text} |`).join('\n')
-	)}
+	(JSON.parse('[' + data + ']') as string[][]).map(([line1, col1, line2, col2, id, parent, type, terminal, text]) => `| ${line1} | ${col1} | ${line2} | ${col2} | ${id} | ${parent} | \`${type}\` | ${terminal} | ${text} |`).join('\n')
+)}
 
 </details>
 
@@ -258,8 +258,8 @@ While looking at the mermaid visualization of such an AST is nice and usually su
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json', 
-		JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
-	))}
+	JSON.stringify((await createNormalizePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
+))}
 
 This is… a lot! We get the type from the ${shortLink('RType', info)} enum, the lexeme, location information, an id, the children of the node, and their parents.
 While the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page provides you with information on how to interpret this data, we will focus on how we get it from the
@@ -281,8 +281,8 @@ For single nodes, we use ${shortLink(normalizeSingleNode.name, info)} which cont
 The output of just this pass is listed below (using the ${shortLink(normalizeButNotDecorated.name, info)} function):
 
 ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization', codeBlock('json',
-		JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).parse), jsonReplacer, 4)
-	))}
+	JSON.stringify(normalizeButNotDecorated((await createParsePipeline(shell, { request: requestFromInput(sampleCode) }).allRemainingSteps()).parse), jsonReplacer, 4)
+))}
 
 
 #### Decorating the AST
@@ -388,9 +388,9 @@ or the [original master's thesis (Chapter 4)](https://doi.org/10.18725/OPARU-501
 You can explore the slicing using the REPL with the ${getReplCommand('slicer')} command:
 
 ${await documentReplSession(shell, [{
-		command:     ':slicer test/testfiles/example.R --criterion "12@product"',
-		description: 'Slice for the example file for the variable "prod" in line 12.'
-	}], { openOutput: true })}
+	command:     ':slicer test/testfiles/example.R --criterion "12@product"',
+	description: 'Slice for the example file for the variable "prod" in line 12.'
+}], { openOutput: true })}
 
 ## Helpful Things
 

@@ -24,10 +24,8 @@ import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
 
-/** Simply an empty interface used to say that there are additional decorations (see {@link Base}). */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface NoInfo {
-}
+/** Simply an empty type constraint used to say that there are additional decorations (see {@link Base}). */
+export type NoInfo = object;
 
 /**
  * Will be used to reconstruct the source of the given element in the R-ast.
@@ -82,7 +80,7 @@ export interface WithChildren<Info, Children extends Base<Info, string | undefin
  * as it is equivalent to the {@link Base} interface.
  * It is intended to help humans understand the code.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, LexemeType> {
 
 }

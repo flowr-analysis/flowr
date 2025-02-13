@@ -19,11 +19,11 @@ export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMar
 	return `
 \`\`\`mermaid
 ${graphToMermaid({
-		graph,
-		prefix: 'flowchart LR',
-		mark,
-		simplified
-	}).string}
+	graph,
+	prefix: 'flowchart LR',
+	mark,
+	simplified
+}).string}
 \`\`\`
 	`;
 }

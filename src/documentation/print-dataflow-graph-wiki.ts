@@ -357,16 +357,16 @@ Users may write… interesting pieces of code - for reasons we should not be int
 Consider a case in which you have a built-in function (like the assignment operator \`<-\`) and a user that wants to redefine the meaning of the function call _sometimes_:
 
 ${await (async() => {
-		const [text, info] = await printDfGraphForCode(shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', { switchCodeAndGraph: true, mark: new Set([9, '9->0', '9->10']), exposeResult: true });
+	const [text, info] = await printDfGraphForCode(shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', { switchCodeAndGraph: true, mark: new Set([9, '9->0', '9->10']), exposeResult: true });
 	
-		const interestingUseOfAssignment = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.id === 11);
-		guard(interestingUseOfAssignment !== undefined, () => 'Could not find interesting assignment vertex for the code');
-		const [id, interestingVertex] = interestingUseOfAssignment;
-		const env = interestingVertex.environment;
-		guard(env !== undefined, () => 'Could not find environment for interesting assignment vertex');
-		const name = interestingVertex.name as string | undefined;
-		guard(name !== undefined, () => 'Could not find name for interesting assignment vertex');
-		return `
+	const interestingUseOfAssignment = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.id === 11);
+	guard(interestingUseOfAssignment !== undefined, () => 'Could not find interesting assignment vertex for the code');
+	const [id, interestingVertex] = interestingUseOfAssignment;
+	const env = interestingVertex.environment;
+	guard(env !== undefined, () => 'Could not find environment for interesting assignment vertex');
+	const name = interestingVertex.name as string | undefined;
+	guard(name !== undefined, () => 'Could not find name for interesting assignment vertex');
+	return `
 ${text}		
 
 Interesting program, right? Running this with \`u <- TRUE\` will cause the last line to evaluate to \`6\` because we redefined the assignment
@@ -387,7 +387,7 @@ Similarly, trying to resolve the name with \`${resolveByName.name}\` using the e
 { \`${resolveByName(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;		
-	})()}
+})()}
 
 `)}
 
@@ -446,12 +446,12 @@ ${details('Example: Assigning with a String', await printDfGraphForCode(shell, '
 Definitions may be constrained by conditionals (_flowR_ takes care of calculating the dominating front for you).
 
 ${details('Conditional Assignments', await (async() => {
-		const constrainedDefinitions = await printDfGraphForCode(shell, 'x <- 0\nif(u) x <- 1 else x <- 2\nx', { exposeResult: true });
-		const [text, info] = constrainedDefinitions;
+	const constrainedDefinitions = await printDfGraphForCode(shell, 'x <- 0\nif(u) x <- 1 else x <- 2\nx', { exposeResult: true });
+	const [text, info] = constrainedDefinitions;
 
-		const finalEnvironment = printEnvironmentToMarkdown(info.dataflow.environment.current);
+	const finalEnvironment = printEnvironmentToMarkdown(info.dataflow.environment.current);
 		
-		return `
+	return `
 ${text}
 
 In this case, the definition of \`x\` is constrained by the conditional, which is reflected in the environment at the end of the analysis:
@@ -460,7 +460,7 @@ ${finalEnvironment}
 
 As you can see, _flowR_ is able to recognize that the initial definition of \`x\` has no influence on the final value of the variable.
 		`;
-	})())}
+})())}
 
 `,
 		code:             'x <- 1',
@@ -502,14 +502,14 @@ the actual dataflow graph is flat, and you can query all root vertices (i.e., th
 vertices of function definitions or not (e.g., \`${new DataflowGraph(undefined).vertices.name}\`)
 
 ${details('Example: Nested Function Definitions',
-		await (async() => {
-			const [text, info] = await printDfGraphForCode(shell, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
+	await (async() => {
+		const [text, info] = await printDfGraphForCode(shell, 'f <- function() { g <- function() 3 }', { mark: new Set([9, 6]), exposeResult: true });
 	
-			const definitions = [...info.dataflow.graph.vertices(true)]
-				.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
-				.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`);
+		const definitions = [...info.dataflow.graph.vertices(true)]
+			.filter(([, vertex]) => vertex.tag === VertexType.FunctionDefinition)
+			.map(([id, vertex]) => `| \`${id}\` | { \`${[...(vertex as DataflowGraphVertexFunctionDefinition).subflow.graph].join('`, `')}\` } |`);
 			
-			return `
+		return `
 ${text}
 
 As you can see, the vertex ids of the subflow do not contain those of nested function definitions but again only those which are part of the respective scope (creating a tree-like structure):
@@ -519,27 +519,27 @@ As you can see, the vertex ids of the subflow do not contain those of nested fun
 ${definitions.join('\n')}
 
 	`;
-		})()
-	)}
+	})()
+)}
 
 But now there is still an open question: how do you know which vertices are the parameters?
 In short: there is no direct way to infer this from the dataflow graph (as parameters are handled as open references which are promises).
 However, you can use the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) to get the parameters used.   
 
 ${details('Example: Parameters of a Function',
-		await (async() => {
+	await (async() => {
 			
-			const code = 'f <- function(x, y = 3) x + y';
-			const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([10, 1, 3]), exposeResult: true });
-			const ast = await printNormalizedAstForCode(shell, code, { prefix: 'flowchart LR\n', showCode: false });
+		const code = 'f <- function(x, y = 3) x + y';
+		const [text, info] = await printDfGraphForCode(shell, code, { mark: new Set([10, 1, 3]), exposeResult: true });
+		const ast = await printNormalizedAstForCode(shell, code, { prefix: 'flowchart LR\n', showCode: false });
 			
-			const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
-			guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
-			const [id] = functionDefinition;
+		const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
+		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
+		const [id] = functionDefinition;
 			
-			const normalized = info.normalize.idMap.get(id) as RFunctionDefinition;
+		const normalized = info.normalize.idMap.get(id) as RFunctionDefinition;
 			
-			return `
+		return `
 Let's first consider the following dataflow graph (of \`${code}\`):
 
 ${text}
@@ -549,8 +549,8 @@ we can get the parameters simply be requesting the \`parameters\` property of th
 
 ${ast}
 	`;
-		})()
-	)}
+	})()
+)}
 				`
 	})
 }
@@ -835,8 +835,8 @@ Additionally, every node may have links to its [control dependencies](#control-d
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-		([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
-	).join('\n1. ')}
+	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+).join('\n1. ')}
 
 ${vertexType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', vertexType.text)) : ''}
 
@@ -849,8 +849,8 @@ ${vertexType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should
 The following edges types exist, internally we use bitmasks to represent multiple types in a compact form:
 
 1. ${getAllEdges().map(
-		([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
-	).join('\n1. ')}
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+).join('\n1. ')}
 
 ${edgeType.text.trim().length > 0 ? details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', edgeType.text)) : ''}
 

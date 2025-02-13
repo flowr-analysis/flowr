@@ -70,7 +70,7 @@ export class FakeSocket implements Socket {
 			let timeout: NodeJS.Timeout | undefined;
 			if(timeoutInS) {
 				timeout = setTimeout(() => {
-					error();
+					error(new Error(`timeout waiting for message of type ${type}`));
 				}, timeoutInS * 1000);
 			}
 			// check if the message was already sent (poor mans check)

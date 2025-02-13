@@ -24,7 +24,7 @@ export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): Da
 		let resolved: NodeId;
 		try {
 			resolved = slicingCriterionToId(id as SingleSlicingCriterion, resolveMap);
-		} catch(e) {
+		} catch{
 			/* just keep it :D */
 			resolved = id as NodeId;
 		}

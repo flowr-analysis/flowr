@@ -262,7 +262,7 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
-	config?: AssignmentConfiguration | undefined,
+	config?: AssignmentConfiguration  ,
 ) {
 	if(getConfig().solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;

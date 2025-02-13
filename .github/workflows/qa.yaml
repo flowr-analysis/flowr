@@ -150,7 +150,7 @@ jobs:
       - name: "🌍 Retrieve the latest version"
         id: get-version
         run: |
-          git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^src/|package.json'
+          git diff --name-only HEAD^ HEAD | grep -q '^src/|package.json'
           if [ $? -eq 0 ]; then
               VERSION="$(npm show @eagleoutice/flowr-dev version)"
               # parse the date contained in the 0.0.YYYY-MM-DD-HH-MM version

@@ -94,6 +94,7 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 	}
 }
 
+/** Please use {@link resolveValueOfVariable} */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): unknown[] | undefined {
 	if(name === undefined) {
 		return undefined;
@@ -164,6 +165,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	return [...definitions];
 }
 
+/** Please use {@link resolveValueOfVariable} */
 export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	if(identifier === undefined) {
 		return undefined;

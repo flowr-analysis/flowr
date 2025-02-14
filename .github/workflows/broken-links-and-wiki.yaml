@@ -56,7 +56,7 @@ jobs:
           rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
-      - name: "🛠️ Update the Generated Wiki Pages"
+      - name: "🛠️ Update the Generated Pages"
         run: |
           npm ci
           CHANGED_ANY=false
@@ -97,6 +97,27 @@ jobs:
           update_wiki_page "Normalized AST" wiki:normalized-ast
           update_wiki_page "Linting and Testing" wiki:linting-and-testing
           update_wiki_page "Core" wiki:core
+          
+          # check for an update in the versions! (including the updated name information)
+          ALL_TAGS=$( git tag --list --format="%(tag) (%(creatordate))" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+)\s*\(([a-zA-Z]+\s*)([a-zA-Z]+)\s*([0-9]+)\s*[0-9:]+\s+([0-9]+).*/\1 (\3 \4, \5)/' | sort -V)
+          NUM_OF_TAGS=$(echo "$ALL_TAGS" | wc -l)
+          LATEST_TAG=$(echo "$ALL_TAGS" | tail -n1)
+          # add (latest) to the latest tag
+          ALL_TAGS=$(sed -E "s/^$LATEST_TAG$/$LATEST_TAG (latest)/" <<< "$ALL_TAGS")
+          ALL_TAGS+="\nUnknown\nUnreleased/Dev"
+          ALL_TAGS=$(echo -e "$ALL_TAGS" | sed -E 's/^(.*)$/        - \1/')
+          cp .github/ISSUE_TEMPLATE/bug-report.yaml .github/ISSUE_TEMPLATE/bug-report.yaml.tmp
+          sed -i -E "/\s*# START::Versions/,/\s*# END::Versions/c\\# START::Versions\n$(echo "$ALL_TAGS" | sed 's/$/\\/' ) \n# END::Versions" .github/ISSUE_TEMPLATE/bug-report.yaml
+          sed -i -E "/\s*# START::DefaultVersion/,/\s*# END::DefaultVersion/c\\# START::DefaultVersion\n      default: $((NUM_OF_TAGS - 1))\n# END::DefaultVersion" .github/ISSUE_TEMPLATE/bug-report.yaml
+          if ! diff -q .github/ISSUE_TEMPLATE/bug-report.yaml .github/ISSUE_TEMPLATE/bug-report.yaml.tmp; then
+              echo "Versions in the bug-report changed!"
+              echo "CHANGED=true" >> $GITHUB_ENV
+              CHANGED_ANY=true
+              git add -f .github/ISSUE_TEMPLATE/bug-report.yaml
+              CHANGED_FILES+=("bug-report.yaml")
+          else
+              echo "Versions in bug-report did not change!"
+          fi
 
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"

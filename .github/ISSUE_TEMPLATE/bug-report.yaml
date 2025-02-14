@@ -11,9 +11,8 @@ body:
     id: what-happened
     attributes:
       label: What happened?
-      description: Also tell us, what did you expect to happen? Please make sure to include the way that you used flowR (e.g., the command you used).
-      placeholder: Tell us what you see!
-      value: "A bug happened when using the server!"
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what happened!
     validations:
       required: true
   - type: input
@@ -21,15 +20,23 @@ body:
     attributes:
       label: What version of R do you have installed?
       description: "You can use `R --version` to find out (with docker: `docker run --rm flowr --version`)."
-      placeholder: ex. 4.2.3
+      placeholder: 4.4.2
     validations:
       required: false
-  - type: input
+  - type: dropdown
     id: flowr-version
     attributes:
       label: What version of flowR did you use?
       description: "You can run flowr as `flowr --version` to find out (with docker: `docker run --rm flowr --version`)."
-      placeholder: ex. 1.1.0 or 'dev-<commit-hash>'
+      options:
+# START::Versions
+        -  (latest)
+        - Unknown
+        - Unreleased/Dev 
+# END::Versions
+# START::DefaultVersion
+      default: 0
+# END::DefaultVersion
     validations:
       required: true
   - type: textarea

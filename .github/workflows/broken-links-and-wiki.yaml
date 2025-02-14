@@ -56,7 +56,7 @@ jobs:
           rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
-      - name: "🛠️ Update the Generated Wiki Pages"
+      - name: "🛠️ Update the Generated Pages"
         run: |
           npm ci
           CHANGED_ANY=false

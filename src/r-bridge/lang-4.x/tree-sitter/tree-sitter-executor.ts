@@ -42,6 +42,10 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return Promise.resolve('none');
 	}
 
+	public treeSitterVersion(): number {
+		return this.parser.getLanguage().version;
+	}
+
 	public parse(request: RParseRequest): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file' ){

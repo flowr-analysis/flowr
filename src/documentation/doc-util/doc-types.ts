@@ -243,7 +243,7 @@ interface MermaidCompact {
 }
 
 export function getTypePathLink({ filePath, lineNumber }: TypeElementInSource, prefix = RemoteFlowrFilePathBaseRef): string {
-	const fromSource = filePath.replace(/^.*\/src\//, 'src/');
+	const fromSource = filePath.replace(/^.*\/src\//, 'src/').replace(/^.*\/test\//, 'test/');
 	return `${prefix}/${fromSource}#L${lineNumber}`;
 }
 

@@ -179,17 +179,6 @@ jobs:
           npm run publish-library
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-
-      - name: "⚙️ Update Issue-Templates"
-        run: |
-            # TODO: MOVE TO WIKI UPDATES AND CHECK FOR CHANGES
-            ALL_TAGS=$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')
-            # TOOD: MARK THE CURRENT VERSION
-            LATEST_TAG=$(echo "$ALL_TAGS" | sort -V | tail -n1)
-            ALL_TAGS+="\nUnreleased/Dev"
-            ALL_TAGS=$(echo -e "$ALL_TAGS" | sed -E 's/^(.*)$/        - \1/')
-            sed -i -E "/\s*# START::Versions/,/\s*# END::Versions/c\\# START::Versions\n$(echo "$ALL_TAGS" | sed 's/$/\\/' ) \n# END::Versions" .github/ISSUE_TEMPLATE/bug-report.yaml
-            sed -i -E "/\s*# START::DefaultVersion/,/\s*# END::DefaultVersion/c\\# START::DefaultVersion\n      default: $LATEST_TAG\n# END::DefaultVersion" .github/ISSUE_TEMPLATE/bug-report.yaml
     outputs:
       version: ${{ steps.release.outputs.version }}
 

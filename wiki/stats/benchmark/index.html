@@ -1,25 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
+      :root {
+        /* Colors */
+        --color-primary: #FF4D00;
+      }
       html {
-        font-family: BlinkMacSystemFont,-apple-system,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-family: BlinkMacSystemFont,-apple-system,"Fira Sans","Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Droid Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
         -webkit-font-smoothing: antialiased;
         background-color: #fff;
         font-size: 16px;
       }
       body {
-        color: #4a4a4a;
-        margin: 8px;
+        color: #3a3a3a;
+        margin: 10px;
         font-size: 1em;
         font-weight: 400;
       }
+      /* change highlight color to purple */
+      ::selection {
+        background-color: var(--color-primary);
+        color: #fff;
+      }
       header {
         margin-bottom: 8px;
+        padding-top: 1em;
         display: flex;
         flex-direction: column;
+        align-items: center;
       }
       main {
         width: 100%;
@@ -27,22 +39,42 @@
         flex-direction: column;
       }
       a {
-        color: #3273dc;
+        transition: 500ms;
+        color: var(--color-primary);
         cursor: pointer;
         text-decoration: none;
       }
       a:hover {
         color: #000;
       }
+      .icon-link {
+        transition: 400ms;
+        color: #000;
+      }
+      .icon-link:hover {
+        color: var(--color-primary);
+      }
+      .icon-link:active {
+        color: #888;
+      }
+      .title {
+        display: block;
+        font-size: 3.5rem;
+        font-weight: 600;
+        text-align: center;
+        align-items: center;
+      }
       button {
-        color: #fff;
-        background-color: #3298dc;
+        color: #000;
+        background-color: #fff;
         border-color: transparent;
         cursor: pointer;
         text-align: center;
+        transition: 450ms;
       }
       button:hover {
-        background-color: #2793da;
+        background-color: #fff;
+        color: var(--color-primary);
         flex: none;
       }
       .spacer {
@@ -56,9 +88,6 @@
         display: flex;
         align-items: center;
       }
-      .header-label {
-        margin-right: 4px;
-      }
       .benchmark-set {
         margin: 8px 0;
         width: 100%;
@@ -66,8 +95,8 @@
         flex-direction: column;
       }
       .benchmark-title {
-        font-size: 3rem;
-        font-weight: 600;
+        font-size: 1.5rem;
+        font-weight: 500;
         word-break: break-word;
         text-align: center;
       }
@@ -80,28 +109,81 @@
         width: 100%;
       }
       .benchmark-chart {
-        max-width: 1000px;
+        max-width: 800px;
+        width:  50%;
+      }
+      .upper-right {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+      }
+      .benchmark-set h1 {
+        /* align to left */
+        text-align: left;
+      }
+      .description {
+        padding-top: 1.75em;
+        padding-bottom: 1.25em;
+      }
+      
+      .text {
+        max-width: 70vw;
+        margin: 0 auto;
+        text-align: justify;
+        hyphens: auto;
+      }
+      
+      .center-focus {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 2em;
+      }
+      
+      .benchmark-details {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        flex-wrap: wrap;
+        width: 100%;
       }
     </style>
-    <title>Benchmarks</title>
+    <title>flowR Performance Benchmarks</title>
   </head>
 
   <body>
     <header id="header">
       <div class="header-item">
-        <strong class="header-label">Last Update:</strong>
-        <span id="last-update"></span>
+        <strong class="title">flowR Performance Benchmarks</strong>
       </div>
       <div class="header-item">
-        <strong class="header-label">Repository:</strong>
-        <a id="repository-link" rel="noopener"></a>
+        <strong class="header-label">Last Update:</strong>
+        <span id="last-update"><span style="color:gray;user-select:none;">fetching date...</span></span>
       </div>
     </header>
+    <div class="upper-right">
+      <button id="dl-button"><i class="fa fa-download"></i></button>
+      <a id="repository-link" rel="noopener" class="icon-link"><i class="fa fa-github"></i></a>
+    </div>
+    <div class="description text" style="padding-top: 3em;">
+      These pages continuously track the performance of flowR comparing both <a href="https://github.com/flowr-analysis/flowr/wiki/Engines">Engines</a> on an artificial and a real-world dataset.
+      Please have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/performance">performance test documentation</a> for more information on the used files and the benchmarking process.
+
+      Currently, the page shows all benchmark results collected in the <span id="show-range"><span style="color:gray;user-select:none;">fetching date range...</span></span>.
+      
+      <div id="range-selector" class="center-focus">
+        <span>Restrict benchmarks to the</span>
+        
+      </div>
+    </div>
+    
     <main id="main"></main>
     <footer>
-      <button id="dl-button">Download data as JSON</button>
+      
       <div class="spacer"></div>
-      <div class="small">Powered by <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a></div>
+      <div class="small">We use <a rel="noopener" href="https://github.com/marketplace/actions/continuous-benchmark">github-action-benchmark</a> to collect the benchmark information</div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.2/dist/Chart.min.js"></script>
@@ -110,6 +192,7 @@
       'use strict';
       (function() {
         const cycleColors = [
+          '#FF4D00',
           '#00add8',
           '#38ff38',
           '#a270ba',
@@ -124,13 +207,67 @@
           '#00add8',
           '#333333'
       ]
+      const SupportedDates = {
+        'Complete Time': Number.MAX_VALUE,
+        'Last 5 Years': 365*5,
+        'Last Year': 365,
+        'Last 6 Months': 180,
+        'Last 3 Months': 90,
+        'Last Month': 30,
+        'Last Week': 7,
+        'Last Day': 1,
+      }
+      const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
 
+      const data = window.BENCHMARK_DATA;
+      const lastUpdate = new Date(data.lastUpdate);
+      
+      // filter options to only show supported dates
+      for (const key in SupportedDates) {
+        if (!SupportedDates.hasOwnProperty(key)) {
+          continue;
+        }
+        if (lastUpdate < new Date() - SupportedDates[key] * 24 * 60 * 60 * 1000) {
+          delete SupportedDates[key];
+        }
+      }
+      
+      if(localStorage.getItem('dateRange') === null || !SupportedDates.hasOwnProperty(localStorage.getItem('dateRange'))) {
+        localStorage.setItem('dateRange', 'Last Year');
+      }
+      
+      document.getElementById('show-range').innerText = localStorage.getItem('dateRange').toLowerCase();
+      const rangeSelector = document.getElementById('range-selector')
+      // add dropdown
+      const select = document.createElement('select');
+      select.id = 'date-range';
+      for (const [key, value] of Object.entries(SupportedDates)) {
+        const option = document.createElement('option');
+        option.value = key;
+        option.text = key.toLowerCase();
+        select.appendChild(option);
+      }
+      select.value = localStorage.getItem('dateRange');
+      select.onchange = () => {
+        localStorage.setItem('dateRange', select.value);
+        document.getElementById('show-range').innerText = select.value.toLowerCase();
+        renderAllChars(init());
+      }
+      rangeSelector.appendChild(select);  
+      
         function init() {
+          
           function collectBenchesPerTestCase(entries) {
             const map = new Map();
             for (const entry of entries) {
               const {commit, date, tool, benches} = entry;
               for (const bench of benches) {
+                // if the date is more than x days ago, skip
+                const daysAgo = (new Date() - new Date(date)) / (1000 * 60 * 60 * 24);
+                if (daysAgo > SupportedDates[localStorage.getItem('dateRange')]) {
+                  continue;
+                }
+               
                 const result = { commit, date, tool, bench };
                 const arr = map.get(bench.name);
                 if (arr === undefined) {
@@ -146,14 +283,22 @@
           const data = window.BENCHMARK_DATA;
 
           // Render header
-          document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
+          const lastUpdate = new Date(data.lastUpdate);
+          document.getElementById('last-update').innerText = lastUpdate.toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            timeZoneName: 'short',
+          });
           const repoLink = document.getElementById('repository-link');
           repoLink.href = data.repoUrl;
-          repoLink.textContent = data.repoUrl;
 
           // Render footer
           document.getElementById('dl-button').onclick = () => {
-            const dataUrl = 'data:,' + JSON.stringify(data, null, 2);
+            const dataUrl = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
             const a = document.createElement('a');
             a.href = dataUrl;
             a.download = 'benchmark_data.json';
@@ -167,7 +312,6 @@
           }));
         }
 
-				const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
 				function getReleaseVersion(commit) {
 					const match = releaseRegex.exec(commit.message);
           if (match) {
@@ -177,24 +321,26 @@
 				}
 
         function renderAllChars(dataSets) {
-
-          function renderGraph(parent, name, dataset, i) {
+          function renderGraph(parent, names, benchSet, i) {
             const canvas = document.createElement('canvas');
             canvas.className = 'benchmark-chart';
             parent.appendChild(canvas);
 
             const color = cycleColors[i % cycleColors.length];
+            const dataset = benchSet.get(names[0]) || [];
             const data = {
-							// [skip ci] Release v1.1.3
-              labels: dataset.map(d => `${getReleaseVersion(d.commit)} (${d.commit.id.slice(0, 7)})`),
-              datasets: [
+              labels: dataset.map(d => `v${getReleaseVersion(d.commit)}`),
+              datasets: 
+                names.map((name, j) => (
                 {
                   label: name,
-                  data: dataset.map(d => d.bench.value),
-                  borderColor: color,
-                  backgroundColor: color + '60', // Add alpha for #rrggbbaa
+                  data: benchSet.get(name).map(d => d.bench.value),
+                  range: benchSet.get(name).map(d => d.bench.range),
+                  extra: benchSet.get(name).map(d => d.bench.extra),
+                  borderColor: cycleColors[(i + j) % cycleColors.length],
+                  backgroundColor: 'transparent'
                 }
-              ],
+              )),
             };
             const options = {
               scales: {
@@ -208,6 +354,7 @@
                 ],
                 yAxes: [
                   {
+                    stacked: true,
                     scaleLabel: {
                       display: true,
                       labelString: dataset.length > 0 ? dataset[0].bench.unit : '',
@@ -223,20 +370,24 @@
                   afterTitle: items => {
                     const {index} = items[0];
                     const data = dataset[index];
-                    return '\n' + data.commit.message + '\n\n' + data.commit.timestamp + ' committed by @' + data.commit.committer.username + '\n';
+                    return '\n' + data.commit.message
+                      .replace(/\[release:.*\]\s*(\d+\.\d+\.\d+)?/g, '')
+                      .replace(/\(Release v\d+\.\d+\.\d+\)/g, '');
                   },
                   label: item => {
                     let label = item.value;
-                    const { range, unit } = dataset[item.index].bench;
+                    const { unit } = dataset[item.index].bench;
                     label += ' ' + unit;
-                    if (range) {
-                      label += ' (' + range + ')';
-                    }
                     return label;
                   },
                   afterLabel: item => {
-                    const { extra } = dataset[item.index].bench;
-                    return extra ? '\n' + extra : '';
+                    const it = benchSet.get(names[item.datasetIndex])[item.index].bench;
+                    if(it.range) {
+                      const { unit } = dataset[item.index].bench
+                      return '\nRange: ' + Math.round(it.range) + ' ' + unit + (it.extra ? '; ' + it.extra : '');
+                    } else {
+                      return it.extra ? '\n' + it.extra : '';
+                    }
                   }
                 }
               },
@@ -251,8 +402,8 @@
               },
             };
 
-            new Chart(canvas, {
-              type: 'line',
+            return new Chart(canvas, {
+              type:  'line',
               data,
               options,
             });
@@ -272,12 +423,39 @@
             graphsElem.className = 'benchmark-graphs';
             setElem.appendChild(graphsElem);
 
-            for (const [benchName, benches] of [...benchSet.entries()].sort()) {
-              renderGraph(graphsElem, benchName, benches, i)
+            // render the first chart with stacked data
+            renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information"], benchSet, 0)
+            renderGraph(graphsElem, ["Static slicing", "Reconstruct code"], benchSet, 3)
+            // add a details element to contain the rest of the charts
+            const details = document.createElement('details');
+            details.style.width = '100%';
+            details.open = false;
+            // line break (flex)
+            const lineBreak = document.createElement('div');
+            lineBreak.style.flexBasis = '100%';
+            lineBreak.style.height = '0';
+            graphsElem.appendChild(lineBreak);
+            graphsElem.appendChild(details);
+            const summary = document.createElement('summary');
+            summary.textContent = 'Show detailed charts';
+            details.appendChild(summary);
+            
+            const benchmarkSetMain = document.createElement('div');
+            benchmarkSetMain.className = 'benchmark-details';
+            details.appendChild(benchmarkSetMain);
+            
+            const benchmarkDetailsExplanation = document.createElement('div');
+            benchmarkDetailsExplanation.textContent = 'The following charts show the performance of the individual benchmarks. Please note that for some benchmarks (like the reduction count), higher is better.';
+            benchmarkDetailsExplanation.className = 'description text'
+            benchmarkSetMain.appendChild(benchmarkDetailsExplanation);
+            
+            for (const benchName of [...benchSet.keys()].sort()) {
+              renderGraph(benchmarkSetMain, [benchName], benchSet, i)
             }
           }
 
           const main = document.getElementById('main');
+          main.innerHTML = '';
           let i = 0
           for (const {name, dataSet} of dataSets) {
             renderBenchSet(name, dataSet, main, i++);

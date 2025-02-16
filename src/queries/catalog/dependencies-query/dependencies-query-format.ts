@@ -6,6 +6,8 @@ import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
 
+export const Unknown = 'unknown';
+
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
 	{ name: 'library',           argIdx: 0, argName: 'package' },
@@ -166,9 +168,11 @@ export interface DependenciesQueryResult extends BaseQueryResult {
 }
 
 export interface DependencyInfo extends Record<string, unknown>{
-    nodeId:       NodeId
-    functionName: string
-    linkedIds?:   readonly NodeId[]
+    nodeId:         NodeId
+    functionName:   string
+    linkedIds?:     readonly NodeId[]
+	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
+	lexemeOfArgument?: string;
 }
 export type LibraryInfo = (DependencyInfo & { libraryName: 'unknown' | string })
 export type SourceInfo = (DependencyInfo & { file: string })

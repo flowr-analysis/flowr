@@ -121,6 +121,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
 		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
 
+		testQuery('unknown read', 'read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'unknown', lexemeOfArgument: 'x' }] });
+
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
 				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]
@@ -139,6 +141,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { writtenData: [{ nodeId: '2@cat', functionName: 'cat', destination: 'unknown', linkedIds: [3] }] });
+
+		testQuery('Unknown write', 'write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'unknown', lexemeOfArgument: 'u' }] });
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {

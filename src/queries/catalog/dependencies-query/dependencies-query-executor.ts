@@ -7,7 +7,8 @@ import type {
 	ReadInfo, SourceInfo,
 	WriteInfo
 } from './dependencies-query-format';
-import { LibraryFunctions, ReadFunctions, SourceFunctions, WriteFunctions } from './dependencies-query-format';
+import { Unknown
+	, LibraryFunctions, ReadFunctions, SourceFunctions, WriteFunctions } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
@@ -23,7 +24,6 @@ import { compactRecord } from '../../../util/objects';
 
 const SupportedVertexTypes = [RType.String, RType.Logical, RType.Number];
 
-const Unknown = 'unknown';
 
 export function executeDependenciesQuery(data: BasicQueryData, queries: readonly DependenciesQuery[]): DependenciesQueryResult {
 	if(queries.length !== 1) {
@@ -47,10 +47,25 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		...makeCallContextQuery(writeFunctions, 'write')
 	);
 
-	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argument) => ({
-		nodeId:       id,
-		functionName: vertex.name,
-		libraryName:  argument ?? Unknown
+	const getLexeme = (argument: string | undefined | typeof Unknown, id: NodeId | undefined) => {
+		if((argument && argument !== Unknown) || !id) {
+			return undefined;
+		}
+		let get = data.ast.idMap.get(id);
+		if(!get) {
+			return undefined;
+		}
+		if(get.type === RType.Argument) {
+			get = get.value;
+		}
+		return get?.info.fullLexeme ?? get?.lexeme;
+	};
+
+	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, argument) => ({
+		nodeId:           id,
+		functionName:     vertex.name,
+		lexemeOfArgument: getLexeme(argument, argId),
+		libraryName:      argument ?? Unknown
 	}), [RType.Symbol]);
 
 	if(!ignoreDefault) {
@@ -67,25 +82,27 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		});
 	}
 
-
-	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argument, linkedIds) => ({
-		nodeId:       id,
-		functionName: vertex.name,
-		file:         argument ?? Unknown,
-		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
+	const sourcedFiles: SourceInfo[] = getResults(data, results, 'source', sourceFunctions, (id, vertex, argId, argument, linkedIds) => ({
+		nodeId:           id,
+		functionName:     vertex.name,
+		file:             argument ?? Unknown,
+		lexemeOfArgument: getLexeme(argument, argId),
+		linkedIds:        linkedIds?.length ? linkedIds : undefined
 	}));
-	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argument, linkedIds) => ({
-		nodeId:       id,
-		functionName: vertex.name,
-		source:       argument ?? Unknown,
-		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
+	const readData: ReadInfo[] = getResults(data, results, 'read', readFunctions, (id, vertex, argId, argument, linkedIds) => ({
+		nodeId:           id,
+		functionName:     vertex.name,
+		source:           argument ?? Unknown,
+		lexemeOfArgument: getLexeme(argument, argId),
+		linkedIds:        linkedIds?.length ? linkedIds : undefined
 	}));
-	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argument, linkedIds) => ({
-		nodeId:       id,
-		functionName: vertex.name,
+	const writtenData: WriteInfo[] = getResults(data, results, 'write', writeFunctions, (id, vertex, argId, argument, linkedIds) => ({
+		nodeId:           id,
+		functionName:     vertex.name,
 		// write functions that don't have argIndex are assumed to write to stdout
-		destination:  argument ?? ((linkedIds?.length ?? 0) > 0 ? Unknown : 'stdout'),
-		linkedIds:    (linkedIds?.length ?? 0) > 0 ? linkedIds : undefined
+		destination:      argument ?? (linkedIds?.length ? Unknown : 'stdout'),
+		lexemeOfArgument: getLexeme(argument, argId),
+		linkedIds:        linkedIds?.length? linkedIds : undefined
 	}));
 
 	return {
@@ -108,8 +125,11 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 	}));
 }
 
-function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: (id: NodeId, vertex: DataflowGraphVertexFunctionCall, argument: string | undefined, linkedIds: undefined | readonly NodeId[]) => T | undefined, additionalAllowedTypes?: RType[]) {
-	return Object.entries(results?.kinds[kind]?.subkinds ?? {}).flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
+type MakeDependencyInfo<T extends DependencyInfo> = (id: NodeId, vertex: DataflowGraphVertexFunctionCall, argumentId: NodeId | undefined, argumentValue: string | undefined, linkedIds: undefined | readonly NodeId[]) => T | undefined;
+
+function getResults<T extends DependencyInfo>(data: BasicQueryData, results: CallContextQueryResult, kind: string, functions: FunctionInfo[], makeInfo: MakeDependencyInfo<T>, additionalAllowedTypes?: RType[]): T[] {
+	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
+	return kindEntries.flatMap(([name, results]) => results.flatMap(({ id, linkedIds }) => {
 		const vertex = data.dataflow.graph.getVertex(id) as DataflowGraphVertexFunctionCall;
 		const info = functions.find(f => f.name === name) as FunctionInfo;
 		let index = info.argIdx;
@@ -121,43 +141,64 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 		}
 		const args = index !== undefined ? getArgumentValue(data, vertex, index, additionalAllowedTypes) : undefined;
 		if(!args) {
-			return compactRecord(makeInfo(id, vertex, undefined, linkedIds));
+			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, linkedIds));
+			return record ? [record as T] : [];
 		}
-		return args.flatMap(a => compactRecord(makeInfo(id, vertex, a, linkedIds)));
-	})).filter(isNotUndefined) ?? [];
-}
-
-function getArgumentValue({ dataflow: { graph } }: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, argumentIndex: number | 'unnamed', additionalAllowedTypes: RType[] | undefined): (string | undefined)[] | undefined {
-	if(vertex) {
-		if(argumentIndex === 'unnamed') {
-			// return all unnamed arguments
-			const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
-			return references.map(ref => {
-				if(!ref) {
-					return undefined;
-				}
-				let valueNode = graph.idMap?.get(ref);
-				if(valueNode?.type === RType.Argument) {
-					valueNode = valueNode.value;
-				}
-				if(valueNode) {
-					const allowedTypes = [...SupportedVertexTypes, ...additionalAllowedTypes ?? []];
-					return allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : Unknown;
-				}
-			});
-		}
-		if(vertex.args.length > argumentIndex) {
-			const arg = getReferenceOfArgument(vertex.args[argumentIndex]);
-			if(arg) {
-				let valueNode = graph.idMap?.get(arg);
-				if(valueNode?.type === RType.Argument) {
-					valueNode = valueNode.value;
-				}
-				if(valueNode) {
-					const allowedTypes = [...SupportedVertexTypes, ...additionalAllowedTypes ?? []];
-					return [allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : Unknown];
+		const results: T[] = [];
+		for(const [arg, values] of args.entries()) {
+			for(const value of values) {
+				const result = compactRecord(makeInfo(id, vertex, arg, value, linkedIds));
+				if(result) {
+					results.push(result as T);
 				}
 			}
+		}
+		return results;
+	})) ?? [];
+}
+
+/**
+ * Get the values of all arguments matching the criteria.
+ */
+function getArgumentValue(
+	{ dataflow: { graph } }: BasicQueryData,
+	vertex: DataflowGraphVertexFunctionCall,
+	argumentIndex: number | 'unnamed',
+	additionalAllowedTypes: RType[] | undefined
+): Map<NodeId, Set<string|undefined>> | undefined {
+	if(!vertex) {
+		return undefined;
+	}
+	if(argumentIndex === 'unnamed') {
+		// return all unnamed arguments
+		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument).filter(isNotUndefined);
+
+		const map = new Map<NodeId, Set<string|undefined>>();
+		for(const ref of references) {
+			let valueNode = graph.idMap?.get(ref);
+			if(valueNode?.type === RType.Argument) {
+				valueNode = valueNode.value;
+			}
+			if(valueNode) {
+				const allowedTypes = [...SupportedVertexTypes, ...additionalAllowedTypes ?? []];
+				const value = allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : Unknown;
+				map.set(ref, new Set([value]));
+			}
+		}
+		return map;
+	}
+	if(vertex.args.length > argumentIndex) {
+		const arg = getReferenceOfArgument(vertex.args[argumentIndex]);
+		if(!arg) {
+			return undefined;
+		}
+		let valueNode = graph.idMap?.get(arg);
+		if(valueNode?.type === RType.Argument) {
+			valueNode = valueNode.value;
+		}
+		if(valueNode) {
+			const allowedTypes = [...SupportedVertexTypes, ...additionalAllowedTypes ?? []];
+			return new Map([[arg, new Set([allowedTypes.includes(valueNode.type) ? removeRQuotes(valueNode.lexeme as string) : Unknown])]]);
 		}
 	}
 	return undefined;

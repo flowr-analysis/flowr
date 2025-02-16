@@ -6,7 +6,7 @@ import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
-import { codeBlock } from './doc-util/doc-code';
+import { codeBlock, codeInline } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retriever';
 import { DockerName } from './doc-util/doc-docker';
@@ -19,9 +19,10 @@ import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import { block } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 async function explainServer(shell: RShell): Promise<string> {
 	documentAllServerMessages();
@@ -248,7 +249,7 @@ ${describeSchema(flowrConfigFileSchema, markdownFormatter)}
 
 function explainWritingCode(shell: RShell): string {
 	const types = getTypesFromFolderAsMermaid({
-		rootFolder:  path.resolve('./src/r-bridge/'),
+		rootFolder:  path.resolve('./src/'),
 		files:       [path.resolve('./src/core/pipeline-executor.ts'), path.resolve('./src/core/steps/pipeline/default-pipelines.ts')],
 		typeName:    'RShell',
 		inlineTypes: mermaidHide
@@ -261,20 +262,28 @@ _flowR_ can be used as a [module](${FlowrNpmRef}) and offers several main classe
 ### Using the ${shortLink(RShell.name, types.info)} to Interact with R
 
 The ${shortLink(RShell.name, types.info)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
-Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives.
+Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives (for example, the ${shortLink(TreeSitterExecutor.name, types.info)}).
 
-> [!IMPORTANT]
-> Each ${shortLink(RShell.name, types.info)} controls a new instance of the R&nbsp;interpreter, make sure to call <code>${shortLink(RShell.name, types.info, false)}::${shell.close.name}()</code> when you’re done.
+${
+	block({
+		type:    'IMPORTANT',
+		content: `
+Each ${shortLink(RShell.name, types.info)} controls a new instance of the R&nbsp;interpreter, 
+make sure to call ${codeInline(shortLink(RShell.name + '::' + shell.close.name, types.info, false, 'i') + '()')} when you are done.`
+	})
+}
 
-You can start a new "session" simply by constructing a new object with <code>new ${shortLink(RShell.name, types.info, false)}()</code>.
+You can start a new "session" simply by constructing a new object with ${codeInline('new ' + shortLink(RShell.name, types.info, false) + '()')}.
 
-However, there are several options that may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
+However, there are several options that may be of interest 
+(e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-With a shell object (let's call it \`shell\`), you can execute R code by using <code>${shortLink(RShell.name, types.info, false)}::${shell.sendCommand.name}</code>, 
-for example \`shell.${shell.sendCommand.name}("1 + 1")\`. 
-However, this does not return anything, so if you want to collect the output of your command, use <code>${shortLink(RShell.name, types.info, false)}::${shell.sendCommandWithOutput.name}</code> instead.
+With a shell object (let's call it \`shell\`), you can execute R code by using ${shortLink(RShell.name + '::' + shell.sendCommand.name, types.info, true, 'i')}, 
+for example ${codeInline('shell.' + shortLink(RShell.name + ':::' + shell.sendCommand.name, types.info, false) + '("1 + 1")')}. 
+However, this does not return anything, so if you want to collect the output of your command, use
+${shortLink(RShell.name + '::' + shell.sendCommandWithOutput.name, types.info, true, 'i')} instead.
 
-Besides that, the command <code>${shortLink(RShell.name, types.info, false)}::${shell.tryToInjectHomeLibPath.name}</code> may be of interest, as it enables all libraries available on the host system.
+Besides that, the command ${shortLink(RShell.name + '::' + shell.tryToInjectHomeLibPath.name, types.info)} may be of interest, as it enables all libraries available on the host system.
 
 ### The Pipeline Executor
 
@@ -296,22 +305,23 @@ const slice = await slicer.allRemainingSteps()
 `)
 }
 
-<details>
-
-<summary style='color:gray'>More Information</summary>
+${
+	details('More Information', `
 
 If you compare this, with what you would have done with the old (and removed) \`SteppingSlicer\`, 
 this essentially just requires you to replace the \`SteppingSlicer\` with the ${shortLink(PipelineExecutor.name, types.info)}
 and to pass the ${shortLink('DEFAULT_SLICING_PIPELINE', types.info)} as the first argument.
 The ${shortLink(PipelineExecutor.name, types.info)}...
 
-1. allows investigating the results of all intermediate steps
+1. Provides structures to investigate the results of all intermediate steps
 2. Can be executed step-by-step
 3. Can repeat steps (e.g., to calculate multiple slices on the same input)
 
 See the in-code documentation for more information.
 
-</details>
+	`)
+}
+
 
 ### Generate Statistics
 

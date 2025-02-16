@@ -415,20 +415,24 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
-		[container, name] = name.split('::');
+		[container, name] = name.split(/:::?/);
 	}
-	const node = hierarchy.find(e => e.name === name);
-	if(!node) {
+	let node = hierarchy.filter(e => e.name === name);
+	if(node.length === 0) {
 		return undefined;
-	} else if(container && !node.extends.includes(container)) {
-		return undefined;
+	} else if(container) {
+		node = node.filter(n => n.extends.includes(container));
+		if(node.length === 0) {
+			return undefined;
+		}
 	}
-	return [container, name, node];
+	return [container, name, node[0]];
 }
 
 /**
  * Create a short link to a type in the documentation
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
@@ -439,7 +443,11 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
-	const [pkg, mainName, node] = res;
+	const [, mainName, node] = res;
+	let pkg = res[0];
+	if(name.includes(':::')) {
+		pkg = undefined;
+	}
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
 	return `[${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?

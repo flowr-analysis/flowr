@@ -63,42 +63,43 @@ jobs:
           npm ci
           CHANGED_ANY=false
           CHANGED_FILES=()
-          function update_wiki_page {
+          function update_page {
             # test if the file exists
-            if [ -f "wiki/$1.md" ]; then
-                cp "wiki/$1.md" "wiki/$1-Old.md"
+            if [ -f "$1.md" ]; then
+                cp "$1.md" "$1-Old.md"
             else
-                touch "wiki/$1-Old.md"
+                touch "$1-Old.md"
             fi
-            npm run $2 --silent > "wiki/$1.md"
+            npm run $2 --silent > "$1.md"
             # test if the file changed, but ignore the first line which contains the time stamp
             # we additionally used sed to remove any measurement stamp for the comparison as they of course change
             # additionally, we remove any part "timing": <number>.
-            tail -n +2 "wiki/$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1.md.tmp"
-            tail -n +2 "wiki/$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "wiki/$1-Old.md.tmp"
+            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1.md.tmp"
+            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1-Old.md.tmp"
           
-            if ! diff -q "wiki/$1.md.tmp" "wiki/$1-Old.md.tmp"; then
+            if ! diff -q "$1.md.tmp" "$1-Old.md.tmp"; then
                 echo "$1 changed!"
                 echo "CHANGED=true" >> $GITHUB_ENV
                 CHANGED_ANY=true
-                git add -f "wiki/$1.md"
+                git add -f "$1.md"
                 CHANGED_FILES+=("$1")
             else
                 echo "$1 did not change!"
             fi
             # delete the old file again
-            rm "wiki/$1-Old.md"
+            rm "$1-Old.md"
           }
           
-          update_wiki_page "Capabilities" capabilities-markdown
-          update_wiki_page "Dataflow Graph" wiki:df-graph
-          update_wiki_page "Query API" wiki:query-api
-          update_wiki_page "Search API" wiki:search-api
-          update_wiki_page "Engines" wiki:engines
-          update_wiki_page "Interface" wiki:interface
-          update_wiki_page "Normalized AST" wiki:normalized-ast
-          update_wiki_page "Linting and Testing" wiki:linting-and-testing
-          update_wiki_page "Core" wiki:core
+          update_page wiki/"Capabilities" capabilities-markdown
+          update_page wiki/"Dataflow Graph" wiki:df-graph
+          update_page wiki/"Query API" wiki:query-api
+          update_page wiki/"Search API" wiki:search-api
+          update_page wiki/"Engines" wiki:engines
+          update_page wiki/"Interface" wiki:interface
+          update_page wiki/"Normalized AST" wiki:normalized-ast
+          update_page wiki/"Linting and Testing" wiki:linting-and-testing
+          update_page wiki/"Core" wiki:core
+          update_page README gen:readme
           
           # check for an update in the versions! (including the updated name information)
           LIMIT_TO_LAST=8

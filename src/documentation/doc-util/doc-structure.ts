@@ -6,9 +6,9 @@ export interface DetailsOptions {
     readonly hideIfEmpty?: boolean;
     readonly prefixInit?:  string;
 }
-export function details(title: string, content: string, { color = 'black', open = false, hideIfEmpty = true, prefixInit = '' }: DetailsOptions = {}): string {
+export function details(title: string, content: string, { color, open = false, hideIfEmpty = true, prefixInit = '' }: DetailsOptions = {}): string {
 	return hideIfEmpty && content.trim().length === 0 ? '' : `
-${prefixInit}<details${open ? ' open' : ''}><summary style="color:${color}">${title}</summary>
+${prefixInit}<details${open ? ' open' : ''}><summary style="${color ? 'color:' + color : ''}">${title}</summary>
 
 ${content}
 
@@ -17,7 +17,7 @@ ${content}
 }
 
 export interface BlockOptions {
-    readonly type:    'NOTE' | 'WARNING' | 'TIP';
+    readonly type:    'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT';
     readonly content: string;
 }
 export function block({ type, content }: BlockOptions): string {

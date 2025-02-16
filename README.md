@@ -41,14 +41,14 @@ It offers a wide variety of features, for example:
     ```
     
     
-    Let's suppose we are interested only in the sum which is printed in line 11.
+    Let's suppose we are interested only in the `sum` which is printed in line 11.
     To get a slice for this, you can use the following command:
     
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.3, R v4.4.0 (r-shell engine)
+    flowR repl using flowR v2.2.4, R v4.4.0 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -95,7 +95,7 @@ It offers a wide variety of features, for example:
         
 
 * 🚀 **fast data and control-flow graphs**\
-  Within just <i><span title="This measurement is automatically fetched from the latest benchmarks!">120.6 ms</i></span> (as of Feb 12, 2025), 
+  Within just <i><span title="This measurement is automatically fetched from the latest benchmarks!">119.8 ms</i></span> (as of Feb 16, 2025), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -131,7 +131,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.3, R v4.4.0 (r-shell engine)
+    flowR repl using flowR v2.2.4, R v4.4.0 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -375,7 +375,7 @@ It offers a wide variety of features, for example:
         52 -->|"argument"| 50
     ```
     	
-    (The analysis required _22.53 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.93 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

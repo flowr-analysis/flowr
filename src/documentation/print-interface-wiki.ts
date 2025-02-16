@@ -313,7 +313,7 @@ this essentially just requires you to replace the \`SteppingSlicer\` with the ${
 and to pass the ${shortLink('DEFAULT_SLICING_PIPELINE', types.info)} as the first argument.
 The ${shortLink(PipelineExecutor.name, types.info)}...
 
-1. allows investigating the results of all intermediate steps
+1. Provides structures to investigate the results of all intermediate steps
 2. Can be executed step-by-step
 3. Can repeat steps (e.g., to calculate multiple slices on the same input)
 

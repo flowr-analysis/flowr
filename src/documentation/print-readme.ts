@@ -51,7 +51,7 @@ For this, let's have a look at the example file, located at ${linkFlowRSourceFil
 
 ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
-Let's suppose we are interested only in the sum which is printed in line 11.
+Let's suppose we are interested only in the \`sum\` which is printed in line 11.
 To get a slice for this, you can use the following command:
 
 ${await documentReplSession(shell, [{

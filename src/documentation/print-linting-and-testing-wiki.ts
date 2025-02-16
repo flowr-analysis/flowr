@@ -5,6 +5,7 @@ import { FlowrCodecovRef, FlowrDockerRef, FlowrGithubBaseRef, FlowrSiteBaseRef, 
 import { block } from './doc-util/doc-structure';
 import { getTypesFromFolderAsMermaid, mermaidHide, shortLink } from './doc-util/doc-types';
 import path from 'path';
+import { autoGenHeader } from './doc-util/doc-auto-gen';
 
 function getText() {
 	const { info } = getTypesFromFolderAsMermaid({
@@ -13,7 +14,8 @@ function getText() {
 		typeName:    'parameter',
 		inlineTypes: mermaidHide
 	});
-	return `
+	return `${autoGenHeader({ filename: module.filename, purpose: 'linting and testing definitions' })}
+
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
 for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
 

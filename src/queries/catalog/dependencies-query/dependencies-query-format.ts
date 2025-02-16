@@ -87,7 +87,7 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'Import', argIdx: 0, argName: 'file' },
 ] as const;
 export const WriteFunctions: FunctionInfo[] = [
-	{ name: 'save', argIdx: 0, argName: '...' },
+	{ name: 'save', argIdx: 2, argName: 'file' },
 	{ name: 'save.image', argIdx: 0, argName: 'file' },
 	{ name: 'write', argIdx: 1, argName: 'file' },
 	{ name: 'dput', argIdx: 1, argName: 'file' },

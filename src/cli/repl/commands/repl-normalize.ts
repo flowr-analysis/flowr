@@ -3,7 +3,7 @@ import { createNormalizePipeline } from '../../../core/steps/pipeline/default-pi
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import type { KnownParser } from '../../../r-bridge/parser';
-import clipboard from 'clipboardy';
+const clipboard = import('clipboardy');
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 
 async function normalize(parser: KnownParser, remainingLine: string) {
@@ -30,7 +30,7 @@ export const normalizeCommand: ReplCommand = {
 		const mermaid = normalizedAstToMermaid(result.normalize.ast);
 		output.stdout(mermaid);
 		try {
-			clipboard.writeSync(mermaid);
+			(await clipboard).default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
 		} catch{ /* do nothing this is a service thing */ }
 	}
@@ -46,7 +46,7 @@ export const normalizeStarCommand: ReplCommand = {
 		const mermaid = normalizedAstToMermaidUrl(result.normalize.ast);
 		output.stdout(mermaid);
 		try {
-			clipboard.writeSync(mermaid);
+			(await clipboard).default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result.normalize['.meta'].timing));
 		} catch{ /* do nothing this is a service thing */ }
 	}

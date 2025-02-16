@@ -3,7 +3,7 @@ import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pip
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import type { KnownParser } from '../../../r-bridge/parser';
-import clipboard from 'clipboardy';
+const clipboard = import('clipboardy');
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 
 /**
@@ -33,7 +33,7 @@ export const dataflowCommand: ReplCommand = {
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
-			clipboard.writeSync(mermaid);
+			(await clipboard).default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid code', result.dataflow['.meta'].timing));
 		} catch{ /* do nothing this is a service thing */ }
 	}
@@ -49,7 +49,7 @@ export const dataflowStarCommand: ReplCommand = {
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
 		output.stdout(mermaid);
 		try {
-			clipboard.writeSync(mermaid);
+			(await clipboard).default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url', result.dataflow['.meta'].timing));
 		} catch{ /* do nothing this is a service thing */ }
 	}

@@ -146,7 +146,7 @@ It is partially supported by the German Research Foundation (DFG) under the gran
 
 ----
 
-## Generation Notice
+### Generation Notice
 
 Please notice that this file was generated automatically using the file ${fileNameForGenHeader(module.filename)} as a source.\\
 If you want to make changes please edit the source file (the CI will take care of the rest).

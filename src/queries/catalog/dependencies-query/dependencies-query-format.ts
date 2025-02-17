@@ -87,8 +87,8 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'Import', argIdx: 0, argName: 'file' },
 ] as const;
 export const WriteFunctions: FunctionInfo[] = [
-	{ name: 'save', argIdx: 2, argName: 'file' },
-	{ name: 'save.image', argIdx: 0, argName: 'file' },
+	{ name: 'save', argName: 'file' },
+	{ name: 'save.image', argIdx: 1, argName: 'file' },
 	{ name: 'write', argIdx: 1, argName: 'file' },
 	{ name: 'dput', argIdx: 1, argName: 'file' },
 	{ name: 'dump', argIdx: 1, argName: 'file' },
@@ -97,7 +97,7 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'saveRDS', argIdx: 1, argName: 'file' },
 	// write functions that don't have argIndex are assumed to write to stdout
 	{ name: 'print', linkTo: 'sink' },
-	{ name: 'cat', linkTo: 'sink', argIdx: 1, argName: 'file' },
+	{ name: 'cat', linkTo: 'sink', argName: 'file' },
 	{ name: 'message', linkTo: 'sink' },
 	{ name: 'warning', linkTo: 'sink' },
 	// readr

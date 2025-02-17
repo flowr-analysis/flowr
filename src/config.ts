@@ -36,7 +36,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		}
 	}
 	/**
-	 * The engines to use for interacting with R code. Currently supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
+	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
 	readonly engines:        readonly EngineConfig[]
@@ -44,7 +44,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
 	readonly defaultEngine?: EngineConfig['type'];
-	/** How to resolve constants, constraints, cells, ... */
+	/** How to resolve constants, constraints, cells, … */
 	readonly solver: {
 		/**
 		 * How to resolve variables and their values
@@ -178,7 +178,12 @@ export function amendConfig(amendment: Partial<FlowrConfigOptions>) {
 export function getConfig(): FlowrConfigOptions {
 	// lazy-load the config based on the current settings
 	if(currentConfig === undefined) {
-		setConfig(loadConfigFromFile(configFile, configWorkingDirectory));
+		try {
+			setConfig(loadConfigFromFile(configFile, configWorkingDirectory));
+		} catch(e) {
+			log.error(`Failed to load config: ${(e as Error).message}`);
+			setConfig(defaultConfigOptions);
+		}
 	}
 	return currentConfig as FlowrConfigOptions;
 }

@@ -66,14 +66,16 @@ export function replCompleter(line: string): [string[], string] {
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
-	input:                   process.stdin,
-	output:                  process.stdout,
-	tabSize:                 4,
-	terminal:                true,
-	history:                 loadReplHistory(defaultHistoryFile),
-	removeHistoryDuplicates: true,
-	completer:               replCompleter
+export function makeDefaultReplReadline(): readline.ReadLineOptions {
+	return {
+		input:                   process.stdin,
+		output:                  process.stdout,
+		tabSize:                 4,
+		terminal:                true,
+		history:                 loadReplHistory(defaultHistoryFile),
+		removeHistoryDuplicates: true,
+		completer:               replCompleter
+	};
 };
 
 async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
@@ -149,7 +151,7 @@ export interface FlowrReplOptions extends MergeableRecord {
  */
 export async function repl({
 	parser = new RShell({ revive: RShellReviveOptions.Always }),
-	rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION),
+	rl = readline.createInterface(makeDefaultReplReadline()),
 	output = standardReplOutput,
 	historyFile = defaultHistoryFile,
 	allowRSessionAccess = false
@@ -174,8 +176,14 @@ export async function repl({
 }
 
 export function loadReplHistory(historyFile: string): string[] | undefined {
-	if(!fs.existsSync(historyFile)) {
+	try {
+		if(!fs.existsSync(historyFile)) {
+			return undefined;
+		}
+		return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n');
+	} catch(e) {
+		log.error(`Failed to load repl history from ${historyFile}: ${(e as Error)?.message}`);
+		log.error((e as Error)?.stack);
 		return undefined;
 	}
-	return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n');
 }

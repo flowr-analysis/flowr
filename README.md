@@ -141,7 +141,7 @@ It offers a wide variety of features, for example:
     
     ```text
     https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDMiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
-    Copied mermaid url to clipboard (dataflow: 0ms).
+    Copied mermaid url to clipboard (dataflow: 1ms).
     ```
     
     
@@ -376,7 +376,7 @@ It offers a wide variety of features, for example:
         52 -->|"argument"| 50
     ```
     	
-    (The analysis required _25.41 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _25.24 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -393,7 +393,7 @@ If you want to use flowR and the features it provides, feel free to check out th
 
 - [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr): provides access to flowR directly in VS Code (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](https://github.com/flowr-analysis/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
-- [R package](https://github.com/flowr-analysis/flowr-r-adapter): allows you to use flowR in your R scripts
+- [R package](https://github.com/flowr-analysis/flowr-r-adapter): use flowR in your R scripts
 - [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server)
 - [NPM package](https://www.npmjs.com/package/@eagleoutice/flowr): include flowR in your TypeScript and JavaScript projects
  

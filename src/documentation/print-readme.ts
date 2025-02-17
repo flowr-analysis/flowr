@@ -101,7 +101,7 @@ If you want to use flowR and the features it provides, feel free to check out th
 
 - [Visual Studio Code extension](${FlowrVsCode}): provides access to flowR directly in VS Code (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](${FlowrGithubBaseRef}/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
-- [R package](${FlowrGithubBaseRef}/flowr-r-adapter): allows you to use flowR in your R scripts
+- [R package](${FlowrGithubBaseRef}/flowr-r-adapter): use flowR in your R scripts
 - [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)
 - [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects
  

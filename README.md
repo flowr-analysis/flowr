@@ -376,7 +376,7 @@ It offers a wide variety of features, for example:
         52 -->|"argument"| 50
     ```
     	
-    (The analysis required _25.24 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _32.14 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

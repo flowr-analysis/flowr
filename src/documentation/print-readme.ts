@@ -73,8 +73,8 @@ The following showcases the dependency view of the [Visual Studio Code extension
   
   `), '    ')}
 
-* 🚀 **fast data and control-flow graphs**\\
-  Within just ${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms</i>', 'This measurement is automatically fetched from the latest benchmarks!')} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)}), 
+* 🚀 **fast data- and control-flow graphs**\\
+  Within just ${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms</i>', 'This measurement is automatically fetched from the latest benchmark!')} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)}), 
   _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](${FlowrWikiBaseRef}/Dataflow-Graph) for more details on the dataflow graph.
 
@@ -99,11 +99,11 @@ ${await printDfGraphForCode(shell, getFileContentFromRoot('test/testfiles/exampl
 
 If you want to use flowR and the features it provides, feel free to check out the:
 
-- [Visual Studio Code extension](${FlowrVsCode}): provides access to flowR's capabilities directly in VS Code (also works in [vscode.dev](https://vscode.dev/))
+- [Visual Studio Code extension](${FlowrVsCode}): provides access to flowR directly in VS Code (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](${FlowrGithubBaseRef}/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
 - [R package](${FlowrGithubBaseRef}/flowr-r-adapter): allows you to use flowR in your R scripts
 - [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)
-- [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects (e.g., used for the VS Code extension)
+- [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects
  
 ## ⭐ Getting Started
 

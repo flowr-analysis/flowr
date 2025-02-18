@@ -5,7 +5,6 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
-const clipboard = import('clipboardy');
 
 async function controlflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
@@ -33,7 +32,8 @@ export const controlflowCommand: ReplCommand = {
 		const mermaid = cfgToMermaid(cfg, result.normalize);
 		output.stdout(mermaid);
 		try {
-			(await clipboard).default.writeSync(mermaid);
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid code'));
 		} catch{ /* do nothing this is a service thing */ }
 	}
@@ -51,7 +51,8 @@ export const controlflowStarCommand: ReplCommand = {
 		const mermaid = cfgToMermaidUrl(cfg, result.normalize);
 		output.stdout(mermaid);
 		try {
-			(await clipboard).default.writeSync(mermaid);
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url'));
 		} catch{ /* do nothing this is a service thing */ }
 	}

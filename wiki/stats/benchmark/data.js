@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739979645810,
+  "lastUpdate": 1739979656782,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -13465,6 +13465,109 @@ window.BENCHMARK_DATA = {
             "extra": "median: 24.54"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "cd8033c600da5ca9fa76d76ddbb8a333eebff0de",
+          "message": "[release:patch] 2.2.7 Fix: Value-Resolve and Tree-Sitter Logs",
+          "timestamp": "2025-02-19T16:15:30+01:00",
+          "tree_id": "e99eb6a373e88c700fb1482c8a485fc9f1946343",
+          "url": "https://github.com/flowr-analysis/flowr/commit/cd8033c600da5ca9fa76d76ddbb8a333eebff0de"
+        },
+        "date": 1739979654417,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.217839272727273,
+            "unit": "ms",
+            "range": 16.16182369008521,
+            "extra": "median: 9.32ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 15.132112636363637,
+            "unit": "ms",
+            "range": 21.665826529763997,
+            "extra": "median: 10.21ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 68.71533745454545,
+            "unit": "ms",
+            "range": 145.826541336855,
+            "extra": "median: 32.41ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 615.2478953181819,
+            "unit": "ms",
+            "range": 1415.421781475568,
+            "extra": "median: 179.87ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.0239067541930917,
+            "unit": "ms",
+            "range": 1.1773405526017109,
+            "extra": "median: 0.78ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2367227016911668,
+            "unit": "ms",
+            "range": 0.19189685326968384,
+            "extra": "median: 0.10ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.2742497236387744,
+            "unit": "ms",
+            "range": 1.252417778297747,
+            "extra": "median: 0.97ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7891949660994808,
+            "unit": "#",
+            "extra": "std: 0.1265547989588566"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7665650684287274,
+            "unit": "#",
+            "extra": "std: 0.13059911524134268"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 95.19682173295455,
+            "unit": "KiB",
+            "range": 244.24808975931026,
+            "extra": "median: 24.54"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -14156,6 +14259,109 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 44.36628277650638,
             "extra": "median: 2.91ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 12700 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8752607999898916,
+            "unit": "#",
+            "extra": "std: 0.092607802301171"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8150427620394497,
+            "unit": "#",
+            "extra": "std: 0.13344495673238044"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 99.6003515625,
+            "unit": "KiB",
+            "range": 113.23180421291488,
+            "extra": "median: 49.92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "cd8033c600da5ca9fa76d76ddbb8a333eebff0de",
+          "message": "[release:patch] 2.2.7 Fix: Value-Resolve and Tree-Sitter Logs",
+          "timestamp": "2025-02-19T16:15:30+01:00",
+          "tree_id": "e99eb6a373e88c700fb1482c8a485fc9f1946343",
+          "url": "https://github.com/flowr-analysis/flowr/commit/cd8033c600da5ca9fa76d76ddbb8a333eebff0de"
+        },
+        "date": 1739979656777,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 18.70340118,
+            "unit": "ms",
+            "range": 11.225769721843193,
+            "extra": "median: 13.83ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 19.33950234,
+            "unit": "ms",
+            "range": 10.270807281625636,
+            "extra": "median: 15.92ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 79.99668102,
+            "unit": "ms",
+            "range": 70.37920066183219,
+            "extra": "median: 46.98ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 7279.88924012,
+            "unit": "ms",
+            "range": 29496.212299290928,
+            "extra": "median: 748.47ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 15.039382628218211,
+            "unit": "ms",
+            "range": 44.57192931730138,
+            "extra": "median: 2.62ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2533635890842854,
+            "unit": "ms",
+            "range": 0.16339113269360692,
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 15.300393360916553,
+            "unit": "ms",
+            "range": 44.60949266927637,
+            "extra": "median: 3.03ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

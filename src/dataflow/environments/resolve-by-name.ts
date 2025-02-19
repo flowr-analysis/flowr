@@ -1,5 +1,5 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { initializeCleanEnvironments , BuiltInEnvironment } from './environment';
+import { BuiltInEnvironment, initializeCleanEnvironments } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
@@ -15,7 +15,7 @@ import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/mode
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { EdgeType } from '../graph/edge';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -207,6 +207,25 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return values;
 }
 
+
+function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
+	const parent = node?.info.parent;
+	if(node === undefined || !parent) {
+		return false;
+	}
+
+	const parentNode = ast.get(parent);
+	if(parentNode === undefined) {
+		return false;
+	}
+
+	if(parentNode.type === RType.WhileLoop || parentNode.type === RType.RepeatLoop) {
+		return true;
+	}
+
+	return isNestedInLoop(parentNode, ast);
+}
+
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): unknown[] | undefined {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
@@ -218,6 +237,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	const cleanFingerprint = envFingerprint(clean);
 	queue.add(id, clean, cleanFingerprint, false);
 
+	let forceBot = false;
+
 	const resultIds: NodeId[] = [];
 	while(queue.nonEmpty()) {
 		const { id, baseEnvironment } = queue.next();
@@ -226,6 +247,23 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 			continue;
 		}
 		const [vertex, outgoingEdges] = res;
+		const cds = vertex.controlDependencies;
+		for(const cd of cds ?? []) {
+			const target = graph.idMap?.get(cd.id);
+			if(target === undefined) {
+				continue;
+			}
+			if(target.type === RType.WhileLoop || target.type === RType.RepeatLoop) {
+				forceBot = true;
+				break;
+			}
+		}
+		if(!forceBot && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
+			forceBot = true;
+		}
+		if(forceBot) {
+			break;
+		}
 		if(vertex.tag === VertexType.Value) {
 			resultIds.push(id);
 			continue;
@@ -233,13 +271,13 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
-			if(edgeIncludesType(edge.types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+			// currently, they have to be exact!
+			if(edge.types === EdgeType.Reads || edge.types ===  EdgeType.DefinedBy || edge.types === EdgeType.DefinedByOnCall) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
 		}
 	}
-
-	if(resultIds.length === 0) {
+	if(forceBot || resultIds.length === 0) {
 		return undefined;
 	}
 	const values: unknown[] = [];
@@ -255,7 +293,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  * Convenience function using the variable resolver as specified within the configuration file
  * In the future we may want to have this set once at the start of the analysis
  *
- * @see {@link resolve} - for a more general approach which "evaluates" a node based on value resolve
+ * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
 export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	const resolve = getConfig().solver.variables;
@@ -282,12 +320,13 @@ export interface ResolveInfo {
 /**
  * Generalized {@link resolveValueOfVariable} function which evaluates a node based on the value resolve
  *
- * @param id         - The node id or node to resolve
+ * @param id          - The node id or node to resolve
  * @param environment - The current environment used for name resolution
- * @param idMap      - The id map to resolve the node if given as an id
- * @param full       - Whether to track variables
+ * @param graph       - The graph to resolve in
+ * @param idMap       - The id map to resolve the node if given as an id
+ * @param full        - Whether to track variables
  */
-export function resolve(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {

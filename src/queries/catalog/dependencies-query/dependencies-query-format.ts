@@ -30,8 +30,8 @@ export const LibraryFunctions: FunctionInfo[] = [
 	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns', resolveValue: true },
 	{ name: 'attach',            argIdx: 0, argName: 'what', resolveValue: true },
 	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg', resolveValue: true },
-	{ name: 'p_load',            argIdx: 'unnamed', resolveValue: true }, // pacman
-	{ name: 'p_load_gh',         argIdx: 'unnamed', resolveValue: true }, // pacman
+	{ name: 'p_load',            argIdx: 'unnamed', resolveValue: 'library' }, // pacman
+	{ name: 'p_load_gh',         argIdx: 'unnamed', resolveValue: 'library' }, // pacman
 	{ name: 'from_import',       argIdx: 0, argName: 'package', resolveValue: true }, // easypackages
 	{ name: 'libraries',         argIdx: 'unnamed', resolveValue: true }, // easypackages
 	{ name: 'shelf',             argIdx: 'unnamed', resolveValue: true } // librarian

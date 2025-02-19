@@ -1,15 +1,22 @@
-import { executeQueriesOfSameType  } from '../../query';
+import { executeQueriesOfSameType } from '../../query';
 import type {
 	DependenciesQuery,
-	DependenciesQueryResult, DependencyInfo, DependencyInfoLinkAttachedInfo,
+	DependenciesQueryResult,
+	DependencyInfo,
+	DependencyInfoLinkAttachedInfo,
 	FunctionInfo,
 	LibraryInfo,
-	ReadInfo, SourceInfo,
+	ReadInfo,
+	SourceInfo,
 	WriteInfo
 } from './dependencies-query-format';
-import { DependencyInfoLinkConstraint
-	,
-	LibraryFunctions, ReadFunctions, SourceFunctions, WriteFunctions, Unknown
+import {
+	DependencyInfoLinkConstraint,
+	LibraryFunctions,
+	ReadFunctions,
+	SourceFunctions,
+	Unknown,
+	WriteFunctions
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
@@ -234,11 +241,14 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 	if(resolveValue === 'library') {
 		const hasChar = hasCharacterOnly(data, vertex, idMap);
 		if(hasChar === false) {
+			if(argument.type === RType.Symbol) {
+				return [argument.lexeme];
+			}
 			full = false;
 		}
 	}
 
-	return resolve(argument, environment, data.dataflow.graph.idMap, full);
+	return resolve(argument, { environment, graph: data.dataflow.graph, full });
 }
 
 function unwrapRValue(value: RLogicalValue | RStringValue | RNumberValue | string | number | unknown): string | undefined {

@@ -142,7 +142,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
 		testQuery('cat with sink', 'sink("foo")\ncat("Hello!")', { writtenData: [{ nodeId: '2@cat', functionName: 'cat', destination: 'foo', linkedIds: [3] }] });
 		testQuery('multiple sinks', 'sink("x")\nk <- "k.txt"\nsink(k)\nprint("hey")', { writtenData: [
-			{ nodeId: '4@print', functionName: 'print', destination: 'k.txt', linkedIds: [4] }
+			{ nodeId: '4@print', functionName: 'print', destination: 'k.txt', linkedIds: [10] }
 		] });
 		testQuery('cat 2 args', 'cat("Hello", "World")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
 		testQuery('cat 2 args with file', 'cat("Hello", "World", file="foo.txt")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'foo.txt' }] });

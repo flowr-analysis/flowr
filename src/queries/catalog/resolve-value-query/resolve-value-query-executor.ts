@@ -2,7 +2,7 @@ import type { ResolveValueQuery, ResolveValueQueryResult } from './resolve-value
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
-import { resolveToValues } from '../../../dataflow/environments/resolve-by-name';
+import { trackAliasInEnvironments } from '../../../dataflow/environments/resolve-by-name';
 import { recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export function fingerPrintOfQuery(query: ResolveValueQuery): string {
@@ -21,7 +21,7 @@ export function executeResolveValueQuery({ dataflow: { graph, environment }, ast
 		
 		const values = query.criteria
 			.map(criteria => recoverName(slicingCriterionToId(criteria, ast.idMap), ast.idMap))
-			.flatMap(ident => resolveToValues(ident, environment, graph.idMap ?? ast.idMap));
+			.flatMap(ident => trackAliasInEnvironments(ident, environment, graph.idMap ?? ast.idMap));
 
 		results[key] = {
 			values: [... new Set(values)]

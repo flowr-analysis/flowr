@@ -1,5 +1,5 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { BuiltInEnvironment } from './environment';
+import { initializeCleanEnvironments , BuiltInEnvironment } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
@@ -10,9 +10,12 @@ import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
 import { getConfig, VariableResolve } from '../../config';
-import { assertUnreachable } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { VisitingQueue } from '../../slicing/static/visiting-queue';
+import { envFingerprint } from '../../slicing/static/fingerprint';
+import { edgeIncludesType, EdgeType } from '../graph/edge';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -167,12 +170,12 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 /** Please use {@link resolveValueOfVariable} */
-export function resolveToValues(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
+export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	if(identifier === undefined) {
 		return undefined;
 	}
 
-	const defs = resolveByName(identifier, environment);
+	const defs = resolveByName(identifier, use);
 	if(defs === undefined) {
 		return undefined;
 	}
@@ -204,6 +207,50 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 	return values;
 }
 
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): unknown[] | undefined {
+	idMap ??= graph.idMap;
+	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
+	const start = graph.getVertex(id);
+	guard(start !== undefined, 'Unable to find start for alias tracking');
+
+	const queue = new VisitingQueue(25);
+	const clean = initializeCleanEnvironments();
+	const cleanFingerprint = envFingerprint(clean);
+	queue.add(id, clean, cleanFingerprint, false);
+
+	const resultIds: NodeId[] = [];
+	while(queue.nonEmpty()) {
+		const { id, baseEnvironment } = queue.next();
+		const res = graph.get(id);
+		if(!res) {
+			continue;
+		}
+		const [vertex, outgoingEdges] = res;
+		if(vertex.tag === VertexType.Value) {
+			resultIds.push(id);
+			continue;
+		}
+
+		// travel all read and defined-by edges
+		for(const [targetId, edge] of outgoingEdges) {
+			if(edgeIncludesType(edge.types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
+			}
+		}
+	}
+
+	if(resultIds.length === 0) {
+		return undefined;
+	}
+	const values: unknown[] = [];
+	for(const id of resultIds) {
+		const node = idMap.get(id);
+		if(node !== undefined) {
+			values.push(node.content);
+		}
+	}
+	return values;
+}
 /**
  * Convenience function using the variable resolver as specified within the configuration file
  * In the future we may want to have this set once at the start of the analysis
@@ -214,11 +261,22 @@ export function resolveValueOfVariable(identifier: Identifier | undefined, envir
 	const resolve = getConfig().solver.variables;
 
 	switch(resolve) {
-		case VariableResolve.Alias: return resolveToValues(identifier, environment, idMap);
+		case VariableResolve.Alias: return trackAliasInEnvironments(identifier, environment, idMap);
 		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
 		case VariableResolve.Disabled: return [];
 		default: assertUnreachable(resolve);
 	}
+}
+
+export interface ResolveInfo {
+	/** The current environment used for name resolution */
+	environment?: REnvironmentInformation;
+	/** The id map to resolve the node if given as an id */
+	idMap?:       AstIdMap;
+	/** The graph to resolve in */
+	graph?:       DataflowGraph;
+	/** Whether to track variables */
+	full?:        boolean;
 }
 
 /**
@@ -229,14 +287,21 @@ export function resolveValueOfVariable(identifier: Identifier | undefined, envir
  * @param idMap      - The id map to resolve the node if given as an id
  * @param full       - Whether to track variables
  */
-export function resolve(id: NodeId | RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: AstIdMap | undefined, full = true): unknown[] | undefined {
+export function resolve(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
 		return undefined;
 	}
 	switch(node.type) {
 		case RType.Symbol:
-			return full && environment ? resolveValueOfVariable(node.lexeme, environment, idMap) : undefined;
+			if(environment) {
+				return full ? resolveValueOfVariable(node.lexeme, environment, idMap) : undefined;
+			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
+				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : undefined;
+			} else {
+				return undefined;
+			}
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:

@@ -16,9 +16,8 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public readonly parser:  Parser;
 	private static language: Parser.Language;
 
-	public static async initTreeSitter(): Promise<void> {
-		const config = getEngineConfig('tree-sitter');
-		const treeSitterWasmPath = config?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
+	public static async initTreeSitter(overrideWasmPath?: string, overrideTreeSitterWasmPath?: string): Promise<void> {
+		const treeSitterWasmPath = overrideTreeSitterWasmPath ?? getEngineConfig('tree-sitter')?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		// noinspection JSUnusedGlobalSymbols - this is used by emscripten, see https://emscripten.org/docs/api_reference/module.html
 		await Parser.init({
 			locateFile: (path: string, prefix: string) => {
@@ -29,7 +28,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 				return prefix + path;
 			}
 		});
-		const wasmPath = config?.wasmPath ?? DEFAULT_TREE_SITTER_R_WASM_PATH;
+		const wasmPath = overrideWasmPath ?? getEngineConfig('tree-sitter')?.wasmPath ?? DEFAULT_TREE_SITTER_R_WASM_PATH;
 		TreeSitterExecutor.language = await Parser.Language.load(wasmPath);
 	}
 

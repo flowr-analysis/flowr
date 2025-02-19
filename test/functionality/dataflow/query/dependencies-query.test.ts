@@ -67,6 +67,10 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			{ nodeId: '3@require', functionName: 'require', libraryName: 'c' }
 		] });
 
+		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraries: [
+			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }
+		] });
+
 		testQuery('pacman', 'p_load(a, b, c)', { libraries: [
 			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'a' },
 			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'b' },

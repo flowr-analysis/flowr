@@ -101,7 +101,6 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'Import', argIdx: 0, argName: 'file', resolveValue: true },
 ] as const;
 
-// TODO: support con argument
 const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
 ] as const satisfies DependencyInfoLink[];

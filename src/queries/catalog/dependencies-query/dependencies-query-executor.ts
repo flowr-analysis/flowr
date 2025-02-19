@@ -84,7 +84,6 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		return get?.info.fullLexeme ?? get?.lexeme;
 	}
 
-	// TODO: handle character only
 	const libraries: LibraryInfo[] = getResults(data, results, 'library', libraryFunctions, (id, vertex, argId, value, linkedIds) => ({
 		nodeId:           id,
 		functionName:     vertex.name,

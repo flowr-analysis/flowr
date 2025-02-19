@@ -5,150 +5,171 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
+import type { LinkTo } from '../call-context-query/call-context-query-format';
 
 export const Unknown = 'unknown';
 
+/** when to read the argument value from a linked function */
+export enum DependencyInfoLinkConstraint {
+	Always    = 'always',
+	IfUnknown = 'if-unknown',
+}
+
+/**
+ * A dependency link may have attached information. If you pass it, we try to resolve the argument value from the linked function
+ * if the `when` constraint is met.
+ */
+export type DependencyInfoLink = LinkTo<RegExp | string, Omit<FunctionInfo, 'name' | 'linkTo'> & { when: DependencyInfoLinkConstraint } | undefined>
+export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo']
+
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
-	{ name: 'library',           argIdx: 0, argName: 'package' },
-	{ name: 'require',           argIdx: 0, argName: 'package' },
-	{ name: 'loadNamespace',     argIdx: 0, argName: 'package' },
-	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns' },
-	{ name: 'attach',            argIdx: 0, argName: 'what' },
-	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg' },
-	{ name: 'p_load',            argIdx: 'unnamed' }, // pacman
-	{ name: 'p_load_gh',         argIdx: 'unnamed' }, // pacman
-	{ name: 'from_import',       argIdx: 0, argName: 'package' }, // easypackages
-	{ name: 'libraries',         argIdx: 'unnamed' }, // easypackages
-	{ name: 'shelf',             argIdx: 'unnamed' } // librarian
+	{ name: 'library',           argIdx: 0, argName: 'package', resolveValue: 'library' },
+	{ name: 'require',           argIdx: 0, argName: 'package', resolveValue: true },
+	{ name: 'loadNamespace',     argIdx: 0, argName: 'package', resolveValue: true },
+	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns', resolveValue: true },
+	{ name: 'attach',            argIdx: 0, argName: 'what', resolveValue: true },
+	{ name: 'groundhog.library', argIdx: 0, argName: 'pkg', resolveValue: true },
+	{ name: 'p_load',            argIdx: 'unnamed', resolveValue: true }, // pacman
+	{ name: 'p_load_gh',         argIdx: 'unnamed', resolveValue: true }, // pacman
+	{ name: 'from_import',       argIdx: 0, argName: 'package', resolveValue: true }, // easypackages
+	{ name: 'libraries',         argIdx: 'unnamed', resolveValue: true }, // easypackages
+	{ name: 'shelf',             argIdx: 'unnamed', resolveValue: true } // librarian
 ] as const;
 export const SourceFunctions: FunctionInfo[] = [
-	{ name: 'source', argIdx: 0, argName: 'file' },
-	{ name: 'sys.source', argIdx: 0, argName: 'file' }
+	{ name: 'source', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'sys.source', argIdx: 0, argName: 'file', resolveValue: true }
 ] as const;
 export const ReadFunctions: FunctionInfo[] = [
-	{ name: 'read.table', argIdx: 0, argName: 'file' },
-	{ name: 'read.csv', argIdx: 0, argName: 'file' },
-	{ name: 'read.csv2', argIdx: 0, argName: 'file' },
-	{ name: 'read.delim', argIdx: 0, argName: 'file' },
-	{ name: 'read.dcf', argIdx: 0, argName: 'file' },
-	{ name: 'scan', argIdx: 0, argName: 'file' },
-	{ name: 'read.fwf', argIdx: 0, argName: 'file' },
-	{ name: 'file', argIdx: 1, argName: 'open' },
-	{ name: 'url', argIdx: 1, argName: 'open' },
-	{ name: 'load', argIdx: 0, argName: 'file' },
-	{ name: 'gzfile', argIdx: 1, argName: 'open' },
-	{ name: 'bzfile', argIdx: 1, argName: 'open' },
-	{ name: 'download.file', argIdx: 0, argName: 'url' },
-	{ name: 'pipe', argIdx: 1, argName: 'open' },
-	{ name: 'fifo', argIdx: 1, argName: 'open' },
-	{ name: 'unz', argIdx: 1, argName: 'open' },
-	{ name: 'matrix', argIdx: 0, argName: 'data' },
-	{ name: 'readRDS', argIdx: 0, argName: 'file' },
-	{ name: 'readLines', argIdx: 0, argName: 'con' },
-	{ name: 'readRenviron', argIdx: 0, argName: 'path' },
+	{ name: 'read.table', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.csv', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.csv2', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.delim', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.dcf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'scan', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.fwf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'file', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'url', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'load', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'gzfile', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'bzfile', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'download.file', argIdx: 0, argName: 'url', resolveValue: true },
+	{ name: 'pipe', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'fifo', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'unz', argIdx: 1, argName: 'open', resolveValue: true },
+	{ name: 'matrix', argIdx: 0, argName: 'data', resolveValue: true },
+	{ name: 'readRDS', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'readLines', argIdx: 0, argName: 'con', resolveValue: true },
+	{ name: 'readRenviron', argIdx: 0, argName: 'path', resolveValue: true },
 	// readr
-	{ name: 'read_csv', argIdx: 0, argName: 'file' },
-	{ name: 'read_csv2', argIdx: 0, argName: 'file' },
-	{ name: 'read_lines', argIdx: 0, argName: 'file' },
-	{ name: 'read_delim', argIdx: 0, argName: 'file' },
-	{ name: 'read_dsv', argIdx: 0, argName: 'file' },
-	{ name: 'read_fwf', argIdx: 0, argName: 'file' },
-	{ name: 'read_tsv', argIdx: 0, argName: 'file' },
-	{ name: 'read_table', argIdx: 0, argName: 'file' },
-	{ name: 'read_log', argIdx: 0, argName: 'file' },
-	{ name: 'read_lines', argIdx: 0, argName: 'file' },
-	{ name: 'read_lines_chunked', argIdx: 0, argName: 'file' },
+	{ name: 'read_csv', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_csv2', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_lines', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_delim', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_dsv', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_fwf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_tsv', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_table', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_log', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_lines', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_lines_chunked', argIdx: 0, argName: 'file', resolveValue: true },
 	// xlsx
-	{ name: 'read.xlsx', argIdx: 0, argName: 'file' },
-	{ name: 'read.xlsx2', argIdx: 0, argName: 'file' },
+	{ name: 'read.xlsx', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.xlsx2', argIdx: 0, argName: 'file', resolveValue: true },
 	// data.table
-	{ name: 'fread', argIdx: 0, argName: 'file' },
+	{ name: 'fread', argIdx: 0, argName: 'file', resolveValue: true },
 	// haven
-	{ name: 'read_sas', argIdx: 0, argName: 'file' },
-	{ name: 'read_sav', argIdx: 0, argName: 'file' },
-	{ name: 'read_por', argIdx: 0, argName: 'file' },
-	{ name: 'read_dta', argIdx: 0, argName: 'file' },
-	{ name: 'read_xpt', argIdx: 0, argName: 'file' },
+	{ name: 'read_sas', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_sav', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_por', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_dta', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_xpt', argIdx: 0, argName: 'file', resolveValue: true },
 	// feather
-	{ name: 'read_feather', argIdx: 0, argName: 'file' },
+	{ name: 'read_feather', argIdx: 0, argName: 'file', resolveValue: true },
 	// foreign
-	{ name: 'read.arff', argIdx: 0, argName: 'file' },
-	{ name: 'read.dbf', argIdx: 0, argName: 'file' },
-	{ name: 'read.dta', argIdx: 0, argName: 'file' },
-	{ name: 'read.epiinfo', argIdx: 0, argName: 'file' },
-	{ name: 'read.mtp', argIdx: 0, argName: 'file' },
-	{ name: 'read.octave', argIdx: 0, argName: 'file' },
-	{ name: 'read.spss', argIdx: 0, argName: 'file' },
-	{ name: 'read.ssd', argIdx: 0, argName: 'file' },
-	{ name: 'read.systat', argIdx: 0, argName: 'file' },
-	{ name: 'read.xport', argIdx: 0, argName: 'file' },
+	{ name: 'read.arff', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.dbf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.dta', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.epiinfo', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.mtp', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.octave', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.spss', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.ssd', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.systat', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read.xport', argIdx: 0, argName: 'file', resolveValue: true },
 	// car
-	{ name: 'Import', argIdx: 0, argName: 'file' },
+	{ name: 'Import', argIdx: 0, argName: 'file', resolveValue: true },
 ] as const;
+
+// TODO: support con argument
+const OutputRedirects = [
+	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
+] as const satisfies DependencyInfoLink[];
+
 export const WriteFunctions: FunctionInfo[] = [
-	{ name: 'save', argName: 'file' },
-	{ name: 'save.image', argIdx: 1, argName: 'file' },
-	{ name: 'write', argIdx: 1, argName: 'file' },
-	{ name: 'dput', argIdx: 1, argName: 'file' },
-	{ name: 'dump', argIdx: 1, argName: 'file' },
-	{ name: 'write.table', argIdx: 1, argName: 'file' },
-	{ name: 'write.csv', argIdx: 1, argName: 'file' },
-	{ name: 'saveRDS', argIdx: 1, argName: 'file' },
+	{ name: 'save', argName: 'file', resolveValue: true },
+	{ name: 'save.image', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'dput', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'dump', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.table', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.csv', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'saveRDS', argIdx: 1, argName: 'file', resolveValue: true },
 	// write functions that don't have argIndex are assumed to write to stdout
-	{ name: 'print', linkTo: 'sink' },
-	{ name: 'cat', linkTo: 'sink', argName: 'file' },
-	{ name: 'message', linkTo: 'sink' },
-	{ name: 'warning', linkTo: 'sink' },
+	{ name: 'print',   linkTo: OutputRedirects, resolveValue: true },
+	{ name: 'cat',     linkTo: OutputRedirects, argName: 'file', resolveValue: true },
+	{ name: 'message', linkTo: OutputRedirects, resolveValue: true },
+	{ name: 'warning', linkTo: OutputRedirects, resolveValue: true },
 	// readr
-	{ name: 'write_csv', argIdx: 1, argName: 'file' },
-	{ name: 'write_csv2', argIdx: 1, argName: 'file' },
-	{ name: 'write_delim', argIdx: 1, argName: 'file' },
-	{ name: 'write_dsv', argIdx: 1, argName: 'file' },
-	{ name: 'write_fwf', argIdx: 1, argName: 'file' },
-	{ name: 'write_tsv', argIdx: 1, argName: 'file' },
-	{ name: 'write_table', argIdx: 1, argName: 'file' },
-	{ name: 'write_log', argIdx: 1, argName: 'file' },
+	{ name: 'write_csv',   argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_csv2',  argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_delim', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_dsv',   argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_fwf',   argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_tsv',   argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_table', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_log',   argIdx: 1, argName: 'file', resolveValue: true },
 	// heaven
-	{ name: 'write_sas', argIdx: 1, argName: 'file' },
-	{ name: 'write_sav', argIdx: 1, argName: 'file' },
-	{ name: 'write_por', argIdx: 1, argName: 'file' },
-	{ name: 'write_dta', argIdx: 1, argName: 'file' },
-	{ name: 'write_xpt', argIdx: 1, argName: 'file' },
+	{ name: 'write_sas', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_sav', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_por', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_dta', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_xpt', argIdx: 1, argName: 'file', resolveValue: true },
 	// feather
-	{ name: 'write_feather', argIdx: 1, argName: 'file' },
+	{ name: 'write_feather', argIdx: 1, argName: 'file', resolveValue: true },
 	// foreign
-	{ name: 'write.arff', argIdx: 1, argName: 'file' },
-	{ name: 'write.dbf', argIdx: 1, argName: 'file' },
-	{ name: 'write.dta', argIdx: 1, argName: 'file' },
-	{ name: 'write.foreign', argIdx: 1, argName: 'file' },
+	{ name: 'write.arff',    argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.dbf',     argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.dta',     argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.foreign', argIdx: 1, argName: 'file', resolveValue: true },
 	// xlsx
-	{ name: 'write.xlsx', argIdx: 1, argName: 'file' },
-	{ name: 'write.xlsx2', argIdx: 1, argName: 'file' },
+	{ name: 'write.xlsx',  argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.xlsx2', argIdx: 1, argName: 'file', resolveValue: true },
 	// graphics
-	{ name: 'pdf', argIdx: 0, argName: 'file' },
-	{ name: 'jpeg', argIdx: 0, argName: 'file' },
-	{ name: 'png', argIdx: 0, argName: 'file' },
-	{ name: 'windows', argIdx: 0, argName: 'file' },
-	{ name: 'postscript', argIdx: 0, argName: 'file' },
-	{ name: 'xfix', argIdx: 0, argName: 'file' },
-	{ name: 'bitmap', argIdx: 0, argName: 'file' },
-	{ name: 'pictex', argIdx: 0, argName: 'file' },
-	{ name: 'cairo_pdf', argIdx: 0, argName: 'file' },
-	{ name: 'svg', argIdx: 0, argName: 'file' },
-	{ name: 'bmp', argIdx: 0, argName: 'file' },
-	{ name: 'tiff', argIdx: 0, argName: 'file' },
-	{ name: 'X11', argIdx: 0, argName: 'file' },
-	{ name: 'quartz', argIdx: 0, argName: 'file' },
+	{ name: 'pdf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'jpeg', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'png', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'windows', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'postscript', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'xfix', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'bitmap', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'pictex', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'cairo_pdf', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'svg', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'bmp', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'tiff', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'X11', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'quartz', argIdx: 0, argName: 'file', resolveValue: true },
 	// car
-	{ name: 'Export', argIdx: 0, argName: 'file' },
+	{ name: 'Export', argIdx: 0, argName: 'file', resolveValue: true },
 ] as const;
 
 export interface FunctionInfo {
-    name:     string
-    argIdx?:  number | 'unnamed'
-    argName?: string
-    linkTo?:  string
+    name:       string
+    argIdx?:    number | 'unnamed'
+    argName?:   string
+    linkTo?:    DependencyInfoLink[]
+	resolveValue?: boolean | 'library'
 }
 
 export interface DependenciesQuery extends BaseQueryFormat {

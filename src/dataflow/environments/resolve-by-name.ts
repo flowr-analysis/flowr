@@ -11,7 +11,8 @@ import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
 import { getConfig, VariableResolve } from '../../config';
 import { assertUnreachable } from '../../util/assert';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -206,6 +207,8 @@ export function resolveToValues(identifier: Identifier | undefined, environment:
 /**
  * Convenience function using the variable resolver as specified within the configuration file
  * In the future we may want to have this set once at the start of the analysis
+ *
+ * @see {@link resolve} - for a more general approach which "evaluates" a node based on value resolve
  */
 export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	const resolve = getConfig().solver.variables;
@@ -218,3 +221,27 @@ export function resolveValueOfVariable(identifier: Identifier | undefined, envir
 	}
 }
 
+/**
+ * Generalized {@link resolveValueOfVariable} function which evaluates a node based on the value resolve
+ *
+ * @param id         - The node id or node to resolve
+ * @param environment - The current environment used for name resolution
+ * @param idMap      - The id map to resolve the node if given as an id
+ * @param full       - Whether to track variables
+ */
+export function resolve(id: NodeId | RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: AstIdMap | undefined, full = true): unknown[] | undefined {
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+	if(node === undefined) {
+		return undefined;
+	}
+	switch(node.type) {
+		case RType.Symbol:
+			return full && environment ? resolveValueOfVariable(node.lexeme, environment, idMap) : undefined;
+		case RType.String:
+		case RType.Number:
+		case RType.Logical:
+			return [node.content];
+		default:
+			return undefined;
+	}
+}

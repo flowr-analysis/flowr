@@ -11,15 +11,17 @@ import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/time';
 import { BuiltIn } from '../dataflow/environments/built-in';
 
-function nodeString(id: NodeId, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
+	const id = 'id' in nodeId ? nodeId.id : nodeId;
+	const info = 'info' in nodeId ? nodeId.info : undefined;
 	if(id === BuiltIn) {
-		return italic('built-in', formatter);
+		return italic('built-in', formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
 	const node = processed.normalize.idMap.get(id);
 	if(node === undefined) {
-		return `UNKNOWN: ${id}`;
+		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]})`;
+	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {

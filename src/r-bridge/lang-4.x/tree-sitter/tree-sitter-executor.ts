@@ -3,9 +3,12 @@ import type { RParseRequest } from '../../retriever';
 import fs from 'fs';
 import type { SyncParser } from '../../parser';
 import { getEngineConfig } from '../../../config';
+import { log } from '../../../util/log';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = `${__dirname}/tree-sitter-r.wasm`;
 export const DEFAULT_TREE_SITTER_WASM_PATH = `${__dirname}/tree-sitter.wasm`;
+
+const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 
 /**
  * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
@@ -26,7 +29,10 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 					return treeSitterWasmPath;
 				}
 				return prefix + path;
-			}
+			},
+			onAbort:  (s: string | number) => wasmLog.error(`Tree-sitter wasm aborted: ${s}`),
+			print:    (s: string) => wasmLog.debug(s),
+			printErr: (s: string) => wasmLog.error(s)
 		});
 		const wasmPath = overrideWasmPath ?? getEngineConfig('tree-sitter')?.wasmPath ?? DEFAULT_TREE_SITTER_R_WASM_PATH;
 		TreeSitterExecutor.language = await Parser.Language.load(wasmPath);

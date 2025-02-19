@@ -114,7 +114,7 @@ export function executeDependenciesQuery(data: BasicQueryData, queries: readonly
 		nodeId:           id,
 		functionName:     vertex.name,
 		// write functions that don't have argIndex are assumed to write to stdout
-		destination:      value ?? (linkedIds?.length ? Unknown : 'stdout'),
+		destination:      value ?? 'stdout',
 		lexemeOfArgument: getLexeme(value, argId),
 		linkedIds:        linkedIds?.length? linkedIds : undefined
 	}));
@@ -213,7 +213,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 			}
 		}
 	}
-	return map;
+	return map.size ? map : undefined;
 }
 
 function hasCharacterOnly(data: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, idMap: Map<NodeId, RNode> | undefined): boolean | 'maybe' {

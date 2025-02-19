@@ -54,6 +54,7 @@ export interface FlowrCliOptions {
 	'engine.tree-sitter.disabled':              boolean
 	'engine.tree-sitter.wasm-path':             string | undefined
 	'engine.tree-sitter.tree-sitter-wasm-path': string | undefined
+	'engine.tree-sitter.lax':                   boolean
 }
 
 export const optionHelp = [
@@ -115,7 +116,8 @@ if(!options['engine.tree-sitter.disabled']){
 	amendConfig({ engines: [{
 		type:               'tree-sitter',
 		wasmPath:           options['engine.tree-sitter.wasm-path'],
-		treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path']
+		treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
+		lax:                options['engine.tree-sitter.lax']
 	}] });
 }
 if(options['default-engine']) {

@@ -15,10 +15,21 @@ import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import type { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
+import { getEngineConfig } from '../../../config';
+import { log } from '../../../util/log';
 
 type SyntaxAndRNode = [SyntaxNode, RNode];
 
+/**
+ * @param tree - The tree to normalize
+ */
 export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
+	const lax = getEngineConfig('tree-sitter')?.lax;
+	if(lax) {
+		makeTreeSitterLax();
+	} else {
+		makeTreeSitterStrict();
+	}
 	const root = convertTreeNode(tree.rootNode);
 	if(root.type !== RType.ExpressionList) {
 		throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
@@ -26,12 +37,24 @@ export function normalizeTreeSitterTreeToAst(tree: Tree): RExpressionList {
 	return root;
 }
 
-function nonErrorChildren(node: SyntaxNode): SyntaxNode[] {
-	if(node.hasError) {
-		return [];
-	} else {
-		return node.children;
-	}
+function nonErrorChildrenStrict(node: SyntaxNode): SyntaxNode[] {
+	return node.hasError ? [] : node.children;
+}
+
+function nonErrorChildrenLax(node: SyntaxNode): SyntaxNode[] {
+	return node.hasError ? node.children.filter(n => n.type !== TreeSitterType.Error) : node.children;
+}
+
+let nonErrorChildren: (node: SyntaxNode) => SyntaxNode[] = nonErrorChildrenStrict;
+
+export function makeTreeSitterLax() {
+	log.info('[Tree-Sitter] Lax parsing active');
+	nonErrorChildren = nonErrorChildrenLax;
+}
+
+export function makeTreeSitterStrict() {
+	log.info('[Tree-Sitter] Strict parsing active');
+	nonErrorChildren = nonErrorChildrenStrict;
 }
 
 function convertTreeNode(node: SyntaxNode): RNode {

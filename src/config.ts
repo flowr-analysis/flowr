@@ -70,6 +70,10 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 	 * The path to the tree-sitter WASM binary to use. If this is undefined, the path specified by the tree-sitter package will be used.
 	 */
 	readonly treeSitterWasmPath?: string
+	/**
+	 * Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.
+	 */
+	readonly lax?:				            boolean
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
@@ -120,7 +124,8 @@ export const flowrConfigFileSchema = Joi.object({
 		Joi.object({
 			type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
 			wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
-			treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.')
+			treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
+			lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
 		}).description('The configuration for the tree sitter engine.'),
 		Joi.object({
 			type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),

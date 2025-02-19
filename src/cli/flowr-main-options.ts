@@ -112,6 +112,12 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		multiple:    false
 	},
 	{
+		name:        'engine.tree-sitter.lax',
+		type:        Boolean,
+		description: 'Use the lax parser for parsing R code (allowing for syntax errors).',
+		multiple:    false
+	},
+	{
 		name:        'default-engine',
 		type:        String,
 		description: 'The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.',

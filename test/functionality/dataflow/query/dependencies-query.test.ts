@@ -71,6 +71,13 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }
 		] });
 
+		// for now, we want a better or (https://github.com/flowr-analysis/flowr/issues/1342)
+		testQuery('Library with possibilities', 'if(u) { a <- "a" } else { a <- "b" }\nlibrary(a,character.only=TRUE)', { libraries: [
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
+			{ nodeId: '2@library', functionName: 'library', libraryName: 'a' }
+		] });
+
+
 		testQuery('pacman', 'p_load(a, b, c)', { libraries: [
 			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'a' },
 			{ nodeId: '1@p_load', functionName: 'p_load', libraryName: 'b' },

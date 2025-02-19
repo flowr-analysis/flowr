@@ -475,7 +475,7 @@ ${
 	}], { showCode: false, collapseQuery: true, collapseResult: true })
 }
 
-Currently the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
+Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
 We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl})).
 
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
@@ -484,13 +484,14 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
-		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library' }],
+		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
 		sourceFunctions:        [],
 		readFunctions:          [],
 		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 
+Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
 		`;
 	}
 });

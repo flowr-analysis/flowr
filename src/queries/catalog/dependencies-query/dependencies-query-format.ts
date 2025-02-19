@@ -25,7 +25,7 @@ export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo'
 // these lists are originally based on https://github.com/duncantl/CodeDepends/blob/7fd96dfee16b252e5f642c77a7ababf48e9326f8/R/codeTypes.R
 export const LibraryFunctions: FunctionInfo[] = [
 	{ name: 'library',           argIdx: 0, argName: 'package', resolveValue: 'library' },
-	{ name: 'require',           argIdx: 0, argName: 'package', resolveValue: true },
+	{ name: 'require',           argIdx: 0, argName: 'package', resolveValue: 'library' },
 	{ name: 'loadNamespace',     argIdx: 0, argName: 'package', resolveValue: true },
 	{ name: 'attachNamespace',   argIdx: 0, argName: 'ns', resolveValue: true },
 	{ name: 'attach',            argIdx: 0, argName: 'what', resolveValue: true },

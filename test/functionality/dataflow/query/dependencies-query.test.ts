@@ -61,11 +61,21 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			});
 		}
 
+
 		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { libraries: [
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'a' },
 			{ nodeId: '2@library', functionName: 'library', libraryName: 'b' },
 			{ nodeId: '3@require', functionName: 'require', libraryName: 'c' }
 		] });
+
+		testQuery('Given Require', 'require("c")', { libraries: [
+			{ nodeId: '1@require', functionName: 'require', libraryName: 'c' }
+		] });
+
+		testQuery('Given Require with Character Only', 'require(c, character.only=TRUE)', { libraries: [
+			{ nodeId: '1@require', functionName: 'require', libraryName: 'unknown', lexemeOfArgument: 'c' }
+		] });
+
 
 		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { libraries: [
 			{ nodeId: '3@library', functionName: 'library', libraryName: 'ggplot2' }

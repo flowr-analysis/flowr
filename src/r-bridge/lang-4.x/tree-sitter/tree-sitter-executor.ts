@@ -19,6 +19,11 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public readonly parser:  Parser;
 	private static language: Parser.Language;
 
+	/**
+	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
+	 * @param overrideWasmPath - The path to the tree-sitter-r wasm file, which takes precedence over the config and default paths if set.
+	 * @param overrideTreeSitterWasmPath - The path to the tree-sitter wasm file, which takes precedence over the config and default paths if set.
+	 */
 	public static async initTreeSitter(overrideWasmPath?: string, overrideTreeSitterWasmPath?: string): Promise<void> {
 		const treeSitterWasmPath = overrideTreeSitterWasmPath ?? getEngineConfig('tree-sitter')?.treeSitterWasmPath ?? DEFAULT_TREE_SITTER_WASM_PATH;
 		// noinspection JSUnusedGlobalSymbols - this is used by emscripten, see https://emscripten.org/docs/api_reference/module.html

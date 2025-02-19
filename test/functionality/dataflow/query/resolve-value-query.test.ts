@@ -36,12 +36,22 @@ describe.sequential('Resolve Value Query', withShell(shell => {
 
 
 	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[numVal(1)]]);
+	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[numVal(1)]]);
+	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[]]);
+	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[numVal(2), numVal(1)]]);
 
 	describe('For now suboptimal', () =>  {
 		testQuery('Unknown df', `
 df <- data.frame(x = 1:10, y = 1:10)
 print(df)
 		`, ['3@df'], [[]]);
+		testQuery('Unknown df', `
+df <- data.frame(x = 1:10, y = 1:10)
+df <- df[2,]
+df[1] <- c(1,2,3)
+print(df)
+		`, ['5@df'], [[]]);
+		testQuery('Loops kill', 'x <- 42\nwhile(x < 10) { x <- x + 1 }\nprint(x)', ['3@x'], [[]]);
 
 	});
 

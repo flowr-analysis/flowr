@@ -1,5 +1,5 @@
 import type { IEnvironment, REnvironmentInformation } from './environment';
-import { initializeCleanEnvironments , BuiltInEnvironment } from './environment';
+import { BuiltInEnvironment, initializeCleanEnvironments } from './environment';
 import { Ternary } from '../../util/logic';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { isReferenceType, ReferenceType } from './identifier';
@@ -207,6 +207,25 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return values;
 }
 
+
+function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
+	const parent = node?.info.parent;
+	if(node === undefined || !parent) {
+		return false;
+	}
+
+	const parentNode = ast.get(parent);
+	if(parentNode === undefined) {
+		return false;
+	}
+
+	if(parentNode.type === RType.WhileLoop || parentNode.type === RType.RepeatLoop) {
+		return true;
+	}
+
+	return isNestedInLoop(parentNode, ast);
+}
+
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): unknown[] | undefined {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
@@ -218,6 +237,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	const cleanFingerprint = envFingerprint(clean);
 	queue.add(id, clean, cleanFingerprint, false);
 
+	let forceBot = false;
+
 	const resultIds: NodeId[] = [];
 	while(queue.nonEmpty()) {
 		const { id, baseEnvironment } = queue.next();
@@ -226,6 +247,23 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 			continue;
 		}
 		const [vertex, outgoingEdges] = res;
+		const cds = vertex.controlDependencies;
+		for(const cd of cds ?? []) {
+			const target = graph.idMap?.get(cd.id);
+			if(target === undefined) {
+				continue;
+			}
+			if(target.type === RType.WhileLoop || target.type === RType.RepeatLoop) {
+				forceBot = true;
+				break;
+			}
+		}
+		if(!forceBot && (cds?.length === 0 && isNestedInLoop(idMap.get(id), idMap))) {
+			forceBot = true;
+		}
+		if(forceBot) {
+			break;
+		}
 		if(vertex.tag === VertexType.Value) {
 			resultIds.push(id);
 			continue;
@@ -239,7 +277,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 			}
 		}
 	}
-	if(resultIds.length === 0) {
+	if(forceBot || resultIds.length === 0) {
 		return undefined;
 	}
 	const values: unknown[] = [];

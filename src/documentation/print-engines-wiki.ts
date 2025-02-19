@@ -40,6 +40,7 @@ are exposed with some command line options (e.g., when using the docker image of
 - ${getCliLongOptionOf('flowr', 'engine.r-shell.disabled', false)} to disable the ${shortLink(RShell.name, types.info)} engine
 - ${getCliLongOptionOf('flowr', 'engine.r-shell.r-path', false)} (which is the canonical version of ${getCliLongOptionOf('flowr', 'r-path')})
 - ${getCliLongOptionOf('flowr', 'engine.tree-sitter.disabled', false)} to disable the ${shortLink(TreeSitterExecutor.name, types.info)} engine
+- ${getCliLongOptionOf('flowr', 'engine.tree-sitter.lax', false)} to use lax parsing with tree-sitter
 - ${getCliLongOptionOf('flowr', 'engine.tree-sitter.wasm-path', false)} pass the path to the wasm of the r grammar of tree-sitter (see [below](#tree-sitter))
 - ${getCliLongOptionOf('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)} pass the path to the wasm of tree-sitter (see [below](#tree-sitter))
 - ${getCliLongOptionOf('flowr', 'default-engine', false)} to set the default engine to use

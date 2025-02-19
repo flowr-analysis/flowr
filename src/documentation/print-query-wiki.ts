@@ -232,9 +232,10 @@ registerQueryDocumentation('resolve-value', {
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\nprint(x)';
 		return `
-With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible). The extend to which flowR traces values (e.g. built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information). 
+With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
+The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information).
 
-Using the example code \`${exampleCode}\`, the following query returns all values of 'x' in the code:
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns all values of \`x\` in the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
@@ -475,7 +476,7 @@ ${
 	}], { showCode: false, collapseQuery: true, collapseResult: true })
 }
 
-Currently the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
+Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
 We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl})).
 
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
@@ -484,13 +485,14 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
-		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library' }],
+		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
 		sourceFunctions:        [],
 		readFunctions:          [],
 		writeFunctions:         []
 	}], { showCode: false, collapseQuery: false, collapseResult: true })
 }
 
+Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
 		`;
 	}
 });

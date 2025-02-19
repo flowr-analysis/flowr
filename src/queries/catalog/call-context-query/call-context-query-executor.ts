@@ -69,7 +69,10 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): { promoted
 					...q.fileFilter,
 					filter: new RegExp(q.fileFilter.filter)
 				},
-				linkTo: {
+				linkTo: Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
+					...l,
+					callName: new RegExp(l.callName)
+				})) : {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
 					callName: new RegExp(q.linkTo.callName)
@@ -238,16 +241,26 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			}
-			let linkedIds: NodeId[] | undefined = undefined;
+			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
 			if(cfg && isSubCallQuery(query)) {
-				/* if we have a linkTo query, we have to find the last call */
-				const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, query.linkTo);
-				if(lastCall) {
-					linkedIds = lastCall;
+				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
+				for(const link of linked) {
+					/* if we have a linkTo query, we have to find the last call */
+					const lastCall = identifyLinkToLastCallRelation(nodeId, cfg.graph, graph, link);
+					if(lastCall) {
+						linkedIds ??= new Set();
+						for(const l of lastCall) {
+							if(link.attachLinkInfo) {
+								linkedIds.add({ id: l, info: link.attachLinkInfo });
+							} else {
+								linkedIds.add(l);
+							}
+						}
+					}
 				}
 			}
 
-			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, calls: targets, linkedIds }));
+			initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, calls: targets, linkedIds: linkedIds ? [...linkedIds] : undefined }));
 		}
 	}
 

@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { resolveToValues } from '../../../../src/dataflow/environments/resolve-by-name';
+import { trackAliasInEnvironments } from '../../../../src/dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { numVal } from '../../_helper/ast-builder';
@@ -28,7 +28,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		['x <- 1; while(x < 10) { if(runif(1)) x <- x + 1 }', 'x', undefined]
 	])('%s should resolve %s to %o', async(code, identifier, expectedValues) => {
 		const result = await runPipeline(code, shell);
-		const values = resolveToValues(identifier as Identifier, result.dataflow.environment, result.dataflow.graph.idMap);
+		const values = trackAliasInEnvironments(identifier as Identifier, result.dataflow.environment, result.dataflow.graph.idMap);
 		expect(values).toEqual(expectedValues);
 	});
 }));

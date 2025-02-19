@@ -2,12 +2,19 @@ import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { withShell } from '../../_helper/shell';
 import { assert, describe } from 'vitest';
-import type { ResolveValueQuery, ResolveValueQueryResult } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
+import type {
+	ResolveValueQuery,
+	ResolveValueQueryResult
+} from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
+
+
 import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
 import { numVal } from '../../_helper/ast-builder';
+import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 
 describe.sequential('Resolve Value Query', withShell(shell => {
-	function testQuery(name: string, code: string, queries: readonly ResolveValueQuery[], expected: readonly unknown[][]) {
+	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: readonly unknown[][]) {
+		const queries: ResolveValueQuery[] = [{ type: 'resolve-value' as const, criteria }];
 		assertQuery(label(name), shell, code, queries, ({ dataflow }) => {
 			const results: ResolveValueQueryResult['results'] = {};
 			
@@ -27,6 +34,15 @@ describe.sequential('Resolve Value Query', withShell(shell => {
 		});
 	}
 
-	testQuery('Single dataflow', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }], [[numVal(1)]]);
-	testQuery('Multiple Queries', 'x <- 1', [{ type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }, { type: 'resolve-value', criteria: ['1@x'] }], [[numVal(1)],[numVal(1)],[numVal(1)]]);
+
+	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[numVal(1)]]);
+
+	describe('For now suboptimal', () =>  {
+		testQuery('Unknown df', `
+df <- data.frame(x = 1:10, y = 1:10)
+print(df)
+		`, ['3@df'], [[]]);
+
+	});
+
 }));

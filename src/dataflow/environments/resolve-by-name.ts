@@ -15,7 +15,7 @@ import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/mode
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { EdgeType } from '../graph/edge';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -233,12 +233,12 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {
-			if(edgeIncludesType(edge.types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall)) {
+			// currently, they have to be exact!
+			if(edge.types === EdgeType.Reads || edge.types ===  EdgeType.DefinedBy || edge.types === EdgeType.DefinedByOnCall) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
 		}
 	}
-
 	if(resultIds.length === 0) {
 		return undefined;
 	}
@@ -255,7 +255,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  * Convenience function using the variable resolver as specified within the configuration file
  * In the future we may want to have this set once at the start of the analysis
  *
- * @see {@link resolve} - for a more general approach which "evaluates" a node based on value resolve
+ * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
 export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
 	const resolve = getConfig().solver.variables;
@@ -282,12 +282,13 @@ export interface ResolveInfo {
 /**
  * Generalized {@link resolveValueOfVariable} function which evaluates a node based on the value resolve
  *
- * @param id         - The node id or node to resolve
+ * @param id          - The node id or node to resolve
  * @param environment - The current environment used for name resolution
- * @param idMap      - The id map to resolve the node if given as an id
- * @param full       - Whether to track variables
+ * @param graph       - The graph to resolve in
+ * @param idMap       - The id map to resolve the node if given as an id
+ * @param full        - Whether to track variables
  */
-export function resolve(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {

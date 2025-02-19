@@ -30,7 +30,7 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import type { BasicQueryData } from '../../base-query-format';
 import { isNotUndefined } from '../../../util/assert';
 import { compactRecord } from '../../../util/objects';
-import { resolve } from '../../../dataflow/environments/resolve-by-name';
+import { resolveIdToValue } from '../../../dataflow/environments/resolve-by-name';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
@@ -247,7 +247,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 		}
 	}
 
-	return resolve(argument, { environment, graph: data.dataflow.graph, full });
+	return resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full });
 }
 
 function unwrapRValue(value: RLogicalValue | RStringValue | RNumberValue | string | number | unknown): string | undefined {

@@ -12,8 +12,9 @@ import { printAsMs } from '../util/time';
 import { BuiltIn } from '../dataflow/environments/built-in';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
-	const id = 'id' in nodeId ? nodeId.id : nodeId;
-	const info = 'info' in nodeId ? nodeId.info : undefined;
+	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
+	const id = isObj ? nodeId.id : nodeId;
+	const info = isObj ? nodeId.info : undefined;
 	if(id === BuiltIn) {
 		return italic('built-in', formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}

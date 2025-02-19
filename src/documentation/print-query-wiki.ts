@@ -232,9 +232,10 @@ registerQueryDocumentation('resolve-value', {
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\nprint(x)';
 		return `
-With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible). The extend to which flowR traces values (e.g. built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information). 
+With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
+The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information).
 
-Using the example code \`${exampleCode}\`, the following query returns all values of 'x' in the code:
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns all values of \`x\` in the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',

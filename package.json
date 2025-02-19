@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.7",
+  "version": "2.2.8",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {

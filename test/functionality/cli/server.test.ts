@@ -19,7 +19,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 import { describe, assert, test } from 'vitest';
-import msgpack from '@msgpack/msgpack';
+import { uncompact } from '../../../src/cli/repl/server/compact';
 
 describe('flowr', () => {
 	describe.sequential('Server', withShell(shell => {
@@ -126,7 +126,7 @@ describe('flowr', () => {
 
 			assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request');
 
-			const unpacked = msgpack.decode(new Uint8Array(Buffer.from(response.results)));
+			const unpacked = uncompact(response.results);
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)

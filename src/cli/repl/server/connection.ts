@@ -45,8 +45,7 @@ import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
-import msgpack from '@msgpack/msgpack';
-import { jsonReplacer } from '../../../util/json';
+import { compact } from './compact';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -157,10 +156,6 @@ export class FlowRServerConnection {
 		tempFile.removeCallback();
 	}
 
-	private compact(obj: object): Buffer {
-		return Buffer.from(msgpack.encode(JSON.parse(JSON.stringify(obj, jsonReplacer))));
-	}
-
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
@@ -191,8 +186,8 @@ export class FlowRServerConnection {
 				type:    'response-file-analysis',
 				format:  'compact',
 				id:      message.id,
-				cfg:     cfg ? this.compact(cfg) : undefined,
-				results: this.compact(sanitizedResults)
+				cfg:     cfg ? compact(cfg) : undefined,
+				results: compact(sanitizedResults)
 			});
 		} else {
 			sendMessage(this.socket, {

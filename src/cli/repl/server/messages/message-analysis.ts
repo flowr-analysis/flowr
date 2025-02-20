@@ -96,11 +96,11 @@ export interface FileAnalysisResponseMessageCompact extends IdMessageBase {
 	/**
 	 * See the {@link PipelineExecutor} and {@link DEFAULT_DATAFLOW_PIPELINE} for details on the results.
 	 */
-	results: Uint8Array,
+	results: Buffer,
 	/**
 	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
 	 */
-	cfg?:    Uint8Array
+	cfg?:    Buffer
 }
 
 const compactSchema = Joi.object({

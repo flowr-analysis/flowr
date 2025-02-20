@@ -72,7 +72,8 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 		const idMap = mermaid.rootGraph.idMap;
 		const node = idMap?.get(nodeId);
 		const nodeLexeme = node?.info.fullLexeme ?? node?.lexeme ?? '??';
-		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme ?? 'function')}"]`);
+		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme ?? 'function')}${location}"]`);
 	} else {
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
 	}
@@ -188,7 +189,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
 	if(mermaid.simplified) {
-		const escapedName = '**' + escapeMarkdown(node ? `${lexeme}` : '??') + '**' + (node ? `\n*${node.type}*` : '');
+		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
+		const escapedName = '**' + escapeMarkdown(node ? `${lexeme}` : '??') + '**' + location + (node ? `\n*${node.type}*` : '');
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
@@ -244,7 +246,7 @@ interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
@@ -265,12 +267,13 @@ export function graphToMermaid(config: MermaidGraphConfiguration): { string: str
 /**
  * Converts a dataflow graph to a mermaid url that visualizes the graph.
  *
- * @param graph         - The graph to convert
+ * @param graph               - The graph to convert
  * @param includeEnvironments - Whether to include the environments in the mermaid graph code
- * @param mark          - Special nodes to mark (e.g., those included in the slice)
+ * @param mark                - Special nodes to mark (e.g., those included in the slice)
+ * @param simplified          - Whether to simplify the graph
  */
-export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>): string {
-	return mermaidCodeToUrl(graphToMermaid({ graph, includeEnvironments, mark }).string);
+export function graphToMermaidUrl(graph: DataflowGraph, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
+	return mermaidCodeToUrl(graphToMermaid({ graph, includeEnvironments, mark, simplified }).string);
 }
 
 export interface LabeledDiffGraph {
@@ -285,7 +288,7 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 	const { string: leftGraph, mermaid } = graphToMermaid({ graph: left.graph, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark });
 	const { string: rightGraph } = graphToMermaid({ graph: right.graph, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges });
 
-	return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
+	return `${prefix}flowchart BT\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
 
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {

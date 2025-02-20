@@ -14,17 +14,16 @@ import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { printAsMs } from '../../util/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
+import { codeBlock } from './doc-code';
 
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-\`\`\`mermaid
-${graphToMermaid({
+${codeBlock('mermaid', graphToMermaid({
 	graph,
 	prefix: 'flowchart LR',
 	mark,
 	simplified
-}).string}
-\`\`\`
+}).string)}
 	`;
 }
 
@@ -64,9 +63,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { s
 	let resultText = '\n\n';
 
 	if(showCode) {
-		const codeText = `\`\`\`r
-${code}
-\`\`\``;
+		const codeText = codeBlock('r', code);
 		resultText += switchCodeAndGraph ? codeText : dfGraph;
 		resultText += `
 <details${codeOpen ? ' open' : ''}>

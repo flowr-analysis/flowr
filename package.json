@@ -199,6 +199,7 @@
     "vitest": "^3.0.5"
   },
   "dependencies": {
+    "@msgpack/msgpack": "^3.0.1",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",

@@ -220,6 +220,39 @@ ${
 Please note, that the base message format is still JSON. Only the individual results get converted. 
 While the context is derived from the \`filename\`, we currently offer no way to customize other parts of the quads 
 (please open a [new issue](${NewIssueUrl}) if you require this).
+
+			`
+		}]
+	})
+}
+
+<a id="analysis-format-compact"></a>
+**Retrieve the Output in a compactedForm**
+
+The default response is formatted as JSON. But this can get very big quickly.
+By specifying \`format: "compact"\`, you can retrieve the results heavily compacted (using [msgpack](https://www.npmjs.com/package/@msgpack/msgpack)).
+This works with and without the control flow graph as described [above](#analysis-include-cfg).
+
+${
+	await documentServerMessageResponse({
+		shell,
+		title:    'Requesting Compacted Results',
+		messages: [{
+			type:    'request',
+			message: {
+				type:      'request-file-analysis',
+				id:        '1',
+				filetoken: 'x',
+				content:   'x <- 1\nx + 1',
+				format:    'compact',
+				cfg:       true
+			},
+			mark: true
+		}, {
+			type:         'response',
+			expectedType: 'response-file-analysis',
+			description:  `
+Please note, that the base message format is still JSON. Only the individual results are printed as binary objects.
 			`
 		}]
 	})

@@ -37,11 +37,14 @@ import {
 } from './catalog/happens-before-query/happens-before-query-format';
 import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-value-query-format';
 import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
+import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
+import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| DataflowLensQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -71,6 +74,7 @@ export const SupportedQueries = {
 	'call-context':     CallContextQueryDefinition,
 	'config':           ConfigQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
+	'dataflow-lens':    DataflowLensQueryDefinition,
 	'id-map':           IdMapQueryDefinition,
 	'normalized-ast':   NormalizedAstQueryDefinition,
 	'dataflow-cluster': ClusterQueryDefinition,

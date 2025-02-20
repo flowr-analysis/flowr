@@ -8,7 +8,7 @@ import type {
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/message-repl';
 import type {
-	FileAnalysisRequestMessage,
+	FileAnalysisRequestMessage, FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageJson
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
@@ -19,6 +19,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 import { describe, assert, test } from 'vitest';
+import msgpack from '@msgpack/msgpack';
 
 describe('flowr', () => {
 	describe.sequential('Server', withShell(shell => {
@@ -88,8 +89,8 @@ describe('flowr', () => {
 
 			// cfg should not be set as we did not request it
 			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
-
 			assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request');
+
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
@@ -99,6 +100,43 @@ describe('flowr', () => {
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
+
+		test('Analyze a simple expression (Compact)', withSocket(shell, async socket => {
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:      'request-file-analysis',
+				id:        '42',
+				filetoken: 'super-token',
+				format:    'compact',
+				filename:  'x',
+				content:   '1 + 1'
+			});
+			await socket.waitForMessage('response-file-analysis');
+			const messages = socket.getMessages(['hello', 'response-file-analysis']);
+
+			const response = messages[1] as FileAnalysisResponseMessageCompact;
+
+			// we are testing the server and not the slicer here!
+			const results = sanitizeAnalysisResults(await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+				parser:  shell,
+				request: requestFromInput('1 + 1'),
+			}).allRemainingSteps());
+
+			// cfg should not be set as we did not request it
+			assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it');
+
+			assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request');
+
+			const unpacked = msgpack.decode(new Uint8Array(Buffer.from(response.results)));
+
+			// this is hideous and only to unify the ids
+			const expected = JSON.stringify(results, jsonReplacer)
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+			const got = JSON.stringify(unpacked, jsonReplacer)
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+
+			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
+		}));
+
 
 		test('Analyze the CFG', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {

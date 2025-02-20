@@ -1,7 +1,7 @@
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
 import type { ControlFlowInformation } from '../../../../util/cfg/cfg';
-import type { DEFAULT_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
 
 /**
@@ -35,7 +35,7 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
 	cfg?:       boolean
 	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
-	format?:    'json' | 'n-quads'
+	format?:    'compact' | 'json' | 'n-quads'
 }
 
 
@@ -49,7 +49,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
 		content:   Joi.string().optional().description('The content of the file or an R expression (either give this or the filepath).'),
 		filepath:  Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).optional().description('The path to the file(s) on the local machine (either give this or the content).'),
 		cfg:       Joi.boolean().optional().description('If you want to extract the control flow information of the file.'),
-		format:    Joi.string().valid('json', 'n-quads').optional().description('The format of the results, if missing we assume json.')
+		format:    Joi.string().valid('json', 'n-quads', 'compact').optional().description('The format of the results, if missing we assume json.')
 	}).xor('content', 'filepath')
 };
 
@@ -62,15 +62,16 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
  *
  * @note The serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
  *
- * @see FileAnalysisResponseMessageNQuads
+ * @see {@link FileAnalysisResponseMessageNQuads}
+ * @see {@link FileAnalysisResponseMessageCompact}
  */
 export interface FileAnalysisResponseMessageJson extends IdMessageBase {
 	type:    'response-file-analysis',
 	format:  'json',
 	/**
-	 * See the {@link SteppingSlicer} and {@link StepResults} for details on the results.
+	 * See the {@link PipelineExecutor} and {@link DEFAULT_DATAFLOW_PIPELINE} for details on the results.
 	 */
-	results: PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>
+	results: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
 	/**
 	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
 	 */
@@ -84,6 +85,32 @@ const jsonSchema = Joi.object({
 	results: Joi.object().required().description('The results of the analysis (one field per step).'),
 	cfg:     Joi.object().optional().description('The control flow information of the file, only present if requested.')
 }).description('The response in JSON format.');
+
+
+/**
+ * Similar to {@link FileAnalysisResponseMessageJson} but using a compact serialization format.
+ */
+export interface FileAnalysisResponseMessageCompact extends IdMessageBase {
+	type:    'response-file-analysis',
+	format:  'compact',
+	/**
+	 * See the {@link PipelineExecutor} and {@link DEFAULT_DATAFLOW_PIPELINE} for details on the results.
+	 */
+	results: Uint8Array,
+	/**
+	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
+	 */
+	cfg?:    Uint8Array
+}
+
+const compactSchema = Joi.object({
+	type:    Joi.string().valid('response-file-analysis').required().description('The type of the message.'),
+	id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
+	format:  Joi.string().valid('bson').required().description('The format of the results in bson format.'),
+	results: Joi.binary().required().description('The results of the analysis (one field per step).'),
+	cfg:     Joi.binary().optional().description('The control flow information of the file, only present if requested.')
+});
+
 
 /**
  * Similar to {@link FileAnalysisResponseMessageJson} but using n-quads as serialization format.
@@ -115,6 +142,7 @@ export const analysisResponseMessage: MessageDefinition<FileAnalysisResponseMess
 	type:   'response-file-analysis',
 	schema: Joi.alternatives(
 		jsonSchema,
-		nquadsSchema
+		nquadsSchema,
+		compactSchema
 	).required().description('The response to a file analysis request (based on the `format` field).')
 };

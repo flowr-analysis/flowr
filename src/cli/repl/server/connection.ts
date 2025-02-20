@@ -1,6 +1,9 @@
 import { sendMessage } from './send';
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate';
-import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads } from './messages/message-analysis';
+import type {
+	FileAnalysisRequestMessage, FileAnalysisResponseMessageCompact,
+	FileAnalysisResponseMessageNQuads
+} from './messages/message-analysis';
 import { requestAnalysisMessage } from './messages/message-analysis';
 import type { SliceRequestMessage, SliceResponseMessage } from './messages/message-slice';
 import { requestSliceMessage } from './messages/message-slice';
@@ -42,6 +45,8 @@ import { requestQueryMessage } from './messages/message-query';
 import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
+import msgpack from '@msgpack/msgpack';
+import { jsonReplacer } from '../../../util/json';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -152,6 +157,10 @@ export class FlowRServerConnection {
 		tempFile.removeCallback();
 	}
 
+	private compact(obj: object): Buffer {
+		return Buffer.from(msgpack.encode(JSON.parse(JSON.stringify(obj, jsonReplacer))));
+	}
+
 	private async sendFileAnalysisResponse(slicer: PipelineExecutor<Pipeline>, results: Partial<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>>, message: FileAnalysisRequestMessage): Promise<void> {
 		let cfg: ControlFlowInformation | undefined = undefined;
 		if(message.cfg) {
@@ -176,6 +185,14 @@ export class FlowRServerConnection {
 					normalize: await printStepResult(normalizedStep, sanitizedResults.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult(dataflowStep, sanitizedResults.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
+			});
+		} else if(message.format === 'compact') {
+			sendMessage<FileAnalysisResponseMessageCompact>(this.socket, {
+				type:    'response-file-analysis',
+				format:  'compact',
+				id:      message.id,
+				cfg:     cfg ? this.compact(cfg) : undefined,
+				results: this.compact(sanitizedResults)
 			});
 		} else {
 			sendMessage(this.socket, {

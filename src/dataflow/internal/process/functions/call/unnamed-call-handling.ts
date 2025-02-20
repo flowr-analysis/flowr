@@ -23,8 +23,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`;
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`);
 	// we know that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Calls);
-	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Reads);
+	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Calls | EdgeType.Reads);
 	// keep the defined function
 	finalGraph.mergeWith(calledFunction.graph);
 
@@ -42,14 +41,14 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	});
 
 	finalGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  functionRootId,
-		environment:         data.environment,
-		name:                functionCallName,
+		tag:         VertexType.FunctionCall,
+		id:          functionRootId,
+		environment: data.environment,
+		name:        functionCallName,
 		/* can never be a direct built-in-call */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                callArgs // same reference
+		onlyBuiltin: false,
+		cds:         data.controlDependencies,
+		args:        callArgs // same reference
 	});
 
 	const inIds = remainingReadInArgs;

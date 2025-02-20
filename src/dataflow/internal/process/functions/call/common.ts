@@ -154,14 +154,14 @@ export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
-		tag:                 VertexType.FunctionCall,
-		id:                  rootId,
-		name:                name.content,
-		environment:         data.environment,
+		tag:         VertexType.FunctionCall,
+		id:          rootId,
+		name:        name.content,
+		environment: data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies,
-		args:                argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		onlyBuiltin: false,
+		cds:         data.controlDependencies,
+		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
 	});
 	for(const arg of argumentProcessResult) {
 		if(arg) {

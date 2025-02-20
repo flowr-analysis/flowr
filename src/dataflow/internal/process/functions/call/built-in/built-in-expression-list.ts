@@ -78,7 +78,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	called:       readonly DataflowGraphVertexInfo[]
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph) {
 	for(const { functionCall, called } of calledEnvs) {
-		const callDependencies = nextGraph.getVertex(functionCall, true)?.controlDependencies;
+		const callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
 		for(const calledFn of called) {
 			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common

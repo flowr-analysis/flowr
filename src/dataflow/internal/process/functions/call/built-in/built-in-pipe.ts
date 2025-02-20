@@ -20,8 +20,7 @@ export function processPipe<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-
-	const { information } = processKnownFunctionCall({ name, args, rootId, data });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data });
 	if(args.length !== 2) {
 		dataflowLogger.warn(`Pipe ${name.content} has something else than 2 arguments, skipping`);
 		return information;
@@ -47,8 +46,15 @@ export function processPipe<OtherInfo>(
 			controlDependencies: data.controlDependencies,
 			type:                ReferenceType.Function
 		});
-		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument);
+		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 	}
 
-	return information;
+	const firstArgument = processedArguments[0] as DataflowInformation;
+	return {
+		...information,
+		in:                [...information.in, ...firstArgument.in],
+		out:               [...information.out, ...firstArgument.out],
+		unknownReferences: [...information.unknownReferences, ...firstArgument.unknownReferences],
+		entryPoint:        rootId
+	};
 }

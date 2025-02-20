@@ -81,7 +81,7 @@ export function processAccess<OtherInfo>(
 
 	/* access always reads all of its indices */
 	for(const arg of fnCall.processedArguments) {
-		if(arg !== undefined) {
+		if(arg) {
 			info.graph.addEdge(name.info.id, arg.entryPoint, EdgeType.Reads);
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */

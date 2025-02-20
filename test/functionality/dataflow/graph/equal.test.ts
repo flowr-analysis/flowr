@@ -62,7 +62,7 @@ describe('Dataflow Graph Comparisons', () => {
 					const rhs = emptyGraph().use('0', 'x');
 					neq('Id', emptyGraph().use('1', 'x'), rhs);
 					neq('Name', emptyGraph().use('0', 'y'), rhs);
-					neq('Control Dependency', emptyGraph().use('0', 'x', { controlDependencies: [{ id: '1', when: true }] }), rhs);
+					neq('Control Dependency', emptyGraph().use('0', 'x', { cds: [{ id: '1', when: true }] }), rhs);
 					neq('Tag', emptyGraph().constant('0'), rhs);
 				});
 				describe('Different edges', () => {
@@ -76,7 +76,7 @@ describe('Dataflow Graph Comparisons', () => {
 
 		describe('JSON Data', () =>{
 			const graph = emptyGraph()
-				.use('0', 'a', { controlDependencies: [] })
+				.use('0', 'a', { cds: [] })
 				.argument('3', '0')
 				.call('3', '[', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn, '0', '1'], onlyBuiltIn: true })
 				.argument('3', '1')

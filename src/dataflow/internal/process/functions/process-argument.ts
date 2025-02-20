@@ -36,9 +36,9 @@ export function processFunctionArgument<OtherInfo>(
 	let entryPoint = value?.entryPoint;
 	if(argumentName) {
 		graph.addVertex({
-			tag:                 VertexType.Use,
-			id:                  argument.info.id,
-			controlDependencies: data.controlDependencies
+			tag: VertexType.Use,
+			id:  argument.info.id,
+			cds: data.controlDependencies
 		});
 		entryPoint = argument.info.id;
 	}

@@ -5,18 +5,18 @@ import { DataflowGraph } from '../../graph/graph';
 import { VertexType } from '../../graph/vertex';
 import { ReferenceType } from '../../environments/identifier';
 
-export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
+export function processValue<OtherInfo>({ info: { id } }: RNodeWithParent, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: value.info.id, name: undefined, controlDependencies: data.controlDependencies, type: ReferenceType.Constant }],
+		in:                [{ nodeId: id, name: undefined, controlDependencies: data.controlDependencies, type: ReferenceType.Constant }],
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
-			tag:                 VertexType.Value,
-			id:                  value.info.id,
-			controlDependencies: data.controlDependencies
+			tag: VertexType.Value,
+			id:  id,
+			cds: data.controlDependencies
 		}),
-		exitPoints: [{ nodeId: value.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
-		entryPoint: value.info.id
+		exitPoints: [{ nodeId: id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }],
+		entryPoint: id
 	};
 }

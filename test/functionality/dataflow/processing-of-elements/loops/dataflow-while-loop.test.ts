@@ -14,7 +14,7 @@ describe.sequential('While', withShell(shell => {
 		.constant('1', { controlDependencies: [] })
 	);
 	assertDataflow(label('using variable in body', ['while-loop', 'logical', 'name-normal']), shell, 'while (TRUE) x', emptyGraph()
-		.use('1', 'x', { controlDependencies: [] })
+		.use('1', 'x', { cds: [] })
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.nse('3', '1')
 		.constant('0')
@@ -30,7 +30,7 @@ describe.sequential('While', withShell(shell => {
 	);
 	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
 		.use('3', 'x')
-		.use('12', 'x', { controlDependencies: [] })
+		.use('12', 'x', { cds: [] })
 		.reads('12', '2')
 		.call('5', '-', [argumentInCall('3'), argumentInCall('4')], { returns: [], reads: [BuiltIn, '3', '4'], onlyBuiltIn: true })
 		.call('6', '<-', [argumentInCall('2'), argumentInCall('5')], { returns: ['2'], reads: [BuiltIn] })
@@ -45,7 +45,7 @@ describe.sequential('While', withShell(shell => {
 	);
 	assertDataflow(label('Endless while loop with variables', ['while-loop', 'name-normal']), shell, 'while(x) y', emptyGraph()
 		.use('0', 'x')
-		.use('1', 'y', { controlDependencies: [] })
+		.use('1', 'y', { cds: [] })
 		.argument('3', '0')
 		.argument('3', '1')
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', BuiltIn], onlyBuiltIn: true })

@@ -299,15 +299,15 @@ export class DataflowGraph<
 	}
 
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId, to: NodeId, type: EdgeType): this
+	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType): this
+	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
 	/**
 	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this {
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
 		if(fromId === toId || toId === BuiltIn) {
@@ -391,7 +391,7 @@ export class DataflowGraph<
 		const vertex = this.getVertex(reference.nodeId, true);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
-			vertex.controlDependencies = reference.controlDependencies;
+			vertex.cds = reference.controlDependencies;
 		} else {
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
 		}
@@ -412,17 +412,17 @@ export class DataflowGraph<
 		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
 		const vertex = this.getVertex(from, true);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
-		vertex.controlDependencies ??= [];
+		vertex.cds ??= [];
 		if(to) {
 			let hasControlDependency = false;
-			for(const { id, when: cond } of vertex.controlDependencies) {
+			for(const { id, when: cond } of vertex.cds) {
 				if(id === to && when !== cond) {
 					hasControlDependency = true;
 					break;
 				}
 			}
 			if(!hasControlDependency) {
-				vertex.controlDependencies.push({ id: to, when });
+				vertex.cds.push({ id: to, when });
 			}
 		}
 		return this;

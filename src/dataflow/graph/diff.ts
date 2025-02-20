@@ -242,7 +242,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				});
 			}
 		}
-		diffControlDependencies(lInfo.controlDependencies, rInfo.controlDependencies, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
+		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
 
 		if(
 			(lInfo.environment === undefined && rInfo.environment !== undefined && !ctx.config.leftIsSubgraph)

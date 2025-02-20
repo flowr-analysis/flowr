@@ -87,10 +87,10 @@ ${details('Normalized AST Node Types',
 
 The following segments intend to give you an overview of how to work with the normalized AST:
 
-* [How to get a normalized AST](#how-get-a-normalized-ast)
+* [How to get a Normalized AST](#how-to-get-a-normalized-ast)
 * [Visitors and Folds](#visitors-and-folds)
 
-## How Get a Normalized AST
+## How to Get a Normalized AST
 
 As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#the-pipeline-executor) wiki page, you can use the 
 ${shortLink(PipelineExecutor.name, types.info)} to get the ${shortLink('NormalizedAst', types.info)}. If you are only interested in the normalization,
@@ -116,7 +116,7 @@ We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [F
 If you want a simple visitor which traverses the AST, the ${shortLink(visitAst.name, types.info)} function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
-For example, if you want to collect all the \`id\`s present within a normalized (sub-)ast,
+For example, if you want to collect all the \`id\`s present within a normalized (sub-)AST,
 as it is done by the ${shortLink(collectAllIds.name, types.info)} function, you can use the following visitor:
 
 ${codeBlock('ts', `

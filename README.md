@@ -140,12 +140,13 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDMiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDMiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
     ```
     
     
     
     Following the link output should show the following:
+    
     
     
     
@@ -374,8 +375,9 @@ It offers a wide variety of features, for example:
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
     ```
+    
     	
-    (The analysis required _22.75 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.72 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

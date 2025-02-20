@@ -19,9 +19,9 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
-			tag:                 VertexType.Use,
-			id:                  symbol.info.id,
-			controlDependencies: data.controlDependencies
+			tag: VertexType.Use,
+			id:  symbol.info.id,
+			cds: data.controlDependencies
 		}),
 		entryPoint: symbol.info.id,
 		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]

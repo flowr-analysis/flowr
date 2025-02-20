@@ -46,7 +46,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		describe('Access with Constant', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell,'a[2]',  emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, 1, BuiltIn], onlyBuiltIn: true })
 					.argument(3, 1)
@@ -54,7 +54,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]',  emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.argument(3, 1)
 					.constant(1)
@@ -62,7 +62,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('dollar constant', ['name-normal', 'dollar-access']),
 				shell, 'a$b',  emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.argument(3, 1)
 					.reads(3, 1)
@@ -71,7 +71,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
 				shell, 'a@b', emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.call(3, '@', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [0, BuiltIn], onlyBuiltIn: true })
 					.argument(3, 1)
@@ -80,7 +80,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
 				'a[2][3]', emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [BuiltIn, 0, 1], onlyBuiltIn: true })
 					.argument(3, 1)
@@ -93,7 +93,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph()
-					.use(0, 'a', { controlDependencies: [] })
+					.use(0, 'a', { cds: [] })
 					.argument(3, 0)
 					.call(3, '[', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [BuiltIn, 0, 1], onlyBuiltIn: true })
 					.argument(3, 1)
@@ -107,7 +107,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		});
 		assertDataflow(label('chained bracket access with variables', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities]), shell,
 			'a[x][y]', emptyGraph()
-				.use(0, 'a', { controlDependencies: [] })
+				.use(0, 'a', { cds: [] })
 				.use(1, 'x')
 				.use(4, 'y')
 				.argument(3, [0, 1])
@@ -151,7 +151,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 						inputDifferent,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'y', { controlDependencies: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 							.reads(2, 0)
 					);
@@ -160,7 +160,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 						shell, inputSame,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'x', { controlDependencies: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 							.reads(2, 0)
 					);
@@ -348,7 +348,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				describe('With <-', () => {
 					assertDataflow(label('Repeat', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'repeat-loop']),
 						shell, 'x <- repeat x', emptyGraph()
-							.use(1, 'x', { controlDependencies: [{ id: 3 }] })
+							.use(1, 'x', { cds: [{ id: 3 }] })
 							.argument(3, 1)
 							.call(3, 'repeat', [argumentInCall(1, { controlDependencies: [{ id: 3, when: true }] })], { returns: [], reads: [BuiltIn] })
 							.nse(3, 1)
@@ -474,7 +474,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) y',  emptyGraph()
 					.use(0, 'x')
-					.use(3, 'y', { controlDependencies: [{ id: 5, when: true }] })
+					.use(3, 'y', { cds: [{ id: 5, when: true }] })
 					.argument(2, 0)
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
@@ -485,7 +485,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > y) z',  emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
-					.use(3, 'z', { controlDependencies: [{ id: 5, when: true }] })
+					.use(3, 'z', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, BuiltIn], onlyBuiltIn: true })
@@ -494,7 +494,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > y) x', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
-					.use(3, 'x', { controlDependencies: [{ id: 5, when: true }] })
+					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, BuiltIn], onlyBuiltIn: true })
@@ -503,14 +503,14 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > x) x', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'x')
-					.use(3, 'x', { controlDependencies: [{ id: 5, when: true }] })
+					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, BuiltIn], onlyBuiltIn: true })
 			);
 			assertDataflow(label('definition in if', ['if', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]),
 				shell, 'if (x <- 3) x', emptyGraph()
-					.use(3, 'x', { controlDependencies: [{ id: 5, when: true }] })
+					.use(3, 'x', { cds: [{ id: 5, when: true }] })
 					.reads(3, 0)
 					.call(2, '<-', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [BuiltIn] })
 					.call(5, 'if', [argumentInCall(2), argumentInCall(3), EmptyArgument], { returns: [3], reads: [2, BuiltIn], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', 0, 2) })
@@ -549,7 +549,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > 5) { y } else { 42 }',
 				emptyGraph()
 					.use(0, 'x')
-					.use(5, 'y', { controlDependencies: [{ id: 11, when: true }] })
+					.use(5, 'y', { cds: [{ id: 11, when: true }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.argument(2, [1])
@@ -566,8 +566,8 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow(label('compare cond. symbol in then & else', ['if', 'logical', 'numbers', 'name-normal', 'grouping', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) { y } else { z }', emptyGraph()
 					.use(0, 'x')
-					.use(5, 'y', { controlDependencies: [{ id: 11, when: true }] })
-					.use(9, 'z', { controlDependencies: [{ id: 11, when: false }] })
+					.use(5, 'y', { cds: [{ id: 11, when: true }] })
+					.use(9, 'z', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [BuiltIn], controlDependencies: [{ id: 11, when: true }] })
@@ -579,8 +579,8 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > y) { z } else { a }', emptyGraph()
 					.use(0, 'x')
 					.use(1, 'y')
-					.use(5, 'z', { controlDependencies: [{ id: 11, when: true }] })
-					.use(9, 'a', { controlDependencies: [{ id: 11, when: false }] })
+					.use(5, 'z', { cds: [{ id: 11, when: true }] })
+					.use(9, 'a', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [BuiltIn], controlDependencies: [{ id: 11, when: true }] })
@@ -591,8 +591,8 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (y > x) { x } else { y }', emptyGraph()
 					.use(0, 'y')
 					.use(1, 'x')
-					.use(5, 'x', { controlDependencies: [{ id: 11, when: true }] })
-					.use(9, 'y', { controlDependencies: [{ id: 11, when: false }] })
+					.use(5, 'x', { cds: [{ id: 11, when: true }] })
+					.use(9, 'y', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [BuiltIn], controlDependencies: [{ id: 11, when: true }] })
@@ -603,8 +603,8 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'if (x > x) { x } else { x }',  emptyGraph()
 					.use(0, 'x')
 					.use(1, 'x')
-					.use(5, 'x', { controlDependencies: [{ id: 11, when: true }] })
-					.use(9, 'x', { controlDependencies: [{ id: 11, when: false }] })
+					.use(5, 'x', { cds: [{ id: 11, when: true }] })
+					.use(9, 'x', { cds: [{ id: 11, when: false }] })
 					.call(2, '>', [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [BuiltIn] })
 					.reads(2, [0, 1])
 					.call(6, '{', [argumentInCall(5)], { returns: [5], reads: [BuiltIn], controlDependencies: [{ id: 11, when: true }] })
@@ -650,7 +650,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('using loop variable in for-body', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { i }',  emptyGraph()
-					.use(6, 'i', { controlDependencies: [{ id: 8, when: true }] })
+					.use(6, 'i', { cds: [{ id: 8, when: true }] })
 					.reads(6, 0)
 					.call(3, ':', [argumentInCall(1), argumentInCall(2)], { returns: [], reads: [1, 2, BuiltIn], onlyBuiltIn: true })
 					.call(7, '{', [argumentInCall(6, { controlDependencies: [{ id: 8, when: true }] })], { returns: [6], reads: [BuiltIn], controlDependencies: [{ id: 8, when: true }] })
@@ -671,7 +671,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('using loop variable in body', ['repeat-loop', 'name-normal']),
 				shell, 'repeat x',  emptyGraph()
-					.use(0, 'x', { controlDependencies: [{ id: 2 }] })
+					.use(0, 'x', { cds: [{ id: 2 }] })
 					.call(2, 'repeat', [argumentInCall(0, { controlDependencies: [{ id: 2 }] })], { returns: [], reads: [BuiltIn] })
 					.nse(2, 0)
 			);
@@ -686,7 +686,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			);
 			assertDataflow(label('using variable in body', ['repeat-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping']),
 				shell, 'repeat { x <- y }',  emptyGraph()
-					.use(3, 'y', { controlDependencies: [{ id: 6 }] })
+					.use(3, 'y', { cds: [{ id: 6 }] })
 					.call(4, '<-', [argumentInCall(2, { controlDependencies: [{ id: 6 }] }), argumentInCall(3, { controlDependencies: [{ id: 6 }] })], { returns: [2], reads: [BuiltIn], controlDependencies: [{ id: 6 }] })
 					.call(5, '{', [argumentInCall(4, { controlDependencies: [{ id: 6 }] })], { returns: [4], reads: [BuiltIn], controlDependencies: [{ id: 6 }] })
 					.call(6, 'repeat', [argumentInCall(5, { controlDependencies: [{ id: 6 }] })], { returns: [], reads: [BuiltIn] })

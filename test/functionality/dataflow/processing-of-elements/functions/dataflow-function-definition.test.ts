@@ -368,7 +368,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.use('12', 'z', undefined, false)
 			.use('14', 'g', undefined, false)
 			.reads('14', '2')
-			.use('22', 'g', { controlDependencies: [] }, false)
+			.use('22', 'g', { cds: [] }, false)
 			.reads('22', '2')
 			.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [BuiltIn], environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.call('8', '<-', [argumentInCall('2'), argumentInCall('7')], { returns: ['2'], reads: [BuiltIn], environment: defaultEnv().pushEnv() }, false)

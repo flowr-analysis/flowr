@@ -87,25 +87,25 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * Used to identify and separate different types of vertices.
 	 */
-	readonly tag:        VertexType
+	readonly tag:       VertexType
 	/**
 	 * The id of the node (the id assigned by the {@link ParentInformation} decoration).
 	 * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
 	 * as well as the corresponding {@link NormalizedAst|normalized AST}.
 	 */
-	id:                  NodeId
+	id:                 NodeId
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?:        REnvironmentInformation
+	environment?:       REnvironmentInformation
 	/**
 	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
 	 */
-	controlDependencies: ControlDependency[] | undefined
+	cds:                ControlDependency[] | undefined
 	/**
 	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
 	 */
-	indicesCollection?:  ContainerIndicesCollection
+	indicesCollection?: ContainerIndicesCollection
 }
 
 /**

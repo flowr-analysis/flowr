@@ -217,7 +217,7 @@ if(y) {
 }
 print(x)`,  emptyGraph()
 				.use('3', 'y')
-				.use('6', 'z', { controlDependencies: [{ id: '27', when: true }] })
+				.use('6', 'z', { cds: [{ id: '27', when: true }] })
 				.use('29', 'x')
 				.reads('29', ['9', '15', '23'])
 				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })

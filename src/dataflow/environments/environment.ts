@@ -31,10 +31,10 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	}
 	if(node) {
 		const [fst] = node;
-		if(fst.controlDependencies && defaultCd && !fst.controlDependencies.includes(defaultCd)) {
-			fst.controlDependencies.push(defaultCd);
+		if(fst.cds && defaultCd && !fst.cds.includes(defaultCd)) {
+			fst.cds.push(defaultCd);
 		} else {
-			fst.controlDependencies = defaultCd ? [defaultCd] : [];
+			fst.cds = defaultCd ? [defaultCd] : [];
 		}
 	}
 	return { ...ref, controlDependencies: [...ref.controlDependencies ?? [], ...(defaultCd ? [defaultCd]: []) ] };

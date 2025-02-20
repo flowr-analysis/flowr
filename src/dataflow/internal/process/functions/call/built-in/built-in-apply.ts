@@ -92,13 +92,13 @@ export function processApply<OtherInfo>(
 
 	/* identify it as a full-blown function call :) */
 	information.graph.updateToFunctionCall({
-		tag:                 VertexType.FunctionCall,
-		id:                  functionId,
-		name:                functionName,
-		args:                allOtherArguments,
-		environment:         data.environment,
-		onlyBuiltin:         false,
-		controlDependencies: data.controlDependencies
+		tag:         VertexType.FunctionCall,
+		id:          functionId,
+		name:        functionName,
+		args:        allOtherArguments,
+		environment: data.environment,
+		onlyBuiltin: false,
+		cds:         data.controlDependencies
 	});
 
 	for(const arg of processedArguments) {

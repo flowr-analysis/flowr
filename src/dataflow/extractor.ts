@@ -54,14 +54,17 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.FunctionDefinition]: (n, d) => processAsNamedCall(n, d, n.lexeme, [...n.parameters, n.body]),
 	[RType.Parameter]:          processFunctionParameter,
 	[RType.Argument]:           processFunctionArgument,
-	[RType.ExpressionList]:     (n, d) => processNamedCall({
-		type:      RType.Symbol,
-		info:      n.info,
-		content:   n.grouping?.[0].content ?? '{',
-		lexeme:    n.grouping?.[0].lexeme ?? '{',
-		location:  n.location ?? rangeFrom(-1, -1, -1, -1),
-		namespace: n.grouping?.[0].content ? undefined : 'base'
-	}, wrapArgumentsUnnamed(n.children, d.completeAst.idMap), n.info.id, d)
+	[RType.ExpressionList]:     ({ grouping, info, children, location }, d) => {
+		const groupStart = grouping?.[0];
+		return processNamedCall({
+			type:      RType.Symbol,
+			info:      info,
+			content:   groupStart?.content ?? '{',
+			lexeme:    groupStart?.lexeme ?? '{',
+			location:  location ?? rangeFrom(-1, -1, -1, -1),
+			namespace: groupStart?.content ? undefined : 'base'
+		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
+	}
 };
 
 

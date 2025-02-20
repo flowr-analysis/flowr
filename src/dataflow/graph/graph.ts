@@ -299,15 +299,15 @@ export class DataflowGraph<
 	}
 
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId, to: NodeId, type: EdgeType): this
+	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType): this
+	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
 	/**
 	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
 	 */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType): this {
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
 		if(fromId === toId || toId === BuiltIn) {

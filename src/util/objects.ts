@@ -16,8 +16,8 @@ export type Mergeable = MergeableRecord | MergeableArray
  * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
  */
-export function deepMergeObject<T extends Mergeable>(base: Required<T>, addon?: T): Required<T>
-export function deepMergeObject<T extends Mergeable>(base: DeepRequired<T>, addon?: T): DeepRequired<T>
+export function deepMergeObject<T extends Mergeable>(base: Required<T>, addon?: T | DeepPartial<T> | Partial<T>): Required<T>
+export function deepMergeObject<T extends Mergeable>(base: DeepRequired<T>, addon?: T | DeepPartial<T> | Partial<T>): DeepRequired<T>
 export function deepMergeObject<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
 export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined

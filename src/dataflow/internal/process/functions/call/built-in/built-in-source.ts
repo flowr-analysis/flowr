@@ -40,15 +40,26 @@ export function setSourceProvider(provider: RParseRequestProvider): void {
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
-			return referenceChain[0]?.request === 'file' ? [path.dirname(referenceChain[0].content)] : [];
+			return referenceChain[0]?.request === 'file' ? [platformDirname(referenceChain[0].content)] : [];
 		case InferWorkingDirectory.ActiveScript:
-			return referenceChain[referenceChain.length - 1] ? [path.dirname(referenceChain[referenceChain.length - 1].content)] : [];
+			return referenceChain[referenceChain.length - 1] ? [platformDirname(referenceChain[referenceChain.length - 1].content)] : [];
 		case InferWorkingDirectory.AnyScript:
-			return referenceChain.filter(e => e.request === 'file').map(e => path.dirname(e.content));
+			return referenceChain.filter(e => e.request === 'file').map(e => platformDirname(e.content));
 		case InferWorkingDirectory.No:
 		default:
 			return [];
 	}
+}
+
+const AnyPathSeparator = /[/\\]/g;
+
+function platformBasename(p: string): string {
+	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
+	return path.posix.basename(normalized);
+}
+function platformDirname(p: string): string {
+	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
+	return path.posix.dirname(normalized);
 }
 
 /**
@@ -68,13 +79,13 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 	const tryPaths = [seed];
 	switch(config?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
-			const first = path.basename(seed);
+			const first = platformBasename(seed);
 			tryPaths.push(first);
 			break;
 		}
 		case DropPathsOption.All: {
-			const paths = path.dirname(seed).split(path.sep);
-			const basename = path.basename(seed);
+			const paths = platformDirname(seed).split(AnyPathSeparator);
+			const basename = platformBasename(seed);
 			if(paths.length === 1 && paths[0] === '.') {
 				break;
 			}

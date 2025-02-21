@@ -27,7 +27,6 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import {
 	updateNestedFunctionCalls
 } from './internal/process/functions/call/built-in/built-in-function-definition';
-import path from 'path';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -104,15 +103,16 @@ export function produceDataFlowGraph<OtherInfo>(
 	} else {
 		firstRequest = request as RParseRequest;
 	}
+	// currentWd:           firstRequest.request === 'file' ? [path.basename(firstRequest.content)] : []
+	const environment = initializeCleanEnvironments();
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser:              parser,
 		completeAst:         ast,
-		environment:         initializeCleanEnvironments(),
+		environment:         environment,
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
 		referenceChain:      [firstRequest],
-		currentWd:           firstRequest.request === 'file' ? [path.basename(firstRequest.content)] : []
 	};
 	let df = processDataflowFor<OtherInfo>(ast.ast, dfData);
 

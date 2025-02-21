@@ -40,10 +40,6 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
-	/**
-	 * Whatever we know for the current working directory
-	 */
-	currentWd:                    string[] | 'unknown'
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

@@ -56,7 +56,7 @@ export function inferWdFromScript(option: InferWorkingDirectory, referenceChain:
  * @param seed - the path originally requested in the `source` call
  * @param data - more information on the loading context
  */
-export function findSource<OtherInfo>(seed: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+export function findSource(seed: string, data: { currentWd: readonly string[] | 'unknown', referenceChain: readonly RParseRequest[] }): string[] | undefined {
 	const config = getConfig().solver.resolveSource;
 	const capitalization = config?.ignoreCapitalization ?? false;
 
@@ -76,6 +76,9 @@ export function findSource<OtherInfo>(seed: string, data: DataflowProcessorInfor
 		case DropPathsOption.All: {
 			const paths = path.dirname(seed).split(path.sep);
 			const basename = path.basename(seed);
+			if(paths.length === 1 && paths[0] === '.') {
+				break;
+			}
 			for(let i = 0; i < paths.length; i++) {
 				tryPaths.push(path.join(...paths.slice(i), basename));
 			}
@@ -89,8 +92,10 @@ export function findSource<OtherInfo>(seed: string, data: DataflowProcessorInfor
 	const found: string[] = [];
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {
-			const effectivePath = explore ? path.resolve(explore, tryPath) : tryPath;
+			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
+
 			const get = sourceProvider.exists(effectivePath, capitalization);
+
 			if(get) {
 				found.push(effectivePath);
 			}

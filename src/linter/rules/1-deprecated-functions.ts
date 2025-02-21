@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty, LintingOutput } from '../linter-format';
+import { LintingCertainty, LintingPrintStyle } from '../linter-format';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 
@@ -19,6 +19,6 @@ export const R1_DEPRECATED_FUNCTIONS = {
 		someImportantNode: element.node.lexeme as string
 	})),
 	printers: {
-		[LintingOutput.Text]: result => `${result.someImportantNode} is important, please take care`
+		[LintingPrintStyle.Text]: result => `${result.someImportantNode} is important, please take care`
 	}
 } as const satisfies LintingRule<DeprecatedFunctionsResult, DeprecatedFunctionsConfig>;

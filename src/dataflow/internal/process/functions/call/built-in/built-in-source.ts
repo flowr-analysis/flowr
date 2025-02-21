@@ -62,6 +62,10 @@ function platformDirname(p: string): string {
 	return path.posix.dirname(normalized);
 }
 
+function returnPlatformPath(p: string): string {
+	return p.replaceAll(AnyPathSeparator, path.sep);
+}
+
 /**
  * Tries to find sourced by a source request and returns the first path that exists
  * @param seed - the path originally requested in the `source` call
@@ -104,10 +108,10 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		for(const tryPath of tryPaths) {
 			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
 
-			const get = sourceProvider.exists(effectivePath, capitalization);
+			const get = sourceProvider.exists(effectivePath, capitalization) ?? sourceProvider.exists(returnPlatformPath(effectivePath), capitalization);
 
 			if(get && !found.includes(effectivePath)) {
-				found.push(effectivePath);
+				found.push(returnPlatformPath(effectivePath));
 			}
 		}
 	}

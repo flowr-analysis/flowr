@@ -12,6 +12,7 @@ import {
 	InferWorkingDirectory,
 	setConfig
 } from '../../../../src/config';
+import path from 'path';
 
 describe('source finding', () => {
 	const sources = {
@@ -49,7 +50,7 @@ describe('source finding', () => {
 
 	assertSourceFound('a.txt', ['a.txt']);
 	assertSourceFound('c.txt', ['c.txt']);
-	assertSourceFound('b.txt', ['a/b.txt'], [{ request: 'file', content: 'a/x.txt' }]);
-	assertSourceFound('b.txt', ['x/y/z/b.txt'], [{ request: 'file', content: 'x/y/z/g.txt' }]);
-	assertSourceFound('../b.txt', ['x/y/b.txt'], [{ request: 'file', content: 'x/y/z/g.txt' }]);
+	assertSourceFound('b.txt', [`a${path.sep}b.txt`], [{ request: 'file', content: `a${path.sep}x.txt` }]);
+	assertSourceFound('b.txt', [`x${path.sep}y${path.sep}z${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
+	assertSourceFound('../b.txt', [`x${path.sep}y${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
 });

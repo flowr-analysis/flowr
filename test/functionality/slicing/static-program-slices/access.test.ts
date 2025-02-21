@@ -2,6 +2,7 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
+import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 
 describe.sequential('dollar access', withShell(shell => {
 	describe('problems in practice', () => {
@@ -23,7 +24,9 @@ print(data)
 		`.trim();
 
 			assertSliced(label(`${pipe}-pipe with access`, ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'replacement-functions', 'newlines', 'built-in-pipe-and-pipe-bind']),
-				shell, code, ['5@print'], code);
+				shell, code, ['5@print'], code, {
+					minRVersion: MIN_VERSION_PIPE
+				});
 		}
 	});
 }));

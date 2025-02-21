@@ -8,6 +8,7 @@ export interface LintingRule<Result extends LintingResult, Config extends Mergea
 	readonly name:                string
 	readonly createSearch:        (config: Config) => FlowrSearch<Info>
 	// between these two, there's a chance for the search for multiple rules to be combined or optimized or smth maybe? who knows
+	// TODO i think the cool type safety stuff is lost between these two, what do we do about that
 	readonly processSearchResult: (elements: FlowrSearchElements<Info>, config: Config) => Result[]
 	readonly printers:            { [O in LintingPrintStyle]?: (result: Result, config: Config) => string }
 }

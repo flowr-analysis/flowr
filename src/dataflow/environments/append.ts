@@ -33,7 +33,6 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 	return out;
 }
 
-
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */

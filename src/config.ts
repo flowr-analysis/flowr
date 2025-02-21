@@ -17,6 +17,32 @@ export enum VariableResolve {
 	Builtin = 'builtin'
 }
 
+/**
+ * How to infer the working directory from a script
+ */
+export enum InferWorkingDirectory {
+	/** Don't infer the working directory */
+	No = 'no',
+	/** Infer the working directory from the main script */
+	MainScript = 'main-script',
+	/** Infer the working directory from the active script */
+	ActiveScript = 'active-script',
+	/** Infer the working directory from any script */
+	AnyScript = 'any-script'
+}
+
+/**
+ * How to handle fixed strings in a source path
+ */
+export enum DropPathsOption {
+	/** Don't drop any parts of the sourced path */
+	No = 'no',
+	/** try to drop everything but the filename */
+	Once = 'once',
+	/** try to drop every folder of the path */
+	All = 'all'
+};
+
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
@@ -24,7 +50,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	readonly ignoreSourceCalls: boolean
 	/** Configure language semantics and how flowR handles them */
 	readonly semantics: {
-		/** Semantics regarding the handlings of the environment */
+		/** Semantics regarding the handling of the environment */
 		readonly environment: {
 			/** Do you want to overwrite (parts) of the builtin definition? */
 			readonly overwriteBuiltIns: {
@@ -56,6 +82,30 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 * containers and accesses
 		 */
 		readonly pointerTracking: boolean
+		/**
+		 * If lax source calls are active, flowR searches for sourced files much more freely,
+		 * based on the configurations you give it.
+		 * This option is only in effect if {@link ignoreSourceCalls} is set to false.
+		 */
+		readonly resolveSource?: {
+			/**
+			 * search for filenames matching in the lowercase
+			 */
+			readonly ignoreCapitalization:  boolean
+			/**
+			 * try to infer the working directory from the main or any script to analyze.
+			 */
+			readonly inferWorkingDirectory: InferWorkingDirectory
+			/**
+			 * Additionally search in these paths
+			 */
+			readonly searchPath:            readonly string[]
+			/**
+			 * Allow to drop the first or all parts of the sourced path,
+			 * if it is relative.
+			 */
+			readonly dropPaths:             DropPathsOption
+		}
 	}
 
 }
@@ -106,7 +156,13 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	defaultEngine: 'r-shell',
 	solver:        {
 		variables:       VariableResolve.Alias,
-		pointerTracking: true
+		pointerTracking: true,
+		resolveSource:   {
+			dropPaths:             DropPathsOption.No,
+			ignoreCapitalization:  true,
+			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+			searchPath:            []
+		}
 	}
 };
 
@@ -118,7 +174,7 @@ export const flowrConfigFileSchema = Joi.object({
 				loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
 				definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
-		}).optional().description('Semantics regarding the handlings of the environment.')
+		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
 	engines: Joi.array().items(Joi.alternatives(
 		Joi.object({
@@ -135,7 +191,13 @@ export const flowrConfigFileSchema = Joi.object({
 	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 	solver:        Joi.object({
 		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.')
+		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
+		resolveSource:   Joi.object({
+			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
+			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
+			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
+			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.')
+		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.')
 	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 

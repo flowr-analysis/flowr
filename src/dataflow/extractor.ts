@@ -14,7 +14,6 @@ import { rangeFrom } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
-import { requestFingerprint } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
@@ -111,7 +110,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
-		referenceChain:      [requestFingerprint(firstRequest)]
+		referenceChain:      [firstRequest],
 	};
 	let df = processDataflowFor<OtherInfo>(ast.ast, dfData);
 

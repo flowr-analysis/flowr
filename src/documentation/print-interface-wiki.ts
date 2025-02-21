@@ -12,8 +12,14 @@ import { fileProtocol, removeRQuotes, requestFromInput } from '../r-bridge/retri
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import type { FlowrConfigOptions } from '../config';
-import { flowrConfigFileSchema, VariableResolve } from '../config';
+import type {
+	FlowrConfigOptions } from '../config';
+import {
+	DropPathsOption,
+	flowrConfigFileSchema,
+	InferWorkingDirectory,
+	VariableResolve
+} from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -209,7 +215,13 @@ ${codeBlock('json', JSON.stringify(
 			engines: [{ type: 'r-shell' }],
 			solver:  {
 				variables:       VariableResolve.Alias,
-				pointerTracking: true
+				pointerTracking: true,
+				resolveSource:   {
+					dropPaths:             DropPathsOption.No,
+					ignoreCapitalization:  true,
+					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+					searchPath:            []
+				}
 			}
 		} satisfies FlowrConfigOptions,
 		null, 2))

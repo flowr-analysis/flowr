@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
 import { BuiltInEnvironment } from './environment';
-import type { IEnvironment, REnvironmentInformation } from './environment';
+import type { IEnvironment, REnvironmentInformation  } from './environment';
 
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';

@@ -32,10 +32,10 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly currentRequest:      RParseRequest
 	/**
-	 * The chain of {@link RParseRequests} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
+	 * The chain of {@link RParseRequests} that lead to the {@link currentRequest}.
 	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
 	 */
-	readonly referenceChain:      string[]
+	readonly referenceChain:      RParseRequest[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */

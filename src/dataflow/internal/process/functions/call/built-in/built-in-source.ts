@@ -56,13 +56,12 @@ export function inferWdFromScript(option: InferWorkingDirectory, referenceChain:
  * @param seed - the path originally requested in the `source` call
  * @param data - more information on the loading context
  */
-export function findSource(seed: string, data: { currentWd: readonly string[] | 'unknown', referenceChain: readonly RParseRequest[] }): string[] | undefined {
+export function findSource(seed: string, data: { referenceChain: readonly RParseRequest[] }): string[] | undefined {
 	const config = getConfig().solver.resolveSource;
 	const capitalization = config?.ignoreCapitalization ?? false;
 
 	const explorePaths = [
 		...(config?.searchPath ?? []),
-		...(config?.respectSetWorkingDirectory && data.currentWd !== 'unknown' ? data.currentWd : []),
 		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
 	];
 
@@ -96,7 +95,7 @@ export function findSource(seed: string, data: { currentWd: readonly string[] | 
 
 			const get = sourceProvider.exists(effectivePath, capitalization);
 
-			if(get) {
+			if(get && !found.includes(effectivePath)) {
 				found.push(effectivePath);
 			}
 		}

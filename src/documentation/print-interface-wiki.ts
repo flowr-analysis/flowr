@@ -217,11 +217,10 @@ ${codeBlock('json', JSON.stringify(
 				variables:       VariableResolve.Alias,
 				pointerTracking: true,
 				resolveSource:   {
-					dropPaths:                  DropPathsOption.No,
-					ignoreCapitalization:       true,
-					inferWorkingDirectory:      InferWorkingDirectory.ActiveScript,
-					searchPath:                 [],
-					respectSetWorkingDirectory: true
+					dropPaths:             DropPathsOption.No,
+					ignoreCapitalization:  true,
+					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+					searchPath:            []
 				}
 			}
 		} satisfies FlowrConfigOptions,

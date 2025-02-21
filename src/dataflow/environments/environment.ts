@@ -102,11 +102,9 @@ export interface WorkingDirectoryReference {
  */
 export interface REnvironmentInformation {
 	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
-	readonly current:          IEnvironment
-	/** the state of currently possible working directories, and the control dependencies influencing this */
-	readonly workingDirectory: string[]
+	readonly current: IEnvironment
 	/** nesting level of the environment, will be `0` for the global/root environment */
-	readonly level:            number
+	readonly level:   number
 }
 
 

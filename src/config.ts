@@ -91,25 +91,20 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			/**
 			 * search for filenames matching in the lowercase
 			 */
-			readonly ignoreCapitalization:       boolean
+			readonly ignoreCapitalization:  boolean
 			/**
 			 * try to infer the working directory from the main or any script to analyze.
-			 * Please know, that the working directory of the current script will be respected automatically when you respect the set working directory.
 			 */
-			readonly inferWorkingDirectory:      InferWorkingDirectory
+			readonly inferWorkingDirectory: InferWorkingDirectory
 			/**
 			 * Additionally search in these paths
 			 */
-			readonly searchPath:                 readonly string[]
+			readonly searchPath:            readonly string[]
 			/**
 			 * Allow to drop the first or all parts of the sourced path,
 			 * if it is relative.
 			 */
-			readonly dropPaths:                  DropPathsOption
-			/**
-			 * Respect instructions that may change the working directory in the sourced file
-			 */
-			readonly respectSetWorkingDirectory: boolean
+			readonly dropPaths:             DropPathsOption
 		}
 	}
 
@@ -163,11 +158,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		variables:       VariableResolve.Alias,
 		pointerTracking: true,
 		resolveSource:   {
-			dropPaths:                  DropPathsOption.No,
-			ignoreCapitalization:       true,
-			inferWorkingDirectory:      InferWorkingDirectory.ActiveScript,
-			searchPath:                 [],
-			respectSetWorkingDirectory: true
+			dropPaths:             DropPathsOption.No,
+			ignoreCapitalization:  true,
+			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+			searchPath:            []
 		}
 	}
 };
@@ -199,11 +193,10 @@ export const flowrConfigFileSchema = Joi.object({
 		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
 		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
 		resolveSource:   Joi.object({
-			dropPaths:                  Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
-			ignoreCapitalization:       Joi.boolean().description('Search for filenames matching in the lowercase.'),
-			inferWorkingDirectory:      Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
-			searchPath:                 Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
-			respectSetWorkingDirectory: Joi.boolean().description('Respect instructions that may change the working directory in the sourced file.')
+			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
+			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
+			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
+			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.')
 		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.')
 	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');

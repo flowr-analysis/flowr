@@ -103,12 +103,10 @@ export function produceDataFlowGraph<OtherInfo>(
 	} else {
 		firstRequest = request as RParseRequest;
 	}
-	// currentWd:           firstRequest.request === 'file' ? [path.basename(firstRequest.content)] : []
-	const environment = initializeCleanEnvironments();
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser:              parser,
 		completeAst:         ast,
-		environment:         environment,
+		environment:         initializeCleanEnvironments(),
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,

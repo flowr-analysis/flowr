@@ -11,6 +11,11 @@ name: Check for Broken Links and Publish Wiki
     types: [ opened ]
     branches: [ main ]
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Release Action"]
+    branches: [ main ]
+    types:
+      - completed
   schedule:
     # every monday at night
     - cron: '0 1 * * 1'

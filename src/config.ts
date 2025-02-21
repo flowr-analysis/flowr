@@ -85,7 +85,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		/**
 		 * If lax source calls are active, flowR searches for sourced files much more freely,
 		 * based on the configurations you give it.
-		 * This option is onyl in effect if {@link ignoreSourceCalls} is set to false.
+		 * This option is only in effect if {@link ignoreSourceCalls} is set to false.
 		 */
 		readonly resolveSource?: {
 			/**

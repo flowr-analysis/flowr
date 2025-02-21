@@ -13,6 +13,7 @@ export interface LintingRule<Result extends LintingResult, Config extends Mergea
 	readonly printers:            { [O in LintingPrintStyle]?: (result: Result, config: Config) => string }
 }
 
+// TODO this way doesn't have the ability to add additional linting rules from a third party lib (right?) so that may be bad
 export type LintingRules = typeof R1_DEPRECATED_FUNCTIONS
 export type LintingRuleNames = LintingRules['name']
 

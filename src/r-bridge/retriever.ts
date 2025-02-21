@@ -3,13 +3,14 @@ import { startAndEndsWith } from '../util/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';
-import objectHash from 'object-hash';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
 import type { NormalizedAst } from './lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
+import fs from 'fs';
+import path from 'path';
 
 export const fileProtocol = 'file://';
 
@@ -37,7 +38,9 @@ export interface RParseRequestFromText {
  * A provider for an {@link RParseRequests} that can be used, for example, to override source file parsing behavior in tests
  */
 export interface RParseRequestProvider {
-	createRequest(path: string): RParseRequest
+	/** returns the path if it exists, otherwise undefined */
+	exists(path: string, ignoreCase: boolean):        string | undefined
+	createRequest(path: string):                      RParseRequest
 }
 
 export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
@@ -72,6 +75,21 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 
 export function requestProviderFromFile(): RParseRequestProvider {
 	return {
+		exists(p: string, ignoreCase: boolean): string | undefined {
+			try {
+				if(!ignoreCase) {
+					return fs.existsSync(p) ? p : undefined;
+				}
+				// walk the directory and find the first match
+				const dir = path.dirname(p);
+				const file = path.basename(p);
+				const files = fs.readdirSync(dir);
+				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				return found ? path.join(dir, found) : undefined;
+			} catch{
+				return undefined;
+			}
+		},
 		createRequest(path: string): RParseRequest {
 			return {
 				request: 'file',
@@ -83,17 +101,19 @@ export function requestProviderFromFile(): RParseRequestProvider {
 
 export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
 	return {
+		exists(path: string, ignoreCase: boolean): string | undefined {
+			if(ignoreCase) {
+				return Object.keys(text).find(p => p.toLowerCase() === path.toLowerCase());
+			}
+			return text[path] !== undefined ? path : undefined;
+		},
 		createRequest(path: string): RParseRequest {
 			return {
 				request: 'text',
-				content: text[path]
+				content: text[path] ?? ''
 			};
 		}
 	};
-}
-
-export function requestFingerprint(request: RParseRequest): string {
-	return objectHash(request);
 }
 
 export function isEmptyRequest(request: RParseRequest): boolean {
@@ -151,7 +171,7 @@ export function removeRQuotes(str: string): string {
 }
 
 /**
- * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
+ * Needs to be called *after* {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell, ignoreComments = false): Promise<number> {
 	const rows = ignoreComments ? `flowr_output[flowr_output$token != "${RawRType.Comment}", ]` : 'flowr_output';

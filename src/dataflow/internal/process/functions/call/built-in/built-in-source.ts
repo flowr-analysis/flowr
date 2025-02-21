@@ -1,10 +1,10 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
-import { getConfig } from '../../../../../../config';
+import { DropPathsOption, getConfig, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
-import type { RParseRequestProvider, RParseRequest } from '../../../../../../r-bridge/retriever';
-import {  requestFingerprint , removeRQuotes , requestProviderFromFile } from '../../../../../../r-bridge/retriever';
+import type { RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge/retriever';
+import { removeRQuotes, requestProviderFromFile } from '../../../../../../r-bridge/retriever';
 import type {
 	IdGenerator,
 	NormalizedAst,
@@ -22,18 +22,84 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { expensiveTrace } from '../../../../../../util/log';
+import { expensiveTrace, log } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { isNotUndefined } from '../../../../../../util/assert';
+import path from 'path';
 
 let sourceProvider = requestProviderFromFile();
 
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider;
 }
+
+
+export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
+	switch(option) {
+		case InferWorkingDirectory.MainScript:
+			return referenceChain[0]?.request === 'file' ? [path.dirname(referenceChain[0].content)] : [];
+		case InferWorkingDirectory.ActiveScript:
+			return referenceChain[referenceChain.length - 1] ? [path.dirname(referenceChain[referenceChain.length - 1].content)] : [];
+		case InferWorkingDirectory.AnyScript:
+			return referenceChain.filter(e => e.request === 'file').map(e => path.dirname(e.content));
+		case InferWorkingDirectory.No:
+		default:
+			return [];
+	}
+}
+
+/**
+ * Tries to find sourced by a source request and returns the first path that exists
+ * @param seed - the path originally requested in the `source` call
+ * @param data - more information on the loading context
+ */
+export function findSource<OtherInfo>(seed: string, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+	const config = getConfig().solver.resolveSource;
+	const capitalization = config?.ignoreCapitalization ?? false;
+
+	const explorePaths = [
+		...(config?.searchPath ?? []),
+		...(config?.respectSetWorkingDirectory && data.currentWd !== 'unknown' ? data.currentWd : []),
+		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
+	];
+
+	const tryPaths = [seed];
+	switch(config?.dropPaths ?? DropPathsOption.No) {
+		case DropPathsOption.Once: {
+			const first = path.basename(seed);
+			tryPaths.push(first);
+			break;
+		}
+		case DropPathsOption.All: {
+			const paths = path.dirname(seed).split(path.sep);
+			const basename = path.basename(seed);
+			for(let i = 0; i < paths.length; i++) {
+				tryPaths.push(path.join(...paths.slice(i), basename));
+			}
+			break;
+		}
+		default:
+		case DropPathsOption.No:
+			break;
+	}
+
+	const found: string[] = [];
+	for(const explore of [undefined, ...explorePaths]) {
+		for(const tryPath of tryPaths) {
+			const effectivePath = explore ? path.resolve(explore, tryPath) : tryPath;
+			const get = sourceProvider.exists(effectivePath, capitalization);
+			if(get) {
+				found.push(effectivePath);
+			}
+		}
+	}
+	log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	return found;
+}
+
 
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -75,21 +141,28 @@ export function processSourceCall<OtherInfo>(
 
 	if(sourceFile && sourceFile.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
-		const request = sourceProvider.createRequest(path);
+		let filepath = path ? findSource(path, data) : path;
 
-		// check if the sourced file has already been dataflow analyzed, and if so, skip it
-		if(data.referenceChain.includes(requestFingerprint(request))) {
-			expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-			information.graph.markIdForUnknownSideEffects(rootId);
-			return information;
+		if(Array.isArray(filepath)) {
+			filepath = filepath?.[0];
 		}
+		if(filepath !== undefined) {
+			const request = sourceProvider.createRequest(filepath);
 
-		return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location));
-	} else {
-		expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
-		information.graph.markIdForUnknownSideEffects(rootId);
-		return information;
+			// check if the sourced file has already been dataflow analyzed, and if so, skip it
+			if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
+				expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+				information.graph.markIdForUnknownSideEffects(rootId);
+				return information;
+			}
+
+			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location));
+		}
 	}
+
+	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
+	information.graph.markIdForUnknownSideEffects(rootId);
+	return information;
 }
 
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId: IdGenerator<NoInfo>): DataflowInformation {
@@ -114,7 +187,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 			...data,
 			currentRequest: request,
 			environment:    information.environment,
-			referenceChain: [...data.referenceChain, requestFingerprint(request)]
+			referenceChain: [...data.referenceChain, request]
 		});
 	} catch(e) {
 		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
@@ -151,10 +224,9 @@ export function standaloneSourceFile<OtherInfo>(
 	const path = inputRequest.request === 'file' ? inputRequest.content : '-inline-';
 	/* this way we can still pass content */
 	const request = inputRequest.request === 'file' ? sourceProvider.createRequest(inputRequest.content) : inputRequest;
-	const fingerprint = requestFingerprint(request);
 
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
-	if(data.referenceChain.includes(fingerprint)) {
+	if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 		information.graph.markIdForUnknownSideEffects(uniqueSourceId);
 		return information;
@@ -164,6 +236,6 @@ export function standaloneSourceFile<OtherInfo>(
 		...data,
 		currentRequest: request,
 		environment:    information.environment,
-		referenceChain: [...data.referenceChain, fingerprint]
+		referenceChain: [...data.referenceChain, inputRequest]
 	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId));
 }

@@ -16,7 +16,7 @@ export function executeDataflowLensQuery({ dataflow: { graph } }: BasicQueryData
 			keepEnv:           false,
 			keepCd:            true,
 			tags:              [VertexType.Use, VertexType.VariableDefinition, VertexType.FunctionDefinition, VertexType.FunctionCall],
-			nameRegex:         '<-|<<-|->|->>|=|repeat|while|function|repeat|if|next|break',
+			nameRegex:         '<-|<<-|->|->>|=|+|-|*|/|\\|>|function|repeat|if|next|break',
 			blacklistWithName: true
 		}
 	});

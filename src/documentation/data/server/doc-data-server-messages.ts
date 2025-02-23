@@ -227,7 +227,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
 }
 
 <a id="analysis-format-compact"></a>
-**Retrieve the Output in a compactedForm**
+**Retrieve the Output in a Compacted Form**
 
 The default response is formatted as JSON. But this can get very big quickly.
 By specifying \`format: "compact"\`, you can retrieve the results heavily compacted (using [msgpack](https://www.npmjs.com/package/@msgpack/msgpack)).

@@ -2,10 +2,17 @@ import { assertSliced, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { OperatorDatabase } from '../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { describe } from 'vitest';
+import { afterAll, beforeAll, describe } from 'vitest';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
-	describe('Constant assignments', () => {
+	describe('Constant assignments (without pointer tracking)', () => {
+		beforeAll(() => {
+			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+		});
+		afterAll(() => {
+			setConfig(defaultConfigOptions);
+		});
 		for(const i of [1, 2, 3]) {
 			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
 				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`

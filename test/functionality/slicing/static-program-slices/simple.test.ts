@@ -6,25 +6,27 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
-	describe('Constant assignments (without pointer tracking)', () => {
-		beforeAll(() => {
-			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
-		});
-		afterAll(() => {
-			setConfig(defaultConfigOptions);
-		});
-		for(const i of [1, 2, 3]) {
-			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
-				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
+	for(const withPointer of [true, false]) {
+		describe(`Constant assignments (${withPointer ? 'with' : 'without'} pointer tracking)`, () => {
+			beforeAll(() => {
+				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: withPointer } });
+			});
+			afterAll(() => {
+				setConfig(defaultConfigOptions);
+			});
+			for(const i of [1, 2, 3]) {
+				assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
+					shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
+				);
+			}
+			assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)'
 			);
-		}
-		assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)'
-		);
-		assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
-			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx'
-		);
-	});
+			assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+				shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx'
+			);
+		});
+	}
 	describe('Constant conditionals', () => {
 		assertSliced(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
 			shell, 'if(TRUE) { x <- 3 } else { x <- 4 }\nx', ['2@x'], 'x <- 3\nx'

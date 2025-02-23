@@ -65,6 +65,7 @@ export interface AssignmentConfiguration extends ForceArguments {
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
 	readonly indicesCollection?:   ContainerIndicesCollection
+	readonly mayHaveMoreArgs?:     boolean
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -92,7 +93,7 @@ export function processAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
-	if(args.length != 2) {
+	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
 	}

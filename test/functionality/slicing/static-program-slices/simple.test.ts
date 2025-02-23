@@ -11,6 +11,12 @@ describe.sequential('Simple', withShell(shell => {
 				shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`
 			);
 		}
+		assertSliced(label('slice constant assignment with print', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@print'], 'x <- 3\nprint(x)'
+		);
+		assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx'
+		);
 	});
 	describe('Constant conditionals', () => {
 		assertSliced(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),

@@ -342,7 +342,25 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable(3, 'a', { definedBy: [2, 6] })
 			);
 		});
-
+		describe('Double Assignments', () => {
+			assertDataflow(label('"x <- 1\nx <- 2\nprint(x)"', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'function-calls']),
+				shell, 'x <- 1\nx <- 2\nprint(x)', emptyGraph()
+					.constant('1:6')
+					.defineVariable('1@x', 'x', { definedBy: ['1:6', '1@<-'] })
+					.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1:6')], { returns: ['1@x'], reads: [BuiltIn] })
+					.constant('2:6')
+					.defineVariable('2@x', 'x', { definedBy: ['2:6', '2@<-'] })
+					.call('2@<-', '<-', [argumentInCall('2@x'), argumentInCall('2:6')], { returns: ['2@x'], reads: [BuiltIn] })
+					.use('3@x')
+					.reads('3@x', '2@x')
+					.call('3@print', 'print', [argumentInCall('3@x')], { reads: [BuiltIn], returns: ['3@x'] })
+					.reads('3@print', '3@x')
+					.markIdForUnknownSideEffects('3@print')
+				, {
+					resolveIdsAsCriterion: true
+				}
+			);
+		});
 		describe('Known Impact Assignments', () => {
 			describe('Loops Return Invisible Null', () => {
 				describe('With <-', () => {

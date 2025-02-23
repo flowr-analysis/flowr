@@ -293,14 +293,12 @@ export function markAsAssignment(
 		}
 	}
 	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
-	if(getConfig().solver.pointerTracking) {
-		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-		const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
-		for(const [id, edge] of (out ?? [])) {
-			edge.types &= ~EdgeType.Reads;
-			if(edge.types == 0) {
-				out?.delete(id);
-			}
+	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
+	for(const [id, edge] of (out ?? [])) {
+		edge.types &= ~EdgeType.Reads;
+		if(edge.types === 0) {
+			out?.delete(id);
 		}
 	}
 }

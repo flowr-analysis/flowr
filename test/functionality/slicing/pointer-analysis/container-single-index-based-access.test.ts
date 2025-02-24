@@ -283,6 +283,34 @@ numbers <- other_numbers
 ${acc('numbers', 1)} <- 1
 print(${acc('numbers', 1)})`
 			);
+
+			assertSliced(
+				label('When container has unknown definition and single index is read, then unknown definition is in slice'),
+				shell,
+				`numbers <- foo()
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+print(${acc('numbers', 1)})`,
+				['4@print'],
+				`numbers <- foo()
+${acc('numbers', 1)} <- 1
+print(${acc('numbers', 1)})`,
+				{}, 'fail-both',
+			);
+
+			assertSliced(
+				label('When container has unknown definition and container is read, then unknown definition is in slice'),
+				shell,
+				`numbers <- foo()
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+print(numbers)`,
+				['4@print'],
+				`numbers <- foo()
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+print(numbers)`,
+			);
 		});
 	});
 }));

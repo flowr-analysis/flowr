@@ -94,25 +94,27 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 export function produceDataFlowGraph<OtherInfo>(
 	parser: Parser<KnownParserType>,
 	request: RParseRequests,
-	ast:     NormalizedAst<OtherInfo & ParentInformation>
+	completeAst:     NormalizedAst<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const multifile = Array.isArray(request);
 	let firstRequest: RParseRequest;
+
+	const multifile = Array.isArray(request);
 	if(multifile) {
 		firstRequest = request[0] as RParseRequest;
 	} else {
 		firstRequest = request as RParseRequest;
 	}
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
-		parser:              parser,
-		completeAst:         ast,
+		parser,
+		completeAst,
 		environment:         initializeCleanEnvironments(),
 		processors,
 		currentRequest:      firstRequest,
 		controlDependencies: undefined,
 		referenceChain:      [firstRequest],
 	};
-	let df = processDataflowFor<OtherInfo>(ast.ast, dfData);
+	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
 
 	if(multifile) {
 		for(let i = 1; i < request.length; i++) {
@@ -123,6 +125,6 @@ export function produceDataFlowGraph<OtherInfo>(
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
 
-	resolveLinkToSideEffects(ast, df.graph);
+	resolveLinkToSideEffects(completeAst, df.graph);
 	return df;
 }

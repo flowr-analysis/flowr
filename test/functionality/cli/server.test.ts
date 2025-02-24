@@ -94,9 +94,9 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
@@ -130,9 +130,9 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
 			const got = JSON.stringify(unpacked, jsonReplacer)
-				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+")/g, '');
+				.replace(/,?("id":\d+|"timing":\s*\d+|"file":\s*"[^"]+"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));

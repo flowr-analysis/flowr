@@ -39,6 +39,8 @@ import type { ResolveValueQuery } from './catalog/resolve-value-query/resolve-va
 import { ResolveValueQueryDefinition } from './catalog/resolve-value-query/resolve-value-query-format';
 import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
+import type { ProjectQuery } from './catalog/project-query/project-query-format';
+import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -53,7 +55,9 @@ export type Query = CallContextQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
-	| ResolveValueQuery;
+	| ResolveValueQuery
+	| ProjectQuery
+	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
 
@@ -84,7 +88,8 @@ export const SupportedQueries = {
 	'location-map':     LocationMapQueryDefinition,
 	'search':           SearchQueryDefinition,
 	'happens-before':   HappensBeforeQueryDefinition,
-	'resolve-value':    ResolveValueQueryDefinition
+	'resolve-value':    ResolveValueQueryDefinition,
+	'project':          ProjectQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

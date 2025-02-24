@@ -49,12 +49,33 @@ export function processPipe<OtherInfo>(
 		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 	}
 
-	const firstArgument = processedArguments[0] as DataflowInformation;
+	const firstArgument = processedArguments[0];
+
+	const uniqueIn = [...information.in];
+	for(const ing of (firstArgument?.in ?? [])) {
+		if(!uniqueIn.find(e => e.nodeId === ing.nodeId)) {
+			uniqueIn.push(ing);
+		}
+	}
+	const uniqueOut = [...information.out];
+	for(const outg of (firstArgument?.out ?? [])) {
+		if(!uniqueOut.find(e => e.nodeId === outg.nodeId)) {
+			uniqueOut.push(outg);
+		}
+	}
+	const uniqueUnknownReferences = [...information.unknownReferences];
+	for(const unknown of (firstArgument?.unknownReferences ?? [])) {
+		if(!uniqueUnknownReferences.find(e => e.nodeId === unknown.nodeId)) {
+			uniqueUnknownReferences.push(unknown);
+		}
+	}
+
+
 	return {
 		...information,
-		in:                [...information.in, ...firstArgument.in],
-		out:               [...information.out, ...firstArgument.out],
-		unknownReferences: [...information.unknownReferences, ...firstArgument.unknownReferences],
+		in:                uniqueIn,
+		out:               uniqueOut,
+		unknownReferences: uniqueUnknownReferences,
 		entryPoint:        rootId
 	};
 }

@@ -222,6 +222,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		dataflow.graph.addControlDependency(out.nodeId, rootId, true);
 	}
 
+	dataflow.graph.addFile(request.request === 'file' ? request.content : '<inline>');
+
 	// update our graph with the sourced file's information
 	const newInformation = { ...information };
 	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment);

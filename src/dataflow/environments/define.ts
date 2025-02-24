@@ -6,14 +6,19 @@ import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
 import { isParentContainerIndex, isSameIndex } from '../graph/vertex';
-
+import { getConfig } from '../../config';
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
 
 	// When there are defined indices, merge the definitions
 	const inGraphDefinition = definition as InGraphIdentifierDefinition;
-	if(existing !== undefined && inGraphDefinition.indicesCollection !== undefined && inGraphDefinition.controlDependencies === undefined) {
+	if(
+		getConfig().solver.pointerTracking &&
+		existing !== undefined &&
+		inGraphDefinition.indicesCollection !== undefined &&
+		inGraphDefinition.controlDependencies === undefined
+	) {
 		newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
 		return;
 	}

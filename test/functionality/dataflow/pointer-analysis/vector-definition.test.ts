@@ -1,10 +1,19 @@
-import { describe } from 'vitest';
+import { afterAll, beforeAll, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
+
+	beforeAll(() => {
+		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+	});
+
+	afterAll(() => {
+		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+	});
 
 	describe('Simple definition', () => {
 		assertContainerIndicesDefinition(

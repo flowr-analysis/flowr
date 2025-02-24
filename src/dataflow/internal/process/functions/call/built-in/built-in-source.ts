@@ -170,7 +170,7 @@ export function processSourceCall<OtherInfo>(
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
 			if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
-				expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+				dataflowLogger.warn(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				information.graph.markIdForUnknownSideEffects(rootId);
 				return information;
 			}
@@ -209,7 +209,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 			referenceChain: [...data.referenceChain, request]
 		});
 	} catch(e) {
-		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
+		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
+		dataflowLogger.error((e as Error).stack);
 		information.graph.markIdForUnknownSideEffects(rootId);
 		return information;
 	}

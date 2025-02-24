@@ -16,11 +16,16 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	if(
 		getConfig().solver.pointerTracking &&
 		existing !== undefined &&
-		inGraphDefinition.indicesCollection !== undefined &&
 		inGraphDefinition.controlDependencies === undefined
 	) {
-		newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
-		return;
+		if(inGraphDefinition.indicesCollection !== undefined) {
+			newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
+			return;
+		} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
+			// When indices couldn't be resolved, but indices where defined before, just add the definition
+			existing.push(definition);
+			return;
+		}
 	}
 
 	// check if it is maybe or not

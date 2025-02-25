@@ -9,18 +9,19 @@ import { processAllArguments } from '../common';
 import { guard } from '../../../../../../util/assert';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { EmptyArgument, type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex } from '../../../../../graph/vertex';
+import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex, IndexIdentifier } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { constructNestedAccess } from '../../../../../../util/list-access';
+import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
+import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -39,25 +40,8 @@ export function processReplacementFunction<OtherInfo>(
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
 
 	let indices: ContainerIndicesCollection = undefined;
-	if(name.content === '$<-' && getConfig().solver.pointerTracking) {
-		const nonEmptyArgs = args.filter(arg => arg !== EmptyArgument);
-		const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-		const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
-		if(accessArg !== undefined && accessedArg != undefined) {
-			const leafIndex: ContainerLeafIndex = { lexeme: accessArg.lexeme, nodeId: accessedArg.info.parent ?? '' };
-			const accessIndices: ContainerIndices = {
-				indices:     [ leafIndex ],
-				isContainer: false
-			};
-
-			// Check for nested access
-			if(accessedArg.value?.type === RType.Access) {
-				indices = constructNestedAccess(accessedArg.value, accessIndices);
-			} else {
-				// use access node as reference to get complete line in slice
-				indices = [ accessIndices ];
-			}
-		}
+	if(getConfig().solver.pointerTracking) {
+		indices = constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
@@ -97,4 +81,79 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	return res;
+}
+
+/**
+ * Constructs accessed indices of replacement function recursively.
+ * 
+ * Example:
+ * ```r
+ * a$b <- 1
+ * # results in index with lexeme b as identifier
+ * 
+ * a[[1]]$b
+ * # results in index with index 1 as identifier with a sub-index with lexeme b as identifier
+ * ```
+ * 
+ * @param operation - Operation of replacement function e.g. '$\<-', '[\<-', '[[\<-' 
+ * @param args - Arguments of the replacement function
+ * @returns Accessed indices construct
+ */
+function constructAccessedIndices<OtherInfo>(
+	operation: string,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+): ContainerIndicesCollection {
+	const { accessedArg, accessArg } = getAccessOperands(args);
+
+	if(accessedArg === undefined || accessArg?.value === undefined || !isSupportedOperation(operation, accessArg.value)) {
+		return undefined;
+	}
+
+	const constructIdentifier = getIdentifierBuilder(operation);
+
+	const leafIndex: ContainerLeafIndex = {
+		identifier: constructIdentifier(accessArg),
+		nodeId:     accessedArg.info.parent ?? ''
+	};
+	const accessIndices: ContainerIndices = {
+		indices:     [leafIndex],
+		isContainer: false
+	};
+
+	// Check for nested access
+	let indicesCollection: ContainerIndicesCollection = undefined;
+	if(accessedArg.value?.type === RType.Access) {
+		indicesCollection = constructNestedAccess(accessedArg.value, accessIndices, constructIdentifier);
+	} else {
+		// use access node as reference to get complete line in slice
+		indicesCollection = [accessIndices];
+	}
+
+	return indicesCollection;
+}
+
+function isSupportedOperation<OtherInfo>(operation: string, value: RNode<OtherInfo & ParentInformation>) {
+	const isNameBasedAccess = operation === '$<-' && value.type === RType.Symbol;
+	const isNumericalIndexBasedAccess = (operation === '[[<-' || operation === '[<-') && value.type === RType.Number;
+	return isNameBasedAccess || isNumericalIndexBasedAccess;
+}
+
+function getIdentifierBuilder<OtherInfo>(
+	operation: string,
+): (arg: RArgument<OtherInfo & ParentInformation>) => IndexIdentifier  {
+	if(operation === '$<-') {
+		return (arg) => {
+			return {
+				index:  undefined,
+				lexeme: arg.lexeme,
+			};
+		};
+	}
+
+	// [[<- and [<-
+	return (arg) => {
+		return {
+			index: Number(arg.lexeme),
+		};
+	};
 }

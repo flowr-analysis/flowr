@@ -6,7 +6,7 @@ import { useConfigForTest } from '../../_helper/config';
 // Tests that cannot be generalized and are not covered by other tests
 describe.sequential('Special Cases', withShell(shell => {
 	useConfigForTest({ solver: { pointerTracking: true } });
-	
+
 	assertSliced(
 		label('When multiple indices are accessed with unknown access operator, then all indices are in slice', ['name-normal', 'function-calls', 'named-arguments', 'unnamed-arguments', 'subsetting-multiple', 'single-bracket-access', 'dollar-access']),
 		shell,

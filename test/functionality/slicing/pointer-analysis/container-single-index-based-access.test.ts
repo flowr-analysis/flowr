@@ -225,7 +225,7 @@ print(${acc('numbers', 1)})`
 
 		describe('Container assignment', () => {
 			assertSliced(
-				label('When container is self-redefined, then indices get passed'),
+				label('When container is self-redefined, then indices get passed', basicCapabilities),
 				shell,
 				`numbers <- ${def('1', '2')}
 numbers <- numbers
@@ -239,7 +239,7 @@ print(${acc('numbers', 1)})`
 			);
 
 			assertSliced(
-				label('When container is self-redefined with previous assignment, then indices get passed'),
+				label('When container is self-redefined with previous assignment, then indices get passed', basicCapabilities),
 				shell,
 				`numbers <- ${def('1', '2')}
 ${acc('numbers', 1)} <- 1
@@ -255,7 +255,7 @@ print(${acc('numbers', 1)})`
 			);
 
 			assertSliced(
-				label('When container is defined from other container, then indices get passed'),
+				label('When container is defined from other container, then indices get passed', basicCapabilities),
 				shell,
 				`other_numbers <- ${def('1', '2')}
 numbers <- other_numbers
@@ -269,7 +269,7 @@ print(${acc('numbers', 1)})`
 			);
 
 			assertSliced(
-				label('When container is defined from other container with previous assignment, then indices get passed'),
+				label('When container is defined from other container with previous assignment, then indices get passed', basicCapabilities),
 				shell,
 				`other_numbers <- ${def('1', '2')}
 ${acc('other_numbers', 1)} <- 1
@@ -285,7 +285,7 @@ print(${acc('numbers', 1)})`
 			);
 
 			assertSliced(
-				label('When container has unknown definition and single index is read, then unknown definition is in slice'),
+				label('When container has unknown definition and single index is read, then unknown definition is in slice', basicCapabilities),
 				shell,
 				`numbers <- foo()
 ${acc('numbers', 1)} <- 1
@@ -295,11 +295,12 @@ print(${acc('numbers', 1)})`,
 				`numbers <- foo()
 ${acc('numbers', 1)} <- 1
 print(${acc('numbers', 1)})`,
-				{}, 'fail-both',
+				undefined,
+				'fail-both',
 			);
 
 			assertSliced(
-				label('When container has unknown definition and container is read, then unknown definition is in slice'),
+				label('When container has unknown definition and container is read, then unknown definition is in slice', basicCapabilities),
 				shell,
 				`numbers <- foo()
 ${acc('numbers', 1)} <- 1
@@ -311,6 +312,260 @@ ${acc('numbers', 1)} <- 1
 ${acc('numbers', 2)} <- 2
 print(numbers)`,
 			);
+		});
+
+		describe.skipIf(container !== ContainerType.List)('Nested Lists', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+			
+			assertSliced(
+				label('When index of nested list is overwritten, then overwrite is also in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+result <- ${acc(acc('person', 5), 1)}`,
+				['7@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+result <- ${acc(acc('person', 5), 1)}`,
+			);
+
+			assertSliced(
+				label('When index of nested list is overwritten after nesting, then overwrite is also in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+${acc(acc('person', 5), 1)} <- 4.0
+${acc(acc('person', 5), 2)} <- 1.0
+result <- ${acc(acc('person', 5), 1)}`,
+				['9@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc(acc('person', 5), 1)} <- 4.0
+result <- ${acc(acc('person', 5), 1)}`,
+			);
+	
+			assertSliced(
+				label('When nested list is overwritten, then only overwrite list is in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+grades <- ${def('4.0', '3.0')}
+${acc('grades', 2)} <- 2.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+result <- ${acc(acc('person', 5), 2)}`,
+				['9@result'],
+				`grades <- ${def('4.0', '3.0')}
+${acc('grades', 2)} <- 2.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+result <- ${acc(acc('person', 5), 2)}`,
+			);
+	
+			assertSliced(
+				label('When nested list is overwritten after nesting, then only overwrite list is in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+result <- ${acc(acc('person', 5), 2)}`,
+				['8@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+result <- ${acc(acc('person', 5), 2)}`,
+			);
+	
+			assertSliced(
+				label('When nested list is accessed, then accesses to nested list are in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('"John"', 'grades')}
+${acc('grades', 1)} <- 5.0
+${acc('person', 1)} <- "Jane"
+result <- ${acc('person', 2)}`,
+				['7@result'],
+				`grades <- ${def('1.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('"John"', 'grades')}
+result <- ${acc('person', 2)}`,
+			);
+	
+			assertSliced(
+				label('When nested list is accessed, then accesses to nested lists are in slice', basicCapabilities),
+				shell,
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+${acc('grades', 2)} <- 1.0
+person <- ${def('"John"', 'grades')}
+${acc('person', 1)} <- "Jane"
+result <- ${acc('person', 2)}`,
+				['7@result'],
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+${acc('grades', 2)} <- 1.0
+person <- ${def('"John"', 'grades')}
+result <- ${acc('person', 2)}`,
+			);
+	
+			assertSliced(
+				label('When double nested list is accessed, then accesses to nested lists are in slice', basicCapabilities),
+				shell,
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+${acc('grades', 2)} <- 1.0
+person <- ${def('"John"', 'grades')}
+${acc('person', 1)} <- "Jane"
+result <- ${acc(acc('person', 2), 1)}`,
+				['7@result'],
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+person <- ${def('"John"', 'grades')}
+result <- ${acc(acc('person', 2), 1)}`,
+			);
+			
+			assertSliced(
+				label('When list is assigned, then accesses to list and nested lists are in slice', basicCapabilities),
+				shell,
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+${acc('grades', 2)} <- 1.0
+person <- ${def('"John"', 'grades')}
+${acc('person', 1)} <- "Jane"
+result <- person`,
+				['7@result'],
+				`algebra_grades <- ${def('1.0', '3.0')}
+${acc('algebra_grades', 1)} <- 4.0
+grades <- ${def('algebra_grades', '1.7')}
+${acc('grades', 2)} <- 1.0
+person <- ${def('"John"', 'grades')}
+${acc('person', 1)} <- "Jane"
+result <- person`,
+				undefined,
+				'fail-both',
+			);
+	
+			assertSliced(
+				label('When nested list is redefined twice, then only second redefinition is in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+${acc(acc('person', 5), 1)} <- 1.0
+result <- ${acc(acc('person', 5), 2)}`,
+				['10@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+${acc(acc('person', 5), 1)} <- 1.0
+result <- ${acc(acc('person', 5), 2)}`,
+				undefined,
+				'fail-both',
+			);
+	
+			assertSliced(
+				label('When nested list is redefined with static value, then only static value assignment is in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- ${def('4.0', '3.0')}
+${acc('person', 5)} <- 3
+${acc('person', 2)} <- "Jane"
+${acc('person', 3)} <- 177
+result <- ${acc('person', 5)}`,
+				['9@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 5)} <- 3
+result <- ${acc('person', 5)}`,
+				undefined,
+				'fail-both',
+			);
+	
+			assertSliced(
+				label('When static list value is redefined with list, then only list value assignment is in slice', basicCapabilities),
+				shell,
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+${acc('grades', 1)} <- 1.0
+${acc('grades', 4)} <- 1.0
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 2)} <- "Jane"
+${acc('person', 2)} <- ${def('"Jane"', '"Doe"')}
+${acc(acc('person', 2), 1)} <- "John"
+${acc('person', 3)} <- 177
+result <- ${acc('person', 2)}`,
+				['9@result'],
+				`grades <- ${def('1.3', '2.0', '2.3', '1.7')}
+person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
+${acc('person', 2)} <- ${def('"Jane"', '"Doe"')}
+${acc(acc('person', 2), 1)} <- "John"
+result <- ${acc('person', 2)}`,
+				undefined,
+				'fail-both'
+			);
+
+			describe('Access within conditionals', () => {
+				useConfigForTest({ solver: { pointerTracking: true } });
+
+				assertSliced(
+					label('Potential addition in nesting', basicCapabilities),
+					shell,
+					`person <- ${def('24')}
+if(u) ${acc('person', 2)} <- "peter"
+wrapper <- ${def('person')}
+print(${acc(acc('wrapper', 1), 2)})`,
+					['4@print'],
+					`person <- ${def('24')}
+if(u) ${acc('person', 2)} <- "peter"
+wrapper <- ${def('person')}
+print(${acc(acc('wrapper', 1), 2)})`,
+				);
+	
+				//Currently we can not handle the indirect passing minimally and include the name line
+				assertSliced(
+					label('Potential addition in nesting (not needed)', basicCapabilities),
+					shell,
+					`person <- ${def('24')}
+if(u) ${acc('person', 2)} <- "peter"
+wrapper <- ${def('person')}
+print(${acc(acc('wrapper', 1), 1)})`,
+					['4@print'],
+					`person <- ${def('24')}
+wrapper <- ${def('person')}
+print(${acc(acc('wrapper', 1), 1)})`,
+					undefined,
+					'fail-both',
+				);
+			});
 		});
 	});
 }));

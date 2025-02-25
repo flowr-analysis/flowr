@@ -533,6 +533,20 @@ result <- ${acc('person', 2)}`,
 				'fail-both'
 			);
 
+			assertSliced(
+				label('When non existing index is accessed, then parent index is referenced', basicCapabilities),
+				shell,
+				`a <- ${def('1')}
+b <- ${def('1', 'a')}
+c <- ${def('b')}
+print(${acc(acc(acc('c', 1), 42), 1)})`,
+				['4@print'],
+				`a <- ${def('1')}
+b <- ${def('1', 'a')}
+c <- ${def('b')}
+print(${acc(acc(acc('c', 1), 42), 1)})`,
+			);
+
 			describe('Access within conditionals', () => {
 				useConfigForTest({ solver: { pointerTracking: true } });
 

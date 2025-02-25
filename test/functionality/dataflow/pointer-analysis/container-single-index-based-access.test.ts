@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { afterAll, beforeAll, describe, it } from 'vitest';
 import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
 import { assertDataflow, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
@@ -106,6 +106,23 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
+
+				it.fails('Currently not working, nothing is referenced', () => {
+					assertDataflow(
+						label('When non existing index is accessed, then parent index is referenced', basicCapabilities),
+						shell,
+						`a <- ${def('1')}
+						b <- ${def('1', 'a')}
+						c <- ${def('b')}
+						${acc(acc(acc('c', 1), 42), 1)}`,
+						(data) =>  emptyGraph()
+							.readsQuery(queryAccInLine(4, (query => query.last())), queryArg(1, 'b', 3), data),
+						{
+							expectIsSubgraph:      true,
+							resolveIdsAsCriterion: true,
+						}
+					);
+				});
 			});
 		});
 

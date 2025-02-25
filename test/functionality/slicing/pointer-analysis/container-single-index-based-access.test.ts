@@ -28,6 +28,8 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 		useConfigForTest({ solver: { pointerTracking: true } });
 
 		describe('Simple access', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+
 			assertSliced(
 				label('Container with single argument', basicCapabilities),
 				shell,
@@ -51,6 +53,8 @@ print(${acc('numbers', 1)})`,
 		});
 
 		describe('Whole container access', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+
 			assertSliced(
 				label('When each argument of a container is redefined, then original container is still in slice', basicCapabilities),
 				shell,
@@ -106,6 +110,8 @@ print(numbers)`
 		});
 
 		describe('Access with other accesses', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+
 			assertSliced(
 				label('With other container', basicCapabilities),
 				shell,
@@ -132,6 +138,8 @@ print(${acc('numbers', 1)})`,
 		});
 
 		describe('Access with assignment', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+
 			assertSliced(
 				label('When there is more than one assignment to the same index, then the last assignment is in the slice', basicCapabilities),
 				shell,
@@ -208,6 +216,7 @@ print(${acc('numbers', 1)})`
 
 		describe('Config flag', () => {
 			useConfigForTest({ solver: { pointerTracking: false } });
+
 			assertSliced(
 				label('When flag is false, then container access is not in slice', ['call-normal']),
 				shell,
@@ -224,6 +233,8 @@ print(${acc('numbers', 1)})`
 		});
 
 		describe('Container assignment', () => {
+			useConfigForTest({ solver: { pointerTracking: true } });
+
 			assertSliced(
 				label('When container is self-redefined, then indices get passed', basicCapabilities),
 				shell,
@@ -311,12 +322,14 @@ print(numbers)`,
 ${acc('numbers', 1)} <- 1
 ${acc('numbers', 2)} <- 2
 print(numbers)`,
+				undefined,
+				'fail-both',
 			);
 		});
 
 		describe.skipIf(container !== ContainerType.List)('Nested Lists', () => {
 			useConfigForTest({ solver: { pointerTracking: true } });
-			
+
 			assertSliced(
 				label('When index of nested list is overwritten, then overwrite is also in slice', basicCapabilities),
 				shell,
@@ -352,7 +365,7 @@ person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc(acc('person', 5), 1)} <- 4.0
 result <- ${acc(acc('person', 5), 1)}`,
 			);
-	
+
 			assertSliced(
 				label('When nested list is overwritten, then only overwrite list is in slice', basicCapabilities),
 				shell,
@@ -371,7 +384,7 @@ ${acc('grades', 2)} <- 2.0
 person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 result <- ${acc(acc('person', 5), 2)}`,
 			);
-	
+
 			assertSliced(
 				label('When nested list is overwritten after nesting, then only overwrite list is in slice', basicCapabilities),
 				shell,
@@ -389,7 +402,7 @@ person <- ${def('24', '"John"', '164', 'FALSE', 'grades')}
 ${acc('person', 5)} <- ${def('4.0', '3.0')}
 result <- ${acc(acc('person', 5), 2)}`,
 			);
-	
+
 			assertSliced(
 				label('When nested list is accessed, then accesses to nested list are in slice', basicCapabilities),
 				shell,
@@ -407,7 +420,7 @@ ${acc('grades', 4)} <- 1.0
 person <- ${def('"John"', 'grades')}
 result <- ${acc('person', 2)}`,
 			);
-	
+
 			assertSliced(
 				label('When nested list is accessed, then accesses to nested lists are in slice', basicCapabilities),
 				shell,
@@ -426,7 +439,7 @@ ${acc('grades', 2)} <- 1.0
 person <- ${def('"John"', 'grades')}
 result <- ${acc('person', 2)}`,
 			);
-	
+
 			assertSliced(
 				label('When double nested list is accessed, then accesses to nested lists are in slice', basicCapabilities),
 				shell,
@@ -444,7 +457,7 @@ grades <- ${def('algebra_grades', '1.7')}
 person <- ${def('"John"', 'grades')}
 result <- ${acc(acc('person', 2), 1)}`,
 			);
-			
+
 			assertSliced(
 				label('When list is assigned, then accesses to list and nested lists are in slice', basicCapabilities),
 				shell,
@@ -466,7 +479,7 @@ result <- person`,
 				undefined,
 				'fail-both',
 			);
-	
+
 			assertSliced(
 				label('When nested list is redefined twice, then only second redefinition is in slice', basicCapabilities),
 				shell,
@@ -489,7 +502,7 @@ result <- ${acc(acc('person', 5), 2)}`,
 				undefined,
 				'fail-both',
 			);
-	
+
 			assertSliced(
 				label('When nested list is redefined with static value, then only static value assignment is in slice', basicCapabilities),
 				shell,
@@ -510,7 +523,7 @@ result <- ${acc('person', 5)}`,
 				undefined,
 				'fail-both',
 			);
-	
+
 			assertSliced(
 				label('When static list value is redefined with list, then only list value assignment is in slice', basicCapabilities),
 				shell,
@@ -563,7 +576,7 @@ if(u) ${acc('person', 2)} <- "peter"
 wrapper <- ${def('person')}
 print(${acc(acc('wrapper', 1), 2)})`,
 				);
-	
+
 				//Currently we can not handle the indirect passing minimally and include the name line
 				assertSliced(
 					label('Potential addition in nesting (not needed)', basicCapabilities),

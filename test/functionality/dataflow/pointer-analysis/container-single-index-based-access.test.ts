@@ -33,7 +33,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 		beforeAll(() => {
 			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
 		});
-	
+
 		afterAll(() => {
 			amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
 		});
@@ -78,7 +78,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 						resolveIdsAsCriterion: true,
 					}
 				);
-	
+
 				assertDataflow(
 					label('When single unnamed flattened list index is accessed, then access reads index', basicCapabilities),
 					shell,

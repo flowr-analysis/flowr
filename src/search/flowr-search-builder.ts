@@ -11,6 +11,7 @@ import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
+import type { Enrichment } from './search-executor/search-enrichers';
 
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
@@ -204,7 +205,11 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		this.search.push({ type: 'transformer', name: 'select', args: { select } });
 		return this;
 	}
-
+	
+	with(info: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
+		this.search.push( { type: 'transformer', name: 'with', args: { info } });
+		return this;
+	}
 
 	/**
 	 * merge combines the search results with those of another search.
@@ -246,4 +251,3 @@ export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search, o
 	}
 	return search as SearchOutput<Search>;
 }
-

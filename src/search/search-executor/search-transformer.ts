@@ -16,6 +16,8 @@ import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
+import type { Enrichment } from './search-enrichers';
+import { enrich } from './search-enrichers';
 
 
 /**
@@ -46,7 +48,8 @@ export const transformers = {
 	skip:   getSkip,
 	filter: getFilter,
 	merge:  getMerge,
-	select: getSelect
+	select: getSelect,
+	with:   getWith
 } as const;
 
 
@@ -149,11 +152,14 @@ function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 
+function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { info }: { info: Enrichment }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
+	return elements.mutate(elements => elements.map(e => enrich(e, data, info)) as Elements);
+}
+
 function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	/* search has to be unknown because it is a recursive type */
 	data: FlowrSearchInput<Pipeline>, elements: FSE, other: { search: unknown[], generator: FlowrSearchGeneratorNode }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
 	const resultOther = runSearch(other as FlowrSearch<ParentInformation>, data);
 	return elements.addAll(resultOther);
 }
-
-

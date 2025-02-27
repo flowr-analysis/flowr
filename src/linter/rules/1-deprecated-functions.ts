@@ -13,7 +13,7 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 
 export const R1_DEPRECATED_FUNCTIONS = {
 	name:                'deprecated-functions',
-	createSearch:        () => Q.all().build(),
+	createSearch:        () => Q.all(),
 	processSearchResult: (elements, config) => elements.getElements().map(element => ({
 		certainty:         config.doTheThing ? LintingCertainty.Definitely : LintingCertainty.Maybe,
 		someImportantNode: element.node.lexeme as string

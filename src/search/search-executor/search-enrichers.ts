@@ -2,18 +2,31 @@ import type { FlowrSearchElement, FlowrSearchInput } from '../flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 
+export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
+	// TODO using unknown like this doesn't give us any information about the type of the enrichments' data -> we need to gather it from the Enrichments collection below somehow
+	enrichments: { [E in Enrichment]?: unknown }
+}
+
 export enum Enrichment {
 	CallTargets = 'call-targets'
 }
 
 const Enrichments = {
-	[Enrichment.CallTargets]: (e: FlowrSearchElement<unknown>, _data: FlowrSearchInput<Pipeline>) => {
-		// TODO what to return here? do we need a new EnrichedNode type? or is this already handled by the search API somehow
-		return e;
+	[Enrichment.CallTargets]: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>) => {
+		// TODO i don't think this is correct but we just wanna do *something* for now
+		return [...data.dataflow.graph.ingoingEdges(e.node.info.id) ?? []].map(([dest]) => dest);
 	}
 } as const;
 
-// TODO the return element should be different here based on what we want to return above
-export function enrich<Element extends FlowrSearchElement<ParentInformation>>(e: Element, data: FlowrSearchInput<Pipeline>, info: Enrichment): Element {
-	return Enrichments[info](e, data) as Element;
+export function enrich<
+	ElementIn extends FlowrSearchElement<ParentInformation>,
+	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>>(
+	e: ElementIn, data: FlowrSearchInput<Pipeline>, info: Enrichment): ElementOut {
+	return {
+		...e,
+		enrichments: {
+			...(e as ElementIn & EnrichedFlowrSearchElement<ParentInformation>)?.enrichments ?? {},
+			[info]: Enrichments[info](e, data)
+		}
+	} as ElementOut;
 }

@@ -16,7 +16,7 @@ import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
-import type { Enrichment } from './search-enrichers';
+import type { EnrichedFlowrSearchElement, Enrichment } from './search-enrichers';
 import { enrich } from './search-enrichers';
 
 
@@ -153,8 +153,10 @@ function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE
 }
 
 function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { info }: { info: Enrichment }): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
-	return elements.mutate(elements => elements.map(e => enrich(e, data, info)) as Elements);
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { info }: { info: Enrichment }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
+	return elements.mutate(
+		elements => elements.map(e => enrich(e, data, info)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
+	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
 }
 
 function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(

@@ -32,4 +32,8 @@ describe.sequential('flowR search', withShell(shell => {
 		Q.var('x').filter(VertexType.Use).last(),
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
+	assertSearch('with enrichment', shell, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@func'],
+		// TODO mappers don't exist yet
+		/*Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).first()*/
+	);
 }));

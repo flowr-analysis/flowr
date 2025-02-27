@@ -1,9 +1,16 @@
-import { describe } from 'vitest';
+import { afterAll, beforeAll, describe } from 'vitest';
 import { assertDataflow, withShell } from '../../_helper/shell';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { label } from '../../_helper/label';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe.sequential('List Access', withShell(shell => {
+	beforeAll(() => {
+		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+	});
+	afterAll(() => {
+		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+	});
 	describe('Access named argument', () => {
 		assertDataflow(
 			label('Assert reads edge to named argument', ['name-normal', 'function-calls', 'named-arguments', 'dollar-access', 'subsetting-multiple']),

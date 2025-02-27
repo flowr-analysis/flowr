@@ -65,6 +65,7 @@ export interface AssignmentConfiguration extends ForceArguments {
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
 	readonly indicesCollection?:   ContainerIndicesCollection
+	readonly mayHaveMoreArgs?:     boolean
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -92,7 +93,7 @@ export function processAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
-	if(args.length != 2) {
+	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
 	}
@@ -293,14 +294,12 @@ export function markAsAssignment(
 		}
 	}
 	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
-	if(getConfig().solver.pointerTracking) {
-		// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-		const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
-		for(const [id, edge] of (out ?? [])) {
-			edge.types &= ~EdgeType.Reads;
-			if(edge.types == 0) {
-				out?.delete(id);
-			}
+	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
+	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
+	for(const [id, edge] of (out ?? [])) {
+		edge.types &= ~EdgeType.Reads;
+		if(edge.types === 0) {
+			out?.delete(id);
 		}
 	}
 }

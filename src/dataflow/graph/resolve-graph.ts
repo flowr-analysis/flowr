@@ -56,5 +56,13 @@ export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): Da
 		}
 	}
 
+	for(const unknown of graph.unknownSideEffects) {
+		if(typeof unknown === 'object') {
+			resultGraph.markIdForUnknownSideEffects(resolve(unknown.id), unknown.linkTo);
+		} else {
+			resultGraph.markIdForUnknownSideEffects(resolve(unknown));
+		}
+	}
+
 	return resultGraph;
 }

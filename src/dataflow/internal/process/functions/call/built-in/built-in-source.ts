@@ -40,15 +40,30 @@ export function setSourceProvider(provider: RParseRequestProvider): void {
 export function inferWdFromScript(option: InferWorkingDirectory, referenceChain: readonly RParseRequest[]): string[] {
 	switch(option) {
 		case InferWorkingDirectory.MainScript:
-			return referenceChain[0]?.request === 'file' ? [path.dirname(referenceChain[0].content)] : [];
+			return referenceChain[0]?.request === 'file' ? [platformDirname(referenceChain[0].content)] : [];
 		case InferWorkingDirectory.ActiveScript:
-			return referenceChain[referenceChain.length - 1] ? [path.dirname(referenceChain[referenceChain.length - 1].content)] : [];
+			return referenceChain[referenceChain.length - 1] ? [platformDirname(referenceChain[referenceChain.length - 1].content)] : [];
 		case InferWorkingDirectory.AnyScript:
-			return referenceChain.filter(e => e.request === 'file').map(e => path.dirname(e.content));
+			return referenceChain.filter(e => e.request === 'file').map(e => platformDirname(e.content));
 		case InferWorkingDirectory.No:
 		default:
 			return [];
 	}
+}
+
+const AnyPathSeparator = /[/\\]/g;
+
+function platformBasename(p: string): string {
+	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
+	return path.posix.basename(normalized);
+}
+function platformDirname(p: string): string {
+	const normalized = p.replaceAll(path.win32.sep, path.posix.sep);
+	return path.posix.dirname(normalized);
+}
+
+function returnPlatformPath(p: string): string {
+	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
 /**
@@ -68,13 +83,13 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 	const tryPaths = [seed];
 	switch(config?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
-			const first = path.basename(seed);
+			const first = platformBasename(seed);
 			tryPaths.push(first);
 			break;
 		}
 		case DropPathsOption.All: {
-			const paths = path.dirname(seed).split(path.sep);
-			const basename = path.basename(seed);
+			const paths = platformDirname(seed).split(AnyPathSeparator);
+			const basename = platformBasename(seed);
 			if(paths.length === 1 && paths[0] === '.') {
 				break;
 			}
@@ -93,10 +108,10 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		for(const tryPath of tryPaths) {
 			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
 
-			const get = sourceProvider.exists(effectivePath, capitalization);
+			const get = sourceProvider.exists(effectivePath, capitalization) ?? sourceProvider.exists(returnPlatformPath(effectivePath), capitalization);
 
 			if(get && !found.includes(effectivePath)) {
-				found.push(effectivePath);
+				found.push(returnPlatformPath(effectivePath));
 			}
 		}
 	}
@@ -155,7 +170,7 @@ export function processSourceCall<OtherInfo>(
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
 			if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
-				expensiveTrace(dataflowLogger, () => `Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+				dataflowLogger.warn(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				information.graph.markIdForUnknownSideEffects(rootId);
 				return information;
 			}
@@ -194,7 +209,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 			referenceChain: [...data.referenceChain, request]
 		});
 	} catch(e) {
-		dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
+		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
+		dataflowLogger.error((e as Error).stack);
 		information.graph.markIdForUnknownSideEffects(rootId);
 		return information;
 	}
@@ -206,6 +222,8 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	for(const out of dataflow.out) {
 		dataflow.graph.addControlDependency(out.nodeId, rootId, true);
 	}
+
+	dataflow.graph.addFile(request.request === 'file' ? request.content : '<inline>');
 
 	// update our graph with the sourced file's information
 	const newInformation = { ...information };

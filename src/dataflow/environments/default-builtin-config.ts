@@ -119,15 +119,28 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
 	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                           assumePrimitive: true  },
 	{
+		type:      'function',
+		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],
+		processor: 'builtin:assignment',
+		config:    {
+			canBeReplacement: false,
+			targetVariable:   false,
+			makeMaybe:        true,
+			mayHaveMoreArgs:  true
+		}
+	},
+	{
 		type:  'function',
 		names: [
-			'on.exit', 'sys.on.exit', 'par', 'setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr', 'sink',
+			'on.exit', 'sys.on.exit', 'par', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
 			/* downloader and installer functions (R, devtools, BiocManager) */
 			'library.dynam', 'install.packages','install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
 			/* weird env attachments */
-			'attach', 'unname', 'data'
+			'attach', 'unname', 'data',
+			/* file creation/removal */
+			'dir.create', 'dir_create', 'Sys.chmod', 'unlink', 'file.remove', 'file.rename', 'file.copy', 'file.link', 'file.append', 'Sys.junction'
 		],
 		processor:       'builtin:default',
 		config:          { hasUnknownSideEffects: true },

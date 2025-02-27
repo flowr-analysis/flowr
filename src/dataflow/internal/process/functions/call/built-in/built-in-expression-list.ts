@@ -27,6 +27,7 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
+import { expensiveTrace } from '../../../../../../util/log';
 
 
 const dotDotDotAccess = /^\.\.\d+$/;
@@ -117,7 +118,7 @@ export function processExpressionList<OtherInfo>(
 ): DataflowInformation {
 	const expressions = args.map(e => unpackArgument(e));
 
-	dataflowLogger.trace(() => `[expr list] with ${expressions.length} expressions`);
+	expensiveTrace(dataflowLogger, () => `[expr list] with ${expressions.length} expressions`);
 
 	let { environment } = data;
 	// used to detect if a "write" happens within the same expression list
@@ -134,7 +135,7 @@ export function processExpressionList<OtherInfo>(
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
 
 	for(const expression of expressions) {
-		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`);
+		expensiveTrace(dataflowLogger, () => `processing expression ${++expressionCounter} of ${expressions.length}`);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;
@@ -158,7 +159,7 @@ export function processExpressionList<OtherInfo>(
 
 		out.push(...processed.out);
 
-		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
+		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
 
 		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
 

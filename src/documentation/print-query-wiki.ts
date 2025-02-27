@@ -134,6 +134,28 @@ ${
 	}
 });
 
+registerQueryDocumentation('project', {
+	name:             'Project Query',
+	type:             'active',
+	shortDescription: 'Returns information about the analyzed project',
+	functionName:     executeDataflowQuery.name,
+	functionFile:     '../queries/catalog/project-query/project-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x + 1';
+		return `
+This query returns the information about the analyzed project.
+Currently, this is only the list of file paths included.
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'project'
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
+
 registerQueryDocumentation('normalized-ast', {
 	name:             'Normalized AST Query',
 	type:             'active',

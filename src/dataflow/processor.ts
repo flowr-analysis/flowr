@@ -14,18 +14,18 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:              Parser<KnownParserType>
-   /**
-   * Initial and frozen ast-information
-   */
+    /**
+     * Initial and frozen ast-information
+     */
 	readonly completeAst:         NormalizedAst<OtherInfo>
 	/**
-   * Correctly contains pushed local scopes introduced by `function` scopes.
-   * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
-   */
+     * Correctly contains pushed local scopes introduced by `function` scopes.
+     * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
+     */
 	readonly environment:         REnvironmentInformation
 	/**
-   * Other processors to be called by the given functions
-   */
+     * Other processors to be called by the given functions
+     */
 	readonly processors:          DataflowProcessors<OtherInfo>
 	/**
 	 * The {@link RParseRequests} that is currently being parsed

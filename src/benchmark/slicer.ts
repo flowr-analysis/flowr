@@ -234,11 +234,11 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Slice for the given {@link SlicingCriteria}.
-   * @see SingleSlicingCriterion
-   *
-   * @returns The per slice stats retrieved for this slicing criteria
-   */
+	 * Slice for the given {@link SlicingCriteria}.
+	 * @see SingleSlicingCriterion
+	 *
+	 * @returns The per slice stats retrieved for this slicing criteria
+	 */
 	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
 		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`);
 
@@ -329,16 +329,16 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Call {@link slice} for all slicing criteria that match the given filter.
-   * See {@link collectAllSlicingCriteria} for details.
-   * <p>
-   * the `report` function will be called *before* each *individual* slice is performed.
-   *
-   * @returns The number of slices that were produced
-   *
-   * @see collectAllSlicingCriteria
-   * @see SlicingCriteriaFilter
-   */
+	 * Call {@link slice} for all slicing criteria that match the given filter.
+	 * See {@link collectAllSlicingCriteria} for details.
+	 * <p>
+	 * the `report` function will be called *before* each *individual* slice is performed.
+	 *
+	 * @returns The number of slices that were produced
+	 *
+	 * @see collectAllSlicingCriteria
+	 * @see SlicingCriteriaFilter
+	 */
 	public async sliceForAll(
 		filter: SlicingCriteriaFilter,
 		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
@@ -360,9 +360,9 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Retrieves the final stats and closes the shell session.
-   * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
-   */
+	 * Retrieves the final stats and closes the shell session.
+	 * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
+	 */
 	public finish(): BenchmarkSlicerStats {
 		guard(this.stats !== undefined, 'need to call init before finish');
 
@@ -404,8 +404,8 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
-   */
+	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
+	 */
 	public ensureSessionClosed(): void {
 		this.parser?.close();
 	}

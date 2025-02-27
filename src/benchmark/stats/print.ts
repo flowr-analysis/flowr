@@ -161,6 +161,7 @@ Dataflow:
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}
+  Number of stored indices:   ${pad(stats.dataflow.storedIndices)}
   Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 }
 
@@ -218,6 +219,7 @@ Dataflow:
   Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
+  Number of stored indices:   ${formatSummarizedMeasure(stats.dataflow.storedIndices)}
   Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
 `;
 }

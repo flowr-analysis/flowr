@@ -42,6 +42,9 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
+import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
+import { isParentContainerIndex } from '../dataflow/graph/vertex';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -198,6 +201,8 @@ export class BenchmarkSlicer {
 			return false;
 		});
 
+		const storedIndices = this.countStoredPointerIndices();
+
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
 		this.stats = {
@@ -221,7 +226,8 @@ export class BenchmarkSlicer {
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
-				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph)
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
+				storedIndices:               storedIndices
 			},
 
 			// these are all properly initialized in finish()
@@ -231,6 +237,36 @@ export class BenchmarkSlicer {
 			dataflowTimePerToken:    { raw: 0, normalized: 0 },
 			totalCommonTimePerToken: { raw: 0, normalized: 0 }
 		};
+	}
+
+	/**
+	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
+	 */
+	private countStoredPointerIndices(): number {
+		let numberOfIndices = 0;
+		for(const reference of this.dataflow?.out ?? []) {
+			const graphReference = reference as InGraphIdentifierDefinition;
+			if(graphReference.indicesCollection) {
+				numberOfIndices += this.countIndices(graphReference.indicesCollection);
+			}
+		}
+		return numberOfIndices;
+	}
+
+	/**
+	 * Recursively counts the number of indices and sub-indices in the given collection.
+	 */
+	private countIndices(collection: ContainerIndicesCollection): number {
+		let numberOfIndices = 0;
+		for(const indices of collection ?? []) {
+			for(const index of indices.indices) {
+				numberOfIndices++;
+				if(isParentContainerIndex(index)) {
+					numberOfIndices += this.countIndices(index.subIndices);
+				}
+			}
+		}
+		return numberOfIndices;
 	}
 
 	/**

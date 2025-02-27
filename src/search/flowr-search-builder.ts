@@ -233,7 +233,11 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
  * This type summarizes all types that can be used in places in which the API expects you to provide a search query.
  * @see {@link FlowrSearch}
  */
-export type FlowrSearchLike = FlowrSearch | FlowrSearchBuilderType;
+export type FlowrSearchLike<Info = ParentInformation,
+	Generator extends GeneratorNames = GeneratorNames,
+	Transformers extends TransformerNames[] = TransformerNames[],
+	ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>>
+		= FlowrSearch<Info, Generator, Transformers, ElementType> | FlowrSearchBuilderType<Generator, Transformers, Info, ElementType>;
 
 export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search extends FlowrSearchBuilderType<infer Generator, infer Transformers, infer Info, infer Elements> ? FlowrSearch<Info, Generator, Transformers, Elements> : never;
 
@@ -246,4 +250,3 @@ export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search, o
 	}
 	return search as SearchOutput<Search>;
 }
-

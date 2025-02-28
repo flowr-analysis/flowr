@@ -97,7 +97,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
 			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
 			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
-			storedIndices:               summarizeMeasurement(dataflows.map(d => d.storedIndices)),
+			storedVertexIndices:         summarizeMeasurement(dataflows.map(d => d.storedVertexIndices)),
+			storedEnvIndices:            summarizeMeasurement(dataflows.map(d => d.storedEnvIndices)),
 		}
 	};
 }
@@ -139,7 +140,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
 			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
 			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
-			storedIndices:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedIndices)),
+			storedVertexIndices:         summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedVertexIndices)),
+			storedEnvIndices:            summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedEnvIndices)),
 		}
 	};
 }

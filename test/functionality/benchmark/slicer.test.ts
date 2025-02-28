@@ -51,7 +51,8 @@ describe('Benchmark Slicer', () => {
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
 				sizeOfObject:                196,
-				storedIndices:               0,  // no indices
+				storedVertexIndices:         0,  // no indices
+				storedEnvIndices:            0,  // no indices
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -119,7 +120,8 @@ cat(d)`
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
 				sizeOfObject:                1649,
-				storedIndices:               0,
+				storedVertexIndices:         0,
+				storedEnvIndices:            0,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);

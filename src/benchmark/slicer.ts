@@ -201,7 +201,8 @@ export class BenchmarkSlicer {
 			return false;
 		});
 
-		const storedIndices = this.countStoredPointerIndices();
+		const storedVertexIndices = this.countStoredVertexIndices();
+		const storedEnvIndices = this.countStoredEnvIndices();
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -227,7 +228,8 @@ export class BenchmarkSlicer {
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
-				storedIndices:               storedIndices
+				storedVertexIndices:         storedVertexIndices,
+				storedEnvIndices:            storedEnvIndices,
 			},
 
 			// these are all properly initialized in finish()
@@ -242,12 +244,29 @@ export class BenchmarkSlicer {
 	/**
 	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
 	 */
-	private countStoredPointerIndices(): number {
+	private countStoredVertexIndices(): number {
+		return this.countStoredIndices(this.dataflow?.out.map(ref => ref as InGraphIdentifierDefinition) ?? []);
+	}
+
+	/**
+	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
+	 */
+	private countStoredEnvIndices(): number {
+		return this.countStoredIndices(
+			this.dataflow?.environment.current.memory.values()
+				?.flatMap(def => def)
+				.map(def => def as InGraphIdentifierDefinition) ?? []
+		);
+	}
+
+	/**
+	 * Counts the number of stored indices in the passed definitions.
+	 */
+	private countStoredIndices(definitions: Iterable<InGraphIdentifierDefinition>): number {
 		let numberOfIndices = 0;
-		for(const reference of this.dataflow?.out ?? []) {
-			const graphReference = reference as InGraphIdentifierDefinition;
-			if(graphReference.indicesCollection) {
-				numberOfIndices += this.countIndices(graphReference.indicesCollection);
+		for(const reference of definitions) {
+			if(reference.indicesCollection) {
+				numberOfIndices += this.countIndices(reference.indicesCollection);
 			}
 		}
 		return numberOfIndices;

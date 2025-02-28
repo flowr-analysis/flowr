@@ -26,7 +26,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output' },
 	{ name: 'runs',         alias: 'r', type: Number,  description: 'The amount of benchmark runs that should be done, out of which an average will be calculated' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from. Alternatively, pass a single JSON file that contains a list of paths.', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: `Folder to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline folder}' },

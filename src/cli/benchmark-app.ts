@@ -9,17 +9,17 @@ import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
 
 export interface BenchmarkCliOptions {
-	verbose:  boolean
-	help:     boolean
-	input:    string[]
-	output:   string
-	slice:    string
-	parallel: number
-	limit?:   number
-	runs?:    number
-	parser:   KnownParserName
+	verbose:                   boolean
+	help:                      boolean
+	input:                     string[]
+	output:                    string
+	slice:                     string
+	parallel:                  number
+	limit?:                    number
+	runs?:                     number
+	parser:                    KnownParserName
+	'enable-pointer-tracking': boolean
 }
-
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
 	subtitle: 'Slice given files with additional benchmark information',
@@ -78,7 +78,9 @@ async function benchmark() {
 		'--file-id', `${i}`,
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
 		'--slice', options.slice, ...verboseAdd,
-		'--parser', options.parser]);
+		'--parser', options.parser,
+		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
+	]);
 
 	const runs = options.runs ?? 1;
 	for(let i = 1; i <= runs; i++) {

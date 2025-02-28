@@ -8,17 +8,18 @@ import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-
+import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
-	verbose:    boolean
-	help:       boolean
-	input?:     string
-	'file-id'?: number
-	'run-num'?: number
-	slice:      string
-	output?:    string
-	parser:     KnownParserName
+	verbose:                   boolean
+	help:                      boolean
+	input?:                    string
+	'file-id'?:                number
+	'run-num'?:                number
+	slice:                     string
+	output?:                   string
+	parser:                    KnownParserName
+	'enable-pointer-tracking': boolean
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -51,6 +52,11 @@ async function benchmark() {
 	// ensure the directory exists if path contains one
 	if(directory !== '') {
 		fs.mkdirSync(directory, { recursive: true });
+	}
+
+	// Enable pointer analysis if requested
+	if(options['enable-pointer-tracking']) {
+		amendConfig({ solver: { ...getConfig().solver, pointerTracking: true, } });
 	}
 
 	// ensure the file exists

@@ -75,7 +75,7 @@ async function benchmark() {
 
 		await collectFiles(files, paths, () => baseDir);
 	} else {
-		await collectFiles(files, options.input, (path) => path);
+		await collectFiles(files, options.input, (p) => p);
 	}
 
 	if(options.limit) {
@@ -113,7 +113,7 @@ async function benchmark() {
 
 /**
  * Collect all R files from the given paths.
- * 
+ *
  * @param files - list of files to append to
  * @param paths - list of paths to search for R files
  * @param getBaseDir - function to get the base directory of a path
@@ -128,22 +128,21 @@ async function collectFiles(files: RequestFile[], paths: string[], getBaseDir: (
 
 /**
  * Find the common base directory of a list of paths.
- * 
+ *
  * @param paths - list of paths
  * @returns the common base directory
  */
 function findCommonBaseDir(paths: string[]): string {
 	const baseDirs = paths.map(f => path.dirname(f));
-	const baseDir = baseDirs.reduce((acc, dir) => {
-		const split = dir.split('/');
-		const accSplit = acc.split('/');
+	return baseDirs.reduce((acc, dir) => {
+		const split = dir.split(path.sep);
+		const accSplit = acc.split(path.sep);
 		let i = 0;
 		while(i < split.length && i < accSplit.length && split[i] === accSplit[i]) {
 			i++;
 		}
-		return split.slice(0, i).join('/');
+		return split.slice(0, i).join(path.sep);
 	}, baseDirs[0]);
-	return baseDir;
 }
 
 void benchmark();

@@ -99,6 +99,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
 			storedVertexIndices:         summarizeMeasurement(dataflows.map(d => d.storedVertexIndices)),
 			storedEnvIndices:            summarizeMeasurement(dataflows.map(d => d.storedEnvIndices)),
+			overwrittenIndices:          summarizeMeasurement(dataflows.map(d => d.overwrittenIndices)),
 		}
 	};
 }
@@ -142,6 +143,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
 			storedVertexIndices:         summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedVertexIndices)),
 			storedEnvIndices:            summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedEnvIndices)),
+			overwrittenIndices:          summarizeSummarizedMeasurement(stats.map(s => s.dataflow.overwrittenIndices)),
 		}
 	};
 }

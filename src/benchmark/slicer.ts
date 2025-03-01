@@ -203,6 +203,7 @@ export class BenchmarkSlicer {
 
 		const storedVertexIndices = this.countStoredVertexIndices();
 		const storedEnvIndices = this.countStoredEnvIndices();
+		const overwrittenIndices = storedVertexIndices - storedEnvIndices;
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -230,6 +231,7 @@ export class BenchmarkSlicer {
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
 				storedVertexIndices:         storedVertexIndices,
 				storedEnvIndices:            storedEnvIndices,
+				overwrittenIndices:          overwrittenIndices,
 			},
 
 			// these are all properly initialized in finish()

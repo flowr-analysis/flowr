@@ -44,6 +44,7 @@ export interface SlicerStatsDataflow<T = number> {
 	sizeOfObject:                T
 	storedVertexIndices:         T
 	storedEnvIndices:            T
+	overwrittenIndices:          T
 }
 
 /**

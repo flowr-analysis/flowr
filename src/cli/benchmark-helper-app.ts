@@ -8,17 +8,18 @@ import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-
+import { amendConfig, getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
-	verbose:    boolean
-	help:       boolean
-	input?:     string
-	'file-id'?: number
-	'run-num'?: number
-	slice:      string
-	output?:    string
-	parser:     KnownParserName
+	verbose:                   boolean
+	help:                      boolean
+	input?:                    string
+	'file-id'?:                number
+	'run-num'?:                number
+	slice:                     string
+	output?:                   string
+	parser:                    KnownParserName
+	'enable-pointer-tracking': boolean
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -47,7 +48,16 @@ async function benchmark() {
 	// prefix for printing to console, includes file id and run number if present
 	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
-	fs.mkdirSync(path.parse(options.output).dir, { recursive: true });
+	const directory = path.parse(options.output).dir;
+	// ensure the directory exists if path contains one
+	if(directory !== '') {
+		fs.mkdirSync(directory, { recursive: true });
+	}
+
+	// Enable pointer analysis if requested
+	if(options['enable-pointer-tracking']) {
+		amendConfig({ solver: { ...getConfig().solver, pointerTracking: true, } });
+	}
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);

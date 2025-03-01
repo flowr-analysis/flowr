@@ -2,7 +2,8 @@ import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-ph
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
-import { describe, assert, test } from 'vitest';
+import { describe, assert, test, beforeAll, afterAll } from 'vitest';
+import { amendConfig, defaultConfigOptions } from '../../../src/config';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -50,7 +51,10 @@ describe('Benchmark Slicer', () => {
 				numberOfEdges:               4,  // the defined-by edge and the arguments
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                196
+				sizeOfObject:                196,
+				storedVertexIndices:         0,  // no indices
+				storedEnvIndices:            0,  // no indices
+				overwrittenIndices:          0,  // no indices
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -117,7 +121,10 @@ cat(d)`
 				numberOfEdges:               29,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1649
+				sizeOfObject:                1649,
+				storedVertexIndices:         0,
+				storedEnvIndices:            0,
+				overwrittenIndices:          0,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
@@ -147,6 +154,51 @@ cat(d)`
 				total:  4
 			}, statInfo);
 
+		});
+
+		describe('Slicing with pointer-tracking enabled', () => {
+			beforeAll(() => {
+				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+			});
+
+			afterAll(() => {
+				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+			});
+
+			test('When indices are stored, then correct values are counted', async() => {
+				const slicer = new BenchmarkSlicer('r-shell');
+				const request = {
+					request: 'text' as const,
+					content: `
+	person <- list(firstName = "John", lastName = "Doe", age = 32)
+	
+	person$firstName <- "Jane"
+	person$lastName <- "eoD"
+	person$age <- 34
+	person$zipCode <- 67890
+	person$city <- "other example"
+	
+	person$city <- list(name = "big-city", lat = 12.345, lon = 67.890, country = "foo")
+	
+	person$age <- 42
+	
+	print(person$age)`,
+					pointerTracking: true
+				};
+
+				await slicer.init(request);
+				await slicer.slice('14@print');
+
+				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
+
+				// 'storedEnvIndices' are less because indices are overwritten
+				assert.deepStrictEqual(stats.dataflow, {
+					...stats.dataflow,
+					storedVertexIndices: 14,
+					storedEnvIndices:    13,
+					overwrittenIndices:  1,
+				}, statInfo);
+			});
 		});
 	});
 });

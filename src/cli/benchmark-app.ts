@@ -19,6 +19,7 @@ export interface BenchmarkCliOptions {
 	runs?:                     number
 	parser:                    KnownParserName
 	'enable-pointer-tracking': boolean
+	'max-file-slices':         number
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
@@ -93,6 +94,7 @@ async function benchmark() {
 		'--slice', options.slice, ...verboseAdd,
 		'--parser', options.parser,
 		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
+		'--max-slices', `${options['max-file-slices']}`
 	]);
 
 	const runs = options.runs ?? 1;

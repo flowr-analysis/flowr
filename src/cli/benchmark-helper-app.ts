@@ -20,6 +20,7 @@ export interface SingleBenchmarkCliOptions {
 	output?:                   string
 	parser:                    KnownParserName
 	'enable-pointer-tracking': boolean
+	'max-slices':              number
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -65,22 +66,25 @@ async function benchmark() {
 
 	const request: RParseRequestFromFile = { request: 'file', content: options.input };
 
+	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);
 	try {
 		await slicer.init(request);
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
-			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`));
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), -1, maxSlices);
 			console.log(`${prefix} Completed Slicing`);
+			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
 		} else if(options.slice === 'no') {
 			console.log(`${prefix} Skipping Slicing due to --slice=${options.slice}`);
 		} else {
 			const limit = parseInt(options.slice);
 			console.log(`${prefix} Slicing up to ${limit} possible slices`);
-			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), limit);
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), limit, maxSlices);
 			console.log(`${prefix} Completed Slicing`);
+			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
 		}
 

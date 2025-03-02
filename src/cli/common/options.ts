@@ -32,6 +32,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'output',       alias: 'o', type: String,  description: `Folder to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline folder}' },
 	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
 	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
+	{ name: 'max-file-slices',          type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
@@ -44,6 +45,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
 	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
 	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
+	{ name: 'max-slices',               type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

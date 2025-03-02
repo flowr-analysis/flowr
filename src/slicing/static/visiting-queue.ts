@@ -1,7 +1,6 @@
 import type { Fingerprint } from './fingerprint';
 import { fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
-import { slicerLogger } from './static-slicer';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
@@ -30,7 +29,6 @@ export class VisitingQueue {
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target) ?? 0;
 		if(idCounter > this.threshold) {
-			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`);
 			this.timesHitThreshold++;
 			return;
 		}
@@ -41,7 +39,7 @@ export class VisitingQueue {
 		if(!this.seen.has(print)) {
 			this.idThreshold.set(target, idCounter + 1);
 			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects });
+			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 		}
 	}
 

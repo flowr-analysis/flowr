@@ -71,18 +71,6 @@ function linkCallTargets(
 	queue: VisitingQueue
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
-		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		/* for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			// only if the outgoing path does not already have a defined by linkage
-			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment, openIn.type) : undefined;
-			if(defs === undefined) {
-				continue;
-			}
-			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
-				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, onlyForSideEffects);
-			}
-		}*/
-
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
@@ -122,7 +110,7 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 		} else if(edgeIncludesType(edge.types, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument)) {
-			updatePotentialAddition(queue, from, target, baseEnvironment);
+			updatePotentialAddition(queue, from, target, baseEnvironment, baseEnvFingerprint);
 		}
 	}
 	return true;

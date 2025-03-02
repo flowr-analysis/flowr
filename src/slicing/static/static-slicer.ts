@@ -53,7 +53,8 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
 		for(const id of graph.unknownSideEffects) {
-			if(typeof id !== 'object') { /* otherwise, their target is just missing */
+			if(typeof id !== 'object') {
+				/* otherwise, their target is just missing */
 				queue.add(id, emptyEnv, basePrint, true);
 			}
 		}
@@ -62,8 +63,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	while(queue.nonEmpty()) {
 		const current = queue.next();
 
-		const { baseEnvironment, id, onlyForSideEffects } = current;
-		const baseEnvFingerprint = envFingerprint(baseEnvironment);
+		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
@@ -102,7 +102,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 			if(t === TraverseEdge.Always) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 			} else if(t === TraverseEdge.OnlyIfBoth) {
-				updatePotentialAddition(queue, id, target, baseEnvironment);
+				updatePotentialAddition(queue, id, target, baseEnvironment, baseEnvFingerprint);
 			} else if(t === TraverseEdge.SideEffect) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true);
 			}
@@ -112,18 +112,19 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	return { ...queue.status(), decodedCriteria };
 }
 
-export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation): void {
+export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation, envFingerprint: string): void {
 	const n = queue.potentialAdditions.get(target);
 	if(n) {
 		const [addedBy, { baseEnvironment, onlyForSideEffects }] = n;
 		if(addedBy !== id) {
-			queue.add(target, baseEnvironment, envFingerprint(baseEnvironment), onlyForSideEffects);
+			queue.add(target, baseEnvironment, envFingerprint, onlyForSideEffects);
 			queue.potentialAdditions.delete(target);
 		}
 	} else {
 		queue.potentialAdditions.set(target, [id, {
 			id:                 target,
 			baseEnvironment,
+			envFingerprint,
 			onlyForSideEffects: false
 		}]);
 	}

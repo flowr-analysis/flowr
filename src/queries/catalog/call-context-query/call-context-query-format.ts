@@ -27,30 +27,34 @@ export interface FileFilter<FilterType> {
 }
 
 export interface DefaultCallContextQueryFormat<RegexType extends RegExp | string> extends BaseQueryFormat {
-	readonly type:            'call-context';
+	readonly type:                   'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
-	readonly callName:        RegexType;
+	readonly callName:               RegexType;
 	/**
 	 * Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?
 	 */
-	readonly callNameExact?:  boolean;
+	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
-	readonly kind?:           string;
+	readonly kind?:                  string;
 	/** subkinds are used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.` */
-	readonly subkind?:        string;
+	readonly subkind?:               string;
 	/**
 	 * Call targets the function may have. This defaults to {@link CallTargets#Any}.
 	 * Request this specifically to gain all call targets we can resolve.
 	 */
-	readonly callTargets?:    CallTargets;
+	readonly callTargets?:           CallTargets;
 	/**
 	 * Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?
 	 */
-	readonly includeAliases?: boolean;
+	readonly includeAliases?:        boolean;
+	/**
+	 * Should we ignore default values for parameters in the results?
+	 */
+	readonly ignoreParameterValues?: boolean;
 	/**
 	 * Filter that, when set, a node's file attribute must match to be considered
 	 */
-	readonly fileFilter?:     FileFilter<RegexType>;
+	readonly fileFilter?:            FileFilter<RegexType>;
 }
 
 /**
@@ -128,14 +132,15 @@ export const CallContextQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type:           Joi.string().valid('call-context').required().description('The type of the query.'),
-		callName:       Joi.string().required().description('Regex regarding the function name!'),
-		callNameExact:  Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
-		kind:           Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
-		subkind:        Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
-		callTargets:    Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
-		includeAliases: Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-		fileFilter:     Joi.object({
+		type:                  Joi.string().valid('call-context').required().description('The type of the query.'),
+		callName:              Joi.string().required().description('Regex regarding the function name!'),
+		callNameExact:         Joi.boolean().optional().description('Should we automatically add the `^` and `$` anchors to the regex to make it an exact match?'),
+		kind:                  Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
+		subkind:               Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
+		callTargets:           Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
+		ignoreParameterValues: Joi.boolean().optional().description('Should we ignore default values for parameters in the results?'),
+		includeAliases:        Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
+		fileFilter:            Joi.object({
 			fileFilter:            Joi.string().required().description('Regex that a node\'s file attribute must match to be considered'),
 			includeUndefinedFiles: Joi.boolean().optional().description('If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.')
 		}).optional().description('Filter that, when set, a node\'s file attribute must match to be considered'),

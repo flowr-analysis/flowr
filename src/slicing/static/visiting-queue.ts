@@ -9,15 +9,18 @@ export class VisitingQueue {
 	private readonly threshold:   number;
 	private timesHitThreshold:    number                   = 0;
 	private readonly seen:        Map<Fingerprint, NodeId> = new Map();
+	private readonly seenByCache: Set<NodeId>              = new Set();
 	private readonly idThreshold: Map<NodeId, number>      = new Map();
 	private readonly queue:       NodeToSlice[] = [];
+	private readonly cache?:      Map<Fingerprint, Set<NodeId>> = new Map();
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
 	public potentialAdditions:    Map<NodeId, [NodeId, NodeToSlice]> = new Map();
 	private cachedCallTargets:    Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
 
-	constructor(threshold: number) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>) {
 		this.threshold = threshold;
+		this.cache     = cache;
 	}
 
 	/**
@@ -38,6 +41,13 @@ export class VisitingQueue {
 		const print = fingerprint(target, envFingerprint, onlyForSideEffects);
 
 		if(!this.seen.has(print)) {
+			const cached = this.cache?.get(print);
+			if(cached) {
+				this.seenByCache.add(target);
+				for(const id of cached) {
+					this.queue.push({ id, baseEnvironment: env, envFingerprint, onlyForSideEffects });
+				}
+			}
 			this.idThreshold.set(target, idCounter + 1);
 			this.seen.set(print, target);
 			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
@@ -66,7 +76,7 @@ export class VisitingQueue {
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set(this.seen.values())
+			result:            new Set([...this.seen.values(), ...this.seenByCache])
 		};
 	}
 }

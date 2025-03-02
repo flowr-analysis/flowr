@@ -20,7 +20,7 @@ describe('slicing', () => {
 	let result: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined = undefined;
 	let ids: NodeId[] | undefined = undefined;
 
-	for(const threshold of [1, 10, 100, 10000]) {
+	for(const threshold of [1, 10, 100, 200]) {
 		bench(`slice (threshold: ${threshold})`, async() => {
 			if(!result) {
 				await TreeSitterExecutor.initTreeSitter();
@@ -42,7 +42,7 @@ for(i in 1:5) {
 	x[1] <- 4
 	x[2] <- x[1] + x[3]
 }
-			`.trim().repeat(200) + '\nprint(x)'),
+			`.trim().repeat(200) + '\nprint(x + f(1, function(i) x[[i]] + 2, 3))'),
 				}).allRemainingSteps();
 				ids = runSearch(Q.var('print').first(), result).map(n => n.node.info.id);
 			}

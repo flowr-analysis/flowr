@@ -3,16 +3,18 @@ import { fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 
 export class VisitingQueue {
 	private readonly threshold:   number;
 	private timesHitThreshold:    number                   = 0;
 	private readonly seen:        Map<Fingerprint, NodeId> = new Map();
-	private readonly idThreshold: Map<NodeId, number>   = new Map();
+	private readonly idThreshold: Map<NodeId, number>      = new Map();
 	private readonly queue:       NodeToSlice[] = [];
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
 	public potentialAdditions:    Map<NodeId, [NodeId, NodeToSlice]> = new Map();
+	private cachedCallTargets:    Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
 
 	constructor(threshold: number) {
 		this.threshold = threshold;
@@ -52,6 +54,13 @@ export class VisitingQueue {
 
 	public hasId(id: NodeId): boolean {
 		return this.idThreshold.has(id);
+	}
+
+	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
+		if(!this.cachedCallTargets.has(id)) {
+			this.cachedCallTargets.set(id, targets());
+		}
+		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
 	}
 
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {

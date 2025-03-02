@@ -8,9 +8,12 @@ export type Fingerprint = string
 
 export function envFingerprint(env: REnvironmentInformation): Fingerprint {
 	return objectHash(env, {
-		algorithm:   'md5',
-		excludeKeys: key => key === 'id',
-		replacer:    (v: unknown) => (v === BuiltInEnvironment || v === EmptyBuiltInMemory) ? undefined : v
+		algorithm:                 'md5',
+		excludeKeys:               key => key === 'id' || key === 'value',
+		respectFunctionProperties: false,
+		respectFunctionNames:      false,
+		ignoreUnknown:             true,
+		replacer:                  (v: unknown) => (v === BuiltInEnvironment || v === EmptyBuiltInMemory) ? undefined : v
 	});
 }
 

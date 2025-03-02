@@ -25,7 +25,7 @@ import { updatePotentialAddition } from './static-slicer';
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
@@ -44,7 +44,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 		}
 	}
 
-	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph);
+	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph));
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -53,7 +53,7 @@ function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironme
 	if(!valueRoot) {
 		return;
 	}
-	const callTargets = getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph);
+	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph));
 	linkCallTargets(
 		false,
 		callTargets,
@@ -80,7 +80,7 @@ function linkCallTargets(
 /** returns the new threshold hit count */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	const baseEnvironment = current.baseEnvironment;
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowGraph, callerInfo, current.baseEnvironment);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowGraph, callerInfo, current.baseEnvironment, queue);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
 	if(functionCallTargets.size === 0) {

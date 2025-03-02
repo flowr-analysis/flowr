@@ -23,11 +23,9 @@ import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
 
 describe('flowr', () => {
-	if(getPlatform() !== 'linux') {
-		return;
-	}
+	const skip = getPlatform() !== 'linux';
 	describe.sequential('Server', withShell(shell => {
-		test('Correct Hello Message', withSocket(shell,async socket => {
+		test.skipIf(skip)('Correct Hello Message', withSocket(shell,async socket => {
 			const messages = socket.getMessages();
 			assert.strictEqual(messages.length, 1, 'Expected exactly one message to hello the client');
 
@@ -45,7 +43,7 @@ describe('flowr', () => {
 			}, 'Expected hello message to have the predefined format');
 		}));
 
-		test('Process simple REPL Message', withSocket(shell, async socket => {
+		test.skipIf(skip)('Process simple REPL Message', withSocket(shell, async socket => {
 			fakeSend<ExecuteRequestMessage>(socket, {
 				type:       'request-repl-execution',
 				ansi:       false,
@@ -72,7 +70,7 @@ describe('flowr', () => {
 		}));
 
 
-		test('Analyze a simple expression', withSocket(shell, async socket => {
+		test.skipIf(skip)('Analyze a simple expression', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',
@@ -105,7 +103,7 @@ describe('flowr', () => {
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
 		}));
 
-		test('Analyze a simple expression (Compact)', withSocket(shell, async socket => {
+		test.skipIf(skip)('Analyze a simple expression (Compact)', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',
@@ -142,7 +140,7 @@ describe('flowr', () => {
 		}));
 
 
-		test('Analyze the CFG', withSocket(shell, async socket => {
+		test.skipIf(skip)('Analyze the CFG', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',
@@ -162,7 +160,7 @@ describe('flowr', () => {
 			assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results');
 		}));
 
-		test('Process a Query', withSocket(shell, async socket => {
+		test.skipIf(skip)('Process a Query', withSocket(shell, async socket => {
 			fakeSend<FileAnalysisRequestMessage>(socket, {
 				type:      'request-file-analysis',
 				id:        '42',

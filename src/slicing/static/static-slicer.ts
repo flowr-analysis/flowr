@@ -1,4 +1,4 @@
-import { guard } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import { envFingerprint } from './fingerprint';
@@ -12,7 +12,7 @@ import type { REnvironmentInformation } from '../../dataflow/environments/enviro
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { getConfig } from '../../config';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
@@ -95,16 +95,21 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		}
 
 		for(const [target, { types }] of currentEdges) {
-			if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
-				continue;
-			}
 			const t = shouldTraverseEdge(types);
-			if(t === TraverseEdge.Always) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-			} else if(t === TraverseEdge.OnlyIfBoth) {
-				updatePotentialAddition(queue, id, target, baseEnvironment, baseEnvFingerprint);
-			} else if(t === TraverseEdge.SideEffect) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true);
+			switch(t) {
+				case TraverseEdge.Never:
+					continue;
+				case TraverseEdge.Always:
+					queue.add(target, baseEnvironment, baseEnvFingerprint, false);
+					continue;
+				case TraverseEdge.OnlyIfBoth:
+					updatePotentialAddition(queue, id, target, baseEnvironment, baseEnvFingerprint);
+					continue;
+				case TraverseEdge.SideEffect:
+					queue.add(target, baseEnvironment, baseEnvFingerprint, true);
+					continue;
+				default:
+					assertUnreachable(t);
 			}
 		}
 	}

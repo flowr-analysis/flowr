@@ -3,12 +3,11 @@ import { fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isNotUndefined } from '../../util/assert';
 
 export class VisitingQueue {
 	private readonly threshold:   number;
-	private timesHitThreshold:    number                 = 0;
-	private readonly seen:        Map<Fingerprint, NodeId | undefined>           = new Map();
+	private timesHitThreshold:    number                   = 0;
+	private readonly seen:        Map<Fingerprint, NodeId> = new Map();
 	private readonly idThreshold: Map<NodeId, number>   = new Map();
 	private readonly queue:       NodeToSlice[] = [];
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
@@ -58,7 +57,7 @@ export class VisitingQueue {
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values()].filter(isNotUndefined))
+			result:            new Set(this.seen.values())
 		};
 	}
 }

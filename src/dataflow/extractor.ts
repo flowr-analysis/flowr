@@ -115,7 +115,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		referenceChain:      [firstRequest],
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
-	df.graph.addFile(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
+	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
 
 	if(multifile) {
 		for(let i = 1; i < request.length; i++) {

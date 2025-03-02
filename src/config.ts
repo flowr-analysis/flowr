@@ -105,9 +105,17 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 * if it is relative.
 			 */
 			readonly dropPaths:             DropPathsOption
+		},
+		/**
+		 * The configuration for flowR's slicer
+		 */
+		slicer?: {
+			/**
+			 * The maximum number of iterations to perform on a single function call during slicing
+			 */
+			readonly threshold?: number
 		}
 	}
-
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -162,6 +170,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			ignoreCapitalization:  true,
 			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 			searchPath:            []
+		},
+		slicer: {
+			threshold: 50
 		}
 	}
 };
@@ -197,7 +208,10 @@ export const flowrConfigFileSchema = Joi.object({
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.')
-		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.')
+		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
+		slicer: Joi.object({
+			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
+		}).optional().description('The configuration for the slicer.')
 	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 

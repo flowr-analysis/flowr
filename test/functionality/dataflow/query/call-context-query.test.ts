@@ -51,6 +51,7 @@ describe.sequential('Call Context Query', withShell(shell => {
 	testQuery('Unwanted Call', 'cat()', [q(/print/)], baseResult({}));
 	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
 	testQuery('Do call', 'do.call("print")', [q(/print/)], r([{ id: 1, name: 'print' }]));
+
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7, name: 'foo' }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4], name: 'foo' }]));
@@ -70,6 +71,8 @@ describe.sequential('Call Context Query', withShell(shell => {
 		testQuery('Reading non-built-ins', 'read_csv(x)', [q(/read_csv/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [], name: 'read_csv' }]));
 		testQuery('Built-In in Argument', 'print(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 4, calls: [BuiltIn], name: 'mean' }]));
 		testQuery('Multiple Built-In in Argument', 'mean(y)\nprint(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn], name: 'mean' }, { id: 8, calls: [BuiltIn], name: 'mean' }]));
+		testQuery('Print calls (no default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: true })], r([{ id: 3, name: 'print' }]));
+		testQuery('Print calls (with default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: false })], r([{ id: 3, name: 'print' }, { id: 10, name: 'print' }]));
 	});
 	describe('Mixed Targets', () => {
 		const code = 'if(x) { print <- function() {} }\nprint()';

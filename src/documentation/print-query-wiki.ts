@@ -66,6 +66,7 @@ It's also possible to filter the results based on the following properties:
    The \`fileFilter\` property is an object made up of two properties:
      - **Filter** (\`filter\`): A regular expression that a node's file attribute must match to be considered.
      - **Include Undefined Files** (\`includeUndefinedFiles\`): If \`fileFilter\` is set, but a node's file attribute is not present, should we include it in the results? Defaults to \`true\`.
+2. **Ignore Parameter Values** (\`ignoreParameterValues\`): Should we ignore default values for parameters in the results?
 
 Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,
 all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:

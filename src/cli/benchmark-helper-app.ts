@@ -21,6 +21,7 @@ export interface SingleBenchmarkCliOptions {
 	parser:                    KnownParserName
 	'enable-pointer-tracking': boolean
 	'max-slices':              number
+	threshold?:                number
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -69,7 +70,7 @@ async function benchmark() {
 	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);
 	try {
-		await slicer.init(request);
+		await slicer.init(request, undefined, options.threshold);
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {

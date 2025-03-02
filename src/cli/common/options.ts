@@ -33,6 +33,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
 	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
 	{ name: 'max-file-slices',          type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
+	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
@@ -46,6 +47,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
 	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
 	{ name: 'max-slices',               type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
+	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

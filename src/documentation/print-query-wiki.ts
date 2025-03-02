@@ -549,7 +549,7 @@ ${
 	}], { showCode: false, collapseQuery: true })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} in the format \`[start-line, start-column, end-line, end-column]\`.	
+All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	
 
 		`;
 	}

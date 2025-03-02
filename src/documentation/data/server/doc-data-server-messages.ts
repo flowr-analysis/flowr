@@ -230,7 +230,7 @@ While the context is derived from the \`filename\`, we currently offer no way to
 **Retrieve the Output in a Compacted Form**
 
 The default response is formatted as JSON. But this can get very big quickly.
-By specifying \`format: "compact"\`, you can retrieve the results heavily compacted (using [msgpack](https://www.npmjs.com/package/@msgpack/msgpack)).
+By specifying \`format: "compact"\`, you can retrieve the results heavily compacted (using [lz-string](https://www.npmjs.com/package/lz-string)).
 This works with and without the control flow graph as described [above](#analysis-include-cfg).
 
 ${

@@ -20,8 +20,12 @@ import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
 import { describe, assert, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
+import { getPlatform } from '../../../src/util/os';
 
 describe('flowr', () => {
+	if(getPlatform() !== 'linux') {
+		return;
+	}
 	describe.sequential('Server', withShell(shell => {
 		test('Correct Hello Message', withSocket(shell,async socket => {
 			const messages = socket.getMessages();

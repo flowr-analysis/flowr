@@ -1,6 +1,7 @@
-import { guard } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
+import type { Fingerprint } from './fingerprint';
 import { envFingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
@@ -12,7 +13,8 @@ import type { REnvironmentInformation } from '../../dataflow/environments/enviro
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { getConfig } from '../../config';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -25,15 +27,22 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param ast       - The normalized AST of the code (used to get static nesting information of the lexemes in case of control flow dependencies that may have no effect on the slicing scope).
  * @param criteria  - The criterias to slice on.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
+ * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
  */
-export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
+export function staticSlicing(
+	graph: DataflowGraph,
+	{ idMap }: NormalizedAst,
+	criteria: SlicingCriteria,
+	threshold = getConfig().solver.slicer?.threshold ?? 75,
+	cache?: Map<Fingerprint, Set<NodeId>>
+): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);
 	expensiveTrace(slicerLogger,
 		() => `calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
 
-	const queue = new VisitingQueue(threshold);
+	const queue = new VisitingQueue(threshold, cache);
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -52,7 +61,8 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		 * include all the implicit side effects that we have to consider as we are unable to narrow them down
 		 */
 		for(const id of graph.unknownSideEffects) {
-			if(typeof id !== 'object') { /* otherwise, their target is just missing */
+			if(typeof id !== 'object') {
+				/* otherwise, their target is just missing */
 				queue.add(id, emptyEnv, basePrint, true);
 			}
 		}
@@ -61,8 +71,7 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	while(queue.nonEmpty()) {
 		const current = queue.next();
 
-		const { baseEnvironment, id, onlyForSideEffects } = current;
-		const baseEnvFingerprint = envFingerprint(baseEnvironment);
+		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
 
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
@@ -94,16 +103,21 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 		}
 
 		for(const [target, { types }] of currentEdges) {
-			if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
-				continue;
-			}
 			const t = shouldTraverseEdge(types);
-			if(t === TraverseEdge.Always) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-			} else if(t === TraverseEdge.OnlyIfBoth) {
-				updatePotentialAddition(queue, id, target, baseEnvironment);
-			} else if(t === TraverseEdge.SideEffect) {
-				queue.add(target, baseEnvironment, baseEnvFingerprint, true);
+			switch(t) {
+				case TraverseEdge.Never:
+					continue;
+				case TraverseEdge.Always:
+					queue.add(target, baseEnvironment, baseEnvFingerprint, false);
+					continue;
+				case TraverseEdge.OnlyIfBoth:
+					updatePotentialAddition(queue, id, target, baseEnvironment, baseEnvFingerprint);
+					continue;
+				case TraverseEdge.SideEffect:
+					queue.add(target, baseEnvironment, baseEnvFingerprint, true);
+					continue;
+				default:
+					assertUnreachable(t);
 			}
 		}
 	}
@@ -111,18 +125,19 @@ export function staticSlicing(graph: DataflowGraph, { idMap }: NormalizedAst, cr
 	return { ...queue.status(), decodedCriteria };
 }
 
-export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation): void {
+export function updatePotentialAddition(queue: VisitingQueue, id: NodeId, target: NodeId, baseEnvironment: REnvironmentInformation, envFingerprint: string): void {
 	const n = queue.potentialAdditions.get(target);
 	if(n) {
 		const [addedBy, { baseEnvironment, onlyForSideEffects }] = n;
 		if(addedBy !== id) {
-			queue.add(target, baseEnvironment, envFingerprint(baseEnvironment), onlyForSideEffects);
+			queue.add(target, baseEnvironment, envFingerprint, onlyForSideEffects);
 			queue.potentialAdditions.delete(target);
 		}
 	} else {
 		queue.potentialAdditions.set(target, [id, {
 			id:                 target,
 			baseEnvironment,
+			envFingerprint,
 			onlyForSideEffects: false
 		}]);
 	}

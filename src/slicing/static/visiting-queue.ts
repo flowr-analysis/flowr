@@ -1,23 +1,26 @@
 import type { Fingerprint } from './fingerprint';
 import { fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
-import { slicerLogger } from './static-slicer';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isNotUndefined } from '../../util/assert';
+import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 
 export class VisitingQueue {
 	private readonly threshold:   number;
-	private timesHitThreshold:    number                 = 0;
-	private readonly seen:        Map<Fingerprint, NodeId | undefined>           = new Map();
-	private readonly idThreshold: Map<NodeId, number>   = new Map();
+	private timesHitThreshold:    number                   = 0;
+	private readonly seen:        Map<Fingerprint, NodeId> = new Map();
+	private readonly seenByCache: Set<NodeId>              = new Set();
+	private readonly idThreshold: Map<NodeId, number>      = new Map();
 	private readonly queue:       NodeToSlice[] = [];
+	private readonly cache?:      Map<Fingerprint, Set<NodeId>> = new Map();
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
 	public potentialAdditions:    Map<NodeId, [NodeId, NodeToSlice]> = new Map();
+	private cachedCallTargets:    Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
 
-	constructor(threshold: number) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>) {
 		this.threshold = threshold;
+		this.cache     = cache;
 	}
 
 	/**
@@ -30,7 +33,6 @@ export class VisitingQueue {
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target) ?? 0;
 		if(idCounter > this.threshold) {
-			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`);
 			this.timesHitThreshold++;
 			return;
 		}
@@ -39,9 +41,16 @@ export class VisitingQueue {
 		const print = fingerprint(target, envFingerprint, onlyForSideEffects);
 
 		if(!this.seen.has(print)) {
+			const cached = this.cache?.get(print);
+			if(cached) {
+				this.seenByCache.add(target);
+				for(const id of cached) {
+					this.queue.push({ id, baseEnvironment: env, envFingerprint, onlyForSideEffects });
+				}
+			}
 			this.idThreshold.set(target, idCounter + 1);
 			this.seen.set(print, target);
-			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects });
+			this.queue.push({ id: target, baseEnvironment: env, envFingerprint, onlyForSideEffects });
 		}
 	}
 
@@ -57,10 +66,17 @@ export class VisitingQueue {
 		return this.idThreshold.has(id);
 	}
 
+	public memoizeCallTargets(id: NodeId, targets: () => Set<DataflowGraphVertexInfo>): Set<DataflowGraphVertexInfo> {
+		if(!this.cachedCallTargets.has(id)) {
+			this.cachedCallTargets.set(id, targets());
+		}
+		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
+	}
+
 	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values()].filter(isNotUndefined))
+			result:            new Set([...this.seen.values(), ...this.seenByCache])
 		};
 	}
 }

@@ -135,8 +135,10 @@ export const EmptyBuiltInEnvironment: IEnvironment = {
  * See {@link EmptyBuiltInEnvironment} for the case `fullBuiltIns = false`.
  */
 export function initializeCleanEnvironments(fullBuiltIns = true): REnvironmentInformation {
-	BuiltInEnvironment.memory ??= BuiltInMemory;
-	EmptyBuiltInEnvironment.memory ??= EmptyBuiltInMemory;
+	if(BuiltInEnvironment.memory === undefined) {
+		BuiltInEnvironment.memory = BuiltInMemory;
+		EmptyBuiltInEnvironment.memory = EmptyBuiltInMemory;
+	}
 	return {
 		current: new Environment(fullBuiltIns ? BuiltInEnvironment : EmptyBuiltInEnvironment),
 		level:   0

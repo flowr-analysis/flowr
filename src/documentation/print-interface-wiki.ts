@@ -221,6 +221,9 @@ ${codeBlock('json', JSON.stringify(
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
+				},
+				slicer: {
+					threshold: 50
 				}
 			}
 		} satisfies FlowrConfigOptions,

@@ -25,7 +25,7 @@ import { updatePotentialAddition } from './static-slicer';
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
@@ -44,7 +44,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 		}
 	}
 
-	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph);
+	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph));
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -53,7 +53,7 @@ function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironme
 	if(!valueRoot) {
 		return;
 	}
-	const callTargets = getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph);
+	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph));
 	linkCallTargets(
 		false,
 		callTargets,
@@ -71,18 +71,6 @@ function linkCallTargets(
 	queue: VisitingQueue
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
-		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		/* for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			// only if the outgoing path does not already have a defined by linkage
-			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment, openIn.type) : undefined;
-			if(defs === undefined) {
-				continue;
-			}
-			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
-				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, onlyForSideEffects);
-			}
-		}*/
-
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
@@ -92,7 +80,7 @@ function linkCallTargets(
 /** returns the new threshold hit count */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	const baseEnvironment = current.baseEnvironment;
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowGraph, callerInfo, current.baseEnvironment);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowGraph, callerInfo, current.baseEnvironment, queue);
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 
 	if(functionCallTargets.size === 0) {
@@ -122,7 +110,7 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 		} else if(edgeIncludesType(edge.types, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument)) {
-			updatePotentialAddition(queue, from, target, baseEnvironment);
+			updatePotentialAddition(queue, from, target, baseEnvironment, baseEnvFingerprint);
 		}
 	}
 	return true;

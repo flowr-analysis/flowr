@@ -37,7 +37,11 @@ import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph'
 import { assert, test, describe, afterAll, beforeAll } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
+import type { PipelineOutput , Pipeline } from '../../../src/core/steps/pipeline/pipeline';
+import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
+import { runSearch } from '../../../src/search/flowr-search-executor';
+import { type ContainerIndex } from '../../../src/dataflow/graph/vertex';
+import type { DataflowInformation } from '../../../src/dataflow/info';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -322,11 +326,11 @@ function cropIfTooLong(str: string): string {
  * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
  * flexible matching of the expected graph.
  */
-export function assertDataflow(
+export function assertDataflow<P extends Pipeline>(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string | RParseRequests,
-	expected: DataflowGraph,
+	expected: DataflowGraph | ((data: PipelineOutput<P> & { normalize: NormalizedAst, dataflow: DataflowInformation }) => DataflowGraph),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0
 ): void {
@@ -337,6 +341,10 @@ export function assertDataflow(
 			request: typeof input === 'string' ? requestFromInput(input) : input,
 			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps();
+
+		if(typeof expected === 'function') {
+			expected = expected(info);
+		}
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(info.normalize.idMap);
@@ -414,7 +422,7 @@ function testWrapper(skip: boolean | undefined, shouldFail: boolean, testName: s
 	}
 }
 
-export type TestCaseFailType = 'shell' | 'tree-sitter' | 'both' | undefined;
+export type TestCaseFailType = 'fail-shell' | 'fail-tree-sitter' | 'fail-both' | undefined;
 
 export function assertSliced(
 	name: TestLabel,
@@ -452,14 +460,14 @@ export function assertSliced(
 
 		testWrapper(
 			false,
-			testCaseFailType === 'both' || testCaseFailType === 'shell',
+			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
 			'shell',
 			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>),
 		);
 
 		testWrapper(
 			userConfig?.skipTreeSitter,
-			testCaseFailType === 'both' || testCaseFailType === 'tree-sitter',
+			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
 			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>),
 		);
@@ -490,4 +498,50 @@ export function assertSliced(
 		} /* v8 ignore stop */
 	}
 	handleAssertOutput(name, shell, input, userConfig);
+}
+
+export function assertContainerIndicesDefinition(
+	name: TestLabel,
+	shell: RShell,
+	input: string,
+	search: FlowrSearchLike,
+	expectedIndices: ContainerIndex[],
+	userConfig: Partial<TestConfiguration> = {},
+) {
+	const effectiveName = decorateLabelContext(name, ['dataflow']);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
+		const analysis = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+			parser:  shell,
+			request: requestFromInput(input),
+		}).allRemainingSteps();
+		const result = runSearch(search, analysis);
+
+		assert(result.length > 0, 'The result of the search was empty');
+
+		for(const element of result) {
+			const id = element.node.info.id;
+			const vertex = analysis.dataflow.graph.getVertex(id);
+			assert(vertex !== undefined, `vertex with id ${id} doesn't exist`);
+			assert(vertex.indicesCollection !== undefined, `indices collection for vertex with id ${id} doesn't exist`);
+			const actualIndices = vertex.indicesCollection.flatMap(collection => collection.indices) ?? [];
+
+			const actual = stringifyIndices(actualIndices);
+			const expected = stringifyIndices(expectedIndices);
+
+			try {
+				assert.strictEqual(
+					actual, expected,
+					`got: ${actual}, vs. expected: ${expected}, for input ${input}, url: ${graphToMermaidUrl(analysis.dataflow.graph, true)}`
+				);
+			} /* v8 ignore start */ catch(e) {
+				console.error(`got:\n${actual}\nvs. expected:\n${expected}`);
+				console.error(normalizedAstToMermaidUrl(analysis.normalize.ast));
+				throw e;
+			} /* v8 ignore stop */
+		}
+	});
+}
+
+function stringifyIndices(indices: ContainerIndex[]): string {
+	return `[\n${indices.map(i => '  ' + JSON.stringify(i)).join('\n')}\n]`;
 }

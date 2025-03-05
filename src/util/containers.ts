@@ -4,7 +4,7 @@ import { resolveByName } from '../dataflow/environments/resolve-by-name';
 import type {
 	ContainerIndex,
 	ContainerIndices,
-	ContainerIndicesCollection, 
+	ContainerIndicesCollection,
 	IndexIdentifier,
 } from '../dataflow/graph/vertex';
 import {
@@ -36,7 +36,7 @@ export function getAccessOperands<OtherInfo>(
 
 /**
  * Resolves the passed name in the passed environment and returns the indicesCollection of the resolved definitions.
- * 
+ *
  * @param name - Name to resolve
  * @param environment - Environment in which name is resolved
  * @returns The indicesCollection of the resolved definitions
@@ -48,6 +48,8 @@ export function resolveIndicesByName(name: Identifier, environment: REnvironment
 
 /**
  * Resolves {@link accessedArg} in the {@link environment} and filters its indices according to {@link accessArg}.
+ *
+ * If no indices could be found that match the `accessArg`, the original indices are returned as overapproximation.
  *
  * @param accessedArg - The argument to resolve
  * @param accessArg - The argument which is used to filter the indices
@@ -62,7 +64,13 @@ export function resolveSingleIndex(
 ): ContainerIndicesCollection {
 	const indicesCollection = resolveIndicesByName(accessedArg.lexeme, environment);
 	const accessedIndicesCollection = filterIndices(indicesCollection, accessArg, isIndexBasedAccess);
-	return accessedIndicesCollection;
+	// If the accessed indices couldn't be resolved, overapproximate by returning the original indices.
+	// This could also be the case, when nothing is acccessed, but we better be safe.
+	if(accessedIndicesCollection === undefined) {
+		return indicesCollection;
+	} else {
+		return accessedIndicesCollection;
+	}
 }
 
 /**
@@ -81,7 +89,7 @@ export function filterIndices(
 	for(const indices of indicesCollection ?? []) {
 		const filteredIndices = indices.indices.filter(index => isAccessed(index, accessArg.lexeme, isIndexBasedAccess));
 
-		if(filteredIndices.length == 0) {
+		if(filteredIndices.length === 0) {
 			continue;
 		}
 

@@ -16,7 +16,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 			{ container: ContainerType.List,   type: AccessType.Dollar,        hasNamedArguments: true  },
 		]
 	)('Access for container $container using $type and hasNamedArguments $hasNamedArguments', ({ container, type, hasNamedArguments }) => {
-		const { acc, def, accessCapability } = setupContainerFunctions(container, type, hasNamedArguments);
+		const { acc, accS, def, accessCapability } = setupContainerFunctions(container, type, hasNamedArguments);
 
 		const basicCapabilities = [
 			'name-normal',
@@ -593,6 +593,23 @@ print(${acc(acc('wrapper', 1), 1)})`,
 					'fail-both',
 				);
 			});
+		});
+
+		// Only bracket access is affected from unknown access operations.
+		describe.skipIf(type === AccessType.Dollar)('Unknown access', () => {
+			assertSliced(
+				label('When access cannot be resolved, then all indices are read', basicCapabilities),
+				shell,
+				`numbers <- ${def('1', '2')}
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+print(${accS('numbers', 'foo()')})`,
+				['4@print'],
+				`numbers <- ${def('1', '2')}
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+print(${accS('numbers', 'foo()')})`,
+			);
 		});
 	});
 }));

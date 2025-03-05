@@ -22,7 +22,7 @@ export const enum AccessType {
 
 /**
  * Returns the closing bracket for the given access type.
- * 
+ *
  * @param type - Access type
  * @returns Closing bracket
  */
@@ -34,12 +34,16 @@ function getClosingBracket(type: AccessType): string {
 			return ']';
 		case AccessType.Dollar:
 			return '';
+		default: {
+			const ex: never = type;
+			throw new Error(`Unknown access type: ${ex as string}`);
+		}
 	}
 }
 
 /**
  * Returns the capability for the given access type.
- * 
+ *
  * @param type - Access type
  * @returns Capability ID
  */
@@ -51,6 +55,10 @@ function getAccessCapability(type: AccessType): SupportedFlowrCapabilityId {
 			return 'single-bracket-access';
 		case AccessType.Dollar:
 			return 'dollar-access';
+		default: {
+			const ex: never = type;
+			throw new Error(`Unknown access type: ${ex as string}`);
+		}
 	}
 }
 
@@ -75,6 +83,12 @@ function createAccess(type: AccessType, name: string, ...indices: number[]): str
 		result += `${type}${indexString}${closingBracket}`;
 	}
 	return result;
+}
+
+function createSimpleAccess(type: AccessType, name: string, index: string | number): string {
+	const closingBracket = getClosingBracket(type);
+	const indexString = Number.isNaN(Number(index)) ? index : `arg${index}`;
+	return `${name}${type}${indexString}${closingBracket}`;
 }
 
 /**
@@ -206,6 +220,8 @@ export function setupContainerFunctions(
 ) {
 	/** {@link createAccess} */
 	const acc = (name: string, ...indices: number[]) => createAccess(accessType, name, ...indices);
+	/** {@link createSimpleAccess} */
+	const accS = (name: string, index: string | number) => createSimpleAccess(accessType, name, index);
 	/** {@link createDefinition} */
 	const def = (...values: (string | string[])[]) => createDefinition(containerType, hasNamedArguments, ...values);
 	/** {@link getAccessCapability} */
@@ -222,5 +238,5 @@ export function setupContainerFunctions(
 		line: number,
 		fn: ((query: FlowrSearchBuilder<'get'>) => FlowrSearchLike) | undefined = undefined
 	) => queryAccessInLine(accessType, line, fn);
-	return { acc, def, accessCapability, queryArg, queryNamedArg, queryUnnamedArg, queryAccInLine };
+	return { acc, accS, def, accessCapability, queryArg, queryNamedArg, queryUnnamedArg, queryAccInLine };
 }

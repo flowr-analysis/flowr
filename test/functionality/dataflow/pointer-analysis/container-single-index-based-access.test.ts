@@ -19,7 +19,7 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 		]
 	)('Access for container $container using $type and hasNamedArguments $hasNamedArguments', ({ container, type, hasNamedArguments }) => {
 		const {
-			acc, def, accessCapability, queryArg, queryNamedArg, queryUnnamedArg, queryAccInLine
+			acc, accS, def, accessCapability, queryArg, queryNamedArg, queryUnnamedArg, queryAccInLine
 		} = setupContainerFunctions(container, type, hasNamedArguments);
 
 		const basicCapabilities = [
@@ -175,6 +175,28 @@ describe.sequential('Container Single Index Based Access', withShell(shell => {
 						{ query: Q.varInLine('numbers', 2).last() },
 						data,
 					),
+				{
+					expectIsSubgraph:      true,
+					resolveIdsAsCriterion: true,
+				}
+			);
+		});
+
+		// Only bracket access is affected from unknown access operations.
+		describe.skipIf(type === AccessType.Dollar)('Unknown access', () => {
+			assertDataflow(
+				label('When access cannot be resolved, then all indices are read', basicCapabilities),
+				shell,
+				`numbers <- ${def('1', '2')}
+${acc('numbers', 1)} <- 1
+${acc('numbers', 2)} <- 2
+${accS('numbers', 'foo()')}`,
+				(data) => emptyGraph()
+					.readsQuery(queryAccInLine(4), queryArg(1, '1', 1), data)
+					.readsQuery(queryAccInLine(4), queryArg(2, '2', 1), data)
+					.readsQuery(queryAccInLine(4), queryAccInLine(2), data)
+					.readsQuery(queryAccInLine(4), queryAccInLine(3), data)
+				,
 				{
 					expectIsSubgraph:      true,
 					resolveIdsAsCriterion: true,

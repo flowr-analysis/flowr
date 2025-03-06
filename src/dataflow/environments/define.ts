@@ -50,6 +50,7 @@ function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphI
 	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
 			if(existingDef.indicesCollection === undefined) {
+				newExistingDefs.push(existingDef);
 				continue;
 			}
 

@@ -306,8 +306,6 @@ print(${acc('numbers', 1)})`,
 				`numbers <- foo()
 ${acc('numbers', 1)} <- 1
 print(${acc('numbers', 1)})`,
-				undefined,
-				'fail-both',
 			);
 
 			assertSliced(
@@ -322,8 +320,6 @@ print(numbers)`,
 ${acc('numbers', 1)} <- 1
 ${acc('numbers', 2)} <- 2
 print(numbers)`,
-				undefined,
-				'fail-both',
 			);
 		});
 

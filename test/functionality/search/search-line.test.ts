@@ -4,6 +4,8 @@ import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-buil
 import { assertSearch } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
+import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
+import { Mapper } from '../../../src/search/search-executor/search-mappers';
 
 describe.sequential('flowR search', withShell(shell => {
 	assertSearch('simple search for first', shell, 'x <- 1\nprint(x)', ['1@x'],
@@ -33,7 +35,7 @@ describe.sequential('flowR search', withShell(shell => {
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
 	assertSearch('with enrichment', shell, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@func'],
-		// TODO mappers don't exist yet
-		/*Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).first()*/
+		Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(2),
+		Q.all().get(Enrichment.CallTargets).select(2),
 	);
 }));

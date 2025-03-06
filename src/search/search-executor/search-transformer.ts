@@ -18,6 +18,8 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import { isNotUndefined } from '../../util/assert';
 import type { EnrichedFlowrSearchElement, Enrichment } from './search-enrichers';
 import { enrich } from './search-enrichers';
+import type { Mapper, MapperArguments } from './search-mappers';
+import { map } from './search-mappers';
 
 
 /**
@@ -49,7 +51,8 @@ export const transformers = {
 	filter: getFilter,
 	merge:  getMerge,
 	select: getSelect,
-	with:   getWith
+	with:   getWith,
+	map:    getMap
 } as const;
 
 
@@ -156,6 +159,13 @@ function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE e
 	data: FlowrSearchInput<Pipeline>, elements: FSE, { info }: { info: Enrichment }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
 	return elements.mutate(
 		elements => elements.map(e => enrich(e, data, info)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
+	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
+}
+
+function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
+	return elements.mutate(
+		elements => elements.map(e => map(e, data, mapper, args)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
 	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
 }
 

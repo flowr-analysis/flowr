@@ -157,11 +157,14 @@ Input:
   Normalized R tokens (w/o comments):  ${pad(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
-  Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
-  Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
-  Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:              ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
+  Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
+  Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
+  Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
+  Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
+  Number of stored Vtx indices:  ${pad(stats.dataflow.storedVertexIndices)}
+  Number of stored Env indices:  ${pad(stats.dataflow.storedEnvIndices)}
+  Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
+  Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
@@ -214,11 +217,14 @@ Input:
   Normalized R tokens (w/o comments):  ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokensNoComments)}
 
 Dataflow:
-  Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
-  Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
-  Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
-  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Size of graph:              ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
+  Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
+  Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
+  Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
+  Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
+  Number of stored Vtx indices:  ${formatSummarizedMeasure(stats.dataflow.storedVertexIndices)}
+  Number of stored Env indices:  ${formatSummarizedMeasure(stats.dataflow.storedEnvIndices)}
+  Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
+  Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
 `;
 }
 

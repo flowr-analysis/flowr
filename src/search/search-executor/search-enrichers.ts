@@ -39,6 +39,10 @@ export const Enrichments = {
 	} satisfies EnrichmentData<{documentation: FlowrSearchElement<ParentInformation>[]}>
 } as const;
 
+export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentContent<E> {
+	return (e as EnrichedFlowrSearchElement<ParentInformation>)?.enrichments?.[enrichment] as EnrichmentContent<E>;
+}
+
 export function enrich<
 	ElementIn extends FlowrSearchElement<ParentInformation>,
 	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>>(

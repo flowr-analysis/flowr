@@ -163,10 +163,10 @@ function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE e
 }
 
 function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: FlowrSearchInput<Pipeline>, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, Elements> {
 	return elements.mutate(
-		elements => elements.map(e => map(e, data, mapper, args)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
-	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
+		elements => elements.flatMap(e => map(e, data, mapper, args)) as Elements
+	) as unknown as FlowrSearchElements<ParentInformation, Elements>;
 }
 
 function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(

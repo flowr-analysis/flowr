@@ -11,14 +11,14 @@ import { processRepeatLoop } from '../internal/process/functions/call/built-in/b
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { ReferenceType } from './identifier';
-import { guard } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition';
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -30,6 +30,10 @@ import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
+import { resolveIdToValue, type ResolveInfo } from './resolve-by-name';
+import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 
 export const BuiltIn = 'built-in';
 
@@ -100,6 +104,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.cfg !== undefined) {
 		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
 	}
+	processDataFrameFunctionCall(name, args, rootId, data, config);
 
 	return res;
 }
@@ -155,3 +160,169 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
 registerBuiltInDefinitions(DefaultBuiltinConfig);
+
+type DataFrameOperation = 'create' | 'unknown';
+
+interface DataFrameEvent {
+	type:      DataFrameOperation,
+	operand:   NodeId | undefined,
+	arguments: (NodeId | undefined)[]
+}
+
+type Interval = [number, number];
+type IntervalDomain = Interval | 'bottom';
+const IntervalBottom: IntervalDomain = 'bottom';
+const IntervalTop: IntervalDomain = [0, Infinity];
+
+type ColNamesDomain = string[] | 'top';
+const ColNamesBottom: ColNamesDomain = [];
+const ColNamesTop: ColNamesDomain = 'top';
+
+interface DataFrameDomain {
+	colnames: ColNamesDomain,
+	cols:     IntervalDomain,
+	rows:     IntervalDomain
+}
+const DataFrameTop: DataFrameDomain = {
+	colnames: ColNamesTop,
+	cols:     IntervalTop,
+	rows:     IntervalTop
+};
+
+interface AbstractInterpretationInfo {
+	dataFrame?: {
+		events: DataFrameEvent[],
+		domain: DataFrameDomain
+	}
+}
+
+const DataFrameSpecialArguments = ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'];
+
+function processDataFrameFunctionCall<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: DefaultBuiltInProcessorConfiguration
+) {
+	switch(name.content) {
+		case 'data.frame':
+			return processDataFrameCreate(name, args, rootId, data, config);
+		case 'read.csv':
+			return processDataFrameUnknownCreate(name, args, rootId, data, config);
+		default:
+			return processDataFrameUnknownCall(name, args, rootId, data, config);
+	}
+}
+
+function processDataFrameCreate<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: DefaultBuiltInProcessorConfiguration
+) {
+	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+	name.info.dataFrame.events.push({
+		type:      'create',
+		operand:   undefined,
+		arguments: args
+			.filter(arg => arg === EmptyArgument || arg.name === undefined || !DataFrameSpecialArguments.includes(arg.name.content))
+			.map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
+	});
+}
+
+function processDataFrameUnknownCreate<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: DefaultBuiltInProcessorConfiguration
+) {
+	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+	name.info.dataFrame.events.push({
+		type:      'unknown',
+		operand:   undefined,
+		arguments: []
+	});
+}
+
+function processDataFrameUnknownCall<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: DefaultBuiltInProcessorConfiguration
+) {
+	const dataFrameArg = args.find((arg): arg is RArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo> => arg !== EmptyArgument && arg.value !== undefined && arg.value.info.dataFrame !== undefined);
+
+	if(dataFrameArg) {
+		name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+		name.info.dataFrame.events.push({
+			type:      'unknown',
+			operand:   dataFrameArg.info.id,
+			arguments: []
+		});
+	}
+}
+
+export function processDataFrameExpressionList<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+) {
+	visitAst(data.completeAst.ast, node => {
+		if('dataFrame' in node.info) {
+			const dataFrameInfo = (node.info as AbstractInterpretationInfo).dataFrame;
+			console.log(node.info.id, node.lexeme, dataFrameInfo?.events, applyDataFrameSemantics(dataFrameInfo?.events[0]!, { environment: data.environment, idMap: data.completeAst.idMap, full: true }));
+		}
+	});
+}
+
+function applyDataFrameSemantics(event: DataFrameEvent, data: ResolveInfo): DataFrameDomain {
+	switch(event.type) {
+		case 'create': {
+			const argNames = event.arguments.map(arg => arg ? resolveIdToArgName(arg, data) : undefined);
+			const argLengths = event.arguments.map(arg => arg ? resolveIdToArgVectorLength(arg, data) : undefined);
+			const colnames = argNames.some(arg => arg === undefined) ? ColNamesTop : argNames as ColNamesDomain;
+			const rowCount = argLengths.some(arg => arg === undefined) ? undefined : Math.max(...argLengths as number[], 0);
+
+			return {
+				colnames: colnames,
+				cols:     [event.arguments.length, event.arguments.length],
+				rows:     rowCount !== undefined ? [rowCount, rowCount] : IntervalTop
+			};
+		}
+		case 'unknown': {
+			return DataFrameTop;
+		}
+		default:
+			assertUnreachable(event.type);
+	}
+}
+
+function resolveIdToArgName(id: NodeId | RNodeWithParent, { graph, idMap } : ResolveInfo): string | undefined {
+	idMap ??= graph?.idMap;
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+
+	if(node?.type === RType.Argument) {
+		return node.name?.content;
+	}
+	return undefined;
+}
+
+function resolveIdToArgVectorLength(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): number | undefined {
+	idMap ??= graph?.idMap;
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+
+	if(node?.type !== RType.Argument || node.value === undefined) {
+		return undefined;
+	}
+	const resolvedValue = resolveIdToValue(node.value, { environment, graph, idMap, full });
+
+	if(resolvedValue?.length === 1) {
+		return Array.isArray(resolvedValue[0]) ? resolvedValue[0].length : undefined;
+	}
+	return undefined;
+}

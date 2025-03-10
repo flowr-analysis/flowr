@@ -147,7 +147,7 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly rootId:                NodeId
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
-	readonly argumentProcessResult: readonly (DataflowInformation | undefined)[]
+	readonly argumentProcessResult: readonly (Pick<DataflowInformation, 'entryPoint'> | undefined)[]
 }
 
 export function patchFunctionCall<OtherInfo>(

@@ -42,6 +42,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappi
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';
     readonly suffixes: readonly ('<<-' | '<-')[];
+	readonly config:      { readIndices: boolean }
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -93,7 +94,7 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 
 /* registers all combinations of replacements */
 export function registerReplacementFunctions(
-	{ names, suffixes, assumePrimitive }: BuiltInReplacementDefinition
+	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition
 ): void {
 	const replacer = BuiltInProcessorMapper['builtin:replacement'];
 	guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
@@ -103,7 +104,7 @@ export function registerReplacementFunctions(
 			const d: IdentifierDefinition[] = [{
 				type:                ReferenceType.BuiltInFunction,
 				definedAt:           BuiltIn,
-				processor:           (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix }),
+				processor:           (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
 				name:                effectiveName,
 				controlDependencies: undefined,
 				nodeId:              BuiltIn

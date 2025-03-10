@@ -268,7 +268,7 @@ export function markAsAssignment(
 	if(getConfig().solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
-			// support for tracking indices
+			// support for tracking indices.
 			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
 			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
 

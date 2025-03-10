@@ -161,25 +161,10 @@ function processNumberBasedAccess<OtherInfo>(
 	return fnCall;
 }
 
-/**
- * Processes different types of string-based access operations.
- *
- * Example:
- * ```r
- * a$foo
- * a@foo
- * ```
- */
-function processStringBasedAccess<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
-	rootId: NodeId,
-	config: ForceArguments,
-) {
+export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = [...args];
 	// if the argument is a symbol, we convert it to a string for this perspective
-	for(let i = 1; i < newArgs.length; i++) {
+	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
 		const arg = newArgs[i];
 		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
 			newArgs[i] = {
@@ -197,6 +182,26 @@ function processStringBasedAccess<OtherInfo>(
 			};
 		}
 	}
+	return newArgs;
+}
+
+/**
+ * Processes different types of string-based access operations.
+ *
+ * Example:
+ * ```r
+ * a$foo
+ * a@foo
+ * ```
+ */
+function processStringBasedAccess<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation, string>,
+	rootId: NodeId,
+	config: ForceArguments,
+) {
+	const newArgs = symbolArgumentsToStrings(args);
 
 	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
 

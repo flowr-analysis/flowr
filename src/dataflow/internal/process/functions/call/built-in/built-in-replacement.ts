@@ -5,23 +5,27 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { processAssignment } from './built-in-assignment';
 import type { ForceArguments } from '../common';
-import { processAllArguments } from '../common';
-import { guard } from '../../../../../../util/assert';
+import { patchFunctionCall , processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex, IndexIdentifier } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import { graphToMermaidUrl } from '../../../../../../util/mermaid/dfg';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { unpackArgument } from '../argument/unpack-argument';
+import { symbolArgumentsToStrings } from './built-in-access';
+
+
 
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -29,7 +33,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-' } & ForceArguments
+	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
@@ -53,24 +57,31 @@ export function processReplacementFunction<OtherInfo>(
 		{
 			superAssignment:   config.assignmentOperator === '<<-',
 			makeMaybe:         indices !== undefined ? false : config.makeMaybe,
-			indicesCollection: indices
+			indicesCollection: indices,
+			canBeReplacement:  true
 		}
 	);
+
+	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
 	const { callArgs } = processAllArguments({
 		functionName:   initializeCleanDataflowInformation(rootId, data),
-		args:           args.slice(1, -1),
+		args:           convertedArgs,
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
 		forceArgs:      config.forceArgs,
 	});
-	const fn = res.graph.getVertex(rootId, true);
-	guard(fn?.tag === VertexType.FunctionCall && fn.args.length === 2,
-		() => `Function ${rootId} not found in graph or not 2-arg fn-call (${JSON.stringify(fn)}) ${graphToMermaidUrl(res.graph)}`
-	);
-	fn.args = [fn.args[0], ...callArgs, fn.args[1]];
+
+	patchFunctionCall({
+		nextGraph: res.graph,
+		data,
+		rootId,
+		name,
+		argumentProcessResult:
+			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId })
+	});
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {

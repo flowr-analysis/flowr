@@ -151,6 +151,17 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:     'replacement',
 		suffixes: ['<-', '<<-'],
-		names:    ['[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals']
+		names:    ['[', '[[', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals'],
+		config:   {
+			readIndices: true
+		}
+	},
+	{
+		type:     'replacement',
+		suffixes: ['<-', '<<-'],
+		names:    ['$', '@'],
+		config:   {
+			readIndices: false
+		}
 	}
 ];

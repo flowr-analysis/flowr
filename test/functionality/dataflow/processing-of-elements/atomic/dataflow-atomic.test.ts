@@ -91,6 +91,19 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.constant(4)
 
 			);
+			assertDataflow(label('chained dollar', ['name-normal', 'numbers', 'single-bracket-access']), shell,
+				'a$b$c', emptyGraph()
+					.use(0, 'a', { cds: [] })
+					.argument(3, 0)
+					.call(3, '$', [argumentInCall(0), argumentInCall(1)], { returns: [0], reads: [BuiltIn, 0, 1], onlyBuiltIn: true })
+					.argument(3, 1)
+					.argument(6, 3)
+					.call(6, '$', [argumentInCall(3), argumentInCall(4)], { returns: [3], reads: [3, 4, BuiltIn], onlyBuiltIn: true })
+					.argument(6, 4)
+					.constant(1)
+					.constant(4)
+
+			);
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph()
 					.use(0, 'a', { cds: [] })
@@ -119,6 +132,13 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			'a[x] <- 5',  emptyGraph()
 				.use(1, 'x')
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, BuiltIn], onlyBuiltIn: true })
+				.constant(4)
+				.defineVariable(0, 'a', { definedBy: [4, 3] })
+		);
+		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
+			'a$b$c <- 5',  emptyGraph()
+				.use(1, 'x')
+				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, BuiltIn], onlyBuiltIn: true })
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
 		);

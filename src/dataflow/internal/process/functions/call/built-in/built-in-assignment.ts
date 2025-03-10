@@ -116,11 +116,11 @@ export function processAssignment<OtherInfo>(
 		});
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
-		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
 		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source]);
 	} else if(config.canBeReplacement && type === RType.Access) {
-		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${name.content} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
 		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 	} else if(type === RType.Access) {

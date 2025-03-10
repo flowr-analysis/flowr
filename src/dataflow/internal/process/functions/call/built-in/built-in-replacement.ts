@@ -5,7 +5,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { processAssignment } from './built-in-assignment';
 import type { ForceArguments } from '../common';
-import { patchFunctionCall , processAllArguments } from '../common';
+import { patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
@@ -14,7 +14,14 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import type { ContainerIndices, ContainerIndicesCollection, ContainerLeafIndex, IndexIdentifier } from '../../../../../graph/vertex';
+import type {
+	ContainerIndices,
+	ContainerIndicesCollection,
+	ContainerLeafIndex,
+	IndexIdentifier } from '../../../../../graph/vertex';
+import {
+	VertexType
+} from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -24,7 +31,7 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-
+import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -62,6 +69,26 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	);
 
+
+	// if this is a nested assignment we have to back-patch the toplevel indices here:
+	const defines = res.out;
+	if(defines && indices !== undefined) {
+		for(const def of defines) {
+			console.log('backpatch', def, JSON.stringify(indices));
+			const accessed = res.graph.getVertex(def.nodeId);
+			if(accessed && (accessed.tag === VertexType.VariableDefinition || accessed.tag === VertexType.FunctionDefinition)) {
+				accessed.indicesCollection = indices;
+				for(const val of res.environment.current.memory.values()) {
+					for(const d of val) {
+						if(d.nodeId === def.nodeId) {
+							(d as InGraphIdentifierDefinition).indicesCollection = indices;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
@@ -82,6 +109,16 @@ export function processReplacementFunction<OtherInfo>(
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId })
 	});
+
+	const firstArg = unpackArgument(args[0])?.info.id;
+
+	if(firstArg) {
+		res.graph.addEdge(
+			firstArg,
+			rootId,
+			EdgeType.DefinedBy | EdgeType.Reads
+		);
+	}
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {
@@ -107,7 +144,7 @@ export function processReplacementFunction<OtherInfo>(
  * ```
  * 
  * @param operation - Operation of replacement function e.g. '$\<-', '[\<-', '[[\<-' 
- * @param args - Arguments of the replacement function
+ * @param args      - Arguments of the replacement function
  * @returns Accessed indices construct
  */
 function constructAccessedIndices<OtherInfo>(
@@ -144,7 +181,7 @@ function constructAccessedIndices<OtherInfo>(
 }
 
 function isSupportedOperation<OtherInfo>(operation: string, value: RNode<OtherInfo & ParentInformation>) {
-	const isNameBasedAccess = operation === '$<-' && value.type === RType.Symbol;
+	const isNameBasedAccess = (operation === '$<-' || operation === '@<-') && value.type === RType.Symbol;
 	const isNumericalIndexBasedAccess = (operation === '[[<-' || operation === '[<-') && value.type === RType.Number;
 	return isNameBasedAccess || isNumericalIndexBasedAccess;
 }
@@ -152,7 +189,7 @@ function isSupportedOperation<OtherInfo>(operation: string, value: RNode<OtherIn
 function getIdentifierBuilder<OtherInfo>(
 	operation: string,
 ): (arg: RArgument<OtherInfo & ParentInformation>) => IndexIdentifier  {
-	if(operation === '$<-') {
+	if(operation === '$<-' || operation == '@<-') {
 		return (arg) => {
 			return {
 				index:  undefined,

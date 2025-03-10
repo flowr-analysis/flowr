@@ -164,7 +164,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	defaultEngine: 'r-shell',
 	solver:        {
 		variables:       VariableResolve.Alias,
-		pointerTracking: false,
+		pointerTracking: true,
 		resolveSource:   {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,

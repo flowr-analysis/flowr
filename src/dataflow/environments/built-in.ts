@@ -31,7 +31,6 @@ import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { resolveIdToValue, type ResolveInfo } from './resolve-by-name';
-import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 
@@ -104,7 +103,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.cfg !== undefined) {
 		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
 	}
-	processDataFrameFunctionCall(name, args, rootId, data, config);
+	processDataFrameFunctionCall(name, args);
 
 	return res;
 }
@@ -161,7 +160,7 @@ export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
 registerBuiltInDefinitions(DefaultBuiltinConfig);
 
-type DataFrameOperation = 'create' | 'unknown';
+type DataFrameOperation = 'create' | 'accessCol' | 'unknown';
 
 interface DataFrameEvent {
 	type:      DataFrameOperation,
@@ -200,27 +199,19 @@ const DataFrameSpecialArguments = ['row.names', 'check.rows', 'check.names', 'fi
 
 function processDataFrameFunctionCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
 	switch(name.content) {
 		case 'data.frame':
-			return processDataFrameCreate(name, args, rootId, data, config);
+			return processDataFrameCreate(name, args);
 		case 'read.csv':
-			return processDataFrameUnknownCreate(name, args, rootId, data, config);
-		default:
-			return processDataFrameUnknownCall(name, args, rootId, data, config);
+			return processDataFrameUnknownCreate(name);
 	}
 }
 
 function processDataFrameCreate<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
 	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
 	name.info.dataFrame.events.push({
@@ -233,11 +224,7 @@ function processDataFrameCreate<OtherInfo>(
 }
 
 function processDataFrameUnknownCreate<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>
 ) {
 	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
 	name.info.dataFrame.events.push({
@@ -247,21 +234,18 @@ function processDataFrameUnknownCreate<OtherInfo>(
 	});
 }
 
-function processDataFrameUnknownCall<OtherInfo>(
+export function processDataFrameStringBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: DefaultBuiltInProcessorConfiguration
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
-	const dataFrameArg = args.find((arg): arg is RArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo> => arg !== EmptyArgument && arg.value !== undefined && arg.value.info.dataFrame !== undefined);
+	const accessArgs = args.map(arg => arg !== EmptyArgument ? arg.info.id : undefined);
 
-	if(dataFrameArg) {
+	if(accessArgs.length >= 2 && accessArgs[0] !== undefined) {
 		name.info.dataFrame ??= { events: [], domain: DataFrameTop };
 		name.info.dataFrame.events.push({
-			type:      'unknown',
-			operand:   dataFrameArg.info.id,
-			arguments: []
+			type:      'accessCol',
+			operand:   accessArgs[0],
+			arguments: accessArgs.slice(1)
 		});
 	}
 }
@@ -275,7 +259,12 @@ export function processDataFrameExpressionList<OtherInfo>(
 	visitAst(data.completeAst.ast, node => {
 		if('dataFrame' in node.info) {
 			const dataFrameInfo = (node.info as AbstractInterpretationInfo).dataFrame;
-			console.log(node.info.id, node.lexeme, dataFrameInfo?.events, applyDataFrameSemantics(dataFrameInfo?.events[0]!, { environment: data.environment, idMap: data.completeAst.idMap, full: true }));
+
+			if(dataFrameInfo !== undefined && dataFrameInfo.events.length > 0) {
+				const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
+				const dataFrameDomain = applyDataFrameSemantics(dataFrameInfo.events[0], resolveInfo);
+				console.log(node.info.id, node.lexeme, dataFrameInfo.events, dataFrameDomain);
+			}
 		}
 	});
 }
@@ -292,6 +281,16 @@ function applyDataFrameSemantics(event: DataFrameEvent, data: ResolveInfo): Data
 				colnames: colnames,
 				cols:     [event.arguments.length, event.arguments.length],
 				rows:     rowCount !== undefined ? [rowCount, rowCount] : IntervalTop
+			};
+		}
+		case 'accessCol': {
+			const argNames = event.arguments.map(arg => arg ? resolveIdToArgValueSymbolName(arg, data) : undefined);
+			const colnames = argNames.some(arg => arg === undefined) ? ColNamesBottom : argNames as ColNamesDomain;
+
+			return {
+				colnames: colnames,
+				cols:     IntervalBottom,
+				rows:     IntervalBottom
 			};
 		}
 		case 'unknown': {
@@ -312,14 +311,28 @@ function resolveIdToArgName(id: NodeId | RNodeWithParent, { graph, idMap } : Res
 	return undefined;
 }
 
-function resolveIdToArgVectorLength(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): number | undefined {
+function resolveIdToArgValueSymbolName(id: NodeId | RNodeWithParent, { graph, idMap } : ResolveInfo): string | undefined {
+	idMap ??= graph?.idMap;
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+
+	if(node?.type === RType.Argument && node.value !== undefined) {
+		if(node.value.type === RType.Symbol) {
+			return node.value.content;
+		} else if(node.value.type === RType.String) {
+			return node.value.content.str;
+		}
+	}
+	return undefined;
+}
+
+function resolveIdToArgVectorLength(id: NodeId | RNodeWithParent, { graph, idMap, ...resolveInfo } : ResolveInfo): number | undefined {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 
 	if(node?.type !== RType.Argument || node.value === undefined) {
 		return undefined;
 	}
-	const resolvedValue = resolveIdToValue(node.value, { environment, graph, idMap, full });
+	const resolvedValue = resolveIdToValue(node.value, { graph, idMap, ...resolveInfo });
 
 	if(resolvedValue?.length === 1) {
 		return Array.isArray(resolvedValue[0]) ? resolvedValue[0].length : undefined;

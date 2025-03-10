@@ -21,7 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { BuiltIn, processDataFrameExpressionList } from '../../../../../environments/built-in';
+import { BuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -212,7 +212,6 @@ export function processExpressionList<OtherInfo>(
 			}
 		}
 	}
-	processDataFrameExpressionList(name, args, rootId, data);
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
 	return {

@@ -12,7 +12,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
-import { BuiltIn, processDataFrameStringBasedAccess } from '../../../../../environments/built-in';
+import { BuiltIn } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
@@ -237,7 +237,6 @@ function processStringBasedAccess<OtherInfo>(
 			}
 		}
 	}
-	processDataFrameStringBasedAccess(name, args);
 
 	return fnCall;
 }

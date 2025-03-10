@@ -79,7 +79,7 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 			type:                ReferenceType.BuiltInFunction,
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
-			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
+			/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 			processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
 			name,
 			nodeId:              BuiltIn

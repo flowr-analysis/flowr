@@ -103,7 +103,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.cfg !== undefined) {
 		res.exitPoints = [...res.exitPoints, { type: config.cfg, nodeId: rootId, controlDependencies: data.controlDependencies }];
 	}
-	processDataFrameFunctionCall(name, args);
 
 	return res;
 }
@@ -132,15 +131,15 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 }
 
 export const BuiltInProcessorMapper = {
-	'builtin:default':             defaultBuiltInProcessor,
+	'builtin:default':             decorateProcessor(defaultBuiltInProcessor, processDataFrameFunctionCall),
 	'builtin:apply':               processApply,
-	'builtin:expression-list':     processExpressionList,
+	'builtin:expression-list':     decorateProcessor(processExpressionList, processDataFrameExpressionList),
 	'builtin:source':              processSourceCall,
-	'builtin:access':              processAccess,
+	'builtin:access':              decorateProcessor(processAccess, processDataFrameAccess),
 	'builtin:if-then-else':        processIfThenElse,
 	'builtin:get':                 processGet,
 	'builtin:library':             processLibrary,
-	'builtin:assignment':          processAssignment,
+	'builtin:assignment':          decorateProcessor(processAssignment, processDataFrameAssignment),
 	'builtin:special-bin-op':      processSpecialBinOp,
 	'builtin:pipe':                processPipe,
 	'builtin:function-definition': processFunctionDefinition,
@@ -150,7 +149,8 @@ export const BuiltInProcessorMapper = {
 	'builtin:while-loop':          processWhileLoop,
 	'builtin:replacement':         processReplacementFunction,
 	'builtin:list':                processList
-} as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<any>>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
@@ -159,6 +159,25 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 
 registerBuiltInDefinitions(DefaultBuiltinConfig);
+
+type BuiltInIdentifierProcessorDecorator<Config> = <OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: Config
+) => void
+
+function decorateProcessor<Config>(
+	processor: BuiltInIdentifierProcessorWithConfig<Config>,
+	decorator: BuiltInIdentifierProcessorDecorator<Config>
+): BuiltInIdentifierProcessorWithConfig<Config> {
+	return (...args) => {
+		const result = processor(...args);
+		decorator(...args);
+		return result;
+	};
+}
 
 type DataFrameOperation = 'create' | 'accessCol' | 'unknown';
 
@@ -191,14 +210,14 @@ const DataFrameTop: DataFrameDomain = {
 interface AbstractInterpretationInfo {
 	dataFrame?: {
 		events: DataFrameEvent[],
-		domain: DataFrameDomain
+		domain: Map<string, DataFrameDomain>
 	}
 }
 
 const DataFrameSpecialArguments = ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'];
 
 function processDataFrameFunctionCall<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
 	switch(name.content) {
@@ -213,7 +232,7 @@ function processDataFrameCreate<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
-	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+	name.info.dataFrame ??= { events: [], domain: new Map() };
 	name.info.dataFrame.events.push({
 		type:      'create',
 		operand:   undefined,
@@ -226,7 +245,7 @@ function processDataFrameCreate<OtherInfo>(
 function processDataFrameUnknownCreate<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>
 ) {
-	name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+	name.info.dataFrame ??= { events: [], domain: new Map() };
 	name.info.dataFrame.events.push({
 		type:      'unknown',
 		operand:   undefined,
@@ -234,37 +253,66 @@ function processDataFrameUnknownCreate<OtherInfo>(
 	});
 }
 
-export function processDataFrameStringBasedAccess<OtherInfo>(
+function processDataFrameAccess<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: { treatIndicesAsString: boolean } & ForceArguments
+) {
+	if(config.treatIndicesAsString) {
+		processDataFrameStringBasedAccess(name, args);
+	}
+}
+
+function processDataFrameStringBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
-	const accessArgs = args.map(arg => arg !== EmptyArgument ? arg.info.id : undefined);
+	const leftArg = args[0] !== EmptyArgument ? args[0].info.id : undefined;
+	const rightArg = args[1] !== EmptyArgument ? args[1].info.id : undefined;
 
-	if(accessArgs.length >= 2 && accessArgs[0] !== undefined) {
-		name.info.dataFrame ??= { events: [], domain: DataFrameTop };
+	if(args.length === 2 && leftArg !== undefined && rightArg !== undefined) {
+		name.info.dataFrame ??= { events: [], domain: new Map() };
 		name.info.dataFrame.events.push({
 			type:      'accessCol',
-			operand:   accessArgs[0],
-			arguments: accessArgs.slice(1)
+			operand:   leftArg,
+			arguments: [rightArg]
 		});
 	}
 }
 
-export function processDataFrameExpressionList<OtherInfo>(
+function processDataFrameAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
-	visitAst(data.completeAst.ast, node => {
-		if('dataFrame' in node.info) {
-			const dataFrameInfo = (node.info as AbstractInterpretationInfo).dataFrame;
+	const leftArg = args[0] !== EmptyArgument ? args[0].value : undefined;
+	const rightArg = args[1] !== EmptyArgument ? args[1].value : undefined;
 
-			if(dataFrameInfo !== undefined && dataFrameInfo.events.length > 0) {
-				const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
-				const dataFrameDomain = applyDataFrameSemantics(dataFrameInfo.events[0], resolveInfo);
-				console.log(node.info.id, node.lexeme, dataFrameInfo.events, dataFrameDomain);
-			}
+	if(args.length === 2 && leftArg?.type === RType.Symbol && rightArg !== undefined) {
+		if(rightArg.type == RType.FunctionCall && rightArg.named && rightArg.functionName.info.dataFrame !== undefined && rightArg.functionName.info.dataFrame.events.length > 0) {
+			const identifier = leftArg.content;
+			const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
+			const dataFrameDomain = applyDataFrameSemantics(rightArg.functionName.info.dataFrame.events[0], resolveInfo);
+			name.info.dataFrame ??= { events: [], domain: new Map([[identifier, dataFrameDomain]]) };
+			console.log(name.info.id, name.lexeme, name.info.dataFrame.domain);
+		}
+	}
+}
+
+function processDataFrameExpressionList<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation & AbstractInterpretationInfo>
+) {
+	visitAst(data.completeAst.ast, node => {
+		if(node.info.dataFrame !== undefined && node.info.dataFrame.events.length > 0) {
+			const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
+			const dataFrameDomain = applyDataFrameSemantics(node.info.dataFrame.events[0], resolveInfo);
+			console.log(node.info.id, node.lexeme, node.info.dataFrame.events, dataFrameDomain);
 		}
 	});
 }

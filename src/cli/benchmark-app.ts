@@ -21,6 +21,7 @@ export interface BenchmarkCliOptions {
 	'enable-pointer-tracking': boolean
 	'max-file-slices':         number
 	threshold?:                number
+	'per-file-time-limit'?:    number
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
@@ -107,7 +108,8 @@ async function benchmark() {
 			// we reverse here "for looks", since the helper pops from the end, and we want file ids to be ascending :D
 			args.map(a => [...a, '--run-num', `${i}`]).reverse(),
 			limit,
-			options.parallel
+			options.parallel,
+			options['per-file-time-limit']
 		);
 		await pool.run();
 		const stats = pool.getStats();

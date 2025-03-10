@@ -32,7 +32,7 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config:    ConfigOfBuiltInMappingName<BuiltInProcessor>
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>
 }
 
 /**
@@ -82,6 +82,7 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 			controlDependencies: undefined,
 			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
 			processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+			config,
 			name,
 			nodeId:              BuiltIn
 		}];
@@ -102,9 +103,14 @@ export function registerReplacementFunctions(
 		for(const suffix of suffixes) {
 			const effectiveName = `${assignment}${suffix}`;
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInFunction,
-				definedAt:           BuiltIn,
-				processor:           (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+				type:      ReferenceType.BuiltInFunction,
+				definedAt: BuiltIn,
+				processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+				config:    {
+					...config,
+					assignmentOperator: suffix,
+					makeMaybe:          true
+				},
 				name:                effectiveName,
 				controlDependencies: undefined,
 				nodeId:              BuiltIn

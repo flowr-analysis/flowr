@@ -137,10 +137,13 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		);
 		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
 			'a$b$c <- 5',  emptyGraph()
-				.use(1, 'x')
-				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, BuiltIn], onlyBuiltIn: true })
+				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6], onlyBuiltIn: true })
+				.definedBy(3, 6)
+				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true })
 				.constant(4)
-				.defineVariable(0, 'a', { definedBy: [4, 3] })
+				.defineVariable(0, 'a', { definedBy: [7, 3] })
+				.constant(1)
+				.constant(7)
 		);
 	});
 
@@ -360,6 +363,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.constant(0)
 					.defineVariable(1, 'x', { definedBy: [0, 2] })
 					.defineVariable(3, 'a', { definedBy: [2, 6] })
+					.reads(3, 6)
 			);
 		});
 		describe('Double Assignments', () => {

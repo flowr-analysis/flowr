@@ -53,6 +53,7 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
 	definedAt: typeof BuiltIn
 	processor: BuiltInIdentifierProcessor
+	config?:   object
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -105,7 +106,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return res;
 }
 
-export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
+export function registerBuiltInFunctions<Config extends object, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
 	both:      boolean,
 	names:     readonly Identifier[],
 	processor: Proc,
@@ -118,6 +119,7 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
+			config,
 			name,
 			nodeId:              BuiltIn
 		}];

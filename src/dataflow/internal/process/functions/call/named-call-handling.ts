@@ -10,6 +10,7 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
 import { ReferenceType } from '../../../../environments/identifier';
+import type { DataflowGraph } from '../../../../graph/graph';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -41,6 +42,14 @@ function processDefaultFunctionProcessor<OtherInfo>(
 	return mergeInformation(information, call.information);
 }
 
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
+	const v = graph.getVertex(rootId);
+	if(v?.tag === VertexType.FunctionCall) {
+		v.onlyBuiltin = true;
+		v.environment = undefined;
+	}
+}
+
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -66,11 +75,7 @@ export function processNamedCall<OtherInfo>(
 		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		const v = information.graph.getVertex(rootId);
-		if(v?.tag === VertexType.FunctionCall) {
-			v.onlyBuiltin = true;
-			v.environment = undefined;
-		}
+		markAsOnlyBuiltIn(information.graph, rootId);
 	}
 
 	return information ?? initializeCleanDataflowInformation(rootId, data);

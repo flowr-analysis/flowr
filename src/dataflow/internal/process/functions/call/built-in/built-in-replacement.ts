@@ -19,9 +19,8 @@ import type {
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
 	IndexIdentifier } from '../../../../../graph/vertex';
-import {
-	VertexType
-} from '../../../../../graph/vertex';
+
+
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -31,7 +30,6 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -40,7 +38,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean } & ForceArguments
+	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
@@ -50,9 +48,9 @@ export function processReplacementFunction<OtherInfo>(
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
 
-	let indices: ContainerIndicesCollection = undefined;
+	let indices: ContainerIndicesCollection = config.activeIndices;
 	if(getConfig().solver.pointerTracking) {
-		indices = constructAccessedIndices<OtherInfo>(name.content, args);
+		indices ??= constructAccessedIndices<OtherInfo>(name.content, args);
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
@@ -68,26 +66,6 @@ export function processReplacementFunction<OtherInfo>(
 			canBeReplacement:  true
 		}
 	);
-
-
-	// if this is a nested assignment we have to back-patch the toplevel indices here:
-	const defines = res.out;
-	if(defines && indices !== undefined) {
-		for(const def of defines) {
-			console.log('backpatch', def, JSON.stringify(indices));
-			const accessed = res.graph.getVertex(def.nodeId);
-			if(accessed && (accessed.tag === VertexType.VariableDefinition || accessed.tag === VertexType.FunctionDefinition)) {
-				accessed.indicesCollection = indices;
-				for(const val of res.environment.current.memory.values()) {
-					for(const d of val) {
-						if(d.nodeId === def.nodeId) {
-							(d as InGraphIdentifierDefinition).indicesCollection = indices;
-						}
-					}
-				}
-			}
-		}
-	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 

@@ -136,6 +136,7 @@ function processNumberBasedAccess<OtherInfo>(
 		definedAt:           BuiltIn,
 		controlDependencies: undefined,
 		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+		config:              {},
 		name:                ':=',
 		nodeId:              BuiltIn,
 	}]);

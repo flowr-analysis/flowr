@@ -5,17 +5,27 @@ import type { IEnvironment, REnvironmentInformation  } from './environment';
 import { cloneEnvironmentInformation } from './clone';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
-import { isParentContainerIndex } from '../graph/vertex';
-
+import { isParentContainerIndex, isSameIndex } from '../graph/vertex';
+import { getConfig } from '../../config';
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
 
 	// When there are defined indices, merge the definitions
 	const inGraphDefinition = definition as InGraphIdentifierDefinition;
-	if(existing !== undefined && inGraphDefinition.indicesCollection !== undefined && inGraphDefinition.controlDependencies === undefined) {
-		newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
-		return;
+	if(
+		getConfig().solver.pointerTracking &&
+		existing !== undefined &&
+		inGraphDefinition.controlDependencies === undefined
+	) {
+		if(inGraphDefinition.indicesCollection !== undefined) {
+			newEnvironments.memory.set(name, mergeDefinitions(existing, inGraphDefinition));
+			return;
+		} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
+			// When indices couldn't be resolved, but indices where defined before, just add the definition
+			existing.push(definition);
+			return;
+		}
 	}
 
 	// check if it is maybe or not
@@ -40,6 +50,7 @@ function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphI
 	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
 			if(existingDef.indicesCollection === undefined) {
+				newExistingDefs.push(existingDef);
 				continue;
 			}
 
@@ -70,7 +81,7 @@ function overwriteContainerIndices(
 		if(isParentContainerIndex(overwriteIndex)) {
 			newIndices = [];
 			for(const index of indices.indices) {
-				if(index.lexeme === overwriteIndex.lexeme && isParentContainerIndex(index)) {
+				if(isSameIndex(index, overwriteIndex) && isParentContainerIndex(index)) {
 					const overwriteSubIndices = overwriteIndex.subIndices.flatMap(a => a.indices);
 
 					let newSubIndices: ContainerIndices[] = index.subIndices;
@@ -85,7 +96,7 @@ function overwriteContainerIndices(
 						});
 					}
 				}
-				if(index.lexeme !== overwriteIndex.lexeme || !isParentContainerIndex(index)) {
+				if(!isSameIndex(index, overwriteIndex) || !isParentContainerIndex(index)) {
 					newIndices.push(index);
 				}
 			}
@@ -94,7 +105,7 @@ function overwriteContainerIndices(
 			newIndices = indices.indices;
 		} else {
 			// Filter existing indices with the same name
-			newIndices = indices.indices.filter(def => def.lexeme !== overwriteIndex.lexeme);
+			newIndices = indices.indices.filter(def => !isSameIndex(def, overwriteIndex));
 		}
 
 		if(indices.isContainer || newIndices.length > 0) {

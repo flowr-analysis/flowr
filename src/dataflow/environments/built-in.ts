@@ -30,6 +30,7 @@ import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
+import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
 
 export const BuiltIn = 'built-in';
 
@@ -145,7 +146,8 @@ export const BuiltInProcessorMapper = {
 	'builtin:repeat-loop':         processRepeatLoop,
 	'builtin:while-loop':          processWhileLoop,
 	'builtin:replacement':         processReplacementFunction,
-	'builtin:list':                processList
+	'builtin:list':                processList,
+	'builtin:vector':              processVector,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;

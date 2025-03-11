@@ -214,7 +214,7 @@ print(${acc('numbers', 1)})`
 			});
 		});
 
-		describe('Config flag', () => {
+		describe('Disable config flag (pointer tracking)', () => {
 			useConfigForTest({ solver: { pointerTracking: false } });
 
 			assertSliced(

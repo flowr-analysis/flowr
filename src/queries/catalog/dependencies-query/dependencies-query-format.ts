@@ -99,6 +99,11 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.xport', argIdx: 0, argName: 'file', resolveValue: true },
 	// car
 	{ name: 'Import', argIdx: 0, argName: 'file', resolveValue: true },
+	// magick
+	{ name: 'image_read', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_svg', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_pdf', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_video', argIdx: 0, argName: 'path', resolveValue: true },
 ] as const;
 
 const OutputRedirects = [

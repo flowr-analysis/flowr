@@ -19,8 +19,6 @@ import type {
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
 	IndexIdentifier } from '../../../../../graph/vertex';
-
-
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';

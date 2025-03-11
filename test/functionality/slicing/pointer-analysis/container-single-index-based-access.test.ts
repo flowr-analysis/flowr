@@ -5,6 +5,24 @@ import { label } from '../../_helper/label';
 import { AccessType, ContainerType, setupContainerFunctions } from '../../_helper/pointer-analysis';
 
 describe.sequential('Container Single Index Based Access', withShell(shell => {
+
+	describe('Failures in Practice', () => {
+		useConfigForTest({ solver: { pointerTracking: true } });
+		assertSliced(
+			label('Potential addition in nesting (not needed)', ['subsetting-multiple']),
+			shell,
+			`data <- read.csv(file = "data.csv", header = TRUE)
+data$count = 1 : nrow(data)
+data <- data[order(-age), ]
+
+print(data)`,
+			['5@print'],
+			`data <- read.csv(file = "data.csv", header = TRUE)
+data$count = 1 : nrow(data)
+data <- data[order(-age), ]
+print(data)`
+		);
+	});
 	describe.each(
 		[
 			{ container: ContainerType.Vector, type: AccessType.DoubleBracket, hasNamedArguments: false },

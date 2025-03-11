@@ -462,14 +462,14 @@ export function assertSliced(
 			false,
 			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-shell',
 			'shell',
-			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>),
+			() => testSlice(shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-shell'),
 		);
 
 		testWrapper(
 			userConfig?.skipTreeSitter,
 			testCaseFailType === 'fail-both' || testCaseFailType === 'fail-tree-sitter',
 			'tree-sitter',
-			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>),
+			() => testSlice(tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, testCaseFailType !== 'fail-both' && testCaseFailType !== 'fail-tree-sitter'),
 		);
 
 		testWrapper(
@@ -485,15 +485,17 @@ export function assertSliced(
 	});
 	handleAssertOutput(name, shell, input, userConfig);
 
-	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>) {
+	function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,
 				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 			);
 		} /* v8 ignore start */ catch(e) {
-			console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
-			console.error(normalizedAstToMermaidUrl(result.normalize.ast));
+			if(printError) {
+				console.error(`got:\n${result.reconstruct.code}\nvs. expected:\n${expected}`);
+				console.error(normalizedAstToMermaidUrl(result.normalize.ast));
+			}
 			throw e;
 		} /* v8 ignore stop */
 	}

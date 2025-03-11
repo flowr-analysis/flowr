@@ -98,7 +98,7 @@ async function printSingleCapability(info: CapabilityInformation, depth: number,
 	if(capability.url) {
 		nextLine += '\\\nSee ' + joinWithLast(capability.url.map(({ name, href }) => `[${name}](${href})`)) + ' for more info.';
 	}
-	nextLine += ' Internal ID: `' + capability.id + '`';
+	nextLine += ' (internal ID: `' + capability.id + '`)';
 	if(capability.example) {
 		nextLine += `\n${prefixLines(
 			typeof capability.example === 'string' ? capability.example : await capability.example(info.parser),

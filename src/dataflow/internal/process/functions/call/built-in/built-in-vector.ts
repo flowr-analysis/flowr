@@ -8,7 +8,7 @@ import type { ContainerIndices, ContainerIndex, ContainerIndicesCollection } fro
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { getConfig } from '../../../../../../config';
+import { getConfig, getPointerAnalysisThreshold } from '../../../../../../config';
 import { resolveIndicesByName } from '../../../../../../util/containers';
 
 /**
@@ -65,6 +65,12 @@ export function processVector<OtherInfo>(
 		}
 	}
 
+	const threshold = getPointerAnalysisThreshold();
+
+	if(threshold !== 'unlimited' && (threshold === 'disabled' || vectorArgs.length > threshold)) {
+		return fnCall.information;
+	}
+
 	const indices: ContainerIndices = {
 		indices:     vectorArgs,
 		isContainer: true,
@@ -80,7 +86,7 @@ export function processVector<OtherInfo>(
 }
 
 /**
- * Checks whether the passed type is primitve i.e. number, logical or string.
+ * Checks whether the passed type is primitive i.e. number, logical or string.
  */
 function isPrimitive(type: RType) {
 	return type === RType.Number || type === RType.Logical || type === RType.String;

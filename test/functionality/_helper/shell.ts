@@ -507,7 +507,7 @@ export function assertContainerIndicesDefinition(
 	shell: RShell,
 	input: string,
 	search: FlowrSearchLike,
-	expectedIndices: ContainerIndex[],
+	expectedIndices: ContainerIndex[] | undefined,
 	userConfig: Partial<TestConfiguration> = {},
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
@@ -524,6 +524,10 @@ export function assertContainerIndicesDefinition(
 			const id = element.node.info.id;
 			const vertex = analysis.dataflow.graph.getVertex(id);
 			assert(vertex !== undefined, `vertex with id ${id} doesn't exist`);
+			if(expectedIndices === undefined) {
+				assert(vertex.indicesCollection === undefined, `indices collection for vertex with id ${id} exists`);
+				continue;
+			}
 			assert(vertex.indicesCollection !== undefined, `indices collection for vertex with id ${id} doesn't exist`);
 			const actualIndices = vertex.indicesCollection.flatMap(collection => collection.indices) ?? [];
 

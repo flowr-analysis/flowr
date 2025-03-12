@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
 
 describe.sequential('Vector Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'unnamed-arguments', 'subsetting-multiple'] as const;
@@ -54,6 +54,23 @@ describe.sequential('Vector Definition', withShell(shell => {
 				{ identifier: { index: 4 }, nodeId: 7, },
 			]
 		);
+
+		describe('Skip if index threshold', () => {
+			beforeAll(() => {
+				setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 2 } } });
+			});
+
+			afterAll(() => {
+				setConfig(defaultConfigOptions);
+			});
+			assertContainerIndicesDefinition(
+				label('Over the limit (vector)', basicCapabilities),
+				shell,
+				'c(TRUE, FALSE, TRUE, FALSE)',
+				Q.criterion('1@c'),
+				undefined
+			);
+		});
 	});
 
 	describe('Nested vectors', () => {

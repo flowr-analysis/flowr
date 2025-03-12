@@ -43,8 +43,10 @@ describe('Pointer Analysis', () => {
 		const indexA = idx(false, 'a');
 		const indexB = idx(false, 'b');
 		const indexC = idx(false, 'c');
+		const indexWithA = idx(true, 'a');
 
 		const containerA = inGraphDef('a', 0, defaultContainer);
+		const containerWithA = inGraphDef('a', 0, indexWithA);
 		const containerB = inGraphDef('b', 1, defaultContainer);
 		const indexAOverwrite = inGraphDef('a', 0, indexA);
 		const indexBOverwriteFromA = inGraphDef('a', 0, indexB);
@@ -80,6 +82,9 @@ describe('Pointer Analysis', () => {
 		);
 		testMerge('overwrite a has a and b', [containerB, indexABOverwrite],
 			indexAOverwrite, [containerB, indexAOverwrite, indexBOverwriteFromA]
+		);
+		testMerge('add c to a', [containerWithA],
+			indexCOverwrite, [containerWithA, indexCOverwrite]
 		);
 	});
 });

@@ -82,6 +82,13 @@ describe.sequential('List Definition', withShell(shell => {
 						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
 					]
 				);
+				assertContainerIndicesDefinition(
+					label('Over the limit (list, after append)', capabilities),
+					shell,
+					'x <- list(a = 1)\nx$e <- 3\nx',
+					Q.criterion('3@x'),
+					undefined
+				);
 			});
 		});
 

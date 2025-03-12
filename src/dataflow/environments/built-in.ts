@@ -31,6 +31,7 @@ import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
+import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
 
 export const BuiltIn = 'built-in';
 
@@ -138,6 +139,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:access':              processAccess,
 	'builtin:if-then-else':        processIfThenElse,
 	'builtin:get':                 processGet,
+	'builtin:rm':                  processRm,
 	'builtin:library':             processLibrary,
 	'builtin:assignment':          processAssignment,
 	'builtin:special-bin-op':      processSpecialBinOp,

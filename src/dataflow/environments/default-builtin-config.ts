@@ -60,6 +60,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		config:          { readAllArguments: true },
 		assumePrimitive: false
 	},
+	{ type: 'function', names: ['rm'],                                         processor: 'builtin:rm',                  config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['options'],                                    processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
 	{ type: 'function', names: ['mapply', 'Mapply'],                           processor: 'builtin:apply',               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['lapply', 'sapply', 'vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },

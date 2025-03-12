@@ -1,4 +1,4 @@
-import { guard } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import { BuiltInEnvironment } from './environment';
 import type { IEnvironment, REnvironmentInformation  } from './environment';
 
@@ -7,6 +7,7 @@ import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identi
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
 import { isParentContainerIndex, isSameIndex } from '../graph/vertex';
 import { getConfig } from '../../config';
+import { resolveByName } from './resolve-by-name';
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
@@ -36,21 +37,29 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	}
 }
 
-function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+/**
+ * assumes: existing is not undefined, the overwrite has indices
+ */
+export function mergeDefinitions(existing: readonly IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
 	// When new definition is not a single index, e.g., a list redefinition, then reset existing definition
 	if(definition.indicesCollection?.some(indices => indices.isContainer)) {
 		return [definition];
 	}
 
-	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
+	const existingDefs = existing.filter(isNotUndefined) as InGraphIdentifierDefinition[];
 	const overwriteIndices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
 	// Compare existing and new definitions,
 	// add new definitions and remove existing definitions that are overwritten by new definition
 	const newExistingDefs: InGraphIdentifierDefinition[] = [];
+	const hasCache = new Set<string>();
 	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
-			if(existingDef.indicesCollection === undefined) {
-				newExistingDefs.push(existingDef);
+			// empty or missing
+			if(existingDef.indicesCollection === undefined || existingDef.indicesCollection.length === 0) {
+				if(!hasCache.has(JSON.stringify(existingDef))) {
+					newExistingDefs.push(existingDef);
+					hasCache.add(JSON.stringify(existingDef));
+				}
 				continue;
 			}
 
@@ -58,10 +67,15 @@ function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphI
 
 			// if indices are now empty list, don't keep empty definition
 			if(newIndicesCollection.length > 0) {
-				newExistingDefs.push({
+				const obj = {
 					...existingDef,
 					indicesCollection: newIndicesCollection,
-				});
+				};
+				const objHash = JSON.stringify(obj);
+				if(!hasCache.has(objHash)) {
+					newExistingDefs.push(obj);
+					hasCache.add(objHash);
+				}
 			}
 		}
 	}
@@ -124,6 +138,8 @@ function overwriteContainerIndices(
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
 export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation): REnvironmentInformation {
+	const before = (environment ? resolveByName('data.s', environment)?.length : 0) ?? 0;
+
 	const name = definition.name;
 	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`);
 	let newEnvironment;
@@ -149,5 +165,10 @@ export function define(definition: IdentifierDefinition, superAssign: boolean | 
 		newEnvironment = cloneEnvironmentInformation(environment, false);
 		defInEnv(newEnvironment.current, name, definition);
 	}
+	const afterLength = resolveByName('data.s', newEnvironment)?.length ?? 0;
+	if(afterLength - before > 100) {
+		console.trace('define', { before, afterLength });
+	}
+
 	return newEnvironment;
 }

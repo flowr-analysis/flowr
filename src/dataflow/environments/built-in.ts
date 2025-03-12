@@ -30,9 +30,9 @@ import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
-import { resolveIdToValue, type ResolveInfo } from './resolve-by-name';
+import { resolveByName, resolveIdToValue, type ResolveInfo } from './resolve-by-name';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export const BuiltIn = 'built-in';
 
@@ -172,9 +172,9 @@ function decorateProcessor<Config>(
 	processor: BuiltInIdentifierProcessorWithConfig<Config>,
 	decorator: BuiltInIdentifierProcessorDecorator<Config>
 ): BuiltInIdentifierProcessorWithConfig<Config> {
-	return (...args) => {
-		const result = processor(...args);
-		decorator(...args);
+	return (name, args, rootId, data, config) => {
+		const result = processor(name, args, rootId, data, config);
+		decorator(name, args, rootId, { ...data, environment: result.environment }, config);
 		return result;
 	};
 }
@@ -183,6 +183,7 @@ type DataFrameOperation = 'create' | 'accessCol' | 'unknown';
 
 interface DataFrameEvent {
 	type:      DataFrameOperation,
+	inplace?:  boolean;
 	operand:   NodeId | undefined,
 	arguments: (NodeId | undefined)[]
 }
@@ -201,16 +202,49 @@ interface DataFrameDomain {
 	cols:     IntervalDomain,
 	rows:     IntervalDomain
 }
+const DataFrameBottom: DataFrameDomain = {
+	colnames: ColNamesBottom,
+	cols:     IntervalBottom,
+	rows:     IntervalBottom
+};
 const DataFrameTop: DataFrameDomain = {
 	colnames: ColNamesTop,
 	cols:     IntervalTop,
 	rows:     IntervalTop
 };
 
+interface DataFrameStatementInfo {
+	type:   'statement',
+	domain: Map<NodeId, DataFrameDomain>
+}
+
+interface DataFrameAssignmentInfo {
+	type:       'assignment',
+	identifier: NodeId,
+	expression: NodeId
+}
+
+interface DataFrameExpressionInfo {
+	type:   'expression',
+	events: DataFrameEvent[]
+}
+
+interface DataFrameSymbolInfo {
+	type:   'symbol',
+	domain: DataFrameDomain
+}
+
+type DataFrameInfo = DataFrameStatementInfo | DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameSymbolInfo;
+
 interface AbstractInterpretationInfo {
-	dataFrame?: {
-		events: DataFrameEvent[],
-		domain: Map<string, DataFrameDomain>
+	dataFrame?: DataFrameInfo
+}
+
+function joinColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
+	if(X1 === ColNamesTop || X2 === ColNamesTop) {
+		return ColNamesTop;
+	} else {
+		return Array.from(new Set(X1).union(new Set(X2)));
 	}
 }
 
@@ -232,25 +266,29 @@ function processDataFrameCreate<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
-	name.info.dataFrame ??= { events: [], domain: new Map() };
-	name.info.dataFrame.events.push({
-		type:      'create',
-		operand:   undefined,
-		arguments: args
-			.filter(arg => arg === EmptyArgument || arg.name === undefined || !DataFrameSpecialArguments.includes(arg.name.content))
-			.map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
-	});
+	name.info.dataFrame = {
+		type:   'expression',
+		events: [{
+			type:      'create',
+			operand:   undefined,
+			arguments: args
+				.filter(arg => arg === EmptyArgument || arg.name === undefined || !DataFrameSpecialArguments.includes(arg.name.content))
+				.map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
+		}]
+	};
 }
 
 function processDataFrameUnknownCreate<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>
 ) {
-	name.info.dataFrame ??= { events: [], domain: new Map() };
-	name.info.dataFrame.events.push({
-		type:      'unknown',
-		operand:   undefined,
-		arguments: []
-	});
+	name.info.dataFrame = {
+		type:   'expression',
+		events: [{
+			type:      'unknown',
+			operand:   undefined,
+			arguments: []
+		}]
+	};
 }
 
 function processDataFrameAccess<OtherInfo>(
@@ -269,55 +307,101 @@ function processDataFrameStringBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
-	const leftArg = args[0] !== EmptyArgument ? args[0].info.id : undefined;
-	const rightArg = args[1] !== EmptyArgument ? args[1].info.id : undefined;
+	const leftArg = args[0] !== EmptyArgument ? args[0] : undefined;
+	const rightArg = args[1] !== EmptyArgument ? args[1]: undefined;
 
 	if(args.length === 2 && leftArg !== undefined && rightArg !== undefined) {
-		name.info.dataFrame ??= { events: [], domain: new Map() };
-		name.info.dataFrame.events.push({
-			type:      'accessCol',
-			operand:   leftArg,
-			arguments: [rightArg]
-		});
+		name.info.dataFrame = {
+			type:   'expression',
+			events: [{
+				type:      'accessCol',
+				operand:   leftArg.info.id,
+				arguments: [rightArg.info.id]
+			}]
+		};
 	}
 }
 
 function processDataFrameAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[]
 ) {
-	const leftArg = args[0] !== EmptyArgument ? args[0].value : undefined;
-	const rightArg = args[1] !== EmptyArgument ? args[1].value : undefined;
+	const leftArg = args[0] !== EmptyArgument ? args[0] : undefined;
+	const rightArg = args[1] !== EmptyArgument ? args[1] : undefined;
 
-	if(args.length === 2 && leftArg?.type === RType.Symbol && rightArg !== undefined) {
-		if(rightArg.type == RType.FunctionCall && rightArg.named && rightArg.functionName.info.dataFrame !== undefined && rightArg.functionName.info.dataFrame.events.length > 0) {
-			const identifier = leftArg.content;
-			const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
-			const dataFrameDomain = applyDataFrameSemantics(rightArg.functionName.info.dataFrame.events[0], resolveInfo);
-			name.info.dataFrame ??= { events: [], domain: new Map([[identifier, dataFrameDomain]]) };
-			console.log(name.info.id, name.lexeme, name.info.dataFrame.domain);
-		}
+	if(args.length === 2 && leftArg?.value?.type === RType.Symbol && rightArg?.value !== undefined) {
+		name.info.dataFrame = {
+			type:       'assignment',
+			identifier: leftArg.value.info.id,
+			expression: rightArg.value.info.id
+		};
 	}
 }
 
 function processDataFrameExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation & AbstractInterpretationInfo>
 ) {
-	visitAst(data.completeAst.ast, node => {
-		if(node.info.dataFrame !== undefined && node.info.dataFrame.events.length > 0) {
+	const domain: Map<NodeId, DataFrameDomain> = new Map();
+
+	for(const arg of args) {
+		if(arg === EmptyArgument) {
+			continue;
+		} else if(arg.value?.info.dataFrame?.type === 'assignment') {
 			const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
-			const dataFrameDomain = applyDataFrameSemantics(node.info.dataFrame.events[0], resolveInfo);
-			console.log(node.info.id, node.lexeme, node.info.dataFrame.events, dataFrameDomain);
+			const identifier = resolveInfo.idMap.get(arg.value.info.dataFrame.identifier);
+			const expression = resolveInfo.idMap.get(arg.value.info.dataFrame.expression);
+
+			if(identifier?.type === RType.Symbol && expression !== undefined) {
+				const dataFrameDomain = applyExpressionSemantics(expression, domain, resolveInfo);
+
+				if(dataFrameDomain !== undefined) {
+					domain.set(identifier.info.id, dataFrameDomain);
+					identifier.info.dataFrame = {
+						type:   'symbol',
+						domain: dataFrameDomain
+					};
+				}
+			}
 		}
-	});
+	}
+	for(const value of domain.entries()) {
+		console.log(data.completeAst.idMap.get(value[0])?.content, value[1]);
+	}
 }
 
-function applyDataFrameSemantics(event: DataFrameEvent, data: ResolveInfo): DataFrameDomain {
+function applyExpressionSemantics<OtherInfo>(node: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>, domain: Map<NodeId, DataFrameDomain>, resolveInfo : ResolveInfo): DataFrameDomain | undefined {
+	if(node.type === RType.FunctionCall && node.named && node.functionName.info.dataFrame?.type === 'expression' && node.functionName.info.dataFrame.events.length > 0) {
+		const event = node.functionName.info.dataFrame.events[0];
+
+		if(event.operand === undefined) {
+			return applyDataFrameSemantics(DataFrameBottom, event, resolveInfo);
+		}
+		const operand = resolveInfo.idMap?.get(event.operand);
+		const dataFrameDomain = operand ? applyExpressionSemantics(operand, domain, resolveInfo) ?? DataFrameTop : DataFrameTop;
+
+		return applyDataFrameSemantics(dataFrameDomain, event, resolveInfo);
+	} else if(node.type === RType.Symbol && resolveInfo.environment !== undefined) {
+		const identifiers = resolveByName(node.content, resolveInfo.environment);
+
+		if(identifiers?.length === 1) {
+			const dataFrameDomain = domain.get(identifiers[0].nodeId);
+
+			if(dataFrameDomain !== undefined) {
+				node.info.dataFrame = {
+					type:   'symbol',
+					domain: dataFrameDomain
+				};
+			}
+			return dataFrameDomain;
+		}
+	}
+	return undefined;
+}
+
+function applyDataFrameSemantics(domain: DataFrameDomain, event: DataFrameEvent, data: ResolveInfo): DataFrameDomain {
 	switch(event.type) {
 		case 'create': {
 			const argNames = event.arguments.map(arg => arg ? resolveIdToArgName(arg, data) : undefined);
@@ -336,9 +420,8 @@ function applyDataFrameSemantics(event: DataFrameEvent, data: ResolveInfo): Data
 			const colnames = argNames.some(arg => arg === undefined) ? ColNamesBottom : argNames as ColNamesDomain;
 
 			return {
-				colnames: colnames,
-				cols:     IntervalBottom,
-				rows:     IntervalBottom
+				...domain,
+				colnames: joinColNames(domain.colnames, colnames)
 			};
 		}
 		case 'unknown': {

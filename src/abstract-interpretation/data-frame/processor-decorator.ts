@@ -180,7 +180,4 @@ export function processDataFrameExpressionList<OtherInfo>(
 			}
 		}
 	}
-	for(const value of domain.entries()) {
-		console.log(data.completeAst.idMap.get(value[0])?.content, value[1]);
-	}
 }

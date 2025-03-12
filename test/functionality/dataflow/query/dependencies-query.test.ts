@@ -144,6 +144,11 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		testQuery('unknown read', 'read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'unknown', lexemeOfArgument: 'x' }] });
 
+		describe('Only if file parameter', () => {
+			testQuery('parse', 'parse(file="test.R")', { readData: [{ nodeId: '1@parse', functionName: 'parse', source: 'test.R' }] });
+			testQuery('parse text', 'parse(text="test.R")', { });
+		});
+
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
 				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]

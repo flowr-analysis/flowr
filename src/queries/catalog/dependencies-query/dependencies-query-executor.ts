@@ -165,6 +165,9 @@ function getResults<T extends DependencyInfo>(data: BasicQueryData, results: Cal
 
 		const foundValues = linkedArgs ?? args;
 		if(!foundValues) {
+			if(info.ignoreIf === 'arg-missing') {
+				return [];
+			}
 			const record = compactRecord(makeInfo(id, vertex, undefined, undefined, dropInfoOnLinkedIds(linkedIds)));
 			return record ? [record as T] : [];
 		}

@@ -351,8 +351,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, gr
 			if(full && node.operator === ':' && (node.lhs.type === RType.Number || node.lhs.type === RType.Symbol) && (node.rhs.type === RType.Symbol || node.rhs.type === RType.Number)) {
 				const leftArg = resolveIdToValue(node.lhs.info.id, { environment, graph, idMap, full });
 				const rightArg = resolveIdToValue(node.rhs.info.id, { environment, graph, idMap, full });
-				const leftValue = leftArg?.length === 1 ? leftArg?.[0] : undefined;
-				const rightValue = rightArg?.length === 1 ? rightArg?.[0] : undefined;
+				const leftValue = leftArg?.length === 1 ? leftArg[0] : undefined;
+				const rightValue = rightArg?.length === 1 ? rightArg[0] : undefined;
 
 				if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
 					return [createNumberSequence(leftValue, rightValue)];

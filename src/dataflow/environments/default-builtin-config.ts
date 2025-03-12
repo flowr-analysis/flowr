@@ -11,7 +11,7 @@ const PlotCreate = [
 	'plot', 'plot.new', 'xspline', 'curve', 'map', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
 	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
-	'spineplot'
+	'spineplot', 'Plotranges'
 ] as const;
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',

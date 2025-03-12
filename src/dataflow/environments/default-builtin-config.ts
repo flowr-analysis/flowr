@@ -7,13 +7,24 @@ import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
-const PlotCreate = ['plot', 'plot.new', 'xspline', '', 'curve', 'map', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem', 'density', 'smoothScatter', 'contour', 'persp'] as const;
-const GraphicDeviceOpen = ['pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph', 'image_draw', 'dev.new'] as const;
-const PlotAddons = ['points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols', 'tiplabels'] as const;
+const PlotCreate = [
+	'plot', 'plot.new', 'xspline', 'curve', 'map', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
+	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
+	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
+	'spineplot'
+] as const;
+const GraphicDeviceOpen = [
+	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
+	'image_draw', 'dev.new', 'trellis.device'
+] as const;
+const PlotAddons = [
+	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+	'tiplabels', 'rug'
+] as const;
 
 function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
-		n.map(s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).filter(s => s.length > 0).join('|')
+		[...new Set(n)].map(s => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')).filter(s => s.length > 0).join('|')
 	})$`);
 }
 
@@ -33,7 +44,8 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			'unique', 'paste', 'paste0', 'read.csv', 'stop', 'is.null', 'numeric', 'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix',
 			'rbind', 'nrow', 'ncol', 'tryCatch', 'expression', 'factor',
 			'missing', 'as.data.frame', 'data.frame', 'na.omit', 'rownames', 'names', 'order', 'length', 'any', 'dim', 'matrix', 'cbind', 'nchar',
-			'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz'
+			'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz',
+			'jitter'
 		],
 		processor:       'builtin:default',
 		config:          { readAllArguments: true },

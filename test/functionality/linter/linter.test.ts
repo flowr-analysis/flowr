@@ -11,5 +11,8 @@ describe.sequential('flowR linter', withShell(shell => {
 			{ certainty: LintingCertainty.Maybe, function: 'cat', range: [1, 1, 1, 12] },
 			{ certainty: LintingCertainty.Maybe, function: 'cat', range: [4, 1, 4, 6] },
 		], { deprecatedFunctions: ['cat'] });
+		assertLinter('custom cat', shell, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)', R1_DEPRECATED_FUNCTIONS, [
+			{ certainty: LintingCertainty.Maybe, function: 'cat', range: [1, 1, 1, 12] }
+		], { deprecatedFunctions: ['cat'] });
 	});
 }));

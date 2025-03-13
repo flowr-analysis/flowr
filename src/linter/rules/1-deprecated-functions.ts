@@ -4,10 +4,8 @@ import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
-import type { FlowrSearchElement } from '../../search/flowr-search';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import type { SourceRange } from '../../util/range';
+import type { Identifier } from '../../dataflow/environments/identifier';
 
 export interface DeprecatedFunctionsResult extends LintingResult {
 	function: string
@@ -22,10 +20,20 @@ export const R1_DEPRECATED_FUNCTIONS = {
 	name:                'deprecated-functions',
 	createSearch:        () => Q.all().with(Enrichment.CallTargets),
 	processSearchResult: (elements, config) => elements.getElements()
-		.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => ({
-			range:  element.node.info.fullRange as SourceRange,
-			target: ((target as FlowrSearchElement<ParentInformation>)?.node?.lexeme) ?? target as Identifier
-		})))
+		.flatMap(element => {
+			const targets = enrichmentContent(element, Enrichment.CallTargets).targets;
+			// if there is a call target that is not built-in (ie a custom function), we don't want to mark it as deprecated
+			// eventually we'd want to solve this with an argument to the CallTargets enrichment like satisfiesCallTargets does!
+			if(targets.some(t => typeof t !== 'string')) {
+				return [];
+			}
+			return targets.map(target => {
+				return ({
+					range:  element.node.info.fullRange as SourceRange,
+					target: target as Identifier
+				});
+			});
+		})
 		.filter(element => config.deprecatedFunctions.includes(element.target))
 		.map(element => ({
 			certainty: LintingCertainty.Maybe,

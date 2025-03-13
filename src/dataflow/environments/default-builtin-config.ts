@@ -15,7 +15,7 @@ const PlotCreate = [
 ] as const;
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
-	'image_draw', 'dev.new', 'trellis.device'
+	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
 ] as const;
 const PlotAddons = [
 	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',

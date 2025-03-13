@@ -110,7 +110,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
-				libraryFunctions: [{ name: 'custom.library', argIdx: 1, argName: 'file' }]
+				libraryFunctions: [{ package: 'custom', name: 'custom.library', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
 				libraries: [{ nodeId: '1@custom.library', functionName: 'custom.library', libraryName: 'my-custom-file' }]
@@ -126,7 +126,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
-				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]
+				sourceFunctions: [{ package: 'custom', name: 'source.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
 				sourcedFiles: [{ nodeId: '1@source.custom.file', functionName: 'source.custom.file', file: 'my-custom-file' }]
@@ -151,7 +151,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
-				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]
+				readFunctions: [{ package: 'custom', name: 'read.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
 				readData: [{ nodeId: '1@read.custom.file', functionName: 'read.custom.file', source: 'my-custom-file' }]
@@ -180,7 +180,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {
-				writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }]
+				writeFunctions: [{ package: 'custom', name: 'write.custom.file', argIdx: 1, argName: 'file' }]
 			};
 			const expected: Partial<DependenciesQueryResult> = {
 				writtenData: [{ nodeId: '1@write.custom.file', functionName: 'write.custom.file', destination: 'my-custom-file' }]

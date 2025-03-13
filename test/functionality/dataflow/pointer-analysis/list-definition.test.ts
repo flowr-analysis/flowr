@@ -58,6 +58,18 @@ describe.sequential('List Definition', withShell(shell => {
 				]
 			);
 
+			assertContainerIndicesDefinition(
+				label('Appending to list', capabilities),
+				shell,
+				'x <- list(a = 1)\nx$e <- 3\nx',
+				Q.criterion('3@x'),
+				[
+					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 4 },
+					// currently we are unable to track the new index
+					{ identifier: { index: undefined, lexeme: 'e' }, nodeId: 10 },
+				]
+			);
+
 			describe('Skip if index threshold', () => {
 				beforeAll(() => {
 					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
@@ -81,13 +93,6 @@ describe.sequential('List Definition', withShell(shell => {
 					[
 						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
 					]
-				);
-				assertContainerIndicesDefinition(
-					label('Over the limit (list, after append)', capabilities),
-					shell,
-					'x <- list(a = 1)\nx$e <- 3\nx',
-					Q.criterion('3@x'),
-					undefined
 				);
 			});
 		});

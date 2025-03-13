@@ -80,6 +80,13 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	code:  ReconstructionResult
 }
 
+/**
+ * The type of sampling strategy to use when slicing all possible variables.
+ *
+ * - `'random'`: Randomly select the given number of slicing criteria.
+ * - `'equidistant'`: Select the given number of slicing criteria in an equidistant manner.
+ */
+export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -401,10 +408,13 @@ export class BenchmarkSlicer {
 	public async sliceForAll(
 		filter: SlicingCriteriaFilter,
 		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
-		sampleCount = -1,
-		sampleStrategy: 'random' | 'equidistant' = 'random',
-		maxSliceCount = -1,
+		options: {
+			sampleCount?:    number,
+			maxSliceCount?:  number,
+			sampleStrategy?: SamplingStrategy
+		} = {},
 	): Promise<number> {
+		const { sampleCount, maxSliceCount, sampleStrategy } = { sampleCount: -1, maxSliceCount: -1, sampleStrategy: 'random', ...options };
 		this.guardActive();
 		let count = 0;
 		let allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
@@ -413,11 +423,11 @@ export class BenchmarkSlicer {
 			return -allCriteria.length;
 		}
 		if(sampleCount > 0) {
-			if(sampleStrategy === 'random') {
+			if(sampleStrategy === 'equidistant') {
+				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			} else {
 				allCriteria.sort(() => Math.random() - 0.5);
 				allCriteria.length = Math.min(allCriteria.length, sampleCount);
-			} else {
-				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
 			}
 		}
 		for(const slicingCriteria of allCriteria) {

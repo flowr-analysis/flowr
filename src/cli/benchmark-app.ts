@@ -22,6 +22,7 @@ export interface BenchmarkCliOptions {
 	'max-file-slices':         number
 	threshold?:                number
 	'per-file-time-limit'?:    number
+	'sampling-strategy':       string
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
@@ -98,6 +99,7 @@ async function benchmark() {
 		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),
+		'--sampling-strategy', options['sampling-strategy'],
 	]);
 
 	const runs = options.runs ?? 1;

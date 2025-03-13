@@ -218,7 +218,7 @@ e <- 5`,
 				await slicer.init(request);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
-				}, 3, 'equidistant');
+				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
 				slicer.finish();
 
 				const { stats } = await retrieveStatsSafe(slicer, request);
@@ -253,7 +253,7 @@ e <- 5`,
 				await slicer.init(request);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.equal(criteria.length, 3, '3 criteria are sliced');
-				}, 3, 'random');
+				}, { sampleCount: 3, sampleStrategy: 'random' });
 				slicer.finish();
 
 				const { stats } = await retrieveStatsSafe(slicer, request);

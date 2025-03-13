@@ -4,6 +4,7 @@ import { guard } from '../util/assert';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
+import type { SamplingStrategy } from '../benchmark/slicer';
 import { BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
@@ -22,6 +23,7 @@ export interface SingleBenchmarkCliOptions {
 	'enable-pointer-tracking': boolean
 	'max-slices':              number
 	threshold?:                number
+	'sampling-strategy':       string
 }
 
 const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
@@ -39,7 +41,7 @@ if(options.verbose) {
 const numberRegex = /^\d+$/;
 
 guard(options.slice === 'all' || options.slice === 'no' || numberRegex.test(options.slice), 'slice must be either all, no, or a number');
-
+guard(options['sampling-strategy'] === 'random' || options['sampling-strategy'] === 'equidistant', 'sample-strategy must be either random or equidistant');
 
 async function benchmark() {
 	// we do not use the limit argument to be able to pick the limit randomly
@@ -76,7 +78,11 @@ async function benchmark() {
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
-			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), -1, maxSlices);
+			const count = await slicer.sliceForAll(
+				DefaultAllVariablesFilter,
+				(i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`),
+				{ maxSliceCount: maxSlices },
+			);
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);
@@ -85,7 +91,11 @@ async function benchmark() {
 		} else {
 			const limit = parseInt(options.slice);
 			console.log(`${prefix} Slicing up to ${limit} possible slices`);
-			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`), limit, maxSlices);
+			const count = await slicer.sliceForAll(
+				DefaultAllVariablesFilter,
+				(i, total, arr) => console.log(`${prefix} Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`),
+				{ sampleCount: limit, maxSliceCount: maxSlices, sampleStrategy: options['sampling-strategy'] as SamplingStrategy },
+			);
 			console.log(`${prefix} Completed Slicing`);
 			guard(count >= 0, `Number of slices exceeded limit of ${maxSlices} with ${-count} slices, skipping in count`);
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`);

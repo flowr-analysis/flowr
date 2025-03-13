@@ -24,7 +24,7 @@ export type EnrichmentContent<E extends Enrichment> = typeof Enrichments[E] exte
 
 export enum Enrichment {
 	CallTargets = 'call-targets',
-	Documentation = 'documentation'
+	/*Documentation = 'documentation'*/
 }
 
 export interface CallTargetsContent extends MergeableRecord {
@@ -61,13 +61,12 @@ export const Enrichments = {
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }: CallTargetsContent) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
 	} satisfies EnrichmentData<CallTargetsContent>,
-	[Enrichment.Documentation]: {
+	/*[Enrichment.Documentation]: {
 		enrich: (_e: FlowrSearchElement<ParentInformation>, _data: FlowrSearchInput<Pipeline>): {documentation: FlowrSearchElement<ParentInformation>[]} => {
-			// TODO this should do something lmao
 			return { documentation: [] };
 		},
 		mapper: ({ documentation }: {documentation: FlowrSearchElement<ParentInformation>[]}) => documentation
-	} satisfies EnrichmentData<{documentation: FlowrSearchElement<ParentInformation>[]}>
+	} satisfies EnrichmentData<{documentation: FlowrSearchElement<ParentInformation>[]}>*/
 } as const;
 
 export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentContent<E> {

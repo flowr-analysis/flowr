@@ -288,7 +288,7 @@ export function getEngineConfig<T extends EngineConfig['type']>(engine: T): Engi
 	}
 }
 
-export function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
+function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
 	const config = getConfig().solver.pointerTracking;
 	if(typeof config === 'object') {
 		return config.maxIndexCount;
@@ -296,6 +296,13 @@ export function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled'
 		return config ? 'unlimited' : 'disabled';
 	}
 }
+
+export function isOverPointerAnalysisThreshold(count: number): boolean {
+	const threshold = getPointerAnalysisThreshold();
+	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
+}
+
+
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {

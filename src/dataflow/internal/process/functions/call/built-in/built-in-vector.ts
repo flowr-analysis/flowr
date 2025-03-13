@@ -8,7 +8,7 @@ import type { ContainerIndices, ContainerIndex, ContainerIndicesCollection } fro
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { getConfig, getPointerAnalysisThreshold } from '../../../../../../config';
+import { getConfig, isOverPointerAnalysisThreshold } from '../../../../../../config';
 import { resolveIndicesByName } from '../../../../../../util/containers';
 
 /**
@@ -65,9 +65,7 @@ export function processVector<OtherInfo>(
 		}
 	}
 
-	const threshold = getPointerAnalysisThreshold();
-
-	if(threshold !== 'unlimited' && (threshold === 'disabled' || vectorArgs.length > threshold)) {
+	if(isOverPointerAnalysisThreshold(vectorArgs.length)) {
 		return fnCall.information;
 	}
 

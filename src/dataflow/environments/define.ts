@@ -7,7 +7,6 @@ import type { IdentifierDefinition, InGraphIdentifierDefinition } from './identi
 import type { ContainerIndex, ContainerIndices } from '../graph/vertex';
 import { isParentContainerIndex, isSameIndex } from '../graph/vertex';
 import { getConfig } from '../../config';
-import { resolveByName } from './resolve-by-name';
 
 function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(name);
@@ -56,9 +55,10 @@ export function mergeDefinitions(existing: readonly IdentifierDefinition[], defi
 		for(const existingDef of existingDefs) {
 			// empty or missing
 			if(existingDef.indicesCollection === undefined || existingDef.indicesCollection.length === 0) {
-				if(!hasCache.has(JSON.stringify(existingDef))) {
+				const existingDefPrint = JSON.stringify(existingDef);
+				if(!hasCache.has(existingDefPrint)) {
 					newExistingDefs.push(existingDef);
-					hasCache.add(JSON.stringify(existingDef));
+					hasCache.add(existingDefPrint);
 				}
 				continue;
 			}
@@ -138,8 +138,6 @@ function overwriteContainerIndices(
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
 export function define(definition: IdentifierDefinition, superAssign: boolean | undefined, environment: REnvironmentInformation): REnvironmentInformation {
-	const before = (environment ? resolveByName('data.s', environment)?.length : 0) ?? 0;
-
 	const name = definition.name;
 	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`);
 	let newEnvironment;
@@ -164,10 +162,6 @@ export function define(definition: IdentifierDefinition, superAssign: boolean | 
 	} else {
 		newEnvironment = cloneEnvironmentInformation(environment, false);
 		defInEnv(newEnvironment.current, name, definition);
-	}
-	const afterLength = resolveByName('data.s', newEnvironment)?.length ?? 0;
-	if(afterLength - before > 100) {
-		console.trace('define', { before, afterLength });
 	}
 
 	return newEnvironment;

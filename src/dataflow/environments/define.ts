@@ -1,4 +1,4 @@
-import { guard } from '../../util/assert';
+import { guard, isNotUndefined } from '../../util/assert';
 import { BuiltInEnvironment } from './environment';
 import type { IEnvironment, REnvironmentInformation  } from './environment';
 
@@ -36,21 +36,30 @@ function defInEnv(newEnvironments: IEnvironment, name: string, definition: Ident
 	}
 }
 
-function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
+/**
+ * assumes: existing is not undefined, the overwrite has indices
+ */
+export function mergeDefinitions(existing: readonly IdentifierDefinition[], definition: InGraphIdentifierDefinition): InGraphIdentifierDefinition[] {
 	// When new definition is not a single index, e.g., a list redefinition, then reset existing definition
 	if(definition.indicesCollection?.some(indices => indices.isContainer)) {
 		return [definition];
 	}
 
-	const existingDefs = existing.map((def) => def as InGraphIdentifierDefinition).filter((def) => def !== undefined);
+	const existingDefs = existing.filter(isNotUndefined) as InGraphIdentifierDefinition[];
 	const overwriteIndices = definition.indicesCollection?.flatMap(indices => indices.indices) ?? [];
 	// Compare existing and new definitions,
 	// add new definitions and remove existing definitions that are overwritten by new definition
 	const newExistingDefs: InGraphIdentifierDefinition[] = [];
+	const hasCache = new Set<string>();
 	for(const overwriteIndex of overwriteIndices) {
 		for(const existingDef of existingDefs) {
-			if(existingDef.indicesCollection === undefined) {
-				newExistingDefs.push(existingDef);
+			// empty or missing
+			if(existingDef.indicesCollection === undefined || existingDef.indicesCollection.length === 0) {
+				const existingDefPrint = JSON.stringify(existingDef);
+				if(!hasCache.has(existingDefPrint)) {
+					newExistingDefs.push(existingDef);
+					hasCache.add(existingDefPrint);
+				}
 				continue;
 			}
 
@@ -58,10 +67,15 @@ function mergeDefinitions(existing: IdentifierDefinition[], definition: InGraphI
 
 			// if indices are now empty list, don't keep empty definition
 			if(newIndicesCollection.length > 0) {
-				newExistingDefs.push({
+				const obj = {
 					...existingDef,
 					indicesCollection: newIndicesCollection,
-				});
+				};
+				const objHash = JSON.stringify(obj);
+				if(!hasCache.has(objHash)) {
+					newExistingDefs.push(obj);
+					hasCache.add(objHash);
+				}
 			}
 		}
 	}
@@ -149,5 +163,6 @@ export function define(definition: IdentifierDefinition, superAssign: boolean | 
 		newEnvironment = cloneEnvironmentInformation(environment, false);
 		defInEnv(newEnvironment.current, name, definition);
 	}
+
 	return newEnvironment;
 }

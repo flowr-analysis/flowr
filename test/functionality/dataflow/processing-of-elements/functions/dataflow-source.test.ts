@@ -9,6 +9,7 @@ import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe, beforeAll, afterAll } from 'vitest';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../../src/config';
 
 describe.sequential('source', withShell(shell => {
 	const sources = {
@@ -18,8 +19,14 @@ describe.sequential('source', withShell(shell => {
 		closure1:   'f <- function() { function() 3 }',
 		closure2:   'f <- function() { x <<- 3 }'
 	};
-	beforeAll(() => setSourceProvider(requestProviderFromText(sources)));
-	afterAll(() => setSourceProvider(requestProviderFromFile()));
+	beforeAll(() => {
+		setSourceProvider(requestProviderFromText(sources));
+		amendConfig({ solver: { resolveSource: { repeatedSourceLimit: 0 } } });
+	});
+	afterAll(() => {
+		setSourceProvider(requestProviderFromFile());
+		setConfig(defaultConfigOptions);
+	});
 
 	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files','newlines']), shell, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
@@ -103,6 +110,22 @@ describe.sequential('source', withShell(shell => {
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-7')
 		.markIdForUnknownSideEffects('recursive2-2:1-2:6-3')
 	);
+
+	describe('Increase source limit', () => {
+		beforeAll(() => {
+			amendConfig({ solver: { resolveSource: { repeatedSourceLimit: 2 } } });
+		});
+		afterAll(() => {
+			setConfig(defaultConfigOptions);
+		});
+		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
+			.use('recursive2-2:1-2:6-1', 'x')
+			.use('1@recursive2-2:1-2:6-1', 'x')
+			.use('2@recursive2-2:1-2:6-1', 'x'), {
+			expectIsSubgraph: true
+		}
+		);
+	});
 
 	assertDataflow(label('non-constant source (but constant alias)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'strings', 'newlines', 'unnamed-arguments']), shell, 'x <- "simple"\nsource(x)',  emptyGraph()
 		.use('4', 'x')

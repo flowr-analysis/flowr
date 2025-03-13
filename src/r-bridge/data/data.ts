@@ -200,7 +200,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								{
 									name:        'Resolve Arguments',
 									id:          'resolve-arguments',
-									supported:   'partially',
+									supported:   'fully',
 									description: '_Correctly bind arguments (including [`pmatch`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/pmatch))._ Currently, we do not have a correct implementation for `pmatch`. Furthermore, more tests would be nice.'
 								},
 								{
@@ -532,7 +532,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								{
 									name:        'Internal and Primitive Functions',
 									id:          'built-in-internal-and-primitive-functions',
-									supported:   'not',
+									supported:   'partially',
 									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.'
 								},
 								{

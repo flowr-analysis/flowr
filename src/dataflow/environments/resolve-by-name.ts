@@ -57,7 +57,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 				return definition;
 			} else if(filtered.length > 0) {
 				definitions ??= [];
-				definitions.push(...filtered);
+				definitions = definitions.concat(filtered);
 			}
 		}
 		current = current.parent;

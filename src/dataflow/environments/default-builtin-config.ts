@@ -8,18 +8,18 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
 const PlotCreate = [
-	'plot', 'plot.new', 'xspline', 'curve', 'map', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
-	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
+	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
+	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
-	'spineplot', 'Plotranges'
+	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'ggplot', 'leaflet', 'tm_shape', 'plot_ly'
 ] as const;
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
-	'image_draw', 'dev.new', 'trellis.device'
+	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
 ] as const;
 const PlotAddons = [
 	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
-	'tiplabels', 'rug'
+	'tiplabels', 'rug', 'grid', 'box', 'clip'
 ] as const;
 
 function toRegex(n: readonly string[]): RegExp {
@@ -60,6 +60,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		config:          { readAllArguments: true },
 		assumePrimitive: false
 	},
+	{ type: 'function', names: ['rm'],                                         processor: 'builtin:rm',                  config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['options'],                                    processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
 	{ type: 'function', names: ['mapply', 'Mapply'],                           processor: 'builtin:apply',               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['lapply', 'sapply', 'vapply'],                 processor: 'builtin:apply',               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
@@ -131,39 +132,40 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons])
 			}
 		}, assumePrimitive: true },
-	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                    assumePrimitive: true  },
-	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                           assumePrimitive: false },
-	{ type: 'function', names: ['eval', 'body', 'formals', 'environment'],     processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                           assumePrimitive: false },
+	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
+	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
+	{ type: 'function', names: ['eval', 'body', 'formals', 'environment'],     processor: 'builtin:default',             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
 	{ type: 'function', names: ['cat'],                                        processor: 'builtin:default',             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
-	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                        assumePrimitive: false },
-	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return },                         assumePrimitive: false },
-	{ type: 'function', names: ['break'],                                      processor: 'builtin:default',             config: { cfg: ExitPointType.Break },                                                 assumePrimitive: false },
-	{ type: 'function', names: ['next'],                                       processor: 'builtin:default',             config: { cfg: ExitPointType.Next },                                                  assumePrimitive: false },
-	{ type: 'function', names: ['{'],                                          processor: 'builtin:expression-list',     config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['source'],                                     processor: 'builtin:source',              config: { includeFunctionCall: true, forceFollow: false },                            assumePrimitive: false },
-	{ type: 'function', names: ['[', '[['],                                    processor: 'builtin:access',              config: { treatIndicesAsString: false },                                              assumePrimitive: true  },
-	{ type: 'function', names: ['$', '@'],                                     processor: 'builtin:access',              config: { treatIndicesAsString: true },                                               assumePrimitive: true  },
-	{ type: 'function', names: ['if', 'ifelse'],                               processor: 'builtin:if-then-else',        config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['get'],                                        processor: 'builtin:get',                 config: {},                                                                           assumePrimitive: false },
-	{ type: 'function', names: ['library', 'require'],                         processor: 'builtin:library',             config: {},                                                                           assumePrimitive: false },
-	{ type: 'function', names: ['<-', '='],                                    processor: 'builtin:assignment',          config: { canBeReplacement: true },                                                   assumePrimitive: true  },
-	{ type: 'function', names: [':='],                                         processor: 'builtin:assignment',          config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['assign'],                                     processor: 'builtin:assignment',          config: { targetVariable: true },                                                     assumePrimitive: true  },
-	{ type: 'function', names: ['delayedAssign'],                              processor: 'builtin:assignment',          config: { quoteSource: true, targetVariable: true },                                  assumePrimitive: true  },
-	{ type: 'function', names: ['<<-'],                                        processor: 'builtin:assignment',          config: { superAssignment: true, canBeReplacement: true },                            assumePrimitive: true  },
-	{ type: 'function', names: ['->'],                                         processor: 'builtin:assignment',          config: { swapSourceAndTarget: true, canBeReplacement: true },                        assumePrimitive: true  },
-	{ type: 'function', names: ['->>'],                                        processor: 'builtin:assignment',          config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true  },
-	{ type: 'function', names: ['&&', '&'],                                    processor: 'builtin:special-bin-op',      config: { lazy: true, evalRhsWhen: true },                                            assumePrimitive: true  },
-	{ type: 'function', names: ['||', '|'],                                    processor: 'builtin:special-bin-op',      config: { lazy: true, evalRhsWhen: false },                                           assumePrimitive: true  },
-	{ type: 'function', names: ['|>', '%>%'],                                  processor: 'builtin:pipe',                config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['function', '\\'],                             processor: 'builtin:function-definition', config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: 'builtin:quote',               config: { quoteArgumentsWithIndex: 0 },                                               assumePrimitive: true  },
-	{ type: 'function', names: ['for'],                                        processor: 'builtin:for-loop',            config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['repeat'],                                     processor: 'builtin:repeat-loop',         config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                assumePrimitive: true  },
-	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                           assumePrimitive: true  },
-	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                           assumePrimitive: true  },
+	{ type: 'function', names: ['switch'],                                     processor: 'builtin:default',             config: { forceArgs: [true] },                                                         assumePrimitive: false },
+	{ type: 'function', names: ['return'],                                     processor: 'builtin:default',             config: { returnsNthArgument: 0, cfg: ExitPointType.Return },                          assumePrimitive: false },
+	{ type: 'function', names: ['break'],                                      processor: 'builtin:default',             config: { cfg: ExitPointType.Break },                                                  assumePrimitive: false },
+	{ type: 'function', names: ['next'],                                       processor: 'builtin:default',             config: { cfg: ExitPointType.Next },                                                   assumePrimitive: false },
+	{ type: 'function', names: ['{'],                                          processor: 'builtin:expression-list',     config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['source'],                                     processor: 'builtin:source',              config: { includeFunctionCall: true, forceFollow: false },                             assumePrimitive: false },
+	{ type: 'function', names: ['[', '[['],                                    processor: 'builtin:access',              config: { treatIndicesAsString: false },                                               assumePrimitive: true  },
+	{ type: 'function', names: ['$', '@'],                                     processor: 'builtin:access',              config: { treatIndicesAsString: true },                                                assumePrimitive: true  },
+	{ type: 'function', names: ['if', 'ifelse'],                               processor: 'builtin:if-then-else',        config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['get'],                                        processor: 'builtin:get',                 config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: ['library', 'require'],                         processor: 'builtin:library',             config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: ['<-', '='],                                    processor: 'builtin:assignment',          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
+	{ type: 'function', names: [':='],                                         processor: 'builtin:assignment',          config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['assign'],                                     processor: 'builtin:assignment',          config: { targetVariable: true },                                                      assumePrimitive: true  },
+	{ type: 'function', names: ['delayedAssign'],                              processor: 'builtin:assignment',          config: { quoteSource: true, targetVariable: true },                                   assumePrimitive: true  },
+	{ type: 'function', names: ['<<-'],                                        processor: 'builtin:assignment',          config: { superAssignment: true, canBeReplacement: true },                             assumePrimitive: true  },
+	{ type: 'function', names: ['->'],                                         processor: 'builtin:assignment',          config: { swapSourceAndTarget: true, canBeReplacement: true },                         assumePrimitive: true  },
+	{ type: 'function', names: ['->>'],                                        processor: 'builtin:assignment',          config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true },  assumePrimitive: true  },
+	{ type: 'function', names: ['&&', '&'],                                    processor: 'builtin:special-bin-op',      config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
+	{ type: 'function', names: ['||', '|'],                                    processor: 'builtin:special-bin-op',      config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
+	{ type: 'function', names: ['|>', '%>%'],                                  processor: 'builtin:pipe',                config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['function', '\\'],                             processor: 'builtin:function-definition', config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: 'builtin:quote',               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
+	{ type: 'function', names: ['for'],                                        processor: 'builtin:for-loop',            config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['repeat'],                                     processor: 'builtin:repeat-loop',         config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['while'],                                      processor: 'builtin:while-loop',          config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['do.call'],                                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true },                                 assumePrimitive: true  },
+	{ type: 'function', names: ['.Primitive', '.Internal'],                    processor: 'builtin:apply',               config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true  },
+	{ type: 'function', names: ['list'],                                       processor: 'builtin:list',                config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['c'],                                          processor: 'builtin:vector',              config: {},                                                                            assumePrimitive: true  },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],

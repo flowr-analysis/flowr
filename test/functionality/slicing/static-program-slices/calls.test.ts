@@ -537,6 +537,8 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 	describe('Separate Function Resolution', () => {
 		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
+		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
+			shell, 'c <- 3\nprint(c(1, 2))', ['2@print'], 'print(c(1, 2))');
 	});
 	describe('Failures in Practice', () => {
 		describe('empty functions', () => {
@@ -654,6 +656,14 @@ foo(.x = f(3))`);
 			assertSliced(label('Potential Definition', [
 				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'if'
 			]), shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', ['3@x'], 'x <- 2\nif(u) `<-` <- `*`\nx <- 3');
+		});
+		describe('Primitive', () => {
+			assertSliced(label('Without using primitive', [
+				'built-in-internal-and-primitive-functions'
+			]), shell, 'print <- function(...) 42\nprint(3)', ['2@print'], 'print <- function(...) 42\nprint(3)');
+			assertSliced(label('Without using primitive', [
+				'built-in-internal-and-primitive-functions'
+			]), shell, 'print <- function(...) 42\nfoo <- .Primitive("print")(3)', ['2@foo'], 'foo <- .Primitive("print")(3)');
 		});
 		describe('Data Table Assignments', () => {
 			const caps: SupportedFlowrCapabilityId[] = [

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import { assertContainerIndicesDefinition, withShell } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { Q } from '../../../../src/search/flowr-search-builder';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { amendConfig, defaultConfigOptions, setConfig } from '../../../../src/config';
 
 describe.sequential('List Definition', withShell(shell => {
 	const basicCapabilities = ['name-normal', 'function-calls', 'subsetting-multiple'] as const;
@@ -12,7 +12,7 @@ describe.sequential('List Definition', withShell(shell => {
 	});
 
 	afterAll(() => {
-		amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+		setConfig(defaultConfigOptions);
 	});
 
 	describe('Named Arguments', () => {
@@ -57,6 +57,44 @@ describe.sequential('List Definition', withShell(shell => {
 					{ identifier: { index: 4, lexeme: 'd' }, nodeId: 12, },
 				]
 			);
+
+			assertContainerIndicesDefinition(
+				label('Appending to list', capabilities),
+				shell,
+				'x <- list(a = 1)\nx$e <- 3\nx',
+				Q.criterion('3@x'),
+				[
+					{ identifier: { index: 1, lexeme: 'a' }, nodeId: 4 },
+					// currently we are unable to track the new index
+					{ identifier: { index: undefined, lexeme: 'e' }, nodeId: 10 },
+				]
+			);
+
+			describe('Skip if index threshold', () => {
+				beforeAll(() => {
+					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
+				});
+
+				afterAll(() => {
+					setConfig(defaultConfigOptions);
+				});
+				assertContainerIndicesDefinition(
+					label('Over the limit (list)', capabilities),
+					shell,
+					'list(a = 1, b = 2.3, c = 3.1e4, d = 0xcafe)',
+					Q.criterion('1@list'),
+					undefined
+				);
+				assertContainerIndicesDefinition(
+					label('Still works in limit', capabilities),
+					shell,
+					'list(a = 1)',
+					Q.criterion('1@list'),
+					[
+						{ identifier: { index: 1, lexeme: 'a' }, nodeId: 3, },
+					]
+				);
+			});
 		});
 
 		describe('Nested containers', () => {

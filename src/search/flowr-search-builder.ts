@@ -11,6 +11,9 @@ import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
+import type { Enrichment } from './search-executor/search-enrichers';
+import type { MapperArguments } from './search-executor/search-mappers';
+import { Mapper } from './search-executor/search-mappers';
 
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
@@ -205,6 +208,23 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
+	with(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
+		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment } });
+		return this;
+	}
+
+	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
+		this.search.push( { type: 'transformer', name: 'map', args: {
+			// type system is trash, see search-mappers.ts map function
+			mapper: mapper as Mapper.Enrichment,
+			args:   args as MapperArguments<Mapper.Enrichment>
+		} });
+		return this;
+	}
+
+	get(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
+		return this.with(enrichment).map(Mapper.Enrichment, enrichment);
+	}
 
 	/**
 	 * merge combines the search results with those of another search.

@@ -18,7 +18,7 @@ import type { JsonEntry } from '../../../json/format';
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from
  */
-export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
+export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber | RLogical | RSymbol<NoInfo, RNa> {
 	const { location, content } = retrieveMetaStructure(obj);
 	const common = {
 		location,

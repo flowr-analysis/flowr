@@ -402,6 +402,7 @@ export class BenchmarkSlicer {
 		filter: SlicingCriteriaFilter,
 		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
 		sampleCount = -1,
+		sampleStrategy: 'random' | 'equidistant' = 'random',
 		maxSliceCount = -1,
 	): Promise<number> {
 		this.guardActive();
@@ -412,7 +413,12 @@ export class BenchmarkSlicer {
 			return -allCriteria.length;
 		}
 		if(sampleCount > 0) {
-			allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			if(sampleStrategy === 'random') {
+				allCriteria.sort(() => Math.random() - 0.5);
+				allCriteria.length = Math.min(allCriteria.length, sampleCount);
+			} else {
+				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			}
 		}
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria);

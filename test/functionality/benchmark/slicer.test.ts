@@ -203,7 +203,7 @@ print(person$age)`,
 		});
 
 		describe('Slicing with sampling enabled', () => {
-			test('When sampling is enabled, then correct values are counted', async() => {
+			test('When equidistant sampling is enabled, then correct values are counted', async() => {
 				const slicer = new BenchmarkSlicer('r-shell');
 				const request = {
 					request: 'text' as const,
@@ -218,7 +218,42 @@ e <- 5`,
 				await slicer.init(request);
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
-				}, 3);
+				}, 3, 'equidistant');
+				slicer.finish();
+
+				const { stats } = await retrieveStatsSafe(slicer, request);
+
+				assert.equal(slicedCount, 3, 'Sliced three times');
+				assert.equal(stats.perSliceMeasurements.numberOfSlices, 3, 'Sliced three times');
+				assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes,
+					{
+						min:    1,
+						max:    1,
+						median: 1,
+						mean:   1,
+						std:    0,
+						total:  3
+					},
+					'Correct slice sizes'
+				);
+			});
+
+			test('When random sampling is enabled, then correct values are counted', async() => {
+				const slicer = new BenchmarkSlicer('r-shell');
+				const request = {
+					request: 'text' as const,
+					content: `
+a <- 1
+b <- 2
+c <- 3
+d <- 4
+e <- 5`,
+				};
+
+				await slicer.init(request);
+				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
+					assert.equal(criteria.length, 3, '3 criteria are sliced');
+				}, 3, 'random');
 				slicer.finish();
 
 				const { stats } = await retrieveStatsSafe(slicer, request);

@@ -532,7 +532,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								{
 									name:        'Internal and Primitive Functions',
 									id:          'built-in-internal-and-primitive-functions',
-									supported:   'not',
+									supported:   'partially',
 									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.'
 								},
 								{

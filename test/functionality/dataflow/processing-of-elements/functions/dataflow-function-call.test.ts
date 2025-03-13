@@ -380,6 +380,20 @@ a(,3)`, emptyGraph()
 			.defineVariable('1', 'x', { definedBy: ['2', '3'] })
 		);
 	});
+	describe('Partial Matching of Arguments', () => {
+		for(const partial of ['hell', 'hel', 'he', 'h']) {
+			assertDataflow(label('Calling with 1 + x', ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers']),
+				shell, `f <- function(hello=1) hello\nf(${partial}=2)`, emptyGraph(), {
+					resolveIdsAsCriterion: true
+				}
+			);
+		}
+		assertDataflow(label('Calling with 1 + x', ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers']),
+			shell, 'f <- function(hello=1, ...) hello\nf(hello=2)', emptyGraph(), {
+				resolveIdsAsCriterion: true
+			}
+		);
+	});
 	describe('*apply', () => {
 		const caps: SupportedFlowrCapabilityId[] = ['function-calls', 'unnamed-arguments', 'formals-named', 'function-definitions', 'numbers', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities];
 		describe('no additional arguments', () => {

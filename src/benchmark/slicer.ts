@@ -45,6 +45,7 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import { isParentContainerIndex } from '../dataflow/graph/vertex';
+import { equidistantSampling } from '../util/arrays';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -79,6 +80,13 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	code:  ReconstructionResult
 }
 
+/**
+ * The type of sampling strategy to use when slicing all possible variables.
+ *
+ * - `'random'`: Randomly select the given number of slicing criteria.
+ * - `'equidistant'`: Select the given number of slicing criteria in an equidistant manner.
+ */
+export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -400,19 +408,27 @@ export class BenchmarkSlicer {
 	public async sliceForAll(
 		filter: SlicingCriteriaFilter,
 		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
-		sampleRandom = -1,
-		maxSliceCount = -1,
+		options: {
+			sampleCount?:    number,
+			maxSliceCount?:  number,
+			sampleStrategy?: SamplingStrategy
+		} = {},
 	): Promise<number> {
+		const { sampleCount, maxSliceCount, sampleStrategy } = { sampleCount: -1, maxSliceCount: -1, sampleStrategy: 'random', ...options };
 		this.guardActive();
 		let count = 0;
-		const allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
+		let allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
 		// Cancel slicing if the number of slices exceeds the limit
 		if(maxSliceCount > 0 && allCriteria.length > maxSliceCount) {
 			return -allCriteria.length;
 		}
-		if(sampleRandom > 0) {
-			allCriteria.sort(() => Math.random() - 0.5);
-			allCriteria.length = Math.min(allCriteria.length, sampleRandom);
+		if(sampleCount > 0) {
+			if(sampleStrategy === 'equidistant') {
+				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			} else {
+				allCriteria.sort(() => Math.random() - 0.5);
+				allCriteria.length = Math.min(allCriteria.length, sampleCount);
+			}
 		}
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria);

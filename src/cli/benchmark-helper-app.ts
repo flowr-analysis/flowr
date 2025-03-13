@@ -56,9 +56,11 @@ async function benchmark() {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
-	// Enable pointer analysis if requested
+	// Enable pointer analysis if requested, otherwise disable it
 	if(options['enable-pointer-tracking']) {
 		amendConfig({ solver: { ...getConfig().solver, pointerTracking: true, } });
+	} else {
+		amendConfig({ solver: { ...getConfig().solver, pointerTracking: false, } });
 	}
 
 	// ensure the file exists

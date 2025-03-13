@@ -242,6 +242,8 @@ export const WriteFunctions: FunctionInfo[] = [
 	// XLConnect
 	{ name: 'writeNamedRegionToFile', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'writeWorksheetToFile', argIdx: 0, argName: 'file', resolveValue: true },
+	// ggplot
+	{ name: 'ggsave', argIdx: 0, argName: 'filename', resolveValue: true },
 ] as const;
 
 export interface FunctionInfo {

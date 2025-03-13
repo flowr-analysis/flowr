@@ -103,4 +103,18 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 		'1@df',
 		DataFrameTestOverapproximation
 	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- eval(parse(text = "data.frame()"))',
+		'1@df',
+		DataFrameTop
+	);
+
+	testDataFrameDomain(
+		shell,
+		'df <- eval(parse(text = "data.frame()"))',
+		'1@df',
+		DataFrameTestOverapproximation
+	);
 }));

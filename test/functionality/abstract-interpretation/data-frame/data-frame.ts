@@ -1,7 +1,7 @@
 import { assert, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
-import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/processor-decorator';
+import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';

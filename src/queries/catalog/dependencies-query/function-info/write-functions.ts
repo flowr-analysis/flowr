@@ -94,5 +94,10 @@ export const WriteFunctions: FunctionInfo[] = [
 	// DiagrammeR
 	{ package: 'DiagrammeR', name: 'save_graph',   argIdx: 1, argName: 'file',      resolveValue: true },
 	{ package: 'DiagrammeR', name: 'export_graph',            argName: 'file_name', resolveValue: true },
+	// ggplot
+	{ package: 'ggplot', name: 'ggsave', argIdx: 0, argName: 'filename', resolveValue: true },
+	// rasterpdf
+	{ package: 'rasterpdf', name: 'raster_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'rasterpdf', name: 'agg_pdf',    argIdx: 0, argName: 'filename', resolveValue: true },
 
 ] as const;

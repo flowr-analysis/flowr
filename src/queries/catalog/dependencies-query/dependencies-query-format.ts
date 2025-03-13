@@ -238,7 +238,7 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'writePolyShape', argIdx: 1, argName: 'fn', resolveValue: true },
 	// XLConnect
 	{ name: 'writeNamedRegionToFile', argIdx: 0, argName: 'file', resolveValue: true },
-	{ name: ' writeWorksheetToFile', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'writeWorksheetToFile', argIdx: 0, argName: 'file', resolveValue: true },
 ] as const;
 
 export interface FunctionInfo {

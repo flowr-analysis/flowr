@@ -200,7 +200,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								{
 									name:        'Resolve Arguments',
 									id:          'resolve-arguments',
-									supported:   'partially',
+									supported:   'fully',
 									description: '_Correctly bind arguments (including [`pmatch`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/pmatch))._ Currently, we do not have a correct implementation for `pmatch`. Furthermore, more tests would be nice.'
 								},
 								{

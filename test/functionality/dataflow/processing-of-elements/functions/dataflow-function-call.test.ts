@@ -382,15 +382,19 @@ a(,3)`, emptyGraph()
 	});
 	describe('Partial Matching of Arguments', () => {
 		for(const partial of ['hell', 'hel', 'he', 'h']) {
-			assertDataflow(label('Calling with 1 + x', ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers']),
-				shell, `f <- function(hello=1) hello\nf(${partial}=2)`, emptyGraph(), {
-					resolveIdsAsCriterion: true
+			assertDataflow(label(`Call with ${partial} argument`, ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', 'resolve-arguments']),
+				shell, `f <- function(hello=1) hello\nf(${partial}=2)`, emptyGraph()
+					.definesOnCall(11, 1)
+					.definedByOnCall(1, 11), {
+					expectIsSubgraph: true
 				}
 			);
 		}
-		assertDataflow(label('Calling with 1 + x', ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers']),
-			shell, 'f <- function(hello=1, ...) hello\nf(hello=2)', emptyGraph(), {
-				resolveIdsAsCriterion: true
+		assertDataflow(label('Call with hell and dots', ['named-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', 'resolve-arguments']),
+			shell, 'f <- function(hello=1, ...) hello\nf(hell=2)', emptyGraph()
+				.definesOnCall(13, 1)
+				.definedByOnCall(1, 13), {
+				expectIsSubgraph: true
 			}
 		);
 	});

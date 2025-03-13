@@ -81,7 +81,12 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 * if not, the graph will be over-approximated wrt.
 		 * containers and accesses
 		 */
-		readonly pointerTracking: boolean
+		readonly pointerTracking: boolean | {
+			/**
+			 * The maximum number of indices tracked per obj with the pointer analysis (currently this focuses on initialization)
+			 */
+			readonly maxIndexCount: number
+		},
 		/**
 		 * If lax source calls are active, flowR searches for sourced files much more freely,
 		 * based on the configurations you give it.
@@ -202,8 +207,13 @@ export const flowrConfigFileSchema = Joi.object({
 	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 	solver:        Joi.object({
 		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
-		resolveSource:   Joi.object({
+		pointerTracking: Joi.alternatives(
+			Joi.boolean(),
+			Joi.object({
+				maxIndexCount: Joi.number().required().description('The maximum number of indices tracked per object with the pointer analysis.')
+			})
+		).description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
+		resolveSource: Joi.object({
 			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
@@ -277,6 +287,22 @@ export function getEngineConfig<T extends EngineConfig['type']>(engine: T): Engi
 		return config.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 	}
 }
+
+function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
+	const config = getConfig().solver.pointerTracking;
+	if(typeof config === 'object') {
+		return config.maxIndexCount;
+	} else {
+		return config ? 'unlimited' : 'disabled';
+	}
+}
+
+export function isOverPointerAnalysisThreshold(count: number): boolean {
+	const threshold = getPointerAnalysisThreshold();
+	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
+}
+
+
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {

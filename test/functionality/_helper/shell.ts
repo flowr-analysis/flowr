@@ -1,7 +1,7 @@
 import type { MergeableRecord } from '../../../src/util/objects';
 import { deepMergeObject } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
-import { guard } from '../../../src/util/assert';
+import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import type { TestLabel, TestLabelContext } from './label';
 import { modifyLabelName , decorateLabelContext } from './label';
@@ -22,8 +22,6 @@ import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_DATAFLOW_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
-
-
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
@@ -40,8 +38,10 @@ import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/t
 import type { PipelineOutput , Pipeline } from '../../../src/core/steps/pipeline/pipeline';
 import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { runSearch } from '../../../src/search/flowr-search-executor';
-import { type ContainerIndex } from '../../../src/dataflow/graph/vertex';
+import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { DataflowInformation } from '../../../src/dataflow/info';
+import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
+import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -502,13 +502,39 @@ export function assertSliced(
 	handleAssertOutput(name, shell, input, userConfig);
 }
 
+function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {
+	const vertex = dfg.getVertex(id);
+	return vertex?.indicesCollection?.flatMap(collection => collection.indices);
+}
+
+function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnvironmentInformation): ContainerIndex[] | undefined {
+	const name = ast.idMap.get(id)?.lexeme;
+	if(!name) {
+		return undefined;
+	}
+	const mayVertex = dfg.getVertex(id);
+	const useEnv = mayVertex?.environment ?? env;
+	const result = resolveByName(name, useEnv)?.flatMap(f => {
+		if('indicesCollection' in f) {
+			return f.indicesCollection?.flatMap(collection => collection.indices);
+		} else {
+			return undefined;
+		}
+	});
+	if(result?.every(s => s === undefined)) {
+		return undefined;
+	} else {
+		return result?.filter(isNotUndefined);
+	}
+}
+
 export function assertContainerIndicesDefinition(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	search: FlowrSearchLike,
-	expectedIndices: ContainerIndex[],
-	userConfig: Partial<TestConfiguration> = {},
+	expectedIndices: ContainerIndex[] | undefined,
+	userConfig: Partial<TestConfiguration & { searchIn: 'dfg' | 'env' | 'both' }> = { searchIn: 'both' },
 ) {
 	const effectiveName = decorateLabelContext(name, ['dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
@@ -517,15 +543,27 @@ export function assertContainerIndicesDefinition(
 			request: requestFromInput(input),
 		}).allRemainingSteps();
 		const result = runSearch(search, analysis);
+		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
+		if(userConfig.searchIn === 'dfg') {
+			findIndices = id => findInDfg(id, analysis.dataflow.graph);
+		} else if(userConfig.searchIn === 'env') {
+			findIndices = id => findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
+		} else {
+			findIndices = id => findInDfg(id, analysis.dataflow.graph) ?? findInEnv(id, analysis.normalize, analysis.dataflow.graph, analysis.dataflow.environment);
+		}
+
 
 		assert(result.length > 0, 'The result of the search was empty');
 
 		for(const element of result) {
 			const id = element.node.info.id;
-			const vertex = analysis.dataflow.graph.getVertex(id);
-			assert(vertex !== undefined, `vertex with id ${id} doesn't exist`);
-			assert(vertex.indicesCollection !== undefined, `indices collection for vertex with id ${id} doesn't exist`);
-			const actualIndices = vertex.indicesCollection.flatMap(collection => collection.indices) ?? [];
+
+			const actualIndices = findIndices(id);
+			if(expectedIndices === undefined) {
+				assert(actualIndices === undefined, `indices collection for vertex with id ${id} exists`);
+				continue;
+			}
+			assert(actualIndices !== undefined, `indices collection for id ${id} doesn't exist`);
 
 			const actual = stringifyIndices(actualIndices);
 			const expected = stringifyIndices(expectedIndices);

@@ -108,5 +108,8 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'XLConnect', name: 'readWorksheetFromFile',   argIdx: 0, argName: 'file',     resolveValue: true },
 	{ package: 'XLConnect', name: 'readNamedRegionFromFile', argIdx: 0, argName: 'file',     resolveValue: true },
 	{ package: 'XLConnect', name: 'loadWorkbook',            argIdx: 0, argName: 'filename', resolveValue: true },
+	// DiagrammeR
+	{ package: 'DiagrammeR', name: 'import_graph', argIdx: 0, argName: 'graph_file', resolveValue: true },
+	{ package: 'DiagrammeR', name: 'open_graph',   argIdx: 0, argName: 'file',       resolveValue: true },
 
 ] as const;

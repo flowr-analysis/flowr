@@ -88,5 +88,11 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'maptools', name: 'writePolyShape', argIdx: 1, argName: 'fn', resolveValue: true },
 	// XLConnect
 	{ package: 'XLConnect', name: 'writeNamedRegionToFile', argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'XLConnect', name: ' writeWorksheetToFile',  argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'XLConnect', name: 'writeWorksheetToFile',   argIdx: 0, argName: 'file', resolveValue: true },
+	// visNetwork
+	{ package: 'visNetwork', name: 'visSave', argIdx: 1, argName: 'file', resolveValue: true },
+	// DiagrammeR
+	{ package: 'DiagrammeR', name: 'save_graph',   argIdx: 1, argName: 'file',      resolveValue: true },
+	{ package: 'DiagrammeR', name: 'export_graph',            argName: 'file_name', resolveValue: true },
+
 ] as const;

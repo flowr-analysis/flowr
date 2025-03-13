@@ -537,6 +537,8 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 	describe('Separate Function Resolution', () => {
 		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
+		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
+			shell, 'c <- 3\nprint(c(1, 2))', ['2@print'], 'print(c(1, 2))');
 	});
 	describe('Failures in Practice', () => {
 		describe('empty functions', () => {

@@ -8,10 +8,10 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
 const PlotCreate = [
-	'plot', 'plot.new', 'xspline', 'curve', 'map', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
-	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
+	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
+	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
-	'spineplot', 'Plotranges'
+	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'ggplot', 'leaflet', 'tm_shape', 'plot_ly'
 ] as const;
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
@@ -19,7 +19,7 @@ const GraphicDeviceOpen = [
 ] as const;
 const PlotAddons = [
 	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
-	'tiplabels', 'rug'
+	'tiplabels', 'rug', 'grid', 'box', 'clip'
 ] as const;
 
 function toRegex(n: readonly string[]): RegExp {

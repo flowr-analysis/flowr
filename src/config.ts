@@ -7,6 +7,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
+import type { DeepPartial } from 'ts-essentials';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -110,6 +111,11 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 * if it is relative.
 			 */
 			readonly dropPaths:             DropPathsOption
+			/**
+			 * How often the same file can be sourced within a single run?
+			 * Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.
+			 */
+			readonly repeatedSourceLimit?:  number
 		},
 		/**
 		 * The configuration for flowR's slicer
@@ -174,7 +180,8 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,
 			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-			searchPath:            []
+			searchPath:            [],
+			repeatedSourceLimit:   2
 		},
 		slicer: {
 			threshold: 50
@@ -217,7 +224,8 @@ export const flowrConfigFileSchema = Joi.object({
 			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
-			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.')
+			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
+			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.')
 		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 		slicer: Joi.object({
 			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
@@ -261,8 +269,8 @@ export function setConfig(config: FlowrConfigOptions) {
 	currentConfig = config;
 }
 
-export function amendConfig(amendment: Partial<FlowrConfigOptions>) {
-	setConfig(deepMergeObject(getConfig(), amendment));
+export function amendConfig(amendment: DeepPartial<FlowrConfigOptions>) {
+	setConfig(deepMergeObject(getConfig(), amendment) as FlowrConfigOptions);
 	log.trace(`Amending config with ${JSON.stringify(amendment)}, resulting in ${JSON.stringify(getConfig())}}`);
 }
 

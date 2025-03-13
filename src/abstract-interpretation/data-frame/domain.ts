@@ -1,13 +1,12 @@
 type Interval = [number, number];
-export type IntervalDomain = Interval | 'bottom';
 
-export const IntervalBottom: IntervalDomain = 'bottom';
-export const IntervalTop: IntervalDomain = [0, Infinity];
+export const IntervalBottom = 'bottom';
+export const IntervalTop: Interval = [0, Infinity];
+export type IntervalDomain = Interval | typeof IntervalBottom;
 
-export type ColNamesDomain = string[] | 'top';
-
-export const ColNamesBottom: ColNamesDomain = [];
-export const ColNamesTop: ColNamesDomain = 'top';
+export const ColNamesBottom: string[] = [];
+export const ColNamesTop = 'top';
+export type ColNamesDomain = string[] | typeof ColNamesTop;
 
 export interface DataFrameDomain {
     colnames: ColNamesDomain,
@@ -26,6 +25,10 @@ export const DataFrameTop: DataFrameDomain = {
 	cols:     IntervalTop,
 	rows:     IntervalTop
 };
+
+export function leqColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
+	return X2 === ColNamesTop || (X1 !== ColNamesTop && new Set(X1).isSubsetOf(new Set(X2)));
+}
 
 export function joinColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
 	if(X1 === ColNamesTop || X2 === ColNamesTop) {
@@ -57,7 +60,11 @@ export function subtractColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNam
 	}
 }
 
-export function joinInterval(X1: Interval, X2: Interval): IntervalDomain {
+export function leqInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
+	return X1 === IntervalBottom || (X2 !== IntervalBottom && X2[0] <= X1[0] && X1[1] <= X2[1]);
+}
+
+export function joinInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
 	if(X1 === IntervalBottom && X2 === IntervalBottom) {
 		return IntervalBottom;
 	} else if(X1 === IntervalBottom) {
@@ -69,7 +76,7 @@ export function joinInterval(X1: Interval, X2: Interval): IntervalDomain {
 	}
 }
 
-export function meetInterval(X1: Interval, X2: Interval): IntervalDomain {
+export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
 	if(X1 === IntervalBottom || X2 === IntervalBottom) {
 		return IntervalBottom;
 	} else if(Math.max(X1[0], X2[0]) > Math.min(X1[1], X2[1])) {

@@ -59,6 +59,7 @@ function printResultSection<T extends DependencyInfo>(title: string, infos: T[],
 
 const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 	name:    Joi.string().required().description('The name of the library function.'),
+	package: Joi.string().required().description('The package name of the library function'),
 	argIdx:  Joi.number().optional().description('The index of the argument that contains the library name.'),
 	argName: Joi.string().optional().description('The name of the argument that contains the library name.'),
 })).optional();

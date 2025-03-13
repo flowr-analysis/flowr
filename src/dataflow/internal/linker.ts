@@ -23,6 +23,7 @@ import { resolveByName } from '../environments/resolve-by-name';
 import { BuiltIn } from '../environments/built-in';
 import { slicerLogger } from '../../slicing/static/static-slicer';
 import type { REnvironmentInformation } from '../environments/environment';
+import { findByPrefixIfUnique } from '../../util/prefix';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -92,7 +93,8 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 	// first map names
 	for(const [name, arg] of nameArgMap) {
-		const param = nameParamMap.get(name);
+		const pmatchName = findByPrefixIfUnique(name, [...nameParamMap.keys()]) ?? name;
+		const param = nameParamMap.get(pmatchName);
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);

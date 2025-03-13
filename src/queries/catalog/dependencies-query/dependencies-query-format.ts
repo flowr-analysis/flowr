@@ -211,6 +211,9 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'tiff', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'X11', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'quartz', argIdx: 0, argName: 'file', resolveValue: true },
+	// rasterpdf
+	{ name: 'raster_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
+	{ name: 'agg_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
 	// car
 	{ name: 'Export', argIdx: 0, argName: 'file', resolveValue: true },
 	// LIM

@@ -3,21 +3,12 @@ import type {
 	DependenciesQuery,
 	DependenciesQueryResult,
 	DependencyInfo,
-	DependencyInfoLinkAttachedInfo,
-	FunctionInfo,
 	LibraryInfo,
 	ReadInfo,
 	SourceInfo,
 	WriteInfo
 } from './dependencies-query-format';
-import {
-	DependencyInfoLinkConstraint,
-	LibraryFunctions,
-	ReadFunctions,
-	SourceFunctions,
-	Unknown,
-	WriteFunctions
-} from './dependencies-query-format';
+import { Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
@@ -36,6 +27,12 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { LibraryFunctions } from './function-info/library-functions';
+import { SourceFunctions } from './function-info/source-functions';
+import { ReadFunctions } from './function-info/read-functions';
+import { WriteFunctions } from './function-info/write-functions';
+import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
+import { DependencyInfoLinkConstraint } from './function-info/function-info';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */

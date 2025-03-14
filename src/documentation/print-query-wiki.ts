@@ -508,7 +508,7 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
-		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
+		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
 		sourceFunctions:        [],
 		readFunctions:          [],
 		writeFunctions:         []

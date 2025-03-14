@@ -1,0 +1,166 @@
+name: Check for Broken Links and Publish Wiki
+
+'on':
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches: [ main ]
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Release Action"]
+    branches: [ main ]
+    types:
+      - completed
+  schedule:
+    # every monday at night
+    - cron: '0 1 * * 1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "🛒 Checkout Repository (Release Perm.)"
+        uses: actions/checkout@v4
+        with:
+            submodules: true
+            lfs:        true
+            token:      ${{ secrets.RELEASE_TOKEN }}
+            fetch-tags: true
+            fetch-depth: 0
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "⬇️ Setup R"
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "📦 Install R Packages"
+        shell: Rscript {0}
+        run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")
+
+      - name: "🛒 Checkout LFS"
+        # just as a time-proven safety measure
+        run: git lfs checkout
+
+      - name: "⚗️ Test Suite (full, for data)"
+        # we make sure we have a clean run
+        run: |
+          rm -rf "coverage/"
+          rm -f "/tmp/flowr-label-summary.json"
+          bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+
+      - name: "🛠️ Update the Generated Pages"
+        run: |
+          npm ci
+          CHANGED_ANY=false
+          CHANGED_FILES=()
+          function update_page {
+            # test if the file exists
+            if [ -f "$1.md" ]; then
+                cp "$1.md" "$1-Old.md"
+            else
+                touch "$1-Old.md"
+            fi
+            npm run $2 --silent > "$1.md"
+            # test if the file changed, but ignore the first line which contains the time stamp
+            # we additionally used sed to remove any measurement stamp for the comparison as they of course change
+            # additionally, we remove any part "timing": <number>.
+            tail -n +2 "$1.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1.md.tmp"
+            tail -n +2 "$1-Old.md" | sed -E 's/[0-9]+(\.[0-9]+)? ?ms//g; s/tmp-[A-Za-z0-9-]+//g; s/"timing":\s*[0-9]+(\.0-9)?,?//g' > "$1-Old.md.tmp"
+          
+            if ! diff -q "$1.md.tmp" "$1-Old.md.tmp"; then
+                echo "$1 changed!"
+                echo "CHANGED=true" >> $GITHUB_ENV
+                CHANGED_ANY=true
+                git add -f "$1.md"
+                CHANGED_FILES+=("$1")
+            else
+                echo "$1 did not change!"
+            fi
+            # delete the old file again
+            rm "$1-Old.md"
+          }
+          
+          update_page wiki/"Capabilities" capabilities-markdown
+          update_page wiki/"Dataflow Graph" wiki:df-graph
+          update_page wiki/"Query API" wiki:query-api
+          update_page wiki/"Search API" wiki:search-api
+          update_page wiki/"Engines" wiki:engines
+          update_page wiki/"Interface" wiki:interface
+          update_page wiki/"Normalized AST" wiki:normalized-ast
+          update_page wiki/"Linting and Testing" wiki:linting-and-testing
+          update_page wiki/"Core" wiki:core
+          update_page README gen:readme
+          
+          # check for an update in the versions! (including the updated name information)
+          LIMIT_TO_LAST=8
+          ALL_TAGS=$( git tag --list --format="%(tag) (%(creatordate))" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+)\s*\(([a-zA-Z]+\s*)([a-zA-Z]+)\s*([0-9]+)\s*[0-9:]+\s+([0-9]+).*/\1 (\3 \4, \5)/' | sort -V | tail -n$LIMIT_TO_LAST)
+          NUM_OF_TAGS=$(echo "$ALL_TAGS" | wc -l)
+          LATEST_TAG=$(echo "$ALL_TAGS" | tail -n1)
+          # add (latest) to the latest tag
+          ALL_TAGS=$(sed -E "s/^$LATEST_TAG$/$LATEST_TAG (latest)/" <<< "$ALL_TAGS")
+          ALL_TAGS=$(echo -e "<Older> (please consider updating)\n$ALL_TAGS")
+          ALL_TAGS+="\nUnknown\nUnreleased/Dev"
+          ALL_TAGS=$(echo -e "$ALL_TAGS" | sed -E 's/^(.*)$/        - \1/')
+          cp .github/ISSUE_TEMPLATE/bug-report.yaml .github/ISSUE_TEMPLATE/bug-report.yaml.tmp
+          sed -i -E "/\s*# START::Versions/,/\s*# END::Versions/c\\# START::Versions\n$(echo "$ALL_TAGS" | sed 's/$/\\/' ) \n# END::Versions" .github/ISSUE_TEMPLATE/bug-report.yaml
+          sed -i -E "/\s*# START::DefaultVersion/,/\s*# END::DefaultVersion/c\\# START::DefaultVersion\n      default: $((NUM_OF_TAGS))\n# END::DefaultVersion" .github/ISSUE_TEMPLATE/bug-report.yaml
+          if ! diff -q .github/ISSUE_TEMPLATE/bug-report.yaml .github/ISSUE_TEMPLATE/bug-report.yaml.tmp; then
+              echo "Versions in the bug-report changed!"
+              echo "CHANGED=true" >> $GITHUB_ENV
+              CHANGED_ANY=true
+              git add -f .github/ISSUE_TEMPLATE/bug-report.yaml
+              CHANGED_FILES+=("bug-report.yaml")
+          else
+              echo "Versions in bug-report did not change!"
+          fi
+
+          if [ $CHANGED_ANY == "true" ]; then
+              git config --local user.email "action@github.com"
+              git config --local user.name "GitHub Action"
+              CHANGED_FILES_STRING=$(IFS=,; echo "${CHANGED_FILES[*]}")
+              git commit -m "[skip ci] doc: update generated wiki pages ($CHANGED_FILES_STRING)"
+          fi
+
+      - name: "⬆️ Push changed Wiki pages"
+        if: ${{ env.CHANGED == 'true' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: main
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          force: true
+
+      - name: "⬆️ Publish the Wiki"
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        # We do not need to republish if nothing changes. Furthermore, do not publish on PR as this should be done by the push on main!
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        with:
+          path: "wiki/"
+          strategy: 'init'
+          token: ${{ secrets.GH_DEPLOY_WIKI }}
+          ignore: |
+            **/*.md.tmp
+            **/*-Old.*
+
+      - name: "🔎 Check the README for broken links"
+        uses: becheran/mlc@v0.21.0
+        continue-on-error: true
+        with:
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" README.md
+
+      - name: "🔎 Check the Wiki pages for broken links"
+        uses: becheran/mlc@v0.21.0
+        continue-on-error: true
+        if: ${{ always() && !failure() }}
+        with:
+          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" wiki/

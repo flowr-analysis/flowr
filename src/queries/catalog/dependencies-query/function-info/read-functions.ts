@@ -1,27 +1,27 @@
 import type { FunctionInfo } from './function-info';
 
 export const ReadFunctions: FunctionInfo[] = [
-	{ package: 'base', name: 'parse',                    argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'base', name: 'read.table',    argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'read.csv',      argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'read.csv2',     argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'read.delim',    argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'read.dcf',      argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'scan',          argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'read.fwf',      argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'file',          argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'url',           argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'load',          argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'gzfile',        argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'bzfile',        argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'download.file', argIdx: 0, argName: 'url',  resolveValue: true },
-	{ package: 'base', name: 'pipe',          argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'fifo',          argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'unz',           argIdx: 1, argName: 'open', resolveValue: true },
-	{ package: 'base', name: 'matrix',        argIdx: 0, argName: 'data', resolveValue: true },
-	{ package: 'base', name: 'readRDS',       argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'base', name: 'readLines',     argIdx: 0, argName: 'con',  resolveValue: true },
-	{ package: 'base', name: 'readRenviron',  argIdx: 0, argName: 'path', resolveValue: true },
+	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'base', name: 'read.table',          argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.csv',            argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.csv2',           argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.delim',          argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.dcf',            argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'scan',                argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.fwf',            argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'file',                argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'url',                 argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'load',                argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'gzfile',              argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'bzfile',              argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'download.file',       argIdx: 0, argName: 'url',  resolveValue: true },
+	{ package: 'base', name: 'pipe',                argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'fifo',                argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'unz',                 argIdx: 1, argName: 'open', resolveValue: true },
+	{ package: 'base', name: 'matrix',              argIdx: 0, argName: 'data', resolveValue: true },
+	{ package: 'base', name: 'readRDS',             argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'readLines',           argIdx: 0, argName: 'con',  resolveValue: true },
+	{ package: 'base', name: 'readRenviron',        argIdx: 0, argName: 'path', resolveValue: true },
 	// readr
 	{ package: 'readr', name: 'read_csv',           argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'readr', name: 'read_csv2',          argIdx: 0, argName: 'file', resolveValue: true },
@@ -35,9 +35,10 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'readr', name: 'read_lines_raw',     argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'readr', name: 'read_lines_chunked', argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'readr', name: 'read_rds',           argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'readr', name: 'clipboard'                                                          },
 	// xlsx
-	{ package: 'xlsx', name: 'read.xlsx',  argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'xlsx', name: 'read.xlsx2', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'xlsx', name: 'read.xlsx',           argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'xlsx', name: 'read.xlsx2',          argIdx: 0, argName: 'file', resolveValue: true },
 	// data.table
 	{ package: 'data.table', name: 'fread', argIdx: 0, argName: 'file', resolveValue: true },
 	// haven
@@ -114,6 +115,12 @@ export const ReadFunctions: FunctionInfo[] = [
 	//  highcharter
 	{ package: 'highcharter', name: 'download_map_data', argName: 'url', resolveValue: true },
 	// rvest
-	{ package: 'rvest', name: 'read_html',      argIdx: 0, argName: 'x' },
-	{ package: 'rvest', name: 'read_html_live', argIdx: 0, argName: 'url' }
+	{ package: 'rvest', name: 'read_html',      argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'rvest', name: 'read_html_live', argIdx: 0, argName: 'url', resolveValue: true },
+	// stats
+	{ package: 'stats', name: 'read.ftable',    argIdx: 0, argName: 'file', resolveValue: true },
+	// DBI
+	{ package: 'DBI', name: 'dbReadTable',      argIdx: 1, argName: 'name', resolveValue: true },
+	{ package: 'DBI', name: 'dbReadTableArrow', argIdx: 1, argName: 'name', resolveValue: true },
+
 ] as const;

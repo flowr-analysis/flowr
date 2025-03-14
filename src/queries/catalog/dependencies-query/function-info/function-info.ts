@@ -14,7 +14,7 @@ export type DependencyInfoLink = LinkTo<RegExp | string, Omit<FunctionInfo, 'nam
 export type DependencyInfoLinkAttachedInfo = DependencyInfoLink['attachLinkInfo']
 
 export interface FunctionInfo {
-    package:       string
+    package?:      string
     name:          string
     /** the index if the argument can be positional, unnamed in case of something like `...`, if the argument must be given with the name, please leave undefined */
     argIdx?:       number | 'unnamed'

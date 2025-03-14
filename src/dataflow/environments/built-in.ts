@@ -178,7 +178,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:while-loop':          processWhileLoop,
 	'builtin:replacement':         processReplacementFunction,
 	'builtin:list':                processList,
-  'builtin:vector':              processVector,
+	'builtin:vector':              processVector,
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<any>>;
 

@@ -9,7 +9,7 @@ import type {
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
-import { describe } from 'vitest';
+import { describe, test } from 'vitest';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
 
@@ -53,7 +53,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			['library', true],
 			['require', true],
 			['loadNamespace', true],
-			['attachNamespace', true]
+			['attachNamespace', true],
+			['load_all', true]
 			/* support attach, support with, support pacman::p_load and the like? */
 		] as const) {
 			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, {
@@ -122,6 +123,13 @@ describe.sequential('Dependencies Query', withShell(shell => {
 	});
 
 	describe('Sourced files', () => {
+		for(const sourceFn of [
+			'source_url',
+			'source_gist'
+		] as const) {
+			testQuery(`${sourceFn}`, `${sourceFn}("a")` , { sourcedFiles: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, file: 'a' }] });
+		}
+
 		testQuery('Single source', 'source("test/file.R")', { sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }] });
 
 		describe('Custom', () => {
@@ -138,6 +146,25 @@ describe.sequential('Dependencies Query', withShell(shell => {
 	});
 
 	describe('Read Files', () => {
+		for(const readFn of [
+			'import_graph',
+			'open_graph',
+			'download_map_data',
+			'read_html',
+			'read_html_live',
+			'read.ftable',
+		] as const) {
+			testQuery(`${readFn}`, `${readFn}("a")` , { readData: [{ nodeId: `1@${readFn}`, functionName: readFn, source: 'a' }] });
+		}
+
+		for(const readFn of [
+			'dbReadTable',
+			'dbReadTableArrow',
+			'url'
+		] as const) {
+			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { readData: [{ nodeId: `1@${readFn}`, functionName: readFn, source: 'a' }] });
+		}
+		
 		testQuery('read.table', "read.table('test.csv')", { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }] });
 		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
 		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { readData: [{ nodeId: '1@gzfile', functionName: 'gzfile', source: 'test.gz' }] });
@@ -163,6 +190,21 @@ describe.sequential('Dependencies Query', withShell(shell => {
 	});
 
 	describe('Write Files', () => {
+		for(const writeFn of [
+			'ggsave',
+			'raster_pdf',
+			'agg_pdf',
+			'Export',
+			'windows'
+		]) {
+			testQuery(`${writeFn}`, `${writeFn}("a")` , { writtenData: [{ nodeId: `1@${writeFn}`, functionName: writeFn, destination: 'a' }] });
+		}
+
+		testQuery('visSave', 'visSave(obj, "a")' , { writtenData: [{ nodeId: '1@visSave', functionName: 'visSave', destination: 'a' }] });
+		testQuery('save_graph', 'save_graph(obj, "a")' , { writtenData: [{ nodeId: '1@save_graph', functionName: 'save_graph', destination: 'a' }] });
+		testQuery('export_graph', 'export_graph(file_name = "a")' , { writtenData: [{ nodeId: '1@export_graph', functionName: 'export_graph', destination: 'a' }] });
+	
+
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });

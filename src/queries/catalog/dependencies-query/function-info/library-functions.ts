@@ -17,5 +17,5 @@ export const LibraryFunctions: FunctionInfo[] = [
 	// librarian
 	{ package: 'librarian',    name: 'shelf',             argIdx: 'unnamed',                     resolveValue: true },
 	// devtools
-	{ package: 'devtools',     name: 'load_all',                             argName: 'path',    resolveValue: true }
+	{ package: 'devtools',     name: 'load_all',          argIdx: 0,         argName: 'path',    resolveValue: true }
 ] as const;

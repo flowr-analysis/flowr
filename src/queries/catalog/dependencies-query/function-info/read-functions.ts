@@ -113,7 +113,7 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'DiagrammeR', name: 'import_graph', argIdx: 0, argName: 'graph_file', resolveValue: true },
 	{ package: 'DiagrammeR', name: 'open_graph',   argIdx: 0, argName: 'file',       resolveValue: true },
 	//  highcharter
-	{ package: 'highcharter', name: 'download_map_data', argName: 'url', resolveValue: true },
+	{ package: 'highcharter', name: 'download_map_data', argIdx: 0, argName: 'url', resolveValue: true },
 	// rvest
 	{ package: 'rvest', name: 'read_html',      argIdx: 0, argName: 'x',   resolveValue: true },
 	{ package: 'rvest', name: 'read_html_live', argIdx: 0, argName: 'url', resolveValue: true },

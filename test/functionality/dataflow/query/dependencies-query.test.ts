@@ -9,7 +9,7 @@ import type {
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
-import { describe, test } from 'vitest';
+import { describe } from 'vitest';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { libraries: [], sourcedFiles: [], readData: [], writtenData: [] };
 

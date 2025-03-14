@@ -14,13 +14,47 @@ export function binaryLogical<A extends Lift<ValueLogical>, B extends Lift<Value
 }
 
 const Operations = {
-	and:     (a, b) => logicalHelper(a, b, (a, b) => a && b),
-	or:      (a, b) => logicalHelper(a, b, (a, b) => a || b),
-	xor:     (a, b) => logicalHelper(a, b, (a, b) => a !== b),
-	implies: (a, b) => logicalHelper(a, b, (a, b) => !a || b),
-	iff:     (a, b) => logicalHelper(a, b, (a, b) => a === b),
-	nand:    (a, b) => logicalHelper(a, b, (a, b) => !(a && b)),
-	nor:     (a, b) => logicalHelper(a, b, (a, b) => !(a || b)),
+	and: (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === false || b === false) {
+			return false;
+		} else if(a === true && b === true) {
+			return true;
+		} else {
+			return 'maybe';
+		}
+	}),
+	or: (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === true || b === true) {
+			return true;
+		} else if(a === false && b === false) {
+			return false;
+		} else {
+			return 'maybe';
+		}
+	}),
+	xor: (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === 'maybe' || b === 'maybe') {
+			return 'maybe';
+		} else {
+			return a !== b;
+		}
+	}),
+	implies: (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === true) {
+			return b;
+		} else if(a === false) {
+			return true;
+		} else {
+			return 'maybe';
+		}
+	}),
+	iff: (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === 'maybe' || b === 'maybe') {
+			return 'maybe';
+		} else {
+			return a === b;
+		}
+	})
 } as const satisfies Record<string, (a: ValueLogical, b: ValueLogical) => ValueLogical>;
 
 function logicalHelper<A extends ValueLogical, B extends ValueLogical>(a: A, b: B, op: (a: TernaryLogical, b: TernaryLogical) => TernaryLogical): ValueLogical {

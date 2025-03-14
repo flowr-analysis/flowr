@@ -2,25 +2,12 @@ import type { Lift } from './r-value';
 import { Bottom, isBottom, isTop, Top } from './r-value';
 
 /**
- * Takes two potentially lifted ops and returns `Top` or `Bottom` if either is `Top` or `Bottom`.
+ * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
  */
-export function bottomTopGuard<A extends Lift<unknown>, B extends Lift<unknown>>(
-	a: A,
-	b: B
-): typeof Top | typeof Bottom | undefined {
-	if(isBottom(a) || isBottom(b)) {
+export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Bottom | undefined {
+	if(a.some(isBottom)) {
 		return Bottom;
-	} else if(isTop(a) || isTop(b)) {
-		return Top;
-	}
-}
-
-export function bottomTopGuardSingle<A extends Lift<unknown>>(
-	a: A
-): typeof Top | typeof Bottom | undefined {
-	if(isBottom(a)) {
-		return Bottom;
-	} else if(isTop(a)) {
+	} else if(a.some(isTop)) {
 		return Top;
 	}
 }

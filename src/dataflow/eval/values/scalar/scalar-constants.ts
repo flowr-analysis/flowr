@@ -1,6 +1,7 @@
 import type { ValueNumber } from '../r-value';
+import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 
-export function getScalarInteger(value: number): ValueNumber {
+export function getScalarFromInteger(value: number): ValueNumber {
 	return {
 		type:  'number',
 		value: {
@@ -11,6 +12,13 @@ export function getScalarInteger(value: number): ValueNumber {
 	};
 }
 
-export const ValueIntegerOne: ValueNumber = getScalarInteger(1);
-export const ValueIntegerZero: ValueNumber = getScalarInteger(0);
-export const ValueIntegerNegativeOne: ValueNumber = getScalarInteger(-1);
+export function liftScalar(value: RNumberValue): ValueNumber {
+	return {
+		type:  'number',
+		value: value
+	};
+}
+
+export const ValueIntegerOne: ValueNumber = getScalarFromInteger(1);
+export const ValueIntegerZero: ValueNumber = getScalarFromInteger(0);
+export const ValueIntegerNegativeOne: ValueNumber = getScalarFromInteger(-1);

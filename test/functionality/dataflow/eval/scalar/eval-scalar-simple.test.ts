@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import {
-	getScalarInteger,
+	getScalarFromInteger,
 	ValueIntegerOne,
 	ValueIntegerZero
 } from '../../../../../src/dataflow/eval/values/scalar/scalar-constants';
@@ -32,9 +32,9 @@ describe('scalar', () => {
 			{ label: '1 + 0', value: binaryScalar(ValueIntegerOne, ValueIntegerZero, 'add'), expect: 1 },
 			{ label: '1 - 1', value: binaryScalar(ValueIntegerOne, ValueIntegerOne, 'sub'), expect: 0 },
 			{ label: '1 * 0', value: binaryScalar(ValueIntegerOne, ValueIntegerZero, 'mul'), expect: 0 },
-			{ label: '1 * 2', value: binaryScalar(ValueIntegerOne, getScalarInteger(2), 'mul'), expect: 2 },
-			{ label: 'mod(5, 2)', value: binaryScalar(getScalarInteger(5), getScalarInteger(2), 'mod'), expect: 1 },
-			{ label: 'mod(5, 3)', value: binaryScalar(getScalarInteger(5), getScalarInteger(3), 'mod'), expect: 2 },
+			{ label: '1 * 2', value: binaryScalar(ValueIntegerOne, getScalarFromInteger(2), 'mul'), expect: 2 },
+			{ label: 'mod(5, 2)', value: binaryScalar(getScalarFromInteger(5), getScalarFromInteger(2), 'mod'), expect: 1 },
+			{ label: 'mod(5, 3)', value: binaryScalar(getScalarFromInteger(5), getScalarFromInteger(3), 'mod'), expect: 2 },
 		])('$label', ({ value, expect }) => {
 			shouldBeNum(value, expect);
 		});

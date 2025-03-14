@@ -3,7 +3,7 @@ import { bottomTopGuard } from '../general';
 import { checkInterval } from './interval-check';
 import { binaryInterval } from './interval-binary';
 import { iteLogical } from '../logical/logical-check';
-import { LogicalMaybe } from '../logical/logical-constants';
+import { ValueLogicalMaybe } from '../logical/logical-constants';
 import { compareScalar } from '../scalar/scalar-compare';
 import { getIntervalEnd, getIntervalStart } from './interval-constants';
 
@@ -22,7 +22,7 @@ function intervalLeq<A extends ValueInterval, B extends ValueInterval>(a: A, b: 
 
 	return iteLogical(
 		checkInterval(intersect, 'empty'),
-		LogicalMaybe,
+		ValueLogicalMaybe,
 		compareScalar(
 			getIntervalEnd(a),
 			getIntervalStart(b),

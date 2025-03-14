@@ -14,6 +14,7 @@ export function binaryScalar<A extends Lift<ValueNumber>, B extends Lift<ValueNu
 	return bottomTopGuard(a, b) ?? Operations[op](a as ValueNumber, b as ValueNumber);
 }
 
+
 const Operations = {
 	add: (a, b) => scalarHelper(a, b, (a, b) => a + b),
 	sub: (a, b) => scalarHelper(a, b, (a, b) => a - b),

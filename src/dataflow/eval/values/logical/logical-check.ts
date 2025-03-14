@@ -1,9 +1,9 @@
 import type { Lift, TernaryLogical, ValueLogical } from '../r-value';
 import { Bottom , Top } from '../r-value';
-import { bottomTopGuardSingle } from '../general';
+import { bottomTopGuard } from '../general';
 
 export function unpackLogical(a: Lift<ValueLogical>): Lift<TernaryLogical> {
-	return bottomTopGuardSingle(a) ?? (a as ValueLogical).value;
+	return bottomTopGuard(a) ?? (a as ValueLogical).value;
 }
 
 export function iteLogical<A extends Lift<ValueLogical>, Result>(

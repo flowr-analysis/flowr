@@ -1,5 +1,5 @@
 import type { Lift, ValueLogical } from '../r-value';
-import { bottomTopGuardSingle } from '../general';
+import { bottomTopGuard } from '../general';
 
 /**
  * Take one potentially lifted logical and apply the given unary op.
@@ -9,7 +9,7 @@ export function unaryLogical<A extends Lift<ValueLogical>>(
 	a: A,
 	op: keyof typeof Operations
 ): Lift<ValueLogical> {
-	return bottomTopGuardSingle(a) ?? Operations[op](a as ValueLogical);
+	return bottomTopGuard(a) ?? Operations[op](a as ValueLogical);
 }
 
 const Operations = {
@@ -17,9 +17,9 @@ const Operations = {
 } as const;
 
 function logicalNot<A extends ValueLogical>(a: A): ValueLogical {
-	const val = bottomTopGuardSingle(a.value);
+	const val = bottomTopGuard(a.value);
 	return {
 		type:  'logical',
-		value: val ?? !a.value
+		value: val ?? (a.value === 'maybe' ? 'maybe' : !a.value)
 	};
 }

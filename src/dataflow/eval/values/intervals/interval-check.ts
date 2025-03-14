@@ -1,12 +1,12 @@
 import type { Lift, ValueInterval, ValueLogical } from '../r-value';
-import { bottomTopGuardSingle } from '../general';
+import { bottomTopGuard } from '../general';
 
 const CheckOperations = {
-	'empty': intervalEmpty,
+	'empty': intervalEmpty
 } as const;
 
 export function checkInterval<A extends Lift<ValueInterval>>(a: A, op: keyof typeof CheckOperations): Lift<ValueLogical> {
-	return bottomTopGuardSingle(a) ?? CheckOperations[op](a as ValueInterval);
+	return bottomTopGuard(a) ?? CheckOperations[op](a as ValueInterval);
 }
 
 function intervalEmpty<A extends ValueInterval>(a: A): ValueLogical {

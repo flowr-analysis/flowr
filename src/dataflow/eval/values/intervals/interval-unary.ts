@@ -1,5 +1,5 @@
 import type { Lift, ValueInterval } from '../r-value';
-import { bottomTopGuardSingle } from '../general';
+import { bottomTopGuard } from '../general';
 import { ValueIntegerNegativeOne } from '../scalar/scalar-constants';
 import { binaryScalar } from '../scalar/scalar-binary';
 
@@ -11,7 +11,7 @@ export function unaryInterval<A extends Lift<ValueInterval>>(
 	a: A,
 	op: keyof typeof Operations
 ): Lift<ValueInterval> {
-	return bottomTopGuardSingle(a) ?? Operations[op](a as ValueInterval);
+	return bottomTopGuard(a) ?? Operations[op](a as ValueInterval);
 }
 
 const Operations = {

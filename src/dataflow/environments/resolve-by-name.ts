@@ -16,6 +16,8 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RNumberValue } from '../../r-bridge/lang-4.x/convert-values';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -345,7 +347,45 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, gr
 		case RType.Number:
 		case RType.Logical:
 			return [node.content];
+		case RType.BinaryOp:
+			if(full && node.operator === ':' && (node.lhs.type === RType.Number || node.lhs.type === RType.Symbol) && (node.rhs.type === RType.Symbol || node.rhs.type === RType.Number)) {
+				const leftArg = resolveIdToValue(node.lhs.info.id, { environment, graph, idMap, full });
+				const rightArg = resolveIdToValue(node.rhs.info.id, { environment, graph, idMap, full });
+				const leftValue = leftArg?.length === 1 ? leftArg[0] : undefined;
+				const rightValue = rightArg?.length === 1 ? rightArg[0] : undefined;
+
+				if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
+					return [createNumberSequence(leftValue, rightValue)];
+				}
+			}
+			return undefined;
+		case RType.FunctionCall:
+			if(full && node.named && node.functionName.content === 'c') {
+				const elements = node.arguments.map(arg => arg !== EmptyArgument && arg.value ? resolveIdToValue(arg.value.info.id, { environment, graph, idMap, full }) : undefined);
+
+				return [elements.map(element => element?.length === 1 ? element[0] : undefined).flat()];
+			}
+			return undefined;
 		default:
 			return undefined;
 	}
+}
+
+function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] {
+	const sequence: number[] = [];
+	const min = Math.min(start.num, end.num);
+	const max = Math.max(start.num, end.num);
+
+	for(let i = min; i <= max; i++) {
+		sequence.push(i);
+	}
+	if(start > end) {
+		sequence.reverse();
+	}
+
+	return sequence.map(value => ({ ...start, num: value }));
+}
+
+function isRNumberValue(value: unknown): value is RNumberValue {
+	return typeof value === 'object' && value !== null && 'num' in value && typeof value.num === 'number';
 }

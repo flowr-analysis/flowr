@@ -6,13 +6,21 @@ import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/ve
 
 describe.sequential('dollar access', withShell(shell => {
 	describe('problems in practice', () => {
-	/* in this case, we assume that it may have an impact! */
+		/* in this case, we assume that it may have an impact! */
 		assertSliced(label('access addition', ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'newlines']),
 			shell, `
 cor <- t$estimate
 pv <- t$p.value
 print(cor + pv)
 		`, ['4@print'], 'cor <- t$estimate\npv <- t$p.value\nprint(cor + pv)');
+
+		assertSliced(label('nested access', ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'newlines']),
+			shell, `
+person <- list(name = list(a = list(b = "Jane")))
+person$name$a$b <- "John"
+print(person)
+		`, ['4@print'], 'person <- list(name = list(a = list(b = "Jane")))\nperson$name$a$b <- "John"\nprint(person)');
+
 
 		for(const pipe of ['%>%', '|>']) {
 			const code = `

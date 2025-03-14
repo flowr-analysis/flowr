@@ -13,6 +13,7 @@ import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -23,6 +24,14 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	 * Should we unquote the function if it is given as a string?
 	 */
 	readonly unquoteFunction?:        boolean
+	/**
+	 * Should the function be resolved in the global environment?
+	 */
+	readonly resolveInEnvironment:    'global' | 'local'
+	/**
+	 * Should the value of the function be resolved?
+	 */
+	readonly resolveValue?:           boolean
 }
 
 export function processApply<OtherInfo>(
@@ -30,7 +39,7 @@ export function processApply<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction }: BuiltInApplyConfiguration
+	{ indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue }: BuiltInApplyConfiguration
 ): DataflowInformation {
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
@@ -61,8 +70,8 @@ export function processApply<OtherInfo>(
 		return information;
 	}
 
-	let functionId: NodeId;
-	let functionName: string;
+	let functionId: NodeId | undefined = undefined;
+	let functionName: string | undefined = undefined;
 
 	const val = arg.value;
 	if(unquoteFunction && val.type === RType.String) {
@@ -70,8 +79,17 @@ export function processApply<OtherInfo>(
 		functionName = val.content.str;
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
-		functionName = val.content;
-	} else {
+		if(resolveValue) {
+			const resolved = resolveValueOfVariable(val.content, data.environment);
+			if(resolved?.length === 1 && typeof resolved[0] === 'string') {
+				functionName = resolved[0];
+			}
+		} else {
+			functionName = val.content;
+		}
+	}
+
+	if(functionName === undefined || functionId === undefined) {
 		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
 		return information;
 	}
@@ -96,10 +114,11 @@ export function processApply<OtherInfo>(
 		id:          functionId,
 		name:        functionName,
 		args:        allOtherArguments,
-		environment: data.environment,
-		onlyBuiltin: false,
+		environment: resolveInEnvironment === 'global' ? undefined : data.environment,
+		onlyBuiltin: resolveInEnvironment === 'global',
 		cds:         data.controlDependencies
 	});
+
 
 	for(const arg of processedArguments) {
 		if(arg) {
@@ -107,5 +126,15 @@ export function processApply<OtherInfo>(
 		}
 	}
 
-	return information;
+
+	if(resolveInEnvironment === 'global') {
+		// remove from open ingoing references
+		return {
+			...information,
+			in:                information.in.filter(ref => ref.nodeId !== functionId),
+			unknownReferences: information.unknownReferences.filter(ref => ref.nodeId !== functionId)
+		};
+	} else {
+		return information;
+	}
 }

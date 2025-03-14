@@ -169,13 +169,15 @@ export function processSourceCall<OtherInfo>(
 			const request = sourceProvider.createRequest(filepath);
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
-				dataflowLogger.warn(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+			const limit = getConfig().solver.resolveSource?.repeatedSourceLimit ?? 0;
+			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
+			if(findCount > limit) {
+				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				information.graph.markIdForUnknownSideEffects(rootId);
 				return information;
 			}
 
-			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location));
+			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '@' : '') + path, name.location));
 		}
 	}
 

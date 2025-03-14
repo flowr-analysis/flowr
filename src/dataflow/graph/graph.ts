@@ -12,10 +12,10 @@ import type {
 import { VertexType } from './vertex';
 import { arrayEqual } from '../../util/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { REnvironmentInformation } from '../environments/environment';
+import type { EnvironmentMemory, IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -23,6 +23,7 @@ import { jsonReplacer } from '../../util/json';
 import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
+import type { Writable } from 'ts-essentials';
 
 /**
  * Describes the information we store per function body.
@@ -461,6 +462,11 @@ export class DataflowGraph<
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
+		for(const [, vertex] of graph.vertexInformation) {
+			if(vertex.environment) {
+				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
+			}
+		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
 		if(data.sourced) {
 			graph._sourced = data.sourced;
@@ -494,4 +500,36 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 	const fromId = typeof from === 'object' ? from.nodeId : from;
 	const toId = typeof to === 'object' ? to.nodeId : to;
 	return [fromId, toId];
+}
+
+export interface IEnvironmentJson {
+	readonly id: number;
+	parent:      IEnvironmentJson;
+	memory:      Record<Identifier, IdentifierDefinition[]>;
+}
+
+interface REnvironmentInformationJson {
+	readonly current: IEnvironmentJson;
+	readonly level:   number;
+}
+
+function envFromJson(json: IEnvironmentJson): IEnvironment {
+	const parent = json.parent ? envFromJson(json.parent) : undefined;
+	const memory: EnvironmentMemory = new Map();
+	for(const [key, value] of Object.entries(json.memory)) {
+		memory.set(key as Identifier, value);
+	}
+	return {
+		id:     json.id,
+		parent: parent as IEnvironment,
+		memory
+	};
+}
+
+function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
+	const current = envFromJson(json.current);
+	return {
+		current,
+		level: json.level
+	};
 }

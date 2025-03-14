@@ -18,8 +18,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
 import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { filterIndices, resolveSingleIndex } from '../../../../../../util/list-access';
+import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 
 interface TableAssignmentProcessorMarker {
@@ -137,11 +136,13 @@ function processNumberBasedAccess<OtherInfo>(
 		definedAt:           BuiltIn,
 		controlDependencies: undefined,
 		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+		config:              {},
 		name:                ':=',
 		nodeId:              BuiltIn,
 	}]);
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+
 	/* recover the environment */
 	if(existing !== undefined) {
 		data.environment.current.memory.set(':=', existing);
@@ -153,7 +154,36 @@ function processNumberBasedAccess<OtherInfo>(
 			rootId
 		);
 	}
+
+	if(getConfig().solver.pointerTracking) {
+		referenceAccessedIndices(args, data, fnCall, rootId, true);
+	}
+
 	return fnCall;
+}
+
+export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
+	const newArgs = [...args];
+	// if the argument is a symbol, we convert it to a string for this perspective
+	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
+		const arg = newArgs[i];
+		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
+			newArgs[i] = {
+				...arg,
+				value: {
+					type:     RType.String,
+					info:     arg.value.info,
+					lexeme:   arg.value.lexeme,
+					location: arg.value.location,
+					content:  {
+						quotes: 'none',
+						str:    arg.value.lexeme
+					}
+				}
+			};
+		}
+	}
+	return newArgs;
 }
 
 /**
@@ -172,73 +202,62 @@ function processStringBasedAccess<OtherInfo>(
 	rootId: NodeId,
 	config: ForceArguments,
 ) {
-	const newArgs = [...args];
-	// if the argument is a symbol, we convert it to a string for this perspective
-	for(let i = 1; i < newArgs.length; i++) {
-		const arg = newArgs[i];
-		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
-			newArgs[i] = {
-				...arg,
-				value: {
-					type:     RType.String,
-					info:     arg.value.info,
-					lexeme:   arg.value.lexeme,
-					location: arg.value.location,
-					content:  {
-						quotes: 'none',
-						str:    arg.value.lexeme
-					}
-				}
-			};
-		}
-	}
+	const newArgs = symbolArgumentsToStrings(args);
 
 	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
 
-	// Resolve access on the way up the fold
-	const nonEmptyArgs = newArgs.filter(arg => arg !== EmptyArgument);
-	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
-
-	if(accessedArg === undefined || accessArg === undefined) {
-		return fnCall;
-	}
-
 	if(getConfig().solver.pointerTracking) {
-		let accessedIndicesCollection: ContainerIndicesCollection;
-		// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
-		if(accessedArg.value?.type === RType.Symbol) {
-			accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment);
-		} else {
-			// Higher access call
-			const underlyingAccessId = accessedArg.value?.info.id ?? -1;
-			const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
-			const subIndices = vertex?.indicesCollection
-				?.flatMap(indices => indices.indices)
-				?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
-			if(subIndices) {
-				accessedIndicesCollection = filterIndices(subIndices, accessArg);
-			}
-		}
-
-		// Add indices to vertex afterward
-		if(accessedIndicesCollection) {
-			const vertex = fnCall.information.graph.getVertex(rootId);
-			if(vertex) {
-				vertex.indicesCollection = accessedIndicesCollection;
-			}
-
-			// When access has no access as parent, it's the top most
-			const rootNode = data.completeAst.idMap.get(rootId);
-			const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
-			if(parentNode?.type !== RType.Access) {
-				// Only reference indices in top most access
-				referenceIndices(accessedIndicesCollection, fnCall, name.info.id);
-			}
-		}
+		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
 	}
 
 	return fnCall;
+}
+
+function referenceAccessedIndices<OtherInfo>(
+	newArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	fnCall: ProcessKnownFunctionCallResult,
+	rootId: NodeId,
+	isIndexBasedAccess: boolean,
+) {
+	// Resolve access on the way up the fold
+	const { accessedArg, accessArg } = getAccessOperands(newArgs);
+
+	if(accessedArg === undefined || accessArg === undefined) {
+		return;
+	}
+
+	let accessedIndicesCollection: ContainerIndicesCollection;
+	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
+	if(accessedArg.value?.type === RType.Symbol) {
+		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, isIndexBasedAccess);
+	} else {
+		// Higher access call
+		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
+		const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
+		const subIndices = vertex?.indicesCollection
+			?.flatMap(indices => indices.indices)
+			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
+		if(subIndices) {
+			accessedIndicesCollection = filterIndices(subIndices, accessArg, isIndexBasedAccess);
+		}
+	}
+
+	// Add indices to vertex afterward
+	if(accessedIndicesCollection) {
+		const vertex = fnCall.information.graph.getVertex(rootId);
+		if(vertex) {
+			vertex.indicesCollection = accessedIndicesCollection;
+		}
+
+		// When access has no access as parent, it's the top most
+		const rootNode = data.completeAst.idMap.get(rootId);
+		const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
+		if(parentNode?.type !== RType.Access) {
+			// Only reference indices in top most access
+			referenceIndices(accessedIndicesCollection, fnCall, rootId);
+		}
+	}
 }
 
 /**

@@ -34,6 +34,8 @@ import { processDataFrameAccess } from '../../abstract-interpretation/data-frame
 import { processDataFrameAssignment } from '../../abstract-interpretation/data-frame/process/data-frame-assignment';
 import { processDataFrameExpressionList } from '../../abstract-interpretation/data-frame/process/data-frame-expression-list';
 import { processDataFrameFunctionCall } from '../../abstract-interpretation/data-frame/process/data-frame-function-call';
+import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
+import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
 
 export const BuiltIn = 'built-in';
 
@@ -64,6 +66,7 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
 	definedAt: typeof BuiltIn
 	processor: BuiltInIdentifierProcessor
+	config?:   object
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -116,7 +119,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return res;
 }
 
-export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
+export function registerBuiltInFunctions<Config extends object, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
 	both:      boolean,
 	names:     readonly Identifier[],
 	processor: Proc,
@@ -129,6 +132,7 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 			definedAt:           BuiltIn,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
+			config,
 			name,
 			nodeId:              BuiltIn
 		}];
@@ -162,6 +166,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:access':              decorateProcessor(processAccess, 'dataframe:access'),
 	'builtin:if-then-else':        processIfThenElse,
 	'builtin:get':                 processGet,
+	'builtin:rm':                  processRm,
 	'builtin:library':             processLibrary,
 	'builtin:assignment':          decorateProcessor(processAssignment, 'dataframe:assignment'),
 	'builtin:special-bin-op':      processSpecialBinOp,
@@ -172,7 +177,8 @@ export const BuiltInProcessorMapper = {
 	'builtin:repeat-loop':         processRepeatLoop,
 	'builtin:while-loop':          processWhileLoop,
 	'builtin:replacement':         processReplacementFunction,
-	'builtin:list':                processList
+	'builtin:list':                processList,
+  'builtin:vector':              processVector,
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<any>>;
 

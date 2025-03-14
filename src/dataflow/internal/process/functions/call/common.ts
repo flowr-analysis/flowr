@@ -14,8 +14,13 @@ import { ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { ContainerIndicesCollection, DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import type {
+	ContainerIndicesCollection,
+	DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
+import {
+	isFunctionDefinitionVertex,
+	VertexType
+} from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -102,10 +107,14 @@ export function processAllArguments<OtherInfo>(
 		processedArguments.push(processed);
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, ReferenceType.Unknown) : undefined;
+			// check if it is called directly
+			const vtx = finalGraph.getVertex(ingoing.nodeId);
+
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
@@ -129,7 +138,6 @@ export function processAllArguments<OtherInfo>(
 		}
 		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
-		finalGraph.mergeWith(processed.graph);
 
 		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined, type: ReferenceType.Argument });
@@ -147,7 +155,7 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly rootId:                NodeId
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
-	readonly argumentProcessResult: readonly (DataflowInformation | undefined)[]
+	readonly argumentProcessResult: readonly (Pick<DataflowInformation, 'entryPoint'> | undefined)[]
 }
 
 export function patchFunctionCall<OtherInfo>(

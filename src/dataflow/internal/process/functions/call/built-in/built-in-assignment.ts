@@ -5,7 +5,7 @@ import { guard } from '../../../../../../util/assert';
 import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArgument } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
-import { toUnnamedArgument } from '../argument/make-argument';
+import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import type {
 	ParentInformation,
 	RNodeWithParent
@@ -13,29 +13,35 @@ import type {
 import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type {
+	EmptyArgument,
+	RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import type {
 	IdentifierReference,
 	InGraphIdentifierDefinition,
 	InGraphReferenceType } from '../../../../../environments/identifier';
-import { ReferenceType
+import {
+	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { VertexType } from '../../../../../graph/vertex';
 import type { ContainerIndicesCollection } from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { getAliases } from '../../../../../environments/resolve-by-name';
-import { addSubIndicesToLeafIndices } from '../../../../../../util/list-access';
+import { getAliases, resolveByName } from '../../../../../environments/resolve-by-name';
+import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
+import { processReplacementFunction } from './built-in-replacement';
+import { markAsOnlyBuiltIn } from '../named-call-handling';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -80,6 +86,42 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 	}
 }
 
+function tryReplacementPassingIndices<OtherInfo>(
+	functionName: RSymbol<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: string,
+	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
+	indices: ContainerIndicesCollection
+): DataflowInformation {
+	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
+
+	// yield for unsupported pass along!
+	if(resolved.length !== 1 || resolved[0].type !== ReferenceType.BuiltInFunction) {
+		return processAsNamedCall(functionName, data, name, args);
+	}
+
+
+	const info = processReplacementFunction(
+		{
+			type:      RType.Symbol,
+			info:      functionName.info,
+			content:   name,
+			lexeme:    functionName.lexeme,
+			location:  functionName.location,
+			namespace: undefined
+		},
+		wrapArgumentsUnnamed(args, data.completeAst.idMap),
+		functionName.info.id,
+		data,
+		{
+			...(resolved[0].config ?? {}),
+			activeIndices: indices
+		}
+	);
+	markAsOnlyBuiltIn(info.graph, functionName.info.id);
+	return info;
+}
+
 /**
  * Processes an assignment, i.e., `<target> <- <source>`.
  * Handling it as a function call \`&lt;-\` `(<target>, <source>)`.
@@ -116,13 +158,13 @@ export function processAssignment<OtherInfo>(
 		});
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
-		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source]);
+		return tryReplacementPassingIndices(replacement, data, replacement.content, [...target.arguments, source], config.indicesCollection);
 	} else if(config.canBeReplacement && type === RType.Access) {
-		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${name.content} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
-		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		return tryReplacementPassingIndices(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.indicesCollection);
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -268,9 +310,18 @@ export function markAsAssignment(
 	if(getConfig().solver.pointerTracking) {
 		let indicesCollection: ContainerIndicesCollection = undefined;
 		if(sourceIds.length === 1) {
-			// support for tracking indices
+			// support for tracking indices.
 			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
 			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
+
+			// support assignment of container e.g. container1 <- container2
+			// defined indices are passed
+			if(!indicesCollection) {
+				const node = information.graph.idMap?.get(sourceIds[0]);
+				if(node && node.type === RType.Symbol) {
+					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
+				}
+			}
 		}
 		// Indices defined by replacement operation e.g. $<-
 		if(config?.indicesCollection !== undefined) {

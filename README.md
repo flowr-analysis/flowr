@@ -48,7 +48,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.11, R v4.4.0 (r-shell engine)
+    flowR repl using flowR v2.2.11, R v4.4.3 (r-shell engine)
     R> :slicer test/testfiles/example.R --criterion "11@sum"
     ```
     
@@ -131,7 +131,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.2.11, R v4.4.0 (r-shell engine)
+    flowR repl using flowR v2.2.11, R v4.4.3 (r-shell engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -377,7 +377,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _21.93 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.14 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

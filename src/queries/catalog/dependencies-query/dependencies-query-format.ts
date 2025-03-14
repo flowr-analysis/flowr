@@ -41,6 +41,7 @@ export const SourceFunctions: FunctionInfo[] = [
 	{ name: 'sys.source', argIdx: 0, argName: 'file', resolveValue: true }
 ] as const;
 export const ReadFunctions: FunctionInfo[] = [
+	{ name: 'parse', argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ name: 'read.table', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read.csv', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read.csv2', argIdx: 0, argName: 'file', resolveValue: true },
@@ -71,8 +72,9 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read_tsv', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read_table', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read_log', argIdx: 0, argName: 'file', resolveValue: true },
-	{ name: 'read_lines', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_lines_raw', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read_lines_chunked', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_rds', argIdx: 0, argName: 'file', resolveValue: true },
 	// xlsx
 	{ name: 'read.xlsx', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'read.xlsx2', argIdx: 0, argName: 'file', resolveValue: true },
@@ -99,6 +101,54 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ name: 'read.xport', argIdx: 0, argName: 'file', resolveValue: true },
 	// car
 	{ name: 'Import', argIdx: 0, argName: 'file', resolveValue: true },
+	// magick
+	{ name: 'image_read', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_svg', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_pdf', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'image_read_video', argIdx: 0, argName: 'path', resolveValue: true },
+	// LIM
+	{ name: 'Read', argIdx: 0, argName: 'file', resolveValue: true },
+	// sourcetools,
+	{ name: 'read', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'read_lines', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'read_bytes', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'read_lines_bytes', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'tokenize', argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ name: 'tokenize_file', argIdx: 0, argName: 'path', resolveValue: true },
+	// expss
+	{ name: 'read_spss', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'read_spss_to_list', argIdx: 0, argName: 'file', resolveValue: true },
+	// SimPhe
+	{ name: 'read.geno', argIdx: 0, argName: 'fname', resolveValue: true },
+	// ape
+	{ name: 'read.tree', argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
+	// geomorph
+	{ name: 'readland.tps', argIdx: 0, argName: 'file', resolveValue: true },
+	// readxl
+	{ name: 'read_excel', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'read_xls', argIdx: 0, argName: 'path', resolveValue: true },
+	{ name: 'read_xlsx', argIdx: 0, argName: 'path', resolveValue: true },
+	// sf
+	{ name: 'read.sf', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'st_read', argIdx: 0, argName: 'dsn', resolveValue: true },
+	// rgdal
+	{ name: 'readOGR', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'ogrInfo', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'ogrFIDs', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'OGRSpatialRef', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'ogrListLayers', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ name: 'readGDAL', argIdx: 0, argName: 'fname', resolveValue: true },
+	// readstata13
+	{ name: 'read.dta13', argIdx: 0, argName: 'file', resolveValue: true },
+	// arrow
+	{ name: 'read_parquet', argIdx: 0, argName: 'file', resolveValue: true },
+	// maptools
+	{ name: 'readShapePoly', argIdx: 0, argName: 'fn', resolveValue: true },
+	// XLConnect
+	{ name: 'readWorksheetFromFile', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'readNamedRegionFromFile', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'loadWorkbook', argIdx: 0, argName: 'filename', resolveValue: true },
+
 ] as const;
 
 const OutputRedirects = [
@@ -128,6 +178,8 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'write_tsv',   argIdx: 1, argName: 'file', resolveValue: true },
 	{ name: 'write_table', argIdx: 1, argName: 'file', resolveValue: true },
 	{ name: 'write_log',   argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_lines', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write_rds',   argIdx: 1, argName: 'file', resolveValue: true },
 	// heaven
 	{ name: 'write_sas', argIdx: 1, argName: 'file', resolveValue: true },
 	{ name: 'write_sav', argIdx: 1, argName: 'file', resolveValue: true },
@@ -159,16 +211,50 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ name: 'tiff', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'X11', argIdx: 0, argName: 'file', resolveValue: true },
 	{ name: 'quartz', argIdx: 0, argName: 'file', resolveValue: true },
+	// rasterpdf
+	{ name: 'raster_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
+	{ name: 'agg_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
 	// car
 	{ name: 'Export', argIdx: 0, argName: 'file', resolveValue: true },
+	// LIM
+	{ name: 'PrintMat', linkTo: OutputRedirects, resolveValue: true },
+	// sjmisc
+	{ name: 'write_spss', argIdx: 1, argName: 'path', resolveValue: true },
+	{ name: 'write_stata', argIdx: 1, argName: 'path', resolveValue: true },
+	{ name: 'write_sas', argIdx: 1, argName: 'path', resolveValue: true },
+	// ape
+	{ name: 'write.tree', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.nexus', argIdx: 1, argName: 'file', resolveValue: true },
+	{ name: 'write.phyloXML', argIdx: 1, argName: 'file', resolveValue: true },
+	// Claddis
+	{ name: 'write_nexus_matrix', argIdx: 1, argName: 'file_name', resolveValue: true },
+	{ name: 'write_tnt_matrix', argIdx: 1, argName: 'file_name', resolveValue: true },
+	// rgdal
+	{ name: 'writeOGR', argIdx: 1, argName: 'dsn', resolveValue: true },
+	{ name: 'writeGDAL', argIdx: 1, argName: 'fname', resolveValue: true },
+	// arrow
+	{ name: 'write_parquet', argIdx: 1, argName: 'sink', resolveValue: true },
+	// sf
+	{ name: 'st_write', argIdx: 1, argName: 'dsn', resolveValue: true },
+	{ name: 'write_sf', argIdx: 1, argName: 'dsn', resolveValue: true, ignoreIf: 'arg-missing' },
+	// maptools
+	{ name: 'writePolyShape', argIdx: 1, argName: 'fn', resolveValue: true },
+	// XLConnect
+	{ name: 'writeNamedRegionToFile', argIdx: 0, argName: 'file', resolveValue: true },
+	{ name: 'writeWorksheetToFile', argIdx: 0, argName: 'file', resolveValue: true },
+	// ggplot
+	{ name: 'ggsave', argIdx: 0, argName: 'filename', resolveValue: true },
 ] as const;
 
 export interface FunctionInfo {
     name:       string
+	/** the index if the argument can be positional, unnamed in case of something like `...`, if the argument must be given with the name, please leave undefined */
     argIdx?:    number | 'unnamed'
     argName?:   string
     linkTo?:    DependencyInfoLink[]
 	resolveValue?: boolean | 'library'
+	// the function is not to be counted as a dependency if the argument is missing
+	ignoreIf?:     'arg-missing'
 }
 
 export interface DependenciesQuery extends BaseQueryFormat {

@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import type { Lift, ValueInterval } from '../../../../../src/dataflow/eval/values/r-value';
+import type { Value, ValueInterval } from '../../../../../src/dataflow/eval/values/r-value';
 import { stringifyValue  } from '../../../../../src/dataflow/eval/values/r-value';
 import { binaryInterval } from '../../../../../src/dataflow/eval/values/intervals/interval-binary';
 import {
@@ -11,17 +11,19 @@ import {
 	ValueNumberEpsilon
 } from '../../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { unaryInterval } from '../../../../../src/dataflow/eval/values/intervals/interval-unary';
-import { compareValues } from '../../../../../src/dataflow/eval/values/value-compare';
+import { binaryValue } from '../../../../../src/dataflow/eval/values/value-binary';
+import { isTruthy } from '../../../../../src/dataflow/eval/values/logical/logical-check';
+import { unaryValue } from '../../../../../src/dataflow/eval/values/value-unary';
 
 function i(l: '[' | '(', lv: number, rv: number, r: ']' | ')') {
 	return intervalFrom(lv, rv, l === '[', r === ']');
 }
 
 describe('interval', () => {
-	function shouldBeInterval(val: Lift<ValueInterval>, expect: Lift<ValueInterval>) {
-		const res = compareValues(val, '===', expect);
+	function shouldBeInterval(val: Value, expect: Value) {
+		const res = binaryValue(val, '===', expect);
 		assert.isTrue(
-			res.type === 'logical' && res.value === true,
+			isTruthy(res),
 			`Expected ${stringifyValue(val)} to be ${stringifyValue(expect)}`
 		);
 	}
@@ -135,7 +137,7 @@ describe('interval', () => {
 				const commutative = ['add', 'mul'].includes(t.label);
 				function f(l: ValueInterval, r: ValueInterval) {
 					return test(stringifyValue(l) + ' ' + t.label + ' ' + stringifyValue(r)  + ' => ' + stringifyValue(t.expect), () => {
-						shouldBeInterval(unaryInterval(binaryInterval(l, t.label, r), 'toClosed'), unaryInterval(t.expect, 'toClosed'));
+						shouldBeInterval(unaryValue(binaryInterval(l, t.label, r), 'toClosed'), unaryValue(t.expect, 'toClosed'));
 					});
 				}
 				f(t.left, t.right);

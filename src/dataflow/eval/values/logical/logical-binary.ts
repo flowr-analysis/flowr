@@ -1,16 +1,18 @@
-import type { TernaryLogical, ValueLogical } from '../r-value';
+import type { Lift, TernaryLogical, ValueLogical } from '../r-value';
 import { bottomTopGuard } from '../general';
+import { guard } from '../../../../util/assert';
 
 /**
  * Take two potentially lifted logicals and combine them with the given op.
  * This propagates `top` and `bottom` values.
  */
-export function binaryLogical<A extends ValueLogical, B extends ValueLogical>(
-	a: A,
-	op: keyof typeof Operations,
-	b: B
-): ValueLogical {
-	return Operations[op](a as ValueLogical, b as ValueLogical);
+export function binaryLogical(
+	a: Lift<ValueLogical>,
+	op: string,
+	b: Lift<ValueLogical>
+): Lift<ValueLogical> {
+	guard(op in Operations, `Unknown logical binary operation: ${op}`);
+	return Operations[op as keyof typeof Operations](a, b);
 }
 
 const Operations = {
@@ -55,12 +57,12 @@ const Operations = {
 			return a === b;
 		}
 	})
-} as const satisfies Record<string, (a: ValueLogical, b: ValueLogical) => ValueLogical>;
+} as const satisfies Record<string, (a: Lift<ValueLogical>, b: Lift<ValueLogical>) => Lift<ValueLogical>>;
 
-function logicalHelper<A extends ValueLogical, B extends ValueLogical>(a: A, b: B, op: (a: TernaryLogical, b: TernaryLogical) => TernaryLogical): ValueLogical {
-	const botTopGuard = bottomTopGuard(a.value, b.value);
+function logicalHelper<A extends Lift<ValueLogical>, B extends Lift<ValueLogical>>(a: A, b: B, op: (a: TernaryLogical, b: TernaryLogical) => TernaryLogical): Lift<ValueLogical> {
+	const botTopGuard = bottomTopGuard(a, b) ?? bottomTopGuard((a as ValueLogical).value, (b as ValueLogical).value);
 	return {
 		type:  'logical',
-		value: botTopGuard ?? op(a.value as TernaryLogical, b.value as TernaryLogical)
+		value: botTopGuard ?? op((a as ValueLogical).value as TernaryLogical, (b as ValueLogical).value as TernaryLogical)
 	};
 }

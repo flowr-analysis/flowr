@@ -1,6 +1,4 @@
 import { assert, describe, test } from 'vitest';
-
-
 import { guard } from '../../../../../src/util/assert';
 import type { Lift, ValueLogical } from '../../../../../src/dataflow/eval/values/r-value';
 import { isBottom, isTop } from '../../../../../src/dataflow/eval/values/r-value';

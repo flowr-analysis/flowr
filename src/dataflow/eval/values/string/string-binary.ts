@@ -1,19 +1,21 @@
-import type { ValueLogical, ValueString } from '../r-value';
+import type { Lift, Value, ValueLogical, ValueString } from '../r-value';
+import { isBottom, isTop } from '../r-value';
 import { bottomTopGuard } from '../general';
 import type { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
-import type { ValueCompareOperation } from '../value-compare';
-import { liftLogical } from '../logical/logical-constants';
+import { liftLogical, ValueLogicalBot, ValueLogicalTop } from '../logical/logical-constants';
+import { guard } from '../../../../util/assert';
 
 /**
  * Take two potentially lifted intervals and compare them with the given op.
  * This propagates `top` and `bottom` values.
  */
-export function compareString<A extends ValueString, B extends ValueString>(
-	a: A,
-	op: keyof typeof Operations,
-	b: B
-): ValueLogical {
-	return Operations[op](a as ValueString, b as ValueString);
+export function binaryString(
+	a: Lift<ValueString>,
+	op: string,
+	b: Lift<ValueString>
+): Value {
+	guard(op in Operations, `Unknown string binary operation: ${op}`);
+	return Operations[op as keyof typeof Operations](a, b);
 }
 
 const Operations = {
@@ -30,13 +32,18 @@ const Operations = {
 	'⊂':   (a, b) => stringHelper(a, b, (a, b) => b.includes(a) && a !== b),
 	'⊇':   (a, b) => stringHelper(a, b, (a, b) => a.includes(b)),
 	'⊃':   (a, b) => stringHelper(a, b, (a, b) => a.includes(b) && a !== b)
-} as const satisfies Record<ValueCompareOperation, (a: ValueString, b: ValueString) => ValueLogical>;
+} as const satisfies Record<string, (a: Lift<ValueString>, b: Lift<ValueString>) => Value>;
 
-function stringHelper<A extends ValueString, B extends ValueString>(
-	a: A,
-	b: B,
+function stringHelper(
+	a: Lift<ValueString>,
+	b: Lift<ValueString>,
 	c: (a: string, b: string) => boolean
 ): ValueLogical {
+	if(isTop(a) || isTop(b)) {
+		return ValueLogicalTop;
+	} else if(isBottom(a) || isBottom(b)) {
+		return ValueLogicalBot;
+	}
 	const val = bottomTopGuard(a.value, b.value);
 	const aval = a.value as RStringValue;
 	const bval = b.value as RStringValue;

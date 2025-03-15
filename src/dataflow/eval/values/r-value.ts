@@ -15,11 +15,7 @@ export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
     end:            Limit
     endInclusive:   boolean
 }
-export interface ValueSet<Elements extends Lift<unknown[]>> {
-    type:     'set'
-    elements: Elements
-}
-export interface ValueVector<Elements extends Lift<unknown[]>> {
+export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>> {
     type:     'vector'
     elements: Elements
 }
@@ -31,7 +27,6 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
     type:  'string'
     value: Str
 }
-// TODO: drop maybe and treat it as top
 export type TernaryLogical = RLogicalValue | 'maybe'
 export interface ValueLogical {
     type:  'logical'
@@ -40,7 +35,6 @@ export interface ValueLogical {
 
 export type Value = Lift<
         ValueInterval
-        | ValueSet<Value[]>
         | ValueVector<Value[]>
         | ValueNumber
         | ValueString
@@ -114,10 +108,6 @@ export function stringifyValue(value: Lift<Value>): string {
 		switch(v.type) {
 			case 'interval':
 				return `${v.startInclusive ? '[' : '('}${stringifyValue(v.start)}, ${stringifyValue(v.end)}${v.endInclusive ? ']' : ')'}`;
-			case 'set':
-				return tryStringifyBoTop(v.elements, e => {
-					return `{${e.map(stringifyValue).join(',')}}`;
-				}, () => '⊤ (set)', () => '⊥ (set)');
 			case 'vector':
 				return tryStringifyBoTop(v.elements, e => {
 					return `c(${e.map(stringifyValue).join(',')})`;

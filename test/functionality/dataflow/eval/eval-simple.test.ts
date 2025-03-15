@@ -6,7 +6,6 @@ import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/defa
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { evalRExpression } from '../../../../src/dataflow/eval/eval';
 import { initializeCleanEnvironments } from '../../../../src/dataflow/environments/environment';
-import { compareValues } from '../../../../src/dataflow/eval/values/value-compare';
 import {
 	intervalFrom,
 	intervalFromValues,
@@ -14,6 +13,8 @@ import {
 } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { stringFrom } from '../../../../src/dataflow/eval/values/string/string-constants';
+import { binaryValue } from '../../../../src/dataflow/eval/values/value-binary';
+import { isTruthy } from '../../../../src/dataflow/eval/values/logical/logical-check';
 
 describe.sequential('eval', withShell(shell => {
 	function assertEval(code: string, expect: Value) {
@@ -22,9 +23,9 @@ describe.sequential('eval', withShell(shell => {
 				request: requestFromInput(code)
 			}).allRemainingSteps();
 			const result = evalRExpression(results.normalize.ast, results.dataflow.graph, initializeCleanEnvironments());
-			const isExpected = compareValues(result, '===', expect);
-			assert.isTrue(isExpected.type === 'logical' && isExpected.value === true,
-				`Expected ${stringifyValue(result)} to be ${stringifyValue(expect)}`
+			const isExpected = binaryValue(result, '===', expect);
+			assert.isTrue(isTruthy(isExpected).value === true,
+				`Expected ${stringifyValue(result)} to be ${stringifyValue(expect)} (${stringifyValue(isExpected)})`
 			);
 		});
 	}

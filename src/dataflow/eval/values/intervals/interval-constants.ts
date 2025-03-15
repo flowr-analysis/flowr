@@ -1,5 +1,6 @@
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
-import type { ValueInterval, ValueNumber } from '../r-value';
+import type { Lift, ValueInterval, ValueNumber } from '../r-value';
+import { isBottom, isTop } from '../r-value';
 import {
 	getScalarFromInteger,
 	liftScalar,
@@ -7,7 +8,7 @@ import {
 	ValueIntegerTop, ValueIntegerZero
 } from '../scalar/scalar-constants';
 import { iteLogical } from '../logical/logical-check';
-import { compareScalar } from '../scalar/scalar-compare';
+import { binaryScalar } from '../scalar/scalar-binary';
 
 export function intervalFrom(start: RNumberValue | number, end = start, startInclusive = true, endInclusive = true): ValueInterval {
 	return intervalFromValues(
@@ -18,20 +19,28 @@ export function intervalFrom(start: RNumberValue | number, end = start, startInc
 	);
 }
 
-export function intervalFromValues(start: ValueNumber, end = start, startInclusive = true, endInclusive = true): ValueInterval {
+function shiftNum(v: Lift<ValueNumber>): ValueNumber {
+	if(isBottom(v) || isTop(v)) {
+		return liftScalar(v);
+	} else {
+		return v;
+	}
+}
+
+export function intervalFromValues(start: Lift<ValueNumber>, end = start, startInclusive = true, endInclusive = true): ValueInterval {
 	return {
-		type: 'interval',
-		start,
-		end,
+		type:  'interval',
+		start: shiftNum(start),
+		end:   shiftNum(end),
 		startInclusive,
 		endInclusive,
 	};
 }
 
-export function orderIntervalFrom(start: ValueNumber, end = start, startInclusive = true, endInclusive = true): ValueInterval {
+export function orderIntervalFrom(start: Lift<ValueNumber>, end = start, startInclusive = true, endInclusive = true): ValueInterval {
 	const onTrue = () => intervalFromValues(start, end, startInclusive, endInclusive);
 	return iteLogical(
-		compareScalar(start, '<=', end),
+		binaryScalar(start, '<=', end),
 		{
 			onTrue,
 			onMaybe:  onTrue,
@@ -54,6 +63,7 @@ export const ValueIntervalZero = intervalFrom(0);
 export const ValueIntervalOne = intervalFrom(1);
 export const ValueIntervalNegativeOne = intervalFrom(-1);
 export const ValueIntervalZeroToOne = intervalFrom(0, 1);
+export const ValueIntervalZeroToPositiveInfinity = intervalFromValues(ValueIntegerZero, ValueIntegerPositiveInfinity, true, false);
 export const ValueIntervalMinusOneToOne = intervalFrom(-1, 1);
 export const ValueIntervalTop = intervalFromValues(ValueIntegerTop, ValueIntegerTop);
 export const ValueIntervalBottom = intervalFromValues(ValueIntegerBottom, ValueIntegerBottom);

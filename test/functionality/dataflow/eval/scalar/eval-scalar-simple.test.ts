@@ -6,17 +6,15 @@ import {
 } from '../../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { guard } from '../../../../../src/util/assert';
 import { unaryScalar } from '../../../../../src/dataflow/eval/values/scalar/scalar-unary';
-import type { Lift, ValueNumber } from '../../../../../src/dataflow/eval/values/r-value';
+import type { Value } from '../../../../../src/dataflow/eval/values/r-value';
 import { isBottom, isTop } from '../../../../../src/dataflow/eval/values/r-value';
 import { binaryScalar } from '../../../../../src/dataflow/eval/values/scalar/scalar-binary';
 
 describe('scalar', () => {
-	function shouldBeNum(value: Lift<ValueNumber>, expect: number, shouldBeInt = false, shouldBeFloat = false) {
-		if(typeof expect === 'number') {
-			guard(!isTop(value) && !isBottom(value));
-			guard('num' in value.value);
-			assert.equal(value.value.num, expect);
-		}
+	function shouldBeNum(value: Value, expect: number) {
+		guard(!isTop(value) && !isBottom(value));
+		guard(value.type === 'number' && 'num' in value.value);
+		assert.equal(value.value.num, expect);
 	}
 	describe('unary', () => {
 		test.each([

@@ -10,7 +10,7 @@ import { liftLogical } from './values/logical/logical-constants';
 import { VertexType } from '../graph/vertex';
 import { resolveValueOfVariable } from '../environments/resolve-by-name';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { callEvalFunction } from './functions/eval-fns';
+import { DefaultValueFunctionEvaluator } from './values/functions/value-functions';
 
 /**
  * Evaluates the given subtree using its dataflow graph and the current environment.
@@ -57,9 +57,17 @@ export function evalRExpression(n: RNode<ParentInformation>, dfg: DataflowGraph,
 			return Top;
 		}
 		case RType.BinaryOp:
-			return callEvalFunction(n.operator, n, [n.lhs, n.rhs], dfg, env) ?? Top;
+			return callFn(n.operator, [n.lhs, n.rhs], dfg, env) ?? Top;
 		case RType.UnaryOp:
-			return callEvalFunction(n.operator, n, [n.operand], dfg, env) ?? Top;
+			return callFn(n.operator, [n.operand], dfg, env) ?? Top;
 	}
 	return Top;
+}
+
+
+function callFn(name: string, args: RNode<ParentInformation>[], dfg: DataflowGraph, env: REnvironmentInformation): Value | undefined {
+	return DefaultValueFunctionEvaluator.callFunction(name, args.map(a =>
+		/* TODO: lazy? */
+		evalRExpression(a, dfg, env)
+	));
 }

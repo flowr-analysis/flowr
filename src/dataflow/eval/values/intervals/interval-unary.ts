@@ -1,15 +1,18 @@
-import type { Lift, ValueInterval } from '../r-value';
-import { isTop ,   asValue } from '../r-value';
+import type { Lift, Value, ValueInterval, ValueLogical, ValueNumber } from '../r-value';
+import { isBottom , Top , isTop ,   asValue } from '../r-value';
 import type { ScalarUnaryOperation } from '../scalar/scalar-unary';
 import { unaryScalar } from '../scalar/scalar-unary';
 import {
 	intervalFromValues,
 	ValueIntervalTop,
 	orderIntervalFrom,
-	ValueIntervalBottom, ValuePositiveInfinite, ValueIntervalMinusOneToOne
+	ValueIntervalBottom,
+	ValuePositiveInfinite,
+	ValueIntervalMinusOneToOne,
+	ValueIntervalZero,
+	ValueIntervalZeroToPositiveInfinity
 } from './interval-constants';
 import { iteLogical } from '../logical/logical-check';
-import { checkScalar } from '../scalar/scalar-check';
 import { binaryScalar } from '../scalar/scalar-binary';
 import {
 	ValueIntegerNegativeInfinity,
@@ -17,18 +20,24 @@ import {
 	ValueIntegerPositiveInfinity,
 	ValueIntegerZero, ValueNumberEpsilon
 } from '../scalar/scalar-constants';
-import { checkInterval } from './interval-check';
-
+import { liftLogical, ValueLogicalBot, ValueLogicalFalse, ValueLogicalTop } from '../logical/logical-constants';
+import { binaryInterval } from './interval-binary';
+import { bottomTopGuard } from '../general';
+import { binaryValue } from '../value-binary';
 
 /**
  * Take two potentially lifted intervals and combine them with the given op.
  * This propagates `top` and `bottom` values.
  */
-export function unaryInterval<A extends ValueInterval>(
-	a: A,
+export function unaryInterval(
+	a: Lift<ValueInterval>,
 	op: keyof typeof Operations
-): ValueInterval {
-	return Operations[op](a as ValueInterval);
+): Value {
+	if(op in Operations) {
+		return Operations[op](a);
+	} else {
+		return Top;
+	}
 }
 
 // TODO: sin, cos, tan, ...
@@ -46,74 +55,111 @@ const Operations = {
 	flip:   intervalDivByOne,
 	/** returns the structural minimum of the interval, if it is exclusive, we use the closest eta-value */
 	lowest: a => {
-		const min = a.startInclusive ? a.start : binaryScalar(a.start, 'add', ValueNumberEpsilon);
+		const bt = bottomTopGuard(a);
+		if(bt) {
+			return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+		}
+		a = asValue(a);
+		const min = a.startInclusive ? a.start : binaryScalar(a.start, 'add', ValueNumberEpsilon) as ValueNumber;
 		return intervalFromValues(min, min, true, true);
 	},
 	/** returns the structural maximum of the interval, if it is exclusive, we use the closest eta-value */
 	highest: a => {
-		const max = a.endInclusive ? a.end : binaryScalar(a.end, 'sub', ValueNumberEpsilon);
+		const bt = bottomTopGuard(a);
+		if(bt) {
+			return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+		}
+		a = asValue(a);
+		const max = a.endInclusive ? a.end : binaryScalar(a.end, 'sub', ValueNumberEpsilon) as ValueNumber;
 		return intervalFromValues(max, max, true, true);
 	},
 	/** essentially returns [lowest(v), highest(v)] */
 	toClosed: a => {
-		const min = a.startInclusive ? a.start : binaryScalar(a.start, 'add', ValueNumberEpsilon);
-		const max = a.endInclusive ? a.end : binaryScalar(a.end, 'sub', ValueNumberEpsilon);
+		const bt = bottomTopGuard(a);
+		if(bt) {
+			return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+		}
+		a = asValue(a);
+		const min = a.startInclusive ? a.start : binaryScalar(a.start, 'add', ValueNumberEpsilon) as ValueNumber;
+		const max = a.endInclusive ? a.end : binaryScalar(a.end, 'sub', ValueNumberEpsilon) as ValueNumber;
 		return intervalFromValues(min, max, true, true);
 	},
-} as const satisfies Record<string, (a: ValueInterval) => Lift<ValueInterval>>;
+	/** check if the interval contains no values */
+	empty:   intervalEmpty,
+	/** check if the interval contains exactly one value */
+	scalar:  intervalScalar,
+	hasZero: a => binaryInterval(ValueIntervalZero, '⊆', a)
+} as const satisfies Record<string, (a: Lift<ValueInterval>) => Value>;
 
 
-function intervalApplyBoth<A extends ValueInterval>(a: A, op: ScalarUnaryOperation, toClosed: boolean, startInclusive = a.startInclusive, endInclusive = a.endInclusive): ValueInterval {
+function intervalApplyBoth(a: Lift<ValueInterval>, op: ScalarUnaryOperation, toClosed: boolean, startInclusive?: boolean, endInclusive?: boolean): ValueInterval {
+	const bt = bottomTopGuard(a);
+	if(bt) {
+		return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+	}
+	a = asValue(a);
 	if(toClosed) {
-		a = asValue(unaryInterval(a, 'toClosed')) as A;
+		a = asValue(unaryInterval(a, 'toClosed') as Lift<ValueInterval>);
 		startInclusive = true;
 		endInclusive = true;
 	}
 
 	return orderIntervalFrom(
-		unaryScalar(a.start, op),
-		unaryScalar(a.end, op),
-		startInclusive,
-		endInclusive
+		unaryScalar(a.start, op) as ValueNumber,
+		unaryScalar(a.end, op) as ValueNumber,
+		startInclusive ?? a.startInclusive,
+		endInclusive ?? a.endInclusive
 	);
 }
 
-function intervalSign<A extends ValueInterval>(a: A): ValueInterval {
-	if(isTop(a.start.value) || isTop(a.end.value)) {
+function intervalSign(a: Lift<ValueInterval>): ValueInterval {
+	if(isBottom(a)) {
+		return ValueIntervalBottom;
+	} else if(isTop(a) || isTop(a.start.value) || isTop(a.end.value)) {
 		return ValueIntervalMinusOneToOne;
 	}
 
 	return intervalApplyBoth(a, 'sign', true);
 }
 
-function intervalNegate<A extends ValueInterval>(a: A): ValueInterval {
+function intervalNegate(a: Lift<ValueInterval>): ValueInterval {
+	const bt = bottomTopGuard(a);
+	if(bt) {
+		return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+	}
+	const x = asValue(a);
 	return intervalFromValues(
-		unaryScalar(a.end, 'negate'),
-		unaryScalar(a.start, 'negate'),
-		a.endInclusive,
-		a.startInclusive
+		unaryScalar(x.end, 'negate') as ValueNumber,
+		unaryScalar(x.start, 'negate') as ValueNumber,
+		x.endInclusive,
+		x.startInclusive
 	);
 }
 
-function intervalAbs<A extends ValueInterval>(a: A): ValueInterval {
+function intervalAbs(a: Lift<ValueInterval>): ValueInterval {
+	if(isBottom(a)) {
+		return ValueIntervalBottom;
+	} else if(isTop(a)) {
+		return ValueIntervalZeroToPositiveInfinity;
+	}
 	// abs[a,b] = [0, max(abs(a), abs(b))] if a <= 0 <= b
 	// abs[a,b] = [a, b] if 0 <= a <= b
 	// abs[a,b] = [abs(b), abs(a)] if a <= b <= 0
 	return iteLogical(
-		checkScalar(a.start, 'isNegative'),
+		unaryScalar(a.start, 'isNegative'),
 		{
 			onTrue: () => iteLogical(
-				checkScalar(a.end, 'isNonNegative'),
+				unaryScalar(a.end, 'isNonNegative'),
 				{
 					// a <= 0 <= b
 					onTrue: () => {
-						const startAbs = unaryScalar(a.start, 'abs');
-						const endAbs = unaryScalar(a.end, 'abs');
+						const startAbs = unaryScalar(a.start, 'abs') as ValueNumber;
+						const endAbs = unaryScalar(a.end, 'abs') as ValueNumber;
 						const max = binaryScalar(
 							startAbs,
 							'max',
 							endAbs
-						);
+						)  as ValueNumber;
 						// we take the inclusivity of the max
 						const upperInclusive = max === startAbs ? a.startInclusive : a.endInclusive;
 						return intervalFromValues(
@@ -125,8 +171,8 @@ function intervalAbs<A extends ValueInterval>(a: A): ValueInterval {
 					},
 					// a <= b <= 0
 					onFalse: () => intervalFromValues(
-						unaryScalar(a.end, 'abs'),
-						unaryScalar(a.start, 'abs'),
+						unaryScalar(a.end, 'abs') as ValueNumber,
+						unaryScalar(a.start, 'abs') as ValueNumber,
 						a.endInclusive,
 						true // TODO: check
 					),
@@ -143,9 +189,14 @@ function intervalAbs<A extends ValueInterval>(a: A): ValueInterval {
 	);
 }
 
-function intervalDivByOne<A extends ValueInterval>(a: A): ValueInterval {
+function intervalDivByOne(a: Lift<ValueInterval>): ValueInterval {
+	const bt = bottomTopGuard(a);
+	if(bt) {
+		return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+	}
+	a = asValue(a);
 	const ifStartIsZero = () =>
-		iteLogical(checkScalar(a.end, 'isZero'),
+		iteLogical(unaryScalar(a.end, 'isZero'),
 			{
 				onTrue:  ValueIntervalBottom,
 				onMaybe: ValueIntervalTop,
@@ -159,13 +210,13 @@ function intervalDivByOne<A extends ValueInterval>(a: A): ValueInterval {
 				onBottom: ValueIntervalBottom
 			});
 	const neitherIsZero = () => iteLogical(
-		checkInterval(a, 'hasZero'),
+		unaryInterval(a, 'hasZero'),
 		{
 			onTrue:  ValueIntervalTop,
 			onTop:   ValueIntervalTop,
 			onFalse: () => orderIntervalFrom(
-				binaryScalar(ValueIntegerOne, 'div', a.start),
-				binaryScalar(ValueIntegerOne, 'div', a.end),
+				binaryScalar(ValueIntegerOne, 'div', a.start) as ValueNumber,
+				binaryScalar(ValueIntegerOne, 'div', a.end) as ValueNumber,
 				a.startInclusive, // TODO: check
 				a.endInclusive // TODO: check
 			),
@@ -174,12 +225,12 @@ function intervalDivByOne<A extends ValueInterval>(a: A): ValueInterval {
 		}
 	);
 	const ifStartIsNotZero = () => iteLogical(
-		checkScalar(a.end, 'isZero'),
+		unaryScalar(a.end, 'isZero'),
 		{
 			// start is not zero, but end is zero
 			onTrue: () => intervalFromValues(
 				ValueIntegerNegativeInfinity,
-				binaryScalar(ValueIntegerOne, 'div', a.end),
+				binaryScalar(ValueIntegerOne, 'div', a.end) as ValueNumber,
 				false, // TODO: check
 				true // TODO: check
 			),
@@ -191,7 +242,7 @@ function intervalDivByOne<A extends ValueInterval>(a: A): ValueInterval {
 	);
 
 	return iteLogical(
-		checkScalar(a.start, 'isZero'),
+		unaryScalar(a.start, 'isZero'),
 		{
 			onTrue:   ifStartIsZero,
 			onFalse:  ifStartIsNotZero,
@@ -201,3 +252,34 @@ function intervalDivByOne<A extends ValueInterval>(a: A): ValueInterval {
 		}
 	);
 }
+
+function intervalEmpty(a: Lift<ValueInterval>): ValueLogical {
+	const bt = bottomTopGuard(a);
+	if(bt) {
+		return bt === Top ? ValueLogicalTop : ValueLogicalBot;
+	}
+	a = asValue(a);
+	return binaryValue(
+		binaryScalar(a.start, '>', a.end),
+		'or',
+		binaryValue(
+			binaryScalar(a.start, '===', a.end),
+			'and',
+			liftLogical(!a.startInclusive || !a.endInclusive)
+		)
+	) as ValueLogical;
+}
+
+function intervalScalar(a: Lift<ValueInterval>): ValueLogical {
+	const bt = bottomTopGuard(a);
+	if(bt) {
+		return bt === Top ? ValueLogicalTop : ValueLogicalBot;
+	}
+	a = asValue(a);
+	if(!a.startInclusive || !a.endInclusive) {
+		return ValueLogicalFalse;
+	} else {
+		return binaryScalar(a.start, '===', a.end) as ValueLogical;
+	}
+}
+

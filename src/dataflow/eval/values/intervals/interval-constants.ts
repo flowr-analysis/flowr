@@ -54,6 +54,7 @@ export const ValueIntervalZero = intervalFrom(0);
 export const ValueIntervalOne = intervalFrom(1);
 export const ValueIntervalNegativeOne = intervalFrom(-1);
 export const ValueIntervalZeroToOne = intervalFrom(0, 1);
+export const ValueIntervalMinusOneToOne = intervalFrom(-1, 1);
 export const ValueIntervalTop = intervalFromValues(ValueIntegerTop, ValueIntegerTop);
 export const ValueIntervalBottom = intervalFromValues(ValueIntegerBottom, ValueIntegerBottom);
 export const ValuePositiveInfinite = intervalFromValues(ValueIntegerZero, ValueIntegerPositiveInfinity, false);

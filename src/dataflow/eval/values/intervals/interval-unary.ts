@@ -1,12 +1,12 @@
 import type { Lift, ValueInterval } from '../r-value';
-import {   asValue } from '../r-value';
+import { isTop ,   asValue } from '../r-value';
 import type { ScalarUnaryOperation } from '../scalar/scalar-unary';
 import { unaryScalar } from '../scalar/scalar-unary';
 import {
 	intervalFromValues,
 	ValueIntervalTop,
 	orderIntervalFrom,
-	ValueIntervalBottom, ValuePositiveInfinite
+	ValueIntervalBottom, ValuePositiveInfinite, ValueIntervalMinusOneToOne
 } from './interval-constants';
 import { iteLogical } from '../logical/logical-check';
 import { checkScalar } from '../scalar/scalar-check';
@@ -41,8 +41,7 @@ const Operations = {
 	ceil:   a => intervalApplyBoth(a, 'ceil', true),
 	floor:  a => intervalApplyBoth(a, 'floor', true),
 	round:  a => intervalApplyBoth(a, 'round', true),
-	// TODO: sign does not propagate top but returns [-1, 1]!
-	sign:   a => intervalApplyBoth(a, 'sign', true),
+	sign:   intervalSign,
 	/** calculates 1/x */
 	flip:   intervalDivByOne,
 	/** returns the structural minimum of the interval, if it is exclusive, we use the closest eta-value */
@@ -77,6 +76,14 @@ function intervalApplyBoth<A extends ValueInterval>(a: A, op: ScalarUnaryOperati
 		startInclusive,
 		endInclusive
 	);
+}
+
+function intervalSign<A extends ValueInterval>(a: A): ValueInterval {
+	if(isTop(a.start.value) || isTop(a.end.value)) {
+		return ValueIntervalMinusOneToOne;
+	}
+
+	return intervalApplyBoth(a, 'sign', true);
 }
 
 function intervalNegate<A extends ValueInterval>(a: A): ValueInterval {

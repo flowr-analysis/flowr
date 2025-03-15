@@ -1,7 +1,11 @@
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
-import type { Lift, ValueInterval, ValueNumber } from '../r-value';
-import { bottomTopGuard } from '../general';
-import { getScalarFromInteger, liftScalar } from '../scalar/scalar-constants';
+import type { ValueInterval, ValueNumber } from '../r-value';
+import {
+	getScalarFromInteger,
+	liftScalar,
+	ValueIntegerBottom, ValueIntegerPositiveInfinity,
+	ValueIntegerTop, ValueIntegerZero
+} from '../scalar/scalar-constants';
 import { iteLogical } from '../logical/logical-check';
 import { compareScalar } from '../scalar/scalar-compare';
 
@@ -14,7 +18,7 @@ export function intervalFrom(start: RNumberValue | number, end = start, startInc
 	);
 }
 
-export function intervalFromValues(start: Lift<ValueNumber>, end = start, startInclusive = true, endInclusive = true): ValueInterval {
+export function intervalFromValues(start: ValueNumber, end = start, startInclusive = true, endInclusive = true): ValueInterval {
 	return {
 		type: 'interval',
 		start,
@@ -24,22 +28,32 @@ export function intervalFromValues(start: Lift<ValueNumber>, end = start, startI
 	};
 }
 
-export function orderIntervalFrom(start: Lift<ValueNumber>, end = start, startInclusive = true, endInclusive = true): Lift<ValueInterval> {
+export function orderIntervalFrom(start: ValueNumber, end = start, startInclusive = true, endInclusive = true): ValueInterval {
+	const onTrue = () => intervalFromValues(start, end, startInclusive, endInclusive);
 	return iteLogical(
-		compareScalar(start, end, '<='),
-		intervalFromValues(start, end, startInclusive, endInclusive),
-		intervalFromValues(end, start, startInclusive, endInclusive)
+		compareScalar(start, '<=', end),
+		{
+			onTrue,
+			onMaybe:  onTrue,
+			onFalse:  () => intervalFromValues(end, start, endInclusive, startInclusive),
+			onTop:    ValueIntervalTop,
+			onBottom: ValueIntervalBottom
+		}
 	);
 }
 
-export function getIntervalStart(interval: Lift<ValueInterval>): Lift<ValueNumber> {
-	return applyIntervalOp(interval, op => op.start);
+export function getIntervalStart(interval: ValueInterval): ValueNumber {
+	return interval.start;
 }
 
-export function getIntervalEnd(interval: Lift<ValueInterval>): Lift<ValueNumber> {
-	return applyIntervalOp(interval, op => op.end);
+export function getIntervalEnd(interval: ValueInterval): ValueNumber {
+	return interval.end;
 }
 
-function applyIntervalOp<Out>(interval: Lift<ValueInterval>, op: (interval: ValueInterval) => Lift<Out>): Lift<Out> {
-	return bottomTopGuard(interval) ?? op(interval as ValueInterval);
-}
+export const ValueIntervalZero = intervalFrom(0);
+export const ValueIntervalOne = intervalFrom(1);
+export const ValueIntervalNegativeOne = intervalFrom(-1);
+export const ValueIntervalZeroToOne = intervalFrom(0, 1);
+export const ValueIntervalTop = intervalFromValues(ValueIntegerTop, ValueIntegerTop);
+export const ValueIntervalBottom = intervalFromValues(ValueIntegerBottom, ValueIntegerBottom);
+export const ValuePositiveInfinite = intervalFromValues(ValueIntegerZero, ValueIntegerPositiveInfinity, false);

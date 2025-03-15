@@ -1,4 +1,4 @@
-import type { Lift, ValueNumber } from '../r-value';
+import type { ValueNumber } from '../r-value';
 import { bottomTopGuard } from '../general';
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 
@@ -6,37 +6,40 @@ import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values'
  * Take a potentially lifted interval and apply the given op.
  * This propagates `top` and `bottom` values.
  */
-export function unaryScalar<A extends Lift<ValueNumber>>(
+export function unaryScalar<A extends ValueNumber>(
 	a: A,
-	op: keyof typeof Operations
-): Lift<ValueNumber> {
-	return bottomTopGuard(a) ?? Operations[op](a as ValueNumber);
+	op: keyof typeof ScalarUnaryOperations
+): ValueNumber {
+	return ScalarUnaryOperations[op](a as ValueNumber);
 }
 
-const Operations = {
-	negate: (a: ValueNumber) => scalarHelper(a, (a) => -a),
-	abs:    (a: ValueNumber) => scalarHelper(a, Math.abs),
-	ceil:   (a: ValueNumber) => scalarHelper(a, Math.ceil),
-	floor:  (a: ValueNumber) => scalarHelper(a, Math.floor),
-	round:  (a: ValueNumber) => scalarHelper(a, Math.round),
-	exp:    (a: ValueNumber) => scalarHelper(a, Math.exp),
-	log:    (a: ValueNumber) => scalarHelper(a, Math.log),
-	log10:  (a: ValueNumber) => scalarHelper(a, Math.log10),
-	log2:   (a: ValueNumber) => scalarHelper(a, Math.log2),
-	sign:   (a: ValueNumber) => scalarHelper(a, Math.sign),
-	sqrt:   (a: ValueNumber) => scalarHelper(a, Math.sqrt),
-	sin:    (a: ValueNumber) => scalarHelper(a, Math.sin),
-	cos:    (a: ValueNumber) => scalarHelper(a, Math.cos),
-	tan:    (a: ValueNumber) => scalarHelper(a, Math.tan),
-	asin:   (a: ValueNumber) => scalarHelper(a, Math.asin),
-	acos:   (a: ValueNumber) => scalarHelper(a, Math.acos),
-	atan:   (a: ValueNumber) => scalarHelper(a, Math.atan),
-	sinh:   (a: ValueNumber) => scalarHelper(a, Math.sinh),
-	cosh:   (a: ValueNumber) => scalarHelper(a, Math.cosh),
-	tanh:   (a: ValueNumber) => scalarHelper(a, Math.tanh),
-
+const ScalarUnaryOperations = {
+	id:     a => a,
+	negate: a => scalarHelper(a, (a) => -a),
+	abs:    a => scalarHelper(a, Math.abs),
+	ceil:   a => scalarHelper(a, Math.ceil),
+	floor:  a => scalarHelper(a, Math.floor),
+	round:  a => scalarHelper(a, Math.round),
+	exp:    a => scalarHelper(a, Math.exp),
+	log:    a => scalarHelper(a, Math.log),
+	log10:  a => scalarHelper(a, Math.log10),
+	log2:   a => scalarHelper(a, Math.log2),
+	sign:   a => scalarHelper(a, Math.sign),
+	sqrt:   a => scalarHelper(a, Math.sqrt),
+	sin:    a => scalarHelper(a, Math.sin),
+	cos:    a => scalarHelper(a, Math.cos),
+	tan:    a => scalarHelper(a, Math.tan),
+	asin:   a => scalarHelper(a, Math.asin),
+	acos:   a => scalarHelper(a, Math.acos),
+	atan:   a => scalarHelper(a, Math.atan),
+	sinh:   a => scalarHelper(a, Math.sinh),
+	cosh:   a => scalarHelper(a, Math.cosh),
+	tanh:   a => scalarHelper(a, Math.tanh)
 } as const satisfies Record<string, (a: ValueNumber) => ValueNumber>;
 
+export type ScalarUnaryOperation = keyof typeof ScalarUnaryOperations;
+
+// TODO: support sin clamp to [-1, 1] etc.
 function scalarHelper<A extends ValueNumber>(a: A, op: (a: number) => number): ValueNumber {
 	const val = bottomTopGuard(a.value);
 	const aval = a.value as RNumberValue;

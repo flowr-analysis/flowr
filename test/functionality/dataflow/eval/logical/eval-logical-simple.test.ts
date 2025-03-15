@@ -29,17 +29,17 @@ describe('logical', () => {
 	});
 	describe('binary', () => {
 		test.each([
-			{ label: '1 && 1', value: binaryLogical(ValueLogicalTrue, ValueLogicalTrue, 'and'), expect: true },
-			{ label: '1 && 0', value: binaryLogical(ValueLogicalTrue, ValueLogicalFalse, 'and'), expect: false },
-			{ label: '1 && ?', value: binaryLogical(ValueLogicalTrue, ValueLogicalMaybe, 'and'), expect: 'maybe' as const },
-			{ label: '1 && ?', value: binaryLogical(ValueLogicalTrue, ValueLogicalMaybe, 'and'), expect: 'maybe' as const },
-			{ label: '? && ?', value: binaryLogical(ValueLogicalMaybe, ValueLogicalMaybe, 'and'), expect: 'maybe' as const },
-			{ label: '? implies 0', value: binaryLogical(ValueLogicalMaybe, ValueLogicalFalse, 'implies'), expect: 'maybe' as const },
-			{ label: '0 implies ?', value: binaryLogical(ValueLogicalFalse, ValueLogicalMaybe, 'implies'), expect: true },
-			{ label: '1 iff 1', value: binaryLogical(ValueLogicalTrue, ValueLogicalTrue, 'iff'), expect: true },
-			{ label: '0 iff 1', value: binaryLogical(ValueLogicalFalse, ValueLogicalTrue, 'iff'), expect: false },
-			{ label: '0 iff ?', value: binaryLogical(ValueLogicalFalse, ValueLogicalMaybe, 'iff'), expect: 'maybe' as const },
-			{ label: '? iff ?', value: binaryLogical(ValueLogicalMaybe, ValueLogicalMaybe, 'iff'), expect: 'maybe' as const },
+			{ label: '1 && 1', value: binaryLogical(ValueLogicalTrue, 'and', ValueLogicalTrue), expect: true },
+			{ label: '1 && 0', value: binaryLogical(ValueLogicalTrue, 'and', ValueLogicalFalse), expect: false },
+			{ label: '1 && ?', value: binaryLogical(ValueLogicalTrue, 'and', ValueLogicalMaybe), expect: 'maybe' as const },
+			{ label: '1 && ?', value: binaryLogical(ValueLogicalTrue, 'and', ValueLogicalMaybe), expect: 'maybe' as const },
+			{ label: '? && ?', value: binaryLogical(ValueLogicalMaybe, 'and', ValueLogicalMaybe), expect: 'maybe' as const },
+			{ label: '? implies 0', value: binaryLogical(ValueLogicalMaybe, 'implies', ValueLogicalFalse), expect: 'maybe' as const },
+			{ label: '0 implies ?', value: binaryLogical(ValueLogicalFalse, 'implies', ValueLogicalMaybe), expect: true },
+			{ label: '1 iff 1', value: binaryLogical(ValueLogicalTrue, 'iff', ValueLogicalTrue), expect: true },
+			{ label: '0 iff 1', value: binaryLogical(ValueLogicalFalse, 'iff', ValueLogicalTrue), expect: false },
+			{ label: '0 iff ?', value: binaryLogical(ValueLogicalFalse, 'iff', ValueLogicalMaybe), expect: 'maybe' as const },
+			{ label: '? iff ?', value: binaryLogical(ValueLogicalMaybe, 'iff', ValueLogicalMaybe), expect: 'maybe' as const },
 		])('$label', ({ value, expect }) => {
 			shouldBeBool(value, expect);
 		});

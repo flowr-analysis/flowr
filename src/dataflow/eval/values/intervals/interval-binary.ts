@@ -1,60 +1,96 @@
-import type { Lift, ValueInterval } from '../r-value';
-import { bottomTopGuard } from '../general';
+import type { ValueInterval } from '../r-value';
+import { isBottom } from '../r-value';
 import { binaryScalar } from '../scalar/scalar-binary';
-import { orderIntervalFrom } from './interval-constants';
+import { ValueIntervalBottom, orderIntervalFrom, ValueIntervalZero, ValueIntervalTop } from './interval-constants';
+import { binaryLogical } from '../logical/logical-binary';
+import { compareInterval } from './interval-compare';
+import { iteLogical } from '../logical/logical-check';
+import { unaryInterval } from './interval-unary';
 
 /**
  * Take two potentially lifted intervals and combine them with the given op.
  * This propagates `top` and `bottom` values.
  */
-export function binaryInterval<A extends Lift<ValueInterval>, B extends Lift<ValueInterval>>(
+export function binaryInterval<A extends ValueInterval, B extends ValueInterval>(
 	a: A,
-	b: B,
-	op: keyof typeof Operations
-): Lift<ValueInterval> {
-	return bottomTopGuard(a, b) ?? Operations[op](a as ValueInterval, b as ValueInterval);
+	op: keyof typeof Operations,
+	b: B
+): ValueInterval {
+	// TODO: improve handling of open intervals
+	a = unaryInterval(a, 'toClosed') as A;
+	b = unaryInterval(b, 'toClosed') as B;
+	return Operations[op](a as ValueInterval, b as ValueInterval);
 }
 
 const Operations = {
 	add:       intervalAdd,
 	sub:       intervalSub,
 	mul:       intervalMul,
+	div:       intervalDiv,
 	intersect: intervalIntersect,
 	union:     intervalUnion,
 	setminus:  intervalSetminus
 } as const;
 
-function intervalAdd<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
+function intervalAdd<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
 	return orderIntervalFrom(
-		binaryScalar(a.start, b.start, 'add'),
-		binaryScalar(a.end, b.end, 'add'),
+		binaryScalar(a.start, 'add', b.start),
+		binaryScalar(a.end, 'add', b.end),
 		a.startInclusive && b.startInclusive,
 		a.endInclusive && b.endInclusive
 	);
 }
 
-function intervalSub<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
+function intervalSub<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
 	return orderIntervalFrom(
-		binaryScalar(a.start, b.end, 'sub'),
-		binaryScalar(a.end, b.start, 'sub'),
+		binaryScalar(a.start, 'sub', b.end),
+		binaryScalar(a.end, 'sub', b.start),
+		a.startInclusive && b.endInclusive,
+		a.endInclusive && b.startInclusive
+	);
+}
+
+function intervalIntersect<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
+	return orderIntervalFrom(
+		binaryScalar(a.start, 'max', b.start),
+		binaryScalar(a.end, 'min', b.end),
 		a.startInclusive && b.startInclusive,
 		a.endInclusive && b.endInclusive
 	);
 }
 
-function intervalIntersect<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
+function intervalUnion<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
 	return orderIntervalFrom(
-		binaryScalar(a.start, b.start, 'max'),
-		binaryScalar(a.end, b.end, 'min'),
+		binaryScalar(a.start, 'min', b.start),
+		binaryScalar(a.end, 'max', b.end),
 		a.startInclusive && b.startInclusive,
 		a.endInclusive && b.endInclusive
 	);
 }
 
-function intervalUnion<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
+
+function intervalSetminus<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
 	return orderIntervalFrom(
-		binaryScalar(a.start, b.start, 'min'),
-		binaryScalar(a.end, b.end, 'max'),
+		binaryScalar(a.start, 'max', b.end),
+		binaryScalar(a.end, 'min', b.start),
+		a.startInclusive && b.startInclusive,
+		a.endInclusive && b.endInclusive
+	);
+}
+
+function intervalMul<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
+	if(isBottom(a.start.value) || isBottom(b.start.value) || isBottom(a.end.value) || isBottom(b.end.value)) {
+		return ValueIntervalBottom;
+	}
+
+	const ll = binaryScalar(a.start, 'mul', b.start);
+	const lu = binaryScalar(a.start, 'mul', b.end);
+	const ul = binaryScalar(a.end, 'mul', b.start);
+	const uu = binaryScalar(a.end, 'mul', b.end);
+
+	return orderIntervalFrom(
+		[ll, lu, ul, uu].reduce((acc, val) => binaryScalar(acc, 'min', val)),
+		[ll, lu, ul, uu].reduce((acc, val) => binaryScalar(acc, 'max', val)),
 		a.startInclusive && b.startInclusive,
 		a.endInclusive && b.endInclusive
 	);
@@ -62,27 +98,25 @@ function intervalUnion<A extends ValueInterval, B extends ValueInterval>(a: A, b
 
 // TODO: take support for div sin and other functions that i wrote
 
-function intervalSetminus<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
-	return {
-		type:           'interval',
-		startInclusive: a.startInclusive && b.startInclusive,
-		start:          binaryScalar(a.start, b.end, 'max'),
-		endInclusive:   a.endInclusive && b.endInclusive,
-		end:            binaryScalar(a.end, b.start, 'min')
-	};
-}
+function intervalDiv<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): ValueInterval {
+	// if both are zero switch to bot
+	const bothAreZero = binaryLogical(
+		compareInterval(a, '===', ValueIntervalZero),
+		'and',
+		compareInterval(b, '===', ValueIntervalZero));
 
-function intervalMul<A extends ValueInterval, B extends ValueInterval>(a: A, b: B): Lift<ValueInterval> {
-	const ll = binaryScalar(a.start, b.start, 'mul');
-	const lu = binaryScalar(a.start, b.end, 'mul');
-	const ul = binaryScalar(a.end, b.start, 'mul');
-	const uu = binaryScalar(a.end, b.end, 'mul');
+	const calcWithPotentialZero = () =>
+		binaryInterval(a, 'mul', unaryInterval(b, 'flip'));
 
-	return {
-		type:           'interval',
-		startInclusive: a.startInclusive && b.startInclusive,
-		start:          [ll, lu, ul, uu].reduce((acc, val) => binaryScalar(acc, val, 'min')),
-		endInclusive:   a.endInclusive && b.endInclusive,
-		end:            [ll, lu, ul, uu].reduce((acc, val) => binaryScalar(acc, val, 'max'))
-	};
+	return iteLogical(
+		bothAreZero,
+		{
+			onTrue:   ValueIntervalBottom,
+			onMaybe:  calcWithPotentialZero,
+			onFalse:  calcWithPotentialZero,
+			onTop:    ValueIntervalTop,
+			onBottom: ValueIntervalBottom
+		}
+	);
+
 }

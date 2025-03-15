@@ -28,13 +28,13 @@ describe('scalar', () => {
 	});
 	describe('binary', () => {
 		test.each([
-			{ label: '1 + 1', value: binaryScalar(ValueIntegerOne, ValueIntegerOne, 'add'), expect: 2 },
-			{ label: '1 + 0', value: binaryScalar(ValueIntegerOne, ValueIntegerZero, 'add'), expect: 1 },
-			{ label: '1 - 1', value: binaryScalar(ValueIntegerOne, ValueIntegerOne, 'sub'), expect: 0 },
-			{ label: '1 * 0', value: binaryScalar(ValueIntegerOne, ValueIntegerZero, 'mul'), expect: 0 },
-			{ label: '1 * 2', value: binaryScalar(ValueIntegerOne, getScalarFromInteger(2), 'mul'), expect: 2 },
-			{ label: 'mod(5, 2)', value: binaryScalar(getScalarFromInteger(5), getScalarFromInteger(2), 'mod'), expect: 1 },
-			{ label: 'mod(5, 3)', value: binaryScalar(getScalarFromInteger(5), getScalarFromInteger(3), 'mod'), expect: 2 },
+			{ label: '1 + 1', value: binaryScalar(ValueIntegerOne, 'add', ValueIntegerOne), expect: 2 },
+			{ label: '1 + 0', value: binaryScalar(ValueIntegerOne, 'add', ValueIntegerZero), expect: 1 },
+			{ label: '1 - 1', value: binaryScalar(ValueIntegerOne, 'sub', ValueIntegerOne), expect: 0 },
+			{ label: '1 * 0', value: binaryScalar(ValueIntegerOne, 'mul', ValueIntegerZero), expect: 0 },
+			{ label: '1 * 2', value: binaryScalar(ValueIntegerOne, 'mul', getScalarFromInteger(2)), expect: 2 },
+			{ label: 'mod(5, 2)', value: binaryScalar(getScalarFromInteger(5), 'mod', getScalarFromInteger(2)), expect: 1 },
+			{ label: 'mod(5, 3)', value: binaryScalar(getScalarFromInteger(5), 'mod', getScalarFromInteger(3)), expect: 2 },
 		])('$label', ({ value, expect }) => {
 			shouldBeNum(value, expect);
 		});

@@ -10,25 +10,36 @@ import { liftLogical } from './values/logical/logical-constants';
 import { VertexType } from '../graph/vertex';
 import { resolveValueOfVariable } from '../environments/resolve-by-name';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { DefaultValueFunctionEvaluator } from './values/functions/value-functions';
+import { DefaultValueFunctionEvaluator } from './values/functions/functions-value';
+import { log } from '../../util/log';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { Missing } from './values/missing/missing-constants';
+import { valuesFromTsValuesAsSet } from './values/general';
+import { ValueVectorTop } from './values/vectors/vector-constants';
+
+export const ValueEvalLog = log.getSubLogger({
+	name: 'value-eval'
+});
 
 /**
  * Evaluates the given subtree using its dataflow graph and the current environment.
  *
  * TODO: this expects an expression, currently we do not handle in-expression side-effects
+ * TODO: a function with unknown side effects should make everything top
  */
-export function evalRExpression(n: RNode<ParentInformation>, dfg: DataflowGraph, env: REnvironmentInformation): Value {
+export function evalRExpression(n: RNode<ParentInformation> | typeof EmptyArgument | undefined, dfg: DataflowGraph, env: REnvironmentInformation): Value {
+	if(n === undefined || n === EmptyArgument) {
+		return Missing;
+	}
+	ValueEvalLog.silly('Eval' + n.type + ' (' + n.lexeme + ')');
 	// TODO: evaluation symbol tracker environment and only access the other environment if we do not know the value
 	switch(n.type) {
-		case RType.ExpressionList: {
-			// TODO:  handle break return etc.
-			let result: Value = Top;
-			// TODO: '{' for grouping, side-effecs
-			for(const child of n.children) {
-				result = evalRExpression(child, dfg, env);
+		case RType.ExpressionList:
+			if(n.grouping) {
+				return callFn(n.grouping[0].lexeme, n.children, dfg, env) ?? Top;
+			} else {
+				return callFn('{', n.children, dfg, env) ?? Top;
 			}
-			return result;
-		}
 		case RType.Number:
 			return intervalFrom(n.content, n.content);
 		case RType.String:
@@ -38,36 +49,34 @@ export function evalRExpression(n: RNode<ParentInformation>, dfg: DataflowGraph,
 		case RType.Symbol: {
 			const t = dfg.getVertex(n.info.id);
 			if(t?.tag === VertexType.Use) {
-				const values = resolveValueOfVariable(n.content, env, dfg.idMap);
-				if(values === undefined || values.length === 0) {
-					return Top;
-				}
-				// TODO: map this to r value
-				const allNumber = values.every(v => typeof v === 'number');
-				// TODO: sets
-				if(allNumber) {
-					return intervalFrom(Math.min(...values), Math.max(...values));
-				}
-				const allString = values.every(v => typeof v === 'string');
-				if(allString) {
-					// TODO: this handling is not correct
-					return stringFrom(values.join(''));
-				}
+				return valuesFromTsValuesAsSet(resolveValueOfVariable(n.content, env, dfg.idMap));
 			}
-			return Top;
+			return ValueVectorTop;
 		}
 		case RType.BinaryOp:
 			return callFn(n.operator, [n.lhs, n.rhs], dfg, env) ?? Top;
 		case RType.UnaryOp:
 			return callFn(n.operator, [n.operand], dfg, env) ?? Top;
+		case RType.FunctionCall:
+			// TODO: ap function arguments accordingly
+			if(n.named) {
+				return callFn(n.functionName.lexeme, n.arguments, dfg, env) ?? Top;
+			} else {
+				ValueEvalLog.silly('Anonymous function call');
+				return Top;
+			}
+		case RType.Argument:
+			return evalRExpression(n.value, dfg, env);
 	}
+	ValueEvalLog.silly('No handler for ' + n.type);
 	return Top;
 }
 
 
-function callFn(name: string, args: RNode<ParentInformation>[], dfg: DataflowGraph, env: REnvironmentInformation): Value | undefined {
+function callFn(name: string, args: readonly (RNode<ParentInformation> | typeof EmptyArgument)[], dfg: DataflowGraph, env: REnvironmentInformation): Value | undefined {
+	// TODO: check if not overriden etc.
 	return DefaultValueFunctionEvaluator.callFunction(name, args.map(a =>
 		/* TODO: lazy? */
-		evalRExpression(a, dfg, env)
+		[a === EmptyArgument ? undefined : a.name as string | undefined, evalRExpression(a, dfg, env)]
 	));
 }

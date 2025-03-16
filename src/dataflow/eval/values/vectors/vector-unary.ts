@@ -1,7 +1,10 @@
 import type { Value, ValueVector } from '../r-value';
+import { stringifyValue, Top } from '../r-value';
 import { vectorFrom } from './vector-constants';
 import { bottomTopGuard } from '../general';
 import { unaryValue } from '../value-unary';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 /**
  * Take a potentially lifted vector and apply the given op.
@@ -11,22 +14,27 @@ export function unaryVector<A extends ValueVector>(
 	a: A,
 	op: string
 ): ValueVector {
+	let res: Value = Top;
 	if(op in VectorUnaryOperations) {
-		return VectorUnaryOperations[op](a as ValueVector);
+		res = VectorUnaryOperations[op](a);
 	} else {
-		return applyComponentWise(a, op);
+		res = applyComponentWise(a, op);
 	}
+	expensiveTrace(ValueEvalLog, () => ` * unaryVector(${stringifyValue(a)}, ${op}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 function applyComponentWise(
 	a: ValueVector,
 	op: string
 ): ValueVector {
-	const bt = bottomTopGuard(a.elements);
-	return bt ? vectorFrom(bt) : vectorFrom(
-		...(a as ValueVector<Value[]>).elements
-			.map((a) => unaryValue(a, op))
-	);
+	const elements = bottomTopGuard(a.elements) ?? (a as ValueVector<Value[]>).elements
+		.map((a) => unaryValue(a, op));
+	const domain = bottomTopGuard(a.elementDomain) ?? unaryValue(a.elementDomain, op);
+	return vectorFrom({
+		elements,
+		domain
+	});
 }
 
 const VectorUnaryOperations: Record<string, (a: ValueVector) => ValueVector> = {

@@ -12,7 +12,7 @@ import {
 } from '../../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { unaryInterval } from '../../../../../src/dataflow/eval/values/intervals/interval-unary';
 import { binaryValue } from '../../../../../src/dataflow/eval/values/value-binary';
-import { isTruthy } from '../../../../../src/dataflow/eval/values/logical/logical-check';
+import { toTruthy } from '../../../../../src/dataflow/eval/values/logical/logical-check';
 import { unaryValue } from '../../../../../src/dataflow/eval/values/value-unary';
 
 function i(l: '[' | '(', lv: number, rv: number, r: ']' | ')') {
@@ -22,9 +22,10 @@ function i(l: '[' | '(', lv: number, rv: number, r: ']' | ')') {
 describe('interval', () => {
 	function shouldBeInterval(val: Value, expect: Value) {
 		const res = binaryValue(val, '===', expect);
+		const t = toTruthy(res);
 		assert.isTrue(
-			isTruthy(res),
-			`Expected ${stringifyValue(val)} to be ${stringifyValue(expect)}`
+			t.type === 'logical' && t.value,
+			`Expected ${stringifyValue(val)} to be ${stringifyValue(expect)}; but: ${stringifyValue(res)}`
 		);
 	}
 	describe('unary', () => {
@@ -75,7 +76,7 @@ describe('interval', () => {
 			{ label: 'round', value: intervalFrom(-1, 1.5, false, true), expect: i('[', -1, 2, ']') },
 			{ label: 'round', value: intervalFrom(-1, 1.5, false, false), expect: i('[', -1, 1, ']') },
 			{ label: 'round', value: intervalFrom(-1.5, -1, false, false), expect: i('[', -1, -1, ']') },
-			{ label: 'sign', value: ValueIntervalTop, expect: ValueIntervalTop },
+			{ label: 'sign', value: ValueIntervalTop, expect: i('[', -1, 1, ']') },
 			{ label: 'sign', value: ValueIntervalBottom, expect: ValueIntervalBottom },
 			{ label: 'sign', value: intervalFrom(1), expect: i('[', 1, 1, ']') },
 			{ label: 'sign', value: intervalFrom(2, 4), expect: i('[', 1, 1, ']') },

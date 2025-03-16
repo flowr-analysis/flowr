@@ -1,6 +1,6 @@
 import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
-import { guard } from '../../../util/assert';
+import { assertUnreachable, guard } from '../../../util/assert';
 
 export const Top = { type: Symbol('⊤') };
 export const Bottom = { type: Symbol('⊥') };
@@ -15,9 +15,20 @@ export interface ValueInterval<Limit extends ValueNumber = ValueNumber> {
     end:            Limit
     endInclusive:   boolean
 }
-export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>> {
-    type:     'vector'
-    elements: Elements
+
+/**
+ * An R vector with either a known set of elements or a known domain.
+ */
+export interface ValueVector<Elements extends Lift<unknown[]> = Lift<Value[]>, Domain extends Lift<Value> = Lift<Value>> {
+    type:       'vector'
+    elements:   Elements
+	/** if we do not know the amount of elements, we can still know the domain */
+	elementDomain: Domain
+}
+/** describes the static case of we do not know which value */
+export interface ValueSet<Elements extends Lift<unknown[]> = Lift<Value[]>> {
+	type:     'set'
+	elements: Elements
 }
 export interface ValueNumber<Num extends Lift<RNumberValue> = Lift<RNumberValue>> {
     type:  'number'
@@ -27,6 +38,9 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
     type:  'string'
     value: Str
 }
+export interface ValueMissing {
+	type: 'missing'
+}
 export type TernaryLogical = RLogicalValue | 'maybe'
 export interface ValueLogical {
     type:  'logical'
@@ -35,10 +49,12 @@ export interface ValueLogical {
 
 export type Value = Lift<
         ValueInterval
-        | ValueVector<Value[]>
+		| ValueVector
+        | ValueSet
         | ValueNumber
         | ValueString
         | ValueLogical
+		| ValueMissing
     >
 export type ValueType<V> = V extends { type: infer T } ? T : never
 export type ValueTypes = ValueType<Value>
@@ -80,7 +96,6 @@ function tryStringifyBoTop<V extends Lift<unknown>>(
 	}
 }
 
-
 function stringifyRNumberSuffix(value: RNumberValue): string {
 	let suffix = '';
 	if(value.markedAsInt) {
@@ -105,13 +120,18 @@ function renderString(value: RStringValue): string {
 
 export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
-		switch(v.type) {
+		const t = v.type;
+		switch(t) {
 			case 'interval':
 				return `${v.startInclusive ? '[' : '('}${stringifyValue(v.start)}, ${stringifyValue(v.end)}${v.endInclusive ? ']' : ')'}`;
 			case 'vector':
 				return tryStringifyBoTop(v.elements, e => {
-					return `c(${e.map(stringifyValue).join(',')})`;
-				}, () => '⊤ (vector)', () => '⊥ (vector)');
+					return `<${stringifyValue(v.elementDomain)}> c(${e.map(stringifyValue).join(',')})`;
+				}, () => `⊤ (vector, ${stringifyValue(v.elementDomain)})`, () => `⊥ (vector, ${stringifyValue(v.elementDomain)})`);
+			case 'set':
+				return tryStringifyBoTop(v.elements, e => {
+					return e.length === 1 ? stringifyValue(e[0]) : `{ ${e.map(stringifyValue).join(',')} }`;
+				}, () => '⊤ (set)', () => '⊥ (set)');
 			case 'number':
 				return tryStringifyBoTop(v.value,
 					n => `${n.num}${stringifyRNumberSuffix(n)}`,
@@ -121,6 +141,10 @@ export function stringifyValue(value: Lift<Value>): string {
 				return tryStringifyBoTop(v.value, renderString, () => '⊤ (string)', () => '⊥ (string)');
 			case 'logical':
 				return tryStringifyBoTop(v.value, l => l === 'maybe' ? 'maybe' : l ? 'TRUE' : 'FALSE',  () => '⊤ (logical)', () => '⊥ (logical)');
+			case 'missing':
+				return '(missing)';
+			default:
+				assertUnreachable(t);
 		}
 	});
 }

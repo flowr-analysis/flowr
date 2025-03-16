@@ -1,4 +1,5 @@
-import type { Lift, ValueInterval, ValueLogical } from '../r-value';
+import type { Lift, Value, ValueInterval, ValueLogical } from '../r-value';
+import { Top , stringifyValue } from '../r-value';
 import { bottomTopGuard } from '../general';
 import { iteLogical } from './logical-check';
 import {
@@ -8,17 +9,27 @@ import {
 	ValueIntervalZero,
 	ValueIntervalZeroToOne
 } from '../intervals/interval-constants';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
+import { unaryInterval } from '../intervals/interval-unary';
 
 /**
  * Take one potentially lifted logical and apply the given unary op.
  * This propagates `top` and `bottom` values.
  */
-export function unaryLogical<A extends Lift<ValueLogical>>(
-	a: A,
+export function unaryLogical(
+	a: Lift<ValueLogical>,
 	// TODO: support common unary ops
-	op: keyof typeof Operations
-): Lift<ValueLogical> {
-	return bottomTopGuard(a) ?? Operations[op](a as ValueLogical);
+	op: string
+): Value {
+	let res: Value | undefined = bottomTopGuard(a);
+	if(op in Operations) {
+		res = Operations[op as keyof typeof Operations](a as ValueLogical);
+	} else {
+		res = unaryInterval(logicalToInterval(a as ValueLogical), op);
+	}
+	expensiveTrace(ValueEvalLog, () => ` * unaryLogical(${stringifyValue(a)}, ${op}) = ${stringifyValue(res)}`);
+	return res ?? Top;
 }
 
 /*

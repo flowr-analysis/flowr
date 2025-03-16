@@ -1,4 +1,6 @@
 import type { Value, ValueTypes } from '../r-value';
+import { Top , stringifyValue } from '../r-value';
+
 
 export interface ValueFunctionDescription {
     /**
@@ -11,12 +13,12 @@ export interface ValueFunctionDescription {
      *
      * @see requiresSignature - a helper function to check the types of the arguments
      */
-    readonly canApply:    (args: readonly Value[]) => boolean;
+    readonly canApply:    (args: readonly ValueArgument[], fname: string) => boolean;
     /**
      * Apply the function to the given arguments.
      * You may assume that `canApply` holds.
      */
-    readonly apply:       (args: readonly Value[]) => Value;
+    readonly apply:       (args: readonly ValueArgument[], fname: string) => Value;
 }
 
 export function requiresSignature(
@@ -25,9 +27,31 @@ export function requiresSignature(
 	return args => args.length === types.length && args.every((a, i) => a.type === types[i]);
 }
 
-export function isOfEitherType<T extends Value>(
+export function isOfEitherType(
 	v: Value,
 	...orTypes: readonly Value['type'][]
 ): boolean {
 	return orTypes.some(t => v.type === t);
+}
+
+export type ValueArgument<Name = string | undefined, V = Value> = [Name, V];
+
+export function stringifyValueArgument(
+	[a, v]: ValueArgument
+): string {
+	return `${a ? a + '=' : ''}${stringifyValue(v)}`;
+}
+
+export function getArgument(
+	args: readonly ValueArgument[],
+	from: {
+        position: number,
+        name?:    string
+    }
+): Value {
+	if(from.name) {
+		return args.find(([name]) => name === from.name)?.[1] ?? args[from.position]?.[1] ?? Top;
+	} else {
+		return args[from.position]?.[1] ?? Top;
+	}
 }

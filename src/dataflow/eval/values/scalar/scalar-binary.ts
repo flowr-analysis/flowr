@@ -1,10 +1,13 @@
 import type { Lift, Value, ValueLogical, ValueNumber } from '../r-value';
-import { Bottom } from '../r-value';
+import { stringifyValue,  Bottom } from '../r-value';
 import { bottomTopGuard } from '../general';
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { liftScalar, ValueIntegerBottom, ValueIntegerTop, ValueNumberEpsilon } from './scalar-constants';
-import { guard } from '../../../../util/assert';
 import { liftLogical, ValueLogicalBot, ValueLogicalTop } from '../logical/logical-constants';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
+import { binaryInterval } from '../intervals/interval-binary';
+import { intervalFromValues } from '../intervals/interval-constants';
 
 /**
  * Take two potentially lifted intervals and combine them with the given op.
@@ -15,8 +18,19 @@ export function binaryScalar(
 	op: string,
 	b: Lift<ValueNumber>
 ): Value {
-	guard(op in ScalarBinaryOperations, `Unknown scalar binary operation: ${op}`);
-	return ScalarBinaryOperations[op as keyof typeof ScalarBinaryOperations](a, b);
+	let res: Value | undefined = bottomTopGuard(a);
+	if(op in ScalarBinaryOperations) {
+		res ??= ScalarBinaryOperations[op as keyof typeof ScalarBinaryOperations](a, b);
+	} else {
+		res = binaryInterval(
+			intervalFromValues(a, a),
+			op,
+			intervalFromValues(b, b)
+		);
+	}
+	res ??= ValueIntegerTop;
+	expensiveTrace(ValueEvalLog, () => ` * binaryScalar(${stringifyValue(a)}, ${op}, ${stringifyValue(b)}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 
@@ -45,9 +59,10 @@ const ScalarBinaryOperations = {
 	'⊃':   (a, b) => scalarHelperLogical(a, b, (_a, _b) => false)
 } as const satisfies Record<string, (a: Lift<ValueNumber>, b: Lift<ValueNumber>) => Value>;
 
+export type ScalarBinaryOperation = typeof ScalarBinaryOperations;
 
 function identicalNumbersThreshold(a: number, b: number): boolean {
-	return Math.abs(a - b) < 2 * ValueNumberEpsilon.value.num;
+	return a === b || Math.abs(a - b) < 2 * ValueNumberEpsilon.value.num;
 }
 
 

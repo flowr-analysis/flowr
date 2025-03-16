@@ -1,16 +1,20 @@
 import type { Value, ValueLogical } from '../r-value';
-import { isBottom, isTop ,  Bottom , Top } from '../r-value';
+import { stringifyValue , isBottom, isTop ,  Bottom , Top } from '../r-value';
 import type { CanBeLazy } from '../../../../util/lazy';
 import { force } from '../../../../util/lazy';
-import { liftLogical, ValueLogicalBot, ValueLogicalTop } from './logical-constants';
+import { liftLogical, ValueLogicalBot, ValueLogicalTop, ValueLogicalTrue } from './logical-constants';
 import { binaryScalar } from '../scalar/scalar-binary';
 import { ValueIntegerZero } from '../scalar/scalar-constants';
 import { binaryString } from '../string/string-binary';
 import { ValueEmptyString } from '../string/string-constants';
 import { unaryInterval } from '../intervals/interval-unary';
+import { binaryValue } from '../value-binary';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 // TODO: truthy unary checks
-export function isTruthy(a: Value): ValueLogical {
+export function toTruthy(a: Value): ValueLogical {
+	expensiveTrace(ValueEvalLog, () => ` * isTruthy(${stringifyValue(a)})`);
 	if(a === Top) {
 		return ValueLogicalTop;
 	} else if(a === Bottom) {
@@ -26,9 +30,16 @@ export function isTruthy(a: Value): ValueLogical {
 	} else if(a.type === 'vector') {
 		return isTop(a.elements) || isBottom(a.elements) ? liftLogical(a.elements) :
 			a.elements.length !== 0 ? ValueLogicalBot :
-				isTruthy(a.elements[0]);
+				toTruthy(a.elements[0]);
+	} else if(a.type === 'set') {
+		return isTop(a.elements) || isBottom(a.elements) ? liftLogical(a.elements) :
+			a.elements.reduce((acc, el) => binaryValue(acc, 'or', toTruthy(el)), ValueLogicalTrue) as ValueLogical;
 	}
 	return ValueLogicalTop;
+}
+
+export function isTruthy(a: Value): boolean {
+	return toTruthy(a).value === true;
 }
 
 interface IteCases<Result> {
@@ -43,7 +54,7 @@ export function iteLogical<Result>(
 	cond: Value,
 	{ onTrue, onFalse, onMaybe, onTop, onBottom }: IteCases<Result>
 ): Result {
-	const condVal = isTruthy(cond).value;
+	const condVal = toTruthy(cond).value;
 	if(condVal === Top) {
 		return force(onTop);
 	} else if(condVal === Bottom) {

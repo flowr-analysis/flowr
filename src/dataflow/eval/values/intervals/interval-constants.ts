@@ -9,6 +9,7 @@ import {
 } from '../scalar/scalar-constants';
 import { iteLogical } from '../logical/logical-check';
 import { binaryScalar } from '../scalar/scalar-binary';
+import { bottomTopGuard } from '../general';
 
 export function intervalFrom(start: RNumberValue | number, end = start, startInclusive = true, endInclusive = true): ValueInterval {
 	return intervalFromValues(
@@ -51,12 +52,12 @@ export function orderIntervalFrom(start: Lift<ValueNumber>, end = start, startIn
 	);
 }
 
-export function getIntervalStart(interval: ValueInterval): ValueNumber {
-	return interval.start;
+export function getIntervalStart(interval: Lift<ValueInterval>): Lift<ValueNumber> {
+	return bottomTopGuard(interval) ?? (interval as ValueInterval).start;
 }
 
-export function getIntervalEnd(interval: ValueInterval): ValueNumber {
-	return interval.end;
+export function getIntervalEnd(interval: Lift<ValueInterval>): Lift<ValueNumber> {
+	return bottomTopGuard(interval) ?? (interval as ValueInterval).end;
 }
 
 export const ValueIntervalZero = intervalFrom(0);
@@ -67,4 +68,3 @@ export const ValueIntervalZeroToPositiveInfinity = intervalFromValues(ValueInteg
 export const ValueIntervalMinusOneToOne = intervalFrom(-1, 1);
 export const ValueIntervalTop = intervalFromValues(ValueIntegerTop, ValueIntegerTop);
 export const ValueIntervalBottom = intervalFromValues(ValueIntegerBottom, ValueIntegerBottom);
-export const ValuePositiveInfinite = intervalFromValues(ValueIntegerZero, ValueIntegerPositiveInfinity, false);

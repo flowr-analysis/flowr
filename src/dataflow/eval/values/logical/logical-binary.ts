@@ -1,6 +1,9 @@
-import type { Lift, TernaryLogical, ValueLogical } from '../r-value';
+import type { Lift, TernaryLogical, Value, ValueLogical } from '../r-value';
+import { stringifyValue, Top } from '../r-value';
 import { bottomTopGuard } from '../general';
 import { guard } from '../../../../util/assert';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 /**
  * Take two potentially lifted logicals and combine them with the given op.
@@ -11,11 +14,22 @@ export function binaryLogical(
 	op: string,
 	b: Lift<ValueLogical>
 ): Lift<ValueLogical> {
+	let res: Value = Top;
 	guard(op in Operations, `Unknown logical binary operation: ${op}`);
-	return Operations[op as keyof typeof Operations](a, b);
+	res = Operations[op as keyof typeof Operations](a, b);
+	expensiveTrace(ValueEvalLog, () => ` * binaryLogical(${stringifyValue(a)}, ${op}, ${stringifyValue(b)}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 const Operations = {
+	'===': (a, b) => logicalHelper(a, b, (a, b) => a === b),
+	'==':  (a, b) => logicalHelper(a, b, (a, b) => {
+		if(a === 'maybe' || b === 'maybe') {
+			return 'maybe';
+		} else {
+			return a === b;
+		}
+	}),
 	and: (a, b) => logicalHelper(a, b, (a, b) => {
 		if(a === false || b === false) {
 			return false;
@@ -58,6 +72,8 @@ const Operations = {
 		}
 	})
 } as const satisfies Record<string, (a: Lift<ValueLogical>, b: Lift<ValueLogical>) => Lift<ValueLogical>>;
+
+export type LogicalBinaryOperation = typeof Operations;
 
 function logicalHelper<A extends Lift<ValueLogical>, B extends Lift<ValueLogical>>(a: A, b: B, op: (a: TernaryLogical, b: TernaryLogical) => TernaryLogical): Lift<ValueLogical> {
 	const botTopGuard = bottomTopGuard(a, b) ?? bottomTopGuard((a as ValueLogical).value, (b as ValueLogical).value);

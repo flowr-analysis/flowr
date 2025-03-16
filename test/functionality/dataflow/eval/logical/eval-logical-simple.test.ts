@@ -1,21 +1,20 @@
 import { assert, describe, test } from 'vitest';
-import { guard } from '../../../../../src/util/assert';
-import type { Lift, ValueLogical } from '../../../../../src/dataflow/eval/values/r-value';
-import { isBottom, isTop } from '../../../../../src/dataflow/eval/values/r-value';
+import type { Value } from '../../../../../src/dataflow/eval/values/r-value';
 import {
+	liftLogical,
 	ValueLogicalFalse,
 	ValueLogicalMaybe,
 	ValueLogicalTrue
 } from '../../../../../src/dataflow/eval/values/logical/logical-constants';
 import { unaryLogical } from '../../../../../src/dataflow/eval/values/logical/logical-unary';
 import { binaryLogical } from '../../../../../src/dataflow/eval/values/logical/logical-binary';
+import { isTruthy } from '../../../../../src/dataflow/eval/values/logical/logical-check';
+import { binaryValue } from '../../../../../src/dataflow/eval/values/value-binary';
 
 describe('logical', () => {
-	function shouldBeBool(value: Lift<ValueLogical>, expect: boolean | 'maybe') {
-		if(typeof expect === 'boolean' || expect === 'maybe') {
-			guard(!isTop(value) && !isBottom(value));
-			assert.equal(value.value, expect);
-		}
+	function shouldBeBool(value: Value, expect: boolean | 'maybe') {
+		const truthy = isTruthy(binaryValue(value, '===', liftLogical(expect)));
+		assert.isTrue(truthy);
 	}
 	describe('unary', () => {
 		test.each([

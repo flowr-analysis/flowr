@@ -1,5 +1,5 @@
 import type { Lift, Value, ValueInterval, ValueNumber } from '../r-value';
-import { Top , isTop , isBottom } from '../r-value';
+import { stringifyValue , Top , isTop , isBottom } from '../r-value';
 import { binaryScalar } from '../scalar/scalar-binary';
 import {
 	ValueIntervalBottom,
@@ -20,6 +20,8 @@ import {
 import { bottomTopGuard } from '../general';
 import { unaryValue } from '../value-unary';
 import { binaryValue } from '../value-binary';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 /**
  * Take two potentially lifted intervals and combine them with the given op.
@@ -30,10 +32,12 @@ export function binaryInterval(
 	op: string,
 	b: Lift<ValueInterval>
 ): Value {
+	let res: Value = Top;
 	if(op in Operations) {
-		return Operations[op as keyof typeof Operations](a, b);
+		res = Operations[op as keyof typeof Operations](a, b);
 	}
-	return Top;
+	expensiveTrace(ValueEvalLog, () => ` * binaryInterval(${stringifyValue(a)}, ${op}, ${stringifyValue(b)}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 // TODO: improve handling of open intervals!
@@ -69,6 +73,8 @@ const Operations = {
 	'⊇':       (a, b) => intervalSubset(b, a, '⊆'),
 } as const satisfies Record<string, (a: Lift<ValueInterval>, b: Lift<ValueInterval>) => Value>;
 
+export type IntervalBinaryOperation = typeof Operations;
+
 function intervalAdd(a: Lift<ValueInterval>, b: Lift<ValueInterval>): Lift<ValueInterval> {
 	const bt = bottomTopGuard(a, b);
 	if(bt) {
@@ -98,14 +104,20 @@ function intervalSub(a: Lift<ValueInterval>, b: Lift<ValueInterval>): Lift<Value
 }
 
 function intervalIntersect(a: Lift<ValueInterval>, b: Lift<ValueInterval>): Lift<ValueInterval> {
-	const bt = bottomTopGuard(a, b);
-	if(bt) {
-		return bt === Top ? ValueIntervalTop : ValueIntervalBottom;
+	if(isBottom(a) || isBottom(b)) {
+		return ValueIntervalBottom;
+	} if(isTop(a) && isTop(b)) {
+		return ValueIntervalTop;
 	}
-	[a, b] = closeBoth(a as ValueInterval, b as ValueInterval);
+	[a, b] = closeBoth(a, b);
+	// if they are top, clamp them by the other as we are either valid or empty
+	const aStart = isTop(a.start.value) ? b.start : a.start;
+	const aEnd = isTop(a.end.value) ? b.end : a.end;
+	const bStart = isTop(b.start.value) ? a.start : b.start;
+	const bEnd = isTop(b.end.value) ? a.end : b.end;
 	return orderIntervalFrom(
-		binaryScalar(a.start, 'max', b.start) as ValueNumber,
-		binaryScalar(a.end, 'min', b.end) as ValueNumber,
+		binaryScalar(aStart, 'max', bStart) as ValueNumber,
+		binaryScalar(aEnd, 'min', bEnd) as ValueNumber,
 		a.startInclusive && b.startInclusive,
 		a.endInclusive && b.endInclusive
 	);
@@ -222,7 +234,7 @@ function intervalSubset<A extends Lift<ValueInterval>, B extends Lift<ValueInter
 		{
 			onTrue: () =>
 				iteLogical(binaryValue(getIntervalEnd(a), '<=', getIntervalEnd(b)), {
-					onTrue:   op === '⊂' ? binaryScalar(a, '!==', b) : ValueLogicalTrue,
+					onTrue:   op === '⊂' ? binaryValue(a, '!==', b) : ValueLogicalTrue,
 					onFalse:  ValueLogicalFalse,
 					onMaybe:  ValueLogicalMaybe,
 					onTop:    ValueLogicalMaybe,

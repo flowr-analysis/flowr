@@ -27,6 +27,7 @@ export const ValueNumberComplexOne = getScalarFromInteger(1, false, true);
 export const ValueIntegerZero = getScalarFromInteger(0);
 export const ValueIntegerNegativeOne = getScalarFromInteger(-1);
 export const ValueIntegerPositiveInfinity = getScalarFromInteger(Number.POSITIVE_INFINITY);
+export const ValueNumberPositiveInfinity = getScalarFromInteger(Number.POSITIVE_INFINITY, false);
 export const ValueIntegerNegativeInfinity = getScalarFromInteger(Number.NEGATIVE_INFINITY);
 export const ValueNumberEpsilon = getScalarFromInteger(epsilon, false);
 export const ValueNumberOneHalf = getScalarFromInteger(0.5, false);

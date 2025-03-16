@@ -1,5 +1,5 @@
 import type { Lift, Value, ValueInterval, ValueLogical, ValueNumber } from '../r-value';
-import { isBottom , Top , isTop ,   asValue } from '../r-value';
+import { stringifyValue , isBottom , Top , isTop ,   asValue } from '../r-value';
 import type { ScalarUnaryOperation } from '../scalar/scalar-unary';
 import { unaryScalar } from '../scalar/scalar-unary';
 import {
@@ -7,7 +7,6 @@ import {
 	ValueIntervalTop,
 	orderIntervalFrom,
 	ValueIntervalBottom,
-	ValuePositiveInfinite,
 	ValueIntervalMinusOneToOne,
 	ValueIntervalZero,
 	ValueIntervalZeroToPositiveInfinity
@@ -24,6 +23,8 @@ import { liftLogical, ValueLogicalBot, ValueLogicalFalse, ValueLogicalTop } from
 import { binaryInterval } from './interval-binary';
 import { bottomTopGuard } from '../general';
 import { binaryValue } from '../value-binary';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 /**
  * Take two potentially lifted intervals and combine them with the given op.
@@ -31,13 +32,14 @@ import { binaryValue } from '../value-binary';
  */
 export function unaryInterval(
 	a: Lift<ValueInterval>,
-	op: keyof typeof Operations
+	op: string
 ): Value {
+	let res: Value = Top;
 	if(op in Operations) {
-		return Operations[op](a);
-	} else {
-		return Top;
+		res = Operations[op as keyof typeof Operations](a);
 	}
+	expensiveTrace(ValueEvalLog, () => ` * unaryInterval(${stringifyValue(a)}, ${op}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 // TODO: sin, cos, tan, ...
@@ -176,8 +178,8 @@ function intervalAbs(a: Lift<ValueInterval>): ValueInterval {
 						a.endInclusive,
 						true // TODO: check
 					),
-					onMaybe:  ValuePositiveInfinite,
-					onTop:    ValuePositiveInfinite,
+					onMaybe:  ValueIntervalZeroToPositiveInfinity,
+					onTop:    ValueIntervalZeroToPositiveInfinity,
 					onBottom: ValueIntervalBottom
 				}
 			),

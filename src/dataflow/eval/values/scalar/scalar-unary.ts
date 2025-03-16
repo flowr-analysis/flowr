@@ -1,22 +1,27 @@
 import type { Lift, Value, ValueLogical, ValueNumber } from '../r-value';
-import { asValue, Bottom , isBottom , isTop, Top } from '../r-value';
+import { stringifyValue , asValue, Bottom , isBottom , isTop, Top } from '../r-value';
 import { bottomTopGuard } from '../general';
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { liftScalar } from './scalar-constants';
 import { guard } from '../../../../util/assert';
 import { liftLogical, ValueLogicalBot, ValueLogicalTop } from '../logical/logical-constants';
 import { ValueIntervalMinusOneToOne, ValueIntervalZeroToPositiveInfinity } from '../intervals/interval-constants';
+import { expensiveTrace } from '../../../../util/log';
+import { ValueEvalLog } from '../../eval';
 
 /**
- * Take a potentially lifted interval and apply the given op.
+ * Take a potentially lifted scalar and apply the given op.
  * This propagates `top` and `bottom` values.
  */
 export function unaryScalar(
 	a: Lift<ValueNumber>,
 	op: string
 ): Value {
+	let res: Value = Top;
 	guard(op in ScalarUnaryOperations, `Unknown scalar unary operation: ${op}`);
-	return ScalarUnaryOperations[op as keyof typeof ScalarUnaryOperations](a);
+	res = bottomTopGuard(a) ?? ScalarUnaryOperations[op as keyof typeof ScalarUnaryOperations](a);
+	expensiveTrace(ValueEvalLog, () => ` * unaryScalar(${stringifyValue(a)}, ${op}) = ${stringifyValue(res)}`);
+	return res;
 }
 
 const ScalarUnaryOperations = {

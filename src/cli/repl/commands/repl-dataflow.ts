@@ -55,3 +55,38 @@ export const dataflowStarCommand: ReplCommand = {
 		} catch{ /* do nothing this is a service thing */ }
 	}
 };
+
+
+export const dataflowSimplifiedCommand: ReplCommand = {
+	description:  `Get simplified mermaid code for the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	usageExample: ':dataflowsimple',
+	aliases:      [ 'ds', 'dfs' ],
+	script:       false,
+	fn:           async(output, shell, remainingLine) => {
+		const result = await replGetDataflow(shell, handleString(remainingLine));
+		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false, simplified: true }).string;
+		output.stdout(mermaid);
+		try {
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid code', result.dataflow['.meta'].timing));
+		} catch{ /* do nothing this is a service thing */ }
+	}
+};
+
+export const dataflowSimpleStarCommand: ReplCommand = {
+	description:  'Returns the URL to mermaid.live',
+	usageExample: ':dataflowsimple*',
+	aliases:      [ 'ds*', 'dfs*' ],
+	script:       false,
+	fn:           async(output, shell, remainingLine) => {
+		const result = await replGetDataflow(shell, handleString(remainingLine));
+		const mermaid = graphToMermaidUrl(result.dataflow.graph, false, undefined, true);
+		output.stdout(mermaid);
+		try {
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid url', result.dataflow['.meta'].timing));
+		} catch{ /* do nothing this is a service thing */ }
+	}
+};

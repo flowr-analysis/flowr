@@ -75,6 +75,7 @@ describe.sequential('source', withShell(shell => {
 		.call('6', 'source', [argumentInCall('4')], { returns: [], reads: [BuiltIn], controlDependencies: [{ id: '8', when: true }] })
 		.call('simple-1:10-1:15-2', '<-', [argumentInCall('simple-1:10-1:15-0'), argumentInCall('simple-1:10-1:15-1')], { returns: ['simple-1:10-1:15-0'], reads: [BuiltIn] })
 		.addControlDependency('simple-1:10-1:15-2', '6', true)
+		.addControlDependency('simple-1:10-1:15-2', '8', true)
 		.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [BuiltIn], controlDependencies: [{ id: '8', when: true }] })
 		.call('8', 'if', [argumentInCall('0'), argumentInCall('7'), EmptyArgument], { returns: ['7'], reads: ['0', BuiltIn], onlyBuiltIn: true })
 		.call('12', 'cat', [argumentInCall('10')], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('N', 'simple-1:10-1:15-0', 'simple-1:10-1:15-2') })
@@ -83,6 +84,7 @@ describe.sequential('source', withShell(shell => {
 		.constant('simple-1:10-1:15-1')
 		.defineVariable('simple-1:10-1:15-0', 'N', { definedBy: ['simple-1:10-1:15-1', 'simple-1:10-1:15-2'] })
 		.addControlDependency('simple-1:10-1:15-0', '6', true)
+		.addControlDependency('simple-1:10-1:15-0', '8', true)
 		.markIdForUnknownSideEffects('12')
 	);
 
@@ -120,8 +122,8 @@ describe.sequential('source', withShell(shell => {
 		});
 		assertDataflow(label('recursive source (higher limit)', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), shell, sources.recursive1,  emptyGraph()
 			.use('recursive2-2:1-2:6-1', 'x')
-			.use('1@recursive2-2:1-2:6-1', 'x')
-			.use('2@recursive2-2:1-2:6-1', 'x'), {
+			.use('1::recursive2-2:1-2:6-1', 'x')
+			.use('2::recursive2-2:1-2:6-1', 'x'), {
 			expectIsSubgraph: true
 		}
 		);

@@ -132,6 +132,10 @@ export function processSourceCall<OtherInfo>(
 		forceFollow?:         boolean
 	}
 ): DataflowInformation {
+	if(args.length !== 1) {
+		dataflowLogger.warn(`Expected exactly one argument for source currently, but got ${args.length} instead, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data }).information;
+	}
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data }).information
 		: initializeCleanDataflowInformation(rootId, data);
@@ -177,7 +181,7 @@ export function processSourceCall<OtherInfo>(
 				return information;
 			}
 
-			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '@' : '') + path, name.location));
+			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + path, name.location));
 		}
 	}
 
@@ -235,7 +239,13 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	for(const [k, v] of normalized.idMap) {
 		data.completeAst.idMap.set(k, v);
 	}
-	return newInformation;
+	return {
+		...newInformation,
+		in:                newInformation.in.concat(dataflow.in),
+		out:               newInformation.out.concat(dataflow.out),
+		unknownReferences: newInformation.unknownReferences.concat(dataflow.unknownReferences),
+		exitPoints:        dataflow.exitPoints
+	};
 }
 
 
@@ -261,5 +271,5 @@ export function standaloneSourceFile<OtherInfo>(
 		currentRequest: request,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, inputRequest]
-	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId));
+	}, information, deterministicPrefixIdGenerator(path + '::' + uniqueSourceId));
 }

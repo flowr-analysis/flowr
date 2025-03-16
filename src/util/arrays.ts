@@ -222,3 +222,17 @@ export function equidistantSampling<T>(list: readonly T[], sampleCount: number, 
 	}
 	return result;
 }
+
+/**
+ * Returns the cartesian product of the given arrays.
+ * @example
+ *
+ * ```ts
+ * cartesianProduct([1, 2], ['a', 'b', 'c'], [true, false])
+ * // -> [[1, 'a', true], [1, 'a', false], [1, 'b', true], [1, 'b', false], [1, 'c', true], [1, 'c', false], [2, 'a', true], [2, 'a', false], [2, 'b', true], [2, 'b', false], [2, 'c', true], [2, 'c', false]]
+ * ```
+ *
+ */
+export function cartesianProduct<T>(...arrays: T[][]): T[][] {
+	return arrays.reduce((a, b) => a.flatMap(x => b.map(y => x.concat(y))), [[]] as T[][]);
+}

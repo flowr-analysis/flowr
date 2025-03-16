@@ -4,7 +4,7 @@ import { initializeCleanDataflowInformation } from '../../../../../info';
 import { getConfig } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,6 +21,9 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { appendEnvironment } from '../../../../../environments/append';
+import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { isUndefined } from '../../../../../../util/assert';
+import { cartesianProduct } from '../../../../../../util/arrays';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,7 +59,7 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -93,7 +96,7 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
 	const val = evalArgument;
 
 	if(
@@ -107,11 +110,12 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolve = resolveValueOfVariable(arg.value.content, env);
-			console.log(resolve);
-			if(resolve && resolve.every(r => typeof r === 'string')) {
-				return resolve;
+			const resolve = resolveValueOfVariable(arg.value.content, env, idMap);
+			if(resolve && resolve.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
+				return resolve.map(r => r.str as string);
 			}
+		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
+			return handlePaste(arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
 		}
 		return undefined;
 	} else if(val.type === RType.Symbol) {
@@ -121,4 +125,50 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 	} else {
 		return undefined;
 	}
+}
+
+function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap): string[] | undefined {
+	if(!val) {
+		return undefined;
+	}
+	if(val.type === RType.String) {
+		return [val.content.str];
+	} else if(val.type === RType.Symbol) {
+		const resolved = resolveValueOfVariable(val.content, env, idMap);
+		if(resolved && resolved.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
+			return resolved.map(r => r.str as string);
+		}
+	}
+	return undefined;
+}
+
+function handlePaste(args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[]): string[] | undefined {
+	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
+	if(sepArg) {
+		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(sepArg.value, env, idMap) : undefined;
+		if(!res) {
+			// sep not resolvable clearly / unknown
+			return undefined;
+		}
+		sepDefault = res;
+	}
+
+	const allArgs = args
+		.filter(v => v !== EmptyArgument && v.name?.content !== 'sep' && v.value)
+		.map(v => getAsString((v as RArgument<ParentInformation>).value, env, idMap));
+	if(allArgs.some(isUndefined)) {
+		return undefined;
+	}
+	// return all cartesian products using the separator
+	const result: string[] = [];
+
+	const cartesianProducts = cartesianProduct(...allArgs as string[][]);
+
+	for(const sep of sepDefault) {
+		for(const c of cartesianProducts) {
+			result.push(c.join(sep));
+		}
+	}
+
+	return result;
 }

@@ -20,17 +20,11 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly indexOfFunction?:        number
 	/** does the argument have a name that it can be given by as well? */
 	readonly nameOfFunctionArgument?: string
-	/**
-	 * Should we unquote the function if it is given as a string?
-	 */
+	/** Should we unquote the function if it is given as a string? */
 	readonly unquoteFunction?:        boolean
-	/**
-	 * Should the function be resolved in the global environment?
-	 */
+	/** Should the function be resolved in the global environment? */
 	readonly resolveInEnvironment:    'global' | 'local'
-	/**
-	 * Should the value of the function be resolved?
-	 */
+	/** Should the value of the function be resolved? */
 	readonly resolveValue?:           boolean
 }
 
@@ -119,13 +113,11 @@ export function processApply<OtherInfo>(
 		cds:         data.controlDependencies
 	});
 
-
 	for(const arg of processedArguments) {
 		if(arg) {
 			information.graph.addEdge(functionId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
-
 
 	if(resolveInEnvironment === 'global') {
 		// remove from open ingoing references

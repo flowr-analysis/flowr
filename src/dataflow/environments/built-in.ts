@@ -32,6 +32,7 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
 import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
+import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 
 export const BuiltIn = 'built-in';
 
@@ -133,6 +134,7 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 
 export const BuiltInProcessorMapper = {
 	'builtin:default':             defaultBuiltInProcessor,
+	'builtin:eval':                processEvalCall,
 	'builtin:apply':               processApply,
 	'builtin:expression-list':     processExpressionList,
 	'builtin:source':              processSourceCall,

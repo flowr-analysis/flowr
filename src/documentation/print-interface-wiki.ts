@@ -215,6 +215,7 @@ ${codeBlock('json', JSON.stringify(
 			engines: [{ type: 'r-shell' }],
 			solver:  {
 				variables:       VariableResolve.Alias,
+				evalStrings:     true,
 				pointerTracking: true,
 				resolveSource:   {
 					dropPaths:             DropPathsOption.No,

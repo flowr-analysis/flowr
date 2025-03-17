@@ -34,6 +34,7 @@ import { processDataFrameAccess } from '../../abstract-interpretation/data-frame
 import { processDataFrameAssignment } from '../../abstract-interpretation/data-frame/process/data-frame-assignment';
 import { processDataFrameExpressionList } from '../../abstract-interpretation/data-frame/process/data-frame-expression-list';
 import { processDataFrameFunctionCall } from '../../abstract-interpretation/data-frame/process/data-frame-function-call';
+import { processDataFramePipe } from '../../abstract-interpretation/data-frame/process/data-frame-pipe';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
 import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
 
@@ -170,7 +171,7 @@ export const BuiltInProcessorMapper = {
 	'builtin:library':             processLibrary,
 	'builtin:assignment':          decorateProcessor(processAssignment, 'dataframe:assignment'),
 	'builtin:special-bin-op':      processSpecialBinOp,
-	'builtin:pipe':                processPipe,
+	'builtin:pipe':                decorateProcessor(processPipe, 'dataframe:pipe'),
 	'builtin:function-definition': processFunctionDefinition,
 	'builtin:quote':               processQuote,
 	'builtin:for-loop':            processForLoop,
@@ -189,6 +190,7 @@ const BuiltInProcessorDecoratorMapper = {
 	'dataframe:function-call':   processDataFrameFunctionCall,
 	'dataframe:access':          processDataFrameAccess,
 	'dataframe:assignment':      processDataFrameAssignment,
+	'dataframe:pipe':            processDataFramePipe,
 	'dataframe:expression-list': processDataFrameExpressionList
 } as const satisfies Record<`${string}:${string}`, BuiltInIdentifierProcessorDecorator<never>>;
 

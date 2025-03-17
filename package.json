@@ -33,6 +33,7 @@
     "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
+    "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",

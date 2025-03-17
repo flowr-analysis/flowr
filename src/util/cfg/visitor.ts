@@ -7,7 +7,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
  * @param startNode - The node to start the traversal from.
  * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  */
-export function visitInReverseOrder(
+export function visitCfgInReverseOrder(
 	graph: ControlFlowGraph,
 	startNode: NodeId,
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop

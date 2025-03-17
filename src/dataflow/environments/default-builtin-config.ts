@@ -7,19 +7,33 @@ import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
+const GgPlotCreate = [
+	'ggplot', 'ggplotly'
+] as const;
+const TinyPlotCrate = [
+	'tinyplot', 'plt'
+] as const;
 const PlotCreate = [
 	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
-	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qqPlot', 'boxPlot',
+	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
-	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'ggplot', 'leaflet', 'tm_shape', 'plot_ly'
+	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly',
+	...TinyPlotCrate,
+	...GgPlotCreate
 ] as const;
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
 	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
 ] as const;
+const TinyPlotAddons = [
+	'tinyplot_add', 'plt_add'
+] as const;
 const PlotAddons = [
 	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
 	'tiplabels', 'rug', 'grid', 'box', 'clip'
+] as const;
+const GgPlotAddons = [
+	'ggdraw', 'last_plot'
 ] as const;
 
 function toRegex(n: readonly string[]): RegExp {
@@ -112,13 +126,24 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	// plot tags
 	{
 		type:      'function',
-		names:     ['last_plot'],
+		names:     GgPlotAddons,
 		processor: 'builtin:default',
 		config:    {
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: /^ggplot$/
+				callName: toRegex(GgPlotCreate)
+			}
+		}, assumePrimitive: true },
+	{
+		type:      'function',
+		names:     TinyPlotAddons,
+		processor: 'builtin:default',
+		config:    {
+			forceArgs:             'all',
+			hasUnknownSideEffects: {
+				type:     'link-to-last-call',
+				callName: toRegex(TinyPlotCrate)
 			}
 		}, assumePrimitive: true },
 	{
@@ -129,7 +154,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons])
+				callName: toRegex([...GraphicDeviceOpen, ...PlotCreate, ...PlotAddons, ...GgPlotAddons, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: 'builtin:default',             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
@@ -181,7 +206,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	{
 		type:  'function',
 		names: [
-			'on.exit', 'sys.on.exit', 'par', 'sink',
+			'on.exit', 'sys.on.exit', 'par', 'tpar', 'sink', 'tinytheme',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
 			/* downloader and installer functions (R, devtools, BiocManager) */

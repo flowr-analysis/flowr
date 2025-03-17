@@ -14,6 +14,6 @@
   * [R FAQ](https://flowr-analysis.github.io/flowr/wiki/R-FAQ.md)
 * Extra Information
   * [Terminology](https://github.com/flowr-analysis/flowr/wiki/Terminology)
-  * [R's Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) 
+  * [Supported R Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) 
   * [R's Tokens](https://github.com/flowr-analysis/flowr/wiki/Tokens)
   * [Original Master Thesis](https://github.com/flowr-analysis/flowr/wiki/Thesis)

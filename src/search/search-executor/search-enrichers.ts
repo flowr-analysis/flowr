@@ -54,6 +54,9 @@ export const Enrichments = {
 				const resolved = resolveByName(info.name, info.environment ?? initializeCleanEnvironments());
 				if(resolved) {
 					content.targets.push(...resolved.map(r => r.name).filter(i => i !== undefined));
+				} else {
+					// if we can't resolve the name to actual memory, we still want to show it as a vague target
+					content.targets.push(info.name);
 				}
 			}
 			return content;

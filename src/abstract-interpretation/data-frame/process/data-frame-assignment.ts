@@ -18,5 +18,22 @@ export function processDataFrameAssignment<OtherInfo>(
 			identifier: leftArg.value.info.id,
 			expression: rightArg.value.info.id
 		};
+	} else {
+		processDataFrameUnknownAssignment(name, args);
 	}
+}
+
+function processDataFrameUnknownAssignment<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+) {
+	name.info.dataFrame = {
+		type:       'expression',
+		operations: [{
+			operation: 'unknown',
+			operand:   args[0] !== EmptyArgument ? args[0]?.value?.info.id : undefined,
+			arguments: args.slice(1).map(arg => arg !== EmptyArgument ? arg.info.id : undefined),
+			modify:    true
+		}]
+	};
 }

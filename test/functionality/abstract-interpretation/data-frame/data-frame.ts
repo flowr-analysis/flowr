@@ -137,7 +137,7 @@ async function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
 	const info = node.info as AbstractInterpretationInfo;
-	const value = info.dataFrame?.type === 'symbol' ? info.dataFrame.value : DataFrameTop;
+	const value = info.dataFrame?.domain?.get(node.info.id) ?? DataFrameTop;
 
 	return [value, node];
 }

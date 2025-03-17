@@ -129,6 +129,7 @@ jobs:
           if [ $CHANGED_ANY == "true" ]; then
               git config --local user.email "action@github.com"
               git config --local user.name "GitHub Action"
+              git config lfs.allowincompletepush true
               CHANGED_FILES_STRING=$(IFS=,; echo "${CHANGED_FILES[*]}")
               git commit -m "[skip ci] doc: update generated wiki pages ($CHANGED_FILES_STRING)"
           fi

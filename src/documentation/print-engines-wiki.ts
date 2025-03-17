@@ -25,7 +25,7 @@ async function getText(shell: RShell) {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'engines', rVersion: rversion })}
 
 To analyze R scripts, flowR needs to parse the R code and for that, we require a parser.
-Originally, flowR shipped with a ${shortLink(RShell.name, types.info)}, an asynchronous interface to the R interpreter, still available today.
+Originally, flowR shipped with an ${shortLink(RShell.name, types.info)}, an asynchronous interface to the R interpreter, still available today.
 Later we extended this with the ${shortLink(RShellExecutor.name, types.info)}, the synchronous counterpart to the ${shortLink(RShell.name, types.info)}.
 However, these interfaces are relatively slow as they require communication with an underlying R interpreter. 
 Using [tree-sitter](https://tree-sitter.github.io/tree-sitter/), with its [node bindings](https://github.com/tree-sitter/node-tree-sitter)

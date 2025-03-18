@@ -7,11 +7,13 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/d
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { decorateLabelContext, type TestLabel } from '../../_helper/label';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -32,56 +34,75 @@ export const DataFrameTestOverapproximation = {
 	rows:     DomainMatchingType.Overapproximation
 };
 
+/** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
+interface CriterionTestEntry {
+	criterion:  SingleSlicingCriterion,
+	value:      DataFrameDomain,
+	node:       RSymbol<ParentInformation & AbstractInterpretationInfo>,
+	lineNumber: number
+}
+
 export function assertDataFrameDomain(
 	shell: RShell,
 	code: string,
-	criterion: SingleSlicingCriterion,
-	expected: DataFrameDomain,
-	name: string = code
+	expected: [SingleSlicingCriterion, DataFrameDomain][],
+	name: string | TestLabel = code
 ) {
-	test(name, async()=> {
+	test.each(expected)( decorateLabelContext(name, ['absint']), async(criterion, expect) => {
 		const [value] = await getInferredDomainForCriterion(shell, code, criterion);
 
-		assert.deepStrictEqual(value.colnames, expected.colnames, 'column names differ');
-		assert.deepStrictEqual(value.cols, expected.cols, 'column count differs');
-		assert.deepStrictEqual(value.rows, expected.rows, 'row count differs');
+		assert.deepStrictEqual(value.colnames, expect.colnames, 'column names differ');
+		assert.deepStrictEqual(value.cols, expect.cols, 'column count differs');
+		assert.deepStrictEqual(value.rows, expect.rows, 'row count differs');
 	});
 }
 
-export function testDataFrameDomain(
+export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
-	criterion: SingleSlicingCriterion,
+	criteria: SlicingCriteria,
 	/** Whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	options?: Partial<DataFrameTestOptions>,
-	name: string = code
+	name: string | TestLabel = code
 ): void {
 	const effectiveOptions = { ...DataFrameTestExact, ...options };
-	test(name, async()=> {
-		const [value, node] = await getInferredDomainForCriterion(shell, code, criterion);
-		const lineNumber = getRangeEnd(node.location)?.[0];
+	test(decorateLabelContext(name, ['absint']), async()=> {
+		const testEntries: CriterionTestEntry[] = [];
 
-		if(lineNumber === undefined) {
-			throw new Error(`cannot resolve line of criterion ${criterion}`);
+		for(const criterion of criteria) {
+			const [value, node] = await getInferredDomainForCriterion(shell, code, criterion);
+			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
+
+			if(lineNumber === undefined) {
+				throw new Error(`cannot resolve line of criterion ${criterion}`);
+			}
+			testEntries.push({ criterion, value, node, lineNumber });
 		}
+		testEntries.sort((a, b) => b.lineNumber - a.lineNumber);
 		const lines = code.split('\n');
-		const outputCode = [
-			createCodeForOutput('colnames', criterion, node.content),
-			createCodeForOutput('cols', criterion, node.content),
-			createCodeForOutput('rows', criterion, node.content)
-		];
-		lines.splice(lineNumber + 1, 0, ...outputCode);
+
+		for(const { criterion, node, lineNumber } of testEntries) {
+			const outputCode = [
+				createCodeForOutput('colnames', criterion, node.content),
+				createCodeForOutput('cols', criterion, node.content),
+				createCodeForOutput('rows', criterion, node.content)
+			];
+			lines.splice(lineNumber + 1, 0, ...outputCode);
+		}
 		const instrumentedCode = lines.join('\n');
 
 		shell.clearEnvironment();
 		const output = await shell.sendCommandWithOutput(instrumentedCode);
-		const colnames = getRealDomainFromOutput('colnames', criterion, output);
-		const cols = getRealDomainFromOutput('cols', criterion, output);
-		const rows = getRealDomainFromOutput('rows', criterion, output);
 
-		assertDomainMatching('colnames', value.colnames, colnames, leqColNames, effectiveOptions.colnames);
-		assertDomainMatching('cols', value.cols, cols, leqInterval, effectiveOptions.cols);
-		assertDomainMatching('rows', value.rows, rows, leqInterval, effectiveOptions.rows);
+		for(const { criterion, value } of testEntries) {
+			const colnames = getRealDomainFromOutput('colnames', criterion, output);
+			const cols = getRealDomainFromOutput('cols', criterion, output);
+			const rows = getRealDomainFromOutput('rows', criterion, output);
+
+			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, effectiveOptions.colnames);
+			assertDomainMatching('cols', value.cols, cols, leqInterval, effectiveOptions.cols);
+			assertDomainMatching('rows', value.rows, rows, leqInterval, effectiveOptions.rows);
+		}
 	});
 }
 
@@ -123,7 +144,7 @@ async function getInferredDomainForCriterion(
 	shell: RShell,
 	code: string,
 	criterion: SingleSlicingCriterion
-): Promise<[DataFrameDomain, RSymbol<object>]> {
+): Promise<[DataFrameDomain, RSymbol<ParentInformation & AbstractInterpretationInfo>]> {
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)

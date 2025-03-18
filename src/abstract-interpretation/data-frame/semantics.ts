@@ -6,7 +6,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
-import type { AbstractInterpretationInfo, DataFrameAssignmentInfo, DataFrameExpressionInfo } from './absint-info';
+import type { AbstractInterpretationInfo, DataFrameAssignmentInfo, DataFrameExpressionInfo, DataFrameOperation } from './absint-info';
 import { DataFrameSemanticsMapper } from './expression-semantics';
 
 export function applySemantics<OtherInfo>(
@@ -22,6 +22,8 @@ export function applySemantics<OtherInfo>(
 		dataFrameDomain = applyExpressionSemantics(node, domain, resolveInfo);
 	} else if(node.type === RType.FunctionCall && node.named) {
 		dataFrameDomain = applySemantics(node.functionName, domain, resolveInfo);
+	} else if(node.type === RType.Argument && node.value !== undefined) {
+		dataFrameDomain = applySemantics(node.value, domain, resolveInfo);
 	} else if(node.type === RType.Symbol && resolveInfo.environment !== undefined) {
 		const identifiers = resolveByName(node.content, resolveInfo.environment);
 		const values = identifiers?.map(id => domain.get(id.nodeId) ?? DataFrameTop);
@@ -62,29 +64,34 @@ function applyExpressionSemantics<OtherInfo>(
 	let dataFrameDomain = DataFrameTop;
 
 	for(const operation of node.info.dataFrame.operations) {
-		if(operation.operand === undefined) {
-			const semanticsApplier = DataFrameSemanticsMapper[operation.operation];
-			dataFrameDomain = semanticsApplier(dataFrameDomain, operation, resolveInfo);
-		} else {
-			const operand = resolveInfo.idMap?.get(operation.operand);
-			const operandDomain = operand ? applySemantics(operand, domain, resolveInfo) : DataFrameTop;
-			const semanticsApplier = DataFrameSemanticsMapper[operation.operation];
-			dataFrameDomain = semanticsApplier(operandDomain, operation, resolveInfo);
+		const operand = operation.operand ? resolveInfo.idMap?.get(operation.operand) : undefined;
+		const operandDomain = operand ? applySemantics(operand, domain, resolveInfo) : undefined;
+		applyArgumentSemantics(operation, domain, resolveInfo);
+		const semanticsApplier = DataFrameSemanticsMapper[operation.operation];
+		dataFrameDomain = semanticsApplier(operandDomain ?? dataFrameDomain, operation, resolveInfo);
 
-			if(operand !== undefined && operation.modify) {
-				let origins = [operand.info.id];
+		if(operand !== undefined && operation.modify) {
+			let origins = [operand.info.id];
 
-				if(operand.type === RType.Symbol && resolveInfo.environment !== undefined) {
-					const identifiers = resolveByName(operand.content, resolveInfo.environment);
-					origins = identifiers?.map(id => id.nodeId) ?? origins;
-				}
-				for(const origin of origins) {
-					domain.set(origin, dataFrameDomain);
-				}
+			if(operand.type === RType.Symbol && resolveInfo.environment !== undefined) {
+				const identifiers = resolveByName(operand.content, resolveInfo.environment);
+				origins = identifiers?.map(id => id.nodeId) ?? origins;
 			}
+			origins.forEach(origin => domain.set(origin, dataFrameDomain));
 		}
 	}
 	return dataFrameDomain;
+}
+
+function applyArgumentSemantics(
+	operation: DataFrameOperation,
+	domain: Map<NodeId, DataFrameDomain>,
+	resolveInfo : ResolveInfo<AbstractInterpretationInfo>
+): void {
+	operation.arguments
+		.map(arg => arg ? resolveInfo.idMap?.get(arg) : undefined)
+		.filter(arg => arg !== undefined)
+		.forEach(arg => applySemantics(arg, domain, resolveInfo));
 }
 
 function isAssignment<OtherInfo>(

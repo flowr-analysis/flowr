@@ -117,4 +117,56 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 		'1@df',
 		DataFrameTestOverapproximation
 	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
+		'3@df',
+		{
+			colnames: [],
+			cols:     [0, 0],
+			rows:     [0, 0]
+		}
+	);
+
+	testDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
+		'3@df'
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
+		'3@df',
+		{
+			colnames: [],
+			cols:     [0, 0],
+			rows:     [0, 0]
+		}
+	);
+
+	testDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
+		'3@df'
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
+		'1@df',
+		{
+			colnames: ColNamesTop,
+			cols:     [2, 2],
+			rows:     [3, 3]
+		}
+	);
+
+	testDataFrameDomain(
+		shell,
+		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
+		'1@df',
+		{ colnames: DomainMatchingType.Overapproximation }
+	);
 }));

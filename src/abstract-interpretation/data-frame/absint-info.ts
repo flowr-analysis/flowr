@@ -11,7 +11,7 @@ export interface DataFrameOperation {
 
 interface DataFrameInfo {
 	type:    string;
-	domain?: Map<NodeId, DataFrameDomain>
+	domain?: ReadonlyMap<NodeId, DataFrameDomain>
 }
 
 export interface DataFrameAssignmentInfo extends DataFrameInfo {

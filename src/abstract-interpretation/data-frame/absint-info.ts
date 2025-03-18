@@ -1,36 +1,34 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataFrameDomain } from './domain';
-import type { DataFrameOperationName } from './semantics';
+import type { DataFrameOperationName } from './expression-semantics';
 
 export interface DataFrameOperation {
 	operation: DataFrameOperationName,
 	operand:   NodeId | undefined,
-	arguments: (NodeId | undefined)[]
+	arguments: (NodeId | undefined)[],
+	modify?:   boolean
 }
 
-interface DataFrameStatementInfo {
-	type:   'statement',
-	domain: Map<NodeId, DataFrameDomain>
+interface DataFrameInfo {
+	type:    string;
+	domain?: ReadonlyMap<NodeId, DataFrameDomain>
 }
 
-interface DataFrameAssignmentInfo {
+export interface DataFrameAssignmentInfo extends DataFrameInfo {
 	type:       'assignment',
 	identifier: NodeId,
 	expression: NodeId
 }
 
-interface DataFrameExpressionInfo {
+export interface DataFrameExpressionInfo extends DataFrameInfo {
 	type:       'expression',
 	operations: DataFrameOperation[]
 }
 
-interface DataFrameSymbolInfo {
-	type:  'symbol',
-	value: DataFrameDomain
+export interface DataFrameOtherInfo extends DataFrameInfo {
+	type: 'other'
 }
 
-type DataFrameInfo = DataFrameStatementInfo | DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameSymbolInfo;
-
 export interface AbstractInterpretationInfo {
-	dataFrame?: DataFrameInfo
+	dataFrame?: DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameOtherInfo
 }

@@ -18,6 +18,7 @@ import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNumberValue } from '../../r-bridge/lang-4.x/convert-values';
+import type { NoInfo } from '../../r-bridge/lang-4.x/ast/model/model';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -308,11 +309,11 @@ export function resolveValueOfVariable(identifier: Identifier | undefined, envir
 	}
 }
 
-export interface ResolveInfo {
+export interface ResolveInfo<OtherInfo = NoInfo> {
 	/** The current environment used for name resolution */
 	environment?: REnvironmentInformation;
 	/** The id map to resolve the node if given as an id */
-	idMap?:       AstIdMap;
+	idMap?:       AstIdMap<OtherInfo>;
 	/** The graph to resolve in */
 	graph?:       DataflowGraph;
 	/** Whether to track variables */

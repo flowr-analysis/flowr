@@ -3,7 +3,8 @@ import type { DataFrameDomain } from '../../../../src/abstract-interpretation/da
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
@@ -15,6 +16,7 @@ import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import type { KnownParser } from '../../../../src/r-bridge/parser';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -44,18 +46,15 @@ interface CriterionTestEntry {
 }
 
 export function assertDataFrameDomain(
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameDomain][],
 	name: string | TestLabel = code
 ) {
-	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> | undefined;
+	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 
 	beforeAll(async() => {
-		result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-			parser:  shell,
-			request: requestFromInput(code)
-		}).allRemainingSteps();
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
 	});
 
 	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {

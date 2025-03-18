@@ -15,6 +15,24 @@ img <- image_graph(width=300,height=600)
 plot(1:10)
 cat("dump:", image_write(img, format="jpg"))
 		`.trim());
+	assertSliced(label('magick for image writes with multiple', ['functions-with-global-side-effects']),
+		shell, `
+library(magick)
+img <- image_graph(width=300,height=600)
+plot(1:10)
+lines(1:10)
+points(1:10)
+legend("topright", legend="test")
+cat("dump:", image_write(img, format="jpg"))
+		`, ['8@cat'], `
+library(magick)
+img <- image_graph(width=300,height=600)
+plot(1:10)
+lines(1:10)
+points(1:10)
+legend("topright", legend="test")
+cat("dump:", image_write(img, format="jpg"))
+		`.trim());
 	assertSliced(label('magick for image writes do not include previous', ['functions-with-global-side-effects']),
 		shell, `
 library(magick)

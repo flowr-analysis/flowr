@@ -104,7 +104,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex(PlotCreate),
+				callName: toRegex([...PlotCreate, ...PlotAddons]),
 				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
@@ -132,7 +132,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex(GgPlotCreate)
+				callName: toRegex([...GgPlotCreate, ...GgPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{
@@ -143,7 +143,7 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				callName: toRegex(TinyPlotCrate)
+				callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons])
 			}
 		}, assumePrimitive: true },
 	{

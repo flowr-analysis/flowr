@@ -4,19 +4,10 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameDomain, ColNamesDomain } from './domain';
-import { DataFrameTop, ColNamesTop, IntervalTop, ColNamesBottom, joinColNames, joinDataFrames } from './domain';
-import type { AbstractInterpretationInfo, DataFrameAssignmentInfo, DataFrameExpressionInfo, DataFrameOperation } from './absint-info';
-import { resolveIdToArgName, resolveIdToArgVectorLength, resolveIdToArgValueSymbolName } from './resolve-args';
-
-const DataFrameSemanticsMapper = {
-	'create':    applyCreateSemantics,
-	'accessCol': applyAccessColSemantics,
-	'unknown':   applyUnknownSemantics
-} as const satisfies Record<string, DataFrameSemanticsApplier>;
-
-type DataFrameSemanticsApplier = (value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo) => DataFrameDomain;
-export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
+import type { DataFrameDomain } from './domain';
+import { DataFrameTop, joinDataFrames } from './domain';
+import type { AbstractInterpretationInfo, DataFrameAssignmentInfo, DataFrameExpressionInfo } from './absint-info';
+import { DataFrameSemanticsMapper } from './expression-semantics';
 
 export function applySemantics<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
@@ -94,33 +85,6 @@ function applyExpressionSemantics<OtherInfo>(
 		}
 	}
 	return dataFrameDomain;
-}
-
-function applyCreateSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	const argNames = event.arguments.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
-	const argLengths = event.arguments.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
-	const colnames = argNames.some(arg => arg === undefined) ? ColNamesTop : argNames as ColNamesDomain;
-	const rowCount = argLengths.some(arg => arg === undefined) ? undefined : Math.max(...argLengths as number[], 0);
-
-	return {
-		colnames: colnames,
-		cols:     [event.arguments.length, event.arguments.length],
-		rows:     rowCount !== undefined ? [rowCount, rowCount] : IntervalTop
-	};
-}
-
-function applyAccessColSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	const argNames = event.arguments.map(arg => arg ? resolveIdToArgValueSymbolName(arg, info) : undefined);
-	const colnames = argNames.some(arg => arg === undefined) ? ColNamesBottom : argNames as ColNamesDomain;
-
-	return {
-		...value,
-		colnames: joinColNames(value.colnames, colnames)
-	};
-}
-
-function applyUnknownSemantics(): DataFrameDomain {
-	return DataFrameTop;
 }
 
 function isAssignment<OtherInfo>(

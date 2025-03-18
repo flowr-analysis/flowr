@@ -1,6 +1,6 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataFrameDomain } from './domain';
-import type { DataFrameOperationName } from './semantics';
+import type { DataFrameOperationName } from './expression-semantics';
 
 export interface DataFrameOperation {
 	operation: DataFrameOperationName,

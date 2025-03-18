@@ -12,6 +12,8 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { decorateLabelContext, type TestLabel } from '../../_helper/label';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -32,10 +34,11 @@ export const DataFrameTestOverapproximation = {
 	rows:     DomainMatchingType.Overapproximation
 };
 
+/** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	value:      DataFrameDomain,
-	node:       RSymbol<object>,
+	node:       RSymbol<ParentInformation & AbstractInterpretationInfo>,
 	lineNumber: number
 }
 
@@ -43,9 +46,9 @@ export function assertDataFrameDomain(
 	shell: RShell,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameDomain][],
-	name: string = code
+	name: string | TestLabel = code
 ) {
-	test.each(expected)(name, async(criterion, expect) => {
+	test.each(expected)( decorateLabelContext(name, ['absint']), async(criterion, expect) => {
 		const [value] = await getInferredDomainForCriterion(shell, code, criterion);
 
 		assert.deepStrictEqual(value.colnames, expect.colnames, 'column names differ');
@@ -60,10 +63,10 @@ export function testDataFrameDomainAgainstReal(
 	criteria: SlicingCriteria,
 	/** Whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	options?: Partial<DataFrameTestOptions>,
-	name: string = code
+	name: string | TestLabel = code
 ): void {
 	const effectiveOptions = { ...DataFrameTestExact, ...options };
-	test(name, async()=> {
+	test(decorateLabelContext(name, ['absint']), async()=> {
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const criterion of criteria) {
@@ -141,7 +144,7 @@ async function getInferredDomainForCriterion(
 	shell: RShell,
 	code: string,
 	criterion: SingleSlicingCriterion
-): Promise<[DataFrameDomain, RSymbol<object>]> {
+): Promise<[DataFrameDomain, RSymbol<ParentInformation & AbstractInterpretationInfo>]> {
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)

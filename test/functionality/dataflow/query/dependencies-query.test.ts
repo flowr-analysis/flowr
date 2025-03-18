@@ -223,7 +223,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('Unknown write', 'write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'unknown', lexemeOfArgument: 'u' }] });
 		testQuery('File save', 'save(foo,file="a.Rda")', { writtenData: [{ nodeId: '1@save', functionName: 'save', destination: 'a.Rda' }] });
 
-		testQuery('single write (variabele', 'u <- "test.csv"; write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'test.csv' }] });
+		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'test.csv' }] });
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {

@@ -132,6 +132,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		testQuery('Single source', 'source("test/file.R")', { sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }] });
 
+		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { sourcedFiles: [{ nodeId: '1@source', functionName: 'source', file: 'test/file.R' }] });
+
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
 				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]
@@ -171,6 +173,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 
 		testQuery('unknown read', 'read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'unknown', lexemeOfArgument: 'x' }] });
 
+		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { readData: [{ nodeId: '1@read.table', functionName: 'read.table', source: 'test.csv' }] });
+
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { readData: [{ nodeId: '1@parse', functionName: 'parse', source: 'test.R' }] });
 			testQuery('parse text', 'parse(text="test.R")', { });
@@ -204,7 +208,6 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('save_graph', 'save_graph(obj, "a")' , { writtenData: [{ nodeId: '1@save_graph', functionName: 'save_graph', destination: 'a' }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")' , { writtenData: [{ nodeId: '1@export_graph', functionName: 'export_graph', destination: 'a' }] });
 	
-
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { writtenData: [{ nodeId: '1@dump', functionName: 'dump', destination: 'foo.txt' }] });
 		testQuery('cat', 'cat("Hello!")', { writtenData: [{ nodeId: '1@cat', functionName: 'cat', destination: 'stdout' }] });
@@ -220,6 +223,8 @@ describe.sequential('Dependencies Query', withShell(shell => {
 		testQuery('Unknown write', 'write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'unknown', lexemeOfArgument: 'u' }] });
 		testQuery('File save', 'save(foo,file="a.Rda")', { writtenData: [{ nodeId: '1@save', functionName: 'save', destination: 'a.Rda' }] });
 
+		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { writtenData: [{ nodeId: '1@write.csv', functionName: 'write.csv', destination: 'test.csv' }] });
+
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {
 				writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }]
@@ -230,6 +235,18 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			testQuery('Custom (by index)', 'write.custom.file(1, "my-custom-file", 2)', expected, writeCustomFile);
 			testQuery('Custom (by name)', 'write.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, writeCustomFile);
 			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
+		});
+	});
+
+
+	describe('Overwritten Function', () => {
+		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", { 
+			readData:    [],
+			writtenData: [{
+				destination:  'stdout',
+				functionName: 'print',
+				nodeId:       '1@print'
+			}]
 		});
 	});
 }));

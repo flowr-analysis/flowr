@@ -33,6 +33,7 @@ import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
+import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -128,6 +129,7 @@ function makeCallContextQuery(functions: readonly FunctionInfo[], kind: string):
 	return functions.map(f => ({
 		type:           'call-context',
 		callName:       f.name,
+		callTargets:    CallTargets.MustIncludeGlobal,
 		includeAliases: false,
 		callNameExact:  true,
 		subkind:        f.name,

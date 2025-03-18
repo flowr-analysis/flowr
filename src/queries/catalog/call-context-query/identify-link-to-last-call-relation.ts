@@ -17,7 +17,7 @@ import type { LinkTo } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 
 export enum CallTargets {
-    /** call targets a function that is not defined locally (e.g., the call targets a library function) */
+    /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
     OnlyGlobal = 'global',
     /** call targets a function that is defined locally or globally, but must include a global function */
     MustIncludeGlobal = 'must-include-global',

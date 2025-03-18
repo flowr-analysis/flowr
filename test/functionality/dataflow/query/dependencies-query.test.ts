@@ -232,4 +232,16 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
 		});
 	});
+
+
+	describe('Overwritten Function', () => {
+		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", { 
+			readData:    [],
+			writtenData: [{
+				destination:  'stdout',
+				functionName: 'print',
+				nodeId:       '1@print'
+			}]
+		});
+	});
 }));

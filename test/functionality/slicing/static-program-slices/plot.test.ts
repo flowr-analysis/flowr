@@ -15,6 +15,19 @@ img <- image_graph(width=300,height=600)
 plot(1:10)
 cat("dump:", image_write(img, format="jpg"))
 		`.trim());
+	assertSliced(label('multiple graphs one write', ['functions-with-global-side-effects']),
+		shell, `
+library(magick)
+img2 <- image_graph(width=300,height=600)
+img <- image_graph(width=300,height=600)
+plot(1:10)
+cat("dump:", image_write(img, format="jpg"))
+		`, ['6@cat'], `
+library(magick)
+img <- image_graph(width=300,height=600)
+plot(1:10)
+cat("dump:", image_write(img, format="jpg"))
+		`.trim());
 	assertSliced(label('magick for image writes with multiple', ['functions-with-global-side-effects']),
 		shell, `
 library(magick)

@@ -4,7 +4,7 @@ import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../environments/identifier';
-import { ReferenceType } from '../environments/identifier';
+import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph, FunctionArgument } from '../graph/graph';
 import { isNamedArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -338,10 +338,18 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 			}
 			givenInputs.push(bodyInput);
 		} else {
+			let allBuiltIn = true;
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
 				graph.addEdge(bodyInput, target, EdgeType.Reads);
+				if(!isReferenceType(target.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
 			}
+			if(allBuiltIn) {
+				givenInputs.push(bodyInput);
+			}
+
 		}
 	}
 	// data.graph.get(node.id).definedAtPosition = false

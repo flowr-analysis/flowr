@@ -86,4 +86,18 @@ img <- magick::image_graph(width=300,height=600)
 plot(1:10)
 cat("dump:", magick::image_write(img, format="jpg"))
 		`.trim());
+	assertSliced(label('labeller force', ['functions-with-global-side-effects', 'call-normal']),
+		shell, `
+data <- 1 : 10
+f <- function(a, b) return(data[a])
+img <- magick::image_graph(width=300,height=600)
+ggplot() + facet_grid(x, labeller = f)
+cat("dump:", magick::image_write(img, format="jpg"))
+		`, ['6@cat'], `
+data <- 1 : 10
+f <- function(a, b) return(data[a])
+img <- magick::image_graph(width=300,height=600)
+ggplot() + facet_grid(x, labeller = f)
+cat("dump:", magick::image_write(img, format="jpg"))
+		`.trim());
 }));

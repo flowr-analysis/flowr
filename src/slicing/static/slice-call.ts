@@ -74,6 +74,16 @@ function linkCallTargets(
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
+		// handle open reads
+		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
+			// resolve them in the active env
+			if(openIn.name) {
+				const resolved = resolveByName(openIn.name, activeEnvironment, ReferenceType.Unknown);
+				for(const res of resolved ?? []) {
+					updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint);
+				}
+			}
+		}
 	}
 }
 

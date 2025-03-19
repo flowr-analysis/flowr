@@ -70,6 +70,7 @@ export function processFunctionDefinition<OtherInfo>(
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
 
 	const readInBody = [...body.in, ...body.unknownReferences];
+
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
 

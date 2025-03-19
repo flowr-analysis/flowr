@@ -8,7 +8,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
 const GgPlotCreate = [
-	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot'
+	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange'
 ] as const;
 const TinyPlotCrate = [
 	'tinyplot', 'plt'
@@ -136,7 +136,10 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 	// graphics addons
 	{ type:      'function', names:     PlotAddons,
 		processor: 'builtin:default',             config:    {
-			forceArgs:             'all',
+			forceArgs:     'all',
+			treatAsFnCall: {
+				'facet_grid': ['labeller']
+			},
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
 				callName: toRegex([...PlotCreate, ...PlotAddons]),

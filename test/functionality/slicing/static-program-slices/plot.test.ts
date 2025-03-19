@@ -33,6 +33,23 @@ points(1:10)
 legend("topright", legend="test")
 cat("dump:", image_write(img, format="jpg"))
 		`.trim());
+	assertSliced(label('magick for image writes with ggplot', ['functions-with-global-side-effects']),
+		shell, `
+library(magick)
+img <- image_graph(width=300,height=600)
+ggplot(iris, aes(x=Sepal.Length, y=Sepal.Width, color=Species)) + 
+	geom_point() +
+	geom_smooth(method="lm") +
+	theme_minimal() +
+	labs(title="Sepal Length vs Width", x="Sepal Length", y="Sepal Width") +
+	ggtitle("Sepal Length vs Width")
+cat("dump:", image_write(img, format="jpg"))
+		`, ['10@cat'], `
+library(magick)
+img <- image_graph(width=300,height=600)
+ggplot(iris, aes(x=Sepal.Length, y=Sepal.Width, color=Species)) + geom_point() + geom_smooth(method="lm") + theme_minimal() + labs(title="Sepal Length vs Width", x="Sepal Length", y="Sepal Width") + ggtitle("Sepal Length vs Width")
+cat("dump:", image_write(img, format="jpg"))
+		`.trim());
 	assertSliced(label('magick for image writes do not include previous', ['functions-with-global-side-effects']),
 		shell, `
 library(magick)

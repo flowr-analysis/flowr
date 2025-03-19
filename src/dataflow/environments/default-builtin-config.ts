@@ -8,7 +8,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 
 const GgPlotCreate = [
-	'ggplot', 'ggplotly'
+	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot'
 ] as const;
 const TinyPlotCrate = [
 	'tinyplot', 'plt'
@@ -28,9 +28,44 @@ const GraphicDeviceOpen = [
 const TinyPlotAddons = [
 	'tinyplot_add', 'plt_add'
 ] as const;
+const GgPlotImplicitAddons = [
+	'geom_count','geom_bin_2d','geom_spoke','geom_tile','geom_rect',
+	'geom_function','geom_crossbar','geom_density2d','geom_abline','geom_errorbar','geom_errorbarh',
+	'geom_jitter','geom_line','geom_density','geom_quantile','geom_qq','geom_qq_line','geom_segment','geom_label','geom_density_2d',
+	'geom_violin','geom_contour','geom_boxplot','geom_col','geom_blank','geom_histogram','geom_hline','geom_area','geom_sf_text','geom_smooth','geom_text',
+	'geom_density2d_filled','geom_ribbon','geom_sf','geom_dotplot','geom_freqpoly','geom_step','geom_map','geom_bin2d','geom_rug','geom_raster','geom_pointrange','geom_point',
+	'geom_hex','geom_contour_filled','geom_bar','geom_vline','geom_linerange','geom_curve','geom_path','geom_polygon','geom_sf_label','geom_density_2d_filled', 'geom_dumbbell',
+	'geom_encircle', 'stat_count','stat_density','stat_bin_hex','stat_bin_2d','stat_summary_bin','stat_identity','stat_qq','stat_binhex','stat_boxplot','stat_function',
+	'stat_align','stat_contour_filled','stat_summary_2d','stat_qq_line','stat_contour','stat_ydensity','stat_summary_hex','stat_summary2d','stat_sf_coordinates',
+	'stat_density_2d_filled','stat_smooth','stat_density2d','stat_ecdf','stat_sf','stat_quantile','stat_unique','stat_density_2d','stat_ellipse','stat_summary',
+	'stat_density2d_filled','stat_bin','stat_sum','stat_spoke','stat_bin2d',
+	'labs', 'theme_void','theme_set','theme_test','theme_minimal','theme_light','theme','theme_get','theme_gray','theme_dark','theme_classic','theme_linedraw','theme_update',
+	'theme_replace','theme_grey','theme_bw','theme_tufte','facet_null', 'facet_grid', 'facet_wrap', 'xlab', 'xlim', 'ylab', 'ylim',
+	'scale_linewidth_ordinal','scale_fill_steps','scale_color_gradient2','scale_size_manual','scale_colour_discrete','scale_color_identity',
+	'scale_fill_fermenter','scale_alpha_manual','scale_fill_gradient','scale_size_date','scale_fill_viridis_b','scale_x_time','scale_linetype_manual',
+	'scale_alpha_binned','scale_color_grey','scale_colour_gradient','scale_linewidth_date','scale_color_steps2','scale_color_viridis_b','scale_size_binned',
+	'scale_colour_gradientn','scale_linewidth_manual','scale_fill_viridis_c','scale_fill_manual','scale_color_viridis_c','scale_fill_discrete','scale_size_discrete',
+	'scale_fill_binned','scale_fill_viridis_d','scale_colour_fermenter','scale_color_viridis_d','scale_x_datetime','scale_size_identity','scale_linewidth_identity',
+	'scale_shape_ordinal','scale_linewidth_discrete','scale_fill_ordinal','scale_y_time','scale_color_ordinal','scale_size_ordinal','scale_colour_distiller',
+	'scale_linewidth_datetime','scale_alpha_identity','scale_color_steps','scale_alpha_discrete','scale_fill_date','scale_x_reverse','scale_fill_gradientn','scale_size_datetime',
+	'scale_y_continuous','scale_colour_steps','scale_color_distiller','scale_colour_ordinal','scale_y_datetime','scale_linetype_discrete','scale_colour_viridis_b',
+	'scale_alpha_datetime','scale_continuous_identity','scale_fill_brewer','scale_shape_identity','scale_color_discrete','scale_colour_viridis_c','scale_linetype_identity',
+	'scale_colour_hue','scale_linewidth_binned','scale_color_hue','scale_shape_continuous','scale_colour_viridis_d','scale_size_continuous','scale_color_manual','scale_alpha_date',
+	'scale_y_sqrt','scale_shape_binned','scale_size','scale_color_fermenter','scale_color_stepsn','scale_size_area','scale_y_binned','scale_y_discrete','scale_alpha_continuous',
+	'scale_fill_continuous','scale_linetype_continuous','scale_colour_steps2','scale_colour_datetime','scale_colour_grey','scale_x_log10','scale_x_discrete','scale_color_continuous',
+	'scale_type','scale_y_reverse','scale_colour_gradient2','scale_color_datetime','scale_color_date','scale_x_continuous','scale_colour_manual','scale_fill_gradient2',
+	'scale_fill_grey','scale_colour_stepsn','scale_colour_binned','scale_color_binned','scale_color_gradientn','scale_colour_date','scale_fill_distiller','scale_color_gradient',
+	'scale_linewidth_continuous','scale_shape','scale_fill_hue','scale_linetype','scale_colour_identity','scale_discrete_manual','scale_fill_identity','scale_y_log10',
+	'scale_linetype_binned','scale_size_binned_area','scale_y_date','scale_x_binned','scale_shape_discrete','scale_colour_brewer','scale_x_date','scale_discrete_identity',
+	'scale_alpha','scale_fill_steps2','scale_color_brewer','scale_fill_datetime','scale_shape_manual','scale_colour_continuous','scale_alpha_ordinal','scale_linewidth','scale_x_sqrt',
+	'scale_fill_stepsn','scale_radius', 'rotateTextX', 'removeGridX', 'removeGridY', 'removeGrid',
+	'coord_trans','coord_sf','coord_cartesian','coord_fixed','coord_flip','coord_quickmap','coord_equal','coord_map','coord_polar','coord_munch','coord_radial',
+	'annotate', 'annotation_custom','annotation_raster','annotation_map','annotation_logticks', 'borders', 'ggtitle', 'expansion', 'expand_limits', 'expand_scale', 'guides',
+	'wrap_by'
+] as const;
 const PlotAddons = [
 	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
-	'tiplabels', 'rug', 'grid', 'box', 'clip'
+	'tiplabels', 'rug', 'grid', 'box', 'clip', ...GgPlotImplicitAddons
 ] as const;
 const GgPlotAddons = [
 	'ggdraw', 'last_plot'

@@ -39,9 +39,11 @@ export function processApply<OtherInfo>(
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
-	let { information, processedArguments } = processKnownFunctionCall({
+	const resFn = processKnownFunctionCall({
 		name, args, rootId, data, forceArgs: forceArgsMask
 	});
+	let information = resFn.information;
+	const processedArguments = resFn.processedArguments;
 
 	let index = indexOfFunction;
 	/* search, if one of the arguments actually contains the argument name if given in the config */

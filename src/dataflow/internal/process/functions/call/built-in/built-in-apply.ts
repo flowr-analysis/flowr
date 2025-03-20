@@ -14,6 +14,7 @@ import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
+import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -38,7 +39,7 @@ export function processApply<OtherInfo>(
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
-	const { information, processedArguments } = processKnownFunctionCall({
+	let { information, processedArguments } = processKnownFunctionCall({
 		name, args, rootId, data, forceArgs: forceArgsMask
 	});
 
@@ -51,6 +52,7 @@ export function processApply<OtherInfo>(
 		}
 	}
 
+
 	/* validate, that we indeed have so many arguments to fill this one :D */
 	if(index >= args.length) {
 		dataflowLogger.warn(`Function argument at index ${index} not found, skipping`);
@@ -59,13 +61,14 @@ export function processApply<OtherInfo>(
 
 	const arg = args[index];
 
-	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol)) {
+	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol && arg.value.type !== RType.FunctionDefinition)) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
 		return information;
 	}
 
 	let functionId: NodeId | undefined = undefined;
 	let functionName: string | undefined = undefined;
+	let anonymous: boolean = false;
 
 	const val = arg.value;
 	if(unquoteFunction && val.type === RType.String) {
@@ -81,6 +84,10 @@ export function processApply<OtherInfo>(
 		} else {
 			functionName = val.content;
 		}
+	} else if(val.type === RType.FunctionDefinition) {
+		anonymous = true;
+		functionId = val.info.id;
+		functionName = `${UnnamedFunctionCallPrefix}${functionId}`;
 	}
 
 	if(functionName === undefined || functionId === undefined) {
@@ -102,16 +109,38 @@ export function processApply<OtherInfo>(
 		}
 	});
 
-	/* identify it as a full-blown function call :) */
-	information.graph.updateToFunctionCall({
-		tag:         VertexType.FunctionCall,
-		id:          functionId,
-		name:        functionName,
-		args:        allOtherArguments,
-		environment: resolveInEnvironment === 'global' ? undefined : data.environment,
-		onlyBuiltin: resolveInEnvironment === 'global',
-		cds:         data.controlDependencies
-	});
+	if(anonymous) {
+		const rootId = functionId;
+		functionId = 'anon-' + rootId;
+		information.graph.addVertex({
+			tag:         VertexType.FunctionCall,
+			id:          functionId,
+			environment: data.environment,
+			name:        functionName,
+			/* can never be a direct built-in-call */
+			onlyBuiltin: false,
+			cds:         data.controlDependencies,
+			args:        allOtherArguments // same reference
+		});
+		information.graph.addEdge(functionId, rootId, EdgeType.Calls | EdgeType.Reads);
+		information = {
+			...information,
+			in:         [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }],
+			entryPoint: functionId
+		};
+	} else {
+		/* identify it as a full-blown function call :) */
+		information.graph.updateToFunctionCall({
+			tag:         VertexType.FunctionCall,
+			id:          functionId,
+			name:        functionName,
+			args:        allOtherArguments,
+			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
+			onlyBuiltin: resolveInEnvironment === 'global',
+			cds:         data.controlDependencies
+		});
+	}
+
 
 	for(const arg of processedArguments) {
 		if(arg) {

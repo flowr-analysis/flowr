@@ -20,6 +20,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
@@ -183,8 +184,15 @@ export function updateNestedFunctionClosures(
 				continue;
 			}
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
+			let allBuiltIn = true;
 			for(const ref of resolved) {
 				graph.addEdge(ingoing, ref, EdgeType.Reads);
+				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
+			}
+			if(allBuiltIn) {
+				remainingIn.push(ingoing);
 			}
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);

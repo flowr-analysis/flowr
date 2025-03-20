@@ -717,8 +717,32 @@ x`);
 				'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
 				'res <- lapply(1:3, function(x) x + 1)'
 				);
-				assertSliced(label('Force-Including Reference', [
-					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				assertSliced(label('Forcing Second Argument with closure', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'y <- 2\nres <- lapply(1:3, function(x) x + y)', ['2@res'],
+				'y <- 2\nres <- lapply(1:3, function(x) x + y)'
+				);
+				assertSliced(label('Forcing Second Argument with closure colliding with built-in name', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- 2\nres <- lapply(1:3, function(x) x + data)', ['2@res'],
+				'data <- 2\nres <- lapply(1:3, function(x) x + data)'
+				);
+				assertSliced(label('Forcing Second Argument with closure colliding with built-in name access', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- c()\nres <- lapply(1:3, function(x) x + data[x])', ['2@res'],
+				'data <- c()\nres <- lapply(1:3, function(x) x + data[x])'
+				);
+				assertSliced(label('Forcing Second Argument Nested with closure colliding with built-in name access', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- c()\nres <- do.call(rbind, lapply(1:2, function(y) { lapply(1:3, function(x) x + data[x]) }))', ['2@res'],
+				'data <- c()\nres <- do.call(rbind, lapply(1:2, function(y) { lapply(1:3, function(x) x + data[x]) }))'
+				);
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
 				]), shell,
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'

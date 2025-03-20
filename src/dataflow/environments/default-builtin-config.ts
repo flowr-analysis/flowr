@@ -63,13 +63,17 @@ const GgPlotImplicitAddons = [
 	'annotate', 'annotation_custom','annotation_raster','annotation_map','annotation_logticks', 'borders', 'ggtitle', 'expansion', 'expand_limits', 'expand_scale', 'guides',
 	'wrap_by'
 ] as const;
+const PlotFunctionsWithAddParam: Set<string> = new Set([
+	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image',
+]);
 const PlotAddons = [
-	'points', 'abline', 'map', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
-	'tiplabels', 'rug', 'grid', 'box', 'clip', ...GgPlotImplicitAddons
+	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines', ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam
 ] as const;
 const GgPlotAddons = [
 	'ggdraw', 'last_plot'
 ] as const;
+
 
 function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
@@ -125,8 +129,8 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 				type:     'link-to-last-call',
 				ignoreIf: (source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
-					return (source.name === 'map' && getValueOfArgument(graph, source, {
-						index: 11,
+					return (PlotFunctionsWithAddParam.has(source.name) && getValueOfArgument(graph, source, {
+						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content === true);
 				},
@@ -147,8 +151,8 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
 					/* map with add = true appends to an existing plot */
-					return (sourceVertex?.name === 'map' && getValueOfArgument(graph, sourceVertex, {
-						index: 11,
+					return (PlotFunctionsWithAddParam.has(sourceVertex.name ?? '') && getValueOfArgument(graph, sourceVertex, {
+						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content !== true);
 				},

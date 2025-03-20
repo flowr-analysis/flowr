@@ -86,6 +86,18 @@ img <- magick::image_graph(width=300,height=600)
 plot(1:10)
 cat("dump:", magick::image_write(img, format="jpg"))
 		`.trim());
+	assertSliced(label('magick for image writes with add', ['functions-with-global-side-effects']),
+		shell, `
+img <- magick::image_graph(width=300,height=600)
+plot(1:10)
+curve(dnorm(x, mean=5, sd=2), add=TRUE)
+cat("dump:", magick::image_write(img, format="jpg"))
+		`, ['5@cat'], `
+img <- magick::image_graph(width=300,height=600)
+plot(1:10)
+curve(dnorm(x, mean=5, sd=2), add=TRUE)
+cat("dump:", magick::image_write(img, format="jpg"))
+		`.trim());
 	assertSliced(label('labeller force', ['functions-with-global-side-effects', 'call-normal']),
 		shell, `
 data <- 1 : 10

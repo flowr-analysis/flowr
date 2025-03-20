@@ -15,7 +15,7 @@ const TinyPlotCrate = [
 ] as const;
 const PlotCreate = [
 	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
-	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqPlot', 'boxPlot',
+	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqplot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'mosaicplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars',
 	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly',
 	...TinyPlotCrate,
@@ -68,6 +68,7 @@ const PlotFunctionsWithAddParam: Set<string> = new Set([
 ]);
 const PlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
+	'qqline', 'qqnorm',
 	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines', ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam
 ] as const;
 const GgPlotAddons = [

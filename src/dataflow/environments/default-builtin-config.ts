@@ -61,7 +61,17 @@ const GgPlotImplicitAddons = [
 	'scale_fill_stepsn','scale_radius', 'rotateTextX', 'removeGridX', 'removeGridY', 'removeGrid',
 	'coord_trans','coord_sf','coord_cartesian','coord_fixed','coord_flip','coord_quickmap','coord_equal','coord_map','coord_polar','coord_munch','coord_radial',
 	'annotate', 'annotation_custom','annotation_raster','annotation_map','annotation_logticks', 'borders', 'ggtitle', 'expansion', 'expand_limits', 'expand_scale', 'guides',
-	'wrap_by'
+	'wrap_by',
+	'theme_solid','theme_hc','theme_excel_new','theme_few','theme_clean','theme_wsj','theme_calc','theme_par','theme_tufte','theme_igray','theme_solarized_2','theme_excel',
+	'theme_economist','theme_stata','theme_map','theme_fivethirtyeight','theme_economist_white','theme_base','theme_foundation','theme_gdocs','theme_pander','theme_solarized',
+	'scale_shape_tableau','scale_fill_pander','scale_shape_few','scale_colour_excel_new','scale_colour_hc','scale_fill_ptol','scale_fill_gradient2_tableau','scale_shape_calc','scale_fill_stata',
+	'scale_colour_tableau','scale_colour_colorblind','scale_color_stata','scale_colour_economist','scale_fill_calc','scale_fill_gradient_tableau','scale_shape_cleveland','scale_color_pander',
+	'scale_colour_pander','scale_color_fivethirtyeight','scale_color_wsj','scale_shape_stata','scale_colour_gdocs','scale_color_continuous_tableau','scale_fill_excel','scale_color_few','scale_linetype_stata',
+	'scale_shape_tremmel','scale_color_tableau','scale_color_colorblind','scale_fill_colorblind','scale_colour_stata','scale_fill_wsj','scale_colour_calc','scale_colour_fivethirtyeight','scale_fill_hc',
+	'scale_shape_circlefill','scale_fill_excel_new','scale_color_solarized','scale_color_excel','scale_colour_excel','scale_fill_tableau','scale_colour_ptol','scale_colour_canva','scale_color_gradient2_tableau',
+	'scale_colour_solarized','scale_colour_gradient2_tableau','scale_fill_canva','scale_color_ptol','scale_color_excel_new','scale_color_economist','scale_fill_economist','scale_fill_fivethirtyeight',
+	'scale_colour_gradient_tableau','scale_colour_few','scale_color_calc','scale_fill_few','scale_fill_gdocs','scale_color_hc','scale_color_gdocs','scale_color_canva','scale_color_gradient_tableau',
+	'scale_fill_solarized','scale_fill_continuous_tableau','scale_colour_wsj'
 ] as const;
 const PlotFunctionsWithAddParam: Set<string> = new Set([
 	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image',

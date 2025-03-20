@@ -40,8 +40,8 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases, resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
-import { processReplacementFunction } from './built-in-replacement';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -101,7 +101,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 	}
 
 
-	const info = processReplacementFunction(
+	const info = BuiltInProcessorMapper['builtin:replacement'](
 		{
 			type:      RType.Symbol,
 			info:      functionName.info,

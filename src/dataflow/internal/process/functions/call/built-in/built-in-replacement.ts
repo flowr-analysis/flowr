@@ -3,7 +3,6 @@ import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { processAssignment } from './built-in-assignment';
 import type { ForceArguments } from '../common';
 import { patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -28,6 +27,7 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -52,7 +52,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = processAssignment(
+	const res = BuiltInProcessorMapper['builtin:assignment'](
 		name,
 		[args[0], args[args.length - 1]],
 		rootId,

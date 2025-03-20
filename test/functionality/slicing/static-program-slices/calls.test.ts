@@ -748,6 +748,14 @@ x`);
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
 				);
 			});
+			describe('interference', () => {
+				assertSliced(label('interference function', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'call-normal', 'implicit-return'
+				]), shell,
+				'foo <- function(x) x\ninterference(formula = a | b | c, propensity_integrand="foo")', ['2@interference'],
+				'foo <- function(x) x\ninterference(formula = a | b | c, propensity_integrand="foo")'
+				);
+			});
 			describe('Mapply Forcing the Map Function Body in the first arg', () => {
 				assertSliced(label('Forcing First Argument', [
 					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'

@@ -76,6 +76,10 @@ export function processApply<OtherInfo>(
 	if(unquoteFunction && val.type === RType.String) {
 		functionId = val.info.id;
 		functionName = val.content.str;
+		information = {
+			...information,
+			in: [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }]
+		};
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {

@@ -11,8 +11,6 @@ import type { REnvironmentInformation } from '../../dataflow/environments/enviro
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { ReferenceType } from '../../dataflow/environments/identifier';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { extractCFG } from '../../util/cfg/cfg';
-import { happensBefore } from '../../util/cfg/happens-before';
 
 export interface SemanticsInfo<OtherInfo> {
 	environment: REnvironmentInformation,
@@ -117,14 +115,12 @@ function isExpression<OtherInfo>(
 	return node.info.dataFrame?.type === 'expression';
 }
 
-function resolveVariableOrigin<OtherInfo>(
+export function resolveVariableOrigin<OtherInfo>(
 	node: RSymbol<OtherInfo & ParentInformation>,
 	info: SemanticsInfo<OtherInfo>
 ): NodeId[] | undefined {
-	const cfg = extractCFG(info.ast, info.graph);
-
 	return resolveByName(node.content, info.environment, ReferenceType.Variable)
 		?.filter(identifier => identifier.type !== ReferenceType.BuiltInConstant && identifier.type !== ReferenceType.BuiltInFunction && (identifier.indicesCollection?.length ?? 0) === 0)
 		.map(identifier => identifier.nodeId)
-		.filter(nodeId => happensBefore(cfg.graph, nodeId, node.info.id));
+		.filter(nodeId => nodeId !== node.id);
 }

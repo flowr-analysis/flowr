@@ -19,7 +19,8 @@ const PlotCreate = [
 	'plot', 'plot.new', 'xspline', 'map', 'curve', 'image', 'boxplot', 'dotchart', 'sunflowerplot', 'barplot', 'matplot', 'hist', 'stem',
 	'density', 'smoothScatter', 'contour', 'persp', 'XYPlot', 'xyplot', 'stripplot', 'bwplot', 'dotPlot', 'dotplot', 'histPlot', 'densityPlot', 'qPlot', 'qqplot', 'qqPlot', 'boxPlot',
 	'bxp', 'assocplot', 'mosaicplot', 'stripchart', 'fourfoldplot', 'plot.xy', 'plot.formula', 'plot.default', 'plot.design', 'stars', 'cotabplot', 'pheatmap',
-	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotProfLik', 'plotSimulatedResiduals',
+	'spineplot', 'Plotranges', 'regressogram', 'bootcurve', 'meanplot', 'vioplot', 'pairs', 'copolot', 'histogram', 'splom', 'leaflet', 'tm_shape', 'plot_ly', 'plotProfLik', 'plotSimulatedResiduals', 'plotmeans',
+	'overplot', 'residplot', 'heatmap.2', 'lmplot2', 'sinkplot', 'textplot', 'boxplot2'
 	...TinyPlotCrate,
 	...GgPlotCreate
 ] as const;
@@ -76,7 +77,7 @@ const GgPlotImplicitAddons = [
 	'scale_fill_solarized','scale_fill_continuous_tableau','scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'
 ] as const;
 const PlotFunctionsWithAddParam: Set<string> = new Set([
-	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image',
+	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image', 'plotCI', 'bandplot', 'barplot2', 'bubbleplot'
 ]);
 const PlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',

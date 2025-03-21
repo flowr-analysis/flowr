@@ -81,7 +81,7 @@ const PlotFunctionsWithAddParam: Set<string> = new Set([
 ]);
 const PlotAddons = [
 	'points', 'abline', 'mtext', 'lines', 'text', 'legend', 'title', 'axis', 'polygon', 'polypath', 'pie', 'rect', 'segments', 'arrows', 'symbols',
-	'qqline', 'qqnorm',
+	'qqline', 'qqnorm', 'rasterImage',
 	'tiplabels', 'rug', 'grid', 'box', 'clip', 'matpoints', 'matlines', ...GgPlotImplicitAddons, ...PlotFunctionsWithAddParam
 ] as const;
 const GgPlotAddons = [

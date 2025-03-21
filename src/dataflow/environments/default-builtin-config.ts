@@ -10,6 +10,7 @@ import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-
 const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
 	'fviz_pca_biplot', 'fviz_pca', 'fviz_pca_ind', 'fviz_pca_var', 'fviz_screeplot', 'fviz_mca_biplot', 'fviz_mca', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_cluster', 'fviz_dend',
+	'ggsurvplot',
 ] as const;
 const TinyPlotCrate = [
 	'tinyplot', 'plt'
@@ -72,7 +73,7 @@ const GgPlotImplicitAddons = [
 	'scale_shape_circlefill','scale_fill_excel_new','scale_color_solarized','scale_color_excel','scale_colour_excel','scale_fill_tableau','scale_colour_ptol','scale_colour_canva','scale_color_gradient2_tableau',
 	'scale_colour_solarized','scale_colour_gradient2_tableau','scale_fill_canva','scale_color_ptol','scale_color_excel_new','scale_color_economist','scale_fill_economist','scale_fill_fivethirtyeight',
 	'scale_colour_gradient_tableau','scale_colour_few','scale_color_calc','scale_fill_few','scale_fill_gdocs','scale_color_hc','scale_color_gdocs','scale_color_canva','scale_color_gradient_tableau',
-	'scale_fill_solarized','scale_fill_continuous_tableau','scale_colour_wsj', 'gradient_color'
+	'scale_fill_solarized','scale_fill_continuous_tableau','scale_colour_wsj', 'gradient_color', 'ggsurvplot_add_all'
 ] as const;
 const PlotFunctionsWithAddParam: Set<string> = new Set([
 	'map', 'matplot', 'barplot', 'boxplot', 'curve', 'image',

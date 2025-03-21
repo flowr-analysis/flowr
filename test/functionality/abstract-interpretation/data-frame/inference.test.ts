@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
 import { ColNamesTop, DataFrameTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { testDataFrameDomainAgainstReal, assertDataFrameDomain, DomainMatchingType, DataFrameTestOverapproximation } from './data-frame';
@@ -37,8 +37,7 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- data.frame(c(1, 2, 3:5, c(6, 7, c(8, 9))), c("a", "b", "c"))',
-		['1@df'],
-		{ colnames: DomainMatchingType.Overapproximation }
+		[['1@df', { colnames: DomainMatchingType.Overapproximation }]]
 	);
 
 	assertDataFrameDomain(
@@ -77,8 +76,7 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- read.csv(text = "id,age\\n1,30\\n2,50\\n3,45")',
-		['1@df'],
-		DataFrameTestOverapproximation
+		[['1@df', DataFrameTestOverapproximation]]
 	);
 
 	assertDataFrameDomain(
@@ -90,8 +88,7 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- eval(parse(text = "data.frame()"))',
-		['1@df'],
-		DataFrameTestOverapproximation
+		[['1@df', DataFrameTestOverapproximation]]
 	);
 
 	assertDataFrameDomain(
@@ -127,7 +124,50 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
-		['1@df'],
-		{ colnames: DomainMatchingType.Overapproximation }
+		[['1@df', { colnames: DomainMatchingType.Overapproximation }]]
 	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:5)\ndf$name <- "A"\nprint(df)',
+		[['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }]]
+	);
+
+	testDataFrameDomainAgainstReal(
+		shell,
+		'df <- data.frame(id = 1:5)\ndf$name <- "A"\nprint(df)',
+		[['3@df', { cols: DomainMatchingType.Overapproximation }]]
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:5)\ndf$id <- "A"\nprint(df)',
+		[['3@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }]]
+	);
+
+	testDataFrameDomainAgainstReal(
+		shell,
+		'df <- data.frame(id = 1:5)\ndf$id <- "A"\nprint(df)',
+		[['3@df', { cols: DomainMatchingType.Overapproximation }]]
+	);
+
+	test.fails('reassignment', () => {
+		assertDataFrameDomain(
+			shell,
+			'df <- data.frame(id = 1:5)\ndf$name <- "A"\nprint(df)\ndf <- data.frame()',
+			[
+				['3@df', { colnames: ['id','name'], cols: [1, 2], rows: [5, 5] }],
+				['4@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]
+			]
+		);
+
+		testDataFrameDomainAgainstReal(
+			shell,
+			'df <- data.frame(id = 1:5)\ndf$name <- "A"\nprint(df)\ndf <- data.frame()',
+			[
+				['3@df', { cols: DomainMatchingType.Overapproximation }],
+				'4@df'
+			]
+		);
+	});
 }));

@@ -14,12 +14,12 @@ export function processDataFrameExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation & AbstractInterpretationInfo>
 ) {
-	const resolveInfo = { environment: data.environment, idMap: data.completeAst.idMap, full: true };
+	const info = { environment: data.environment, ast: data.completeAst };
 	const domain: Map<NodeId, DataFrameDomain> = new Map();
 
 	for(const arg of args) {
 		if(arg !== EmptyArgument && arg.value !== undefined) {
-			applySemantics(arg.value, domain, resolveInfo);
+			applySemantics(arg.value, domain, info);
 		}
 	}
 }

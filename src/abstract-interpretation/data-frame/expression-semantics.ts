@@ -1,11 +1,12 @@
 import type { ResolveInfo } from '../../dataflow/environments/resolve-by-name';
 import type { DataFrameOperation } from './absint-info';
-import { ColNamesBottom, ColNamesTop, DataFrameTop, IntervalTop, joinColNames, type ColNamesDomain, type DataFrameDomain } from './domain';
+import { ColNamesBottom, ColNamesTop, DataFrameTop, IntervalBottom, IntervalTop, joinColNames, type ColNamesDomain, type DataFrameDomain } from './domain';
 import { resolveIdToArgName, resolveIdToArgVectorLength, resolveIdToArgValueSymbolName } from './resolve-args';
 
 export const DataFrameSemanticsMapper = {
 	'create':    applyCreateSemantics,
 	'accessCol': applyAccessColSemantics,
+	'assignCol': applyAssignColSemantics,
 	'unknown':   applyUnknownSemantics
 } as const satisfies Record<string, DataFrameSemanticsApplier>;
 
@@ -32,6 +33,17 @@ function applyAccessColSemantics(value: DataFrameDomain, event: DataFrameOperati
 	return {
 		...value,
 		colnames: joinColNames(value.colnames, colnames)
+	};
+}
+
+function applyAssignColSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
+	const argName = event.arguments[0] ? resolveIdToArgValueSymbolName(event.arguments[0], info) : undefined;
+	const colnames = argName === undefined ? ColNamesTop : [argName];
+
+	return {
+		...value,
+		colnames: joinColNames(value.colnames, colnames),
+		cols:     value.cols !== IntervalBottom ? [value.cols[0], value.cols[1] + 1] : IntervalBottom
 	};
 }
 

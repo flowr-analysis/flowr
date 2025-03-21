@@ -6,7 +6,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/d
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
@@ -40,7 +40,8 @@ interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	value:      DataFrameDomain,
 	node:       RSymbol<ParentInformation & AbstractInterpretationInfo>,
-	lineNumber: number
+	lineNumber: number,
+	options:    DataFrameTestOptions
 }
 
 export function assertDataFrameDomain(
@@ -61,23 +62,23 @@ export function assertDataFrameDomain(
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
-	criteria: SlicingCriteria,
-	/** Whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
-	options?: Partial<DataFrameTestOptions>,
+	/** The test options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
+	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
 	name: string | TestLabel = code
 ): void {
-	const effectiveOptions = { ...DataFrameTestExact, ...options };
 	test(decorateLabelContext(name, ['absint']), async()=> {
 		const testEntries: CriterionTestEntry[] = [];
 
-		for(const criterion of criteria) {
+		for(const entry of criteria) {
+			const criterion = Array.isArray(entry) ? entry[0] : entry;
+			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : []) };
 			const [value, node] = await getInferredDomainForCriterion(shell, code, criterion);
 			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
 
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);
 			}
-			testEntries.push({ criterion, value, node, lineNumber });
+			testEntries.push({ criterion, value, node, lineNumber, options });
 		}
 		testEntries.sort((a, b) => b.lineNumber - a.lineNumber);
 		const lines = code.split('\n');
@@ -95,14 +96,14 @@ export function testDataFrameDomainAgainstReal(
 		shell.clearEnvironment();
 		const output = await shell.sendCommandWithOutput(instrumentedCode);
 
-		for(const { criterion, value } of testEntries) {
+		for(const { criterion, value, options } of testEntries) {
 			const colnames = getRealDomainFromOutput('colnames', criterion, output);
 			const cols = getRealDomainFromOutput('cols', criterion, output);
 			const rows = getRealDomainFromOutput('rows', criterion, output);
 
-			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, effectiveOptions.colnames);
-			assertDomainMatching('cols', value.cols, cols, leqInterval, effectiveOptions.cols);
-			assertDomainMatching('rows', value.rows, rows, leqInterval, effectiveOptions.rows);
+			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, options.colnames);
+			assertDomainMatching('cols', value.cols, cols, leqInterval, options.cols);
+			assertDomainMatching('rows', value.rows, rows, leqInterval, options.rows);
 		}
 	});
 }
@@ -158,7 +159,7 @@ async function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const value = resolveDataFrameValue(node, result.dataflow.environment);
+	const value = resolveDataFrameValue(node, result.normalize, result.dataflow.environment);
 
 	return [value, node];
 }

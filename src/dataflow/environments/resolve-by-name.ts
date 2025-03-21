@@ -16,6 +16,10 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
+import type { Value, ValueSet } from '../eval/values/r-value';
+import { Bottom, Top } from '../eval/values/r-value';
+import { valueFromTsValue } from '../eval/values/general';
+import { setFrom } from '../eval/values/sets/set-constants';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -99,14 +103,19 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 }
 
 /** Please use {@link resolveValueOfVariable} */
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): unknown[] | undefined {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ValueSet | typeof Top {
 	if(name === undefined) {
-		return undefined;
+		return Top;
 	}
 
 	const definitions = resolveByName(name, environment, ReferenceType.Constant);
+	if(definitions === undefined) {
+		return Top;
+	}
 
-	return definitions?.map(def => (def as BuiltInIdentifierConstant).value);
+	const values: Set<Value> = new Set<Value>();
+	definitions.forEach(def => values.add(valueFromTsValue((def as BuiltInIdentifierConstant).value)));
+	return setFrom(...values);
 }
 
 type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined;
@@ -170,41 +179,41 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 /** Please use {@link resolveValueOfVariable} */
-export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
+export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ValueSet | typeof Top {
 	if(identifier === undefined) {
-		return undefined;
+		return Top;
 	}
 
 	const defs = resolveByName(identifier, use);
 	if(defs === undefined) {
-		return undefined;
+		return Top;
 	}
 
-	const values: unknown[] = [];
+	const values: Set<Value> = new Set<Value>();
 	for(const def of defs) {
 		if(def.type === ReferenceType.BuiltInConstant) {
-			values.push(def.value);
+			values.add(valueFromTsValue(def.value));
 		} else if(def.type === ReferenceType.BuiltInFunction) {
 			// Tracked in #1207
 		} else if(def.value !== undefined) {
 			/* if there is at least one location for which we have no idea, we have to give up for now! */
 			if(def.value.length === 0) {
-				return undefined;
+				return Top;
 			}
 			for(const id of def.value) {
 				const value = idMap?.get(id)?.content;
 				if(value !== undefined) {
-					values.push(value);
+					values.add(valueFromTsValue(value));
 				}
 			}
 		}
 	}
 
-	if(values.length == 0) {
-		return undefined;
+	if(values.size == 0) {
+		return Top;
 	}
 
-	return values;
+	return setFrom(...values);
 }
 
 
@@ -226,7 +235,7 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return isNestedInLoop(parentNode, ast);
 }
 
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): unknown[] | undefined {
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ValueSet | typeof Top | typeof Bottom {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 	const start = graph.getVertex(id);
@@ -278,16 +287,16 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 		}
 	}
 	if(forceBot || resultIds.length === 0) {
-		return undefined;
+		return Bottom;
 	}
-	const values: unknown[] = [];
+	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			values.push(node.content);
+			values.add(valueFromTsValue(node.content));
 		}
 	}
-	return values;
+	return setFrom(...values);
 }
 /**
  * Convenience function using the variable resolver as specified within the configuration file
@@ -295,13 +304,13 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
-export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): ValueSet | typeof Top | typeof Bottom {
 	const resolve = getConfig().solver.variables;
 
 	switch(resolve) {
 		case VariableResolve.Alias: return trackAliasInEnvironments(identifier, environment, idMap);
 		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
-		case VariableResolve.Disabled: return [];
+		case VariableResolve.Disabled: return Bottom;
 		default: assertUnreachable(resolve);
 	}
 }
@@ -326,26 +335,26 @@ export interface ResolveInfo {
  * @param idMap       - The id map to resolve the node if given as an id
  * @param full        - Whether to track variables
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): ValueSet | typeof Top | typeof Bottom {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
-		return undefined;
+		return Top;
 	}
 	switch(node.type) {
 		case RType.Symbol:
 			if(environment) {
-				return full ? resolveValueOfVariable(node.lexeme, environment, idMap) : undefined;
+				return full ? resolveValueOfVariable(node.lexeme, environment, idMap) : Top;
 			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : undefined;
+				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
 			} else {
-				return undefined;
+				return Top;
 			}
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
-			return [node.content];
+			return setFrom(valueFromTsValue([node.content]));
 		default:
-			return undefined;
+			return Top;
 	}
 }

@@ -17,7 +17,7 @@ export interface LintingResult {
 	readonly certainty: LintingCertainty
 }
 
-export const enum LintingCertainty {
+export enum LintingCertainty {
 	Maybe = 'maybe',
 	Definitely = 'definitely'
 }

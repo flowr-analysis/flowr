@@ -42,6 +42,6 @@ export const LinterQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
-		rules: Joi.array().items(Joi.string().valid(...Object.keys(LintingRules))).optional().description('The rules to lint for. If unset, all rules will be included.')
+		rules: Joi.array().items(Joi.string().valid(...Object.keys(LintingRules))).description('The rules to lint for. If unset, all rules will be included.')
 	}).description('The linter query lints for the given set of rules and returns the result.')
 } as const satisfies SupportedQuery<'linter'>;

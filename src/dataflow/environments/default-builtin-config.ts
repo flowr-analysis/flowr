@@ -43,7 +43,7 @@ const GgPlotImplicitAddons = [
 	'stat_density_2d_filled','stat_smooth','stat_density2d','stat_ecdf','stat_sf','stat_quantile','stat_unique','stat_density_2d','stat_ellipse','stat_summary',
 	'stat_density2d_filled','stat_bin','stat_sum','stat_spoke','stat_bin2d',
 	'labs', 'theme_void','theme_test','theme_minimal','theme_light','theme','theme_get','theme_gray','theme_dark','theme_classic','theme_linedraw','theme_update',
-	'theme_replace','theme_grey','theme_bw','theme_tufte','facet_null', 'facet_grid', 'facet_wrap', 'xlab', 'xlim', 'ylab', 'ylim',
+	'theme_replace','theme_grey','theme_bw','theme_tufte','theme_survminer','facet_null', 'facet_grid', 'facet_wrap', 'xlab', 'xlim', 'ylab', 'ylim',
 	'scale_linewidth_ordinal','scale_fill_steps','scale_color_gradient2','scale_size_manual','scale_colour_discrete','scale_color_identity',
 	'scale_fill_fermenter','scale_alpha_manual','scale_fill_gradient','scale_size_date','scale_fill_viridis_b','scale_x_time','scale_linetype_manual',
 	'scale_alpha_binned','scale_color_grey','scale_colour_gradient','scale_linewidth_date','scale_color_steps2','scale_color_viridis_b','scale_size_binned',

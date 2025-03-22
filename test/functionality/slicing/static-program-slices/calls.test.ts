@@ -748,6 +748,24 @@ x`);
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
 				);
 			});
+			describe('nested ddply', () => {
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				`foo <- function(k) { 
+					g <- function(x) { x + 1 }
+					K <- ddply(k, k, .fun=function(xx,yy) { c(N=g(xx)) })
+					return(K) 
+				 }
+				 foo(1:3)`, ['6@foo'],
+				`foo <- function(k) {
+        g <- function(x) { x + 1 }
+        K <- ddply(k, k, .fun=function(xx,yy) { c(N=g(xx)) })
+        return(K)
+    }
+foo(1:3)`
+				);
+			});
 			describe('interference', () => {
 				assertSliced(label('interference function', [
 					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'call-normal', 'implicit-return'

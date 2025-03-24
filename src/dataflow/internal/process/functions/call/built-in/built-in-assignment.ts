@@ -140,7 +140,7 @@ export function processAssignment<OtherInfo>(
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
-	const { target, source } = extractSourceAndTarget(effectiveArgs, name);
+	const { target, source } = extractSourceAndTarget(effectiveArgs);
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
@@ -203,7 +203,7 @@ export function processAssignment<OtherInfo>(
 	return info;
 }
 
-function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
+function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
 	const source = unpackArgument(args[1], false);
 	const target = unpackArgument(args[0], false);
 

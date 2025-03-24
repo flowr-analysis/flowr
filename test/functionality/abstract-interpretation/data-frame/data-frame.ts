@@ -1,7 +1,6 @@
 import { assert, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
-import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -38,7 +37,7 @@ export const DataFrameTestOverapproximation = {
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	value:      DataFrameDomain,
-	node:       RSymbol<ParentInformation & AbstractInterpretationInfo>,
+	node:       RSymbol<ParentInformation>,
 	lineNumber: number
 }
 
@@ -144,7 +143,7 @@ async function getInferredDomainForCriterion(
 	shell: RShell,
 	code: string,
 	criterion: SingleSlicingCriterion
-): Promise<[DataFrameDomain, RSymbol<ParentInformation & AbstractInterpretationInfo>]> {
+): Promise<[DataFrameDomain, RSymbol<ParentInformation>]> {
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput(code)
@@ -157,8 +156,7 @@ async function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const info = node.info as AbstractInterpretationInfo;
-	const value = info.dataFrame?.type === 'symbol' ? info.dataFrame.value : DataFrameTop;
+	const value = DataFrameTop;
 
 	return [value, node];
 }

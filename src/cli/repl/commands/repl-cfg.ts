@@ -5,6 +5,7 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
+import { performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
 
 async function controlflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
@@ -55,5 +56,17 @@ export const controlflowStarCommand: ReplCommand = {
 			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url'));
 		} catch{ /* do nothing this is a service thing */ }
+	}
+};
+
+export const absintDataFrameCommand: ReplCommand = {
+	description:  'Perform abstract interpretation for data frames',
+	usageExample: ':absint-dataframe',
+	aliases:      [ 'absintdf', 'aidf' ],
+	script:       false,
+	fn:           async(output, shell, remainingLine) => {
+		const result = await controlflow(shell, handleString(remainingLine));
+		const cfg = extractCFG(result.normalize, result.dataflow.graph);
+		performDataFrameAbsint(cfg, result.normalize.idMap);
 	}
 };

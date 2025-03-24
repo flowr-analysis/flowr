@@ -30,10 +30,6 @@ import { registerBuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
-import { processDataFrameAccess } from '../../abstract-interpretation/data-frame/process/data-frame-access';
-import { processDataFrameAssignment } from '../../abstract-interpretation/data-frame/process/data-frame-assignment';
-import { processDataFrameExpressionList } from '../../abstract-interpretation/data-frame/process/data-frame-expression-list';
-import { processDataFrameFunctionCall } from '../../abstract-interpretation/data-frame/process/data-frame-function-call';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
 import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
 
@@ -53,14 +49,6 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: Config
 ) => DataflowInformation
-
-export type BuiltInIdentifierProcessorDecorator<Config> = <OtherInfo>(
-	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: Config
-) => void
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
@@ -143,32 +131,17 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 	}
 }
 
-/** Decorator function for dataflow processors that runs the decorators after the processor with the new environment */
-function decorateProcessor<Config>(
-	processor: BuiltInIdentifierProcessorWithConfig<Config>,
-	...decorators: BuiltInProcessorDecoratorName[]
-): BuiltInIdentifierProcessorWithConfig<Config> {
-	return (name, args, rootId, data, config) => {
-		const result = processor(name, args, rootId, data, config);
-		decorators
-			.map(name => BuiltInProcessorDecoratorMapper[name] as BuiltInIdentifierProcessorDecorator<Config>)
-			.forEach(decorator => decorator(name, args, rootId, { ...data, environment: result.environment }, config));
-
-		return result;
-	};
-}
-
 export const BuiltInProcessorMapper = {
-	'builtin:default':             decorateProcessor(defaultBuiltInProcessor, 'dataframe:function-call'),
+	'builtin:default':             defaultBuiltInProcessor,
 	'builtin:apply':               processApply,
-	'builtin:expression-list':     decorateProcessor(processExpressionList, 'dataframe:expression-list'),
+	'builtin:expression-list':     processExpressionList,
 	'builtin:source':              processSourceCall,
-	'builtin:access':              decorateProcessor(processAccess, 'dataframe:access'),
+	'builtin:access':              processAccess,
 	'builtin:if-then-else':        processIfThenElse,
 	'builtin:get':                 processGet,
 	'builtin:rm':                  processRm,
 	'builtin:library':             processLibrary,
-	'builtin:assignment':          decorateProcessor(processAssignment, 'dataframe:assignment'),
+	'builtin:assignment':          processAssignment,
 	'builtin:special-bin-op':      processSpecialBinOp,
 	'builtin:pipe':                processPipe,
 	'builtin:function-definition': processFunctionDefinition,
@@ -179,20 +152,10 @@ export const BuiltInProcessorMapper = {
 	'builtin:replacement':         processReplacementFunction,
 	'builtin:list':                processList,
 	'builtin:vector':              processVector,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-} as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<any>>;
+} as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export type BuiltInMappingName = keyof typeof BuiltInProcessorMapper;
 export type ConfigOfBuiltInMappingName<N extends BuiltInMappingName> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
-
-const BuiltInProcessorDecoratorMapper = {
-	'dataframe:function-call':   processDataFrameFunctionCall,
-	'dataframe:access':          processDataFrameAccess,
-	'dataframe:assignment':      processDataFrameAssignment,
-	'dataframe:expression-list': processDataFrameExpressionList
-} as const satisfies Record<`${string}:${string}`, BuiltInIdentifierProcessorDecorator<never>>;
-
-type BuiltInProcessorDecoratorName = keyof typeof BuiltInProcessorDecoratorMapper;
 
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
 export const EmptyBuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();

@@ -26,6 +26,7 @@ export enum SimpleCfgVertexType {
 
 export interface SimpleCfgVertex extends CfgVertex {
     name: RType,
+    type: Exclude<CfgVertexType, CfgVertexType.MidMarker | CfgVertexType.EndMarker>,
     tag:  SimpleCfgVertexType
 }
 
@@ -44,7 +45,21 @@ export interface SimpleControlFlowInformation extends ControlFlowInformation {
 	graph: SimpleControlFlowGraph
 }
 
-const cfgFolds: FoldFunctions<ParentInformation, SimpleControlFlowInformation> = {
+interface SimpleControlFlowInfo {
+	graph:       SimpleControlFlowGraph,
+	returns:     NodeId[],
+	breaks:      NodeId[],
+	nexts:       NodeId[],
+	entryPoints: NodeId[],
+	exitPoints:  ExitPoint[]
+}
+
+interface ExitPoint {
+	node: NodeId,
+	edge: CfgEdge
+}
+
+const cfgFolds: FoldFunctions<ParentInformation, SimpleControlFlowInfo> = {
 	foldNumber:   cfgLeaf,
 	foldString:   cfgLeaf,
 	foldLogical:  cfgLeaf,
@@ -75,22 +90,25 @@ const cfgFolds: FoldFunctions<ParentInformation, SimpleControlFlowInformation> =
 };
 
 export function extractSimpleCFG<Info = ParentInformation>(ast: NormalizedAst<Info>): SimpleControlFlowInformation {
-	return foldAst(ast.ast, cfgFolds);
+	const info = foldAst(ast.ast, cfgFolds);
+
+	return { ...info, exitPoints: info.exitPoints.map(exit => exit.node) };
 }
 
-function cfgLeaf(leaf: RNodeWithParent): SimpleControlFlowInformation {
+function cfgLeaf(leaf: RNodeWithParent): SimpleControlFlowInfo {
 	// We are only interested in actual expressions in an expression list
 	if(leaf.info.role === RoleInParent.ExpressionListChild) {
 		const graph = new SimpleControlFlowGraph();
 		const vertex: SimpleCfgVertex = { id: leaf.info.id, name: leaf.type, type: CfgVertexType.Expression, tag: SimpleCfgVertexType.Expression };
 		graph.addVertex(vertex);
+		const exitPoints: ExitPoint[] = [{ node: leaf.info.id, edge: { label: 'FD' } }];
 
-		return { graph, breaks: [], nexts: [], returns: [], entryPoints: [leaf.info.id], exitPoints: [leaf.info.id] };
+		return { graph, breaks: [], nexts: [], returns: [], entryPoints: [leaf.info.id], exitPoints };
 	}
 	return cfgIgnore(leaf);
 }
 
-function cfgBreak(leaf: RNodeWithParent): SimpleControlFlowInformation {
+function cfgBreak(leaf: RNodeWithParent): SimpleControlFlowInfo {
 	const graph = new SimpleControlFlowGraph();
 	const vertex: SimpleCfgVertex = { id: leaf.info.id, name: leaf.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.Break };
 	graph.addVertex(vertex);
@@ -98,7 +116,7 @@ function cfgBreak(leaf: RNodeWithParent): SimpleControlFlowInformation {
 	return { graph, breaks: [leaf.info.id], nexts: [], returns: [], entryPoints: [leaf.info.id], exitPoints: [] };
 }
 
-function cfgNext(leaf: RNodeWithParent): SimpleControlFlowInformation {
+function cfgNext(leaf: RNodeWithParent): SimpleControlFlowInfo {
 	const graph = new SimpleControlFlowGraph();
 	const vertex: SimpleCfgVertex = { id: leaf.info.id, name: leaf.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.Next };
 	graph.addVertex(vertex);
@@ -106,11 +124,11 @@ function cfgNext(leaf: RNodeWithParent): SimpleControlFlowInformation {
 	return { graph, breaks: [], nexts: [leaf.info.id], returns: [], entryPoints: [leaf.info.id], exitPoints: [] };
 }
 
-function cfgIgnore(_leaf: RNodeWithParent): SimpleControlFlowInformation {
+function cfgIgnore(_leaf: RNodeWithParent): SimpleControlFlowInfo {
 	return { graph: new SimpleControlFlowGraph(), breaks: [], nexts: [], returns: [], entryPoints: [], exitPoints: [] };
 }
 
-function cfgIfThenElse(ifNode: RNodeWithParent, _condition: SimpleControlFlowInformation, then: SimpleControlFlowInformation, otherwise: SimpleControlFlowInformation | undefined): SimpleControlFlowInformation {
+function cfgIfThenElse(ifNode: RNodeWithParent, _condition: SimpleControlFlowInfo, then: SimpleControlFlowInfo, otherwise?: SimpleControlFlowInfo): SimpleControlFlowInfo {
 	const graph = then.graph;
 	const vertex: SimpleCfgVertex = { id: ifNode.info.id, name: ifNode.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.IfThenElse };
 	graph.addVertex(vertex);
@@ -127,9 +145,15 @@ function cfgIfThenElse(ifNode: RNodeWithParent, _condition: SimpleControlFlowInf
 	}
 	const exitPoints = [...then.exitPoints, ...otherwise?.exitPoints ?? []];
 
-	// add if node as exit point if body is empty
-	if(then.exitPoints.length === 0 || otherwise == undefined || otherwise.exitPoints.length === 0) {
-		exitPoints.push(ifNode.info.id);
+	// add if-node itself as exit point if body is empty
+	if(then.entryPoints.length === 0) {
+		if(otherwise === undefined || otherwise.entryPoints.length === 0) {
+			exitPoints.push({ node: ifNode.info.id, edge: { label: 'FD' } });
+		} else {
+			exitPoints.push({ node: ifNode.info.id, edge: { label: 'CD', when: RTrue, caused: ifNode.info.id } });
+		}
+	} else if(otherwise === undefined || otherwise.entryPoints.length === 0) {
+		exitPoints.push({ node: ifNode.info.id, edge: { label: 'CD', when: RFalse, caused: ifNode.info.id } });
 	}
 
 	return {
@@ -138,11 +162,11 @@ function cfgIfThenElse(ifNode: RNodeWithParent, _condition: SimpleControlFlowInf
 		nexts:       [...then.nexts, ...otherwise?.nexts ?? []],
 		returns:     [...then.returns, ...otherwise?.returns ?? []],
 		entryPoints: [ifNode.info.id],
-		exitPoints:  exitPoints
+		exitPoints
 	};
 }
 
-function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: SimpleControlFlowInformation): SimpleControlFlowInformation {
+function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: SimpleControlFlowInfo): SimpleControlFlowInfo {
 	const graph = body.graph;
 	const vertex: SimpleCfgVertex = { id: repeat.info.id, name: repeat.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.RepeatLoop };
 	graph.addVertex(vertex);
@@ -150,14 +174,18 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: SimpleControlFl
 	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(repeat.info.id, entryPoint, { label: 'FD' });
 	}
-	for(const next of [...body.nexts, ...body.exitPoints]) {
+	for(const next of body.nexts) {
 		graph.addEdge(next, repeat.info.id, { label: 'FD' });
 	}
+	for(const exitPoint of body.exitPoints) {
+		graph.addEdge(exitPoint.node, repeat.info.id, exitPoint.edge);
+	}
+	const exitPoints = body.breaks.map<ExitPoint>(node => ({ node, edge: { label: 'FD' } }));
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [repeat.info.id], exitPoints: [...body.breaks] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [repeat.info.id], exitPoints };
 }
 
-function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, _condition: SimpleControlFlowInformation, body: SimpleControlFlowInformation): SimpleControlFlowInformation {
+function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, _condition: SimpleControlFlowInfo, body: SimpleControlFlowInfo): SimpleControlFlowInfo {
 	const graph = body.graph;
 	const vertex: SimpleCfgVertex = { id: whileLoop.info.id, name: whileLoop.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.WhileLoop };
 	graph.addVertex(vertex);
@@ -165,14 +193,19 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, _condition: SimpleCo
 	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'CD', when: RTrue, caused: whileLoop.info.id });
 	}
-	for(const next of [...body.nexts, ...body.exitPoints]) {
+	for(const next of body.nexts) {
 		graph.addEdge(next, whileLoop.info.id, { label: 'FD' });
 	}
+	for(const exitPoint of body.exitPoints) {
+		graph.addEdge(exitPoint.node, whileLoop.info.id, exitPoint.edge);
+	}
+	const exitPoints = body.breaks.map<ExitPoint>(node => ({ node, edge: { label: 'FD' } }));
+	exitPoints.push({ node: whileLoop.info.id, edge: { label: 'CD', when: RFalse, caused: whileLoop.info.id } });
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [whileLoop.info.id], exitPoints: [...body.breaks, whileLoop.info.id] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [whileLoop.info.id], exitPoints };
 }
 
-function cfgFor(forLoop: RForLoop<ParentInformation>, _variable: SimpleControlFlowInformation, _vector: SimpleControlFlowInformation, body: SimpleControlFlowInformation): SimpleControlFlowInformation {
+function cfgFor(forLoop: RForLoop<ParentInformation>, _variable: SimpleControlFlowInfo, _vector: SimpleControlFlowInfo, body: SimpleControlFlowInfo): SimpleControlFlowInfo {
 	const graph = body.graph;
 	const vertex: SimpleCfgVertex = { id: forLoop.info.id, name: forLoop.type, type: CfgVertexType.Statement, tag: SimpleCfgVertexType.ForLoop };
 	graph.addVertex(vertex);
@@ -180,25 +213,30 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, _variable: SimpleControlFl
 	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(forLoop.info.id, entryPoint, { label: 'CD', when: RTrue, caused: forLoop.info.id });
 	}
-	for(const next of [...body.nexts, ...body.exitPoints]) {
+	for(const next of body.nexts) {
 		graph.addEdge(next, forLoop.info.id, { label: 'FD' });
 	}
+	for(const exitPoint of body.exitPoints) {
+		graph.addEdge(exitPoint.node, forLoop.info.id, exitPoint.edge);
+	}
+	const exitPoints = body.breaks.map<ExitPoint>(node => ({ node, edge: { label: 'FD' } }));
+	exitPoints.push({ node: forLoop.info.id, edge: { label: 'CD', when: RFalse, caused: forLoop.info.id } });
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [forLoop.info.id], exitPoints: [...body.breaks, forLoop.info.id] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, entryPoints: [forLoop.info.id], exitPoints };
 }
 
-function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, _params: SimpleControlFlowInformation[], _body: SimpleControlFlowInformation): SimpleControlFlowInformation {
+function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, _params: SimpleControlFlowInfo[], _body: SimpleControlFlowInfo): SimpleControlFlowInfo {
 	// skip function definitions for now
 	return cfgIgnore(fn);
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, _name: SimpleControlFlowInformation, _args: (SimpleControlFlowInformation | typeof EmptyArgument)[]): SimpleControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, _name: SimpleControlFlowInfo, _args: (SimpleControlFlowInfo | typeof EmptyArgument)[]): SimpleControlFlowInfo {
 	// no resolve for function call targets to track function definitions for now
 	return cfgLeaf(call);
 }
 
-function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: SimpleControlFlowInformation[]): SimpleControlFlowInformation {
-	const result: SimpleControlFlowInformation = { graph: new SimpleControlFlowGraph(), breaks: [], nexts: [], returns: [], entryPoints: [], exitPoints: [] };
+function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: SimpleControlFlowInfo[]): SimpleControlFlowInfo {
+	const result: SimpleControlFlowInfo = { graph: new SimpleControlFlowGraph(), breaks: [], nexts: [], returns: [], entryPoints: [], exitPoints: [] };
 	let first = true;
 
 	for(const expression of expressions) {
@@ -208,7 +246,7 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Si
 		} else {
 			for(const prevExitPoint of result.exitPoints) {
 				for(const entryPoint of expression.entryPoints) {
-					result.graph.addEdge(prevExitPoint, entryPoint, createEdge(result.graph, prevExitPoint));
+					result.graph.addEdge(prevExitPoint.node, entryPoint, prevExitPoint.edge);
 				}
 			}
 		}
@@ -219,21 +257,4 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Si
 		result.exitPoints = expression.exitPoints;
 	}
 	return result;
-}
-
-function createEdge(graph: SimpleControlFlowGraph, prev: NodeId): CfgEdge {
-	const prevVertex = graph.vertices().get(prev);
-
-	if(prevVertex?.tag === SimpleCfgVertexType.IfThenElse) {
-		const outgoing = graph.outgoing(prev)?.values().toArray();
-
-		if(outgoing?.some(edge => edge.when === 'TRUE') && !outgoing.some(edge => edge.when === 'FALSE')) {
-			return { label: 'CD', when: 'FALSE', caused: prev };
-		} else if(outgoing?.some(edge => edge.when === 'FALSE') && !outgoing.some(edge => edge.when === 'TRUE')) {
-			return { label: 'CD', when: 'TRUE', caused: prev };
-		}
-	} else if(prevVertex?.tag === SimpleCfgVertexType.WhileLoop || prevVertex?.tag === SimpleCfgVertexType.ForLoop) {
-		return { label: 'CD', when: 'FALSE', caused: prev };
-	}
-	return { label: 'FD' };
 }

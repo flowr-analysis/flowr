@@ -517,6 +517,15 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:   node.text,
 				...defaultInfo
 			};
+		case TreeSitterType.Error:
+			return {
+				type:     RType.ExpressionList,
+				location: undefined,
+				lexeme:   undefined,
+				children: [],
+				grouping: undefined,
+				info:     defaultInfo
+			};
 		default:
 			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
 	}

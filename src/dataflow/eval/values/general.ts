@@ -1,6 +1,6 @@
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
-import type { Lift, Value } from './r-value';
+import type { Lift, Unlift, Value, ValueSet } from './r-value';
 import { Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 
@@ -13,6 +13,10 @@ export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Botto
 	} else if(a.some(isTop)) {
 		return Top;
 	}
+}
+
+export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | undefined {
+	return (isBottom(a) || isTop(a)) ? undefined : a;
 }
 
 export function valueFromTsValue(a: unknown): Value {

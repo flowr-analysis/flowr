@@ -16,11 +16,11 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
-import type { Value, ValueSet } from '../eval/values/r-value';
-import { Bottom, Top } from '../eval/values/r-value';
+import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
 import { valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
 
+export type ResolveResult = Lift<ValueSet<Value[]>>;
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -103,7 +103,7 @@ export function resolvesToBuiltInConstant(name: Identifier | undefined, environm
 }
 
 /** Please use {@link resolveValueOfVariable} */
-export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ValueSet | typeof Top {
+export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {
 	if(name === undefined) {
 		return Top;
 	}
@@ -179,7 +179,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 }
 
 /** Please use {@link resolveValueOfVariable} */
-export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ValueSet | typeof Top {
+export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
@@ -235,7 +235,7 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return isNestedInLoop(parentNode, ast);
 }
 
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ValueSet | typeof Top | typeof Bottom {
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 	const start = graph.getVertex(id);
@@ -304,7 +304,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
-export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): ValueSet | typeof Top | typeof Bottom {
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	const resolve = getConfig().solver.variables;
 
 	switch(resolve) {
@@ -335,7 +335,7 @@ export interface ResolveInfo {
  * @param idMap       - The id map to resolve the node if given as an id
  * @param full        - Whether to track variables
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): ValueSet | typeof Top | typeof Bottom {
+export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): ResolveResult {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {

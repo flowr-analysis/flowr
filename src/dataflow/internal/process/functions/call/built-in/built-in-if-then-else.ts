@@ -17,6 +17,7 @@ import type { IdentifierReference } from '../../../../../environments/identifier
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { makeAllMaybe } from '../../../../../environments/environment';
+import { valueSetGuard } from '../../../../../eval/values/general';
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -51,10 +52,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-
 	const values = resolveValueOfVariable(condArg?.lexeme, data.environment, data.completeAst.idMap);
-	const conditionIsAlwaysFalse = values?.every(d => d === false) ?? false;
-	const conditionIsAlwaysTrue  = values?.every(d => d === true) ?? false;
+	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);

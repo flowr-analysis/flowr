@@ -5,18 +5,18 @@ import { resolveByName, resolveToConstants, resolveValueOfVariable, resolvesToBu
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { RShell } from '../../../../src/r-bridge/shell';
-import { requestFromInput } from '../../../../src/r-bridge/retriever';
+// import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+// import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
+// import { RShell } from '../../../../src/r-bridge/shell';
+// import { requestFromInput } from '../../../../src/r-bridge/retriever';
 
-async function get(code: string) {
-	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  new RShell(),
-		request: requestFromInput(code.trim())
-	}).allRemainingSteps();
-	return result;
-}
+// async function get(code: string) {
+// 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+// 		parser:  new RShell(),
+// 		request: requestFromInput(code.trim())
+// 	}).allRemainingSteps();
+// 	return result;
+// }
 
 describe('Resolve', () => {
 	describe('ByName', () => {

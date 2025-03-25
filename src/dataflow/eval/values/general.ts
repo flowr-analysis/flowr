@@ -1,6 +1,6 @@
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
-import type { Lift, Unlift, Value, ValueSet } from './r-value';
+import type { Lift, Value, ValueSet } from './r-value';
 import { Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 

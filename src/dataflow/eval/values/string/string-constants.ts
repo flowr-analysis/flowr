@@ -1,6 +1,7 @@
 import type { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
-import type { Lift, ValueString } from '../r-value';
-import { Bottom, Top } from '../r-value';
+import { bottomTopGuard } from '../general';
+import type { Lift, Value, ValueString } from '../r-value';
+import { Bottom, isValue, Top } from '../r-value';
 
 
 export function stringFrom(str: RStringValue | string): ValueString {
@@ -20,6 +21,22 @@ export function liftString(str: Lift<RStringValue>): ValueString {
 	};
 }
 
+export function collectStrings(a: Value[]): string[] | undefined {
+	if(bottomTopGuard(a)) {
+		return undefined;
+	}
+
+	const values: string[] = [];
+	for(const value of a) {
+		if(value.type !== 'string' || !isValue(value) || !isValue(value.value)) {
+			return undefined;
+		}
+
+		values.push(value.value.str);
+	}
+
+	return values;
+}
 
 export const ValueEmptyString = stringFrom('');
 export const ValueStringTop = liftString(Top);

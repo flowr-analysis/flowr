@@ -22,10 +22,10 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
+import { isUndefined } from '../../../../../../util/assert';
 import { cartesianProduct } from '../../../../../../util/arrays';
 import { valueSetGuard } from '../../../../../eval/values/general';
-import { isValue } from '../../../../../eval/values/r-value';
+import { collectStrings } from '../../../../../eval/values/string/string-constants';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -112,11 +112,10 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolve = valueSetGuard(resolveValueOfVariable(arg.value.content, env, idMap));
-			return resolve?.elements.map(r => r.type === 'string' && isValue(r.value) 
-				? r.value.str 
-				: undefined
-			).filter(isNotUndefined);
+			const resolved = valueSetGuard(resolveValueOfVariable(arg.value.content, env, idMap));
+			if(resolved) {
+				return collectStrings(resolved.elements);
+			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
 			return handlePaste(arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : ['']);
 		}
@@ -137,9 +136,9 @@ function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmen
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = resolveValueOfVariable(val.content, env, idMap);
-		if(resolved && resolved.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
-			return resolved.map(r => r.str as string);
+		const resolved = valueSetGuard(resolveValueOfVariable(val.content, env, idMap));
+		if(resolved) {
+			return collectStrings(resolved.elements);
 		}
 	}
 	return undefined;

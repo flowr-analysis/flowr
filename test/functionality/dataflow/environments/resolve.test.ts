@@ -1,7 +1,7 @@
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
-import { resolveByName, resolveToConstants, resolveValueOfVariable, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
+import { resolveByName, resolveToConstants, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';

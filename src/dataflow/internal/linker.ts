@@ -107,7 +107,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		}
 	}
 
-	const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content));
+	const remainingParameter = params.filter(p => !p || !p.name || !matchedParameters.has(p.name.content));
 	const remainingArguments = args.filter(a => !isNamedArgument(a));
 
 	for(let i = 0; i < remainingArguments.length; i++) {

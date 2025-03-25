@@ -83,7 +83,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]));
+	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p !== undefined && p.name !== undefined && p.name.content !== undefined).map(p => [p.name.content, p]));
 
 	const specialDotParameter = params.find(p => p.special);
 

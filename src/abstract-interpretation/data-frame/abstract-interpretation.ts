@@ -1,18 +1,20 @@
-import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CfgEdge, ControlFlowGraph, ControlFlowInformation } from '../../util/cfg/cfg';
+import type { CfgEdge } from '../../util/cfg/cfg';
+import type { SimpleControlFlowGraph, SimpleControlFlowInformation } from '../simple-cfg';
 
-export function performDataFrameAbsint<OtherInfo>(cfg: ControlFlowInformation, idMap: AstIdMap<OtherInfo & ParentInformation>) {
-	const visitor = (nodeId: NodeId, predecessors: ReadonlyMap<NodeId, CfgEdge>) => {
-		const node = idMap.get(nodeId);
-		console.log(node?.info.id ?? nodeId, node?.type, node?.lexeme, node?.info.fullLexeme, predecessors.keys().toArray());
+
+export function performDataFrameAbsint(cfg: SimpleControlFlowInformation, dfg: DataflowGraph) {
+	const visitor = (nodeId: NodeId, successors: ReadonlyMap<NodeId, CfgEdge>) => {
+		const node = dfg.idMap?.get(nodeId);
+		console.log(node?.info.id ?? nodeId, node?.type, node?.lexeme, node?.info.fullLexeme, dfg.get(nodeId), successors.keys().toArray());
 	};
 
-	foldForward(cfg.graph, [...cfg.exitPoints], [], visitor);
+	foldGraph(cfg.graph, [...cfg.entryPoints], [], visitor);
 }
 
-function foldForward(
-	cfg: ControlFlowGraph,
+function foldGraph(
+	cfg: SimpleControlFlowGraph,
 	nodes: NodeId[],
 	visited: NodeId[],
 	visitor: (node: NodeId, predecessors: ReadonlyMap<NodeId, CfgEdge>) => void
@@ -20,10 +22,10 @@ function foldForward(
 	for(const node of nodes) {
 		if(!visited.includes(node)) {
 			visited.push(node);
-			const incoming = cfg.outgoing(node);
-			const predecessors = incoming?.keys().toArray() ?? [];
-			foldForward(cfg, predecessors, visited, visitor);
-			visitor(node, incoming ?? new Map());
+			const outgoing = cfg.outgoing(node);
+			visitor(node, outgoing ?? new Map());
+			const successors = outgoing?.keys().toArray() ?? [];
+			foldGraph(cfg, successors, visited, visitor);
 		}
 	}
 }

@@ -6,7 +6,6 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { trackAliasInEnvironments } from '../../../../src/dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { numVal } from '../../_helper/ast-builder';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';

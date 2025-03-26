@@ -1,4 +1,4 @@
-import { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';

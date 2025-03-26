@@ -25,8 +25,6 @@ import { resolveIdToValue } from '../../../dataflow/environments/resolve-by-name
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import type { RNumberValue, RStringValue } from '../../../r-bridge/lang-4.x/convert-values';
-import type { RLogicalValue } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
 import { ReadFunctions } from './function-info/read-functions';
@@ -34,6 +32,8 @@ import { WriteFunctions } from './function-info/write-functions';
 import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
+import { valueSetGuard } from '../../../dataflow/eval/values/general';
+import { collectStrings } from '../../../dataflow/eval/values/string/string-constants';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -234,7 +234,7 @@ function hasCharacterOnly(data: BasicQueryData, vertex: DataflowGraphVertexFunct
 		return hasTrue;
 	}
 }
-function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): unknown[] | undefined {
+function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexFunctionCall, argument: RNodeWithParent, environment: REnvironmentInformation | undefined, idMap: Map<NodeId, RNode> | undefined, resolveValue : boolean | 'library' | undefined): string[] | undefined {
 	let full = true;
 	if(!resolveValue) {
 		full = false;
@@ -249,32 +249,12 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 		}
 	}
 
-	return resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full });
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }));
+	if(resolved) {
+		return collectStrings(resolved.elements);
+	}
 }
 
-function unwrapRValue(value: RLogicalValue | RStringValue | RNumberValue | string | number | unknown): string | undefined {
-	if(value === undefined) {
-		return undefined;
-	}
-	switch(typeof value) {
-		case 'string':
-			return value;
-		case 'number':
-			return value.toString();
-		case 'boolean':
-			return value ? 'TRUE' : 'FALSE';
-	}
-	if(typeof value !== 'object' || value === null) {
-		return JSON.stringify(value);
-	}
-	if('str' in value) {
-		return (value as RStringValue).str;
-	} else if('num' in value) {
-		return (value as RNumberValue).num.toString();
-	} else {
-		return JSON.stringify(value);
-	}
-}
 /**
  * Get the values of all arguments matching the criteria.
  */
@@ -308,8 +288,7 @@ function getArgumentValue(
 			if(valueNode) {
 				// TDODO: extend vector support etc.
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue)
-					?.map(unwrapRValue) ?? [Unknown];
+				const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue);
 				map.set(ref, new Set(values));
 			}
 		}
@@ -325,8 +304,7 @@ function getArgumentValue(
 			valueNode = valueNode.value;
 		}
 		if(valueNode) {
-			const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue)
-				?.map(unwrapRValue) ?? [Unknown];
+			const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue);
 			return new Map([[arg, new Set(values)]]);
 		}
 	}

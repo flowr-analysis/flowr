@@ -17,7 +17,7 @@ import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
 import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
-import { valueFromTsValue } from '../eval/values/general';
+import { valueFromRNode, valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
@@ -201,9 +201,9 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 				return Top;
 			}
 			for(const id of def.value) {
-				const value = idMap?.get(id)?.content;
+				const value = idMap?.get(id);
 				if(value !== undefined) {
-					values.add(valueFromTsValue(value));
+					values.add(valueFromRNode(value));
 				}
 			}
 		}
@@ -293,7 +293,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	for(const id of resultIds) {
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			values.add(valueFromTsValue(node.content));
+			values.add(valueFromRNode(node));
 		}
 	}
 	return setFrom(...values);
@@ -353,7 +353,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, gr
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
-			return setFrom(valueFromTsValue([node.content]));
+			return setFrom(valueFromRNode(node));
 		default:
 			return Top;
 	}

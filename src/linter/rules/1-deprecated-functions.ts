@@ -35,7 +35,7 @@ export const R1_DEPRECATED_FUNCTIONS = {
 		})
 		.filter(element => config.deprecatedFunctions.includes(element.target))
 		.map(element => ({
-			certainty: LintingCertainty.Maybe,
+			certainty: LintingCertainty.Definitely,
 			function:  element.target,
 			range:     element.range
 		})),

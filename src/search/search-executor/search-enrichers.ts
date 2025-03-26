@@ -8,6 +8,7 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
+import { log } from '../../util/log';
 
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
@@ -57,6 +58,7 @@ export const Enrichments = {
 				} else {
 					// if we can't resolve the name to actual memory, we still want to show it as a vague target
 					content.targets.push(info.name);
+					log.trace(`Could not resolve call target ${info.name} (${info.id}) to memory, still including as target as it may be a library function.`);
 				}
 			}
 			return content;

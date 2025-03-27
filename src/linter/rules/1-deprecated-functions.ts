@@ -1,5 +1,5 @@
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingCertainty, LintingPrintStyle } from '../linter-format';
+import { LintingCertainty } from '../linter-format';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { formatRange } from '../../util/mermaid/dfg';
@@ -17,8 +17,7 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 }
 
 export const R1_DEPRECATED_FUNCTIONS = {
-	name:                'deprecated-functions',
-	createSearch:        () => Q.all().with(Enrichment.CallTargets),
+	createSearch:        (_config) => Q.all().with(Enrichment.CallTargets),
 	processSearchResult: (elements, config) => elements.getElements()
 		.flatMap(element => {
 			const targets = enrichmentContent(element, Enrichment.CallTargets).targets;
@@ -36,14 +35,11 @@ export const R1_DEPRECATED_FUNCTIONS = {
 		})
 		.filter(element => config.deprecatedFunctions.includes(element.target))
 		.map(element => ({
-			certainty: LintingCertainty.Maybe,
+			certainty: LintingCertainty.Definitely,
 			function:  element.target,
 			range:     element.range
 		})),
-	printers: {
-		[LintingPrintStyle.Text]: result => `Function ${result.function} at ${formatRange(result.range)}`,
-		[LintingPrintStyle.Json]: result => JSON.stringify(result)
-	},
+	prettyPrint:   result => `Function ${result.function} at ${formatRange(result.range)}`,
 	defaultConfig: {
 		// this layout is temporary and currently just a dump from a helper script
 		deprecatedFunctions: [

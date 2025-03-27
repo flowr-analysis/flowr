@@ -6,6 +6,7 @@ import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
 import { extractSimpleCFG } from '../../../abstract-interpretation/simple-cfg';
+import { performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
 
 async function controlflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
@@ -68,12 +69,11 @@ export const absintDataFrameCommand: ReplCommand = {
 		const result = await controlflow(shell, handleString(remainingLine));
 		const cfg = extractSimpleCFG(result.normalize);
 		const mermaid = cfgToMermaidUrl(cfg, result.normalize);
-		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
 			clipboard.default.writeSync(mermaid);
 			output.stdout(formatInfo(output, 'mermaid url'));
 		} catch{ /* do nothing this is a service thing */ }
-		// performDataFrameAbsint(cfg, result.dataflow.graph);
+		performDataFrameAbsint(cfg, result.dataflow.graph);
 	}
 };

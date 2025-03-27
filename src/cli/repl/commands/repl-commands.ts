@@ -54,7 +54,7 @@ If enabled ('--r-session-access'), you can just enter R expressions which get ev
 ${rawPrompt} ${bold('1 + 1', output.formatter)}
 ${italic('[1] 2', output.formatter)}
 
-Besides that, you can use the following commands. The scripts ${italic('can', output.formatter)} accept further arguments. In general, those ending with [*] may be called with and without the star.
+Besides that, you can use the following commands. The scripts ${italic('can', output.formatter)} accept further arguments. In general, those ending with [*] may be called with and without the star. 
 There are the following basic commands:
 ${
 	printCommandHelp(output.formatter)

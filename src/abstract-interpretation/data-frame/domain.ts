@@ -1,3 +1,6 @@
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { setEquals } from '../../util/set';
+
 type Interval = [number, number];
 
 export const IntervalBottom = 'bottom';
@@ -25,6 +28,12 @@ export const DataFrameTop: DataFrameDomain = {
 	cols:     IntervalTop,
 	rows:     IntervalTop
 };
+
+export type DataFrameStateDomain = Map<NodeId, DataFrameDomain>;
+
+export function equalColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
+	return X1 === X2 || (X1 !== ColNamesTop && setEquals(new Set(X1), new Set(X2)));
+}
 
 export function leqColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
 	return X2 === ColNamesTop || (X1 !== ColNamesTop && new Set(X1).isSubsetOf(new Set(X2)));
@@ -60,6 +69,10 @@ export function subtractColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNam
 	}
 }
 
+export function equalInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
+	return X1 === X2 || (X1 !== IntervalBottom && X1[0] === X2[0] && X1[1] === X2[1]);
+}
+
 export function leqInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
 	return X1 === IntervalBottom || (X2 !== IntervalBottom && X2[0] <= X1[0] && X1[1] <= X2[1]);
 }
@@ -84,4 +97,21 @@ export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDo
 	} else {
 		return [Math.max(X1[0], X2[0]), Math.min(X1[1], X2[1])];
 	}
+}
+
+export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain) {
+	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
+}
+
+export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameStateDomain) {
+	if(R1.size !== R2.size) {
+		return false;
+	}
+	for(const [key, value] of R1) {
+		const other = R2.get(key);
+		if(other === undefined || !equalDataFrameDomain(value, other)) {
+			return false;
+		}
+	}
+	return true;
 }

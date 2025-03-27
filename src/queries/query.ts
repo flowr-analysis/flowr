@@ -41,6 +41,8 @@ import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-l
 import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import type { ProjectQuery } from './catalog/project-query/project-query-format';
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import type { LinterQuery } from './catalog/linter-query/linter-query-format';
+import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -57,6 +59,7 @@ export type Query = CallContextQuery
 	| HappensBeforeQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| LinterQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -89,7 +92,8 @@ export const SupportedQueries = {
 	'search':           SearchQueryDefinition,
 	'happens-before':   HappensBeforeQueryDefinition,
 	'resolve-value':    ResolveValueQueryDefinition,
-	'project':          ProjectQueryDefinition
+	'project':          ProjectQueryDefinition,
+	'linter':           LinterQueryDefinition
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

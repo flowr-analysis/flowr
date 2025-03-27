@@ -4,7 +4,7 @@ import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { guard } from '../../util/assert';
 import type { CfgEdge } from '../../util/cfg/cfg';
 import type { SimpleControlFlowGraph, SimpleControlFlowInformation } from '../simple-cfg';
-import type { DataFrameStateDomain, DataFrameDomain } from './domain';
+import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { equalDataFrameState } from './domain';
 import { processDataFrameNode } from './processor';
 
@@ -22,7 +22,7 @@ export function performDataFrameAbsint(cfg: SimpleControlFlowInformation, dfg: D
 			[RFalse]: equalDataFrameState(domain, result[RFalse])
 		} : equalDataFrameState(domain, result);
 
-		const hasChanged = (edge: CfgEdge) => typeof equal === 'object' ? equal[edge.label === 'FD' ? edge.label : edge.when] : equal;
+		const hasChanged = (edge: CfgEdge) => typeof equal === 'object' ? !equal[edge.label === 'FD' ? edge.label : edge.when] : !equal;
 		const getDomain = (edge: CfgEdge) => 'FD' in result ? result[edge.label === 'FD' ? edge.label : edge.when] : result;
 
 		const successors = cfg.edges().get(nodeId)?.entries()

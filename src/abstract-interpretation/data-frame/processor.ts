@@ -6,7 +6,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
-import type { DataFrameStateDomain  } from './domain';
+import type { DataFrameStateDomain } from './domain';
 
 export type ConditionalDataFrameState = Record<'FD' | typeof RTrue | typeof RFalse, DataFrameStateDomain>;
 

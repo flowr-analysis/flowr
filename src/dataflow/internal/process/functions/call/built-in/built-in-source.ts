@@ -29,6 +29,8 @@ import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import { isValue } from '../../../../../eval/values/r-value';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -153,13 +155,8 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		sourceFile = resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap)?.map(x => {
-			if(typeof x === 'object' && x && 'str' in x) {
-				return x.str as string;
-			} else {
-				return undefined;
-			}
-		}).filter(isNotUndefined);
+		const resolved = valueSetGuard(resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap));
+		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
 	if(sourceFile && sourceFile.length === 1) {

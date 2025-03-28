@@ -32,8 +32,8 @@ import { WriteFunctions } from './function-info/write-functions';
 import type { DependencyInfoLinkAttachedInfo, FunctionInfo } from './function-info/function-info';
 import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
+import { isValue } from '../../../dataflow/eval/values/r-value';
 import { valueSetGuard } from '../../../dataflow/eval/values/general';
-import { collectStrings } from '../../../dataflow/eval/values/string/string-constants';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -251,7 +251,21 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 
 	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }));
 	if(resolved) {
-		return collectStrings(resolved.elements);
+		const values: string[] = [];
+		for(const value of resolved.elements) {
+			if(!isValue(value)) {
+				return undefined;
+			}
+
+			if(value.type === 'string' && isValue(value.value)) {
+				values.push(value.value.str);
+			} else if(value.type === 'logical' && isValue(value.value)) {
+				values.push(value.value.valueOf() ? 'TRUE' : 'FALSE');
+			} else {
+				return undefined;
+			}
+		}
+		return values;
 	}
 }
 

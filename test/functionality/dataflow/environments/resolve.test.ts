@@ -9,22 +9,8 @@ import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 
-// async function get(code: string) {
-// 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-// 		parser:  new RShell(),
-// 		request: requestFromInput(code.trim())
-// 	}).allRemainingSteps();
-// 	return result;
-// }
-
 describe('Resolve', () => {
 	describe('ByName', () => {
-
-		// test('Resolve Vector', async() => {
-		// 	const { dataflow } = await get('x <- c("a", "b", "c")');
-		// 	const result = resolveValueOfVariable('x', dataflow.environment, dataflow.graph.idMap);
-		// 	assert.equal(result, ['a', 'b', 'c']);
-		// });
 
 		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1');

@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { guard } from '../../../../../../util/assert';
 import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArgument } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
@@ -141,7 +140,12 @@ export function processAssignment<OtherInfo>(
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
-	const { target, source } = extractSourceAndTarget(effectiveArgs, name);
+	const { target, source } = extractSourceAndTarget(effectiveArgs);
+
+	if(target === undefined || source === undefined) {
+		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+	}
 	const { type, named } = target;
 
 	if(!config.targetVariable && type === RType.Symbol) {
@@ -199,12 +203,9 @@ export function processAssignment<OtherInfo>(
 	return info;
 }
 
-function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
+function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
 	const source = unpackArgument(args[1], false);
 	const target = unpackArgument(args[0], false);
-
-	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`);
-	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`);
 
 	return { source, target };
 }

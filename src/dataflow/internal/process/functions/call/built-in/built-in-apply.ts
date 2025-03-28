@@ -12,11 +12,13 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import { ReferenceType } from '../../../../../environments/identifier';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
+import type { IdentifierReference } from '../../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { resolveByName, resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
+import { expensiveTrace } from '../../../../../../util/log';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -118,8 +120,8 @@ export function processApply<OtherInfo>(
 	});
 
 	if(anonymous) {
-		const rootId = functionId;
-		functionId = 'anon-' + rootId;
+		const rootFnId = functionId;
+		functionId = 'anon-' + rootFnId;
 		information.graph.addVertex({
 			tag:         VertexType.FunctionCall,
 			id:          functionId,
@@ -130,12 +132,41 @@ export function processApply<OtherInfo>(
 			cds:         data.controlDependencies,
 			args:        allOtherArguments // same reference
 		});
-		information.graph.addEdge(functionId, rootId, EdgeType.Calls | EdgeType.Reads);
+		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
+		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {
 			...information,
-			in:         [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }],
-			entryPoint: functionId
+			in: [
+				...information.in,
+				{ type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }
+			]
 		};
+		const dfVert = information.graph.getVertex(rootId);
+		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
+			// resolve all ingoings against the environment
+			const ingoingRefs = dfVert.subflow.in;
+			const remainingIn: IdentifierReference[] = [];
+			for(const ingoing of ingoingRefs) {
+				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
+				if(resolved === undefined) {
+					remainingIn.push(ingoing);
+					continue;
+				}
+				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
+				let allBuiltIn = true;
+				for(const ref of resolved) {
+					information.graph.addEdge(ingoing, ref, EdgeType.Reads);
+					information.graph.addEdge(rootId, ref, EdgeType.Reads); // because the def. is the anonymous call
+					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+						allBuiltIn = false;
+					}
+				}
+				if(allBuiltIn) {
+					remainingIn.push(ingoing);
+				}
+			}
+			dfVert.subflow.in = remainingIn;
+		}
 	} else {
 		/* identify it as a full-blown function call :) */
 		information.graph.updateToFunctionCall({

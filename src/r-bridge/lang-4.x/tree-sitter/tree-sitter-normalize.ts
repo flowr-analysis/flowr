@@ -517,18 +517,35 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:   node.text,
 				...defaultInfo
 			};
+		case TreeSitterType.Error:
+			return {
+				type:     RType.ExpressionList,
+				location: undefined,
+				lexeme:   undefined,
+				children: [],
+				grouping: undefined,
+				info:     defaultInfo
+			};
 		default:
 			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
 	}
 }
 
 function makeSourceRange(node: SyntaxNode): SourceRange {
-	return [
-		// tree-sitter is 0-based but we want 1-based
-		node.startPosition.row + 1, node.startPosition.column + 1,
-		// tree-sitter's end position is one off from ours, so we don't add 1 here
-		node.endPosition.row + 1, node.endPosition.column
-	];
+	if(node.startPosition && node.endPosition) {
+		return [
+			// tree-sitter is 0-based but we want 1-based
+			node.startPosition.row + 1, node.startPosition.column + 1,
+			// tree-sitter's end position is one off from ours, so we don't add 1 here
+			node.endPosition.row + 1, node.endPosition.column
+		];
+	} else {
+		return [
+			(node.startPosition?.row ?? -2) + 1, (node.startPosition?.column ?? -2) + 1,
+			// tree-sitter's end position is one off from ours, so we don't add 1 here
+			(node.endPosition?.row ?? -2) + 1, node.endPosition?.column ?? -1
+		];
+	}
 }
 
 function splitComments(nodes: SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {

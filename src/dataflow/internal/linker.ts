@@ -83,7 +83,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]));
+	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p !== undefined && p.name !== undefined && p.name.content !== undefined).map(p => [p.name.content, p]));
 
 	const specialDotParameter = params.find(p => p.special);
 
@@ -95,19 +95,19 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	for(const [name, arg] of nameArgMap) {
 		const pmatchName = findByPrefixIfUnique(name, [...nameParamMap.keys()]) ?? name;
 		const param = nameParamMap.get(pmatchName);
-		if(param !== undefined) {
+		if(param !== undefined && param.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
 			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 			matchedParameters.add(name);
-		} else if(specialDotParameter !== undefined) {
+		} else if(specialDotParameter !== undefined && specialDotParameter.name) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
 			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
 			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
 		}
 	}
 
-	const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content));
+	const remainingParameter = params.filter(p => !p || !p.name || !matchedParameters.has(p.name.content));
 	const remainingArguments = args.filter(a => !isNamedArgument(a));
 
 	for(let i = 0; i < remainingArguments.length; i++) {
@@ -127,9 +127,11 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 			continue;
 		}
 		const param = remainingParameter[i];
-		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`);
-		graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
-		graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name?.content ?? '??'}"`);
+		if(param.name) {
+			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
+			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+		}
 	}
 }
 

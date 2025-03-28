@@ -302,7 +302,7 @@ function getArgumentValue(
 			if(valueNode) {
 				// TDODO: extend vector support etc.
 				// this should be evaluated in the callee-context
-				const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue);
+				const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 				map.set(ref, new Set(values));
 			}
 		}
@@ -318,7 +318,7 @@ function getArgumentValue(
 			valueNode = valueNode.value;
 		}
 		if(valueNode) {
-			const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue);
+			const values = resolveBasedOnConfig(data, vertex, valueNode, vertex.environment, graph.idMap, resolveValue) ?? [Unknown];
 			return new Map([[arg, new Set(values)]]);
 		}
 	}

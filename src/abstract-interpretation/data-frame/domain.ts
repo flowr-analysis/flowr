@@ -85,3 +85,29 @@ export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDo
 		return [Math.max(X1[0], X2[0]), Math.min(X1[1], X2[1])];
 	}
 }
+
+export function joinDataFrames(...values: DataFrameDomain[]) {
+	let value = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		value = {
+			colnames: joinColNames(value.colnames, values[i].colnames),
+			cols:     joinInterval(value.cols, values[i].cols),
+			rows:     joinInterval(value.rows, values[i].rows)
+		};
+	}
+	return value;
+}
+
+export function meetDataFrames(...values: DataFrameDomain[]) {
+	let value = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		value = {
+			colnames: meetColNames(value.colnames, values[i].colnames),
+			cols:     meetInterval(value.cols, values[i].cols),
+			rows:     meetInterval(value.rows, values[i].rows)
+		};
+	}
+	return value;
+}

@@ -1,7 +1,6 @@
 import { assert, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
-import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import { leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
@@ -12,8 +11,10 @@ import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { resolveDataFrameValue } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -157,8 +158,7 @@ async function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const info = node.info as AbstractInterpretationInfo;
-	const value = info.dataFrame?.type === 'symbol' ? info.dataFrame.value : DataFrameTop;
+	const value = resolveDataFrameValue(node, result.dataflow.environment);
 
 	return [value, node];
 }

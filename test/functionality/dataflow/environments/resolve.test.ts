@@ -5,9 +5,13 @@ import { resolveByName, resolveToConstants, resolvesToBuiltInConstant } from '..
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
+import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
+import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
+import { Top } from '../../../../src/dataflow/eval/values/r-value';
 
 describe('Resolve', () => {
 	describe('ByName', () => {
+
 		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1');
 			const env = defaultEnv().defineInEnv(xVar);
@@ -94,34 +98,29 @@ describe('Resolve', () => {
 				['NA',    null],
 			])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 				const defs = resolveToConstants(identifier, defaultEnv());
-				const all = defs?.every(d => d === wantedValue) ?? false;
-				assert.isTrue(all, 'should be true');
+				assert.deepEqual(defs, setFrom(valueFromTsValue(wantedValue)));
 			});
 	
 			// Maybe Resolve
 			test.each([
-				//Identifier  Wanted Value    Environment
-				['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
-				['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
+				//Identifier  Wanted Value                       Environment
+				['TRUE',  setFrom(Top, valueFromTsValue(true)),  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })],
+				['FALSE', setFrom(Top, valueFromTsValue(false)), defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }] })]
 			])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
-				const some = defs?.some(d => d === wantedValue) ?? false;
-				const all = defs?.every(d => d === wantedValue) ?? false;
-				assert.isTrue(some, 'some should be True');
-				assert.isFalse(all, 'all should be False');
+				assert.deepEqual(defs, wantedValue);
 			});
 	
 			// Never Resolve
 			test.each([
-				//Identifier  Wanted Value  Environment
-				[undefined,   undefined, defaultEnv()],
-				['foo',       undefined, defaultEnv()],
-				['42',        true,      defaultEnv()],
-				['FALSE',     false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
+				//Identifier  Wanted Value      Environment
+				[undefined,   Top,              defaultEnv()],
+				['foo',       Top,              defaultEnv()],
+				['42',        Top,              defaultEnv()],
+				['FALSE',     setFrom(Top),     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, controlDependencies: [{ id: 42, when: true }, { id: 42, when: false }] })]
 			])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
 				const defs = resolveToConstants(identifier, environment);
-				const result = defs?.every(p => p === wantedValue) ?? false;
-				assert.isFalse(result, 'result should be False');
+				assert.deepEqual(defs, wantedValue);
 			});
 		});
 	});

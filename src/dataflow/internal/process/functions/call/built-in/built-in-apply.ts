@@ -16,6 +16,8 @@ import type { IdentifierReference } from '../../../../../environments/identifier
 import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName, resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
@@ -85,9 +87,9 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = resolveValueOfVariable(val.content, data.environment);
-			if(resolved?.length === 1 && typeof resolved[0] === 'string') {
-				functionName = resolved[0];
+			const resolved = valueSetGuard(resolveValueOfVariable(val.content, data.environment));
+			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
+				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
 			}
 		} else {
 			functionName = val.content;

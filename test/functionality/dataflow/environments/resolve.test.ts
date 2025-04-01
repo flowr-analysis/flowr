@@ -35,8 +35,9 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	describe('Negative Tests', () => {
-		
+	// Should fail for now, but we want to support these cases in the future
+	describe('Negative Tests', () => { 
+		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', Top);
 	});
 
 	describe('ByName', () => {

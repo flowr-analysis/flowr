@@ -42,7 +42,6 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	// Should fail for now, but we want to support some of these cases in the future
 	describe('Negative Tests', () => { 
 		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', Top);
 		
@@ -59,7 +58,7 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', Top);
 		
 		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Top);
-
+		
 		// Does not Fail, but should!!
 		//testResolve('Eval before Variable', 'x', 'x <- 1 \n eval(u) \n x', Top);
 	});
@@ -67,9 +66,9 @@ describe.sequential('Resolve', withShell(shell => {
 	describe('Resolve Value', () => {
 		testResolve('Constant Value', 'x', 'x <- 5', [5]);
 		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', [5]);
-
+		testResolve('rm() with alias', 'x', 'y <- 2 \n x <- y \n rm(y) \n x', [2]);
 		testResolve('Eval after Variable', 'x', 'x <- 1 \n x \n eval(u)', [1]);
-		//testResolve('Eval before Variable (slice)', '1@x', 'x <- 1 \n eval(u) \n x', [1]);
+		//testResolve('Eval before Variable (slice before)', '1@x', 'x <- 1 \n eval(u) \n x', [1]);
 
 		// Does not work yet :(
 		// testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', setFrom(valueFromTsValue(3)));

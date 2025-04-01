@@ -40,6 +40,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix));
 }

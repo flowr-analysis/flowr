@@ -28,7 +28,7 @@ export async function getCfg(parser: KnownParser, code: string): Promise<{
 	};
 }
 
-export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart TD\n') {
+export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart BT\n') {
 	return `
 ${codeBlock('mermaid', cfgToMermaid(cfg, ast, prefix))}
 	`;

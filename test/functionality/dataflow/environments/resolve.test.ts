@@ -1,17 +1,45 @@
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
-import { label } from '../../_helper/label';
-import { resolveByName, resolveToConstants, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
+import { decorateLabelContext, label } from '../../_helper/label';
+import type { ResolveResult } from '../../../../src/dataflow/environments/resolve-by-name';
+import { resolveByName, resolveToConstants, resolveValueOfVariable, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
+import { withShell } from '../../_helper/shell';
+import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
+import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { requestFromInput } from '../../../../src/r-bridge/retriever';
 
-describe('Resolve', () => {
+describe.sequential('Resolve', withShell(shell => {
+	function testResolve(
+		name: string,
+		identifier: string,
+		code: string,
+		expected: ResolveResult
+	): void {
+		const effectiveName = decorateLabelContext(label(name), ['resolve']);
+		
+		test(effectiveName, async() => {
+			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+				parser:  shell,
+				request: requestFromInput(code.trim()),
+			}).allRemainingSteps();
+
+			const resolved = resolveValueOfVariable(identifier, dataflow.dataflow.environment, dataflow.normalize.idMap);
+		
+			assert.deepEqual(resolved, expected);
+		});
+	}
+
+	describe('Negative Tests', () => {
+		
+	});
+
 	describe('ByName', () => {
-
 		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1');
 			const env = defaultEnv().defineInEnv(xVar);
@@ -124,4 +152,4 @@ describe('Resolve', () => {
 			});
 		});
 	});
-});
+}));

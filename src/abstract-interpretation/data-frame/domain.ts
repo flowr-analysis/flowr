@@ -103,6 +103,32 @@ export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain) {
 	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
 }
 
+export function joinDataFrames(...values: DataFrameDomain[]) {
+	let value = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		value = {
+			colnames: joinColNames(value.colnames, values[i].colnames),
+			cols:     joinInterval(value.cols, values[i].cols),
+			rows:     joinInterval(value.rows, values[i].rows)
+		};
+	}
+	return value;
+}
+
+export function meetDataFrames(...values: DataFrameDomain[]) {
+	let value = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		value = {
+			colnames: meetColNames(value.colnames, values[i].colnames),
+			cols:     meetInterval(value.cols, values[i].cols),
+			rows:     meetInterval(value.rows, values[i].rows)
+		};
+	}
+	return value;
+}
+
 export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameStateDomain) {
 	if(R1.size !== R2.size) {
 		return false;

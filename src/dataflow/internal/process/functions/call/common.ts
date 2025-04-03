@@ -170,6 +170,7 @@ export function patchFunctionCall<OtherInfo>(
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		origin:      [{ mapperName: 'TODO' }] // TODO
 	});
 	for(const arg of argumentProcessResult) {
 		if(arg) {

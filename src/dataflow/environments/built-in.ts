@@ -129,7 +129,8 @@ function defaultBuiltInProcessor<OtherInfo>(
 					args:        [],
 					environment: data.environment,
 					onlyBuiltin: false,
-					cds:         data.controlDependencies
+					cds:         data.controlDependencies,
+					origin:      [{ mapperName: 'builtin:default' satisfies BuiltInMappingName }]
 				});
 			}
 		}

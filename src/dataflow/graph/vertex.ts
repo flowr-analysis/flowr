@@ -229,12 +229,22 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * have the compound name (e.g., `[<-`).
 	 */
 	readonly name: string
-	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R. */
+	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
 	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:   boolean
 	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
 	environment:   REnvironmentInformation | undefined
+	/** More detailed Information on this function call */
+	origin:        FunctionOriginInformation[]
+}
+
+/** Describes the processor responsible for a function call */
+export interface FunctionOriginInformation {
+	/** one of the built-in processor mappers or a custom registered one */
+	mapperName: string,
+	/** configuration used with this processor */
+	config?:    Record<string, unknown>
 }
 
 /**

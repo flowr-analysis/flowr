@@ -16,6 +16,8 @@ export function processDataFrameAccess<OtherInfo>(
 ) {
 	if(config.treatIndicesAsString) {
 		processDataFrameStringBasedAccess(name, args);
+	} else {
+		processDataFrameUnknownAccess(name, args);
 	}
 }
 
@@ -24,16 +26,32 @@ function processDataFrameStringBasedAccess<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
 ) {
 	const leftArg = args[0] !== EmptyArgument ? args[0] : undefined;
-	const rightArg = args[1] !== EmptyArgument ? args[1]: undefined;
+	const rightArg = args[1] !== EmptyArgument ? args[1] : undefined;
 
-	if(args.length === 2 && leftArg !== undefined && rightArg !== undefined) {
+	if(args.length === 2 && leftArg?.value !== undefined && rightArg !== undefined) {
 		name.info.dataFrame = {
 			type:       'expression',
 			operations: [{
 				operation: 'accessCol',
-				operand:   leftArg.info.id,
+				operand:   leftArg.value.info.id,
 				arguments: [rightArg.info.id]
 			}]
 		};
+	} else {
+		processDataFrameUnknownAccess(name, args);
 	}
+}
+
+function processDataFrameUnknownAccess<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+) {
+	name.info.dataFrame = {
+		type:       'expression',
+		operations: [{
+			operation: 'unknown',
+			operand:   args[0] !== EmptyArgument ? args[0]?.value?.info.id : undefined,
+			arguments: args.slice(1).map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
+		}]
+	};
 }

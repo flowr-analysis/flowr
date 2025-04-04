@@ -1,20 +1,20 @@
 import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from '../../dataflow/environments/built-in';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { wrapArgumentsUnnamed } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { guard } from '../../util/assert';
+import { startAndEndsWith } from '../../util/strings';
 import type { DataFrameInfo } from './absint-info';
+import { resolveIdToArgName, resolveIdToArgVectorLength } from './resolve-args';
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const DataFrameProcessorMapper = {
-	'builtin:default':    mapDataFrameFunctionCall,
-	'builtin:assignment': mapDataFrameAssignment
+const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
+
+export const DataFrameProcessorMapper = {
+	'builtin:default': mapDataFrameFunctionCall,
+	// 'builtin:assignment': mapDataFrameAssignment
 } as const satisfies Partial<DataFrameProcessorMapping>;
 
 const DataFrameFunctionMapper = {
@@ -41,146 +41,55 @@ type DataFrameProcessor<Config> = <OtherInfo>(
 ) => DataFrameInfo | undefined;
 
 type DataFrameFunctionMapping = <OtherInfo>(
-    args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+    args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	dfg: DataflowGraph,
 ) => DataFrameInfo;
 
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
 
 function mapDataFrameFunctionCall<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
+	node: RNode<OtherInfo & ParentInformation>,
+	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && node.functionName.content in DataFrameFunctionMapper) {
 		const functionName = node.functionName.content as DataFrameFunction;
 		const functionProcessor = DataFrameFunctionMapper[functionName];
 
-		return functionProcessor(getEffectiveArgs(functionName, node.arguments));
+		return functionProcessor(node.arguments, dfg);
 	}
-}
-
-function mapDataFrameAssignment<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
-	dfg: DataflowGraph,
-): DataFrameInfo | undefined {
-	guard(dfg.idMap !== undefined, 'AST id map must not be undefined');
-	const args = getArguments(node, dfg.idMap) ?? [];
-
-	const identifier = args[0] !== EmptyArgument ? args[0] : undefined;
-	const expression = args[1] !== EmptyArgument ? args[1] : undefined;
-
-	if(args.length === 2 && identifier?.value !== undefined && expression?.value !== undefined) {
-		if(identifier.value.type === RType.Symbol) {
-			return {
-				type:       'assignment',
-				identifier: identifier.value.info.id,
-				expression: expression.value.info.id
-			};
-		} else if(identifier.value.type === RType.Access) {
-			return mapDataFrameColRowAssignment(identifier.value, expression);
-		}
-	}
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'unknown',
-			operand:   identifier?.value?.info.id,
-			arguments: args.slice(1).map(arg => arg !== EmptyArgument ? arg.info.id : undefined),
-			modify:    true
-		}]
-	};
-}
-
-function mapDataFrameColRowAssignment<OtherInfo>(
-	access: RAccess<OtherInfo & ParentInformation>,
-	expression: RArgument<OtherInfo & ParentInformation>
-): DataFrameInfo {
-	const operand = access.accessed;
-	const args = getEffectiveArgs(access.operator, access.access);
-
-	if(args.length > 0 && args.every(arg => arg === EmptyArgument)) {
-		return {
-			type:       'expression',
-			operations: [{
-				operation: 'identity',
-				operand:   operand.info.id,
-				arguments: []
-			}]
-		};
-	} else if(args.length > 0 && args.length <= 2) {
-		const rowArg = args.length < 2 ? undefined : args[0];
-		const colArg = args.length < 2 ? args[0] : args[1];
-		const result: DataFrameInfo = { type: 'expression', operations: [] };
-
-		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			result.operations.push({
-				operation: 'assignRow',
-				operand:   operand.info.id,
-				arguments: [rowArg.info.id]
-			});
-		}
-		if(colArg !== undefined && colArg !== EmptyArgument) {
-			result.operations.push({
-				operation: 'assignCol',
-				operand:   operand.info.id,
-				arguments: [colArg.info.id]
-			});
-		}
-		return result;
-	}
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'unknown',
-			operand:   operand.info.id,
-			arguments: [...args.map(arg => arg !== EmptyArgument ? arg.info.id : undefined), expression.info.id],
-			modify:    true
-		}]
-	};
 }
 
 function mapDataFrameCreate<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	dfg: DataflowGraph
 ): DataFrameInfo {
+	const info = { graph: dfg, idMap: dfg.idMap };
+	const effectiveArgs = getEffectiveArgs('data.frame', args);
+
+	const argNames = effectiveArgs.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
+	const argLengths = effectiveArgs.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
+	const colnames = argNames.map(unescapeArgument).map(arg => isValidColName(arg) ? arg : undefined);
+	const rows = argLengths.every(arg => arg !== undefined) ? Math.max(...argLengths, 0) : undefined;
+
 	return {
 		type:       'expression',
 		operations: [{
 			operation: 'create',
 			operand:   undefined,
-			arguments: args.map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
+			args:      { colnames, rows }
 		}]
 	};
 }
 
-function mapDataFrameUnknownCreate<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
-): DataFrameInfo {
+function mapDataFrameUnknownCreate(): DataFrameInfo {
 	return {
 		type:       'expression',
 		operations: [{
 			operation: 'unknown',
 			operand:   undefined,
-			arguments: args.map(arg => arg !== EmptyArgument ? arg.info.id : undefined)
+			args:      undefined
 		}]
 	};
-}
-
-function getArguments(
-	node: RNode<ParentInformation>,
-	idMap: AstIdMap<ParentInformation>
-): RFunctionArgument<ParentInformation>[] | undefined {
-	switch(node.type) {
-		case RType.Access:
-			return wrapArgumentsUnnamed([node.accessed, ...node.access], idMap);
-		case RType.BinaryOp:
-			return wrapArgumentsUnnamed([node.lhs, node.rhs], idMap);
-		case RType.Pipe:
-			return wrapArgumentsUnnamed([node.lhs, node.rhs], idMap);
-		case RType.UnaryOp:
-			return wrapArgumentsUnnamed([node.operand], idMap);
-		case RType.FunctionCall:
-			return wrapArgumentsUnnamed(node.arguments, idMap);
-		default:
-			return undefined;
-	}
 }
 
 function getEffectiveArgs<OtherInfo>(
@@ -190,4 +99,20 @@ function getEffectiveArgs<OtherInfo>(
 	const ignoredArgs = DataFrameIgnoredArgumentsMapper[funct] ?? [];
 
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(arg.name.content));
+}
+
+function isValidColName(colname: string | undefined): boolean {
+	return colname !== undefined && ColNamesRegex.test(colname);
+}
+
+function unescapeArgument(argument: undefined): undefined;
+function unescapeArgument(argument: string): string;
+function unescapeArgument(argument: string | undefined): string | undefined;
+function unescapeArgument(argument: string | undefined): string | undefined {
+	if(argument === undefined) {
+		return undefined;
+	} else if(startAndEndsWith(argument, '`') || startAndEndsWith(argument, '"') || startAndEndsWith(argument, '\'')) {
+		return argument.slice(1, -1);
+	}
+	return argument;
 }

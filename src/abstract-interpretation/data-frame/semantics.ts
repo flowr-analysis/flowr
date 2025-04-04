@@ -1,9 +1,5 @@
-import type { ResolveInfo } from '../../dataflow/environments/resolve-by-name';
-import { guard } from '../../util/assert';
-import type { DataFrameOperation } from './absint-info';
 import type { DataFrameDomain } from './domain';
-import { ColNamesTop, IntervalTop, joinColNames, DataFrameTop, IntervalBottom, joinInterval } from './domain';
-import { resolveIdToArgName, resolveIdToArgVectorLength, resolveIdToArgValueSymbolName, resolveIdToArgStringVector, resolveIdToArgValue } from './resolve-args';
+import { ColNamesTop, IntervalTop, joinColNames, DataFrameTop, joinInterval } from './domain';
 
 export const DataFrameSemanticsMapper = {
 	'create':      applyCreateSemantics,
@@ -14,79 +10,69 @@ export const DataFrameSemanticsMapper = {
 	'assignRow':   applyAssignRowSemantics,
 	'identity':    applyIdentitySemantics,
 	'unknown':     applyUnknownSemantics
-} as const satisfies Record<string, DataFrameSemanticsApplier>;
+} as const satisfies Record<string, DataFrameSemanticsApplier<never>>;
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
-type DataFrameSemanticsApplier = (value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo) => DataFrameDomain;
+export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]>[1];
 
-function applyCreateSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	const argNames = event.arguments.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
-	const argLengths = event.arguments.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
-	const colnames = argNames.every(arg => arg !== undefined) ? argNames : ColNamesTop;
-	const rowCount = argLengths.every(arg => arg !== undefined) ? Math.max(...argLengths, 0) : undefined;
+type DataFrameSemanticsApplier<Arguments extends object> = (
+	value: DataFrameDomain,
+	args: Arguments
+) => DataFrameDomain;
 
+function applyCreateSemantics(
+	value: DataFrameDomain,
+	{ colnames, rows }: { colnames: (string | undefined)[], rows: number | undefined }
+): DataFrameDomain {
 	return {
-		colnames: colnames,
-		cols:     [event.arguments.length, event.arguments.length],
-		rows:     rowCount !== undefined ? [rowCount, rowCount] : IntervalTop
+		colnames: colnames.every(name => name !== undefined) ? colnames : ColNamesTop,
+		cols:     [colnames.length, colnames.length],
+		rows:     rows !== undefined ? [rows, rows] : IntervalTop
 	};
 }
 
-function applySetColNamesSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	guard(event.arguments.length === 1, 'Column names assignment only accepts a single argument');
-
-	const argNames = event.arguments[0] ? resolveIdToArgStringVector(event.arguments[0], info) : undefined;
-	const colnames = argNames !== undefined ? argNames : ColNamesTop;
-	const colCount = argNames !== undefined ? argNames.length : undefined;
-
+function applySetColNamesSemantics(
+	value: DataFrameDomain,
+	{ colnames }: { colnames: (string | undefined)[] | undefined }
+): DataFrameDomain {
 	return {
 		...value,
-		colnames: colnames,
-		cols:     colCount !== undefined ? [colCount, colCount] : IntervalTop
+		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
+		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop
 	};
 }
 
-function applyAccessColSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	guard(event.arguments.length === 1, 'Column access only accepts a single argument');
-
-	const argName = event.arguments[0] ? resolveIdToArgValueSymbolName(event.arguments[0], info) : undefined;
-
-	if(argName) {
+function applyAccessColSemantics(
+	value: DataFrameDomain,
+	{ column }: { column: string | number | undefined }
+): DataFrameDomain {
+	if(typeof column === 'string') {
 		return {
 			...value,
-			colnames: joinColNames(value.colnames, [argName])
+			colnames: joinColNames(value.colnames, [column])
 		};
-	}
-	const argValue = event.arguments[0] ? resolveIdToArgValue(event.arguments[0], info) : undefined;
-
-	if(typeof argValue === 'number') {
+	} else if(typeof column === 'number') {
 		return {
 			...value,
-			cols: joinInterval(value.cols, [argValue, argValue])
+			cols: joinInterval(value.cols, [column, column])
 		};
 	}
 	return value;
 }
 
-function applyAssignColSemantics(value: DataFrameDomain, event: DataFrameOperation, info: ResolveInfo): DataFrameDomain {
-	guard(event.arguments.length === 1, 'Column assignment only accepts a single argument');
-
-	const argName = event.arguments[0] ? resolveIdToArgValueSymbolName(event.arguments[0], info) : undefined;
-
-	if(argName) {
+function applyAssignColSemantics(
+	value: DataFrameDomain,
+	{ column }: { column: string | number | undefined }
+): DataFrameDomain {
+	if(typeof column === 'string') {
 		return {
 			...value,
-			colnames: joinColNames(value.colnames, [argName]),
-			cols:     value.cols !== IntervalBottom ? [value.cols[0], value.cols[1] + 1] : IntervalBottom
+			colnames: joinColNames(value.colnames, [column])
 		};
-	}
-	const argValue = event.arguments[0] ? resolveIdToArgValue(event.arguments[0], info) : undefined;
-
-	if(typeof argValue === 'number') {
+	} else if(typeof column === 'number') {
 		return {
 			...value,
-			colnames: ColNamesTop,
-			cols:     joinInterval(value.cols, [argValue, argValue])
+			cols: joinInterval(value.cols, [column, column])
 		};
 	}
 	return {
@@ -96,12 +82,33 @@ function applyAssignColSemantics(value: DataFrameDomain, event: DataFrameOperati
 	};
 }
 
-function applyAccessRowSemantics(value: DataFrameDomain): DataFrameDomain {
+function applyAccessRowSemantics(
+	value: DataFrameDomain,
+	{ row }: { row: number | undefined }
+): DataFrameDomain {
+	if(typeof row === 'number') {
+		return {
+			...value,
+			rows: joinInterval(value.rows, [row, row])
+		};
+	}
 	return value;
 }
 
-function applyAssignRowSemantics(value: DataFrameDomain): DataFrameDomain {
-	return value;
+function applyAssignRowSemantics(
+	value: DataFrameDomain,
+	{ row }: { row: number | undefined }
+): DataFrameDomain {
+	if(typeof row === 'number') {
+		return {
+			...value,
+			rows: joinInterval(value.rows, [row, row])
+		};
+	}
+	return {
+		...value,
+		rows: IntervalTop
+	};
 }
 
 function applyIdentitySemantics(value: DataFrameDomain): DataFrameDomain {

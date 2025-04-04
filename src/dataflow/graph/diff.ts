@@ -243,6 +243,13 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			}
 		}
 		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
+		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
+			// compare arrys
+			const diffArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
+			if(!diffArrays) {
+				ctx.report.addComment(`Vertex ${id} differs in origin. ${ctx.leftname}: ${JSON.stringify(lInfo.origin, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.origin, jsonReplacer)}`, { tag: 'vertex', id });
+			}
+		}
 
 		if(
 			(lInfo.environment === undefined && rInfo.environment !== undefined && !ctx.config.leftIsSubgraph)

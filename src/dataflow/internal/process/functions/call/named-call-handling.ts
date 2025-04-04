@@ -38,7 +38,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 ) {
 	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
 	/* if we do not know where we land, we force! */
-	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all' });
+	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all', origin: 'default' });
 	return mergeInformation(information, call.information);
 }
 

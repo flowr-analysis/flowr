@@ -38,7 +38,7 @@ export function processFunctionDefinition<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we remove the last argument, as it is the body */

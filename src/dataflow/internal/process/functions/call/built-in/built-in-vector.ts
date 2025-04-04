@@ -25,7 +25,7 @@ export function processVector<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:vector' });
 
 	if(!getConfig().solver.pointerTracking) {
 		return fnCall.information;

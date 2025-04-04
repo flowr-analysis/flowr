@@ -136,7 +136,7 @@ export function processAssignment<OtherInfo>(
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
@@ -144,12 +144,12 @@ export function processAssignment<OtherInfo>(
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const { type, named } = target;
 
 	if(!config.targetVariable && type === RType.Symbol) {
-		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs });
+		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs, origin: 'builtin:assignment' });
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
 			nameOfAssignmentFunction: name.content,
@@ -178,7 +178,8 @@ export function processAssignment<OtherInfo>(
 				rootId,
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
-				forceArgs:    config.forceArgs
+				forceArgs:    config.forceArgs,
+				origin:       'builtin:assignment'
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -198,7 +199,10 @@ export function processAssignment<OtherInfo>(
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
 
-	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	const info = processKnownFunctionCall({
+		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
+		origin:    'builtin:assignment'
+	}).information;
 	info.graph.markIdForUnknownSideEffects(rootId);
 	return info;
 }
@@ -252,7 +256,8 @@ function processAssignmentToString<OtherInfo>(
 		rootId,
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
-		forceArgs:    config.forceArgs
+		forceArgs:    config.forceArgs,
+		origin:       'builtin:assignment'
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

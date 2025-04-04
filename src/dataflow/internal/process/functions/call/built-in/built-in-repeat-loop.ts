@@ -24,7 +24,7 @@ export function processRepeatLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument) {
 		dataflowLogger.warn(`Repeat-Loop ${name.content} does not have 1 argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const unpacked = unpackArgument(args[0]);
@@ -39,7 +39,8 @@ export function processRepeatLoop<OtherInfo>(
 			}
 			return d;
 		},
-		markAsNSE: [0]
+		markAsNSE: [0],
+		origin:    'builtin:repeat-loop'
 	});
 
 	const body = processedArguments[0];

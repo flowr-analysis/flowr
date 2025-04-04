@@ -18,6 +18,9 @@ import type {
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
 	IndexIdentifier } from '../../../../../graph/vertex';
+import {
+	VertexType
+} from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -27,6 +30,7 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
+import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 
 
@@ -40,7 +44,7 @@ export function processReplacementFunction<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
@@ -65,6 +69,11 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	);
 
+	const createdVert = res.graph.getVertex(rootId);
+	if(createdVert?.tag === VertexType.FunctionCall) {
+		createdVert.origin = ['builtin:replacement'];
+	}
+
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
@@ -83,7 +92,8 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId })
+			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
+		origin: 'builtin:replacement' satisfies BuiltInMappingName
 	});
 
 	const firstArg = unpackArgument(args[0])?.info.id;

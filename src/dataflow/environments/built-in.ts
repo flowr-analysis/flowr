@@ -83,7 +83,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:default' });
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
@@ -130,7 +130,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 					environment: data.environment,
 					onlyBuiltin: false,
 					cds:         data.controlDependencies,
-					origin:      [{ mapperName: 'builtin:default' satisfies BuiltInMappingName }]
+					origin:      ['builtin:default']
 				});
 			}
 		}

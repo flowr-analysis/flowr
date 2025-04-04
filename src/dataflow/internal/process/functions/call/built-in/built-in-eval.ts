@@ -37,11 +37,11 @@ export function processEvalCall<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
 		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true] }).information
+		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: 'builtin:eval' }).information
 		: initializeCleanDataflowInformation(rootId, data);
 	const evalArgument = args[0];
 
@@ -111,7 +111,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
 			const resolve = resolveValueOfVariable(arg.value.content, env, idMap);
-			if(resolve && resolve.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
+			if(resolve?.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
 				return resolve.map(r => r.str as string);
 			}
 		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
@@ -135,7 +135,7 @@ function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmen
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
 		const resolved = resolveValueOfVariable(val.content, env, idMap);
-		if(resolved && resolved.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
+		if(resolved?.every(r => typeof r === 'object' && r !== null && 'str' in r)) {
 			return resolved.map(r => r.str as string);
 		}
 	}

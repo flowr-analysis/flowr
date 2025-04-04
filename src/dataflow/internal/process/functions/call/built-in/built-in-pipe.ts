@@ -20,7 +20,7 @@ export function processPipe<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data });
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:pipe' });
 	if(args.length !== 2) {
 		dataflowLogger.warn(`Pipe ${name.content} has something else than 2 arguments, skipping`);
 		return information;

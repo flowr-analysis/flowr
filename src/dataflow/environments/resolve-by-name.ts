@@ -18,6 +18,7 @@ import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNumberValue } from '../../r-bridge/lang-4.x/convert-values';
+import { isRNumberValue } from '../../util/r-value';
 
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
@@ -384,8 +385,4 @@ function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberVa
 	}
 
 	return sequence.map(value => ({ ...start, num: value }));
-}
-
-function isRNumberValue(value: unknown): value is RNumberValue {
-	return typeof value === 'object' && value !== null && 'num' in value && typeof value.num === 'number';
 }

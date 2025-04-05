@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { ColNamesTop, IntervalTop, joinColNames, DataFrameTop, joinInterval } from './domain';
+import { ColNamesTop, DataFrameTop, IntervalTop, joinColNames, joinInterval } from './domain';
 
 export const DataFrameSemanticsMapper = {
 	'create':      applyCreateSemantics,
@@ -44,17 +44,17 @@ function applySetColNamesSemantics(
 
 function applyAccessColSemantics(
 	value: DataFrameDomain,
-	{ column }: { column: string | number | undefined }
+	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
-	if(typeof column === 'string') {
+	if(columns?.every(col => typeof col === 'string')) {
 		return {
 			...value,
-			colnames: joinColNames(value.colnames, [column])
+			colnames: joinColNames(value.colnames, columns)
 		};
-	} else if(typeof column === 'number') {
+	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
 			...value,
-			cols: joinInterval(value.cols, [column, column])
+			cols: columns.reduce((a, b) => joinInterval(a, [b, b]), value.cols)
 		};
 	}
 	return value;
@@ -62,17 +62,17 @@ function applyAccessColSemantics(
 
 function applyAssignColSemantics(
 	value: DataFrameDomain,
-	{ column }: { column: string | number | undefined }
+	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
-	if(typeof column === 'string') {
+	if(columns?.every(col => typeof col === 'string')) {
 		return {
 			...value,
-			colnames: joinColNames(value.colnames, [column])
+			colnames: joinColNames(value.colnames, columns)
 		};
-	} else if(typeof column === 'number') {
+	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
 			...value,
-			cols: joinInterval(value.cols, [column, column])
+			cols: columns.reduce((a, b) => joinInterval(a, [b, b]), value.cols)
 		};
 	}
 	return {
@@ -84,12 +84,12 @@ function applyAssignColSemantics(
 
 function applyAccessRowSemantics(
 	value: DataFrameDomain,
-	{ row }: { row: number | undefined }
+	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
-	if(typeof row === 'number') {
+	if(rows !== undefined) {
 		return {
 			...value,
-			rows: joinInterval(value.rows, [row, row])
+			rows: rows.reduce((a, b) => joinInterval(a, [b, b]), value.rows)
 		};
 	}
 	return value;
@@ -97,12 +97,12 @@ function applyAccessRowSemantics(
 
 function applyAssignRowSemantics(
 	value: DataFrameDomain,
-	{ row }: { row: number | undefined }
+	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
-	if(typeof row === 'number') {
+	if(rows !== undefined) {
 		return {
 			...value,
-			rows: joinInterval(value.rows, [row, row])
+			rows: rows.reduce((a, b) => joinInterval(a, [b, b]), value.rows)
 		};
 	}
 	return {
@@ -111,10 +111,15 @@ function applyAssignRowSemantics(
 	};
 }
 
-function applyIdentitySemantics(value: DataFrameDomain): DataFrameDomain {
+function applyIdentitySemantics(
+	value: DataFrameDomain
+): DataFrameDomain {
 	return value;
 }
 
-function applyUnknownSemantics(): DataFrameDomain {
+function applyUnknownSemantics(
+	_value: DataFrameDomain,
+	_args: { modifyInplace?: boolean }
+): DataFrameDomain {
 	return DataFrameTop;
 }

@@ -29,6 +29,24 @@ export function unwrapRValue(value: RStringValue | RNumberValue | RLogicalValue 
 	}
 }
 
+export function unwrapRVector(value: RStringValue[] | string[]): string[];
+export function unwrapRVector(value: RNumberValue[] | number[]): number[];
+export function unwrapRVector(value: RLogicalValue[]): boolean[];
+export function unwrapRVector(value: unknown): string[] | number[] | boolean[] | undefined;
+export function unwrapRVector(value: RStringValue[] | RNumberValue[] | RLogicalValue[] | string[] | number[] | unknown): string[] | number[] | boolean[] | undefined {
+	if(!Array.isArray(value)) {
+		return undefined;
+	} else if(value.every(entry => typeof entry === 'string') || value.every(entry => typeof entry === 'number') || value.every(entry => typeof entry === 'boolean')) {
+		return value;
+	} else if(value.every(isRStringValue)) {
+		return value.map(entry => entry.str);
+	} else if(value.every(isRNumberValue)) {
+		return value.map(entry => entry.num);
+	} else {
+		return undefined;
+	}
+}
+
 export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogicalValue | string | number): string;
 export function unwrapRValueToString(value: unknown): string | undefined;
 export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogicalValue | string | number | unknown): string | undefined {

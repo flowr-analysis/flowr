@@ -7,7 +7,7 @@ describe.sequential('Infer types for constant expressions', withShell(shell => {
 	let logicalAst: NormalizedAst | undefined;
 	let numberAst: NormalizedAst | undefined;
 	let stringAst: NormalizedAst | undefined;
-    let inferencer = new TypeInferencer();
+	const inferencer = new TypeInferencer();
 
 	beforeAll(async() => {
 		logicalAst = await retrieveNormalizedAst(shell, 'TRUE');
@@ -17,17 +17,17 @@ describe.sequential('Infer types for constant expressions', withShell(shell => {
 	});
 
 	test(`Infer ${RDataType.Logical} for logical constants`, () => {
-		let inferredType = inferencer.fold(logicalAst?.ast);
+		const inferredType = inferencer.fold(logicalAst?.ast);
 		expect(inferredType).toBe(RDataType.Logical);
 	});
 	
-    test(`Infer ${RDataType.Numeric} for numeric constants`, () => {
-		let inferredType = inferencer.fold(numberAst?.ast);
+	test(`Infer ${RDataType.Numeric} for numeric constants`, () => {
+		const inferredType = inferencer.fold(numberAst?.ast);
 		expect(inferredType).toBe(RDataType.Numeric);
 	});
 	
-    test(`Infer ${RDataType.String} for string constants`, () => {
-		let inferredType = inferencer.fold(stringAst?.ast);
+	test(`Infer ${RDataType.String} for string constants`, () => {
+		const inferredType = inferencer.fold(stringAst?.ast);
 		expect(inferredType).toBe(RDataType.String);
 	});
 }));

@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'vitest';
-import { retrieveNormalizedAst, withShell } from '../_helper/shell';
+import { describe } from 'vitest';
 import { RDataType, TypeInferencer } from '../../../src/typing/type-inferencer';
+import { assertInferredType } from '../_helper/typing/assert-inferred-type';
 
-describe.sequential('Infer types for currently supported R expressions', withShell(shell => {
+describe('Infer types for currently supported R expressions', () => {
 	const inferencer = new TypeInferencer();
 	
 	describe.each([
@@ -11,25 +11,11 @@ describe.sequential('Infer types for currently supported R expressions', withShe
 		{ description: 'complex number constant', input: '42i',             expectedType: RDataType.Complex },
 		{ description: 'string constant',         input: '"Hello, world!"', expectedType: RDataType.String },
 		{ description: 'empty expression list',   input: '{}',              expectedType: RDataType.Null },
-	])('Infer $expectedType for $description', ({ input, expectedType }) => {
-		test(`Infer ${expectedType} for ${input}`, async() => {
-			const ast = await retrieveNormalizedAst(shell, input).then(promise => promise.ast);
-			const inferredType = inferencer.fold(ast);
-			expect(inferredType).toBe(expectedType);
-		});
-	});
+	])('Infer $expectedType for $description', ({ input, expectedType }) => assertInferredType(input, expectedType, inferencer));
 
 	describe('Infer no type information for currently unsupported R expressions', () => {
-		test('Infer no type information for binary operations', async() => {
-			const ast = await retrieveNormalizedAst(shell, '1 + 2').then(promise => promise.ast);
-			const inferredType = inferencer.fold(ast);
-			expect(inferredType).toBe(undefined);
-		});
-
-		test('Infer no type information for function calls', async() => {
-			const ast = await retrieveNormalizedAst(shell, 'print("foo")').then(promise => promise.ast);
-			const inferredType = inferencer.fold(ast);
-			expect(inferredType).toBe(undefined);
-		});
+		assertInferredType('1 + 2', undefined, inferencer);
+		assertInferredType('x <- 42', undefined, inferencer);
+		assertInferredType('print("Hello, world!")', undefined, inferencer);
 	});
-}));
+});

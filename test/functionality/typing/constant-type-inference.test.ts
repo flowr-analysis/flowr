@@ -1,33 +1,19 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { retrieveNormalizedAst, withShell } from '../_helper/shell';
-import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RDataType, TypeInferencer } from '../../../src/typing/type-inferencer';
 
-describe.sequential('Infer types for constant expressions', withShell(shell => {
-	let logicalAst: NormalizedAst | undefined;
-	let numberAst: NormalizedAst | undefined;
-	let stringAst: NormalizedAst | undefined;
+describe.sequential('Infer types for R expressions', withShell(shell => {
 	const inferencer = new TypeInferencer();
-
-	beforeAll(async() => {
-		logicalAst = await retrieveNormalizedAst(shell, 'TRUE');
-		numberAst  = await retrieveNormalizedAst(shell, '42');
-		stringAst  = await retrieveNormalizedAst(shell, '"Hello, world!"');
-
-	});
-
-	test(`Infer ${RDataType.Logical} for logical constants`, () => {
-		const inferredType = inferencer.fold(logicalAst?.ast);
-		expect(inferredType).toBe(RDataType.Logical);
-	});
 	
-	test(`Infer ${RDataType.Numeric} for numeric constants`, () => {
-		const inferredType = inferencer.fold(numberAst?.ast);
-		expect(inferredType).toBe(RDataType.Numeric);
-	});
-	
-	test(`Infer ${RDataType.String} for string constants`, () => {
-		const inferredType = inferencer.fold(stringAst?.ast);
-		expect(inferredType).toBe(RDataType.String);
+	describe.each([
+		{ description: 'logical constant', input: 'TRUE',            expectedType: RDataType.Logical },
+		{ description: 'numeric constant', input: '42',              expectedType: RDataType.Numeric },
+		{ description: 'string constant',  input: '"Hello, world!"', expectedType: RDataType.String },
+	])('Infer $expectedType for $description', ({ input, expectedType }) => {
+		test(`Infer ${expectedType} for ${input}`, async() => {
+			const ast = await retrieveNormalizedAst(shell, input).then(promise => promise.ast);
+			const inferredType = inferencer.fold(ast);
+			expect(inferredType).toBe(expectedType);
+		});
 	});
 }));

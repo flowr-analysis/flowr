@@ -6,9 +6,10 @@ describe.sequential('Infer types for currently supported R expressions', withShe
 	const inferencer = new TypeInferencer();
 	
 	describe.each([
-		{ description: 'logical constant', input: 'TRUE',            expectedType: RDataType.Logical },
-		{ description: 'numeric constant', input: '42',              expectedType: RDataType.Numeric },
-		{ description: 'string constant',  input: '"Hello, world!"', expectedType: RDataType.String },
+		{ description: 'logical constant',       input: 'TRUE',            expectedType: RDataType.Logical },
+		{ description: 'numeric constant',       input: '42',              expectedType: RDataType.Numeric },
+		{ description: 'string constant',        input: '"Hello, world!"', expectedType: RDataType.String },
+		{ description: 'empty expression list',  input: '{}',              expectedType: RDataType.Null },
 	])('Infer $expectedType for $description', ({ input, expectedType }) => {
 		test(`Infer ${expectedType} for ${input}`, async() => {
 			const ast = await retrieveNormalizedAst(shell, input).then(promise => promise.ast);

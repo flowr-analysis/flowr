@@ -7,6 +7,7 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 export enum RDataType {
     Logical = 'LogicalType',
     Numeric = 'NumericType',
+	Complex = 'ComplexType',
     String  = 'StringType',
 	Null    = 'NullType',
 }
@@ -28,7 +29,10 @@ export class TypeInferencer<Info> extends DefaultNormalizedAstFold<TypingInfo, I
 		return RDataType.Logical;
 	}
 
-	override foldRNumber(_node: RNumber<Info>): TypingInfo {
+	override foldRNumber(node: RNumber<Info>): TypingInfo {
+		if(node.content.complexNumber) {
+			return RDataType.Complex;
+		}
 		return RDataType.Numeric;
 	}
 

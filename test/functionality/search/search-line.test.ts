@@ -1,9 +1,11 @@
 import { describe } from 'vitest';
 import { withShell } from '../_helper/shell';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
-import { assertSearch } from '../_helper/search';
+import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
+import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
+import { Mapper } from '../../../src/search/search-executor/search-mappers';
 
 describe.sequential('flowR search', withShell(shell => {
 	assertSearch('simple search for first', shell, 'x <- 1\nprint(x)', ['1@x'],
@@ -32,4 +34,20 @@ describe.sequential('flowR search', withShell(shell => {
 		Q.var('x').filter(VertexType.Use).last(),
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
+
+	describe('Enrichments', () => {
+		describe('Call targets', () => {
+			assertSearch('local', shell, 'func <- function(x) { x + 1 }\nfunc(7)', ['1@function'],
+				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
+				Q.all().get(Enrichment.CallTargets).select(0),
+			);
+			assertSearchEnrichment('global', shell, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
+			assertSearchEnrichment('global specific', shell, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
+			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
+			assertSearch('global mapper', shell, 'cat("hello")', [],
+				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets),
+				Q.all().get(Enrichment.CallTargets),
+			);
+		});
+	});
 }));

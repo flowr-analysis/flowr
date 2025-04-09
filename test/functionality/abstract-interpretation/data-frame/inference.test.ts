@@ -93,4 +93,41 @@ describe.sequential('Data Frame Abstract Interpretation', { skip: true }, withSh
 		['1@df'],
 		DataFrameTestOverapproximation
 	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
+		[['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+	);
+
+	testDataFrameDomainAgainstReal(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
+		['3@df']
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
+		[['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+	);
+
+	testDataFrameDomainAgainstReal(
+		shell,
+		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
+		['3@df']
+	);
+
+	assertDataFrameDomain(
+		shell,
+		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
+		[['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomainAgainstReal(
+		shell,
+		'df <- 1:3 |> data.frame(type = c("A", "B", "C"))',
+		['1@df'],
+		{ colnames: DomainMatchingType.Overapproximation }
+	);
 }));

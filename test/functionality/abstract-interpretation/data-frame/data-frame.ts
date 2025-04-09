@@ -1,18 +1,21 @@
-import { assert, test } from 'vitest';
+import { assert, beforeAll, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import { assertUnreachable } from '../../../../src/util/assert';
+import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
-import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
-import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -42,13 +45,20 @@ interface CriterionTestEntry {
 }
 
 export function assertDataFrameDomain(
-	shell: RShell,
+	parser: KnownParser,
 	code: string,
 	expected: [SingleSlicingCriterion, DataFrameDomain][],
 	name: string | TestLabel = code
 ) {
-	test.each(expected)( decorateLabelContext(name, ['absint']), async(criterion, expect) => {
-		const [value] = await getInferredDomainForCriterion(shell, code, criterion);
+	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+
+	beforeAll(async() => {
+		result = await createDataflowPipeline(parser, { request: requestFromInput(code) }).allRemainingSteps();
+	});
+
+	test.each(expected)(decorateLabelContext(name, ['absint']), (criterion, expect) => {
+		guard(isNotUndefined(result), 'Result cannot be undefined');
+		const [value] = getInferredDomainForCriterion(result, criterion);
 
 		assert.deepStrictEqual(value.colnames, expect.colnames, 'column names differ');
 		assert.deepStrictEqual(value.cols, expect.cols, 'column count differs');
@@ -65,11 +75,17 @@ export function testDataFrameDomainAgainstReal(
 	name: string | TestLabel = code
 ): void {
 	const effectiveOptions = { ...DataFrameTestExact, ...options };
+
 	test(decorateLabelContext(name, ['absint']), async()=> {
+		const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+			parser:  shell,
+			request: requestFromInput(code)
+		}).allRemainingSteps();
+
 		const testEntries: CriterionTestEntry[] = [];
 
 		for(const criterion of criteria) {
-			const [value, node] = await getInferredDomainForCriterion(shell, code, criterion);
+			const [value, node] = getInferredDomainForCriterion(result, criterion);
 			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
 
 			if(lineNumber === undefined) {
@@ -139,16 +155,10 @@ function createCodeForOutput(
 	}
 }
 
-async function getInferredDomainForCriterion(
-	shell: RShell,
-	code: string,
+function getInferredDomainForCriterion(
+	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion
-): Promise<[DataFrameDomain, RSymbol<ParentInformation>]> {
-	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
-		parser:  shell,
-		request: requestFromInput(code)
-	}).allRemainingSteps();
-
+): [DataFrameDomain, RSymbol<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
 	const node = idMap.get(nodeId);
@@ -170,7 +180,7 @@ function getRealDomainFromOutput<K extends keyof DataFrameDomain>(
 	const line = output.find(line => line.startsWith(marker))?.replace(marker, '').trim();
 
 	if(line === undefined) {
-		throw new Error(`cannot parse output of instrumented code for ${type}`);
+		throw new Error(`cannot parse ${type} output of instrumented code for ${criterion}`);
 	}
 	switch(type) {
 		case 'colnames': {

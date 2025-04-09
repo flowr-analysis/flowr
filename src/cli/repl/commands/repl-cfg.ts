@@ -71,11 +71,12 @@ export const absintDataFrameCommand: ReplCommand = {
 		const flipped = { ...cfg, graph: flipCfg(cfg.graph) };
 		const mermaid = cfgToMermaid(flipped, result.normalize).replace('flowchart BT', 'flowchart LR');
 		const mermaidUrl = mermaidCodeToUrl(mermaid);
+		const domain = performDataFrameAbsint(cfg, result.dataflow.graph);
+		console.log(domain);
 		try {
 			const clipboard = await import('clipboardy');
 			clipboard.default.writeSync(mermaidUrl);
 			output.stdout(formatInfo(output, 'mermaid url'));
 		} catch{ /* do nothing this is a service thing */ }
-		performDataFrameAbsint(flipped, result.dataflow.graph);
 	}
 };

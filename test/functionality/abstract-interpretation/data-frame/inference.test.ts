@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
-import { withShell } from '../../_helper/shell';
 import { ColNamesTop, DataFrameTop } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { testDataFrameDomainAgainstReal, assertDataFrameDomain, DomainMatchingType, DataFrameTestOverapproximation } from './data-frame';
+import { withShell } from '../../_helper/shell';
+import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
 
-describe.sequential('Data Frame Abstract Interpretation', { skip: true }, withShell(shell => {
+describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	assertDataFrameDomain(
 		shell,
 		'df <- data.frame(id = 1:5, age = c(25, 32, 35, 40, 45), score = c(90, 85, 88, 92, 95), row.names = NULL)',

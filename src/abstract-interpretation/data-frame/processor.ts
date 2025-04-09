@@ -69,11 +69,7 @@ export function processDataFrameNode<Node extends RComplexNode<ParentInformation
 	const processor = DataFrameProcessorMapper[nodeType] as DataFrameEntryExitProcessor<Node>;
 
 	if(processor.type === type) {
-		const result = processor.apply(node, domain, dfg);
-		node.info.dataFrame ??= { type: 'other' };
-		node.info.dataFrame.domain = result;
-
-		return result;
+		return processor.apply(node, domain, dfg);
 	}
 	return domain;
 }
@@ -173,16 +169,19 @@ function processDataFrameIgnored<OtherInfo>(
 	return domain;
 }
 
-function resolveIdToDomain(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): DataFrameDomain | undefined {
-	if(domain.has(id)) {
-		return domain.get(id);
+function resolveIdToDomain(nodeId: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): DataFrameDomain | undefined {
+	if(domain.has(nodeId)) {
+		return domain.get(nodeId);
 	}
-	const origins = dfg.outgoingEdges(id)?.entries()
+	const origins = dfg.outgoingEdges(nodeId)?.entries()
 		.filter(([, edge]) => edge.types === EdgeType.Reads)
 		.map(([id]) => domain.get(id))
 		.toArray();
 
 	if(origins !== undefined && origins.length > 0 && origins.some(origin => origin !== undefined)) {
-		return joinDataFrames(...origins.map(origin => origin ?? DataFrameTop));
+		const result = joinDataFrames(...origins.map(origin => origin ?? DataFrameTop));
+		domain.set(nodeId, result);
+
+		return result;
 	}
 }

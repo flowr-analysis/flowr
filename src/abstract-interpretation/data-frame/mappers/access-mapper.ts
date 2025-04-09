@@ -21,9 +21,9 @@ export function mapDataFrameAccess<OtherInfo>(
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
 		if(isStringBasedAccess(node)) {
-			return mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap });
+			return mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
 		} else {
-			return mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap });
+			return mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
 		}
 	}
 }
@@ -56,7 +56,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			operations: [{
 				operation: 'identity',
 				operand:   access.accessed.info.id,
-				args:      undefined
+				args:      {}
 			}]
 		};
 	} else if(args.length > 0 && args.length <= 2) {

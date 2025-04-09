@@ -1,7 +1,9 @@
 import type { ResolveInfo } from '../../../dataflow/environments/resolve-by-name';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { VertexType } from '../../../dataflow/graph/vertex';
+import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RFunctionArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -34,10 +36,11 @@ export function mapDataFrameFunctionCall<OtherInfo>(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && node.functionName.content in DataFrameFunctionMapper) {
+		const args = getFunctionArguments(node, dfg);
 		const functionName = node.functionName.content as DataFrameFunction;
 		const functionProcessor = DataFrameFunctionMapper[functionName];
 
-		return functionProcessor(node.arguments, { graph: dfg, idMap: dfg.idMap });
+		return functionProcessor(args, { graph: dfg, idMap: dfg.idMap, full: true });
 	}
 }
 
@@ -68,9 +71,25 @@ function mapDataFrameUnknownCreate(): DataFrameInfo {
 		operations: [{
 			operation: 'unknown',
 			operand:   undefined,
-			args:      {}
+			args:      { creation: true }
 		}]
 	};
+}
+
+function getFunctionArguments(
+	node: RFunctionCall<ParentInformation>,
+	dfg: DataflowGraph
+): readonly RFunctionArgument<ParentInformation>[] {
+	const vertex = dfg.getVertex(node.info.id);
+
+	if(vertex?.tag === VertexType.FunctionCall && dfg.idMap !== undefined) {
+		const idMap = dfg.idMap;
+
+		return vertex.args
+			.map(arg => arg === EmptyArgument ? arg : dfg.idMap?.get(arg.nodeId))
+			.map(arg => arg === EmptyArgument || arg?.type === RType.Argument ? arg : toUnnamedArgument(arg, idMap));
+	}
+	return node.arguments;
 }
 
 function getEffectiveArgs<OtherInfo>(

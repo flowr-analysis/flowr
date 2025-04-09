@@ -19,9 +19,9 @@ export function mapDataFrameAssignment<OtherInfo>(
 			return mapDataFrameVariableAssignment(node.lhs, node.rhs);
 		} else if(node.lhs.type === RType.Access) {
 			if(isStringBasedAccess(node.lhs)) {
-				return mapDataFrameNamedColumnAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap });
+				return mapDataFrameNamedColumnAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			} else {
-				return mapDataFrameIndexColRowAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap });
+				return mapDataFrameIndexColRowAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			}
 		}
 	}
@@ -68,7 +68,7 @@ function mapDataFrameIndexColRowAssignment<OtherInfo>(
 			operations: [{
 				operation: 'identity',
 				operand:   access.accessed.info.id,
-				args:      undefined
+				args:      {}
 			}]
 		};
 	} else if(args.length > 0 && args.length <= 2) {

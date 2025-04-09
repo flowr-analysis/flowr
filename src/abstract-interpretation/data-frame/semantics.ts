@@ -1,7 +1,7 @@
 import type { DataFrameDomain } from './domain';
 import { ColNamesTop, DataFrameTop, IntervalTop, joinColNames, joinInterval } from './domain';
 
-export const DataFrameSemanticsMapper = {
+const DataFrameSemanticsMapper = {
 	'create':      applyCreateSemantics,
 	'setColNames': applySetColNamesSemantics,
 	'accessCol':   applyAccessColSemantics,
@@ -19,6 +19,16 @@ type DataFrameSemanticsApplier<Arguments extends object> = (
 	value: DataFrameDomain,
 	args: Arguments
 ) => DataFrameDomain;
+
+export function applySemantics<Name extends DataFrameOperationName>(
+	operation: Name,
+	value: DataFrameDomain,
+	args: DataFrameOperationArgs<Name>
+): DataFrameDomain {
+	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsApplier<DataFrameOperationArgs<Name>>;
+
+	return applier(value, args);
+}
 
 function applyCreateSemantics(
 	value: DataFrameDomain,
@@ -112,14 +122,15 @@ function applyAssignRowSemantics(
 }
 
 function applyIdentitySemantics(
-	value: DataFrameDomain
+	value: DataFrameDomain,
+	_args: Record<string, never>
 ): DataFrameDomain {
 	return value;
 }
 
 function applyUnknownSemantics(
 	_value: DataFrameDomain,
-	_args: { modifyInplace?: boolean }
+	_args: { creation?: boolean, modifyInplace?: boolean }
 ): DataFrameDomain {
 	return DataFrameTop;
 }

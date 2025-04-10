@@ -25,5 +25,6 @@ export const LocationMapQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
-	}).description('The location map query retrieves the location of every id in the ast.')
+	}).description('The location map query retrieves the location of every id in the ast.'),
+	toSearchElements: () => []
 } as const;

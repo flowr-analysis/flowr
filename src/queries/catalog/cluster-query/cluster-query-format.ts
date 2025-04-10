@@ -39,5 +39,9 @@ export const ClusterQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('dataflow-cluster').required().description('The type of the query.'),
-	}).description('The cluster query calculates and returns all clusters in the dataflow graph.')
+	}).description('The cluster query calculates and returns all clusters in the dataflow graph.'),
+	toSearchElements: (queryResults: BaseQueryResult) => {
+		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
+		return out.clusters.flatMap(({ members }) => members);
+	}
 } as const satisfies SupportedQuery<'dataflow-cluster'>;

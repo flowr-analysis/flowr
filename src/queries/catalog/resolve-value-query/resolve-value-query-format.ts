@@ -54,5 +54,6 @@ export const ResolveValueQueryDefinition = {
 	schema: Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),
-	}).description('The resolve value query used to get definitions of an identifier')
+	}).description('The resolve value query used to get definitions of an identifier'),
+	toSearchElements: () => []
 } as const satisfies SupportedQuery<'resolve-value'>;

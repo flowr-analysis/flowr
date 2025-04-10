@@ -66,5 +66,9 @@ export const StaticSliceQueryDefinition = {
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
-	}).description('Slice query used to slice the dataflow graph')
+	}).description('Slice query used to slice the dataflow graph'),
+	toSearchElements: (queryResults: BaseQueryResult) => {
+		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
+		return Object.values(out.results).flatMap(result => [...result.slice.result]);
+	}
 } as const satisfies SupportedQuery<'static-slice'>;

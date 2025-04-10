@@ -27,5 +27,6 @@ export const ProjectQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('project').required().description('The type of the query.'),
-	}).description('The project query provides information on the analyzed project.')
+	}).description('The project query provides information on the analyzed project.'),
+	toSearchElements: () => []
 } as const satisfies SupportedQuery<'project'>;

@@ -99,6 +99,10 @@ export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDo
 	}
 }
 
+export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain): boolean {
+	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
+}
+
 export function joinDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	return values.slice(1).reduce((a, b) => ({
 		colnames: joinColNames(a.colnames, b.colnames),
@@ -115,10 +119,6 @@ export function meetDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 	}), values[0] ?? DataFrameTop);
 }
 
-export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain): boolean {
-	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
-}
-
 export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameStateDomain): boolean {
 	if(R1.size !== R2.size) {
 		return false;
@@ -130,4 +130,34 @@ export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameState
 		}
 	}
 	return true;
+}
+
+export function joinDataFrameStates(...values: DataFrameStateDomain[]): DataFrameStateDomain {
+	const result = new Map(values[0]);
+
+	for(const domain of values.slice(1)) {
+		for(const [nodeId, value] of domain) {
+			if(result.has(nodeId)) {
+				result.set(nodeId, joinDataFrames(result.get(nodeId) ?? DataFrameTop, value));
+			} else {
+				result.set(nodeId, value);
+			}
+		}
+	}
+	return result;
+}
+
+export function meetDataFrameStates(...values: DataFrameStateDomain[]): DataFrameStateDomain {
+	const result = new Map(values[0]);
+
+	for(const domain of values.slice(1)) {
+		for(const [nodeId, value] of domain) {
+			if(result.has(nodeId)) {
+				result.set(nodeId, meetDataFrames(result.get(nodeId) ?? DataFrameTop, value));
+			} else {
+				result.set(nodeId, value);
+			}
+		}
+	}
+	return result;
 }

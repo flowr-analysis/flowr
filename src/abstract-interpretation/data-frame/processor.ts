@@ -20,7 +20,7 @@ import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
-import { applySemantics } from './semantics';
+import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
 
 export type ConditionalDataFrameState = Record<'FD' | typeof RTrue | typeof RFalse, DataFrameStateDomain>;
@@ -97,11 +97,13 @@ function processDataFrameOperation<OtherInfo>(
 			const operandValue = operation.operand ? resolveIdToDomain(operation.operand, domain, dfg) : value;
 			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
 
-			if(operation.operand !== undefined && 'modifyInplace' in operation.args && operation.args.modifyInplace) {
-				domain.set(operation.operand, value);
+			if(operation.operand !== undefined && getConstraintTypes(operation.operation).some(type => type === ConstraintType.OperandPrecondition || type === ConstraintType.OperandModification)) {
+				updateDomainOfId(operation.operand, value, domain, dfg);
 			}
 		}
-		domain.set(node.info.id, value);
+		if(node.info.dataFrame.operations.some(operation => getConstraintTypes(operation.operation).includes(ConstraintType.ResultPostcondition))) {
+			domain.set(node.info.id, value);
+		}
 	}
 	return domain;
 }
@@ -184,4 +186,11 @@ function resolveIdToDomain(nodeId: NodeId, domain: DataFrameStateDomain, dfg: Da
 
 		return result;
 	}
+}
+
+function updateDomainOfId(nodeId: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
+	dfg.outgoingEdges(nodeId)?.entries()
+		.filter(([, edge]) => edge.types === EdgeType.Reads)
+		.map(([id]) => id)
+		.forEach(origin => domain.set(origin, value));
 }

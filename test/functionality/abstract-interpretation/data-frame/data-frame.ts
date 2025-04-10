@@ -104,7 +104,7 @@ export function testDataFrameDomainAgainstReal(
 				createCodeForOutput('cols', criterion, node.content),
 				createCodeForOutput('rows', criterion, node.content)
 			];
-			lines.splice(lineNumber + 1, 0, ...outputCode);
+			lines.splice(lineNumber, 0, ...outputCode);
 		}
 		const instrumentedCode = lines.join('\n');
 

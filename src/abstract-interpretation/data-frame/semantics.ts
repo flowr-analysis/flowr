@@ -1,6 +1,15 @@
 import type { DataFrameDomain } from './domain';
 import { ColNamesTop, DataFrameTop, IntervalTop, joinColNames, joinInterval } from './domain';
 
+export enum ConstraintType {
+	/** The inferred constraints must hold for the operand at the point of the operation */
+	OperandPrecondition,
+	/** The inferred constraints are applied to the operand during the operation */
+	OperandModification,
+	/** The inferred constraints must hold for the returned result of the operation */
+	ResultPostcondition
+}
+
 const DataFrameSemanticsMapper = {
 	'create':      applyCreateSemantics,
 	'setColNames': applySetColNamesSemantics,
@@ -11,6 +20,17 @@ const DataFrameSemanticsMapper = {
 	'identity':    applyIdentitySemantics,
 	'unknown':     applyUnknownSemantics
 } as const satisfies Record<string, DataFrameSemanticsApplier<never>>;
+
+const DataFrameConstraintTypeMapper: Record<DataFrameOperationName, ConstraintType[]> = {
+	'create':      [ConstraintType.ResultPostcondition],
+	'setColNames': [ConstraintType.OperandModification],
+	'accessCol':   [ConstraintType.OperandPrecondition],
+	'assignCol':   [ConstraintType.ResultPostcondition],
+	'accessRow':   [ConstraintType.OperandPrecondition],
+	'assignRow':   [ConstraintType.ResultPostcondition],
+	'identity':    [ConstraintType.ResultPostcondition],
+	'unknown':     [ConstraintType.ResultPostcondition]
+};
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]>[1];
@@ -28,6 +48,10 @@ export function applySemantics<Name extends DataFrameOperationName>(
 	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsApplier<DataFrameOperationArgs<Name>>;
 
 	return applier(value, args);
+}
+
+export function getConstraintTypes(operation: DataFrameOperationName): ConstraintType[] {
+	return DataFrameConstraintTypeMapper[operation];
 }
 
 function applyCreateSemantics(

@@ -67,6 +67,7 @@ export const absintDataFrameCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await controlflow(shell, handleString(remainingLine));
+
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);
 		const flipped = { ...cfg, graph: flipCfg(cfg.graph) };
 		const mermaid = cfgToMermaid(flipped, result.normalize).replace('flowchart BT', 'flowchart LR');

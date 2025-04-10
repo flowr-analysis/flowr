@@ -55,17 +55,18 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 
 	assertDataFrameDomain(
 		shell,
-		'df1 <- data.frame(id = 1:5); df2 <- df1',
+		'df1 <- data.frame(id = 1:5)\ndf2 <- df1',
 		[
 			['1@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
-			['1@df2', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }]
+			['2@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df2', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }]
 		]
 	);
 
 	testDataFrameDomainAgainstReal(
 		shell,
-		'df1 <- data.frame(id = 1:5); df2 <- df1',
-		['1@df1', '1@df2']
+		'df1 <- data.frame(id = 1:5)\ndf2 <- df1',
+		['1@df1', '2@df1', '2@df2']
 	);
 
 	assertDataFrameDomain(
@@ -97,25 +98,33 @@ describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
 	assertDataFrameDomain(
 		shell,
 		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
-		[['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+		[
+			['1@df', { colnames: ['id', 'type'], cols: [2, 2], rows: [3, 3] }],
+			['2@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+			['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]
+		]
 	);
 
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\ndf <- data.frame()\nprint(df)',
-		['3@df']
+		['1@df', '2@df', '3@df']
 	);
 
 	assertDataFrameDomain(
 		shell,
 		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
-		[['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]]
+		[
+			['1@df', { colnames: ['id', 'type'], cols: [2, 2], rows: [3, 3] }],
+			['2@df', { colnames: [], cols: [0, 0], rows: [0, 0] }],
+			['3@df', { colnames: [], cols: [0, 0], rows: [0, 0] }]
+		]
 	);
 
 	testDataFrameDomainAgainstReal(
 		shell,
 		'df <- data.frame(id = 1:3, type = c("A", "B", "C"))\nprint(df <- data.frame())\nprint(df)',
-		['3@df']
+		['1@df', '2@df', '3@df']
 	);
 
 	assertDataFrameDomain(

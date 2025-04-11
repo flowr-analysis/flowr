@@ -1,4 +1,5 @@
 import { assert, beforeAll, test } from 'vitest';
+import { performDataFrameAbsint } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
@@ -14,6 +15,7 @@ import type { RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
+import { extractCFG } from '../../../../src/util/cfg/cfg';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 
@@ -102,7 +104,7 @@ export function testDataFrameDomainAgainstReal(
 				createCodeForOutput('cols', criterion, node.content),
 				createCodeForOutput('rows', criterion, node.content)
 			];
-			lines.splice(lineNumber + 1, 0, ...outputCode);
+			lines.splice(lineNumber, 0, ...outputCode);
 		}
 		const instrumentedCode = lines.join('\n');
 
@@ -166,7 +168,9 @@ function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const value = DataFrameTop;
+	const cfg = extractCFG(result.normalize, result.dataflow.graph);
+	const domain = performDataFrameAbsint(cfg, result.dataflow.graph);
+	const value = domain.get(node.info.id) ?? DataFrameTop;
 
 	return [value, node];
 }

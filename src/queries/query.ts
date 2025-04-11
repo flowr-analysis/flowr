@@ -43,6 +43,7 @@ import type { ProjectQuery } from './catalog/project-query/project-query-format'
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
 import type { LinterQuery } from './catalog/linter-query/linter-query-format';
 import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -72,9 +73,10 @@ type SupportedQueries = {
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor:        QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
-	asciiSummarizer: (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
-	schema:          Joi.ObjectSchema
+	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	schema:               Joi.ObjectSchema
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
 }
 
 export const SupportedQueries = {

@@ -14,6 +14,7 @@ import { guard } from '../util/assert';
 import type { Enrichment } from './search-executor/search-enrichers';
 import type { MapperArguments } from './search-executor/search-mappers';
 import { Mapper } from './search-executor/search-mappers';
+import type { Query } from '../queries/query';
 
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
@@ -31,6 +32,9 @@ export const FlowrSearchGenerator = {
 	 */
 	from(from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[]): FlowrSearchBuilder<'from'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from', args: { from } });
+	},
+	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query'> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
 	/**
 	 * Returns all elements (nodes/dataflow vertices) from the given data.

@@ -27,5 +27,5 @@ export const IdMapQueryDefinition = {
 	schema: Joi.object({
 		type: Joi.string().valid('id-map').required().description('The type of the query.'),
 	}).description('The id map query retrieves the id map from the normalized AST.'),
-	toSearchElements: () => []
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'id-map'>;

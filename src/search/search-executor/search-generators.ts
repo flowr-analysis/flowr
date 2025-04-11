@@ -13,7 +13,7 @@ import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
 import type { Query } from '../../queries/query';
-import { SupportedQueries , executeQueries } from '../../queries/query';
+import {  executeQueries } from '../../queries/query';
 
 
 /**
@@ -93,14 +93,14 @@ function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: reado
 	const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow }, args.from);
 	for(const [query, content] of Object.entries(result)) {
-		const queryDef = SupportedQueries[query as Query['type']];
-		for(const node of queryDef.toSearchElements(content, data)) {
+		/*const queryDef = SupportedQueries[query as Query['type']];
+		for(const node of queryDef.flattenInvolvedNodes(content, data)) {
 			if((node as FlowrSearchElement<ParentInformation>).node !== undefined) {
 				nodes.add(node as FlowrSearchElement<ParentInformation>);
 			} else {
 				nodes.add({ node });
 			}
-		}
+		}*/
 	}
 	return new FlowrSearchElements([...nodes]);
 }

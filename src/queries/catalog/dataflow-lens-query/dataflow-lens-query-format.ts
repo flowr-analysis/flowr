@@ -30,5 +30,5 @@ export const DataflowLensQueryDefinition = {
 	schema: Joi.object({
 		type: Joi.string().valid('dataflow-lens').required().description('The type of the query.'),
 	}).description('The dataflow-lens query returns a simplified view on the dataflow graph'),
-	toSearchElements: () => []
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'dataflow-lens'>;

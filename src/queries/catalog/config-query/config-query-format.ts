@@ -26,5 +26,5 @@ export const ConfigQueryDefinition = {
 	schema: Joi.object({
 		type: Joi.string().valid('config').required().description('The type of the query.'),
 	}).description('The config query retrieves the current configuration of the flowR instance.'),
-	toSearchElements: () => []
+	flattenInvolvedNodes: () => []
 } as const;

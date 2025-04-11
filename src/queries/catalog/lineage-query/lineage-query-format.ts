@@ -36,7 +36,7 @@ export const LineageQueryDefinition = {
 		type:      Joi.string().valid('lineage').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion of the node to get the lineage of.')
 	}).description('Lineage query used to find the lineage of a node in the dataflow graph'),
-	toSearchElements: (queryResults: BaseQueryResult) => {
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'lineage'>['lineage'];
 		return Object.values(out.lineages).flatMap(lineage => [...lineage]);
 	}

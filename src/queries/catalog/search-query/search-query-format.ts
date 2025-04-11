@@ -33,7 +33,7 @@ export const SearchQueryDefinition = {
 		type:   Joi.string().valid('search').required().description('The type of the query.'),
 		search: Joi.object().required().description('The search query to execute.')
 	}).description('The search query searches the normalized AST and dataflow graph for nodes that match the given search query.'),
-	toSearchElements: (queryResults: BaseQueryResult) => {
+	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'search'>['search'];
 		return out.results.flatMap(({ ids }) => ids);
 	}

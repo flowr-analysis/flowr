@@ -44,5 +44,5 @@ export const LinterQueryDefinition = {
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
 		rules: Joi.array().items(Joi.string().valid(...Object.keys(LintingRules))).description('The rules to lint for. If unset, all rules will be included.')
 	}).description('The linter query lints for the given set of rules and returns the result.'),
-	toSearchElements: () => []
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'linter'>;

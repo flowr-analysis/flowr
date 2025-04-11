@@ -67,7 +67,7 @@ export const StaticSliceQueryDefinition = {
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
 	}).description('Slice query used to slice the dataflow graph'),
-	toSearchElements: (queryResults: BaseQueryResult) => {
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
 		return Object.values(out.results).flatMap(result => [...result.slice.result]);
 	}

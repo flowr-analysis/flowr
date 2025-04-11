@@ -141,7 +141,7 @@ export const CallContextQueryDefinition = {
 		}).optional().description('Filter that, when set, a node\'s file attribute must match to be considered'),
 		linkTo: Joi.alternatives(CallContextQueryLinkTo, Joi.array().items(CallContextQueryLinkTo)).optional().description('Links the current call to the last call of the given kind. This way, you can link a call like `points` to the latest graphics plot etc.')
 	}).description('Call context query used to find calls in the dataflow graph'),
-	toSearchElements: (queryResults: BaseQueryResult) => {
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const out = queryResults as CallContextQueryResult;
 		return Object.values(out.kinds).flatMap(({ subkinds }) => Object.values(subkinds).flatMap(subkinds => subkinds.map(subkind => subkind.id)));
 	}

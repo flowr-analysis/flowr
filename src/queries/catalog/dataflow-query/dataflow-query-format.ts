@@ -30,5 +30,5 @@ export const DataflowQueryDefinition = {
 	schema: Joi.object({
 		type: Joi.string().valid('dataflow').required().description('The type of the query.'),
 	}).description('The dataflow query simply returns the dataflow graph, there is no need to pass it multiple times!'),
-	toSearchElements: () => []
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'dataflow'>;

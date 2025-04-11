@@ -44,8 +44,6 @@ import { ProjectQueryDefinition } from './catalog/project-query/project-query-fo
 import type { LinterQuery } from './catalog/linter-query/linter-query-format';
 import { LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FlowrSearchElement } from '../search/flowr-search';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -75,10 +73,10 @@ type SupportedQueries = {
 }
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type']> {
-	executor:         QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
-	asciiSummarizer:  (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
-	schema:           Joi.ObjectSchema
-	toSearchElements: (queryResults: BaseQueryResult) => (FlowrSearchElement<ParentInformation> | NodeId)[]
+	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryResult>
+	asciiSummarizer:      (formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>, queryResults: BaseQueryResult, resultStrings: string[]) => boolean
+	schema:               Joi.ObjectSchema
+	flattenInvolvedNodes: (queryResults: BaseQueryResult) => NodeId[]
 }
 
 export const SupportedQueries = {
@@ -174,7 +172,7 @@ export function executeQueries<
 	results['.meta'] = {
 		timing: Date.now() - now
 	};
-	return results as QueryResults<Base>;
+	return results;
 }
 
 export function SupportedQueriesSchema() {

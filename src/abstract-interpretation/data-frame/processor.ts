@@ -2,24 +2,21 @@ import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
-import type { NoInfo, RConstant, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import type { RRepeatLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import type { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
-import type { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
-import { DataFrameTop, joinDataFrames, joinDataFrameStates } from './domain';
+import { DataFrameTop, joinDataFrames } from './domain';
 import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
 
@@ -34,69 +31,50 @@ type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
 	dfg: DataflowGraph
 ) => DataFrameStateDomain;
 
-interface DataFrameEntryExitProcessor<Node extends RComplexNode<ParentInformation>> {
-	type:  'entry' | 'exit',
-	apply: DataFrameProcessor<Node>
-}
-
 type DataFrameProcessorMapping = {
-	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameEntryExitProcessor<Node>;
+	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
 }
 
 const DataFrameProcessorMapper: DataFrameProcessorMapping = {
-	[RType.ExpressionList]:     { type: 'exit', apply: processDataFrameLeaf },
-	[RType.FunctionCall]:       { type: 'exit', apply: processDataFrameOperation },
-	[RType.UnaryOp]:            { type: 'exit', apply: processDataFrameOperation },
-	[RType.BinaryOp]:           { type: 'exit', apply: processDataFrameOperation },
-	[RType.Access]:             { type: 'exit', apply: processDataFrameOperation },
-	[RType.Pipe]:               { type: 'exit', apply: processDataFramePipe },
-	[RType.Argument]:           { type: 'exit', apply: processDataFrameArgument },
-	[RType.IfThenElse]:         { type: 'exit', apply: processDataFrameIfThenElse },
-	[RType.ForLoop]:            { type: 'exit', apply: processDataFrameForLoop },
-	[RType.RepeatLoop]:         { type: 'exit', apply: processDataFrameRepeatLoop },
-	[RType.WhileLoop]:          { type: 'exit', apply: processDataFrameWhileLoop },
-	[RType.FunctionDefinition]: { type: 'exit', apply: processDataFrameLeaf },
-	[RType.Parameter]:          { type: 'exit', apply: processDataFrameLeaf }
+	[RType.ExpressionList]:     processDataFrameNothing,
+	[RType.FunctionCall]:       processDataFrameOperation,
+	[RType.UnaryOp]:            processDataFrameOperation,
+	[RType.BinaryOp]:           processDataFrameOperation,
+	[RType.Access]:             processDataFrameOperation,
+	[RType.Pipe]:               processDataFramePipe,
+	[RType.Argument]:           processDataFrameArgument,
+	[RType.IfThenElse]:         processDataFrameIfThenElse,
+	[RType.ForLoop]:            processDataFrameNothing,
+	[RType.RepeatLoop]:         processDataFrameNothing,
+	[RType.WhileLoop]:          processDataFrameNothing,
+	[RType.FunctionDefinition]: processDataFrameNothing,
+	[RType.Parameter]:          processDataFrameNothing
 };
 
-export function processDataFrameNode<OtherInfo>(
-	type: 'entry' | 'exit',
-	node: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+export function processDataFrameLeaf<OtherInfo>(
+	node: RSingleNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	if(isRSingleNode(node)) {
-		return processDataFrameLeaf(node, domain, dfg);
-	} else {
-		return processDataFrameExpression(type, node, domain, dfg);
+	if(node.type === RType.Symbol) {
+		resolveIdToAbstractValue(node.info.id, domain, dfg);
 	}
-}
-
-function processDataFrameLeaf<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	domain: DataFrameStateDomain,
-	dfg: DataflowGraph
-): DataFrameStateDomain {
 	updateDomainOfId(node, domain, dfg);
 	return domain;
 }
 
-function processDataFrameExpression<Node extends RComplexNode<ParentInformation & AbstractInterpretationInfo>>(
-	type: 'entry' | 'exit',
+export function processDataFrameExpression<Node extends RComplexNode<ParentInformation & AbstractInterpretationInfo>>(
 	node: Node,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
 	const nodeType: Node['type'] = node.type;
-	const processor = DataFrameProcessorMapper[nodeType] as DataFrameEntryExitProcessor<Node>;
+	const processor = DataFrameProcessorMapper[nodeType] as DataFrameProcessor<Node>;
 
-	if(processor.type === type) {
-		const result = processor.apply(node, domain, dfg);
-		updateDomainOfId(node, result, dfg);
+	const result = processor(node, domain, dfg);
+	updateDomainOfId(node, result, dfg);
 
-		return result;
-	}
-	return domain;
+	return result;
 }
 
 function processDataFrameOperation<OtherInfo>(
@@ -163,42 +141,26 @@ function processDataFrameArgument<OtherInfo>(
 
 function processDataFrameIfThenElse<OtherInfo>(
 	node: RIfThenElse<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	domain: DataFrameStateDomain
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
 ): DataFrameStateDomain {
+	const thenExit = node.then.children.at(-1);
+	const elseExit = node.otherwise?.children.at(-1);
+	const thenReturn = thenExit ? resolveIdToAbstractValue(thenExit.info.id, domain, dfg) : undefined;
+	const elseReturn = elseExit ? resolveIdToAbstractValue(elseExit.info.id, domain, dfg) : undefined;
+
+	if(thenReturn !== undefined || elseReturn !== undefined) {
+		const returnValue = joinDataFrames(thenReturn ?? DataFrameTop, elseReturn ?? DataFrameTop);
+		domain.set(node.info.id, returnValue);
+	}
 	return domain;
 }
 
-function processDataFrameForLoop<OtherInfo>(
-	node: RForLoop<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameNothing<OtherInfo>(
+	node: RComplexNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain
 ): DataFrameStateDomain {
 	return domain;
-}
-
-function processDataFrameRepeatLoop<OtherInfo>(
-	node: RRepeatLoop<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	domain: DataFrameStateDomain
-): DataFrameStateDomain {
-	return domain;
-}
-
-function processDataFrameWhileLoop<OtherInfo>(
-	node: RWhileLoop<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
-	domain: DataFrameStateDomain
-): DataFrameStateDomain {
-	return domain;
-}
-
-function isRConstant<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RConstant<OtherInfo & ParentInformation> {
-	return node.type === RType.String || node.type === RType.Number || node.type === RType.Logical;
-}
-
-function isRSingleNode<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RSingleNode<OtherInfo & ParentInformation> {
-	return isRConstant(node) || node.type === RType.Symbol || node.type === RType.Break || node.type === RType.Next || node.type === RType.Comment || node.type === RType.LineDirective;
 }
 
 function assignAbstractValueToId(id: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
@@ -229,8 +191,7 @@ function updateDomainOfId(id: NodeId | RNode<ParentInformation & AbstractInterpr
 	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg.idMap?.get(id);
 
 	if(node !== undefined) {
-		const oldDomain = node.info.dataFrame?.domain;
 		node.info.dataFrame ??= { type: 'other' };
-		node.info.dataFrame.domain = oldDomain !== undefined ? joinDataFrameStates(oldDomain, domain) : new Map(domain);
+		node.info.dataFrame.domain = new Map(domain);
 	}
 }

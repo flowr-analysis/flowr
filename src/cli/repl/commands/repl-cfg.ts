@@ -69,8 +69,8 @@ export const absintDataFrameCommand: ReplCommand = {
 		const result = await controlflow(shell, handleString(remainingLine));
 
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);
-		const flipped = { ...cfg, graph: flipCfg(cfg.graph) };
-		const mermaid = cfgToMermaid(flipped, result.normalize).replace('flowchart BT', 'flowchart LR');
+		const forwardCfg = { ...cfg, graph: flipCfg(cfg.graph) };
+		const mermaid = cfgToMermaid(forwardCfg, result.normalize).replace('flowchart BT', 'flowchart TB');
 		const mermaidUrl = mermaidCodeToUrl(mermaid);
 		const domain = performDataFrameAbsint(cfg, result.dataflow.graph);
 		console.log(domain);

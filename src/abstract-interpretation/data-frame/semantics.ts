@@ -10,48 +10,42 @@ export enum ConstraintType {
 	ResultPostcondition
 }
 
-const DataFrameSemanticsMapper = {
-	'create':      applyCreateSemantics,
-	'setColNames': applySetColNamesSemantics,
-	'accessCol':   applyAccessColSemantics,
-	'assignCol':   applyAssignColSemantics,
-	'accessRow':   applyAccessRowSemantics,
-	'assignRow':   applyAssignRowSemantics,
-	'identity':    applyIdentitySemantics,
-	'unknown':     applyUnknownSemantics
-} as const satisfies Record<string, DataFrameSemanticsApplier<never>>;
-
-const DataFrameConstraintTypeMapper: Record<DataFrameOperationName, ConstraintType[]> = {
-	'create':      [ConstraintType.ResultPostcondition],
-	'setColNames': [ConstraintType.OperandModification],
-	'accessCol':   [ConstraintType.OperandPrecondition],
-	'assignCol':   [ConstraintType.ResultPostcondition],
-	'accessRow':   [ConstraintType.OperandPrecondition],
-	'assignRow':   [ConstraintType.ResultPostcondition],
-	'identity':    [ConstraintType.ResultPostcondition],
-	'unknown':     [ConstraintType.ResultPostcondition]
-};
-
-export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
-export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]>[1];
-
 type DataFrameSemanticsApplier<Arguments extends object> = (
 	value: DataFrameDomain,
 	args: Arguments
 ) => DataFrameDomain;
+
+type DataFrameSemanticsMapperInfo<Arguments extends object> = {
+	readonly apply: DataFrameSemanticsApplier<Arguments>,
+	readonly types: ConstraintType[]
+}
+
+const DataFrameSemanticsMapper = {
+	'create':      { apply: applyCreateSemantics,      types: [ConstraintType.ResultPostcondition] },
+	'setColNames': { apply: applySetColNamesSemantics, types: [ConstraintType.OperandModification] },
+	'accessCol':   { apply: applyAccessColSemantics,   types: [ConstraintType.OperandPrecondition] },
+	'assignCol':   { apply: applyAssignColSemantics,   types: [ConstraintType.ResultPostcondition] },
+	'accessRow':   { apply: applyAccessRowSemantics,   types: [ConstraintType.OperandPrecondition] },
+	'assignRow':   { apply: applyAssignRowSemantics,   types: [ConstraintType.ResultPostcondition] },
+	'identity':    { apply: applyIdentitySemantics,    types: [ConstraintType.ResultPostcondition] },
+	'unknown':     { apply: applyUnknownSemantics,     types: [ConstraintType.ResultPostcondition] }
+} as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
+
+export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
+export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
 
 export function applySemantics<Name extends DataFrameOperationName>(
 	operation: Name,
 	value: DataFrameDomain,
 	args: DataFrameOperationArgs<Name>
 ): DataFrameDomain {
-	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsApplier<DataFrameOperationArgs<Name>>;
+	const applier = DataFrameSemanticsMapper[operation] as DataFrameSemanticsMapperInfo<DataFrameOperationArgs<Name>>;
 
-	return applier(value, args);
+	return applier.apply(value, args);
 }
 
 export function getConstraintTypes(operation: DataFrameOperationName): ConstraintType[] {
-	return DataFrameConstraintTypeMapper[operation];
+	return DataFrameSemanticsMapper[operation].types;
 }
 
 function applyCreateSemantics(

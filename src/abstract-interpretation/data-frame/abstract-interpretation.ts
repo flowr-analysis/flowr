@@ -1,42 +1,39 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { RConstant, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { CfgVertexType, ControlFlowGraph, type CfgVertex, type ControlFlowInformation } from '../../util/cfg/cfg';
 import { equalDataFrameState, type DataFrameDomain, type DataFrameStateDomain } from './domain';
 import { processDataFrameNode } from './processor';
 
 export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: DataflowGraph): DataFrameStateDomain {
-	const visited: Set<NodeId> = new Set();
+	const visited: Map<NodeId, number> = new Map();
 	let result: DataFrameStateDomain = new Map();
 
 	const visitor = (cfg: ControlFlowGraph, vertex: CfgVertex, domain: DataFrameStateDomain) => {
 		const entryNode = dfg.idMap?.get(vertex.id);
 		let newDomain = domain;
 
-		if(entryNode !== undefined && !isRSingleNode(entryNode)) {
+		if(entryNode !== undefined) {
 			newDomain = processDataFrameNode('entry', entryNode, new Map(domain), dfg);
 		}
 		if(vertex.type === CfgVertexType.EndMarker) {
 			const exitId = getNodeIdOfExitVertex(vertex.id);
 			const exitNode = exitId !== undefined ? dfg.idMap?.get(exitId) : undefined;
 
-			if(exitNode !== undefined && !isRSingleNode(exitNode)) {
+			if(exitNode !== undefined) {
 				newDomain = processDataFrameNode('exit', exitNode, new Map(domain), dfg);
 			}
 		}
 		if(cfinfo.exitPoints.includes(vertex.id)) {
 			result = newDomain;
 		}
+		visited.set(vertex.id, visited.get(vertex.id) ?? 0 + 1);
+
 		const successors = cfg.edges().get(vertex.id)?.keys()
 			.map(id => cfg.vertices().get(id))
 			.filter(vertex => vertex !== undefined)
 			.filter(vertex => !visited.has(vertex.id) || !equalDataFrameState(domain, newDomain))
 			.map<[CfgVertex, DataFrameStateDomain]>(vertex => [vertex, newDomain])
 			.toArray() ?? [];
-
-		successors.forEach(([vertex]) => visited.add(vertex.id));
 
 		return successors;
 	};
@@ -82,16 +79,4 @@ function getNodeIdOfExitVertex(vertexId: NodeId): number | undefined {
 	const nodeId = Number(vertexId.match(/^(\d+)/)?.[1]);
 
 	return nodeId !== undefined && !isNaN(nodeId) ? nodeId : undefined;
-}
-
-function isRConstant<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RConstant<OtherInfo & ParentInformation> {
-	return node.type === RType.String || node.type === RType.Number || node.type === RType.Logical;
-}
-
-function isRSingleNode<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RSingleNode<OtherInfo & ParentInformation> {
-	return isRConstant(node) || node.type === RType.Symbol || node.type === RType.Break || node.type === RType.Next || node.type === RType.Comment || node.type === RType.LineDirective;
 }

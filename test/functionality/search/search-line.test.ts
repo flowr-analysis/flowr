@@ -6,6 +6,7 @@ import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
 import { Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
+import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 describe.sequential('flowR search', withShell(shell => {
 	assertSearch('simple search for first', shell, 'x <- 1\nprint(x)', ['1@x'],
@@ -34,6 +35,16 @@ describe.sequential('flowR search', withShell(shell => {
 		Q.var('x').filter(VertexType.Use).last(),
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
+
+	describe('From Query', () => {
+		assertSearch('call-context', shell, 'if(x) { print <- function() {} }\nprint()', [12], Q.fromQuery({
+			type:        'call-context',
+			kind:        'test-kind',
+			subkind:     'test-subkind',
+			callName:    'print',
+			callTargets: CallTargets.MustIncludeGlobal
+		}));
+	});
 
 	describe('Enrichments', () => {
 		describe('Call targets', () => {

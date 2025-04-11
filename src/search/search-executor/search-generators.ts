@@ -13,8 +13,9 @@ import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
 import type { Query } from '../../queries/query';
-import {  executeQueries } from '../../queries/query';
-
+import { executeQueries, SupportedQueries } from '../../queries/query';
+import type { BaseQueryResult } from '../../queries/base-query-format';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * This is a union of all possible generator node types
@@ -93,14 +94,13 @@ function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: reado
 	const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow }, args.from);
 	for(const [query, content] of Object.entries(result)) {
-		/*const queryDef = SupportedQueries[query as Query['type']];
-		for(const node of queryDef.flattenInvolvedNodes(content, data)) {
-			if((node as FlowrSearchElement<ParentInformation>).node !== undefined) {
-				nodes.add(node as FlowrSearchElement<ParentInformation>);
-			} else {
-				nodes.add({ node });
-			}
-		}*/
+		if(query === '.meta') {
+			continue;
+		}
+		const queryDef = SupportedQueries[query as Query['type']];
+		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult)) {
+			nodes.add({ node: data.normalize.idMap.get(node) as RNode<ParentInformation> });
+		}
 	}
 	return new FlowrSearchElements([...nodes]);
 }

@@ -10,8 +10,8 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
-
 import { summarizeIdsIfTooLong } from '../../query-print';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** Calculates and returns all clusters encountered in the dataflow graph. */
 export interface StaticSliceQuery extends BaseQueryFormat {
@@ -68,7 +68,11 @@ export const StaticSliceQueryDefinition = {
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?')
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
+		const flattened: NodeId[] = [];
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
-		return Object.values(out.results).flatMap(result => [...result.slice.result]);
+		for(const [_, obj] of Object.entries(out.results)) {
+			flattened.push(...obj.slice.result);
+		}
+		return flattened;
 	}
 } as const satisfies SupportedQuery<'static-slice'>;

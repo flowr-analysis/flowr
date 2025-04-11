@@ -107,7 +107,7 @@ export function executeQueriesOfSameType<SpecificQuery extends Query>(data: Basi
 	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
 	const query = SupportedQueries[queries[0].type];
 	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
-	return query.executor(data, queries as never);
+	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
 function isVirtualQuery<
@@ -172,7 +172,7 @@ export function executeQueries<
 	results['.meta'] = {
 		timing: Date.now() - now
 	};
-	return results;
+	return results as QueryResults<Base>;
 }
 
 export function SupportedQueriesSchema() {

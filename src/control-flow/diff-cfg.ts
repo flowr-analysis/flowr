@@ -61,9 +61,9 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			});
 		}
 
-		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			if(lInfo.name !== rInfo.name) {
-				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lInfo.name)} vs ${ctx.rightname}: ${String(rInfo.name)}`, {
+		if(lInfo.kind !== undefined || rInfo.kind !== undefined) {
+			if(lInfo.kind !== rInfo.kind) {
+				ctx.report.addComment(`Vertex ${id} differs in kinds. ${ctx.leftname}: ${String(lInfo.kind)} vs ${ctx.rightname}: ${String(rInfo.kind)}`, {
 					tag: 'vertex',
 					id
 				});

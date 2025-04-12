@@ -16,7 +16,6 @@ export const enum CfgVertexType {
 interface CfgBaseVertex extends MergeableRecord {
 	type:      CfgVertexType,
 	id:        NodeId,
-	name:      string,
 	/** in case of a function definition */
 	children?: NodeId[]
 }
@@ -32,6 +31,8 @@ export interface CfgExpressionVertex extends CfgBaseVertex {
 export interface CfgMidMarkerVertex extends CfgBaseVertex {
 	type:      CfgVertexType.MidMarker
 	children?: undefined
+	// describing the separation performed by this marker
+	kind:      string
 	/** the vertex for which this is a mid-marker */
 	root:      NodeId
 }

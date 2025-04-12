@@ -205,7 +205,6 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInformation, vector: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = variable.graph;
 	graph.addVertex({ id: forLoop.info.id, name: forLoop.type, type: identifyMayStatementType(forLoop) });
-	graph.addVertex({ id: forLoop.info.id + '-exit', name: 'for-exit', type: CfgVertexType.EndMarker, root: forLoop.info.id });
 
 	graph.merge(vector.graph);
 	graph.merge(body.graph);
@@ -233,12 +232,18 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 	for(const breakPoint of body.breaks) {
 		graph.addEdge(forLoop.info.id + '-exit', breakPoint, { label: 'FD' });
 	}
-	// while can break on the condition as well
-	for(const exit of variable.exitPoints) {
-		graph.addEdge(forLoop.info.id + '-exit', exit, { label: 'CD', when: RFalse, caused: forLoop.info.id });
+
+	if(body.exitPoints.length > 0) {
+		graph.addVertex({
+			id:   forLoop.info.id + '-exit',
+			name: 'for-exit',
+			type: CfgVertexType.EndMarker,
+			root: forLoop.info.id
+		});
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [forLoop.info.id + '-exit'], entryPoints: [forLoop.info.id] };
+
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: body.exitPoints.length > 0 ? [forLoop.info.id + '-exit'] : [], entryPoints: [forLoop.info.id] };
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {

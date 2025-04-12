@@ -17,7 +17,7 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import { extractCFG } from '../control-flow/cfg';
+import { extractCFG } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation

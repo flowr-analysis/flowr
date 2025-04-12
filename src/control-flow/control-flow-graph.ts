@@ -13,13 +13,41 @@ export const enum CfgVertexType {
     Expression  = 'expression'
 }
 
-export interface CfgVertex {
-    id:        NodeId
-    type:      CfgVertexType,
-    name:      string
-    /** in case of a function definition */
-    children?: NodeId[]
+interface CfgBaseVertex extends MergeableRecord {
+	type:      CfgVertexType,
+	id:        NodeId,
+	name:      string,
+	/** in case of a function definition */
+	children?: NodeId[]
 }
+
+export interface CfgStatementVertex extends CfgBaseVertex {
+	type: CfgVertexType.Statement
+}
+
+export interface CfgExpressionVertex extends CfgBaseVertex {
+	type: CfgVertexType.Expression
+}
+
+export interface CfgMidMarkerVertex extends CfgBaseVertex {
+	type:      CfgVertexType.MidMarker
+	children?: undefined
+	/** the vertex for which this is a mid-marker */
+	root:      NodeId
+}
+
+export interface CfgEndMarkerVertex extends CfgBaseVertex {
+	type:      CfgVertexType.EndMarker
+	children?: undefined,
+	/** the vertex for which this is an end-marker */
+	root:      NodeId,
+}
+
+/**
+ * A vertex in the {@link ControlFlowGraph}.
+ */
+export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
+
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
     label: 'FD'

@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { createNormalizePipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { cfg2quads, extractCFG } from '../../../src/control-flow/cfg';
+import { cfg2quads, extractCFG } from '../../../src/control-flow/extract-cfg';
 import { defaultQuadIdGenerator } from '../../../src/util/quads';
 import { withTreeSitter } from '../_helper/shell';
 

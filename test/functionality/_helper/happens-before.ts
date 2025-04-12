@@ -6,7 +6,7 @@ import { Ternary } from '../../../src/util/logic';
 import type { RShell } from '../../../src/r-bridge/shell';
 import { createNormalizePipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
-import { extractCFG } from '../../../src/control-flow/cfg';
+import { extractCFG } from '../../../src/control-flow/extract-cfg';
 import { happensBefore } from '../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 

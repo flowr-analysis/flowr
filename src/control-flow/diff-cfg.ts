@@ -70,6 +70,13 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			}
 		}
 
+		if(lInfo.root !== rInfo.root) {
+			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lInfo.root)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.root)}`, {
+				tag: 'vertex',
+				id
+			});
+		}
+
 		setDifference(new Set(lInfo.children), new Set(rInfo.children), {
 			...ctx,
 			position: `${ctx.position}Vertex ${id} differs in chilren. `

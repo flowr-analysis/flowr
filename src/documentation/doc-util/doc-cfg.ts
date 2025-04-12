@@ -1,4 +1,4 @@
-import { extractCFG } from '../../control-flow/cfg';
+import { extractCFG } from '../../control-flow/extract-cfg';
 import {
 	createDataflowPipeline
 } from '../../core/steps/pipeline/default-pipelines';

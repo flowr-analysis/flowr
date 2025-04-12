@@ -5,7 +5,7 @@ import type {
 } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
-import { extractCFG } from '../../../control-flow/cfg';
+import { extractCFG } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 

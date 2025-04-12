@@ -15,7 +15,7 @@ import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequ
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads, extractCFG } from '../../../control-flow/cfg';
+import { cfg2quads, extractCFG } from '../../../control-flow/extract-cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';

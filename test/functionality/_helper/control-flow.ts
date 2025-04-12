@@ -9,7 +9,7 @@ import { diffOfControlFlowGraphs } from '../../../src/control-flow/diff-cfg';
 import type { GraphDifferenceReport } from '../../../src/util/diff-graph';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import { emptyControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
-import { extractCFG } from '../../../src/control-flow/cfg';
+import { extractCFG } from '../../../src/control-flow/extract-cfg';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);

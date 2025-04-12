@@ -1,5 +1,4 @@
 import { withTreeSitter } from '../_helper/shell';
-import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { describe } from 'vitest';
 import { assertCfg } from '../_helper/control-flow';
@@ -54,7 +53,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		exitPoints:  [ '9-exit' ],
 		graph:       new ControlFlowGraph()
 			.addVertex({ id: 0, type: CfgVertexType.Expression })
-			.addVertex({ id: 8, name: RType.FunctionCall, type: CfgVertexType.Statement  })
+			.addVertex({ id: 8, type: CfgVertexType.Statement  })
 			.addVertex({ id: '8-name', kind: 'name', type: CfgVertexType.MidMarker, root: 8 })
 			.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
 
@@ -102,14 +101,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			entryPoints: [ '4' ],
 			exitPoints:  [ '4-exit' ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id: 0, name: RType.Logical, type: CfgVertexType.Expression })
+				.addVertex({ id: 0, type: CfgVertexType.Expression })
 				.addVertex({ id: 1, type: CfgVertexType.Expression })
-				.addVertex({ id: 3, name: RType.IfThenElse, type: CfgVertexType.Statement })
+				.addVertex({ id: 3, type: CfgVertexType.Statement })
 				.addVertex({ id: 4, type: CfgVertexType.Expression })
 				.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
 				.addVertex({ id: 2, type: CfgVertexType.Expression })
 				.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
-				.addVertex({ id: '3-exit', name: 'if-exit', type: CfgVertexType.EndMarker, root: 3 })
+				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
 				.addEdge(3, 4, { label: CfgEdgeType.Fd })
 				.addEdge(0, 3, { label: CfgEdgeType.Fd })
 				.addEdge(1, 2, { label: CfgEdgeType.Fd })
@@ -124,9 +123,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			entryPoints: [ '5' ],
 			exitPoints:  [ '5-exit' ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id: 0, name: RType.Logical, type: CfgVertexType.Expression })
-				.addVertex({ id: 4, name: RType.IfThenElse, type: CfgVertexType.Statement })
-				.addVertex({ id: '4-exit', name: 'if-exit', type: CfgVertexType.EndMarker, root: 4 })
+				.addVertex({ id: 0, type: CfgVertexType.Expression })
+				.addVertex({ id: 4, type: CfgVertexType.Statement })
+				.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
 				.addVertex({ id: 5, type: CfgVertexType.Expression })
 				.addVertex({ id: '5-exit', type: CfgVertexType.EndMarker, root: 5 })
 				.addVertex({ id: 3, type: CfgVertexType.Expression })
@@ -144,9 +143,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			entryPoints: [ '8' ],
 			exitPoints:  [ '8-exit' ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id: 0, name: RType.Logical, type: CfgVertexType.Expression })
-				.addVertex({ id: 7, name: RType.IfThenElse, type: CfgVertexType.Statement })
-				.addVertex({ id: '7-exit', name: 'if-exit', type: CfgVertexType.EndMarker, root: 7 })
+				.addVertex({ id: 0, type: CfgVertexType.Expression })
+				.addVertex({ id: 7, type: CfgVertexType.Statement })
+				.addVertex({ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 })
 				.addVertex({ id: 8, type: CfgVertexType.Expression })
 				.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
 				.addVertex({ id: 6, type: CfgVertexType.Expression })

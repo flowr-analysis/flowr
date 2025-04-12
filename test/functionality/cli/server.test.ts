@@ -13,7 +13,7 @@ import type {
 } from '../../../src/cli/repl/server/messages/message-analysis';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { jsonReplacer } from '../../../src/util/json';
-import { extractCFG } from '../../../src/util/cfg/cfg';
+import { extractCFG } from '../../../src/control-flow/cfg';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';

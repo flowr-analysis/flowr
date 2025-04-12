@@ -1,23 +1,34 @@
-import type { ControlFlowInformation } from '../cfg/cfg';
+import type { ControlFlowInformation } from '../../control-flow/cfg';
+import { CfgVertexType } from '../../control-flow/cfg';
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 function getLexeme(n?: RNodeWithParent) {
-	return n ? n.info.fullLexeme ?? n.lexeme ?? '<unknown>' : '';
+	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
 }
 
 
 export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	let output = prefix;
 
+	const dirIsBT = prefix.includes(' BT\n');
+
 	for(const [id, vertex] of cfg.graph.vertices()) {
 		const normalizedVertex = normalizedAst.idMap.get(id);
 		const content = getLexeme(normalizedVertex);
-		if(content.length > 0) {
-			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(content))}\`"`;
+		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression) {
+			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
+			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
+		}
+		if(content !== undefined) {
+			const name = `"\`${escapeMarkdown(vertex.name)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}\`"`;
 			output += `    n${id}[${name}]\n`;
 		} else {
 			output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;
+		}
+		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
+			output += '    end\n';
 		}
 	}
 	for(const [from, targets] of cfg.graph.edges()) {

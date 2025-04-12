@@ -1,5 +1,5 @@
-import type { ControlFlowInformation } from '../../util/cfg/cfg';
-import { extractCFG } from '../../util/cfg/cfg';
+import type { ControlFlowInformation } from '../../control-flow/cfg';
+import { extractCFG } from '../../control-flow/cfg';
 import {
 	createDataflowPipeline
 } from '../../core/steps/pipeline/default-pipelines';

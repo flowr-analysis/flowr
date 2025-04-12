@@ -5,8 +5,8 @@ import type {
 } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
-import { extractCFG } from '../../../util/cfg/cfg';
-import { happensBefore } from '../../../util/cfg/happens-before';
+import { extractCFG } from '../../../control-flow/cfg';
+import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
 export function executeHappensBefore({ ast, dataflow }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {

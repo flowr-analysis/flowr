@@ -1,31 +1,30 @@
-import type { MergeableRecord } from '../objects';
-import { setEquals } from '../set';
-import type { QuadSerializationConfiguration } from '../quads';
-import { graph2quads } from '../quads';
-import { log } from '../log';
-import { jsonReplacer } from '../json';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FoldFunctions } from '../../r-bridge/lang-4.x/ast/model/processing/fold';
-import { foldAst } from '../../r-bridge/lang-4.x/ast/model/processing/fold';
+import type { MergeableRecord } from '../util/objects';
+import type { QuadSerializationConfiguration } from '../util/quads';
+import { graph2quads } from '../util/quads';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
+import { foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
-import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
-import type { RRepeatLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
-import type { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import type { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
-import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { getAllFunctionCallTargets } from '../../dataflow/internal/linker';
-import { isFunctionDefinitionVertex } from '../../dataflow/graph/vertex';
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
+import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
+import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { DataflowGraph } from '../dataflow/graph/graph';
+import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
+import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
 export const enum CfgVertexType {
 	/** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -100,6 +99,14 @@ export class ControlFlowGraph {
 
 	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {
 		return this.edgeInformation;
+	}
+
+	getVertex(id: NodeId): CfgVertex | undefined {
+		return this.vertexInformation.get(id);
+	}
+
+	hasVertex(id: NodeId): boolean {
+		return this.vertexInformation.has(id);
 	}
 
 	merge(other: ControlFlowGraph, forceNested = false): this {
@@ -582,18 +589,21 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 }
 
 
-function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
-	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] };
-	let first = true;
+function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
+	const result: ControlFlowInformation = {
+		graph:       new ControlFlowGraph(),
+		breaks:      [],
+		nexts:       [],
+		returns:     [],
+		exitPoints:  [node.info.id],
+		entryPoints: [node.info.id]
+	};
+	result.graph.addVertex({ id: node.info.id, name: RType.ExpressionList, type: CfgVertexType.Expression });
+
 	for(const expression of expressions) {
-		if(first) {
-			result.entryPoints = expression.entryPoints;
-			first = false;
-		} else {
-			for(const previousExitPoint of result.exitPoints) {
-				for(const entryPoint of expression.entryPoints) {
-					result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' });
-				}
+		for(const previousExitPoint of result.exitPoints) {
+			for(const entryPoint of expression.entryPoints) {
+				result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' });
 			}
 		}
 		result.graph.merge(expression.graph);
@@ -602,75 +612,23 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Co
 		result.returns.push(...expression.returns);
 		result.exitPoints = expression.exitPoints;
 	}
+
+	result.graph.addVertex({ id: node.info.id + '-exit', name: RType.ExpressionList, type: CfgVertexType.EndMarker });
+
+	for(const exit of result.exitPoints) {
+		result.graph.addEdge(node.info.id + '-exit', exit, { label: 'FD' });
+	}
+	result.exitPoints = [node.info.id + '-exit'];
 	return result;
 }
 
-function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {
-	if(!a || !b || a.length !== b.length) {
-		return false;
-	}
-	for(let i = 0; i < a.length; ++i) {
-		if(a[i] !== b[i]) {
-			return false;
-		}
-	}
-	return true;
-}
 
 /**
- * Returns true if the given CFG equals the other CFG. False otherwise.
- */
-export function equalCfg(a: ControlFlowGraph | undefined, b: ControlFlowGraph | undefined): boolean {
-	if(!a || !b) {
-		return a === b;
-	} else if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
-		log.debug(`root vertex ids differ ${JSON.stringify(a.rootVertexIds(), jsonReplacer)} vs. ${JSON.stringify(b.rootVertexIds(), jsonReplacer)}.`);
-		return false;
-	}
-
-	const aVert = a.vertices();
-	const bVert = b.vertices();
-	if(aVert.size !== bVert.size) {
-		log.debug(`vertex count differs ${aVert.size} vs. ${bVert.size}.`);
-		return false;
-	}
-	for(const [id, aInfo] of aVert) {
-		const bInfo = bVert.get(id);
-		if(bInfo === undefined || aInfo.name !== bInfo.name || equalChildren(aInfo.children, bInfo.children)) {
-			log.debug(`vertex ${id} differs ${JSON.stringify(aInfo, jsonReplacer)} vs. ${JSON.stringify(bInfo, jsonReplacer)}.`);
-			return false;
-		}
-	}
-
-	const aEdges = a.edges();
-	const bEdges = b.edges();
-	if(aEdges.size !== bEdges.size) {
-		log.debug(`edge count differs ${aEdges.size} vs. ${bEdges.size}.`);
-		return false;
-	}
-	for(const [from, aTo] of aEdges) {
-		const bTo = bEdges.get(from);
-		if(bTo === undefined || aTo.size !== bTo.size) {
-			log.debug(`edge count for ${from} differs ${aTo.size} vs. ${bTo?.size ?? '?'}.`);
-			return false;
-		}
-		for(const [to, aEdge] of aTo) {
-			const bEdge = bTo.get(to);
-			if(bEdge === undefined || aEdge.label !== bEdge.label) {
-				log.debug(`edge ${from} -> ${to} differs ${JSON.stringify(aEdge, jsonReplacer)} vs. ${JSON.stringify(bEdge, jsonReplacer)}.`);
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-
-/**
- * @see df2quads
- * @see serialize2quads
- * @see graph2quads
+ * Convert a cfg to RDF quads.
+ *
+ * @see {@link df2quads}
+ * @see {@link serialize2quads}
+ * @see {@link graph2quads}
  */
 export function cfg2quads(cfg: ControlFlowInformation, config: QuadSerializationConfiguration): string {
 	return graph2quads({

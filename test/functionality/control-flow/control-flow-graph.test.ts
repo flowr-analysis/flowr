@@ -188,6 +188,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: 12, type: CfgVertexType.Expression })
 				.addVertex({ id: '12-exit', type: CfgVertexType.EndMarker, root: 12 })
 				.addVertex({ id: 11, type: CfgVertexType.Statement })
+				.addVertex({ id: '11-condition', kind: 'condition', type: CfgVertexType.MidMarker, root: 11 })
 				.addVertex({ id: '11-exit', type: CfgVertexType.EndMarker, root: 11 })
 				.addVertex({ id: 0, type: CfgVertexType.Expression })
 
@@ -203,9 +204,10 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 				.addEdge(11, 12, { label: CfgEdgeType.Fd })
 				.addEdge(0, 11, { label: CfgEdgeType.Fd })
-				.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
+				.addEdge('11-condition', 0, { label: CfgEdgeType.Fd })
+				.addEdge('11-exit', '11-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
 				.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
-				.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
+				.addEdge(10, '11-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
 				.addEdge(8, 10, { label: CfgEdgeType.Fd })
 				.addEdge(3, 8, { label: CfgEdgeType.Fd })
 				.addEdge('8-condition', 3, { label: CfgEdgeType.Fd })
@@ -231,6 +233,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: 12, type: CfgVertexType.Expression })
 				.addVertex({ id: '12-exit', type: CfgVertexType.EndMarker, root: 12 })
 				.addVertex({ id: 11, type: CfgVertexType.Statement })
+				.addVertex({ id: '11-condition', kind: 'condition', type: CfgVertexType.MidMarker, root: 11 })
 				.addVertex({ id: '11-exit', type: CfgVertexType.EndMarker, root: 11 })
 				.addVertex({ id: 0, type: CfgVertexType.Expression })
 
@@ -246,9 +249,10 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 				.addEdge(11, 12, { label: CfgEdgeType.Fd })
 				.addEdge(0, 11, { label: CfgEdgeType.Fd })
-				.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
+				.addEdge('11-condition', 0, { label: CfgEdgeType.Fd })
+				.addEdge('11-exit', '11-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
 				.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
-				.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
+				.addEdge(10, '11-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
 				.addEdge(8, 10, { label: CfgEdgeType.Fd })
 				.addEdge(3, 8, { label: CfgEdgeType.Fd })
 				.addEdge('8-condition', 3, { label: CfgEdgeType.Fd })

@@ -173,18 +173,22 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = condition.graph;
 	graph.addVertex({ id: whileLoop.info.id, type: identifyMayStatementType(whileLoop) });
+	graph.addVertex({ id: whileLoop.info.id + '-condition', kind: 'condition', type: CfgVertexType.MidMarker, root: whileLoop.info.id });
 	graph.addVertex({ id: whileLoop.info.id + '-exit', type: CfgVertexType.EndMarker, root: whileLoop.info.id });
 
 	graph.merge(body.graph);
+
 
 	for(const entry of condition.entryPoints) {
 		graph.addEdge(entry, whileLoop.info.id, { label: CfgEdgeType.Fd });
 	}
 
 	for(const exit of condition.exitPoints) {
-		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, exit, { label: CfgEdgeType.Cd, when: RTrue, caused: whileLoop.info.id });
-		}
+		graph.addEdge(whileLoop.info.id + '-condition', exit, { label: CfgEdgeType.Fd });
+	}
+
+	for(const entry of body.entryPoints) {
+		graph.addEdge(entry, whileLoop.info.id + '-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: whileLoop.info.id });
 	}
 
 	for(const next of [...body.nexts, ...body.exitPoints]) {
@@ -195,9 +199,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 		graph.addEdge(whileLoop.info.id + '-exit', breakPoint, { label: CfgEdgeType.Fd });
 	}
 	// while can break on the condition as well
-	for(const exit of condition.exitPoints) {
-		graph.addEdge(whileLoop.info.id + '-exit', exit, { label: CfgEdgeType.Cd, when: RFalse, caused: whileLoop.info.id  });
-	}
+	graph.addEdge(whileLoop.info.id + '-exit', whileLoop.info.id + '-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: whileLoop.info.id  });
 
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileLoop.info.id + '-exit'], entryPoints: [whileLoop.info.id] };
 }

@@ -1,4 +1,4 @@
-import type { ControlFlowGraph } from './cfg';
+import type { ControlFlowGraph } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**

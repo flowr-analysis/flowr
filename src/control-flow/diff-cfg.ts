@@ -1,10 +1,10 @@
 import { jsonReplacer } from '../util/json';
-import type { CfgEdge, ControlFlowGraph } from './cfg';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { GraphDiffContext, NamedGraph } from '../util/diff-graph';
 import { initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
 import type { GenericDiffConfiguration } from '../util/diff';
 import { setDifference } from '../util/diff';
+import type { CfgEdge, ControlFlowGraph } from './control-flow-graph';
 
 
 /**

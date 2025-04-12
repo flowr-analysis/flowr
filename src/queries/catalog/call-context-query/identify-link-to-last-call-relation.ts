@@ -1,5 +1,4 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlFlowGraph } from '../../../control-flow/cfg';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/visitor';
@@ -15,6 +14,7 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { LinkTo } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
+import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 
 export enum CallTargets {
     /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */

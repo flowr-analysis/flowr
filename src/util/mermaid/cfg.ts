@@ -1,8 +1,8 @@
-import type { ControlFlowInformation } from '../../control-flow/cfg';
-import { CfgVertexType } from '../../control-flow/cfg';
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
+import { CfgVertexType } from '../../control-flow/control-flow-graph';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;

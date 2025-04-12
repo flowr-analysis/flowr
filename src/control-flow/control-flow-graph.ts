@@ -2,15 +2,33 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 
-export const enum CfgVertexType {
+export enum CfgVertexType {
     /** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
-    MidMarker   = 'mid-marker',
+    MidMarker   = 'mid',
     /** The explicit exit-nodes to ensure the hammock property */
-    EndMarker   = 'end-marker',
+    EndMarker   = 'end',
     /** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
-    Statement   = 'statement',
+    Statement   = 'stm',
     /** something like an addition, ... */
-    Expression  = 'expression'
+    Expression  = 'expr'
+}
+
+export const enum CfgEdgeType {
+	/** a flow dependency */
+	Fd = 0,
+	/** a control dependency */
+	Cd = 1
+}
+
+export function edgeTypeToString(type: CfgEdgeType): string {
+	switch(type) {
+		case CfgEdgeType.Fd:
+			return 'FD';
+		case CfgEdgeType.Cd:
+			return 'CD';
+		default:
+			throw new Error(`Unknown edge type ${JSON.stringify(type)}`);
+	}
 }
 
 interface CfgBaseVertex extends MergeableRecord {
@@ -51,10 +69,10 @@ export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgMidMarkerV
 
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
-    label: 'FD'
+    label: CfgEdgeType.Fd
 }
 interface CfgControlDependencyEdge extends MergeableRecord {
-    label:  'CD'
+    label:  CfgEdgeType.Cd
     /** the id which caused the control dependency */
     caused: NodeId,
     when:   typeof RTrue | typeof RFalse

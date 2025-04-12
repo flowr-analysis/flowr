@@ -3,7 +3,7 @@ import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { describe } from 'vitest';
 import { assertCfg } from '../_helper/control-flow';
-import { CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
+import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	assertCfg(parser, '2 + 3', {
@@ -17,11 +17,11 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			.addVertex({ id: 3, type: CfgVertexType.Expression })
 			.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
 
-			.addEdge(2, 3, { label: 'FD' })
-			.addEdge(0, 2, { label: 'FD' })
-			.addEdge(1, 0, { label: 'FD' })
-			.addEdge('2-exit', 1, { label: 'FD' })
-			.addEdge('3-exit', '2-exit', { label: 'FD' })
+			.addEdge(2, 3, { label: CfgEdgeType.Fd })
+			.addEdge(0, 2, { label: CfgEdgeType.Fd })
+			.addEdge(1, 0, { label: CfgEdgeType.Fd })
+			.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
+			.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
 	});
 
 	assertCfg(parser, 'df$name', {
@@ -38,15 +38,15 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
 			.addVertex({ id: 0, type: CfgVertexType.Expression })
 			.addVertex({ id: 1, type: CfgVertexType.Expression })
-			.addEdge(3, 4, { label: 'FD' })
-			.addEdge(0, 3, { label: 'FD' })
-			.addEdge('3-after-name', 0, { label: 'FD' })
-			.addEdge(2, '3-after-name', { label: 'FD' })
-			.addEdge('2-before-value', 2, { label: 'FD' })
-			.addEdge(1, '2-before-value', { label: 'FD' })
-			.addEdge('2-exit', 1, { label: 'FD' })
-			.addEdge('3-exit', '2-exit', { label: 'FD' })
-			.addEdge('4-exit', '3-exit', { label: 'FD' })
+			.addEdge(3, 4, { label: CfgEdgeType.Fd })
+			.addEdge(0, 3, { label: CfgEdgeType.Fd })
+			.addEdge('3-after-name', 0, { label: CfgEdgeType.Fd })
+			.addEdge(2, '3-after-name', { label: CfgEdgeType.Fd })
+			.addEdge('2-before-value', 2, { label: CfgEdgeType.Fd })
+			.addEdge(1, '2-before-value', { label: CfgEdgeType.Fd })
+			.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
+			.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
+			.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
 	});
 
 	assertCfg(parser, 'f(2 + 3, x=3)', {
@@ -75,25 +75,25 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			.addVertex({ id: 9, type: CfgVertexType.Expression })
 			.addVertex({ id: '9-exit', type: CfgVertexType.EndMarker, root: 9 })
 
-			.addEdge(8, 9, { label: 'FD' })
-			.addEdge('9-exit', '8-exit', { label: 'FD' })
+			.addEdge(8, 9, { label: CfgEdgeType.Fd })
+			.addEdge('9-exit', '8-exit', { label: CfgEdgeType.Fd })
 
-			.addEdge(0, 8, { label: 'FD' })
-			.addEdge('8-name', 0, { label: 'FD' })
-			.addEdge(4, '8-name', { label: 'FD' })
-			.addEdge('4-before-value', 4, { label: 'FD' })
-			.addEdge(3, '4-before-value', { label: 'FD' })
-			.addEdge(1, 3, { label: 'FD' })
-			.addEdge(2, 1, { label: 'FD' })
-			.addEdge('3-exit', 2, { label: 'FD' })
-			.addEdge('4-exit', '3-exit', { label: 'FD' })
+			.addEdge(0, 8, { label: CfgEdgeType.Fd })
+			.addEdge('8-name', 0, { label: CfgEdgeType.Fd })
+			.addEdge(4, '8-name', { label: CfgEdgeType.Fd })
+			.addEdge('4-before-value', 4, { label: CfgEdgeType.Fd })
+			.addEdge(3, '4-before-value', { label: CfgEdgeType.Fd })
+			.addEdge(1, 3, { label: CfgEdgeType.Fd })
+			.addEdge(2, 1, { label: CfgEdgeType.Fd })
+			.addEdge('3-exit', 2, { label: CfgEdgeType.Fd })
+			.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
 
-			.addEdge(7, '4-exit', { label: 'FD' })
-			.addEdge(5, 7, { label: 'FD' })
-			.addEdge('7-before-value', 5, { label: 'FD' })
-			.addEdge(6, '7-before-value', { label: 'FD' })
-			.addEdge('7-exit', 6, { label: 'FD' })
-			.addEdge('8-exit', '7-exit', { label: 'FD' })
+			.addEdge(7, '4-exit', { label: CfgEdgeType.Fd })
+			.addEdge(5, 7, { label: CfgEdgeType.Fd })
+			.addEdge('7-before-value', 5, { label: CfgEdgeType.Fd })
+			.addEdge(6, '7-before-value', { label: CfgEdgeType.Fd })
+			.addEdge('7-exit', 6, { label: CfgEdgeType.Fd })
+			.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
 	});
 
 
@@ -110,14 +110,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: 2, type: CfgVertexType.Expression })
 				.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
 				.addVertex({ id: '3-exit', name: 'if-exit', type: CfgVertexType.EndMarker, root: 3 })
-				.addEdge(3, 4, { label: 'FD' })
-				.addEdge(0, 3, { label: 'FD' })
-				.addEdge(1, 2, { label: 'FD' })
-				.addEdge('2-exit', 1, { label: 'FD' })
-				.addEdge('3-exit', '2-exit', { label: 'FD' })
-				.addEdge(2, 0, { label: 'CD', when: RTrue, caused: 3 })
-				.addEdge('3-exit', 0, { label: 'CD', when: RFalse, caused: 3 })
-				.addEdge('4-exit', '3-exit', { label: 'FD' })
+				.addEdge(3, 4, { label: CfgEdgeType.Fd })
+				.addEdge(0, 3, { label: CfgEdgeType.Fd })
+				.addEdge(1, 2, { label: CfgEdgeType.Fd })
+				.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
+				.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
+				.addEdge(2, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 3 })
+				.addEdge('3-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 3 })
+				.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
 		});
 
 		assertCfg(parser, 'if(TRUE) {}', {
@@ -131,13 +131,13 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: '5-exit', type: CfgVertexType.EndMarker, root: 5 })
 				.addVertex({ id: 3, type: CfgVertexType.Expression })
 				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-				.addEdge(4, 5, { label: 'FD' })
-				.addEdge(0, 4, { label: 'FD' })
-				.addEdge(3, 0, { label: 'CD', when: RTrue, caused: 4 })
-				.addEdge('3-exit', 3, { label: 'FD' })
-				.addEdge('4-exit', '3-exit', { label: 'FD' })
-				.addEdge('4-exit', 0, { label: 'CD', when: RFalse, caused: 4 })
-				.addEdge('5-exit', '4-exit', { label: 'FD' })
+				.addEdge(4, 5, { label: CfgEdgeType.Fd })
+				.addEdge(0, 4, { label: CfgEdgeType.Fd })
+				.addEdge(3, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 4 })
+				.addEdge('3-exit', 3, { label: CfgEdgeType.Fd })
+				.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+				.addEdge('4-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 4 })
+				.addEdge('5-exit', '4-exit', { label: CfgEdgeType.Fd })
 		});
 
 		assertCfg(parser, 'if(TRUE) {} else {}', {
@@ -153,18 +153,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 })
 				.addVertex({ id: 3, type: CfgVertexType.Expression })
 				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-				.addEdge(7, 8, { label: 'FD' })
-				.addEdge(0, 7, { label: 'FD' })
+				.addEdge(7, 8, { label: CfgEdgeType.Fd })
+				.addEdge(0, 7, { label: CfgEdgeType.Fd })
 
-				.addEdge(3, 0, { label: 'CD', when: RTrue, caused: 7 })
-				.addEdge(6, 0, { label: 'CD', when: RFalse, caused: 7 })
+				.addEdge(3, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 7 })
+				.addEdge(6, 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 7 })
 
-				.addEdge('3-exit', 3, { label: 'FD' })
-				.addEdge('6-exit', 6, { label: 'FD' })
+				.addEdge('3-exit', 3, { label: CfgEdgeType.Fd })
+				.addEdge('6-exit', 6, { label: CfgEdgeType.Fd })
 
-				.addEdge('7-exit', '3-exit', { label: 'FD' })
-				.addEdge('7-exit', '6-exit', { label: 'FD' })
-				.addEdge('8-exit', '7-exit', { label: 'FD' })
+				.addEdge('7-exit', '3-exit', { label: CfgEdgeType.Fd })
+				.addEdge('7-exit', '6-exit', { label: CfgEdgeType.Fd })
+				.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
 		});
 	});
 
@@ -194,20 +194,20 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: 6, type: CfgVertexType.Statement })
 				.addVertex({ id: 9, type: CfgVertexType.Expression })
 
-				.addEdge(11, 12, { label: 'FD' })
-				.addEdge(0, 11, { label: 'FD' })
-				.addEdge('11-exit', 0, { label: 'CD', when: RFalse, caused: 11 })
-				.addEdge('12-exit', '11-exit', { label: 'FD' })
-				.addEdge(10, 0, { label: 'CD', when: RTrue, caused: 11 })
-				.addEdge(8, 10, { label: 'FD' })
-				.addEdge(3, 8, { label: 'FD' })
-				.addEdge(7, 3, { label: 'CD', when: RTrue, caused: 8 })
-				.addEdge('8-exit', 3, { label: 'CD', when: RFalse, caused: 8 })
-				.addEdge(6, 7, { label: 'FD' })
-				.addEdge(11, 6, { label: 'FD' })
-				.addEdge(9, '8-exit', { label: 'FD' })
-				.addEdge('10-exit', 9, { label: 'FD' })
-				.addEdge(11, '10-exit', { label: 'FD' })
+				.addEdge(11, 12, { label: CfgEdgeType.Fd })
+				.addEdge(0, 11, { label: CfgEdgeType.Fd })
+				.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
+				.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
+				.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
+				.addEdge(8, 10, { label: CfgEdgeType.Fd })
+				.addEdge(3, 8, { label: CfgEdgeType.Fd })
+				.addEdge(7, 3, { label: CfgEdgeType.Cd, when: RTrue, caused: 8 })
+				.addEdge('8-exit', 3, { label: CfgEdgeType.Cd, when: RFalse, caused: 8 })
+				.addEdge(6, 7, { label: CfgEdgeType.Fd })
+				.addEdge(11, 6, { label: CfgEdgeType.Fd })
+				.addEdge(9, '8-exit', { label: CfgEdgeType.Fd })
+				.addEdge('10-exit', 9, { label: CfgEdgeType.Fd })
+				.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
 		});
 
 		assertCfg(parser, `while (a) {
@@ -235,20 +235,20 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex({ id: 6, type: CfgVertexType.Statement })
 				.addVertex({ id: 9, type: CfgVertexType.Expression })
 
-				.addEdge(11, 12, { label: 'FD' })
-				.addEdge(0, 11, { label: 'FD' })
-				.addEdge('11-exit', 0, { label: 'CD', when: RFalse, caused: 11 })
-				.addEdge('12-exit', '11-exit', { label: 'FD' })
-				.addEdge(10, 0, { label: 'CD', when: RTrue, caused: 11 })
-				.addEdge(8, 10, { label: 'FD' })
-				.addEdge(3, 8, { label: 'FD' })
-				.addEdge(7, 3, { label: 'CD', when: RTrue, caused: 8 })
-				.addEdge('8-exit', 3, { label: 'CD', when: RFalse, caused: 8 })
-				.addEdge(6, 7, { label: 'FD' })
-				.addEdge('11-exit', 6, { label: 'FD' })
-				.addEdge(9, '8-exit', { label: 'FD' })
-				.addEdge('10-exit', 9, { label: 'FD' })
-				.addEdge(11, '10-exit', { label: 'FD' })
+				.addEdge(11, 12, { label: CfgEdgeType.Fd })
+				.addEdge(0, 11, { label: CfgEdgeType.Fd })
+				.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
+				.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
+				.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
+				.addEdge(8, 10, { label: CfgEdgeType.Fd })
+				.addEdge(3, 8, { label: CfgEdgeType.Fd })
+				.addEdge(7, 3, { label: CfgEdgeType.Cd, when: RTrue, caused: 8 })
+				.addEdge('8-exit', 3, { label: CfgEdgeType.Cd, when: RFalse, caused: 8 })
+				.addEdge(6, 7, { label: CfgEdgeType.Fd })
+				.addEdge('11-exit', 6, { label: CfgEdgeType.Fd })
+				.addEdge(9, '8-exit', { label: CfgEdgeType.Fd })
+				.addEdge('10-exit', 9, { label: CfgEdgeType.Fd })
+				.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
 		});
 	});
 }));

@@ -16,7 +16,7 @@ import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-prin
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
-import { extractCFG } from '../../../src/util/cfg/cfg';
+import { extractCFG } from '../../../src/control-flow/cfg';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {

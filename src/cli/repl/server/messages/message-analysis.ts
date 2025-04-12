@@ -1,6 +1,6 @@
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
-import type { ControlFlowInformation } from '../../../../util/cfg/cfg';
+import type { ControlFlowInformation } from '../../../../control-flow/cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
 

@@ -1,5 +1,5 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { extractCFG } from '../../../util/cfg/cfg';
+import { extractCFG } from '../../../control-flow/cfg';
 import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';

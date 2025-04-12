@@ -1,31 +1,31 @@
-import type { MergeableRecord } from '../objects';
-import { setEquals } from '../set';
-import type { QuadSerializationConfiguration } from '../quads';
-import { graph2quads } from '../quads';
-import { log } from '../log';
-import { jsonReplacer } from '../json';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FoldFunctions } from '../../r-bridge/lang-4.x/ast/model/processing/fold';
-import { foldAst } from '../../r-bridge/lang-4.x/ast/model/processing/fold';
+import type { MergeableRecord } from '../util/objects';
+import { setEquals } from '../util/set';
+import type { QuadSerializationConfiguration } from '../util/quads';
+import { graph2quads } from '../util/quads';
+import { log } from '../util/log';
+import { jsonReplacer } from '../util/json';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
+import { foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
-} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
-import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
-import type { RRepeatLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
-import type { RWhileLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
-import type { RForLoop } from '../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
-import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { getAllFunctionCallTargets } from '../../dataflow/internal/linker';
-import { isFunctionDefinitionVertex } from '../../dataflow/graph/vertex';
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
+import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
+import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { DataflowGraph } from '../dataflow/graph/graph';
+import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
+import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 
 export const enum CfgVertexType {
 	/** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */

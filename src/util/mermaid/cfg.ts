@@ -1,4 +1,4 @@
-import type { ControlFlowInformation } from '../cfg/cfg';
+import type { ControlFlowInformation } from '../../control-flow/cfg';
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 

@@ -1,6 +1,6 @@
 import type { ControlFlowGraph } from './cfg';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Ternary } from '../logic';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Ternary } from '../util/logic';
 
 /**
  * Determines if node `a` happens before node `b` in the control flow graph.

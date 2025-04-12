@@ -65,6 +65,8 @@ let testShell: RShell | undefined = undefined;
  *
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
+ *
+ * @see {@link withTreeSitter}
  */
 export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
 	if(!newShell && testShell === undefined) {
@@ -84,6 +86,18 @@ export function withShell(fn: (shell: RShell) => void, newShell = false): () => 
 		} else {
 			fn(testShell as RShell);
 		}
+	};
+}
+
+/**
+ * This is the convenience sister-function to {@link withShell}.
+ * It provides you with a {@link TreeSitterExecutor} instance.
+ */
+export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => void {
+	const parser = new TreeSitterExecutor();
+	afterAll(() => parser.close());
+	return function() {
+		fn(parser);
 	};
 }
 

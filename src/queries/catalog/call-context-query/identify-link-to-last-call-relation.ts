@@ -1,8 +1,8 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlFlowGraph } from '../../../util/cfg/cfg';
+import type { ControlFlowGraph } from '../../../control-flow/cfg';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
-import { visitCfgInReverseOrder } from '../../../util/cfg/visitor';
+import { visitCfgInReverseOrder } from '../../../control-flow/visitor';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';

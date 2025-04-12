@@ -1,5 +1,5 @@
 import type { ControlFlowGraph } from './cfg';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.

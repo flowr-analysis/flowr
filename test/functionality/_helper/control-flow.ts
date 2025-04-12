@@ -10,7 +10,7 @@ import type { GraphDifferenceReport } from '../../../src/util/diff-graph';
 import type { ControlFlowGraph, ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import { emptyControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import { extractCFG } from '../../../src/control-flow/extract-cfg';
-import { visitCfgInOrder, visitCfgInReverseOrder } from '../../../src/control-flow/visitor';
+import { visitCfgInOrder, visitCfgInReverseOrder } from '../../../src/control-flow/simple-visitor';
 import { setMinus } from '../../../src/util/set';
 import { log } from '../../../src/util/log';
 
@@ -70,12 +70,12 @@ const CfgProperties = {
 
 export type CfgProperty = keyof typeof CfgProperties;
 
-function checkReachFrom(label: string, cfg: ControlFlowInformation, start: NodeId | undefined, collect: (graph: ControlFlowGraph, start: NodeId, fn: (node: NodeId) => void) => void): boolean {
+function checkReachFrom(label: string, cfg: ControlFlowInformation, start: NodeId | undefined, collect: (graph: ControlFlowGraph, starts: NodeId[], fn: (node: NodeId) => void) => void): boolean {
 	if(start === undefined) {
 		return false;
 	}
 	const collected = new Set();
-	collect(cfg.graph, start, node => {
+	collect(cfg.graph, [start], node => {
 		collected.add(node);
 	});
 

@@ -69,6 +69,14 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 				});
 			}
 		}
+		setDifference(new Set(lInfo.mid as NodeId[] | undefined ?? []), new Set(rInfo.mid as NodeId[] | undefined ?? []), {
+			...ctx,
+			position: `${ctx.position}Vertex ${id} differs in attached mid markers. `
+		});
+		setDifference(new Set(lInfo.end as NodeId[] | undefined ?? []), new Set(rInfo.end as NodeId[] | undefined ?? []), {
+			...ctx,
+			position: `${ctx.position}Vertex ${id} differs in attached end markers. `
+		});
 
 		if(lInfo.root !== rInfo.root) {
 			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lInfo.root)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.root)}`, {

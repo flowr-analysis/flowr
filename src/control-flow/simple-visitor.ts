@@ -1,22 +1,27 @@
 import type { ControlFlowGraph } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
+
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
  * @param graph     - The control flow graph.
- * @param startNode - The node to start the traversal from.
+ * @param startNodes - The nodes to start the traversal from.
  * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ *
+ * This function is of type {@link SimpleCfgVisitor}.
  *
  * @see {@link visitCfgInOrder} for a traversal in order
  */
 export function visitCfgInReverseOrder(
 	graph: ControlFlowGraph,
-	startNode: NodeId,
+	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	const queue = [startNode];
+	const queue = [...startNodes];
 	while(queue.length > 0) {
 		const current = queue.pop() as NodeId;
 		if(visited.has(current)) {
@@ -35,20 +40,22 @@ export function visitCfgInReverseOrder(
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.
- * @param graph     - The control flow graph.
- * @param startNode - The node to start the traversal from.
- * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ * @param graph      - The control flow graph.
+ * @param startNodes - The nodes to start the traversal from.
+ * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ *
+ * This function is of type {@link SimpleCfgVisitor}.
  *
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
  */
 export function visitCfgInOrder(
 	graph: ControlFlowGraph,
-	startNode: NodeId,
+	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	const queue = [startNode];
+	const queue = [...startNodes];
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {

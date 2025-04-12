@@ -40,10 +40,18 @@ interface CfgBaseVertex extends MergeableRecord {
 
 export interface CfgStatementVertex extends CfgBaseVertex {
 	type: CfgVertexType.Statement
+	/** mid-markers linked to this statement */
+	mid?: NodeId[]
+	/** end-markers linked to this statement */
+	end?: NodeId[]
 }
 
 export interface CfgExpressionVertex extends CfgBaseVertex {
 	type: CfgVertexType.Expression
+	/** mid-markers linked to this statement */
+	mid?: NodeId[]
+	/** end-markers linked to this statement */
+	end?: NodeId[]
 }
 
 export interface CfgMidMarkerVertex extends CfgBaseVertex {
@@ -83,6 +91,10 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 /**
  * This class represents the control flow graph of an R program.
  * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
+ *
+ * There are two very simple visitors to traverse a CFG:
+ * - {@link visitCfgInOrder} visits the graph in the order of the vertices
+ * - {@link visitCfgInReverseOrder} visits the graph in reverse order
  */
 export class ControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();

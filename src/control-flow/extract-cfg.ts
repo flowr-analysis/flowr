@@ -109,6 +109,7 @@ function identifyMayStatementType(node: RNodeWithParent) {
 function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
 	const graph = new ControlFlowGraph();
 	graph.addVertex({ id: ifNode.info.id, type: identifyMayStatementType(ifNode) });
+	graph.addVertex({ id: ifNode.info.id + '-condition', kind: 'condition', type: CfgVertexType.MidMarker, root: ifNode.info.id });
 	graph.addVertex({ id: ifNode.info.id + '-exit', type: CfgVertexType.EndMarker, root: ifNode.info.id });
 	graph.merge(condition.graph);
 	graph.merge(then.graph);
@@ -117,13 +118,16 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 	}
 
 	for(const exitPoint of condition.exitPoints) {
-		for(const entryPoint of then.entryPoints) {
-			graph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Cd, when: RTrue, caused: ifNode.info.id });
-		}
-		for(const entryPoint of otherwise?.entryPoints ?? []) {
-			graph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Cd, when: RFalse, caused: ifNode.info.id });
-		}
+		graph.addEdge(ifNode.info.id + '-condition', exitPoint, { label: CfgEdgeType.Fd });
 	}
+
+	for(const entryPoint of then.entryPoints) {
+		graph.addEdge(entryPoint, ifNode.info.id + '-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: ifNode.info.id });
+	}
+	for(const entryPoint of otherwise?.entryPoints ?? []) {
+		graph.addEdge(entryPoint, ifNode.info.id + '-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: ifNode.info.id });
+	}
+
 	for(const entryPoint of condition.entryPoints) {
 		graph.addEdge(entryPoint, ifNode.info.id, { label: CfgEdgeType.Fd });
 	}
@@ -132,9 +136,7 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 		graph.addEdge(ifNode.info.id + '-exit', exit, { label: CfgEdgeType.Fd });
 	}
 	if(!otherwise) {
-		for(const exitPoint of condition.exitPoints) {
-			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: CfgEdgeType.Cd, when: RFalse, caused: ifNode.info.id });
-		}
+		graph.addEdge(ifNode.info.id + '-exit', ifNode.info.id + '-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: ifNode.info.id });
 	}
 
 	return {
@@ -171,18 +173,22 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = condition.graph;
 	graph.addVertex({ id: whileLoop.info.id, type: identifyMayStatementType(whileLoop) });
+	graph.addVertex({ id: whileLoop.info.id + '-condition', kind: 'condition', type: CfgVertexType.MidMarker, root: whileLoop.info.id });
 	graph.addVertex({ id: whileLoop.info.id + '-exit', type: CfgVertexType.EndMarker, root: whileLoop.info.id });
 
 	graph.merge(body.graph);
+
 
 	for(const entry of condition.entryPoints) {
 		graph.addEdge(entry, whileLoop.info.id, { label: CfgEdgeType.Fd });
 	}
 
 	for(const exit of condition.exitPoints) {
-		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, exit, { label: CfgEdgeType.Cd, when: RTrue, caused: whileLoop.info.id });
-		}
+		graph.addEdge(whileLoop.info.id + '-condition', exit, { label: CfgEdgeType.Fd });
+	}
+
+	for(const entry of body.entryPoints) {
+		graph.addEdge(entry, whileLoop.info.id + '-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: whileLoop.info.id });
 	}
 
 	for(const next of [...body.nexts, ...body.exitPoints]) {
@@ -193,9 +199,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 		graph.addEdge(whileLoop.info.id + '-exit', breakPoint, { label: CfgEdgeType.Fd });
 	}
 	// while can break on the condition as well
-	for(const exit of condition.exitPoints) {
-		graph.addEdge(whileLoop.info.id + '-exit', exit, { label: CfgEdgeType.Cd, when: RFalse, caused: whileLoop.info.id  });
-	}
+	graph.addEdge(whileLoop.info.id + '-exit', whileLoop.info.id + '-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: whileLoop.info.id  });
 
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileLoop.info.id + '-exit'], entryPoints: [whileLoop.info.id] };
 }

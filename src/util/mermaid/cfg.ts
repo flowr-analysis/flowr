@@ -21,8 +21,8 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
 			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
 		}
-		if(content !== undefined) {
-			const name = `"\`${escapeMarkdown(vertex.name)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}\`"`;
+		if(normalizedVertex && content !== undefined) {
+			const name = `"\`${escapeMarkdown(normalizedVertex.type)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}\`"`;
 			output += `    n${id}[${name}]\n`;
 		} else {
 			output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;

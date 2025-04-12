@@ -1,7 +1,7 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge , EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { equalFunctionArguments } from './diff';
+import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,

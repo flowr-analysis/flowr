@@ -23,8 +23,7 @@ import { TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE,
 	DEFAULT_NORMALIZE_PIPELINE, TREE_SITTER_NORMALIZE_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { DataflowDifferenceReport, ProblematicDiffInfo } from '../../../src/dataflow/graph/diff';
-import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff';
+import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
@@ -42,6 +41,7 @@ import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
+import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -367,7 +367,7 @@ export function assertDataflow<P extends Pipeline>(
 			expected = resolveDataflowGraph(expected);
 		}
 
-		const report: DataflowDifferenceReport = diffOfDataflowGraphs(
+		const report: GraphDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },
 			{ name: 'got',      graph: info.dataflow.graph },
 			{

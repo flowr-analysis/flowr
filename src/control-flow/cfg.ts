@@ -1,9 +1,6 @@
 import type { MergeableRecord } from '../util/objects';
-import { setEquals } from '../util/set';
 import type { QuadSerializationConfiguration } from '../util/quads';
 import { graph2quads } from '../util/quads';
-import { log } from '../util/log';
-import { jsonReplacer } from '../util/json';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import { foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
@@ -100,6 +97,14 @@ export class ControlFlowGraph {
 
 	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {
 		return this.edgeInformation;
+	}
+
+	getVertex(id: NodeId): CfgVertex | undefined {
+		return this.vertexInformation.get(id);
+	}
+
+	hasVertex(id: NodeId): boolean {
+		return this.vertexInformation.has(id);
 	}
 
 	merge(other: ControlFlowGraph, forceNested = false): this {
@@ -605,72 +610,13 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Co
 	return result;
 }
 
-function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {
-	if(!a || !b || a.length !== b.length) {
-		return false;
-	}
-	for(let i = 0; i < a.length; ++i) {
-		if(a[i] !== b[i]) {
-			return false;
-		}
-	}
-	return true;
-}
 
 /**
- * Returns true if the given CFG equals the other CFG. False otherwise.
- */
-export function equalCfg(a: ControlFlowGraph | undefined, b: ControlFlowGraph | undefined): boolean {
-	if(!a || !b) {
-		return a === b;
-	} else if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
-		log.debug(`root vertex ids differ ${JSON.stringify(a.rootVertexIds(), jsonReplacer)} vs. ${JSON.stringify(b.rootVertexIds(), jsonReplacer)}.`);
-		return false;
-	}
-
-	const aVert = a.vertices();
-	const bVert = b.vertices();
-	if(aVert.size !== bVert.size) {
-		log.debug(`vertex count differs ${aVert.size} vs. ${bVert.size}.`);
-		return false;
-	}
-	for(const [id, aInfo] of aVert) {
-		const bInfo = bVert.get(id);
-		if(bInfo === undefined || aInfo.name !== bInfo.name || equalChildren(aInfo.children, bInfo.children)) {
-			log.debug(`vertex ${id} differs ${JSON.stringify(aInfo, jsonReplacer)} vs. ${JSON.stringify(bInfo, jsonReplacer)}.`);
-			return false;
-		}
-	}
-
-	const aEdges = a.edges();
-	const bEdges = b.edges();
-	if(aEdges.size !== bEdges.size) {
-		log.debug(`edge count differs ${aEdges.size} vs. ${bEdges.size}.`);
-		return false;
-	}
-	for(const [from, aTo] of aEdges) {
-		const bTo = bEdges.get(from);
-		if(bTo === undefined || aTo.size !== bTo.size) {
-			log.debug(`edge count for ${from} differs ${aTo.size} vs. ${bTo?.size ?? '?'}.`);
-			return false;
-		}
-		for(const [to, aEdge] of aTo) {
-			const bEdge = bTo.get(to);
-			if(bEdge === undefined || aEdge.label !== bEdge.label) {
-				log.debug(`edge ${from} -> ${to} differs ${JSON.stringify(aEdge, jsonReplacer)} vs. ${JSON.stringify(bEdge, jsonReplacer)}.`);
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-
-/**
- * @see df2quads
- * @see serialize2quads
- * @see graph2quads
+ * Convert a cfg to RDF quads.
+ *
+ * @see {@link df2quads}
+ * @see {@link serialize2quads}
+ * @see {@link graph2quads}
  */
 export function cfg2quads(cfg: ControlFlowInformation, config: QuadSerializationConfiguration): string {
 	return graph2quads({

@@ -24,6 +24,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			.addEdge('3-exit', 0, { label: 'CD', when: RFalse, caused: 3 })
 	});
 
+	assertCfg(parser, 'if(TRUE) {}', {
+		entryPoints: [ '4' ],
+		exitPoints:  [ '4-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: 0, name: RType.Logical, type: CfgVertexType.Expression })
+			.addVertex({ id: 4, name: RType.IfThenElse, type: CfgVertexType.Statement })
+			.addVertex({ id: '4-exit', name: 'if-exit', type: CfgVertexType.EndMarker })
+			.addEdge(0, 4, { label: 'FD' })
+			.addEdge('4-exit', 0, { label: 'CD', when: RFalse, caused: 0 })
+			.addEdge('4-exit', 4, { label: 'CD', when: RTrue, caused: 0 })
+	});
+
 	assertCfg(parser, '2 + 3', {
 		entryPoints: [ '2' ],
 		exitPoints:  [ '2-exit' ],

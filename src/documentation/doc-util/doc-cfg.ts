@@ -1,4 +1,3 @@
-import type { ControlFlowInformation } from '../../control-flow/cfg';
 import { extractCFG } from '../../control-flow/cfg';
 import {
 	createDataflowPipeline
@@ -11,6 +10,7 @@ import { FlowrWikiBaseRef } from './doc-files';
 import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
+import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 
 export async function getCfg(parser: KnownParser, code: string): Promise<{
 	info:     ControlFlowInformation,

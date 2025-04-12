@@ -15,7 +15,6 @@ import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequ
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import type { ControlFlowInformation } from '../../../control-flow/cfg';
 import { cfg2quads, extractCFG } from '../../../control-flow/cfg';
 import type { QuadSerializationConfiguration } from '../../../util/quads';
 import { defaultQuadIdGenerator } from '../../../util/quads';
@@ -46,6 +45,7 @@ import { executeQueries } from '../../../queries/query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
+import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 
 /**
  * Each connection handles a single client, answering to its requests.

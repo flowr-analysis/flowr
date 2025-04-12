@@ -17,7 +17,6 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import type { ControlFlowGraph } from '../control-flow/cfg';
 import { extractCFG } from '../control-flow/cfg';
 import { EdgeType } from './graph/edge';
 import {
@@ -27,6 +26,7 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import {
 	updateNestedFunctionCalls
 } from './internal/process/functions/call/built-in/built-in-function-definition';
+import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.

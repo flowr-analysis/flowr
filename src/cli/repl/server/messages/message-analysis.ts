@@ -1,8 +1,8 @@
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
-import type { ControlFlowInformation } from '../../../../control-flow/cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
+import type { ControlFlowInformation } from '../../../../control-flow/control-flow-graph';
 
 /**
  * Send by the client to request an analysis of a given file.

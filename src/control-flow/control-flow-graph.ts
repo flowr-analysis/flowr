@@ -65,6 +65,16 @@ export class ControlFlowGraph {
 		return this.edgeInformation.get(node);
 	}
 
+	ingoing(id: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+		const edges = new Map<NodeId, CfgEdge>();
+		for(const [source, outgoing] of this.edgeInformation.entries()) {
+			if(outgoing.has(id)) {
+				edges.set(source, outgoing.get(id) as CfgEdge);
+			}
+		}
+		return edges;
+	}
+
 	rootVertexIds(): ReadonlySet<NodeId> {
 		return this.rootVertices;
 	}

@@ -94,7 +94,7 @@ function checkExitIsReachedByAll(cfg: ControlFlowInformation): boolean {
 }
 
 function checkEntryReachesAll(cfg: ControlFlowInformation): boolean {
-	return checkReachFrom('exit', cfg, cfg.entryPoints[0], visitCfgInOrder);
+	return checkReachFrom('entry', cfg, cfg.entryPoints[0], visitCfgInOrder);
 }
 
 

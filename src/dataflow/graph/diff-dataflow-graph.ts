@@ -188,7 +188,7 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			(lInfo.environment === undefined && rInfo.environment !== undefined && !ctx.config.leftIsSubgraph)
 			|| (lInfo.environment !== undefined && rInfo.environment === undefined && !ctx.config.rightIsSubgraph)
 		) {
-			/* only diffDataflowGraph them if specified at all */
+			/* only diff them if specified at all */
 			diffEnvironmentInformation(lInfo.environment, rInfo.environment, {
 				...ctx,
 				position: `${ctx.position}Vertex ${id} differs in environment. `

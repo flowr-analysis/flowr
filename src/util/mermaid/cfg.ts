@@ -2,7 +2,7 @@ import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { CfgVertexType } from '../../control-flow/control-flow-graph';
+import { CfgEdgeType, edgeTypeToString , CfgVertexType } from '../../control-flow/control-flow-graph';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
@@ -33,9 +33,9 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {
-			const edgeType = edge.label === 'CD' ? '-->' : '-.->';
-			const edgeSuffix = edge.label === 'CD' ? ` (${edge.when})` : '';
-			output += `    n${from} ${edgeType}|"${escapeMarkdown(edge.label)}${edgeSuffix}"| n${to}\n`;
+			const edgeType = edge.label === CfgEdgeType.Cd ? '-->' : '-.->';
+			const edgeSuffix = edge.label === CfgEdgeType.Cd ? ` (${edge.when})` : '';
+			output += `    n${from} ${edgeType}|"${escapeMarkdown(edgeTypeToString(edge.label))}${edgeSuffix}"| n${to}\n`;
 		}
 	}
 

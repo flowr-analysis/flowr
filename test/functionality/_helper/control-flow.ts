@@ -35,7 +35,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			assert.deepStrictEqual(normAllIds(cfg.nexts),       normAllIds(expected.nexts), 'nexts differ');
 			assert.deepStrictEqual(normAllIds(cfg.returns),     normAllIds(expected.returns), 'returns differ');
 			diff = diffOfControlFlowGraphs({ graph: cfg.graph, name: 'got' }, { graph: expected.graph, name: 'expected' }, config);
-			assert.isTrue(diff.isEqual(), 'graphs differ');
+			assert.isTrue(diff.isEqual(), 'graphs differ:' + (diff?.comments() ?? []).join('\n'));
 		} /* v8 ignore next 7 */ catch(e: unknown) {
 			if(diff) {
 				console.error(diff.comments());

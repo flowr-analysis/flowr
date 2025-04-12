@@ -23,6 +23,8 @@ import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
 export const enum CfgVertexType {
 	/** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -587,18 +589,21 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 }
 
 
-function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
-	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] };
-	let first = true;
+function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
+	const result: ControlFlowInformation = {
+		graph:       new ControlFlowGraph(),
+		breaks:      [],
+		nexts:       [],
+		returns:     [],
+		exitPoints:  [node.info.id],
+		entryPoints: [node.info.id]
+	};
+	result.graph.addVertex({ id: node.info.id, name: RType.ExpressionList, type: CfgVertexType.Expression });
+
 	for(const expression of expressions) {
-		if(first) {
-			result.entryPoints = expression.entryPoints;
-			first = false;
-		} else {
-			for(const previousExitPoint of result.exitPoints) {
-				for(const entryPoint of expression.entryPoints) {
-					result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' });
-				}
+		for(const previousExitPoint of result.exitPoints) {
+			for(const entryPoint of expression.entryPoints) {
+				result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' });
 			}
 		}
 		result.graph.merge(expression.graph);
@@ -607,6 +612,13 @@ function cfgExprList(_node: RNodeWithParent, _grouping: unknown, expressions: Co
 		result.returns.push(...expression.returns);
 		result.exitPoints = expression.exitPoints;
 	}
+
+	result.graph.addVertex({ id: node.info.id + '-exit', name: RType.ExpressionList, type: CfgVertexType.EndMarker });
+
+	for(const exit of result.exitPoints) {
+		result.graph.addEdge(node.info.id + '-exit', exit, { label: 'FD' });
+	}
+	result.exitPoints = [node.info.id + '-exit'];
 	return result;
 }
 

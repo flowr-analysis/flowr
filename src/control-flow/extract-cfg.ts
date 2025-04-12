@@ -92,11 +92,11 @@ function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (lea
 }
 
 function cfgBreak(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), breaks: [leaf.info.id] };
+	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), breaks: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgNext(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), nexts: [leaf.info.id] };
+	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), nexts: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgIgnore(_leaf: RNodeWithParent): ControlFlowInformation {
@@ -184,10 +184,6 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 		for(const entry of body.entryPoints) {
 			graph.addEdge(entry, exit, { label: 'CD', when: RTrue, caused: whileLoop.info.id });
 		}
-	}
-
-	for(const entryPoint of body.entryPoints) {
-		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'FD' });
 	}
 
 	for(const next of [...body.nexts, ...body.exitPoints]) {
@@ -509,12 +505,19 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 		result.exitPoints = expression.exitPoints;
 	}
 
-	result.graph.addVertex({ id: node.info.id + '-exit', name: RType.ExpressionList, type: CfgVertexType.EndMarker, root: node.info.id });
+	if(result.exitPoints.length > 0) {
+		result.graph.addVertex({
+			id:   node.info.id + '-exit',
+			name: RType.ExpressionList,
+			type: CfgVertexType.EndMarker,
+			root: node.info.id
+		});
+	}
 
 	for(const exit of result.exitPoints) {
 		result.graph.addEdge(node.info.id + '-exit', exit, { label: 'FD' });
 	}
-	result.exitPoints = [node.info.id + '-exit'];
+	result.exitPoints = result.exitPoints.length > 0 ? [node.info.id + '-exit'] : [];
 	return result;
 }
 

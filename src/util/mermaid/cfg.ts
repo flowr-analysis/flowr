@@ -17,7 +17,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	for(const [id, vertex] of cfg.graph.vertices()) {
 		const normalizedVertex = normalizedAst.idMap.get(id);
 		const content = getLexeme(normalizedVertex);
-		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression) {
+		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression && cfg.graph.hasVertex(vertex.id + '-exit')) {
 			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
 			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
 		}

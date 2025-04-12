@@ -1,5 +1,3 @@
-import type { ControlFlowInformation } from '../../../src/control-flow/cfg';
-import { emptyControlFlowInformation, extractCFG } from '../../../src/control-flow/cfg';
 import { assert, test } from 'vitest';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
@@ -8,17 +6,23 @@ import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { diffOfControlFlowGraphs } from '../../../src/control-flow/diff-cfg';
-import type { GenericDiffConfiguration } from '../../../src/util/diff';
 import type { GraphDifferenceReport } from '../../../src/util/diff-graph';
+import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
+import { emptyControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
+import { extractCFG } from '../../../src/control-flow/cfg';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
 }
 
+export interface AssertCfgOptions {
+	expectIsSubgraph: boolean
+}
+
 /**
  * Assert that the given code produces the expected CFG
  */
-export function assertCfg(parser: KnownParser, code: string, partialExpected: Partial<ControlFlowInformation>, config?: Partial<GenericDiffConfiguration>) {
+export function assertCfg(parser: KnownParser, code: string, partialExpected: Partial<ControlFlowInformation>, config?: Partial<AssertCfgOptions>) {
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	return test(code, async()=> {
@@ -34,7 +38,9 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			assert.deepStrictEqual(normAllIds(cfg.breaks),      normAllIds(expected.breaks), 'breaks differ');
 			assert.deepStrictEqual(normAllIds(cfg.nexts),       normAllIds(expected.nexts), 'nexts differ');
 			assert.deepStrictEqual(normAllIds(cfg.returns),     normAllIds(expected.returns), 'returns differ');
-			diff = diffOfControlFlowGraphs({ graph: cfg.graph, name: 'got' }, { graph: expected.graph, name: 'expected' }, config);
+			diff = diffOfControlFlowGraphs({ graph: expected.graph, name: 'expected' }, { graph: cfg.graph, name: 'got' }, {
+				leftIsSubgraph: config?.expectIsSubgraph
+			});
 			assert.isTrue(diff.isEqual(), 'graphs differ:' + (diff?.comments() ?? []).join('\n'));
 		} /* v8 ignore next 7 */ catch(e: unknown) {
 			if(diff) {

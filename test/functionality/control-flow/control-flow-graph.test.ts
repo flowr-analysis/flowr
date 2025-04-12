@@ -1,9 +1,9 @@
 import { withTreeSitter } from '../_helper/shell';
-import { CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/cfg';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { describe } from 'vitest';
 import { assertCfg } from '../_helper/control-flow';
+import { CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	assertCfg(parser, 'if(TRUE) 1', {
@@ -91,6 +91,31 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			.addEdge(1, 0, { label: 'FD' })
 			.addEdge('2-exit', 1, { label: 'FD' })
 			.addEdge('3-exit', '2-exit', { label: 'FD' })
+	});
+
+	assertCfg(parser, 'df$name', {
+		entryPoints: [ '4' ],
+		exitPoints:  [ '4-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: 4, name: RType.ExpressionList, type: CfgVertexType.Expression })
+			.addVertex({ id: '4-exit', name: RType.ExpressionList, type: CfgVertexType.EndMarker })
+			.addVertex({ id: 3, name: RType.Access, type: CfgVertexType.Expression })
+			.addVertex({ id: '3-after-name', name: RType.Access, type: CfgVertexType.MidMarker })
+			.addVertex({ id: '3-exit', name: 'access-exit', type: CfgVertexType.EndMarker })
+			.addVertex({ id: 2, name: RType.Argument, type: CfgVertexType.Expression })
+			.addVertex({ id: '2-before-value', name: 'before-value', type: CfgVertexType.MidMarker })
+			.addVertex({ id: '2-exit', name: 'exit', type: CfgVertexType.EndMarker })
+			.addVertex({ id: 0, name: RType.Symbol, type: CfgVertexType.Expression })
+			.addVertex({ id: 1, name: RType.Symbol, type: CfgVertexType.Expression })
+			.addEdge(3, 4, { label: 'FD' })
+			.addEdge(0, 3, { label: 'FD' })
+			.addEdge('3-after-name', 0, { label: 'FD' })
+			.addEdge(2, '3-after-name', { label: 'FD' })
+			.addEdge('2-before-value', 2, { label: 'FD' })
+			.addEdge(1, '2-before-value', { label: 'FD' })
+			.addEdge('2-exit', 1, { label: 'FD' })
+			.addEdge('3-exit', '2-exit', { label: 'FD' })
+			.addEdge('4-exit', '3-exit', { label: 'FD' })
 	});
 
 	assertCfg(parser, 'f(2 + 3, x=3)', {

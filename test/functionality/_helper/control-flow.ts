@@ -19,6 +19,7 @@ export interface AssertCfgOptions {
 	expectIsSubgraph: boolean
 }
 
+
 /**
  * Assert that the given code produces the expected CFG
  */
@@ -38,6 +39,8 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			assert.deepStrictEqual(normAllIds(cfg.breaks),      normAllIds(expected.breaks), 'breaks differ');
 			assert.deepStrictEqual(normAllIds(cfg.nexts),       normAllIds(expected.nexts), 'nexts differ');
 			assert.deepStrictEqual(normAllIds(cfg.returns),     normAllIds(expected.returns), 'returns differ');
+			const check = assertCfgSatisfiesProperties(cfg);
+			assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
 			diff = diffOfControlFlowGraphs({ graph: expected.graph, name: 'expected' }, { graph: cfg.graph, name: 'got' }, {
 				leftIsSubgraph: config?.expectIsSubgraph
 			});
@@ -51,4 +54,27 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			throw e;
 		}
 	});
+}
+
+const CfgProperties = {
+	'hammock-graph': (cfg: ControlFlowInformation) =>
+		new Set(cfg.entryPoints).size === 1 && new Set(cfg.exitPoints).size === 1 && new Set(cfg.breaks).size === 0 &&
+		new Set(cfg.returns).size === 0 && new Set(cfg.nexts).size === 0
+	,
+	// TODO: others like fully connected
+} as const satisfies Record<string, (cfg: ControlFlowInformation) => boolean>;
+
+
+
+/** either returns true or the name of the property that is not satisfied */
+export type PropertyReport = true | keyof typeof CfgProperties;
+
+
+export function assertCfgSatisfiesProperties(cfg: ControlFlowInformation): PropertyReport {
+	for(const [propName, prop] of Object.entries(CfgProperties)) {
+		if(!prop(cfg)) {
+			return propName as PropertyReport;
+		}
+	}
+	return true;
 }

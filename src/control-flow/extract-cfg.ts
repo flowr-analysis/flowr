@@ -236,16 +236,20 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		graph.addEdge(forLoop.info.id + '-exit', breakPoint, { label: CfgEdgeType.Fd });
 	}
 
-	if(body.exitPoints.length > 0) {
+	const isNotEndless = body.exitPoints.length > 0 || body.breaks.length > 0;
+	if(isNotEndless) {
 		graph.addVertex({
 			id:   forLoop.info.id + '-exit',
 			type: CfgVertexType.EndMarker,
 			root: forLoop.info.id
 		});
+		for(const exit of vector.exitPoints) {
+			graph.addEdge(forLoop.info.id + '-exit', exit, { label: CfgEdgeType.Cd, when: RFalse, caused: forLoop.info.id });
+		}
 	}
 
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: body.exitPoints.length > 0 ? [forLoop.info.id + '-exit'] : [], entryPoints: [forLoop.info.id] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: isNotEndless ? [forLoop.info.id + '-exit'] : [], entryPoints: [forLoop.info.id] };
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {

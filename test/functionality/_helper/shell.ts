@@ -42,6 +42,10 @@ import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
+import { extractCFG } from '../../../src/control-flow/extract-cfg';
+import type { CfgProperty } from './control-flow';
+import { assertCfgSatisfiesProperties } from './control-flow';
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -108,7 +112,7 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
-			 
+
 			value = [value[0], 0, value[2], 0];
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -444,7 +448,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgProperties?: readonly CfgProperty[] },
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
 ) {
@@ -493,12 +497,29 @@ export function assertSliced(
 		testWrapper(
 			userConfig?.skipTreeSitter || userConfig?.skipCompare,
 			false,
-			'compare',
+			'compare ASTs',
 			function() {
 				const tsAst = tsResult?.normalize.ast as RNodeWithParent;
 				const shellAst = shellResult?.normalize.ast as RNodeWithParent;
 				assertAstEqual(tsAst, shellAst, true, true, () => `tree-sitter ast: ${JSON.stringify(tsAst)} (${normalizedAstToMermaidUrl(tsAst)}), vs. shell ast: ${JSON.stringify(shellAst)} (${normalizedAstToMermaidUrl(shellAst)})`, false);
 			},
+		);
+
+		testWrapper(
+			userConfig?.skipTreeSitter,
+			false,
+			'cfg SAT properties',
+			function() {
+				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
+				const cfg = extractCFG(res.normalize, res.dataflow.graph);
+				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgProperties);
+				try {
+					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
+				} catch(e: unknown) {
+					console.error('cfg properties:', cfgToMermaidUrl(cfg, res.normalize));
+					throw e;
+				}
+			}
 		);
 	});
 	handleAssertOutput(name, shell, input, userConfig);

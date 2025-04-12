@@ -97,7 +97,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	});
 
 
-	describe('conditinals', () => {
+	describe('conditionals', () => {
 		assertCfg(parser, 'if(TRUE) 1', {
 			entryPoints: [ '4' ],
 			exitPoints:  [ '4-exit' ],

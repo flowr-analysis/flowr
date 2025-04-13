@@ -25,7 +25,7 @@ import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType , CfgVertexType, ControlFlowGraph } from './control-flow-graph';
-import type { CfgSimplificationPass } from './cfg-simplification';
+import type { CfgSimplificationPassName } from './cfg-simplification';
 import { simplifyControlFlowInformation } from './cfg-simplification';
 
 
@@ -81,7 +81,7 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
 export function extractCFG<Info=ParentInformation>(
 	ast:    NormalizedAst<Info>,
 	graph?: DataflowGraph,
-	simplifications?: readonly CfgSimplificationPass[]
+	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
 	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), simplifications);
 }

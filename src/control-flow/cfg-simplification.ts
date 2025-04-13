@@ -12,7 +12,7 @@ const CfgSimplificationPasses = {
 	'drop-empty-blocks': dropEmptyBasicBlocks
 } as const satisfies Record<string, CfgSimplificationPass>;
 
-type CfgSimplificationPassNames = keyof typeof CfgSimplificationPasses;
+export type CfgSimplificationPassName = keyof typeof CfgSimplificationPasses;
 
 export const DefaultCfgSimplificationOrder = [
 	'unique-cf-sets',
@@ -20,7 +20,7 @@ export const DefaultCfgSimplificationOrder = [
 	'to-basic-blocks',
 	'drop-empty-blocks',
 	'remove-dead-code',
-] as const satisfies CfgSimplificationPassNames[];
+] as const satisfies CfgSimplificationPassName[];
 
 /**
  * Simplify the control flow information by applying the given passes.
@@ -28,7 +28,7 @@ export const DefaultCfgSimplificationOrder = [
  */
 export function simplifyControlFlowInformation(
 	cfg: ControlFlowInformation,
-	passes: readonly CfgSimplificationPassNames[] = DefaultCfgSimplificationOrder
+	passes: readonly CfgSimplificationPassName[] = DefaultCfgSimplificationOrder
 ): ControlFlowInformation {
 	for(const pass of passes) {
 		const passFn = CfgSimplificationPasses[pass];

@@ -11,27 +11,25 @@ import type {
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
-import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { assertUnreachable } from '../util/assert';
+import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
+import type { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 
 export interface SyntaxCfgGuidedVisitorConfiguration<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst          = NormalizedAst
 > extends BasicCfgGuidedVisitorConfiguration<Cfg> {
 	readonly normalizedAst: Ast;
-}
-
-type VisitOfType<T extends RType, Info = NoInfo> = (node: Extract<RNode<Info>, { type: T }>) => void;
-
-/** explicitly excludes types that are not visitable */
-export type VisitableRType = RType;
-
-/**
- * Describes the visit functions for each node type.
- */
-export type NormalizedAstFold<Info = NoInfo> = {
-	[K in VisitableRType as `visit${Capitalize<K>}`]: VisitOfType<K, Info>;
 }
 
 /**
@@ -43,7 +41,7 @@ export class SyntaxGuidedCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst          = NormalizedAst,
 	Config extends SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast>
-> extends BasicCfgGuidedVisitor<Cfg, Config> implements NormalizedAstFold<ParentInformation> {
+> extends BasicCfgGuidedVisitor<Cfg, Config> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.
@@ -68,78 +66,95 @@ export class SyntaxGuidedCfgGuidedVisitor<
 			return;
 		}
 
-		switch(astVertex.type) {
+		const type = astVertex.type;
+		switch(type) {
 			case RType.Access:
-				this.visitRAccess(astVertex as RAccess<ParentInformation>);
+				return this.visitRAccess(astVertex);
+			case RType.Argument:
+				return this.visitRArgument(astVertex);
+			case RType.BinaryOp:
+				return this.visitRBinaryOp(astVertex);
+			case RType.ExpressionList:
+				return this.visitRExpressionList(astVertex);
+			case RType.ForLoop:
+				return this.visitRForLoop(astVertex);
+			case RType.FunctionCall:
+				return this.visitRFunctionCall(astVertex);
+			case RType.FunctionDefinition:
+				return this.visitRFunctionDefinition(astVertex);
+			case RType.IfThenElse:
+				return this.visitRIfThenElse(astVertex);
+			case RType.Parameter:
+				return this.visitRParameter(astVertex);
+			case RType.Pipe:
+				return this.visitRPipe(astVertex);
+			case RType.RepeatLoop:
+				return this.visitRRepeatLoop(astVertex);
+			case RType.UnaryOp:
+				return this.visitRUnaryOp(astVertex);
+			case RType.WhileLoop:
+				return this.visitRWhileLoop(astVertex);
+			case RType.Break:
+				return this.visitRBreak(astVertex);
+			case RType.Comment:
+				return this.visitRComment(astVertex);
+			case RType.LineDirective:
+				return this.visitRLineDirective(astVertex);
+			case RType.Logical:
+				return this.visitRLogical(astVertex);
+			case RType.Next:
+				return this.visitRNext(astVertex);
+			case RType.Number:
+				return this.visitRNumber(astVertex);
+			case RType.String:
+				return this.visitRString(astVertex);
+			case RType.Symbol:
+				return this.visitRSymbol(astVertex);
+			default:
+				assertUnreachable(type);
 		}
 	}
 
-	public visitRAccess(_node: RAccess<ParentInformation>): void {
-		// TODO: collect until...
+	protected visitRAccess(_node: RAccess<ParentInformation>): void {
 	}
-
-	public visitRArgument(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRArgument(_node: RArgument<ParentInformation>): void {
 	}
-	public visitRBinaryOp(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRBinaryOp(_node: RBinaryOp<ParentInformation>): void {
 	}
-	public visitRExpressionList(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRExpressionList(_node: RExpressionList<ParentInformation>): void {
 	}
-	public visitRForLoop(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRForLoop(_node: RForLoop<ParentInformation>): void {
 	}
-	public visitRFunctionCall(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRFunctionCall(_node: RFunctionCall<ParentInformation>): void {
 	}
-	public visitRFunctionDefinition(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRFunctionDefinition(_node: RFunctionDefinition<ParentInformation>): void {
 	}
-	public visitRIfThenElse(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRIfThenElse(_node: RIfThenElse<ParentInformation>): void {
 	}
-	public visitRParameter(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRParameter(_node: RParameter<ParentInformation>): void {
 	}
-	public visitRPipe(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRPipe(_node: RPipe<ParentInformation>): void {
 	}
-	public visitRRepeatLoop(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRRepeatLoop(_node: RRepeatLoop<ParentInformation>): void {
 	}
-	public visitRUnaryOp(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRUnaryOp(_node: RNodeWithParent): void {
 	}
-	public visitRWhileLoop(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRWhileLoop(_node: RNodeWithParent): void {
 	}
-	public visitRBreak(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRBreak(_node: RNodeWithParent): void {
 	}
-	public visitRComment(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRComment(_node: RNodeWithParent): void {
 	}
-	public visitRLineDirective(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRLineDirective(_node: RNodeWithParent): void {
 	}
-	public visitRLogical(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRLogical(_node: RNodeWithParent): void {
 	}
-	public visitRNext(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRNext(_node: RNodeWithParent): void {
 	}
-	public visitRNumber(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRNumber(_node: RNodeWithParent): void {
 	}
-	public visitRString(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRString(_node: RNodeWithParent): void {
 	}
-	public visitRSymbol(_node: RNodeWithParent): void {
-		// TODO: collect until...
+	protected visitRSymbol(_node: RNodeWithParent): void {
 	}
-	public visitRDelimiter(_node: RNodeWithParent): void {
-		// TODO: collect until...
-	}
-
 }

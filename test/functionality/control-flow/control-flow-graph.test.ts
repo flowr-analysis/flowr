@@ -1,7 +1,7 @@
 import { withTreeSitter } from '../_helper/shell';
 import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { describe } from 'vitest';
-import { assertCfg } from '../_helper/control-flow';
+import { assertCfg } from '../_helper/controlflow/assert-control-flow-graph';
 import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
 
 describe('Control Flow Graph', withTreeSitter(parser => {

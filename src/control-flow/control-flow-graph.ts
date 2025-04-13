@@ -12,7 +12,6 @@ export enum CfgVertexType {
     /** something like an addition, ... */
     Expression  = 'expr',
 	/** a (as far as R allows this) 'basic' block */
-	// TODO: allow them in the main cfg, make visitors etc just traverse the conteained vertices in order
 	Block	  = 'blk',
 }
 
@@ -253,6 +252,51 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this;
 	}
 
+	removeEdge(from: NodeId, to: NodeId): this {
+		const edges = this.edgeInformation.get(from);
+		if(edges) {
+			edges.delete(to);
+			if(edges.size === 0) {
+				this.edgeInformation.delete(from);
+			}
+		}
+		return this;
+	}
+
+
+	/** merges b into a */
+	mergeTwoBasicBlocks(
+		a: NodeId,
+		b: NodeId
+	): this {
+		const aVertex = this.getVertex(a);
+		const bVertex = this.getVertex(b);
+		if(!aVertex || !bVertex || aVertex.type !== CfgVertexType.Block || bVertex.type !== CfgVertexType.Block) {
+			return this;
+		}
+
+		const bElems = bVertex.elems;
+
+		aVertex.elems = aVertex.elems.concat(bElems);
+		// update cache
+		for(const elem of bElems) {
+			this.bbChildren.set(elem.id, a);
+		}
+
+		// drop all edges from a to b
+		this.removeEdge(a, b);
+
+		const bOutgoing = this.outgoing(b);
+
+		this.removeVertex(b);
+
+		// reroute all edge from b to a
+		for(const [to, edge] of bOutgoing ?? []) {
+			this.addEdge(a, to, edge);
+		}
+		return this;
+	}
+
 	merge(other: ControlFlowGraph<Vertex>, forceNested = false): this {
 		for(const [id, node] of other.vertexInformation) {
 			this.addVertex(node, forceNested ? false : other.rootVertices.has(id));
@@ -266,7 +310,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 }
 
-export interface ControlFlowInformation extends MergeableRecord {
+export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimpleVertex> extends MergeableRecord {
     returns:     NodeId[],
     breaks:      NodeId[],
     nexts:       NodeId[],
@@ -274,7 +318,7 @@ export interface ControlFlowInformation extends MergeableRecord {
     entryPoints: NodeId[],
     /** See {@link ControlFlowInformation#entryPoints|entryPoints} */
     exitPoints:  NodeId[],
-    graph:       ControlFlowGraph
+    graph:       ControlFlowGraph<Vertex>
 }
 
 export function emptyControlFlowInformation(): ControlFlowInformation {

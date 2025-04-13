@@ -25,29 +25,36 @@ function cfgOfNode(normalizedVertex: RNodeWithParent | undefined, id: NodeId, co
 	return output;
 }
 
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst?: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	let output = prefix;
 
 	const dirIsBT = prefix.includes(' BT\n');
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
-		const normalizedVertex = normalizedAst.idMap.get(id);
+		const normalizedVertex = normalizedAst?.idMap.get(id);
 		const content = getLexeme(normalizedVertex);
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression && cfg.graph.hasVertex(id + '-exit')) {
 			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
 			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
 		}
 		if(vertex.type === CfgVertexType.Block) {
-			output += `    subgraph Block ${normalizedVertex?.info.fullLexeme ?? id}\n`;
+			output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
 			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
-			for(const child of vertex.children ?? []) {
-				const childNormalizedVertex = normalizedAst.idMap.get(child);
+			let last: NodeId | undefined = undefined;
+			for(const element of vertex.elems ?? []) {
+				const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
 				const childContent = getLexeme(childNormalizedVertex);
-				output += cfgOfNode(childNormalizedVertex, child, childContent, output);
+				output = cfgOfNode(childNormalizedVertex, element.id, childContent, output);
+				// just to keep the order
+				if(last) {
+					output += `    ${last} -.-> n${element.id}\n`;
+				}
+				last = `n${element.id}`;
 			}
 			output += '    end\n';
+		} else {
+			output = cfgOfNode(normalizedVertex, id, content, output);
 		}
-		output += cfgOfNode(normalizedVertex, id, content, output);
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
 			output += '    end\n';
 		}
@@ -72,6 +79,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst?: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix));
 }

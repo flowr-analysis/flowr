@@ -6,20 +6,17 @@ import { convertCfgToBasicBlocks } from './cfg-to-basic-blocks';
 export type CfgSimplificationPass = (cfg: ControlFlowInformation) => ControlFlowInformation;
 
 const CfgSimplificationPasses = {
-	'unique-cf-sets':    uniqueControlFlowSets,
-	'remove-dead-code':  cfgRemoveDeadCode,
-	'to-basic-blocks':   toBasicBlocks,
-	'drop-empty-blocks': dropEmptyBasicBlocks
+	'unique-cf-sets':   uniqueControlFlowSets,
+	'remove-dead-code': cfgRemoveDeadCode,
+	'to-basic-blocks':  toBasicBlocks
 } as const satisfies Record<string, CfgSimplificationPass>;
 
 export type CfgSimplificationPassName = keyof typeof CfgSimplificationPasses;
 
 export const DefaultCfgSimplificationOrder = [
 	'unique-cf-sets',
-	'remove-dead-code',
-	'to-basic-blocks',
-	'drop-empty-blocks',
-	'remove-dead-code',
+	'remove-dead-code'
+	// basic blocks must be requested
 ] as const satisfies CfgSimplificationPassName[];
 
 /**
@@ -65,9 +62,4 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation): ControlFlowInformation 
 
 function toBasicBlocks(cfg: ControlFlowInformation): ControlFlowInformation {
 	return convertCfgToBasicBlocks(cfg);
-}
-
-function dropEmptyBasicBlocks(cfg: ControlFlowInformation): ControlFlowInformation {
-	// TODO: ensure that edges gonig in the basic block and out the basioc block are now continued/attached to the respective node, this should happen in remove vertex as long as there is a vertex before and after
-	return cfg;
 }

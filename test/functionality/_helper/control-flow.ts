@@ -11,6 +11,7 @@ import type { ControlFlowInformation } from '../../../src/control-flow/control-f
 import {  emptyControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import { extractCFG } from '../../../src/control-flow/extract-cfg';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
+import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(normalizeIdToNumberIfPossible);
@@ -18,6 +19,7 @@ function normAllIds(ids: readonly NodeId[]): NodeId[] {
 
 export interface AssertCfgOptions {
 	expectIsSubgraph: boolean
+	withBasicBlocks:  boolean
 }
 
 
@@ -31,7 +33,11 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 		const result = await createDataflowPipeline(parser, {
 			request: requestFromInput(code)
 		}).allRemainingSteps();
-		const cfg = extractCFG(result.normalize, result.dataflow?.graph);
+		let cfg = extractCFG(result.normalize, result.dataflow?.graph);
+
+		if(config?.withBasicBlocks) {
+			cfg = simplifyControlFlowInformation(cfg, ['to-basic-blocks', 'remove-dead-code']);
+		}
 
 		let diff: GraphDifferenceReport | undefined;
 		try {

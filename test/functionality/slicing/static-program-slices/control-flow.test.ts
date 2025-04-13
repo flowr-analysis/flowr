@@ -61,9 +61,9 @@ print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${l
 }
 x`,
 				{
-					skipCompare:   true /* see https://github.com/flowr-analysis/flowr/issues/1209 */,
+					skipCompare:          true /* see https://github.com/flowr-analysis/flowr/issues/1209 */,
 					/* they have dead code */
-					cfgProperties: ['single-entry-and-exit']
+					cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all']
 				});
 		});
 		assertSliced(label('dead code (return)', ['name-normal', 'formals-named', 'newlines', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities, 'numbers', 'return', 'unnamed-arguments', 'comments']),

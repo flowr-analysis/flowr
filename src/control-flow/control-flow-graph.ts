@@ -89,14 +89,29 @@ interface CfgControlDependencyEdge extends MergeableRecord {
 export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 
 /**
+ * A read-only view of the {@link ControlFlowGraph}.
+ */
+export interface ReadOnlyControlFlowGraph {
+	readonly rootVertexIds: () => ReadonlySet<NodeId>
+	readonly vertices:      () => ReadonlyMap<NodeId, CfgVertex>
+	readonly edges:         () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
+	readonly outgoing:      (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
+	readonly ingoing:       (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
+	readonly getVertex:     (id: NodeId) => CfgVertex | undefined
+	readonly hasVertex:     (id: NodeId) => boolean
+}
+
+/**
  * This class represents the control flow graph of an R program.
  * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
  *
  * There are two very simple visitors to traverse a CFG:
  * - {@link visitCfgInOrder} visits the graph in the order of the vertices
  * - {@link visitCfgInReverseOrder} visits the graph in reverse order
+ *
+ * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
-export class ControlFlowGraph {
+export class ControlFlowGraph implements ReadOnlyControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();
 	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>();
 	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
@@ -152,6 +167,20 @@ export class ControlFlowGraph {
 
 	hasVertex(id: NodeId): boolean {
 		return this.vertexInformation.has(id);
+	}
+
+	/**
+	 * This removes the vertex and all edges to and from it.
+	 * @param id - the id of the vertex to remove
+	 */
+	removeVertex(id: NodeId): this {
+		this.vertexInformation.delete(id);
+		this.edgeInformation.delete(id);
+		for(const edges of this.edgeInformation.values()) {
+			edges.delete(id);
+		}
+		this.rootVertices.delete(id);
+		return this;
 	}
 
 	merge(other: ControlFlowGraph, forceNested = false): this {

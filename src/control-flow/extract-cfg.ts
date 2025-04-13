@@ -25,6 +25,8 @@ import { isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType , CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import type { CfgSimplificationPass } from './cfg-simplification';
+import { simplifyControlFlowInformation } from './cfg-simplification';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -72,14 +74,16 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * This few is different from the computation of the dataflow graph and may differ,
  * especially because it focuses on intra-procedural analysis.
  *
- * @param ast - the normalized AST
- * @param graph - additional dataflow facts to consider by the control flow extraction
+ * @param ast             - the normalized AST
+ * @param graph           - additional dataflow facts to consider by the control flow extraction
+ * @param simplifications - a list of simplification passes to apply to the control flow graph
  */
 export function extractCFG<Info=ParentInformation>(
 	ast:    NormalizedAst<Info>,
-	graph?: DataflowGraph
+	graph?: DataflowGraph,
+	simplifications?: readonly CfgSimplificationPass[]
 ): ControlFlowInformation {
-	return foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds);
+	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), simplifications);
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {

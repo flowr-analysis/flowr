@@ -1,4 +1,4 @@
-import type { CfgVertex, ControlFlowInformation } from './control-flow-graph';
+import type { CfgSimpleVertex, ControlFlowInformation } from './control-flow-graph';
 import { CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -77,7 +77,7 @@ export class BasicCfgGuidedVisitor<
 	/**
 	 * Get the control flow vertex for the given node id or fail if it does not exist.
 	 */
-	protected getCfgVertex(id: NodeId): CfgVertex | undefined {
+	protected getCfgVertex(id: NodeId): CfgSimpleVertex | undefined {
 		return this.config.controlFlow.graph.getVertex(id);
 	}
 
@@ -105,19 +105,19 @@ export class BasicCfgGuidedVisitor<
 		}
 	}
 
-	protected onStatementNode(_node: CfgVertex): void {
+	protected onStatementNode(_node: CfgSimpleVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onExpressionNode(_node: CfgVertex): void {
+	protected onExpressionNode(_node: CfgSimpleVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onMidMarkerNode(_node: CfgVertex): void {
+	protected onMidMarkerNode(_node: CfgSimpleVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onEndMarkerNode(_node: CfgVertex): void {
+	protected onEndMarkerNode(_node: CfgSimpleVertex): void {
 		/* does nothing by default */
 	}
 }

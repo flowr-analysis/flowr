@@ -1,4 +1,4 @@
-import type { CfgVertex, ControlFlowInformation } from './control-flow-graph';
+import type { CfgSimpleVertex, ControlFlowInformation } from './control-flow-graph';
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -16,11 +16,11 @@ export class SegmentedCfgGuidedVisitor<
 > extends BasicCfgGuidedVisitor<Cfg, Config> {
 
 	// TODO: support nested collections because we will encounter many nested structures
-	private collect:        CfgVertex[] | undefined;
+	private collect:        CfgSimpleVertex[] | undefined;
 	private trackingStarts: Set<NodeId> | undefined;
 	private trackingMids:   Set<NodeId> | undefined;
 	private trackingEnds:   Set<NodeId> | undefined;
-	private activeCallback: ((nodes: readonly CfgVertex[]) => void) | undefined;
+	private activeCallback: ((nodes: readonly CfgSimpleVertex[]) => void) | undefined;
 
 	/**
 	 * From the current node, continue traversal until we reach the corresponding end.
@@ -35,7 +35,7 @@ export class SegmentedCfgGuidedVisitor<
 	 *
 	 * For the `backward` visitation order this works the same way, but from the end-marker to the start markers.
 	 */
-	protected collectUntilCurrentEnds(onCollected: (nodes: readonly CfgVertex[]) => void): void {
+	protected collectUntilCurrentEnds(onCollected: (nodes: readonly CfgSimpleVertex[]) => void): void {
 		if(this.config.defaultVisitingOrder === 'forward') {
 			this.collectUntilCurrentEndsForward(onCollected);
 		} else {
@@ -55,7 +55,7 @@ export class SegmentedCfgGuidedVisitor<
 		this.trackingEnds = new Set(ends);
 	}
 
-	protected collectUntilCurrentEndsForward(onCollected: (nodes: readonly CfgVertex[]) => void): void {
+	protected collectUntilCurrentEndsForward(onCollected: (nodes: readonly CfgSimpleVertex[]) => void): void {
 		const next = this.visit.next();
 		if(next.done) {
 			return;
@@ -74,7 +74,7 @@ export class SegmentedCfgGuidedVisitor<
 		}
 	}
 
-	protected collectUntilCurrentEndsBackward(onCollected: (nodes: readonly CfgVertex[]) => void): void {
+	protected collectUntilCurrentEndsBackward(onCollected: (nodes: readonly CfgSimpleVertex[]) => void): void {
 		const next = this.visit.next();
 		if(next.done) {
 			return;
@@ -113,7 +113,7 @@ export class SegmentedCfgGuidedVisitor<
 		this.activeCallback = undefined;
 	}
 
-	private processPotentialStart(node: CfgVertex): void {
+	private processPotentialStart(node: CfgSimpleVertex): void {
 		this.collect?.push(node);
 		if(this.trackingStarts?.has(node.id) ?? false) {
 			this.trackingStarts?.delete(node.id);
@@ -123,17 +123,17 @@ export class SegmentedCfgGuidedVisitor<
 		}
 	}
 
-	protected override onStatementNode(node: CfgVertex): void {
+	protected override onStatementNode(node: CfgSimpleVertex): void {
 		super.onStatementNode(node);
 		this.processPotentialStart(node);
 	}
 
-	protected override onExpressionNode(node: CfgVertex): void {
+	protected override onExpressionNode(node: CfgSimpleVertex): void {
 		super.onExpressionNode(node);
 		this.processPotentialStart(node);
 	}
 
-	protected override onMidMarkerNode(node: CfgVertex): void {
+	protected override onMidMarkerNode(node: CfgSimpleVertex): void {
 		super.onMidMarkerNode(node);
 		this.collect?.push(node);
 		if(this.trackingMids?.has(node.id) ?? false) {
@@ -144,7 +144,7 @@ export class SegmentedCfgGuidedVisitor<
 		}
 	}
 
-	protected override onEndMarkerNode(node: CfgVertex): void {
+	protected override onEndMarkerNode(node: CfgSimpleVertex): void {
 		super.onEndMarkerNode(node);
 		this.collect?.push(node);
 		if(this.trackingEnds?.has(node.id) ?? false) {

@@ -73,7 +73,7 @@ export interface CfgEndMarkerVertex extends CfgBaseVertex {
 /**
  * A vertex in the {@link ControlFlowGraph}.
  */
-export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
+export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
 
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
@@ -91,19 +91,19 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 /**
  * A read-only view of the {@link ControlFlowGraph}.
  */
-export interface ReadOnlyControlFlowGraph {
+export interface ReadOnlyControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> {
 	readonly rootVertexIds: () => ReadonlySet<NodeId>
-	readonly vertices:      () => ReadonlyMap<NodeId, CfgVertex>
+	readonly vertices:      () => ReadonlyMap<NodeId, Vertex>
 	readonly edges:         () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
 	readonly outgoing:      (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
 	readonly ingoing:       (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
-	readonly getVertex:     (id: NodeId) => CfgVertex | undefined
+	readonly getVertex:     (id: NodeId) => Vertex | undefined
 	readonly hasVertex:     (id: NodeId) => boolean
 }
 
 /**
  * This class represents the control flow graph of an R program.
- * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
+ * The control flow may be hierarchical when confronted with function definitions (see {@link CfgSimpleVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
  *
  * There are two very simple visitors to traverse a CFG:
  * - {@link visitCfgInOrder} visits the graph in the order of the vertices
@@ -111,12 +111,12 @@ export interface ReadOnlyControlFlowGraph {
  *
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
-export class ControlFlowGraph implements ReadOnlyControlFlowGraph {
+export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph<Vertex> {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();
-	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>();
+	private vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
 
-	addVertex(vertex: CfgVertex, rootVertex = true): this {
+	addVertex(vertex: Vertex, rootVertex = true): this {
 		if(this.vertexInformation.has(vertex.id)) {
 			throw new Error(`Node with id ${vertex.id} already exists`);
 		}
@@ -153,7 +153,7 @@ export class ControlFlowGraph implements ReadOnlyControlFlowGraph {
 		return this.rootVertices;
 	}
 
-	vertices(): ReadonlyMap<NodeId, CfgVertex> {
+	vertices(): ReadonlyMap<NodeId, Vertex> {
 		return this.vertexInformation;
 	}
 
@@ -161,7 +161,7 @@ export class ControlFlowGraph implements ReadOnlyControlFlowGraph {
 		return this.edgeInformation;
 	}
 
-	getVertex(id: NodeId): CfgVertex | undefined {
+	getVertex(id: NodeId): Vertex | undefined {
 		return this.vertexInformation.get(id);
 	}
 
@@ -183,7 +183,7 @@ export class ControlFlowGraph implements ReadOnlyControlFlowGraph {
 		return this;
 	}
 
-	merge(other: ControlFlowGraph, forceNested = false): this {
+	merge(other: ControlFlowGraph<Vertex>, forceNested = false): this {
 		for(const [id, node] of other.vertexInformation) {
 			this.addVertex(node, forceNested ? false : other.rootVertices.has(id));
 		}

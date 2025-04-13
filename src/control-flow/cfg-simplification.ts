@@ -1,13 +1,26 @@
 import type { ControlFlowInformation } from './control-flow-graph';
 import { visitCfgInOrder } from './simple-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { convertCfgToBasicBlocks } from './cfg-to-basic-blocks';
 
 export type CfgSimplificationPass = (cfg: ControlFlowInformation) => ControlFlowInformation;
 
 const CfgSimplificationPasses = {
-	'unique-cf-sets':   uniqueControlFlowSets,
-	'remove-dead-code': cfgRemoveDeadCode,
+	'unique-cf-sets':    uniqueControlFlowSets,
+	'remove-dead-code':  cfgRemoveDeadCode,
+	'to-basic-blocks':   toBasicBlocks,
+	'drop-empty-blocks': dropEmptyBasicBlocks
 } as const satisfies Record<string, CfgSimplificationPass>;
+
+type CfgSimplificationPassNames = keyof typeof CfgSimplificationPasses;
+
+export const DefaultCfgSimplificationOrder = [
+	'unique-cf-sets',
+	'remove-dead-code',
+	'to-basic-blocks',
+	'drop-empty-blocks',
+	'remove-dead-code',
+] as const satisfies CfgSimplificationPassNames[];
 
 /**
  * Simplify the control flow information by applying the given passes.
@@ -15,10 +28,11 @@ const CfgSimplificationPasses = {
  */
 export function simplifyControlFlowInformation(
 	cfg: ControlFlowInformation,
-	passes: readonly CfgSimplificationPass[] = Object.values(CfgSimplificationPasses)
+	passes: readonly CfgSimplificationPassNames[] = DefaultCfgSimplificationOrder
 ): ControlFlowInformation {
 	for(const pass of passes) {
-		cfg = pass(cfg);
+		const passFn = CfgSimplificationPasses[pass];
+		cfg = passFn(cfg);
 	}
 	return cfg;
 }
@@ -46,5 +60,14 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation): ControlFlowInformation 
 			cfg.graph.removeVertex(id);
 		}
 	}
+	return cfg;
+}
+
+function toBasicBlocks(cfg: ControlFlowInformation): ControlFlowInformation {
+	return convertCfgToBasicBlocks(cfg);
+}
+
+function dropEmptyBasicBlocks(cfg: ControlFlowInformation): ControlFlowInformation {
+	// TODO: ensure that edges gonig in the basic block and out the basioc block are now continued/attached to the respective node, this should happen in remove vertex as long as there is a vertex before and after
 	return cfg;
 }

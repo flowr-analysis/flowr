@@ -100,14 +100,15 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 /**
  * A read-only view of the {@link ControlFlowGraph}.
  */
-export interface ReadOnlyControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> {
+export interface ReadOnlyControlFlowGraph {
 	readonly rootVertexIds: () => ReadonlySet<NodeId>
-	readonly vertices:      () => ReadonlyMap<NodeId, Vertex>
+	readonly vertices:      (includeBasicBlockElements: boolean) => ReadonlyMap<NodeId, CfgSimpleVertex>
 	readonly edges:         () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
 	readonly outgoing:      (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
 	readonly ingoing:       (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
 	readonly getVertex:     (id: NodeId, includeBlocks?: boolean) => CfgSimpleVertex | undefined
 	readonly hasVertex:     (id: NodeId, includeBlocks?: boolean) => boolean
+	readonly getBasicBlock: (elemId: NodeId) => CfgBasicBlockVertex | undefined
 }
 
 /**
@@ -120,7 +121,7 @@ export interface ReadOnlyControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSi
  *
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
-export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph<Vertex> {
+export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();
 	private vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	/** the basic block children maps contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
@@ -172,8 +173,35 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this.rootVertices;
 	}
 
-	vertices(): ReadonlyMap<NodeId, Vertex> {
-		return this.vertexInformation;
+	vertices(includeBasicBlockElements = true): ReadonlyMap<NodeId, CfgSimpleVertex> {
+		if(includeBasicBlockElements) {
+			const all = new Map<NodeId, CfgSimpleVertex>(this.vertexInformation);
+			for(const [id, block] of this.bbChildren.entries()) {
+				const blockVertex = all.get(block);
+				if(blockVertex === undefined || blockVertex.type !== CfgVertexType.Block) {
+					continue;
+				}
+				const elem = blockVertex.elems.find(e => e.id === id);
+				if(elem !== undefined) {
+					all.set(id, elem);
+				}
+			}
+			return all;
+		} else {
+			return this.vertexInformation;
+		}
+	}
+
+	getBasicBlock(elemId: NodeId): CfgBasicBlockVertex | undefined {
+		const block = this.bbChildren.get(elemId);
+		if(block === undefined) {
+			return undefined;
+		}
+		const blockVertex = this.vertexInformation.get(block);
+		if(blockVertex === undefined || blockVertex.type !== CfgVertexType.Block) {
+			return undefined;
+		}
+		return blockVertex;
 	}
 
 	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {

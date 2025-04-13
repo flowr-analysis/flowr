@@ -10,7 +10,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
-import { SegmentedCfgGuidedVisitor } from './segmented-cfg-guided-visitor';
+import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -35,7 +35,7 @@ export type NormalizedAstFold<Info = NoInfo> = {
 }
 
 /**
- * This visitor extends on the {@link SegmentedCfgGuidedVisitor} by dispatching visitors based on the AST type of the node.
+ * This visitor extends on the {@link BasicCfgGuidedVisitor} by dispatching visitors based on the AST type of the node.
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
@@ -43,7 +43,7 @@ export class SyntaxGuidedCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst          = NormalizedAst,
 	Config extends SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast>
-> extends SegmentedCfgGuidedVisitor<Cfg, Config> implements NormalizedAstFold<ParentInformation> {
+> extends BasicCfgGuidedVisitor<Cfg, Config> implements NormalizedAstFold<ParentInformation> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.

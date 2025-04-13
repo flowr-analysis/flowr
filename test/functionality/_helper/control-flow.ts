@@ -150,11 +150,11 @@ export type PropertyReport = true | CfgProperty;
 /**
  * Check if the given CFG satisfies all properties.
  * @param cfg                 - The control flow graph to check.
- * @param excludeProperites   - If provided, exclude the given properties, otherwise this checks all properties.
+ * @param excludeProperties   - If provided, exclude the given properties, otherwise this checks all properties.
  */
-export function assertCfgSatisfiesProperties(cfg: ControlFlowInformation, excludeProperites?: readonly CfgProperty[]): PropertyReport {
+export function assertCfgSatisfiesProperties(cfg: ControlFlowInformation, excludeProperties?: readonly CfgProperty[]): PropertyReport {
 	for(const [propName, prop] of Object.entries(CfgProperties)) {
-		if((!excludeProperites || !excludeProperites.includes(propName as CfgProperty)) && !prop(cfg)) {
+		if((!excludeProperties || !excludeProperties.includes(propName as CfgProperty)) && !prop(cfg)) {
 			return propName as PropertyReport;
 		}
 	}

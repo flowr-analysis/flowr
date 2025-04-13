@@ -448,7 +448,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string,
-	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgProperties?: readonly CfgProperty[] },
+	userConfig?: Partial<TestConfigurationWithOutput> & { autoSelectIf?: AutoSelectPredicate, skipTreeSitter?: boolean, skipCompare?: boolean, cfgExcludeProperties?: readonly CfgProperty[] },
 	testCaseFailType?: TestCaseFailType,
 	getId: () => IdGenerator<NoInfo> = () => deterministicCountingIdGenerator(0),
 ) {
@@ -512,7 +512,7 @@ export function assertSliced(
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
 				const cfg = extractCFG(res.normalize, res.dataflow.graph);
-				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgProperties);
+				const check = assertCfgSatisfiesProperties(cfg, userConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');
 				} catch(e: unknown) {

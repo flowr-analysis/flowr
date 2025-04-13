@@ -10,7 +10,10 @@ export enum CfgVertexType {
     /** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
     Statement   = 'stm',
     /** something like an addition, ... */
-    Expression  = 'expr'
+    Expression  = 'expr',
+	/** a (as far as R allows this) 'basic' block */
+	// TODO: allow them in the main cfg, make visitors etc just traverse the conteained vertices in order
+	Block	  = 'blk',
 }
 
 export const enum CfgEdgeType {
@@ -70,10 +73,16 @@ export interface CfgEndMarkerVertex extends CfgBaseVertex {
 	root:      NodeId,
 }
 
+export interface CfgBasicBlockVertex extends CfgBaseVertex {
+	type:  CfgVertexType.Block,
+	/** The vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs */
+	elems: readonly Exclude<CfgSimpleVertex, CfgBasicBlockVertex>[]
+}
+
 /**
  * A vertex in the {@link ControlFlowGraph}.
  */
-export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
+export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
 
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
@@ -97,8 +106,8 @@ export interface ReadOnlyControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSi
 	readonly edges:         () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
 	readonly outgoing:      (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
 	readonly ingoing:       (node: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
-	readonly getVertex:     (id: NodeId) => Vertex | undefined
-	readonly hasVertex:     (id: NodeId) => boolean
+	readonly getVertex:     (id: NodeId, includeBlocks?: boolean) => CfgSimpleVertex | undefined
+	readonly hasVertex:     (id: NodeId, includeBlocks?: boolean) => boolean
 }
 
 /**
@@ -114,13 +123,23 @@ export interface ReadOnlyControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSi
 export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph<Vertex> {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>();
 	private vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
+	/** the basic block children maps contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
+	private bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
+	/** basic block agnostic edges */
 	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
 
 	addVertex(vertex: Vertex, rootVertex = true): this {
 		if(this.vertexInformation.has(vertex.id)) {
 			throw new Error(`Node with id ${vertex.id} already exists`);
+		} else if(vertex.type === CfgVertexType.Block && vertex.elems.some(e => this.bbChildren.has(e.id) || this.rootVertices.has(e.id))) {
+			throw new Error(`Vertex ${vertex.id} contains vertices that are already part of the graph`);
 		}
 		this.vertexInformation.set(vertex.id, vertex);
+		if(vertex.type === CfgVertexType.Block) {
+			for(const elem of vertex.elems) {
+				this.bbChildren.set(elem.id, vertex.id);
+			}
+		}
 		if(rootVertex) {
 			this.rootVertices.add(vertex.id);
 		}
@@ -161,12 +180,27 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this.edgeInformation;
 	}
 
-	getVertex(id: NodeId): Vertex | undefined {
-		return this.vertexInformation.get(id);
+	/**
+	 * Retrieve a vertex by its id.
+	 */
+	getVertex(id: NodeId, includeBlocks = true): CfgSimpleVertex | undefined {
+		const res = this.vertexInformation.get(id);
+		if(res || !includeBlocks) {
+			return res;
+		}
+		const block = this.bbChildren.get(id);
+		if(block === undefined) {
+			return undefined;
+		}
+		const blockVertex = this.vertexInformation.get(block);
+		if(blockVertex === undefined || blockVertex.type !== CfgVertexType.Block) {
+			return undefined;
+		}
+		blockVertex.elems.find(e => e.id === id);
 	}
 
-	hasVertex(id: NodeId): boolean {
-		return this.vertexInformation.has(id);
+	hasVertex(id: NodeId, includeBlocks = true): boolean {
+		return this.vertexInformation.has(id) || (includeBlocks && this.bbChildren.has(id));
 	}
 
 	/**
@@ -176,6 +210,14 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	removeVertex(id: NodeId): this {
 		this.vertexInformation.delete(id);
 		this.edgeInformation.delete(id);
+		this.bbChildren.delete(id);
+		// remove all bbChildren with id as target
+		for(const [a, b] of this.bbChildren.entries()) {
+			if(b === id) {
+				// TODO: check for modify on iterate
+				this.bbChildren.delete(a);
+			}
+		}
 		for(const edges of this.edgeInformation.values()) {
 			edges.delete(id);
 		}

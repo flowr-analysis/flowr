@@ -1,6 +1,12 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from './control-flow-graph';
+import type {
+	CfgBasicBlockVertex, CfgEndMarkerVertex, CfgExpressionVertex, CfgMidMarkerVertex,
+	CfgSimpleVertex,
+	CfgStatementVertex,
+	ControlFlowInformation
+} from './control-flow-graph';
 import { CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { assertUnreachable } from '../util/assert';
 
 export interface BasicCfgGuidedVisitorConfiguration<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
@@ -87,7 +93,8 @@ export class BasicCfgGuidedVisitor<
 		if(vertex === undefined) {
 			return;
 		}
-		switch(vertex.type) {
+		const type = vertex.type;
+		switch(type) {
 			case CfgVertexType.Statement:
 				this.onStatementNode(vertex);
 				break;
@@ -100,24 +107,33 @@ export class BasicCfgGuidedVisitor<
 			case CfgVertexType.EndMarker:
 				this.onEndMarkerNode(vertex);
 				break;
+			case CfgVertexType.Block:
+				this.onBasicBlockNode(vertex);
+				break;
 			default:
-				throw new Error(`Unknown vertex type ${JSON.stringify(vertex)}`);
+				assertUnreachable(type);
 		}
 	}
 
-	protected onStatementNode(_node: CfgSimpleVertex): void {
+	protected onBasicBlockNode(node: CfgBasicBlockVertex): void {
+		for(const elem of node.elems) {
+			this.visitNode(elem.id);
+		}
+	}
+
+	protected onStatementNode(_node: CfgStatementVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onExpressionNode(_node: CfgSimpleVertex): void {
+	protected onExpressionNode(_node: CfgExpressionVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onMidMarkerNode(_node: CfgSimpleVertex): void {
+	protected onMidMarkerNode(_node: CfgMidMarkerVertex): void {
 		/* does nothing by default */
 	}
 
-	protected onEndMarkerNode(_node: CfgSimpleVertex): void {
+	protected onEndMarkerNode(_node: CfgEndMarkerVertex): void {
 		/* does nothing by default */
 	}
 }

@@ -1,4 +1,9 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from './control-flow-graph';
+import type {
+	CfgEndMarkerVertex, CfgExpressionVertex,
+	CfgMidMarkerVertex,
+	CfgSimpleVertex, CfgStatementVertex,
+	ControlFlowInformation
+} from './control-flow-graph';
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -123,17 +128,17 @@ export class SegmentedCfgGuidedVisitor<
 		}
 	}
 
-	protected override onStatementNode(node: CfgSimpleVertex): void {
+	protected override onStatementNode(node: CfgStatementVertex): void {
 		super.onStatementNode(node);
 		this.processPotentialStart(node);
 	}
 
-	protected override onExpressionNode(node: CfgSimpleVertex): void {
+	protected override onExpressionNode(node: CfgExpressionVertex): void {
 		super.onExpressionNode(node);
 		this.processPotentialStart(node);
 	}
 
-	protected override onMidMarkerNode(node: CfgSimpleVertex): void {
+	protected override onMidMarkerNode(node: CfgMidMarkerVertex): void {
 		super.onMidMarkerNode(node);
 		this.collect?.push(node);
 		if(this.trackingMids?.has(node.id) ?? false) {
@@ -144,7 +149,7 @@ export class SegmentedCfgGuidedVisitor<
 		}
 	}
 
-	protected override onEndMarkerNode(node: CfgSimpleVertex): void {
+	protected override onEndMarkerNode(node: CfgEndMarkerVertex): void {
 		super.onEndMarkerNode(node);
 		this.collect?.push(node);
 		if(this.trackingEnds?.has(node.id) ?? false) {

@@ -1,4 +1,8 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from './control-flow-graph';
+import type {
+	CfgExpressionVertex,
+	CfgStatementVertex,
+	ControlFlowInformation
+} from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	NormalizedAst,
@@ -48,17 +52,17 @@ export class SyntaxGuidedCfgGuidedVisitor<
 		return this.config.normalizedAst.idMap.get(id);
 	}
 
-	protected override onStatementNode(node: CfgSimpleVertex): void {
+	protected override onStatementNode(node: CfgStatementVertex): void {
 		super.onStatementNode(node);
 		this.onExprOrStmtNode(node);
 	}
 
-	protected override onExpressionNode(node: CfgSimpleVertex): void {
+	protected override onExpressionNode(node: CfgExpressionVertex): void {
 		super.onExpressionNode(node);
 		this.onExprOrStmtNode(node);
 	}
 
-	private onExprOrStmtNode(node: CfgSimpleVertex): void {
+	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
 		const astVertex = this.getNormalizedAst(node.id);
 		if(!astVertex) {
 			return;

@@ -91,6 +91,7 @@ function processDataFrameOperation<OtherInfo>(
 
 		if(value !== undefined) {
 			domain.set(node.info.dataFrame.identifier, value);
+			updateDomainOfId(node.info.dataFrame.identifier, domain, dfg);
 			domain.set(node.info.id, value);
 		}
 	} else if(node.info.dataFrame?.type === 'expression') {

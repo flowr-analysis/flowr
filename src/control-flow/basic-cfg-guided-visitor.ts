@@ -28,16 +28,12 @@ export class BasicCfgGuidedVisitor<
 > {
 
 	protected readonly config:  Config;
-	protected readonly visited: WeakMap<NodeId, number>;
-
-	/** provides the next node to visit */
-	protected visit: Generator<NodeId>;
+	protected readonly visited: Map<NodeId, number>;
 
 	constructor(config: Config) {
 		this.config = { ...config };
 		// TODO: as an optimization invert the CFG when default order is forward
-		this.visited = new WeakMap<NodeId, number>();
-		this.visit = this.makeVisitGenerator(this.config.defaultVisitingOrder === 'forward' ? this.config.controlFlow.entryPoints : this.config.controlFlow.exitPoints);
+		this.visited = new Map<NodeId, number>();
 	}
 
 	/**
@@ -54,21 +50,21 @@ export class BasicCfgGuidedVisitor<
 		return true;
 	}
 
-	protected *makeVisitGenerator(start: readonly NodeId[]): Generator<NodeId> {
+	protected startVisitor(start: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
 		const n = this.config.defaultVisitingOrder === 'forward' ?
 			(n: NodeId) => g.ingoing(n) :
 			(n: NodeId) => g.outgoing(n);
-		const queue = [...start];
-		while(queue.length > 0) {
-			const current = queue.shift() as NodeId;
-			yield current;
+		const stack = [...start];
+		while(stack.length > 0) {
+			const current = stack.shift() as NodeId;
+
 			if(!this.visitNode(current)) {
 				continue;
 			}
 			const outgoing = n(current) ?? [];
 			for(const [to] of outgoing) {
-				queue.push(to);
+				stack.unshift(to);
 			}
 		}
 	}
@@ -77,7 +73,7 @@ export class BasicCfgGuidedVisitor<
      * Start the visiting process.
      */
 	public start(): void {
-		this.visit.next();
+		this.startVisitor(this.config.defaultVisitingOrder === 'forward' ? this.config.controlFlow.entryPoints : this.config.controlFlow.exitPoints);
 	}
 
 	/**

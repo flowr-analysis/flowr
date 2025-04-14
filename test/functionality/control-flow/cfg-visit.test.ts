@@ -10,6 +10,7 @@ import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { extractCFG } from '../../../src/control-flow/extract-cfg';
 import { withTreeSitter } from '../_helper/shell';
+import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -17,6 +18,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		code: string,
 		expectedForward: readonly NodeId[],
 		expectedBackward: readonly NodeId[] = expectedForward.toReversed(),
+		useBasicBlocks = false,
 		config?: Omit<BasicCfgGuidedVisitorConfiguration, 'controlFlow' | 'defaultVisitingOrder'>
 	): void {
 		describe(label, () => {
@@ -24,15 +26,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				const order: NodeId[] = [];
 				class TestVisitor extends BasicCfgGuidedVisitor {
 					override onVisitNode(node: NodeId): void {
-						super.onVisitNode(node);
 						order.push(node);
+						super.onVisitNode(node);
 					}
 				}
 
 				const result = await createDataflowPipeline(parser, {
 					request: requestFromInput(code)
 				}).allRemainingSteps();
-				const cfg = extractCFG(result.normalize, result.dataflow?.graph);
+				let cfg = extractCFG(result.normalize, result.dataflow?.graph);
+				if(useBasicBlocks) {
+					cfg = simplifyControlFlowInformation(cfg, ['to-basic-blocks', 'remove-dead-code']);
+				}
 
 				const configuration: BasicCfgGuidedVisitorConfiguration = {
 					...config,
@@ -47,6 +52,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	}
 
 	assertOrderBasic('simple assignment', 'a <- 1', [3, 2, 0, 1, '2-exit', '3-exit']);
+	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1', ['bb-3-exit', 3, 2, 0, 1, '2-exit', '3-exit'], ['bb-3-exit', '3-exit', '2-exit', 1, 0, 2, 3], true);
 	assertOrderBasic('sequence', 'a;b', [2, 0, 1, '2-exit']);
 	assertOrderBasic('while-loop', 'while(TRUE) a + b',
 		[6, 5, 0, '5-condition', '5-exit', '6-exit', 4, 3, 1, 2, '3-exit', '4-exit'],

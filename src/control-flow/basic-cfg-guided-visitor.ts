@@ -113,11 +113,11 @@ export class BasicCfgGuidedVisitor<
 
 	protected onBasicBlockNode(node: CfgBasicBlockVertex): void {
 		if(this.config.defaultVisitingOrder === 'forward') {
-			for(const elem of node.elems) {
+			for(const elem of node.elems.toReversed()) {
 				this.visitNode(elem.id);
 			}
 		} else {
-			for(const elem of node.elems.toReversed()) {
+			for(const elem of node.elems) {
 				this.visitNode(elem.id);
 			}
 		}

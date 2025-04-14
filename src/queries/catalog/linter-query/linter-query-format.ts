@@ -6,6 +6,7 @@ import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
+import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { LintingCertainty } from '../../../linter/linter-format';
 
 export interface LinterQuery extends BaseQueryFormat {
@@ -13,7 +14,7 @@ export interface LinterQuery extends BaseQueryFormat {
 	/**
 	 * The rules to lint for. If unset, all rules will be included.
 	 */
-	readonly rules?: LintingRuleNames[];
+	readonly rules?: (LintingRuleNames | ConfiguredLintingRule)[];
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
@@ -42,6 +43,12 @@ export const LinterQueryDefinition = {
 	},
 	schema: Joi.object({
 		type:  Joi.string().valid('linter').required().description('The type of the query.'),
-		rules: Joi.array().items(Joi.string().valid(...Object.keys(LintingRules))).description('The rules to lint for. If unset, all rules will be included.')
+		rules: Joi.array().items(
+			Joi.string().valid(...Object.keys(LintingRules)),
+			Joi.object({
+				name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
+				config: Joi.object()
+			})
+		).description('The rules to lint for. If unset, all rules will be included.')
 	}).description('The linter query lints for the given set of rules and returns the result.')
 } as const satisfies SupportedQuery<'linter'>;

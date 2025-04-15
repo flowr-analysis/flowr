@@ -17,10 +17,9 @@ import type {
 	ContainerIndices,
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
-	IndexIdentifier } from '../../../../../graph/vertex';
-import {
-	VertexType
+	IndexIdentifier
 } from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -32,6 +31,7 @@ import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -56,7 +56,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = BuiltInProcessorMapper['builtin:assignment'](
+	let res = BuiltInProcessorMapper['builtin:assignment'](
 		name,
 		[args[0], args[args.length - 1]],
 		rootId,
@@ -112,6 +112,15 @@ export function processReplacementFunction<OtherInfo>(
 		if(ref !== undefined) {
 			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}
+	}
+
+
+	const fa = unpackArgument(args[0]);
+	if(!getConfig().solver.pointerTracking && fa) {
+		res = {
+			...res,
+			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+		};
 	}
 
 	return res;

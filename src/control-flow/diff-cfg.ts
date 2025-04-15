@@ -5,6 +5,7 @@ import { initDiffContext , GraphDifferenceReport } from '../util/diff-graph';
 import type { GenericDiffConfiguration } from '../util/diff';
 import { setDifference } from '../util/diff';
 import type { CfgEdge, CfgSimpleVertex, ControlFlowGraph } from './control-flow-graph';
+import { equalVertex } from './control-flow-graph';
 import { arrayEqual } from '../util/arrays';
 
 
@@ -75,7 +76,7 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			if(!arrayEqual(
 				(lInfo.elems ?? []) as CfgSimpleVertex[],
 				(rInfo.elems ?? []) as CfgSimpleVertex[],
-				(a, b) => JSON.stringify(a) === JSON.stringify(b),
+				equalVertex,
 			)) {
 				ctx.report.addComment(
 					`Vertex ${id} differs in elems.\n  ${ctx.leftname}: ${JSON.stringify(lInfo.elems)}\n  vs\n  ${ctx.rightname}: ${JSON.stringify(rInfo.elems)}`,

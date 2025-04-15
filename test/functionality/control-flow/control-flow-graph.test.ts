@@ -49,54 +49,6 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
 		});
 
-		assertCfg(parser, 'f(2 + 3, x=3)', {
-			entryPoints: [ '9' ],
-			exitPoints:  [ '9-exit' ],
-			graph:       new ControlFlowGraph()
-				.addVertex({ id: 0, type: CfgVertexType.Expression })
-				.addVertex({ id: 8, type: CfgVertexType.Statement, end: ['8-exit'], mid: ['8-name']  })
-				.addVertex({ id: '8-name', kind: 'name', type: CfgVertexType.MidMarker, root: 8 })
-				.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
-
-				.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'], mid: ['4-before-value'] })
-				.addVertex({ id: '4-before-value', kind: 'before-value', type: CfgVertexType.MidMarker, root: 4 })
-				.addVertex({ id: 1, type: CfgVertexType.Expression })
-				.addVertex({ id: 2, type: CfgVertexType.Expression })
-				.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
-				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-				.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
-
-				.addVertex({ id: 7, type: CfgVertexType.Expression, mid: ['7-before-value'], end: ['7-exit'] })
-				.addVertex({ id: 5, type: CfgVertexType.Expression })
-				.addVertex({ id: '7-before-value', kind: 'before-value', type: CfgVertexType.MidMarker, root: 7 })
-				.addVertex({ id: 6, type: CfgVertexType.Expression })
-				.addVertex({ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 })
-
-				.addVertex({ id: 9, type: CfgVertexType.Expression, end: ['9-exit'] })
-				.addVertex({ id: '9-exit', type: CfgVertexType.EndMarker, root: 9 })
-
-				.addEdge(8, 9, { label: CfgEdgeType.Fd })
-				.addEdge('9-exit', '8-exit', { label: CfgEdgeType.Fd })
-
-				.addEdge(0, 8, { label: CfgEdgeType.Fd })
-				.addEdge('8-name', 0, { label: CfgEdgeType.Fd })
-				.addEdge(4, '8-name', { label: CfgEdgeType.Fd })
-				.addEdge('4-before-value', 4, { label: CfgEdgeType.Fd })
-				.addEdge(3, '4-before-value', { label: CfgEdgeType.Fd })
-				.addEdge(1, 3, { label: CfgEdgeType.Fd })
-				.addEdge(2, 1, { label: CfgEdgeType.Fd })
-				.addEdge('3-exit', 2, { label: CfgEdgeType.Fd })
-				.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
-
-				.addEdge(7, '4-exit', { label: CfgEdgeType.Fd })
-				.addEdge(5, 7, { label: CfgEdgeType.Fd })
-				.addEdge('7-before-value', 5, { label: CfgEdgeType.Fd })
-				.addEdge(6, '7-before-value', { label: CfgEdgeType.Fd })
-				.addEdge('7-exit', 6, { label: CfgEdgeType.Fd })
-				.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
-		});
-
-
 		describe('conditionals', () => {
 			assertCfg(parser, 'if(TRUE) 1', {
 				entryPoints: [ '4' ],
@@ -265,6 +217,89 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
 			});
 		});
+
+		describe('function calls', () => {
+			assertCfg(parser, 'print(x)', {
+				entryPoints: [ '4' ],
+				exitPoints:  [ '4-exit' ],
+				graph:       new ControlFlowGraph()
+					.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] })
+					.addVertex({ id: 3, type: CfgVertexType.Statement, mid: ['3-name'], end: ['3-exit'] })
+					.addVertex({ id: 0, type: CfgVertexType.Expression })
+					.addVertex({ id: 2, type: CfgVertexType.Expression, mid: ['2-before-value'], end: ['2-exit'] })
+					.addVertex({ id: '3-name', type: CfgVertexType.MidMarker, kind: 'name', root: 3 })
+					.addVertex({ id: '2-before-value', type: CfgVertexType.MidMarker, kind: 'before-value', root: 2 })
+					.addVertex({ id: 1, type: CfgVertexType.Expression })
+					.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
+					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
+					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
+
+					.addEdge(3, 4, { label: CfgEdgeType.Fd })
+					.addEdge(0, 3, { label: CfgEdgeType.Fd })
+					.addEdge('3-name', 0, { label: CfgEdgeType.Fd })
+					.addEdge(2, '3-name', { label: CfgEdgeType.Fd })
+					.addEdge('2-before-value', 2, { label: CfgEdgeType.Fd })
+					.addEdge(1, '2-before-value', { label: CfgEdgeType.Fd })
+					.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
+					.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
+					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+			});
+
+			assertCfg(parser, 'f(2 + 3, x=3)', {
+				entryPoints: [ '9' ],
+				exitPoints:  [ '9-exit' ],
+				graph:       new ControlFlowGraph()
+					.addVertex({ id: 0, type: CfgVertexType.Expression })
+					.addVertex({ id: 8, type: CfgVertexType.Statement, end: ['8-exit'], mid: ['8-name']  })
+					.addVertex({ id: '8-name', kind: 'name', type: CfgVertexType.MidMarker, root: 8 })
+					.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
+
+					.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'], mid: ['4-before-value'] })
+					.addVertex({ id: '4-before-value', kind: 'before-value', type: CfgVertexType.MidMarker, root: 4 })
+					.addVertex({ id: 1, type: CfgVertexType.Expression })
+					.addVertex({ id: 2, type: CfgVertexType.Expression })
+					.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
+					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
+					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
+
+					.addVertex({ id: 7, type: CfgVertexType.Expression, mid: ['7-before-value'], end: ['7-exit'] })
+					.addVertex({ id: 5, type: CfgVertexType.Expression })
+					.addVertex({ id: '7-before-value', kind: 'before-value', type: CfgVertexType.MidMarker, root: 7 })
+					.addVertex({ id: 6, type: CfgVertexType.Expression })
+					.addVertex({ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 })
+
+					.addVertex({ id: 9, type: CfgVertexType.Expression, end: ['9-exit'] })
+					.addVertex({ id: '9-exit', type: CfgVertexType.EndMarker, root: 9 })
+
+					.addEdge(8, 9, { label: CfgEdgeType.Fd })
+					.addEdge('9-exit', '8-exit', { label: CfgEdgeType.Fd })
+
+					.addEdge(0, 8, { label: CfgEdgeType.Fd })
+					.addEdge('8-name', 0, { label: CfgEdgeType.Fd })
+					.addEdge(4, '8-name', { label: CfgEdgeType.Fd })
+					.addEdge('4-before-value', 4, { label: CfgEdgeType.Fd })
+					.addEdge(3, '4-before-value', { label: CfgEdgeType.Fd })
+					.addEdge(1, 3, { label: CfgEdgeType.Fd })
+					.addEdge(2, 1, { label: CfgEdgeType.Fd })
+					.addEdge('3-exit', 2, { label: CfgEdgeType.Fd })
+					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+
+					.addEdge(7, '4-exit', { label: CfgEdgeType.Fd })
+					.addEdge(5, 7, { label: CfgEdgeType.Fd })
+					.addEdge('7-before-value', 5, { label: CfgEdgeType.Fd })
+					.addEdge(6, '7-before-value', { label: CfgEdgeType.Fd })
+					.addEdge('7-exit', 6, { label: CfgEdgeType.Fd })
+					.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
+			});
+
+
+			assertCfg(parser, 'f <- function(x) x\nf()', {
+				entryPoints: [ '9' ],
+				exitPoints:  [ '9-exit' ],
+				graph:       new ControlFlowGraph()
+			});
+
+		});
 	});
 	describe('With Basic Blocks', () => {
 		assertCfg(parser, '2 + 3', {
@@ -328,6 +363,25 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 				.addEdge('bb-3-exit', 'bb-7-condition', { label: CfgEdgeType.Cd, when: RTrue, caused: 7 })
 				.addEdge('bb-6-exit', 'bb-7-condition', { label: CfgEdgeType.Cd, when: RFalse, caused: 7 })
+		}, { withBasicBlocks: true });
+
+		assertCfg(parser, 'print(x)', {
+			entryPoints: [ 'bb-4-exit' ],
+			exitPoints:  [ 'bb-4-exit' ],
+			graph:       new ControlFlowGraph()
+				.addVertex({ id:    'bb-4-exit', type:  CfgVertexType.Block, elems: [
+					{ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 },
+					{ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 },
+					{ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 },
+					{ id: 1, type: CfgVertexType.Expression },
+					{ id: '2-before-value', type: CfgVertexType.MidMarker, kind: 'before-value', root: 2 },
+					{ id: 2, type: CfgVertexType.Expression, mid: ['2-before-value'], end: ['2-exit'] },
+					{ id: '3-name', type: CfgVertexType.MidMarker, kind: 'name', root: 3 },
+					{ id: 0, type: CfgVertexType.Expression },
+					{ id: 3, type: CfgVertexType.Statement, mid: ['3-name'], end: ['3-exit'] },
+					{ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] }
+				] })
+
 		}, { withBasicBlocks: true });
 
 		assertCfg(parser, `while (a) {

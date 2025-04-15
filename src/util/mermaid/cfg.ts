@@ -15,10 +15,12 @@ function getLexeme(n?: RNodeWithParent) {
 }
 
 
-function cfgOfNode(normalizedVertex: RNodeWithParent | undefined, id: NodeId, content: string | undefined, output: string): string {
+function cfgOfNode(type: CfgVertexType, normalizedVertex: RNodeWithParent | undefined, id: NodeId, content: string | undefined, output: string): string {
 	if(normalizedVertex && content !== undefined) {
+		const start = type === CfgVertexType.Expression ? '([' : '[';
+		const end = type === CfgVertexType.Expression ? '])' : ']';
 		const name = `"\`${escapeMarkdown(normalizedVertex.type)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}\`"`;
-		output += `    n${id}[${name}]\n`;
+		output += `    n${id}${start}${name}${end}\n`;
 	} else {
 		output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;
 	}
@@ -44,7 +46,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst?: Normal
 			for(const element of vertex.elems ?? []) {
 				const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
 				const childContent = getLexeme(childNormalizedVertex);
-				output = cfgOfNode(childNormalizedVertex, element.id, childContent, output);
+				output = cfgOfNode(vertex.type, childNormalizedVertex, element.id, childContent, output);
 				// just to keep the order
 				if(last) {
 					output += `    ${last} -.-> n${element.id}\n`;
@@ -53,7 +55,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst?: Normal
 			}
 			output += '    end\n';
 		} else {
-			output = cfgOfNode(normalizedVertex, id, content, output);
+			output = cfgOfNode(vertex.type, normalizedVertex, id, content, output);
 		}
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
 			output += '    end\n';

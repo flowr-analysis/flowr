@@ -289,14 +289,14 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 		graph.addEdge(fn.info.id + '-exit', next, { label: CfgEdgeType.Fd });
 	}
 
-	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [fn.info.id], entryPoints: [fn.info.id] };
+	return { graph: graph, breaks: [], nexts: [], returns: [], exitPoints: [fn.info.id], entryPoints: [fn.info.id] };
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], exit = 'exit'): ControlFlowInformation {
 	const graph = name.graph;
-	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [call.info.id + '-exit'], entryPoints: [call.info.id] };
+	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [call.info.id + '-' + exit], entryPoints: [call.info.id] };
 
-	graph.addVertex({ id: call.info.id, type: identifyMayStatementType(call), mid: [call.info.id + '-name'], end: [call.info.id + '-exit'] });
+	graph.addVertex({ id: call.info.id, type: identifyMayStatementType(call), mid: [call.info.id + '-name'], end: [call.info.id + '-' + exit] });
 
 	for(const entryPoint of name.entryPoints) {
 		graph.addEdge(entryPoint, call.info.id, { label: CfgEdgeType.Fd });
@@ -308,7 +308,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	}
 
 
-	graph.addVertex({ id: call.info.id + '-exit', type: CfgVertexType.EndMarker, root: call.info.id });
+	graph.addVertex({ id: call.info.id + '-' + exit, type: CfgVertexType.EndMarker, root: call.info.id });
 
 	let lastArgExits: NodeId[] = [call.info.id + '-name'];
 
@@ -345,11 +345,12 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCa
 		const targets = getAllFunctionCallTargets(call.info.id, graph);
 
 
+		// TODO: use cfgFunctionCall with resolve-dcall exit and than link toi that so wthat we do not ahve multiple exit points
 		const exits: NodeId[] = [];
 		for(const target of targets) {
 			// we have to filter out non func-call targets as the call targets contains names and call ids
 			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
-				baseCFG.graph.addEdge(call.info.id, target, { label: CfgEdgeType.Fd });
+				baseCFG.graph.addEdge(target, call.info.id, { label: CfgEdgeType.Call });
 				exits.push(target + '-exit');
 			}
 		}

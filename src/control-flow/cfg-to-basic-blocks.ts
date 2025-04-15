@@ -4,10 +4,17 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** if true, return the target */
 function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): NodeId | undefined {
-	if(!outgoing || outgoing.size !== 1) {
+	if(!outgoing) {
 		return undefined;
 	}
-	const next = outgoing.entries().next().value;
+
+	const outgoingNonCalls = [...outgoing.entries()].filter(([_, edge]) => edge.label !== CfgEdgeType.Call);
+
+	if(outgoingNonCalls.length !== 1) {
+		return undefined;
+	}
+
+	const next = outgoingNonCalls[0];
 	if(next?.[1].label === CfgEdgeType.Fd) {
 		return next[0];
 	} else {

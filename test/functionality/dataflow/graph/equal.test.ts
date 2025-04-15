@@ -3,15 +3,15 @@ import type { DataflowGraphJson } from '../../../../src/dataflow/graph/graph';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
-import type { DataflowDifferenceReport } from '../../../../src/dataflow/graph/diff';
-import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff';
+import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import { jsonReplacer } from '../../../../src/util/json';
 import { argumentInCall } from '../../_helper/dataflow/environment-builder';
 import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
 import { describe, assert, test } from 'vitest';
+import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
 
 function check(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
-	let res: DataflowDifferenceReport | undefined = undefined;
+	let res: GraphDifferenceReport | undefined = undefined;
 	try {
 		res = diffOfDataflowGraphs({
 			name:  'left (a)',

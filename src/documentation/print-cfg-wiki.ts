@@ -10,7 +10,7 @@ import { getReplCommand } from './doc-util/doc-cli-option';
 import { block } from './doc-util/doc-structure';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { printCFGCode } from './doc-util/doc-cfg';
-import { visitCfgInReverseOrder } from '../util/cfg/visitor';
+import { visitCfgInReverseOrder } from '../control-flow/visitor';
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';

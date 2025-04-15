@@ -16,9 +16,9 @@ export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation>, in
 }
 
 /**
- * Resolves the value of a function argument as string, number, boolean, string vector, number vector, or boolean vector using {@link resolveIdToValue}
+ * Resolves the value of a function argument as string, number, boolean, string vector, number vector, boolean vector, or mixed vector using {@link resolveIdToValue}
  */
-export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | number | boolean | string[] | number[] | boolean[] | undefined {
+export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | number | boolean | string[] | number[] | boolean[] | (string | number | boolean)[] | undefined {
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value !== undefined) {

@@ -66,7 +66,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 		const result: DataFrameInfo = { type: 'expression', operations: [] };
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			const rowValue = resolveIdToArgValue(rowArg, info);
+			const rowValue: unknown = resolveIdToArgValue(rowArg, info);
 			let rows: number[] | undefined = undefined;
 
 			if(typeof rowValue === 'number') {
@@ -81,7 +81,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			});
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			const colValue = resolveIdToArgValue(colArg, info);
+			const colValue: unknown = resolveIdToArgValue(colArg, info);
 			let columns: string[] | number[] | undefined = undefined;
 
 			if(typeof colValue === 'string') {

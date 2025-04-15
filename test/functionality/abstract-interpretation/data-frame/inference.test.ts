@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { ColNamesTop, DataFrameTop } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { withShell } from '../../_helper/shell';
 import type { DataFrameTestOptions } from './data-frame';
@@ -159,5 +159,105 @@ df[10, ]
 print(df)
 		`.trim(),
 		[['6@df', DataFrameTop]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5)
+df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df1 <- data.frame(id = 1:5)
+df2 <- data.frame(name = 6:10)
+df3 <- data.frame(label = c("A", "B", "C", "D", "E"))
+df <- cbind(df1, df2, df3)
+		`.trim(),
+		[
+			['1@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df2', { colnames: ['name'], cols: [1, 1], rows: [5, 5] }],
+			['3@df3', { colnames: ['label'], cols: [1, 1], rows: [5, 5] }],
+			['4@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df1 <- data.frame(id = 1:5)
+df2 <- data.frame(name = 6:10)
+df <- cbind(df1, df2, label = c("A", "B", "C", "D", "E"))
+		`.trim(),
+		[
+			['1@df1', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df2', { colnames: ['name'], cols: [1, 1], rows: [5, 5] }],
+			['3@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5)
+df <- cbind(df, label = list(name = 6:10))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df', { colnames: ColNamesTop, cols: IntervalTop, rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1, name = "A", score = 20)
+df <- rbind(df, c(2, "B", 30), c(4, "C", 25))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [1, 1] }],
+			['2@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
+df2 <- data.frame(id = 4, name = "D", score = 20)
+df3 <- data.frame(id = 5, name = "E", score = 40)
+df <- rbind(df1, df2, df3)
+		`.trim(),
+		[
+			['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }],
+			['2@df2', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [1, 1] }],
+			['3@df3', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [1, 1] }],
+			['4@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df1 <- data.frame(id = 1:3, name = c("A", "B", "C"), score = c(20, 30, 25))
+df2 <- data.frame(id = 4, name = "D", score = 20)
+df <- rbind(df1, df2, label = c(5, "E", 40))
+		`.trim(),
+		[
+			['1@df1', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [3, 3] }],
+			['2@df2', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [1, 1] }],
+			['3@df', { colnames: ['id', 'name', 'score'], cols: [3, 3], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5)
+df <- rbind(df, list(id = 6:10))
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['2@df', { colnames: ['id'], cols: [1, 1], rows: IntervalTop }, { rows: DomainMatchingType.Overapproximation }]
+		]
 	);
 }));

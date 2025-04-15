@@ -8,8 +8,9 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { startAndEndsWith } from '../../../util/strings';
-import type { DataFrameInfo } from '../absint-info';
-import { resolveIdToArgName, resolveIdToArgVectorLength } from '../resolve-args';
+import type { AbstractInterpretationInfo, DataFrameInfo } from '../absint-info';
+import { DataFrameTop } from '../domain';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgVectorLength } from '../resolve-args';
 
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
@@ -17,7 +18,9 @@ const DataFrameFunctionMapper = {
 	'data.frame':    mapDataFrameCreate,
 	'as.data.frame': mapDataFrameUnknownCreate,
 	'read.csv':      mapDataFrameUnknownCreate,
-	'read.table':    mapDataFrameUnknownCreate
+	'read.table':    mapDataFrameUnknownCreate,
+	'cbind':         mapDataFrameColBind,
+	'rbind':         mapDataFrameRowBind
 } as const satisfies Record<string, DataFrameFunctionMapping>;
 
 const SpecialFunctionArgumentsMapper: Partial<Record<DataFrameFunction, string[]>> = {
@@ -27,7 +30,7 @@ const SpecialFunctionArgumentsMapper: Partial<Record<DataFrameFunction, string[]
 type DataFrameFunctionMapping = <OtherInfo>(
     args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
     info: ResolveInfo
-) => DataFrameInfo;
+) => DataFrameInfo | undefined;
 
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
 
@@ -76,6 +79,109 @@ function mapDataFrameUnknownCreate(): DataFrameInfo {
 	};
 }
 
+function mapDataFrameColBind<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
+	info: ResolveInfo
+): DataFrameInfo | undefined {
+	const dataFrame = args.find(isDataFrameArgument);
+
+	if(dataFrame === undefined || dataFrame === EmptyArgument || dataFrame.value === undefined) {
+		return;
+	} else if(args.length === 1) {
+		return {
+			type:       'expression',
+			operations: [{
+				operation: 'identity',
+				operand:   dataFrame.value.info.id,
+				args:      {}
+			}]
+		};
+	}
+	const result: DataFrameInfo = { type: 'expression', operations: [] };
+	let operand: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo> | undefined = dataFrame.value;
+	let colnames: (string | undefined)[] | undefined = [];
+
+	for(const arg of args) {
+		if(arg !== dataFrame && arg !== EmptyArgument) {
+			if(arg.value !== undefined && isDataFrameArgument(arg)) {
+				const other = arg.value.info.dataFrame?.domain?.get(arg.value.info.id) ?? DataFrameTop;
+
+				result.operations.push({
+					operation: 'concatCols',
+					operand:   operand?.info.id,
+					args:      { other: other }
+				});
+				operand = undefined;
+			// Added columns are unknown if argument cannot be resolved to constant (vector-like) value
+			} else if(resolveIdToArgValue(arg, info) !== undefined) {
+				const colname = unescapeArgument(resolveIdToArgName(arg, info));
+				colnames?.push(colname);
+			} else {
+				colnames = undefined;
+			}
+		}
+	}
+	if(colnames === undefined || colnames.length > 0) {
+		result.operations.push({
+			operation: 'addCols',
+			operand:   operand?.info.id,
+			args:      { colnames: colnames }
+		});
+	}
+	return result;
+}
+
+function mapDataFrameRowBind<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
+	info: ResolveInfo
+): DataFrameInfo | undefined {
+	const dataFrame = args.find(isDataFrameArgument);
+
+	if(dataFrame === undefined || dataFrame === EmptyArgument || dataFrame.value === undefined) {
+		return;
+	} else if(args.length === 1) {
+		return {
+			type:       'expression',
+			operations: [{
+				operation: 'identity',
+				operand:   dataFrame.value.info.id,
+				args:      {}
+			}]
+		};
+	}
+	const result: DataFrameInfo = { type: 'expression', operations: [] };
+	let operand: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo> | undefined = dataFrame.value;
+	let rows: number | undefined = 0;
+
+	for(const arg of args) {
+		if(arg !== dataFrame && arg !== EmptyArgument) {
+			if(arg.value !== undefined && isDataFrameArgument(arg)) {
+				const other = arg.value.info.dataFrame?.domain?.get(arg.value.info.id) ?? DataFrameTop;
+
+				result.operations.push({
+					operation: 'concatRows',
+					operand:   operand?.info.id,
+					args:      { other: other }
+				});
+				operand = undefined;
+			// Number of added rows is unknown if arguments cannot be resolved to constant (vector-like) value
+			} else if(resolveIdToArgValue(arg, info) !== undefined) {
+				rows = rows !== undefined ? rows + 1 : undefined;
+			} else {
+				rows = undefined;
+			}
+		}
+	}
+	if(rows === undefined || rows > 0) {
+		result.operations.push({
+			operation: 'addRows',
+			operand:   operand?.info.id,
+			args:      { rows: rows }
+		});
+	}
+	return result;
+}
+
 function getFunctionArguments(
 	node: RFunctionCall<ParentInformation>,
 	dfg: DataflowGraph
@@ -99,6 +205,15 @@ function getEffectiveArgs<OtherInfo>(
 	const ignoredArgs = SpecialFunctionArgumentsMapper[funct] ?? [];
 
 	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(arg.name.content));
+}
+
+function isDataFrameArgument<OtherInfo>(
+	arg: RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>
+): boolean {
+	if(arg === EmptyArgument || arg.value === undefined) {
+		return false;
+	}
+	return arg.value.info.dataFrame?.domain?.get(arg.value.info.id) !== undefined;
 }
 
 function isValidColName(colname: string | undefined): boolean {

@@ -99,6 +99,30 @@ export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDo
 	}
 }
 
+export function addInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [X1[0] + X2[0], X1[1] + X2[1]];
+	}
+}
+
+export function subtractInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [X1[0] - X2[0], X1[1] - X2[1]];
+	}
+}
+
+export function includeZeroInterval(X: IntervalDomain): IntervalDomain {
+	if(X === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [0, X[1]];
+	}
+}
+
 export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain): boolean {
 	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
 }

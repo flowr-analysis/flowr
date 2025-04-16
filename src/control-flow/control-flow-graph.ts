@@ -41,8 +41,9 @@ export function edgeTypeToString(type: CfgEdgeType): string {
 }
 
 interface CfgBaseVertex extends MergeableRecord {
-	type: CfgVertexType,
-	id:   NodeId,
+	type:      CfgVertexType,
+	id:        NodeId,
+	children?: NodeId[],
 }
 
 interface CfgWithMarker extends CfgBaseVertex {
@@ -149,12 +150,12 @@ export interface ReadOnlyControlFlowGraph {
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
 export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> implements ReadOnlyControlFlowGraph {
-	private rootVertices:      Set<NodeId> = new Set<NodeId>();
-	private vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
-	/** the basic block children maps contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
-	private bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
+	private readonly rootVertices:      Set<NodeId> = new Set<NodeId>();
+	private readonly vertexInformation: Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
+	/** the basic block children map contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
+	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
 	/** basic block agnostic edges */
-	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	private readonly edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
 
 	addVertex(vertex: Vertex, rootVertex = true): this {
 		if(this.vertexInformation.has(vertex.id)) {

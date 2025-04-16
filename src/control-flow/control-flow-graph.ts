@@ -15,7 +15,7 @@ export enum CfgVertexType {
     /** something like an addition, ... */
     Expression  = 'expr',
 	/** a (as far as R allows this) 'basic' block */
-	Block	  = 'blk',
+	Block	    = 'blk',
 }
 
 export const enum CfgEdgeType {

@@ -5,8 +5,8 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
-import { extractSimpleCFG } from '../../../abstract-interpretation/simple-cfg';
-import { performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
+import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
+import { flipCfg, performDataFrameAbsint } from '../../../abstract-interpretation/data-frame/abstract-interpretation';
 
 async function controlflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
@@ -67,13 +67,17 @@ export const absintDataFrameCommand: ReplCommand = {
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await controlflow(shell, handleString(remainingLine));
-		const cfg = extractSimpleCFG(result.normalize);
-		const mermaid = cfgToMermaidUrl(cfg, result.normalize);
+
+		const cfg = extractCFG(result.normalize, result.dataflow.graph);
+		const forwardCfg = { ...cfg, graph: flipCfg(cfg.graph) };
+		const mermaid = cfgToMermaid(forwardCfg, result.normalize).replace('flowchart BT', 'flowchart TB');
+		const mermaidUrl = mermaidCodeToUrl(mermaid);
+		const domain = performDataFrameAbsint(cfg, result.dataflow.graph);
+		console.log(domain);
 		try {
 			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
+			clipboard.default.writeSync(mermaidUrl);
 			output.stdout(formatInfo(output, 'mermaid url'));
 		} catch{ /* do nothing this is a service thing */ }
-		performDataFrameAbsint(cfg, result.dataflow.graph);
 	}
 };

@@ -86,6 +86,16 @@ export class ControlFlowGraph {
 		return this;
 	}
 
+	ingoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+		const edges = new Map<NodeId, CfgEdge>();
+		for(const [source, outgoing] of this.edgeInformation.entries()) {
+			if(outgoing.has(node)) {
+				edges.set(source, outgoing.get(node) as CfgEdge);
+			}
+		}
+		return edges;
+	}
+
 	outgoing(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
 		return this.edgeInformation.get(node);
 	}
@@ -201,11 +211,11 @@ function cfgLeaf(type: CfgVertexType): (leaf: RNodeWithParent) => ControlFlowInf
 }
 
 function cfgBreak(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), breaks: [leaf.info.id] };
+	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), breaks: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgNext(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), nexts: [leaf.info.id] };
+	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), nexts: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgIgnore(_leaf: RNodeWithParent): ControlFlowInformation {
@@ -544,31 +554,46 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 }
 
 function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: readonly (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
-	const result = name;
-	const graph = result.graph;
+	const graph = name.graph;
+	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [access.info.id + '-exit'], entryPoints: [access.info.id] };
+
 	graph.addVertex({ id: access.info.id, name: access.type, type: CfgVertexType.Expression });
+
+	for(const entryPoint of name.entryPoints) {
+		graph.addEdge(entryPoint, access.info.id, { label: 'FD' });
+	}
+
+	graph.addVertex({ id: access.info.id + '-name', name: 'access-name', type: CfgVertexType.MidMarker });
+
+	for(const exitPoint of name.exitPoints) {
+		graph.addEdge(access.info.id + '-name', exitPoint, { label: 'FD' });
+	}
 	graph.addVertex({ id: access.info.id + '-exit', name: 'access-exit', type: CfgVertexType.EndMarker });
-	for(const entry of name.entryPoints) {
-		graph.addEdge(entry, access.info.id, { label: 'FD' });
-	}
-	for(const exit of name.exitPoints) {
-		graph.addEdge(access.info.id, exit, { label: 'FD' });
-	}
-	result.entryPoints = [access.info.id];
-	result.exitPoints = [access.info.id + '-exit'];
+
+	let lastArgExits: NodeId[] = [access.info.id + '-name'];
+
 	for(const accessor of accessors) {
 		if(accessor === EmptyArgument) {
 			continue;
 		}
 		graph.merge(accessor.graph);
+		info.breaks.push(...accessor.breaks);
+		info.nexts.push(...accessor.nexts);
+		info.returns.push(...accessor.returns);
 		for(const entry of accessor.entryPoints) {
-			graph.addEdge(entry, access.info.id, { label: 'FD' });
+			for(const exit of lastArgExits) {
+				graph.addEdge(entry, exit, { label: 'FD' });
+			}
 		}
-		for(const exit of accessor.exitPoints) {
-			graph.addEdge(access.info.id + '-exit', exit, { label: 'FD' });
-		}
+
+		lastArgExits = accessor.exitPoints;
 	}
-	return result;
+
+	for(const exit of lastArgExits) {
+		graph.addEdge(access.info.id + '-exit', exit, { label: 'FD' });
+	}
+
+	return info;
 }
 
 function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): ControlFlowInformation {

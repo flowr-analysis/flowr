@@ -9,7 +9,7 @@ import type { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-strin
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo } from '../absint-info';
+import type { DataFrameAssignmentInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
@@ -24,7 +24,7 @@ type DataFrameAssignmentFunctionMapping = <OtherInfo>(
 	operand: RFunctionArgument<OtherInfo & ParentInformation>,
 	expression: RNode<OtherInfo & ParentInformation>,
 	info: ResolveInfo
-) => DataFrameInfo | undefined;
+) => DataFrameOperations[] | undefined;
 
 type DataFrameAssignmentFunction = keyof typeof DataFrameAssignmentFunctionMapper;
 
@@ -33,21 +33,26 @@ export function mapDataFrameAssignment<OtherInfo>(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.BinaryOp && node.lhs !== undefined && node.rhs !== undefined) {
+		let operations: DataFrameOperations[] | undefined;
+
 		if(node.lhs.type === RType.Symbol || node.lhs.type === RType.String) {
 			return mapDataFrameVariableAssignment(node.lhs, node.rhs);
 		} else if(node.lhs.type === RType.Access) {
 			if(isStringBasedAccess(node.lhs)) {
-				return mapDataFrameNamedColumnAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
+				operations = mapDataFrameNamedColumnAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			} else {
-				return mapDataFrameIndexColRowAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
+				operations = mapDataFrameIndexColRowAssignment(node.lhs, node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			}
 		} else if(node.lhs.type === RType.FunctionCall && node.lhs.named) {
 			if(node.lhs.functionName.content in DataFrameAssignmentFunctionMapper && node.lhs.arguments.length > 0) {
 				const functionName = node.lhs.functionName.content as DataFrameAssignmentFunction;
 				const functionProcessor = DataFrameAssignmentFunctionMapper[functionName];
 
-				return functionProcessor(node.lhs.arguments[0], node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
+				operations = functionProcessor(node.lhs.arguments[0], node.rhs, { graph: dfg, idMap: dfg.idMap, full: true });
 			}
+		}
+		if(operations !== undefined) {
+			return { type: 'expression', operations: operations };
 		}
 	}
 }
@@ -55,7 +60,7 @@ export function mapDataFrameAssignment<OtherInfo>(
 function mapDataFrameVariableAssignment<OtherInfo>(
 	identifier: RSymbol<OtherInfo & ParentInformation> | RString<OtherInfo & ParentInformation>,
 	expression: RNode<OtherInfo & ParentInformation>
-): DataFrameInfo {
+): DataFrameAssignmentInfo {
 	return {
 		type:       'assignment',
 		identifier: identifier.info.id,
@@ -67,40 +72,34 @@ function mapDataFrameNamedColumnAssignment<OtherInfo>(
 	access: RNamedAccess<OtherInfo & ParentInformation>,
 	expression: RNode<OtherInfo & ParentInformation>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] {
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'assignCol',
-			operand:   access.accessed.info.id,
-			args:      { columns: argName ? [argName] : undefined }
-		}]
-	};
+	return [{
+		operation: 'assignCol',
+		operand:   access.accessed.info.id,
+		args:      { columns: argName ? [argName] : undefined }
+	}];
 }
 
 function mapDataFrameIndexColRowAssignment<OtherInfo>(
 	access: RIndexAccess<OtherInfo & ParentInformation>,
 	expression: RNode<OtherInfo & ParentInformation>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] {
 	const args = access.access;
 
 	if(args.length === 0 || args.every(arg => arg === EmptyArgument)) {
-		return {
-			type:       'expression',
-			operations: [{
-				operation: 'identity',
-				operand:   access.accessed.info.id,
-				args:      {}
-			}]
-		};
+		return [{
+			operation: 'identity',
+			operand:   access.accessed.info.id,
+			args:      {}
+		}];
 	}
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 
-	const result: DataFrameInfo = { type: 'expression', operations: [] };
+	const result: DataFrameOperations[] = [];
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
 		const rowValue: unknown = resolveIdToArgValue(rowArg, info);
@@ -111,7 +110,7 @@ function mapDataFrameIndexColRowAssignment<OtherInfo>(
 		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
 			rows = rowValue;
 		}
-		result.operations.push({
+		result.push({
 			operation: 'assignRow',
 			operand:   access.accessed.info.id,
 			args:      { rows }
@@ -128,7 +127,7 @@ function mapDataFrameIndexColRowAssignment<OtherInfo>(
 		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
 			columns = colValue;
 		}
-		result.operations.push({
+		result.push({
 			operation: 'assignCol',
 			operand:   access.accessed.info.id,
 			args:      { columns }
@@ -141,48 +140,39 @@ function mapDataFrameColNamesAssignment(
 	operand: RFunctionArgument<ParentInformation>,
 	expression: RNode<ParentInformation>,
 	info: ResolveInfo
-): DataFrameInfo | undefined {
-	if(operand !== EmptyArgument && operand?.value !== undefined && info.idMap) {
+): DataFrameOperations[] | undefined {
+	if(operand !== EmptyArgument && operand.value !== undefined && info.idMap) {
 		const argument = toUnnamedArgument(expression, info.idMap);
 		const assignedNames = resolveIdToArgStringVector(argument, info);
 
-		return {
-			type:       'expression',
-			operations: [{
-				operation: 'setColNames',
-				operand:   operand.value.info.id,
-				args:      { colnames: assignedNames }
-			}]
-		};
+		return [{
+			operation: 'setColNames',
+			operand:   operand.value.info.id,
+			args:      { colnames: assignedNames }
+		}];
 	}
 }
 
 function mapDataFrameRowNamesAssignment(
 	operand: RFunctionArgument<ParentInformation>
-): DataFrameInfo | undefined {
+): DataFrameOperations[] | undefined {
 	if(operand !== EmptyArgument && operand?.value !== undefined) {
-		return {
-			type:       'expression',
-			operations: [{
-				operand:   operand.value.info.id,
-				operation: 'identity',
-				args:      {}
-			}]
-		};
+		return [{
+			operation: 'identity',
+			operand:   operand.value.info.id,
+			args:      {}
+		}];
 	}
 }
 
 function mapDataFrameDimNamesAssignment(
 	operand: RFunctionArgument<ParentInformation>
-): DataFrameInfo | undefined {
+): DataFrameOperations[] | undefined {
 	if(operand !== EmptyArgument && operand.value !== undefined) {
-		return {
-			type:       'expression',
-			operations: [{
-				operand:   operand.value.info.id,
-				operation: 'unknown',
-				args:      { modifyInplace: true }
-			}]
-		};
+		return [{
+			operation: 'setColNames',
+			operand:   operand.value.info.id,
+			args:      { colnames: undefined }
+		}];
 	}
 }

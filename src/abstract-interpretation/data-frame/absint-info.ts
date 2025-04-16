@@ -8,7 +8,7 @@ export interface DataFrameOperation<Name extends DataFrameOperationName> {
 	args:      DataFrameOperationArgs<Name>
 }
 
-type DataFrameOperations = {
+export type DataFrameOperations = {
     [Name in DataFrameOperationName]: DataFrameOperation<Name>;
 }[DataFrameOperationName];
 

@@ -115,6 +115,14 @@ export function subtractInterval(X1: IntervalDomain, X2: IntervalDomain): Interv
 	}
 }
 
+export function minInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [Math.min(X1[0], X2[0]), Math.min(X1[1], X2[1])];
+	}
+}
+
 export function includeZeroInterval(X: IntervalDomain): IntervalDomain {
 	if(X === IntervalBottom) {
 		return IntervalBottom;

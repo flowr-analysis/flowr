@@ -6,7 +6,7 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo } from '../absint-info';
+import type { DataFrameInfo, DataFrameOperations } from '../absint-info';
 import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
@@ -20,10 +20,15 @@ export function mapDataFrameAccess<OtherInfo>(
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
+		let operations: DataFrameOperations[] | undefined;
+
 		if(isStringBasedAccess(node)) {
-			return mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
 		} else {
-			return mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+		}
+		if(operations !== undefined) {
+			return { type: 'expression', operations: operations };
 		}
 	}
 }
@@ -31,39 +36,33 @@ export function mapDataFrameAccess<OtherInfo>(
 function mapDataFrameNamedColumnAccess<OtherInfo>(
 	access: RNamedAccess<OtherInfo & ParentInformation>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] {
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'accessCol',
-			operand:   access.accessed.info.id,
-			args:      { columns: argName ? [argName] : undefined }
-		}]
-	};
+	return [{
+		operation: 'accessCol',
+		operand:   access.accessed.info.id,
+		args:      { columns: argName ? [argName] : undefined }
+	}];
 }
 
 function mapDataFrameIndexColRowAccess<OtherInfo>(
 	access: RIndexAccess<OtherInfo & ParentInformation>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] | undefined {
 	const args = getEffectiveArgs(access.operator, access.access);
 
 	if(args.every(arg => arg === EmptyArgument)) {
-		return {
-			type:       'expression',
-			operations: [{
-				operation: 'identity',
-				operand:   access.accessed.info.id,
-				args:      {}
-			}]
-		};
+		return [{
+			operation: 'identity',
+			operand:   access.accessed.info.id,
+			args:      {}
+		}];
 	} else if(args.length > 0 && args.length <= 2) {
 		const rowArg = args.length < 2 ? undefined : args[0];
 		const colArg = args.length < 2 ? args[0] : args[1];
 
-		const result: DataFrameInfo = { type: 'expression', operations: [] };
+		const result: DataFrameOperations[] = [];
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
 			const rowValue: unknown = resolveIdToArgValue(rowArg, info);
@@ -74,7 +73,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
 				rows = rowValue;
 			}
-			result.operations.push({
+			result.push({
 				operation: 'accessRow',
 				operand:   access.accessed.info.id,
 				args:      { rows }
@@ -91,7 +90,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
 				columns = colValue;
 			}
-			result.operations.push({
+			result.push({
 				operation: 'accessCol',
 				operand:   access.accessed.info.id,
 				args:      { columns }
@@ -99,14 +98,6 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 		}
 		return result;
 	}
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'unknown',
-			operand:   access.accessed.info.id,
-			args:      { modifyInplace: true }
-		}]
-	};
 }
 
 function getEffectiveArgs<OtherInfo>(

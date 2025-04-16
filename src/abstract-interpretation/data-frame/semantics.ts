@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, includeZeroInterval, IntervalTop, joinColNames, joinInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, includeZeroInterval, IntervalTop, joinColNames, joinInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -33,6 +33,8 @@ const DataFrameSemanticsMapper = {
 	'removeRows':  { apply: applyRemoveRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'concatCols':  { apply: applyConcatColsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'concatRows':  { apply: applyConcatRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
+	'subsetCols':  { apply: applySubsetColsSemantics,  types: [ConstraintType.ResultPostcondition] },
+	'subsetRows':  { apply: applySubsetRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'identity':    { apply: applyIdentitySemantics,    types: [ConstraintType.ResultPostcondition] },
 	'unknown':     { apply: applyUnknownSemantics,     types: [ConstraintType.ResultPostcondition] }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
@@ -205,6 +207,27 @@ function applyConcatRowsSemantics(
 	return {
 		...value,
 		rows: addInterval(value.rows, other.rows)
+	};
+}
+
+function applySubsetColsSemantics(
+	value: DataFrameDomain,
+	{ colnames }: { colnames: (string | undefined)[] | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		colnames: colnames?.every(col => col !== undefined) ? meetColNames(value.colnames, colnames) : value.colnames,
+		cols:     colnames !== undefined ? minInterval(value.cols, [colnames.length, colnames.length]) : value.cols
+	};
+}
+
+function applySubsetRowsSemantics(
+	value: DataFrameDomain,
+	{ rows }: { rows: number | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : value.rows
 	};
 }
 

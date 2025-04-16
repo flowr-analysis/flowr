@@ -43,9 +43,9 @@ import type { REnvironmentInformation } from '../../../src/dataflow/environments
 import { resolveByName } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCFG } from '../../../src/control-flow/extract-cfg';
-import type { CfgProperty } from './control-flow';
-import { assertCfgSatisfiesProperties } from './control-flow';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import type { CfgProperty } from '../../../src/control-flow/cfg-properties';
+import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {

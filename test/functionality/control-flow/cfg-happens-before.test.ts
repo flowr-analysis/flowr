@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { withShell } from '../_helper/shell';
 import { Ternary } from '../../../src/util/logic';
-import { assertHappensBefore } from '../_helper/happens-before';
+import { assertHappensBefore } from '../_helper/controlflow/happens-before';
 
 describe.sequential('Happens Before', withShell(shell => {
 	assertHappensBefore(shell, 'x <- 1\ny <- 2', '1@<-', '2@<-', Ternary.Always);
@@ -16,4 +16,5 @@ describe.sequential('Happens Before', withShell(shell => {
 		assertHappensBefore(shell, 'x<-1\nif(u) x <- 2\nx <- 3', a, b, t);
 	}
 	assertHappensBefore(shell, 'x<-1\nif(u) x <- 2 else x <- 3\nx <- 4', '1@x', '3@x', Ternary.Always);
+	// TODO: check for function calls
 }));

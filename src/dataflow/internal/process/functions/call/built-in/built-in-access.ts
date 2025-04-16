@@ -271,8 +271,8 @@ function referenceAccessedIndices<OtherInfo>(
  * the node with {@link parentNodeId}.
  *
  * @param accessedIndicesCollection - All indices that were accessed by the access operation
- * @param fnCall - The {@link ProcessKnownFunctionCallResult} of the access operation
- * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
+ * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
+ * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts
  */
 function referenceIndices(
 	accessedIndicesCollection: ContainerIndicesCollection,

@@ -1,7 +1,7 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
-import { visitCfgInReverseOrder } from '../../../control-flow/visitor';
+import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
@@ -122,7 +122,7 @@ export function identifyLinkToLastCallRelation(
 	if(ignoreIf && ignoreIf(from, graph)) {
 		return found;
 	}
-	visitCfgInReverseOrder(cfg, from, node => {
+	visitCfgInReverseOrder(cfg, [from], node => {
 		/* we ignore the start id as it cannot be the last call */
 		if(node === from) {
 			return;

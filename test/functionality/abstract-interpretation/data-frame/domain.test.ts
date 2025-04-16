@@ -20,7 +20,7 @@ describe('Data Frame Domain', () => {
 			});
 		};
 		check(ColNamesBottom, ColNamesBottom, true, ColNamesBottom, ColNamesBottom, ColNamesBottom);
-		check(ColNamesTop, ColNamesTop, true, ColNamesTop, ColNamesTop, ColNamesBottom);
+		check(ColNamesTop, ColNamesTop, true, ColNamesTop, ColNamesTop, ColNamesTop);
 		check(ColNamesBottom, ColNamesTop, true, ColNamesTop, ColNamesBottom, ColNamesBottom);
 		check(ColNamesTop, ColNamesBottom, false, ColNamesTop, ColNamesBottom, ColNamesTop);
 		check(ColNamesBottom, ['id', 'age'], true, ['id', 'age'], ColNamesBottom, ColNamesBottom);
@@ -30,7 +30,7 @@ describe('Data Frame Domain', () => {
 		check(['id', 'age', 'score'], ['id', 'age'], false, ['id', 'age', 'score'], ['id', 'age'], ['score']);
 		check(['id', 'age', 'score'], ['id', 'category'], false, ['id', 'age', 'score', 'category'], ['id'], ['age', 'score']);
 		check(['id', 'category'], ['id', 'age', 'score'], false, ['id', 'age', 'score', 'category'], ['id'], ['category']);
-		check(['id', 'age'], ColNamesTop, true, ColNamesTop, ['id', 'age'], ColNamesBottom);
+		check(['id', 'age'], ColNamesTop, true, ColNamesTop, ['id', 'age'], ['id', 'age']);
 		check(ColNamesTop, ['id', 'age'], false, ColNamesTop, ['id', 'age'], ColNamesTop);
 	});
 

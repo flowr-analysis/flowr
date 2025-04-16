@@ -9,18 +9,22 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import { ReferenceType } from '../../../../environments/identifier';
+import type {
+	IdentifierReference,
+	InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import {
+	isReferenceType,
+	ReferenceType
+} from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type {
 	ContainerIndicesCollection,
-	DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
-import {
-	isFunctionDefinitionVertex,
-	VertexType
+	DataflowGraphVertexFunctionDefinition,
+	FunctionOriginInformation
 } from '../../../../graph/vertex';
+import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -121,7 +125,7 @@ export function processAllArguments<OtherInfo>(
 				/* maybe all targets are not definitely of the current scope and should be still kept */
 				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
-					if(happensInEveryBranch(resolved.controlDependencies)) {
+					if(happensInEveryBranch(resolved.controlDependencies) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
@@ -156,10 +160,11 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
 	readonly argumentProcessResult: readonly (Pick<DataflowInformation, 'entryPoint'> | undefined)[]
+	readonly origin:                FunctionOriginInformation
 }
 
 export function patchFunctionCall<OtherInfo>(
-	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
+	{ nextGraph, rootId, name, data, argumentProcessResult, origin }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
 		tag:         VertexType.FunctionCall,
@@ -170,6 +175,7 @@ export function patchFunctionCall<OtherInfo>(
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		origin:      [origin]
 	});
 	for(const arg of argumentProcessResult) {
 		if(arg) {

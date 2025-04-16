@@ -203,7 +203,8 @@ export function processExpressionList<OtherInfo>(
 			rootId,
 			name,
 			data,
-			argumentProcessResult: processedExpressions
+			argumentProcessResult: processedExpressions,
+			origin:                'builtin:expression-list'
 		});
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {

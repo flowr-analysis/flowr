@@ -3,7 +3,6 @@ import type { DataflowInformation } from '../../../../../info';
 import { initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { processAssignment } from './built-in-assignment';
 import type { ForceArguments } from '../common';
 import { patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -18,7 +17,9 @@ import type {
 	ContainerIndices,
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
-	IndexIdentifier } from '../../../../../graph/vertex';
+	IndexIdentifier
+} from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -28,6 +29,9 @@ import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/no
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
+import type { BuiltInMappingName } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -40,7 +44,7 @@ export function processReplacementFunction<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
@@ -52,7 +56,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = processAssignment(
+	let res = BuiltInProcessorMapper['builtin:assignment'](
 		name,
 		[args[0], args[args.length - 1]],
 		rootId,
@@ -64,6 +68,11 @@ export function processReplacementFunction<OtherInfo>(
 			canBeReplacement:  true
 		}
 	);
+
+	const createdVert = res.graph.getVertex(rootId);
+	if(createdVert?.tag === VertexType.FunctionCall) {
+		createdVert.origin = ['builtin:replacement'];
+	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
@@ -83,7 +92,8 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId })
+			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
+		origin: 'builtin:replacement' satisfies BuiltInMappingName
 	});
 
 	const firstArg = unpackArgument(args[0])?.info.id;
@@ -102,6 +112,15 @@ export function processReplacementFunction<OtherInfo>(
 		if(ref !== undefined) {
 			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}
+	}
+
+
+	const fa = unpackArgument(args[0]);
+	if(!getConfig().solver.pointerTracking && fa) {
+		res = {
+			...res,
+			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+		};
 	}
 
 	return res;

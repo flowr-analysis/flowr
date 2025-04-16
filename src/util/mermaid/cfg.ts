@@ -7,8 +7,8 @@ function getLexeme(n?: RNodeWithParent) {
 }
 
 
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
-	let output = prefix + 'flowchart BT\n';
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
+	let output = prefix;
 
 	for(const [id, vertex] of cfg.graph.vertices()) {
 		const normalizedVertex = normalizedAst.idMap.get(id);
@@ -40,6 +40,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix));
 }

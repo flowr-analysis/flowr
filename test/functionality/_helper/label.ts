@@ -72,6 +72,17 @@ export function label(testname: string, ids?: readonly SupportedFlowrCapabilityI
 	}
 }
 
+export function dropTestLabel(l: TestLabel): void {
+	const names = l.capabilities.size === 0 ? ['.'] : [...l.capabilities];
+	for(const c of names) {
+		const tests = TheGlobalLabelMap.get(c);
+		const idx = tests.findIndex(t => t.id === l.id);
+		if(idx >= 0) {
+			tests.splice(idx, 1);
+		}
+	}
+}
+
 function getFullNameOfLabel(label: TestLabel): string {
 	if(label.capabilities.size === 0) {
 		return `${label.name}`;

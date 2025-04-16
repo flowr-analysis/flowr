@@ -6,7 +6,12 @@ import { versionCommand } from './repl-version';
 import { parseCommand } from './repl-parse';
 import { executeCommand } from './repl-execute';
 import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
-import { dataflowCommand, dataflowStarCommand } from './repl-dataflow';
+import {
+	dataflowCommand,
+	dataflowSimpleStarCommand,
+	dataflowSimplifiedCommand,
+	dataflowStarCommand
+} from './repl-dataflow';
 import { controlflowCommand, controlflowStarCommand, absintDataFrameCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/ansi';
 import { italic , bold } from '../../../util/ansi';
@@ -84,6 +89,8 @@ const _commands: Record<string, ReplCommand> = {
 	'normalize*':       normalizeStarCommand,
 	'dataflow':         dataflowCommand,
 	'dataflow*':        dataflowStarCommand,
+	'dataflowsimple':   dataflowSimplifiedCommand,
+	'dataflowsimple*':  dataflowSimpleStarCommand,
 	'controlflow':      controlflowCommand,
 	'controlflow*':     controlflowStarCommand,
 	'lineage':          lineageCommand,

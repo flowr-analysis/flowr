@@ -1,4 +1,12 @@
-import { allPermutations, arrayEqual, getUniqueCombinationsOfSize, splitArrayOn, arraySum, equidistantSampling } from '../../../src/util/arrays';
+import {
+	allPermutations,
+	arrayEqual,
+	getUniqueCombinationsOfSize,
+	splitArrayOn,
+	arraySum,
+	equidistantSampling,
+	cartesianProduct
+} from '../../../src/util/arrays';
 import { describe, assert, test } from 'vitest';
 
 describe('Arrays', () => {
@@ -71,6 +79,20 @@ describe('Arrays', () => {
 		check('one different element', [1], [2], false);
 		check('two elements', [1, 2], [1, 2], true);
 		check('different order', [1, 2], [2, 1], false);
+	});
+	describe('cartesianProduct', () => {
+		const check = <T>(title: string, a: readonly T[][], expected: T[][]): void => {
+			test(title, () => {
+				const actual = cartesianProduct(...a);
+				assert.deepStrictEqual(actual, expected, `${JSON.stringify(a)}`);
+			});
+		};
+		check('empty array', [], [[]]);
+		check('single element array', [[1]], [[1]]);
+		check('double element array', [[1,2]], [[1],[2]]);
+		check('two combinations', [[1,2], [3]], [[1, 3], [2, 3]]);
+		check('two combinations', [[1], [2,3]], [[1, 2], [1, 3]]);
+		check('three combinations', [[1,2], [3], [4,5,6]], [[1, 3, 4], [1, 3, 5], [1, 3, 6], [2, 3, 4], [2, 3, 5], [2, 3, 6]]);
 	});
 	describe('equidistantSampling', () => {
 		const check = <T>(title: string, input: readonly T[], sampleCount: number, mode: 'floor' | 'ceil', expected: T[]): void => {

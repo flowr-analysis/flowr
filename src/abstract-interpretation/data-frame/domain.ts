@@ -60,10 +60,10 @@ export function meetColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDo
 }
 
 export function subtractColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	if(X2 === ColNamesTop) {
-		return ColNamesBottom;
-	} else if(X1 === ColNamesTop) {
+	if(X1 === ColNamesTop) {
 		return ColNamesTop;
+	} else if(X2 === ColNamesTop) {
+		return X1;
 	} else {
 		return Array.from(new Set(X1).difference(new Set(X2)));
 	}

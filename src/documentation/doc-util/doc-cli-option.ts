@@ -5,6 +5,7 @@ import { textWithTooltip } from '../../util/html-hover-over';
 import type { OptionDefinition } from 'command-line-usage';
 import { flowrMainOptionDefinitions } from '../../cli/flowr-main-options';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
+import { escapeHTML } from './doc-escape';
 
 type ScriptOptions<Type extends keyof typeof scripts | 'flowr'> =
 	Type extends keyof typeof scripts ? typeof scripts[Type]['options'][number]['name'] :
@@ -19,10 +20,11 @@ export function getCliLongOptionOf<
 	const option = script.find(({ name }) => name === optionName);
 	guard(option !== undefined, () => `Unknown option ${optionName}, pick one of ${JSON.stringify(script.map(o => o.name))}.`);
 	const char = quote ? '`' : '';
-	const alias = withAlias && option.alias ? ' (alias:' + textWithTooltip(`${char}-${option.alias}${char}`, option.description) + ')' : '';
+	const description = escapeHTML(option.description);
+	const alias = withAlias && option.alias ? ' (alias:' + textWithTooltip(`${char}-${option.alias}${char}`, description) + ')' : '';
 	const ligatureBreaker = quote ? '' : '<span/>';
 	// span ensures split even with ligatures
-	return textWithTooltip(`${char}-${ligatureBreaker}-${optionName}${char}`, 'Description (Command Line Argument): ' + option.description) + alias;
+	return textWithTooltip(`${char}-${ligatureBreaker}-${optionName}${char}`, 'Description (Command Line Argument): ' + description) + alias;
 }
 
 export function multipleCliOptions<

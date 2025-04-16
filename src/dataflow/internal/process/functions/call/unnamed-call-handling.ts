@@ -48,7 +48,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		/* can never be a direct built-in-call */
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
-		args:        callArgs // same reference
+		args:        callArgs, // same reference
+		origin:      ['unnamed']
 	});
 
 	const inIds = remainingReadInArgs;

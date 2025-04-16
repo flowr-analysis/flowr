@@ -4,7 +4,7 @@ import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import type { TestLabel, TestLabelContext } from './label';
-import { modifyLabelName , decorateLabelContext } from './label';
+import { dropTestLabel , modifyLabelName , decorateLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
@@ -436,6 +436,10 @@ export function assertSliced(
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(userConfig);
+	if(skip || testCaseFailType === 'fail-both') {
+		// drop it again because the test is not to be counted
+		dropTestLabel(name);
+	}
 	describe.skipIf(skip)(fullname, () => {
 		let shellResult: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;
 		let tsResult: PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE> | undefined;

@@ -480,7 +480,7 @@ print("hello world!")
 		`;
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
-and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).  
+and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${
@@ -508,7 +508,7 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
-		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
+		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
 		sourceFunctions:        [],
 		readFunctions:          [],
 		writeFunctions:         []

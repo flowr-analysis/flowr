@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { ExitPointType , DataflowInformation  } from '../info';
+import type { DataflowInformation, ExitPointType } from '../info';
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
@@ -19,6 +19,7 @@ import { processExpressionList } from '../internal/process/functions/call/built-
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -32,6 +33,9 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
 import { processVector } from '../internal/process/functions/call/built-in/built-in-vector';
 import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
+import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
+import { VertexType } from '../graph/vertex';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 export const BuiltIn = 'built-in';
 
@@ -67,7 +71,9 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
-	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>
+	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
+	/** record mapping the actual function name called to the arguments that should be treated as function calls */
+	readonly treatAsFnCall?:         Record<string, readonly string[]>
 }
 
 function defaultBuiltInProcessor<OtherInfo>(
@@ -77,7 +83,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:default' });
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
@@ -97,6 +103,36 @@ function defaultBuiltInProcessor<OtherInfo>(
 			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects);
 		} else {
 			res.graph.markIdForUnknownSideEffects(rootId);
+		}
+	}
+
+	const fnCallNames = config.treatAsFnCall?.[name.content];
+	if(fnCallNames) {
+		for(const arg of args) {
+			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
+				const rhs = arg.value;
+				let fnName: string | undefined;
+				let fnId: NodeId | undefined;
+				if(rhs.type === RType.String) {
+					fnName = rhs.content.str;
+					fnId = rhs.info.id;
+				} else if(rhs.type === RType.Symbol) {
+					fnName = rhs.content;
+					fnId = rhs.info.id;
+				} else {
+					continue;
+				}
+				res.graph.updateToFunctionCall({
+					tag:         VertexType.FunctionCall,
+					id:          fnId,
+					name:        fnName,
+					args:        [],
+					environment: data.environment,
+					onlyBuiltin: false,
+					cds:         data.controlDependencies,
+					origin:      ['builtin:default']
+				});
+			}
 		}
 	}
 
@@ -133,6 +169,7 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 
 export const BuiltInProcessorMapper = {
 	'builtin:default':             defaultBuiltInProcessor,
+	'builtin:eval':                processEvalCall,
 	'builtin:apply':               processApply,
 	'builtin:expression-list':     processExpressionList,
 	'builtin:source':              processSourceCall,

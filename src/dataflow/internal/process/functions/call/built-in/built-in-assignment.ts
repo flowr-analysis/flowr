@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { guard } from '../../../../../../util/assert';
 import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArgument } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
@@ -40,8 +39,8 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { getAliases, resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
-import { processReplacementFunction } from './built-in-replacement';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -101,7 +100,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 	}
 
 
-	const info = processReplacementFunction(
+	const info = BuiltInProcessorMapper['builtin:replacement'](
 		{
 			type:      RType.Symbol,
 			info:      functionName.info,
@@ -137,15 +136,20 @@ export function processAssignment<OtherInfo>(
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
-	const { target, source } = extractSourceAndTarget(effectiveArgs, name);
+	const { target, source } = extractSourceAndTarget(effectiveArgs);
+
+	if(target === undefined || source === undefined) {
+		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
+	}
 	const { type, named } = target;
 
 	if(!config.targetVariable && type === RType.Symbol) {
-		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs });
+		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs, origin: 'builtin:assignment' });
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
 			nameOfAssignmentFunction: name.content,
@@ -174,7 +178,8 @@ export function processAssignment<OtherInfo>(
 				rootId,
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
-				forceArgs:    config.forceArgs
+				forceArgs:    config.forceArgs,
+				origin:       'builtin:assignment'
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -194,17 +199,17 @@ export function processAssignment<OtherInfo>(
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
 
-	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	const info = processKnownFunctionCall({
+		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
+		origin:    'builtin:assignment'
+	}).information;
 	info.graph.markIdForUnknownSideEffects(rootId);
 	return info;
 }
 
-function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
+function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
 	const source = unpackArgument(args[1], false);
 	const target = unpackArgument(args[0], false);
-
-	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`);
-	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`);
 
 	return { source, target };
 }
@@ -251,7 +256,8 @@ function processAssignmentToString<OtherInfo>(
 		rootId,
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
-		forceArgs:    config.forceArgs
+		forceArgs:    config.forceArgs,
+		origin:       'builtin:assignment'
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

@@ -1,23 +1,21 @@
 import { assert, beforeAll, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
-import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
+import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { getRangeEnd } from '../../../../src/util/range';
-import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { resolveDataFrameValue } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
-import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
-import type { KnownParser } from '../../../../src/r-bridge/parser';
 
 export enum DomainMatchingType {
     Exact = 'exact',
@@ -42,7 +40,7 @@ export const DataFrameTestOverapproximation = {
 interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	value:      DataFrameDomain,
-	node:       RSymbol<ParentInformation & AbstractInterpretationInfo>,
+	node:       RSymbol<ParentInformation>,
 	lineNumber: number
 }
 
@@ -160,7 +158,7 @@ function createCodeForOutput(
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
 	criterion: SingleSlicingCriterion
-): [DataFrameDomain, RSymbol<ParentInformation & AbstractInterpretationInfo>] {
+): [DataFrameDomain, RSymbol<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
 	const node = idMap.get(nodeId);
@@ -168,7 +166,7 @@ function getInferredDomainForCriterion(
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const value = resolveDataFrameValue(node, result.dataflow.environment);
+	const value = DataFrameTop;
 
 	return [value, node];
 }

@@ -78,6 +78,10 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 */
 		readonly variables:       VariableResolve,
 		/**
+		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
+		 */
+		readonly evalStrings:     boolean
+		/**
 		 * Whether to track pointers in the dataflow graph,
 		 * if not, the graph will be over-approximated wrt.
 		 * containers and accesses
@@ -175,6 +179,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	defaultEngine: 'r-shell',
 	solver:        {
 		variables:       VariableResolve.Alias,
+		evalStrings:     true,
 		pointerTracking: true,
 		resolveSource:   {
 			dropPaths:             DropPathsOption.No,
@@ -214,6 +219,7 @@ export const flowrConfigFileSchema = Joi.object({
 	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 	solver:        Joi.object({
 		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+		evalStrings:     Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
 		pointerTracking: Joi.alternatives(
 			Joi.boolean(),
 			Joi.object({

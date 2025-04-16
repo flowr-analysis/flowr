@@ -15,7 +15,7 @@ import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { VertexType } from '../../../../graph/vertex';
-import type { ContainerIndicesCollection } from '../../../../graph/vertex';
+import type { ContainerIndicesCollection , FunctionOriginInformation } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
@@ -31,6 +31,7 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** Does the call have a side effect that we do not know a lot about which may have further consequences? */
 	readonly hasUnknownSideEffect?: boolean
+	readonly origin:                FunctionOriginInformation | 'default'
 }
 
 export interface ProcessKnownFunctionCallResult {
@@ -58,7 +59,7 @@ export function markNonStandardEvaluationEdges(
 }
 
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 
@@ -88,6 +89,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		cds:               data.controlDependencies,
 		args:              reverseOrder ? [...callArgs].reverse() : callArgs,
 		indicesCollection: indicesCollection,
+		origin:            origin === 'default' ? ['function'] : [origin]
 	});
 
 	if(hasUnknownSideEffect) {

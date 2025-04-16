@@ -20,6 +20,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
@@ -37,7 +38,7 @@ export function processFunctionDefinition<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we remove the last argument, as it is the body */
@@ -70,6 +71,7 @@ export function processFunctionDefinition<OtherInfo>(
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
 
 	const readInBody = [...body.in, ...body.unknownReferences];
+
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
 
@@ -182,8 +184,15 @@ export function updateNestedFunctionClosures(
 				continue;
 			}
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
+			let allBuiltIn = true;
 			for(const ref of resolved) {
 				graph.addEdge(ingoing, ref, EdgeType.Reads);
+				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
+			}
+			if(allBuiltIn) {
+				remainingIn.push(ingoing);
 			}
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);

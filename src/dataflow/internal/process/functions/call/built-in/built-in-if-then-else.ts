@@ -26,14 +26,14 @@ export function processIfThenElse<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
 		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const [condArg, thenArg, otherwiseArg] = args.map(e => unpackArgument(e));
 
 	if(condArg === undefined || thenArg === undefined) {
 		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const cond = processDataflowFor(condArg, data);
@@ -117,7 +117,8 @@ export function processIfThenElse<OtherInfo>(
 		rootId,
 		name,
 		data:                  { ...data, controlDependencies: originalDependency },
-		argumentProcessResult: [cond, then, otherwise]
+		argumentProcessResult: [cond, then, otherwise],
+		origin:                'builtin:if-then-else'
 	});
 
 	// as an if always evaluates its condition, we add a 'reads'-edge

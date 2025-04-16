@@ -25,7 +25,7 @@ export function processList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:list' });
 
 	if(!getConfig().solver.pointerTracking) {
 		return fnCall.information;

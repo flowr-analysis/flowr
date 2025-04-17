@@ -163,6 +163,94 @@ print(df)
 
 	testDataFrameDomain(
 		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df["id"]
+		`.trim(),
+		[['2@result', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	assertDataFrameDomain(
+		shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1, 1]
+		`.trim(),
+		[['2@result', DataFrameTop]]
+	);
+
+	assertDataFrameDomain(
+		shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[, 1]
+		`.trim(),
+		[['2@result', DataFrameTop,]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1, ]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[1, c(1, 2)]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [2, 2], rows: [1, 1] }]]
+	);
+
+	assertDataFrameDomain(
+		shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(1, 2), 1]
+		`.trim(),
+		[['2@result', DataFrameTop]]
+	);
+
+	assertDataFrameDomain(
+		shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[["id"]]
+		`.trim(),
+		[['2@result', DataFrameTop]]
+	);
+
+	assertDataFrameDomain(
+		shell, `
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[[1]]
+		`.trim(),
+		[['2@result', DataFrameTop]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[-1, "id", drop = FALSE]
+		`.trim(),
+		[['2@result', { colnames: ['id'], cols: [1, 1], rows: [2, 2] }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[c(-1, -2), -1, drop = FALSE]
+		`.trim(),
+		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		`
 df <- data.frame(id = 1:5)
 df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
 		`.trim(),

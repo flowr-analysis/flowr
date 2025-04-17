@@ -7,7 +7,7 @@ import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameInfo, DataFrameOperations } from '../absint-info';
-import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
 const SpecialAccessArgumentsMapper: Partial<Record<RIndexAccess['operator'], string[]>> = {
@@ -50,23 +50,26 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 	access: RIndexAccess<OtherInfo & ParentInformation>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const args = getEffectiveArgs(access.operator, access.access);
+	const effectiveArgs = getEffectiveArgs(access.operator, access.access);
+	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
+	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
 
-	if(args.every(arg => arg === EmptyArgument)) {
+	if(effectiveArgs.every(arg => arg === EmptyArgument)) {
 		return [{
 			operation: 'identity',
 			operand:   access.accessed.info.id,
 			args:      {}
 		}];
-	} else if(args.length > 0 && args.length <= 2) {
-		const rowArg = args.length < 2 ? undefined : args[0];
-		const colArg = args.length < 2 ? args[0] : args[1];
+	} else if(effectiveArgs.length > 0 && effectiveArgs.length <= 2) {
+		const rowArg = effectiveArgs.length < 2 ? undefined : effectiveArgs[0];
+		const colArg = effectiveArgs.length < 2 ? effectiveArgs[0] : effectiveArgs[1];
+		let rows: number[] | undefined = undefined;
+		let columns: string[] | number[] | undefined = undefined;
 
 		const result: DataFrameOperations[] = [];
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
 			const rowValue: unknown = resolveIdToArgValue(rowArg, info);
-			let rows: number[] | undefined = undefined;
 
 			if(typeof rowValue === 'number') {
 				rows = [rowValue];
@@ -76,12 +79,11 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			result.push({
 				operation: 'accessRow',
 				operand:   access.accessed.info.id,
-				args:      { rows }
+				args:      { rows: rows?.map(Math.abs) }
 			});
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
 			const colValue: unknown = resolveIdToArgValue(colArg, info);
-			let columns: string[] | number[] | undefined = undefined;
 
 			if(typeof colValue === 'string') {
 				columns = [colValue];
@@ -93,8 +95,33 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			result.push({
 				operation: 'accessCol',
 				operand:   access.accessed.info.id,
-				args:      { columns }
+				args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
 			});
+		}
+		// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
+		const dropExtent = access.operator === '[[' ? true :
+			effectiveArgs.length === 2 && typeof dropValue === 'boolean' ? dropValue :
+				rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
+
+		if(!dropExtent) {
+			let operand: RNode<OtherInfo & ParentInformation> | undefined = access.accessed;
+
+			if(rowArg !== undefined && rowArg !== EmptyArgument) {
+				result.push({
+					operation: rows === undefined || rows?.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
+					operand:   operand?.info.id,
+					args:      { rows: rows?.length }
+				});
+				operand = undefined;
+			}
+			if(colArg !== undefined && colArg !== EmptyArgument) {
+				result.push({
+					operation: columns === undefined || columns?.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
+					operand:   operand?.info.id,
+					args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
+				});
+				operand = undefined;
+			}
 		}
 		return result;
 	}

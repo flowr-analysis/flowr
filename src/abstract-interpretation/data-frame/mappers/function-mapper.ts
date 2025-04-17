@@ -201,7 +201,7 @@ function mapDataFrameHeadTail<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const amountArg = effectiveArgs.find(arg => arg !== EmptyArgument && arg.name?.content === 'n') ?? effectiveArgs[1];
+	const amountArg = effectiveArgs.find(arg => resolveIdToArgName(arg, info) === 'n') ?? effectiveArgs[1];
 	const value: unknown = resolveIdToArgValue(amountArg, info);
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;

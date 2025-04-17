@@ -1,7 +1,7 @@
-import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
-import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { BuiltInProcessorMapper, type BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
+import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -82,8 +82,9 @@ function processDataFrameOperation<OtherInfo>(
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(node.lexeme));
-	const processor = origin?.type === 'function' ? origin.processor as BuiltInMappingName : 'builtin:default';
+	const vertex = dfg.getVertex(node.info.id);
+	const origin = isFunctionCallVertex(vertex) ? vertex.origin[0] : undefined;
+	const processor = origin && origin in BuiltInProcessorMapper ? origin as BuiltInMappingName : 'builtin:default';
 	node.info.dataFrame = mapDataFrameSemantics(node, dfg, processor);
 
 	if(node.info.dataFrame?.type === 'assignment') {

@@ -35,6 +35,7 @@ const DataFrameSemanticsMapper = {
 	'concatRows':  { apply: applyConcatRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'subsetCols':  { apply: applySubsetColsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'subsetRows':  { apply: applySubsetRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
+	'filterRows':  { apply: applyFilterRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'identity':    { apply: applyIdentitySemantics,    types: [ConstraintType.ResultPostcondition] },
 	'unknown':     { apply: applyUnknownSemantics,     types: [ConstraintType.ResultPostcondition] }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
@@ -228,6 +229,16 @@ function applySubsetRowsSemantics(
 	return {
 		...value,
 		rows: rows !== undefined ? minInterval(value.rows, [rows, rows]) : value.rows
+	};
+}
+
+function applyFilterRowsSemantics(
+	value: DataFrameDomain,
+	{ condition }: { condition: boolean | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		rows: condition ? value.rows : condition === false ? [0, 0] : includeZeroInterval(value.rows)
 	};
 }
 

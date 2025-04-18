@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, includeZeroInterval, IntervalTop, joinColNames, joinInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, includeZeroInterval, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -22,10 +22,10 @@ type DataFrameSemanticsMapperInfo<Arguments extends object> = {
 
 const DataFrameSemanticsMapper = {
 	'create':      { apply: applyCreateSemantics,      types: [ConstraintType.ResultPostcondition] },
-	'accessCol':   { apply: applyAccessColSemantics,   types: [ConstraintType.OperandPrecondition] },
-	'accessRow':   { apply: applyAccessRowSemantics,   types: [ConstraintType.OperandPrecondition] },
-	'assignCol':   { apply: applyAssignColSemantics,   types: [ConstraintType.OperandModification] },
-	'assignRow':   { apply: applyAssignRowSemantics,   types: [ConstraintType.OperandModification] },
+	'accessCols':  { apply: applyAccessColsSemantics,  types: [ConstraintType.OperandPrecondition] },
+	'accessRows':  { apply: applyAccessRowsSemantics,  types: [ConstraintType.OperandPrecondition] },
+	'assignCols':  { apply: applyAssignColsSemantics,  types: [ConstraintType.OperandModification] },
+	'assignRows':  { apply: applyAssignRowsSemantics,  types: [ConstraintType.OperandModification] },
 	'setColNames': { apply: applySetColNamesSemantics, types: [ConstraintType.OperandModification] },
 	'addCols':     { apply: applyAddColsSemantics,     types: [ConstraintType.ResultPostcondition] },
 	'addRows':     { apply: applyAddRowsSemantics,     types: [ConstraintType.ResultPostcondition] },
@@ -68,7 +68,7 @@ function applyCreateSemantics(
 	};
 }
 
-function applyAccessColSemantics(
+function applyAccessColsSemantics(
 	value: DataFrameDomain,
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
@@ -80,38 +80,40 @@ function applyAccessColSemantics(
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
 			...value,
-			cols: columns.reduce((a, b) => joinInterval(a, [b, b]), value.cols)
+			cols: columns.reduce((a, b) => maxInterval(a, [b, b]), value.cols)
 		};
 	}
 	return value;
 }
 
-function applyAccessRowSemantics(
+function applyAccessRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
 		return {
 			...value,
-			rows: rows.reduce((a, b) => joinInterval(a, [b, b]), value.rows)
+			rows: rows.reduce((a, b) => maxInterval(a, [b, b]), value.rows)
 		};
 	}
 	return value;
 }
 
-function applyAssignColSemantics(
+function applyAssignColsSemantics(
 	value: DataFrameDomain,
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
 		return {
 			...value,
-			colnames: joinColNames(value.colnames, columns)
+			colnames: joinColNames(value.colnames, columns),
+			cols:     addInterval(value.cols, [0, columns.length])
 		};
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
 			...value,
-			cols: columns.reduce((a, b) => joinInterval(a, [b, b]), value.cols)
+			colnames: ColNamesTop,
+			cols:     columns.reduce((a, b) => maxInterval(a, [b, b]), value.cols)
 		};
 	}
 	return {
@@ -121,14 +123,14 @@ function applyAssignColSemantics(
 	};
 }
 
-function applyAssignRowSemantics(
+function applyAssignRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
 		return {
 			...value,
-			rows: rows.reduce((a, b) => joinInterval(a, [b, b]), value.rows)
+			rows: rows.reduce((a, b) => maxInterval(a, [b, b]), value.rows)
 		};
 	}
 	return {
@@ -144,7 +146,6 @@ function applySetColNamesSemantics(
 	return {
 		...value,
 		colnames: colnames?.every(name => name !== undefined) ? colnames : ColNamesTop,
-		cols:     colnames !== undefined ? [colnames.length, colnames.length] : IntervalTop
 	};
 }
 

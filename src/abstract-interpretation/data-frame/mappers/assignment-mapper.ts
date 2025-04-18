@@ -76,7 +76,7 @@ function mapDataFrameNamedColumnAssignment<OtherInfo>(
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
 	return [{
-		operation: 'assignCol',
+		operation: 'assignCols',
 		operand:   access.accessed.info.id,
 		args:      { columns: argName ? [argName] : undefined }
 	}];
@@ -111,7 +111,7 @@ function mapDataFrameIndexColRowAssignment<OtherInfo>(
 			rows = rowValue;
 		}
 		result.push({
-			operation: 'assignRow',
+			operation: 'assignRows',
 			operand:   access.accessed.info.id,
 			args:      { rows }
 		});
@@ -128,7 +128,7 @@ function mapDataFrameIndexColRowAssignment<OtherInfo>(
 			columns = colValue;
 		}
 		result.push({
-			operation: 'assignCol',
+			operation: 'assignCols',
 			operand:   access.accessed.info.id,
 			args:      { columns }
 		});

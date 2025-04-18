@@ -40,7 +40,7 @@ function mapDataFrameNamedColumnAccess<OtherInfo>(
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
 	return [{
-		operation: 'accessCol',
+		operation: 'accessCols',
 		operand:   access.accessed.info.id,
 		args:      { columns: argName ? [argName] : undefined }
 	}];
@@ -77,7 +77,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 				rows = rowValue;
 			}
 			result.push({
-				operation: 'accessRow',
+				operation: 'accessRows',
 				operand:   access.accessed.info.id,
 				args:      { rows: rows?.map(Math.abs) }
 			});
@@ -93,7 +93,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 				columns = colValue;
 			}
 			result.push({
-				operation: 'accessCol',
+				operation: 'accessCols',
 				operand:   access.accessed.info.id,
 				args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
 			});

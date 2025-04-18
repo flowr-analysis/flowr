@@ -124,49 +124,36 @@ print(df)
 		`
 df <- data.frame(id = 1:5)
 for (i in 1:5) {
-	df[["name"]]
+	df[2] <- 6:10
 }
-df[10, ]
+df[10, ] <- c(6, 11)
 print(df)
 		`.trim(),
-		[['6@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [5, 10] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]]
-	);
-
-	testDataFrameDomain(
-		`
-df <- data.frame(id = 1:5)
-for (i in 1:5) {
-	break
-	df[["name"]]
-}
-df[10, ]
-print(df)
-		`.trim(),
-		[['7@df', { colnames: ['id'], cols: [1, 1], rows: [5, 10] }, { colnames: DomainMatchingType.Overapproximation, rows: DomainMatchingType.Overapproximation }]]
+		[['6@df', { colnames: ColNamesTop, cols: [1, 2], rows: [10, 10] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]]
 	);
 
 	testDataFrameDomain(
 		`
 df <- data.frame(id = 1:5)
 while (TRUE) {
-	df[["name"]]
+	df[2] <- 6:10
 	break
 }
-df[10, ]
+df[10, ] <- c(6, 11)
 print(df)
-		`.trim(),
-		[['7@df', { colnames: ['id', 'name'], cols: [1, 1], rows: [5, 10] }, DataFrameTestOverapproximation]]
+			`.trim(),
+		[['7@df', { colnames: ColNamesTop, cols: [1, 2], rows: [10, 10] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]]
 	);
 
 	assertDataFrameDomain(
 		shell, `
 df <- data.frame(id = 1:5)
 repeat {
-	df[["name"]]
+	df[2] <- 6:10
 }
-df[10, ]
+df[10, ] <- c(6, 11)
 print(df)
-		`.trim(),
+			`.trim(),
 		[['6@df', DataFrameTop]]
 	);
 
@@ -256,6 +243,127 @@ df <- data.frame(id = 1:3, name = 4:6)
 result <- df[c(-1, -2), -1, drop = FALSE]
 		`.trim(),
 		[['2@result', { colnames: ['id', 'name'], cols: [1, 1], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation }]]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df$id <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ['id'], cols: [1, 2], rows: [3, 3] }, { cols: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df$name <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 3] }, { cols: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[["name"]] <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 3] }, { cols: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[1] <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ColNamesTop, cols: [1, 1], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[2] <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[, "name"] <- "A"
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 3] }, { cols: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[4, ] <- 4
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ['id'], cols: [1, 1], rows: [4, 4] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3)
+df[4, 1] <- 4
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }],
+			['3@df', { colnames: ColNamesTop, cols: [1, 1], rows: [4, 4] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(1:5, 6:10)
+colnames(df) <- c("id", "name")
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5, name = 6:10)
+colnames(df) <- runif(2)
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
 	);
 
 	testDataFrameDomain(

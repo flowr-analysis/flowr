@@ -186,7 +186,7 @@ function getRealDomainFromOutput<K extends keyof DataFrameDomain>(
 	const line = output.find(line => line.startsWith(marker))?.replace(marker, '').trim();
 
 	if(line === undefined) {
-		throw new Error(`cannot parse ${type} output of instrumented code for ${criterion}`);
+		throw new Error(`cannot parse ${type} output of instrumented code for ${criterion} (${JSON.stringify(output)})`);
 	}
 	switch(type) {
 		case 'colnames': {

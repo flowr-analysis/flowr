@@ -267,7 +267,7 @@ function mapDataFrameSubset<OtherInfo>(
 
 	if(colnames.length > 0) {
 		result.push({
-			operation: 'accessCol',
+			operation: 'accessCols',
 			operand:   operand?.info.id,
 			args:      { columns: colnames }
 		});
@@ -349,7 +349,7 @@ function mapDataFrameFilter<OtherInfo>(
 
 	if(colnames.length > 0) {
 		result.push({
-			operation: 'accessCol',
+			operation: 'accessCols',
 			operand:   dataFrame.value.info.id,
 			args:      { columns: colnames }
 		});
@@ -398,7 +398,7 @@ function mapDataFrameSelect<OtherInfo>(
 
 	if([...selectedCols, ...unselectedCols].some(col => col !== undefined)) {
 		result.push({
-			operation: 'accessCol',
+			operation: 'accessCols',
 			operand:   operand?.info.id,
 			args:      { columns: [...selectedCols, ...unselectedCols].filter(col => col !== undefined) }
 		});

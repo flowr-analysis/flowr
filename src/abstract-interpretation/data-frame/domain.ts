@@ -111,7 +111,7 @@ export function subtractInterval(X1: IntervalDomain, X2: IntervalDomain): Interv
 	if(X1 === IntervalBottom || X2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [X1[0] - X2[0], X1[1] - X2[1]];
+		return [Math.max(X1[0] - X2[0], 0), Math.max(X1[1] - X2[1], 0)];
 	}
 }
 
@@ -120,6 +120,14 @@ export function minInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDom
 		return IntervalBottom;
 	} else {
 		return [Math.min(X1[0], X2[0]), Math.min(X1[1], X2[1])];
+	}
+}
+
+export function maxInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [Math.max(X1[0], X2[0]), Math.max(X1[1], X2[1])];
 	}
 }
 

@@ -579,67 +579,73 @@ df <- filter(df, TRUE)
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
-df <- dplyr::filter(df, FALSE)
+df <- filter(df, FALSE)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
-			['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
+			['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
-df <- dplyr::filter(df, id == 2)
+df <- filter(df, id == 2)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
-			['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
+			['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- dplyr::select(df, id, name)
+df <- select(df, id, name)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-			['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+			['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- dplyr::select(df, -name)
+df <- select(df, -name)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-			['2@df', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
+			['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- dplyr::select(df, -name, -label)
+df <- select(df, -name, -label)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-			['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
+			['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+			['3@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- dplyr::select(df, id, -name)
+df <- select(df, id, -name)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-			['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
+			['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+			['3@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
 		]
 	);
 
@@ -701,23 +707,25 @@ df <- subset(df, select = c(-id, -name))
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:5)
-df <- dplyr::mutate(df, id = c(letters[1:5]))
+df <- mutate(df, id = c(letters[1:5]))
 		`.trim(),
 		[
-			['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
-			['2@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
+			['2@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['3@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:5)
-df <- dplyr::mutate(df, name = c(letters[1:5]))
+df <- mutate(df, name = c(letters[1:5]))
 		`.trim(),
 		[
-			['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
-			['2@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
+			['2@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+			['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
 		]
 	);
 
@@ -745,53 +753,57 @@ df <- transform(df, name = c(letters[1:5]))
 
 	testDataFrameDomain(
 		`
-	df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
-	df <- dplyr::group_by(df, id) |> as.data.frame()
+library(dplyr)
+df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
+df <- group_by(df, id) |> as.data.frame()
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-			['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
+			['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+			['3@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
-	df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-	df <- df |>
-		dplyr::group_by(category) |>
-		dplyr::summarise(score = mean(score), sum = sum(score)) |>
-		as.data.frame()
-	print(df)
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- df |>
+	group_by(category) |>
+	summarise(score = mean(score), sum = sum(score)) |>
+	as.data.frame()
+print(df)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-			['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [3, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
+			['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+			['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [3, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- dplyr::left_join(df1, df2, by = "id")
+df <- left_join(df1, df2, by = "id")
 		`.trim(),
 		[
-			['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-			['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
-			['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
+			['2@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+			['3@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+			['4@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- dplyr::left_join(df1, df2, by = "id")
+df <- left_join(df1, df2, by = "id")
 		`.trim(),
 		[
-			['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
-			['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-			['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
+			['2@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+			['3@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+			['4@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
 		]
 	);
 
@@ -823,23 +835,25 @@ df <- merge(df1, df2, by = "id")
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
-df <- dplyr::relocate(df, score, .before = category)
+df <- relocate(df, score, .before = category)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
-			['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
+			['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
+			['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
 		]
 	);
 
 	testDataFrameDomain(
 		`
+library(dplyr)
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
-df <- dplyr::arrange(df, -score, id)
+df <- arrange(df, -score, id)
 		`.trim(),
 		[
-			['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
-			['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
+			['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
+			['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
 		]
 	);
 

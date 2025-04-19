@@ -6,8 +6,8 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo, DataFrameOperations } from '../absint-info';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
+import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
 const SpecialAccessArgumentsMapper: Partial<Record<RIndexAccess['operator'], string[]>> = {
@@ -34,22 +34,32 @@ export function mapDataFrameAccess<OtherInfo>(
 }
 
 function mapDataFrameNamedColumnAccess<OtherInfo>(
-	access: RNamedAccess<OtherInfo & ParentInformation>,
+	access: RNamedAccess<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
-): DataFrameOperations[] {
+): DataFrameOperations[] | undefined {
+	const dataFrame = access.accessed;
+
+	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+		return;
+	}
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
 	return [{
 		operation: 'accessCols',
-		operand:   access.accessed.info.id,
+		operand:   dataFrame.info.id,
 		args:      { columns: argName ? [argName] : undefined }
 	}];
 }
 
 function mapDataFrameIndexColRowAccess<OtherInfo>(
-	access: RIndexAccess<OtherInfo & ParentInformation>,
+	access: RIndexAccess<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
+	const dataFrame = access.accessed;
+
+	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+		return;
+	}
 	const effectiveArgs = getEffectiveArgs(access.operator, access.access);
 	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
 	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
@@ -57,7 +67,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 	if(effectiveArgs.every(arg => arg === EmptyArgument)) {
 		return [{
 			operation: 'identity',
-			operand:   access.accessed.info.id,
+			operand:   dataFrame.info.id,
 			args:      {}
 		}];
 	} else if(effectiveArgs.length > 0 && effectiveArgs.length <= 2) {
@@ -78,7 +88,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			}
 			result.push({
 				operation: 'accessRows',
-				operand:   access.accessed.info.id,
+				operand:   dataFrame.info.id,
 				args:      { rows: rows?.map(Math.abs) }
 			});
 		}
@@ -94,7 +104,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 			}
 			result.push({
 				operation: 'accessCols',
-				operand:   access.accessed.info.id,
+				operand:   dataFrame.info.id,
 				args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
 			});
 		}
@@ -104,7 +114,7 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 				rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
 
 		if(!dropExtent) {
-			let operand: RNode<OtherInfo & ParentInformation> | undefined = access.accessed;
+			let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame;
 
 			if(rowArg !== undefined && rowArg !== EmptyArgument) {
 				result.push({
@@ -133,5 +143,5 @@ function getEffectiveArgs<OtherInfo>(
 ): readonly RFunctionArgument<OtherInfo & ParentInformation>[] {
 	const ignoredArgs = SpecialAccessArgumentsMapper[funct] ?? [];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(arg.name.content));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(unescapeArgument(arg.name.content)));
 }

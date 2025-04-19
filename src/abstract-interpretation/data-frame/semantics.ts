@@ -36,6 +36,9 @@ const DataFrameSemanticsMapper = {
 	'subsetCols':  { apply: applySubsetColsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'subsetRows':  { apply: applySubsetRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
 	'filterRows':  { apply: applyFilterRowsSemantics,  types: [ConstraintType.ResultPostcondition] },
+	'mutateCols':  { apply: applyAssignColsSemantics,  types: [ConstraintType.ResultPostcondition] },
+	'groupBy':     { apply: applyGroupBySemantics,     types: [ConstraintType.ResultPostcondition] },
+	'leftJoin':    { apply: applyLeftJoinSemantics,    types: [ConstraintType.ResultPostcondition] },
 	'identity':    { apply: applyIdentitySemantics,    types: [ConstraintType.ResultPostcondition] },
 	'unknown':     { apply: applyUnknownSemantics,     types: [ConstraintType.ResultPostcondition] }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
@@ -240,6 +243,28 @@ function applyFilterRowsSemantics(
 	return {
 		...value,
 		rows: condition ? value.rows : condition === false ? [0, 0] : includeZeroInterval(value.rows)
+	};
+}
+
+function applyGroupBySemantics(
+	value: DataFrameDomain,
+	_args: { by: string | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		rows: includeZeroInterval(value.rows)
+	};
+}
+
+function applyLeftJoinSemantics(
+	value: DataFrameDomain,
+	{ other, minRows }: { other: DataFrameDomain, by: string | undefined, minRows?: boolean }
+): DataFrameDomain {
+	return {
+		...value,
+		colnames: joinColNames(value.colnames, other.colnames),
+		cols:     subtractInterval(addInterval(value.cols, other.cols), [1, 1]),
+		rows:     minRows ? minInterval(value.rows, other.rows) : value.rows
 	};
 }
 

@@ -100,7 +100,7 @@ function processDataFrameOperation<OtherInfo>(
 			const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, domain, dfg) : value;
 			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
 
-			if(operation.operand !== undefined && getConstraintTypes(operation.operation).some(type => type === ConstraintType.OperandPrecondition || type === ConstraintType.OperandModification)) {
+			if(operation.operand !== undefined && getConstraintTypes(operation.operation).includes(ConstraintType.OperandModification)) {
 				assignAbstractValueToId(operation.operand, value, domain, dfg);
 			}
 		}

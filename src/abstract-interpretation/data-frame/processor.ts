@@ -1,4 +1,4 @@
-import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
+import { type BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
@@ -6,21 +6,19 @@ import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/mod
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
+import { assertUnreachable } from '../../util/assert';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
 import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
-
-export type ConditionalDataFrameState = Record<'FD' | typeof RTrue | typeof RFalse, DataFrameStateDomain>;
 
 type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
 type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
@@ -82,7 +80,8 @@ function processDataFrameOperation<OtherInfo>(
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(node.lexeme));
+	const name = getFunctionName(node);
+	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(name));
 	const processor = origin?.type === 'function' ? origin.processor as BuiltInMappingName : 'builtin:default';
 	node.info.dataFrame = mapDataFrameSemantics(node, dfg, processor);
 
@@ -101,23 +100,32 @@ function processDataFrameOperation<OtherInfo>(
 			const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, domain, dfg) : value;
 			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
 
-			if(operation.operand !== undefined && getConstraintTypes(operation.operation).some(type => type === ConstraintType.OperandPrecondition || type === ConstraintType.OperandModification)) {
+			if(operation.operand !== undefined && getConstraintTypes(operation.operation).includes(ConstraintType.OperandModification)) {
 				assignAbstractValueToId(operation.operand, value, domain, dfg);
 			}
 		}
 		if(node.info.dataFrame.operations.some(operation => getConstraintTypes(operation.operation).includes(ConstraintType.ResultPostcondition))) {
 			domain.set(node.info.id, value);
 		}
+	} else if(processor === 'builtin:pipe') {
+		return processDataFramePipe(node, domain, dfg);
 	}
 	return domain;
 }
 
 function processDataFramePipe<OtherInfo>(
-	node: RPipe<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	node: RPipe<OtherInfo & ParentInformation & AbstractInterpretationInfo> | ROperation<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const value = resolveIdToAbstractValue(node.rhs.info.id, domain, dfg);
+	let rhs: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo> | undefined;
+
+	if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
+		rhs = node.rhs;
+	} else if(node.type === RType.FunctionCall && node.arguments[1] !== EmptyArgument) {
+		rhs = node.arguments[1]?.value;
+	}
+	const value = rhs ? resolveIdToAbstractValue(rhs.info.id, domain, dfg) : undefined;
 
 	if(value !== undefined) {
 		domain.set(node.info.id, value);
@@ -165,20 +173,35 @@ function processDataFrameNothing<OtherInfo>(
 }
 
 function assignAbstractValueToId(id: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
-	dfg.outgoingEdges(id)?.entries()
+	domain.set(id, value);
+	getDefinitionOrigin(id, dfg).forEach(origin => domain.set(origin, value));
+}
+
+function getFunctionName(operation: ROperation<ParentInformation>): string {
+	switch(operation.type) {
+		case RType.FunctionCall:
+			return operation.named ? operation.functionName.content : '';
+		case RType.Access:
+		case RType.BinaryOp:
+		case RType.UnaryOp:
+			return operation.operator;
+		default:
+			assertUnreachable(operation);
+	}
+}
+
+function getDefinitionOrigin(id: NodeId, dfg: DataflowGraph): NodeId[] {
+	return dfg.outgoingEdges(id)?.entries()
 		.filter(([, edge]) => edge.types === EdgeType.Reads)
 		.map(([id]) => id)
-		.forEach(origin => domain.set(origin, value));
+		.toArray() ?? [];
 }
 
 function resolveIdToAbstractValue(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): DataFrameDomain | undefined {
 	if(domain.has(id)) {
 		return domain.get(id);
 	}
-	const origins = dfg.outgoingEdges(id)?.entries()
-		.filter(([, edge]) => edge.types === EdgeType.Reads)
-		.map(([id]) => domain.get(id))
-		.toArray();
+	const origins = getDefinitionOrigin(id, dfg).map(id => domain.get(id));
 
 	if(origins !== undefined && origins.length > 0 && origins.some(origin => origin !== undefined)) {
 		const result = joinDataFrames(...origins.map(origin => origin ?? DataFrameTop));

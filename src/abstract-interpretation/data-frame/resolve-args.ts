@@ -5,6 +5,7 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
+import { startAndEndsWith } from '../../util/strings';
 
 /**
  * Returns the argument name of a function argument
@@ -12,7 +13,7 @@ import { unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-
 export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation>, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
-	return node?.name?.content;
+	return unescapeArgument(node?.name?.content);
 }
 
 /**
@@ -65,7 +66,7 @@ export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInfor
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value?.type === RType.Symbol) {
-		return node.value.content;
+		return unescapeArgument(node.value.content);
 	} else if(node?.value?.type === RType.String) {
 		return node.value.content.str;
 	}
@@ -100,4 +101,16 @@ function resolveIdToArgument(id: NodeId | RArgument<ParentInformation>, { graph,
 		return node;
 	}
 	return undefined;
+}
+
+export function unescapeArgument(argument: undefined): undefined;
+export function unescapeArgument(argument: string): string;
+export function unescapeArgument(argument: string | undefined): string | undefined;
+export function unescapeArgument(argument: string | undefined): string | undefined {
+	if(argument === undefined) {
+		return undefined;
+	} else if(startAndEndsWith(argument, '`') || startAndEndsWith(argument, '"') || startAndEndsWith(argument, '\'')) {
+		return argument.slice(1, -1);
+	}
+	return argument;
 }

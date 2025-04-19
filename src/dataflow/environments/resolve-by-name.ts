@@ -348,6 +348,18 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, gr
 		case RType.Number:
 		case RType.Logical:
 			return [node.content];
+		case RType.UnaryOp:
+			if(full && node.operator === '-') {
+				const arg = resolveIdToValue(node.operand, { environment, graph, idMap, full });
+				const argValue = arg?.length === 1 ? arg[0] : undefined;
+
+				if(isRNumberValue(argValue)) {
+					return [{ ...argValue, num: -argValue.num }];
+				} else if(Array.isArray(argValue) && argValue.every(isRNumberValue)) {
+					return [argValue.map(element => ({ ...element, num: -element.num }))];
+				}
+			}
+			return undefined;
 		case RType.BinaryOp:
 			if(full && node.operator === ':' && (node.lhs.type === RType.Number || node.lhs.type === RType.Symbol) && (node.rhs.type === RType.Symbol || node.rhs.type === RType.Number)) {
 				const leftArg = resolveIdToValue(node.lhs.info.id, { environment, graph, idMap, full });

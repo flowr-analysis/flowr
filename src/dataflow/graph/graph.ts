@@ -134,7 +134,7 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
  * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
  * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
- * @see {@link emptyGraph} - to create an empty graph (useful in tests)
+ * @see {@link emptyGraph|`emptyGraph`} - to create an empty graph (useful in tests)
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,

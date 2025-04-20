@@ -572,6 +572,7 @@ df <- tail(df, n = -c(2, 1))
 library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
 df <- filter(df, TRUE)
+detach("package:dplyr", unload = TRUE)
 		`.trim());
 	});
 

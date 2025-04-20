@@ -1,44 +1,198 @@
+import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import type { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
-import type { DataFrameStateDomain } from './domain';
+import type { AbstractInterpretationInfo } from './absint-info';
+import type { DataFrameDomain, DataFrameStateDomain } from './domain';
+import { DataFrameTop, joinDataFrames } from './domain';
+import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
+import { mapDataFrameSemantics } from './semantics-mapper';
 
 export type ConditionalDataFrameState = Record<'FD' | typeof RTrue | typeof RFalse, DataFrameStateDomain>;
 
-export function processDataFrameNode<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
+type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
+
+type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
+	node: Node,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
-): DataFrameStateDomain | ConditionalDataFrameState {
-	switch(node.type) {
-		case RType.BinaryOp:
-			return processBinaryOp(node, domain, dfg);
-		case RType.FunctionCall:
-			return processFunctionCall(node, domain, dfg);
-		default:
-			return domain;
+) => DataFrameStateDomain;
+
+type DataFrameProcessorMapping = {
+	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
+}
+
+const DataFrameProcessorMapper: DataFrameProcessorMapping = {
+	[RType.ExpressionList]:     processDataFrameNothing,
+	[RType.FunctionCall]:       processDataFrameOperation,
+	[RType.UnaryOp]:            processDataFrameOperation,
+	[RType.BinaryOp]:           processDataFrameOperation,
+	[RType.Access]:             processDataFrameOperation,
+	[RType.Pipe]:               processDataFramePipe,
+	[RType.Argument]:           processDataFrameArgument,
+	[RType.IfThenElse]:         processDataFrameIfThenElse,
+	[RType.ForLoop]:            processDataFrameNothing,
+	[RType.RepeatLoop]:         processDataFrameNothing,
+	[RType.WhileLoop]:          processDataFrameNothing,
+	[RType.FunctionDefinition]: processDataFrameNothing,
+	[RType.Parameter]:          processDataFrameNothing
+};
+
+export function processDataFrameLeaf<OtherInfo>(
+	node: RSingleNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	if(node.type === RType.Symbol) {
+		resolveIdToAbstractValue(node.info.id, domain, dfg);
+	}
+	updateDomainOfId(node, domain, dfg);
+	return domain;
+}
+
+export function processDataFrameExpression<Node extends RComplexNode<ParentInformation & AbstractInterpretationInfo>>(
+	node: Node,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	const nodeType: Node['type'] = node.type;
+	const processor = DataFrameProcessorMapper[nodeType] as DataFrameProcessor<Node>;
+
+	const result = processor(node, domain, dfg);
+	updateDomainOfId(node, result, dfg);
+
+	return result;
+}
+
+function processDataFrameOperation<OtherInfo>(
+	node: ROperation<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(node.lexeme));
+	const processor = origin?.type === 'function' ? origin.processor as BuiltInMappingName : 'builtin:default';
+	node.info.dataFrame = mapDataFrameSemantics(node, dfg, processor);
+
+	if(node.info.dataFrame?.type === 'assignment') {
+		const value = resolveIdToAbstractValue(node.info.dataFrame.expression, domain, dfg);
+
+		if(value !== undefined) {
+			domain.set(node.info.dataFrame.identifier, value);
+			updateDomainOfId(node.info.dataFrame.identifier, domain, dfg);
+			domain.set(node.info.id, value);
+		}
+	} else if(node.info.dataFrame?.type === 'expression') {
+		let value = DataFrameTop;
+
+		for(const operation of node.info.dataFrame.operations) {
+			const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, domain, dfg) : value;
+			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
+
+			if(operation.operand !== undefined && getConstraintTypes(operation.operation).some(type => type === ConstraintType.OperandPrecondition || type === ConstraintType.OperandModification)) {
+				assignAbstractValueToId(operation.operand, value, domain, dfg);
+			}
+		}
+		if(node.info.dataFrame.operations.some(operation => getConstraintTypes(operation.operation).includes(ConstraintType.ResultPostcondition))) {
+			domain.set(node.info.id, value);
+		}
+	}
+	return domain;
+}
+
+function processDataFramePipe<OtherInfo>(
+	node: RPipe<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	const value = resolveIdToAbstractValue(node.rhs.info.id, domain, dfg);
+
+	if(value !== undefined) {
+		domain.set(node.info.id, value);
+	}
+	return domain;
+}
+
+function processDataFrameArgument<OtherInfo>(
+	node: RArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	if(node.value !== undefined) {
+		const value = resolveIdToAbstractValue(node.value.info.id, domain, dfg);
+
+		if(value !== undefined) {
+			domain.set(node.info.id, value);
+		}
+	}
+	return domain;
+}
+
+function processDataFrameIfThenElse<OtherInfo>(
+	node: RIfThenElse<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+): DataFrameStateDomain {
+	const thenExit = node.then.children.at(-1);
+	const elseExit = node.otherwise?.children.at(-1);
+	const thenReturn = thenExit ? resolveIdToAbstractValue(thenExit.info.id, domain, dfg) : undefined;
+	const elseReturn = elseExit ? resolveIdToAbstractValue(elseExit.info.id, domain, dfg) : undefined;
+
+	if(thenReturn !== undefined || elseReturn !== undefined) {
+		const returnValue = joinDataFrames(thenReturn ?? DataFrameTop, elseReturn ?? DataFrameTop);
+		domain.set(node.info.id, returnValue);
+	}
+	return domain;
+}
+
+function processDataFrameNothing<OtherInfo>(
+	node: RComplexNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+	domain: DataFrameStateDomain
+): DataFrameStateDomain {
+	return domain;
+}
+
+function assignAbstractValueToId(id: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
+	dfg.outgoingEdges(id)?.entries()
+		.filter(([, edge]) => edge.types === EdgeType.Reads)
+		.map(([id]) => id)
+		.forEach(origin => domain.set(origin, value));
+}
+
+function resolveIdToAbstractValue(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): DataFrameDomain | undefined {
+	if(domain.has(id)) {
+		return domain.get(id);
+	}
+	const origins = dfg.outgoingEdges(id)?.entries()
+		.filter(([, edge]) => edge.types === EdgeType.Reads)
+		.map(([id]) => domain.get(id))
+		.toArray();
+
+	if(origins !== undefined && origins.length > 0 && origins.some(origin => origin !== undefined)) {
+		const result = joinDataFrames(...origins.map(origin => origin ?? DataFrameTop));
+		domain.set(id, result);
+
+		return result;
 	}
 }
 
-function processBinaryOp<OtherInfo>(
-	node: RBinaryOp<OtherInfo & ParentInformation>,
-	domain: DataFrameStateDomain,
-	dfg: DataflowGraph
-): DataFrameStateDomain | ConditionalDataFrameState {
-	console.log(node, dfg.get(node.info.id), { lhs: dfg.get(node.lhs.info.id), rhs: dfg.get(node.rhs.info.id) });
-	return domain;
-}
+function updateDomainOfId(id: NodeId | RNode<ParentInformation & AbstractInterpretationInfo>, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg.idMap?.get(id);
 
-function processFunctionCall<OtherInfo>(
-	node: RFunctionCall<OtherInfo & ParentInformation>,
-	domain: DataFrameStateDomain,
-	dfg: DataflowGraph
-): DataFrameStateDomain | ConditionalDataFrameState {
-	console.log(node, dfg.get(node.info.id), node.arguments.map(arg => arg !== EmptyArgument && arg.value ? dfg.get(arg.value?.info.id) : undefined));
-	return domain;
+	if(node !== undefined) {
+		node.info.dataFrame ??= { type: 'other' };
+		node.info.dataFrame.domain = new Map(domain);
+	}
 }

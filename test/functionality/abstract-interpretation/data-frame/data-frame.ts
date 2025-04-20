@@ -1,19 +1,23 @@
 import { assert, beforeAll, test } from 'vitest';
+import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
+import { performDataFrameAbsint } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
+import { extractCFG } from '../../../../src/util/cfg/cfg';
 import { getRangeEnd } from '../../../../src/util/range';
 import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 
@@ -41,7 +45,8 @@ interface CriterionTestEntry {
 	criterion:  SingleSlicingCriterion,
 	value:      DataFrameDomain,
 	node:       RSymbol<ParentInformation>,
-	lineNumber: number
+	lineNumber: number,
+	options:    DataFrameTestOptions
 }
 
 export function assertDataFrameDomain(
@@ -69,13 +74,10 @@ export function assertDataFrameDomain(
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
-	criteria: SlicingCriteria,
-	/** Whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
-	options?: Partial<DataFrameTestOptions>,
+	/** The options describe whether the inferred properties should match exacly the actual properties or can be an over-approximation (defaults to exact for all properties) */
+	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameTestOptions>])[],
 	name: string | TestLabel = code
 ): void {
-	const effectiveOptions = { ...DataFrameTestExact, ...options };
-
 	test(decorateLabelContext(name, ['absint']), async()=> {
 		const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
@@ -84,14 +86,16 @@ export function testDataFrameDomainAgainstReal(
 
 		const testEntries: CriterionTestEntry[] = [];
 
-		for(const criterion of criteria) {
+		for(const entry of criteria) {
+			const criterion = Array.isArray(entry) ? entry[0] : entry;
+			const options = { ...DataFrameTestExact, ...(Array.isArray(entry) ? entry[1] : {}) };
 			const [value, node] = getInferredDomainForCriterion(result, criterion);
 			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
 
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);
 			}
-			testEntries.push({ criterion, value, node, lineNumber });
+			testEntries.push({ criterion, value, node, lineNumber, options });
 		}
 		testEntries.sort((a, b) => b.lineNumber - a.lineNumber);
 		const lines = code.split('\n');
@@ -102,21 +106,21 @@ export function testDataFrameDomainAgainstReal(
 				createCodeForOutput('cols', criterion, node.content),
 				createCodeForOutput('rows', criterion, node.content)
 			];
-			lines.splice(lineNumber + 1, 0, ...outputCode);
+			lines.splice(lineNumber, 0, ...outputCode);
 		}
 		const instrumentedCode = lines.join('\n');
 
 		shell.clearEnvironment();
 		const output = await shell.sendCommandWithOutput(instrumentedCode);
 
-		for(const { criterion, value } of testEntries) {
+		for(const { criterion, value, options } of testEntries) {
 			const colnames = getRealDomainFromOutput('colnames', criterion, output);
 			const cols = getRealDomainFromOutput('cols', criterion, output);
 			const rows = getRealDomainFromOutput('rows', criterion, output);
 
-			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, effectiveOptions.colnames);
-			assertDomainMatching('cols', value.cols, cols, leqInterval, effectiveOptions.cols);
-			assertDomainMatching('rows', value.rows, rows, leqInterval, effectiveOptions.rows);
+			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, options.colnames);
+			assertDomainMatching('cols', value.cols, cols, leqInterval, options.cols);
+			assertDomainMatching('rows', value.rows, rows, leqInterval, options.rows);
 		}
 	});
 }
@@ -161,12 +165,14 @@ function getInferredDomainForCriterion(
 ): [DataFrameDomain, RSymbol<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
 	const nodeId = slicingCriterionToId(criterion, idMap);
-	const node = idMap.get(nodeId);
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = idMap.get(nodeId);
 
 	if(node === undefined || node.type !== RType.Symbol) {
 		throw new Error(`slicing criterion ${criterion} does not refer to a R symbol`);
 	}
-	const value = DataFrameTop;
+	const cfg = extractCFG(result.normalize, result.dataflow.graph);
+	performDataFrameAbsint(cfg, result.dataflow.graph);
+	const value = node.info.dataFrame?.domain?.get(node.info.id) ?? DataFrameTop;
 
 	return [value, node];
 }

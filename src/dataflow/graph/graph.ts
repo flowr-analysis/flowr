@@ -206,6 +206,25 @@ export class DataflowGraph<
 		return edges;
 	}
 
+	/**
+	 * Given a node in the normalized AST this either:
+	 * * returns the id if the node directly exists in the DFG
+	 * * returns the ids of all vertices in the DFG that are linked to this
+	 * * returns undefined if the node is not part of the DFG and not linked to any node
+	 */
+	public getLinked(nodeId: NodeId): NodeId[] | undefined {
+		if(this.vertexInformation.has(nodeId)) {
+			return [nodeId];
+		}
+		const linked: NodeId[] = [];
+		for(const [id, vtx] of this.vertexInformation) {
+			if(vtx.link?.origin.includes(nodeId)) {
+				linked.push(id);
+			}
+		}
+		return linked.length > 0 ? linked : undefined;
+	}
+
 
 	/** Retrieves the id-map to the normalized AST attached to the dataflow graph */
 	public get idMap(): AstIdMap | undefined {

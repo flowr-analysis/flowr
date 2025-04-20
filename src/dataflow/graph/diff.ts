@@ -252,7 +252,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		}
 
 		if(lInfo.link !== undefined || rInfo.link !== undefined) {
-			const equal = lInfo.link && rInfo.link && arrayEqual(lInfo.link.origin, lInfo.link.origin);
+			const equal = lInfo.link && rInfo.link && arrayEqual(lInfo.link.origin, rInfo.link.origin);
 			if(!equal) {
 				ctx.report.addComment(`Vertex ${id} differs in link. ${ctx.leftname}: ${JSON.stringify(lInfo.link, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.link, jsonReplacer)}`, { tag: 'vertex', id });
 			}

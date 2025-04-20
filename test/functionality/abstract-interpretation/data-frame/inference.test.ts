@@ -2,12 +2,16 @@ import { afterAll, beforeAll, describe, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { withShell } from '../../_helper/shell';
 import type { DataFrameTestOptions } from './data-frame';
 import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { RShell, RShellReviveOptions } from '../../../../src/r-bridge/shell';
 
-describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
+describe.sequential('Data Frame Abstract Interpretation', () => {
+	const shell = new RShell({ revive: RShellReviveOptions.Always });
+
+	afterAll(() => shell.close());
+
 	function testDataFrameDomain(
 		code: string,
 		criteria: ([SingleSlicingCriterion, DataFrameDomain] | [SingleSlicingCriterion, DataFrameDomain, Partial<DataFrameTestOptions>])[]
@@ -567,12 +571,12 @@ df <- tail(df, n = -c(2, 1))
 
 	// Quick tests to check if CI pipeline can run R code with library
 	test('Quick test to check library', async() => {
-		shell.clearEnvironment();
 		await shell.sendCommandWithOutput(`
 library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
 df <- filter(df, TRUE)
 detach("package:dplyr", unload = TRUE)
+quit()
 		`.trim());
 	});
 
@@ -895,4 +899,4 @@ print(df3$level)
 			]
 		);
 	});
-}));
+});

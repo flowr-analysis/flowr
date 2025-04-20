@@ -47,7 +47,7 @@ interface MermaidGraph {
 }
 
 /**
- * Prints a {@link SourceRange|range} as a human readable string.
+ * Prints a {@link SourceRange|range} as a human-readable string.
  */
 export function formatRange(range: SourceRange | undefined): string {
 	if(range === undefined) {
@@ -195,8 +195,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
 			fCall ? displayFunctionArgMapping(info.args) : ''
 		}\`"${close}`);
 	}

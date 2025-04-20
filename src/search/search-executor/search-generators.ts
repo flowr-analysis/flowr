@@ -1,5 +1,5 @@
 import type {
-	FlowrSearchElement,
+	FlowrSearchElement, FlowrSearchElementFromQuery,
 	FlowrSearchGeneratorNodeBase,
 	FlowrSearchGetFilter,
 	FlowrSearchInput
@@ -12,7 +12,7 @@ import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { isNotUndefined } from '../../util/assert';
-import type { Query } from '../../queries/query';
+import type { Query, SupportedQuery } from '../../queries/query';
 import { executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -90,16 +90,20 @@ function generateFrom(data: FlowrSearchInput<Pipeline>, args: { from: FlowrSearc
 	return new FlowrSearchElements(Array.isArray(args.from) ? args.from : [args.from]);
 }
 
-function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly Query[] }): FlowrSearchElements<ParentInformation> {
-	const nodes = new Set<FlowrSearchElement<ParentInformation>>();
+function generateFromQuery(data: FlowrSearchInput<Pipeline>, args: { from: readonly Query[] }): FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]> {
+	const nodes = new Set<FlowrSearchElementFromQuery<ParentInformation>>();
 	const result = executeQueries({ ast: data.normalize, dataflow: data.dataflow }, args.from);
 	for(const [query, content] of Object.entries(result)) {
 		if(query === '.meta') {
 			continue;
 		}
-		const queryDef = SupportedQueries[query as Query['type']];
+		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
 		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult)) {
-			nodes.add({ node: data.normalize.idMap.get(node) as RNode<ParentInformation> });
+			nodes.add({
+				node:        data.normalize.idMap.get(node) as RNode<ParentInformation>,
+				query:       query as Query['type'],
+				queryResult: content as BaseQueryResult
+			});
 		}
 	}
 	return new FlowrSearchElements([...nodes]);

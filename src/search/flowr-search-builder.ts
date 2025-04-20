@@ -1,5 +1,5 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
+import type { FlowrSearchElement, FlowrSearchElementFromQuery, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
 import type { FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
@@ -33,7 +33,7 @@ export const FlowrSearchGenerator = {
 	from(from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[]): FlowrSearchBuilder<'from'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from', args: { from } });
 	},
-	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query'> {
+	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
 	/**

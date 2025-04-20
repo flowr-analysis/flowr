@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe } from 'vitest';
+import { afterAll, beforeAll, describe, test } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -564,6 +564,16 @@ df <- tail(df, n = -c(2, 1))
 			['2@df', { colnames: ['id', 'name'], cols: [0, 1], rows: [1, 3] }, DataFrameTestOverapproximation]
 		]
 	);
+
+	// Quick tests to check if CI pipeline can run R code with library
+	test('Quick test to check library', async() => {
+		shell.clearEnvironment();
+		await shell.sendCommandWithOutput(`
+library(dplyr)
+df <- data.frame(id = 1:3, name = 4:6)
+df <- filter(df, TRUE)
+		`.trim());
+	});
 
 	describe.skip('Skipped tests', () => {
 		testDataFrameDomain(

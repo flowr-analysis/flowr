@@ -1,14 +1,15 @@
-import { afterAll, beforeAll, describe, test } from 'vitest';
+import { afterAll, beforeAll, describe } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { amendConfig, defaultConfigOptions } from '../../../../src/config';
+import { RShell, RShellReviveOptions } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DataFrameTestOptions } from './data-frame';
 import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
-import { amendConfig, defaultConfigOptions } from '../../../../src/config';
-import { RShell, RShellReviveOptions } from '../../../../src/r-bridge/shell';
 
 describe.sequential('Data Frame Abstract Interpretation', () => {
 	const shell = new RShell({ revive: RShellReviveOptions.Always });
+	const skip = false;
 
 	afterAll(() => shell.close());
 
@@ -569,99 +570,81 @@ df <- tail(df, n = -c(2, 1))
 		]
 	);
 
-	// Quick tests to check if CI pipeline can run R code with library
-	test('Quick test to check library', async() => {
-		await shell.sendCommandWithOutput(`
-library(dplyr)
+	describe.skipIf(skip)('Skipped tests', () => {
+		testDataFrameDomain(
+			`
 df <- data.frame(id = 1:3, name = 4:6)
-df <- filter(df, TRUE)
-detach("package:dplyr", unload = TRUE)
-quit()
-		`.trim());
-	});
+df <- dplyr::filter(df, TRUE)
+		`.trim(),
+			[
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+			]
+		);
 
-	describe.skip('Skipped tests', () => {
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
-df <- filter(df, TRUE)
+df <- dplyr::filter(df, FALSE)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6)
-df <- filter(df, FALSE)
+df <- dplyr::filter(df, id == 2)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 0] }]
+				['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
-df <- data.frame(id = 1:3, name = 4:6)
-df <- filter(df, id == 2)
-		`.trim(),
-			[
-				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }]
-			]
-		);
-
-		testDataFrameDomain(
-			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- select(df, id, name)
+df <- dplyr::select(df, id, name)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-				['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- select(df, -name)
+df <- dplyr::select(df, -name)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-				['3@df', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id', 'label'], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- select(df, -name, -label)
+df <- dplyr::select(df, -name, -label)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-				['3@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
-df <- select(df, id, -name)
+df <- dplyr::select(df, id, -name)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
-				['3@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
+				['1@df', { colnames: ['id', 'name', 'label'], cols: [3, 3], rows: [3, 3] }],
+				['2@df', { colnames: ['id'], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 	});
@@ -721,28 +704,26 @@ df <- subset(df, select = c(-id, -name))
 		]
 	);
 
-	describe.skip('Skipped tests', () => {
+	describe.skipIf(skip)('Skipped tests', () => {
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:5)
-df <- mutate(df, id = c(letters[1:5]))
+df <- dplyr::mutate(df, id = c(letters[1:5]))
 		`.trim(),
 			[
-				['2@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
-				['3@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
+				['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['2@df', { colnames: ['id'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:5)
-df <- mutate(df, name = c(letters[1:5]))
+df <- dplyr::mutate(df, name = c(letters[1:5]))
 		`.trim(),
 			[
-				['2@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
-				['3@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
+				['1@df', { colnames: ['id'], cols: [1, 1], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [5, 5] }, { cols: DomainMatchingType.Overapproximation }]
 			]
 		);
 	});
@@ -769,16 +750,15 @@ df <- transform(df, name = c(letters[1:5]))
 		]
 	);
 
-	describe.skip('Skipped tests', () => {
+	describe.skipIf(skip)('Skipped tests', () => {
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
-df <- group_by(df, id) |> as.data.frame()
+df <- dplyr::group_by(df, id) |> as.data.frame()
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
-				['3@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
+				['1@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'score'], cols: [2, 2], rows: [0, 5] }, { rows: DomainMatchingType.Overapproximation }]
 			]
 		);
 
@@ -800,29 +780,27 @@ print(df)
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
-df <- left_join(df1, df2, by = "id")
+df <- dplyr::left_join(df1, df2, by = "id")
 		`.trim(),
 			[
-				['2@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-				['3@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
-				['4@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
+				['1@df1', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['3@df', { colnames: ['id', 'score', 'category'], cols: [3, 3], rows: [4, 4] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df1 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
 df2 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
-df <- left_join(df1, df2, by = "id")
+df <- dplyr::left_join(df1, df2, by = "id")
 		`.trim(),
 			[
-				['2@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
-				['3@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
-				['4@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
+				['1@df1', { colnames: ['id', 'category'], cols: [2, 2], rows: [6, 6] }],
+				['2@df2', { colnames: ['id', 'score'], cols: [2, 2], rows: [4, 4] }],
+				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }]
 			]
 		);
 	});
@@ -853,28 +831,26 @@ df <- merge(df1, df2, by = "id")
 		]
 	);
 
-	describe.skip('Skipped tests', () => {
+	describe.skipIf(skip)('Skipped tests', () => {
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
-df <- relocate(df, score, .before = category)
+df <- dplyr::relocate(df, score, .before = category)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
+				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
 			]
 		);
 
 		testDataFrameDomain(
 			`
-library(dplyr)
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
-df <- arrange(df, -score, id)
+df <- dplyr::arrange(df, -score, id)
 		`.trim(),
 			[
-				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
-				['3@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
+				['1@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }],
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [5, 5] }]
 			]
 		);
 

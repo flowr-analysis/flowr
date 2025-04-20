@@ -27,12 +27,8 @@ export interface DataFrameExpressionInfo {
 	operations: DataFrameOperations[]
 }
 
-export interface DataFrameOtherInfo {
-	type: 'other'
-}
-
-export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameOtherInfo;
+export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo;
 
 export interface AbstractInterpretationInfo {
-	dataFrame?: DataFrameInfo & DataFrameInfoBase
+	dataFrame?: (DataFrameInfo & DataFrameInfoBase) | DataFrameInfoBase
 }

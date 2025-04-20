@@ -10,13 +10,13 @@ import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } f
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
-const SpecialAccessArgumentsMapper: Partial<Record<RIndexAccess['operator'], string[]>> = {
+const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
 	'[[': ['exact']
 };
 
-export function mapDataFrameAccess<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+export function mapDataFrameAccess(
+	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
@@ -33,8 +33,8 @@ export function mapDataFrameAccess<OtherInfo>(
 	}
 }
 
-function mapDataFrameNamedColumnAccess<OtherInfo>(
-	access: RNamedAccess<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function mapDataFrameNamedColumnAccess(
+	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = access.accessed;
@@ -51,8 +51,8 @@ function mapDataFrameNamedColumnAccess<OtherInfo>(
 	}];
 }
 
-function mapDataFrameIndexColRowAccess<OtherInfo>(
-	access: RIndexAccess<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function mapDataFrameIndexColRowAccess(
+	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
 	const dataFrame = access.accessed;
@@ -60,88 +60,86 @@ function mapDataFrameIndexColRowAccess<OtherInfo>(
 	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
 		return;
 	}
-	const effectiveArgs = getEffectiveArgs(access.operator, access.access);
-	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
-	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
+	const args = getEffectiveArgs(access.operator, access.access);
 
-	if(effectiveArgs.every(arg => arg === EmptyArgument)) {
+	if(args.every(arg => arg === EmptyArgument)) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.info.id,
 			args:      {}
 		}];
-	} else if(effectiveArgs.length > 0 && effectiveArgs.length <= 2) {
-		const rowArg = effectiveArgs.length < 2 ? undefined : effectiveArgs[0];
-		const colArg = effectiveArgs.length < 2 ? effectiveArgs[0] : effectiveArgs[1];
-		let rows: number[] | undefined = undefined;
-		let columns: string[] | number[] | undefined = undefined;
+	}
+	const result: DataFrameOperations[] = [];
+	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
+	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
+	const rowArg = args.length < 2 ? undefined : args[0];
+	const colArg = args.length < 2 ? args[0] : args[1];
+	let rows: number[] | undefined = undefined;
+	let columns: string[] | number[] | undefined = undefined;
 
-		const result: DataFrameOperations[] = [];
+	if(rowArg !== undefined && rowArg !== EmptyArgument) {
+		const rowValue: unknown = resolveIdToArgValue(rowArg, info);
+
+		if(typeof rowValue === 'number') {
+			rows = [rowValue];
+		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+			rows = rowValue;
+		}
+		result.push({
+			operation: 'accessRows',
+			operand:   dataFrame.info.id,
+			args:      { rows: rows?.map(Math.abs) }
+		});
+	}
+	if(colArg !== undefined && colArg !== EmptyArgument) {
+		const colValue: unknown = resolveIdToArgValue(colArg, info);
+
+		if(typeof colValue === 'string') {
+			columns = [colValue];
+		} else if(typeof colValue === 'number') {
+			columns = [colValue];
+		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
+			columns = colValue;
+		}
+		result.push({
+			operation: 'accessCols',
+			operand:   dataFrame.info.id,
+			args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
+		});
+	}
+	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
+	const dropExtent = access.operator === '[[' ? true :
+		args.length === 2 && typeof dropValue === 'boolean' ? dropValue :
+			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
+
+	if(!dropExtent) {
+		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			const rowValue: unknown = resolveIdToArgValue(rowArg, info);
-
-			if(typeof rowValue === 'number') {
-				rows = [rowValue];
-			} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
-				rows = rowValue;
-			}
 			result.push({
-				operation: 'accessRows',
-				operand:   dataFrame.info.id,
-				args:      { rows: rows?.map(Math.abs) }
+				operation: rows === undefined || rows?.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
+				operand:   operand?.info.id,
+				args:      { rows: rows?.length }
 			});
+			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			const colValue: unknown = resolveIdToArgValue(colArg, info);
-
-			if(typeof colValue === 'string') {
-				columns = [colValue];
-			} else if(typeof colValue === 'number') {
-				columns = [colValue];
-			} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
-				columns = colValue;
-			}
 			result.push({
-				operation: 'accessCols',
-				operand:   dataFrame.info.id,
-				args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
+				operation: columns === undefined || columns?.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
+				operand:   operand?.info.id,
+				args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
 			});
-		}
-		// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
-		const dropExtent = access.operator === '[[' ? true :
-			effectiveArgs.length === 2 && typeof dropValue === 'boolean' ? dropValue :
-				rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
-
-		if(!dropExtent) {
-			let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame;
-
-			if(rowArg !== undefined && rowArg !== EmptyArgument) {
-				result.push({
-					operation: rows === undefined || rows?.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
-					operand:   operand?.info.id,
-					args:      { rows: rows?.length }
-				});
-				operand = undefined;
-			}
-			if(colArg !== undefined && colArg !== EmptyArgument) {
-				result.push({
-					operation: columns === undefined || columns?.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
-					operand:   operand?.info.id,
-					args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
-				});
-				operand = undefined;
-			}
+			operand = undefined;
 		}
 		return result;
 	}
 }
 
-function getEffectiveArgs<OtherInfo>(
-	funct: keyof typeof SpecialAccessArgumentsMapper,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
-): readonly RFunctionArgument<OtherInfo & ParentInformation>[] {
-	const ignoredArgs = SpecialAccessArgumentsMapper[funct] ?? [];
+function getEffectiveArgs(
+	operator: RIndexAccess['operator'],
+	args: readonly RFunctionArgument<ParentInformation>[]
+): readonly RFunctionArgument<ParentInformation>[] {
+	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unescapeArgument(arg.name.content)));
 }

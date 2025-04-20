@@ -79,15 +79,15 @@ function foldCfg(
 	}
 }
 
-function isRConstant<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RConstant<OtherInfo & ParentInformation> {
+function isRConstant(
+	node: RNode<ParentInformation>
+): node is RConstant<ParentInformation> {
 	return node.type === RType.String || node.type === RType.Number || node.type === RType.Logical;
 }
 
-function isRSingleNode<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>
-): node is RSingleNode<OtherInfo & ParentInformation> {
+function isRSingleNode(
+	node: RNode<ParentInformation>
+): node is RSingleNode<ParentInformation> {
 	return isRConstant(node) || node.type === RType.Symbol || node.type === RType.Break || node.type === RType.Next || node.type === RType.Comment || node.type === RType.LineDirective;
 }
 

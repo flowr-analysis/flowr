@@ -17,21 +17,8 @@ import { assertUnreachable } from '../../util/assert';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
-import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
+import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
-
-type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
-type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
-
-type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
-	node: Node,
-	domain: DataFrameStateDomain,
-	dfg: DataflowGraph
-) => DataFrameStateDomain;
-
-type DataFrameProcessorMapping = {
-	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
-}
 
 const DataFrameProcessorMapper: DataFrameProcessorMapping = {
 	[RType.ExpressionList]:     processDataFrameNothing,
@@ -49,8 +36,21 @@ const DataFrameProcessorMapper: DataFrameProcessorMapping = {
 	[RType.Parameter]:          processDataFrameNothing
 };
 
-export function processDataFrameLeaf<OtherInfo>(
-	node: RSingleNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
+type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
+
+type DataFrameProcessorMapping = {
+	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
+}
+
+type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
+	node: Node,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+) => DataFrameStateDomain;
+
+export function processDataFrameLeaf(
+	node: RSingleNode<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -75,8 +75,8 @@ export function processDataFrameExpression<Node extends RComplexNode<ParentInfor
 	return result;
 }
 
-function processDataFrameOperation<OtherInfo>(
-	node: ROperation<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameOperation(
+	node: ROperation<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -100,11 +100,11 @@ function processDataFrameOperation<OtherInfo>(
 			const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, domain, dfg) : value;
 			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
 
-			if(operation.operand !== undefined && getConstraintTypes(operation.operation).includes(ConstraintType.OperandModification)) {
+			if(operation.operand !== undefined && getConstraintType(operation.operation) === ConstraintType.OperandModification) {
 				assignAbstractValueToId(operation.operand, value, domain, dfg);
 			}
 		}
-		if(node.info.dataFrame.operations.some(operation => getConstraintTypes(operation.operation).includes(ConstraintType.ResultPostcondition))) {
+		if(node.info.dataFrame.operations.some(operation => getConstraintType(operation.operation) === ConstraintType.ResultPostcondition)) {
 			domain.set(node.info.id, value);
 		}
 	} else if(processor === 'builtin:pipe') {
@@ -113,12 +113,12 @@ function processDataFrameOperation<OtherInfo>(
 	return domain;
 }
 
-function processDataFramePipe<OtherInfo>(
-	node: RPipe<OtherInfo & ParentInformation & AbstractInterpretationInfo> | ROperation<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFramePipe(
+	node: RPipe<ParentInformation & AbstractInterpretationInfo> | ROperation<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	let rhs: RNode<OtherInfo & ParentInformation & AbstractInterpretationInfo> | undefined;
+	let rhs: RNode<ParentInformation & AbstractInterpretationInfo> | undefined;
 
 	if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
 		rhs = node.rhs;
@@ -133,8 +133,8 @@ function processDataFramePipe<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameArgument<OtherInfo>(
-	node: RArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameArgument(
+	node: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -148,8 +148,8 @@ function processDataFrameArgument<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameIfThenElse<OtherInfo>(
-	node: RIfThenElse<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameIfThenElse(
+	node: RIfThenElse<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -165,8 +165,8 @@ function processDataFrameIfThenElse<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameNothing<OtherInfo>(
-	node: RComplexNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameNothing(
+	node: RComplexNode<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain
 ): DataFrameStateDomain {
 	return domain;
@@ -215,7 +215,7 @@ function updateDomainOfId(id: NodeId | RNode<ParentInformation & AbstractInterpr
 	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg.idMap?.get(id);
 
 	if(node !== undefined) {
-		node.info.dataFrame ??= { type: 'other' };
+		node.info.dataFrame ??= {};
 		node.info.dataFrame.domain = new Map(domain);
 	}
 }

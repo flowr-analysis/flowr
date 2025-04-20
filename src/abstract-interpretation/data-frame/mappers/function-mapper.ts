@@ -15,68 +15,52 @@ import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName,
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
 
 const DataFrameFunctionMapper = {
-	'data.frame':    mapDataFrameCreate,
-	'as.data.frame': mapDataFrameIdentity,
-	'read.csv':      mapDataFrameUnknownCreate,
-	'read.table':    mapDataFrameUnknownCreate,
-	'cbind':         mapDataFrameColBind,
-	'rbind':         mapDataFrameRowBind,
-	'head':          mapDataFrameHeadTail,
-	'tail':          mapDataFrameHeadTail,
-	'subset':        mapDataFrameSubset,
-	'filter':        mapDataFrameFilter,
-	'select':        mapDataFrameSelect,
-	'transform':     mapDataFrameMutate,
-	'mutate':        mapDataFrameMutate,
-	'group_by':      mapDataFrameGroupBy,
-	'left_join':     mapDataFrameLeftJoin,
-	'merge':         (...args) => mapDataFrameLeftJoin(...args, true),
-	'summarise':     mapDataFrameMutate,
-	'summarize':     mapDataFrameMutate,
-	'relocate':      mapDataFrameIdentity,
-	'arrange':       mapDataFrameIdentity
-} as const satisfies Record<string, DataFrameFunctionMapping>;
+	'data.frame':    { mapper: mapDataFrameCreate, specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
+	'as.data.frame': { mapper: mapDataFrameIdentity, specialArgs: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'] },
+	'read.csv':      { mapper: mapDataFrameUnknownCreate, specialArgs: [] },
+	'read.table':    { mapper: mapDataFrameUnknownCreate, specialArgs: [] },
+	'cbind':         { mapper: mapDataFrameColBind, specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'rbind':         { mapper: mapDataFrameRowBind, specialArgs: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'head':          { mapper: mapDataFrameHeadTail, specialArgs: ['addrownums'] },
+	'tail':          { mapper: mapDataFrameHeadTail, specialArgs: ['addrownums'] },
+	'subset':        { mapper: mapDataFrameSubset, specialArgs: ['drop'] },
+	'filter':        { mapper: mapDataFrameFilter, specialArgs: ['.by', '.preserve'] },
+	'select':        { mapper: mapDataFrameSelect, specialArgs: [] },
+	'transform':     { mapper: mapDataFrameMutate, specialArgs: [] },
+	'mutate':        { mapper: mapDataFrameMutate, specialArgs: ['.by', '.keep', '.before', '.after'] },
+	'group_by':      { mapper: mapDataFrameGroupBy, specialArgs: ['.add', '.drop'] },
+	'left_join':     { mapper: mapDataFrameLeftJoin, specialArgs: ['copy', 'suffix', 'keep'] },
+	'merge':         { mapper: (...args) => mapDataFrameLeftJoin(...args, true), specialArgs: ['by.x', 'bx.y', 'all', 'all.x', 'all.y', 'sort', 'suffixes', 'no.dups', 'incomparables'] },
+	'summarise':     { mapper: mapDataFrameMutate, specialArgs: ['.by', '.groups'] },
+	'summarize':     { mapper: mapDataFrameMutate, specialArgs: ['.by', '.groups'] },
+	'relocate':      { mapper: mapDataFrameIdentity, specialArgs: ['.before', '.after'] },
+	'arrange':       { mapper: mapDataFrameIdentity, specialArgs: ['.by_group', '.locale'] }
+} as const satisfies Record<string, DataFrameFunctionMapperInfo>;
 
-const SpecialFunctionArgumentsMapper: Partial<Record<DataFrameFunction, string[]>> = {
-	'data.frame':    ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
-	'as.data.frame': ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
-	'cbind':         ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
-	'rbind':         ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'],
-	'head':          ['addrownums'],
-	'tail':          ['addrownums'],
-	'subset':        ['drop'],
-	'filter':        ['.by', '.preserve'],
-	'select':        [],
-	'transform':     [],
-	'mutate':        ['.by', '.keep', '.before', '.after'],
-	'group_by':      ['.add', '.drop'],
-	'left_join':     ['copy', 'suffix', 'keep'],
-	'merge':         ['by.x', 'bx.y', 'all', 'all.x', 'all.y', 'sort', 'suffixes', 'no.dups', 'incomparables'],
-	'summarise':     ['.by', '.groups'],
-	'summarize':     ['.by', '.groups'],
-	'relocate':      ['.before', '.after'],
-	'arrange':       ['.by_group', '.locale'],
-};
+type DataFrameFunctionMapperInfo = {
+	readonly mapper:      DataFrameFunctionMapping,
+	readonly specialArgs: string[]
+}
 
-type DataFrameFunctionMapping = <OtherInfo>(
-    args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+type DataFrameFunctionMapping = (
+    args: readonly RFunctionArgument<ParentInformation>[],
     info: ResolveInfo
 ) => DataFrameOperations[] | undefined;
 
 type DataFrameFunction = keyof typeof DataFrameFunctionMapper;
 
-export function mapDataFrameFunctionCall<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+export function mapDataFrameFunctionCall(
+	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.FunctionCall && node.named && node.functionName.content in DataFrameFunctionMapper) {
 		const functionName = node.functionName.content as DataFrameFunction;
 		const args = getFunctionArguments(node, dfg);
 		const effectiveArgs = getEffectiveArgs(functionName, args);
-		const functionProcessor = DataFrameFunctionMapper[functionName];
+		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true };
+		const functionMapping = DataFrameFunctionMapper[functionName];
 
-		const operations = functionProcessor(args, effectiveArgs, { graph: dfg, idMap: dfg.idMap, full: true });
+		const operations = functionMapping.mapper(effectiveArgs, resolveInfo);
 
 		if(operations !== undefined) {
 			return { type: 'expression', operations: operations };
@@ -84,41 +68,39 @@ export function mapDataFrameFunctionCall<OtherInfo>(
 	}
 }
 
-function mapDataFrameCreate<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameCreate(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] {
-	const argNames = effectiveArgs.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
-	const argLengths = effectiveArgs.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
+	const argNames = args.map(arg => arg ? resolveIdToArgName(arg, info) : undefined);
+	const argLengths = args.map(arg => arg ? resolveIdToArgVectorLength(arg, info) : undefined);
 	const colnames = argNames.map(arg => isValidColName(arg) ? arg : undefined);
 	const rows = argLengths.every(arg => arg !== undefined) ? Math.max(...argLengths, 0) : undefined;
 
 	return [{
 		operation: 'create',
 		operand:   undefined,
-		args:      { colnames, rows }
+		args:      { colnames: colnames, rows: rows }
 	}];
 }
 
 function mapDataFrameUnknownCreate(): DataFrameOperations[] {
 	return [{
-		operation: 'unknown',
+		operation: 'unknownCreate',
 		operand:   undefined,
-		args:      { creation: true }
+		args:      {}
 	}];
 }
 
-function mapDataFrameColBind<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameColBind(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs.find(isDataFrameArgument);
+	const dataFrame = args.find(isDataFrameArgument);
 
 	if(dataFrame === undefined) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -126,10 +108,10 @@ function mapDataFrameColBind<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame.value;
+	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 	let colnames: (string | undefined)[] | undefined = [];
 
-	for(const arg of effectiveArgs) {
+	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
 			if(isDataFrameArgument(arg)) {
 				const otherDataFrame = arg.value.info.dataFrame.domain?.get(arg.value.info.id) ?? DataFrameTop;
@@ -159,16 +141,15 @@ function mapDataFrameColBind<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameRowBind<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameRowBind(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs.find(isDataFrameArgument);
+	const dataFrame = args.find(isDataFrameArgument);
 
 	if(dataFrame === undefined) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -176,10 +157,10 @@ function mapDataFrameRowBind<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame.value;
+	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 	let rows: number | undefined = 0;
 
-	for(const arg of effectiveArgs) {
+	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
 			if(isDataFrameArgument(arg)) {
 				const otherDataFrame = arg.value.info.dataFrame.domain?.get(arg.value.info.id) ?? DataFrameTop;
@@ -208,16 +189,15 @@ function mapDataFrameRowBind<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameHeadTail<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameHeadTail(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -225,7 +205,7 @@ function mapDataFrameHeadTail<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const amountArg = effectiveArgs.find(arg => resolveIdToArgName(arg, info) === 'n') ?? effectiveArgs[1];
+	const amountArg = args.find(arg => resolveIdToArgName(arg, info) === 'n') ?? args[1];
 	const amountValue: unknown = resolveIdToArgValue(amountArg, info);
 	let rows: number | undefined = undefined;
 	let cols: number | undefined = undefined;
@@ -252,16 +232,15 @@ function mapDataFrameHeadTail<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameSubset<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
+function mapDataFrameSubset(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -269,15 +248,15 @@ function mapDataFrameSubset<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame.value;
+	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
-	const filterArg = effectiveArgs.find(arg => resolveIdToArgName(arg, info) === 'subset')
-		?? effectiveArgs.find(arg => arg !== dataFrame && resolveIdToArgName(arg, info) === undefined)
+	const filterArg = args.find(arg => resolveIdToArgName(arg, info) === 'subset')
+		?? args.find(arg => arg !== dataFrame && resolveIdToArgName(arg, info) === undefined)
 		?? EmptyArgument;
 	const filterValue = resolveIdToArgValue(filterArg, info);
 
-	const selectArg = effectiveArgs.find(arg => resolveIdToArgName(arg, info) === 'select')
-		?? effectiveArgs.find(arg => arg !== dataFrame && arg !== filterArg && resolveIdToArgName(arg, info) === undefined)
+	const selectArg = args.find(arg => resolveIdToArgName(arg, info) === 'select')
+		?? args.find(arg => arg !== dataFrame && arg !== filterArg && resolveIdToArgName(arg, info) === undefined)
 		?? EmptyArgument;
 
 	const accessedNames = [...getUnresolvedSymbolsInExpression(filterArg, info), ...getUnresolvedSymbolsInExpression(selectArg, info)];
@@ -343,16 +322,15 @@ function mapDataFrameSubset<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameFilter<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameFilter(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -360,10 +338,10 @@ function mapDataFrameFilter<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const filterArg = effectiveArgs[1];
+	const filterArg = args[1];
 	const filterValue = resolveIdToArgValue(filterArg, info);
-	const accessedNames = effectiveArgs.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
-	const condition = typeof filterValue === 'boolean' && effectiveArgs.length === 2 ? filterValue : undefined;
+	const accessedNames = args.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
+	const condition = typeof filterValue === 'boolean' && args.length === 2 ? filterValue : undefined;
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -381,16 +359,15 @@ function mapDataFrameFilter<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameSelect<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
+function mapDataFrameSelect(
+	args: readonly RFunctionArgument<ParentInformation & AbstractInterpretationInfo>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -398,11 +375,11 @@ function mapDataFrameSelect<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	let operand: RNode<OtherInfo & ParentInformation> | undefined = dataFrame.value;
+	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 	const selectedCols: (string | undefined)[] = [];
 	const unselectedCols: (string | undefined)[] = [];
 
-	for(const arg of effectiveArgs) {
+	for(const arg of args) {
 		if(arg !== dataFrame && arg !== EmptyArgument) {
 			if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
 				const operandArg = toUnnamedArgument(arg.value.operand, info.idMap);
@@ -440,16 +417,15 @@ function mapDataFrameSelect<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameMutate<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameMutate(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -457,8 +433,8 @@ function mapDataFrameMutate<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const accessedNames = effectiveArgs.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
-	const columns = effectiveArgs.slice(1).map(arg => resolveIdToArgName(arg, info));
+	const accessedNames = args.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
+	const columns = args.slice(1).map(arg => resolveIdToArgName(arg, info));
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -476,16 +452,15 @@ function mapDataFrameMutate<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameGroupBy<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+function mapDataFrameGroupBy(
+	args: readonly RFunctionArgument<ParentInformation>[],
 	info: ResolveInfo
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -493,7 +468,7 @@ function mapDataFrameGroupBy<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const byArg = effectiveArgs[1];
+	const byArg = args[1];
 	const byName = resolveIdToArgValueSymbolName(byArg, info);
 
 	if(byName !== undefined) {
@@ -512,17 +487,16 @@ function mapDataFrameGroupBy<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameLeftJoin<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>[],
+function mapDataFrameLeftJoin(
+	args: readonly RFunctionArgument<ParentInformation & AbstractInterpretationInfo>[],
 	info: ResolveInfo,
 	minRows?: boolean
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs[0];
+	const dataFrame = args[0];
 
 	if(!isDataFrameArgument(dataFrame)) {
 		return;
-	} else if(effectiveArgs.length === 1) {
+	} else if(args.length === 1) {
 		return [{
 			operation: 'identity',
 			operand:   dataFrame.value.info.id,
@@ -530,11 +504,11 @@ function mapDataFrameLeftJoin<OtherInfo>(
 		}];
 	}
 	const result: DataFrameOperations[] = [];
-	const otherArg = effectiveArgs[1];
+	const otherArg = args[1];
 	const otherDataFrame = isDataFrameArgument(otherArg) ? otherArg.value.info.dataFrame.domain?.get(otherArg.value.info.id) : undefined;
 
-	const byArg = effectiveArgs.find(arg => resolveIdToArgName(arg, info) === 'by')
-		?? effectiveArgs.find(arg => arg !== dataFrame && resolveIdToArgName(arg, info) === undefined)
+	const byArg = args.find(arg => resolveIdToArgName(arg, info) === 'by')
+		?? args.find(arg => arg !== dataFrame && resolveIdToArgName(arg, info) === undefined)
 		?? EmptyArgument;
 	const byName = resolveIdToArgValueSymbolName(byArg, info);
 
@@ -558,11 +532,10 @@ function mapDataFrameLeftJoin<OtherInfo>(
 	return result;
 }
 
-function mapDataFrameIdentity<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+function mapDataFrameIdentity(
+	args: readonly RFunctionArgument<ParentInformation>[]
 ): DataFrameOperations[] | undefined {
-	const dataFrame = effectiveArgs.find(isDataFrameArgument);
+	const dataFrame = args.find(isDataFrameArgument);
 
 	return [{
 		operation: 'identity',
@@ -587,17 +560,17 @@ function getFunctionArguments(
 	return node.arguments;
 }
 
-function getEffectiveArgs<OtherInfo>(
-	funct: keyof typeof SpecialFunctionArgumentsMapper,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
-): readonly RFunctionArgument<OtherInfo & ParentInformation>[] {
-	const ignoredArgs = SpecialFunctionArgumentsMapper[funct] ?? [];
+function getEffectiveArgs(
+	funct: DataFrameFunction,
+	args: readonly RFunctionArgument<ParentInformation>[]
+): readonly RFunctionArgument<ParentInformation>[] {
+	const specialArgs: string[] = DataFrameFunctionMapper[funct].specialArgs;
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(unescapeArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unescapeArgument(arg.name.content)));
 }
 
-function getUnresolvedSymbolsInExpression<OtherInfo>(
-	expression: RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined,
+function getUnresolvedSymbolsInExpression(
+	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
 	info: ResolveInfo
 ): string[] {
 	if(expression === undefined || expression === EmptyArgument || info.graph === undefined) {
@@ -629,9 +602,9 @@ function getUnresolvedSymbolsInExpression<OtherInfo>(
 	}
 }
 
-function isDataFrameArgument<OtherInfo>(
-	arg: RFunctionArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo> | undefined
-): arg is RArgument<OtherInfo & ParentInformation & Required<AbstractInterpretationInfo>> & {value: RNode<OtherInfo & ParentInformation & Required<AbstractInterpretationInfo>>} {
+function isDataFrameArgument(
+	arg: RFunctionArgument<ParentInformation & AbstractInterpretationInfo> | undefined
+): arg is RArgument<ParentInformation & Required<AbstractInterpretationInfo>> & {value: RNode<ParentInformation & Required<AbstractInterpretationInfo>>} {
 	if(arg === EmptyArgument || arg?.value === undefined) {
 		return false;
 	}

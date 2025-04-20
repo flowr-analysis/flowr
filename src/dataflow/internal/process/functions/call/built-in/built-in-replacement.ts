@@ -95,7 +95,7 @@ export function processReplacementFunction<OtherInfo>(
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
 		origin: 'builtin:replacement' satisfies BuiltInMappingName,
-		links:  config.assignRootId ? { origin: [config.assignRootId] } : undefined
+		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
 	const firstArg = unpackArgument(args[0])?.info.id;

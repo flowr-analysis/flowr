@@ -244,10 +244,17 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		}
 		diffControlDependencies(lInfo.cds, rInfo.cds, { ...ctx, position: `Vertex ${id} differs in controlDependencies. ` });
 		if(lInfo.origin !== undefined || rInfo.origin !== undefined) {
-			// compare arrys
-			const diffArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
-			if(!diffArrays) {
+			// compare arrays
+			const equalArrays = lInfo.origin && rInfo.origin && arrayEqual(lInfo.origin as unknown as unknown[], rInfo.origin as unknown as unknown[]);
+			if(!equalArrays) {
 				ctx.report.addComment(`Vertex ${id} differs in origin. ${ctx.leftname}: ${JSON.stringify(lInfo.origin, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.origin, jsonReplacer)}`, { tag: 'vertex', id });
+			}
+		}
+
+		if(lInfo.link !== undefined || rInfo.link !== undefined) {
+			const equal = lInfo.link && rInfo.link && arrayEqual(lInfo.link.origin, lInfo.link.origin);
+			if(!equal) {
+				ctx.report.addComment(`Vertex ${id} differs in link. ${ctx.leftname}: ${JSON.stringify(lInfo.link, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.link, jsonReplacer)}`, { tag: 'vertex', id });
 			}
 		}
 

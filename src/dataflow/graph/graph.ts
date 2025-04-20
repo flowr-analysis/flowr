@@ -286,13 +286,14 @@ export class DataflowGraph<
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
+	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
 	 *
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
 		const oldVertex = this.vertexInformation.get(vertex.id);
-		if(oldVertex !== undefined) {
+		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
 

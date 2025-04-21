@@ -40,12 +40,13 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection } & ForceArguments
+	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection, assignRootId?: NodeId } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
+
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
@@ -93,7 +94,8 @@ export function processReplacementFunction<OtherInfo>(
 		name,
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
-		origin: 'builtin:replacement' satisfies BuiltInMappingName
+		origin: 'builtin:replacement' satisfies BuiltInMappingName,
+		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
 	const firstArg = unpackArgument(args[0])?.info.id;

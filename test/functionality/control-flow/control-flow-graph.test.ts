@@ -477,8 +477,4 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				})
 		}, { expectIsSubgraph: true, withBasicBlocks: true });
 	});
-	// TODO: test fg and ast mermaid rendering
-	// TODO: latex renderers for the cfg and ast
-	// TODO: origin function as described
-	// TODO: visitor
 }));

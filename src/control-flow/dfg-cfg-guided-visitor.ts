@@ -21,7 +21,7 @@ export interface DataflowCfgGuidedVisitorConfiguration<
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
-export class DataflowGuidedCfgGuidedVisitor<
+export class DataflowAwareCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst          = NormalizedAst,
 	Dfg extends DataflowInformation    = DataflowInformation,

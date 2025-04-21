@@ -20,7 +20,7 @@ import type {
 } from '../graph/vertex';
 import { VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { BuiltIn } from '../environments/built-in';
+import { isBuiltIn } from '../environments/built-in';
 import { slicerLogger } from '../../slicing/static/static-slicer';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
@@ -257,7 +257,9 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	}
 
 	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
-		const functionCallDefs = resolveByName(info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
+		const functionCallDefs = resolveByName(
+			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
+		)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);
@@ -286,7 +288,8 @@ export function getAllLinkedFunctionDefinitions(
 		const currentId = potential.pop() as NodeId;
 
 		// do not traverse builtins
-		if(currentId === BuiltIn) {
+		// TODO: TODO TODO
+		if(isBuiltIn(currentId)) {
 			continue;
 		}
 

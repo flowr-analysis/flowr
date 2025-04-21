@@ -1,39 +1,117 @@
-import { assert, describe, test } from 'vitest';
+import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { Origin } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
-import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import type {
+	TREE_SITTER_DATAFLOW_PIPELINE
+} from '../../../../src/core/steps/pipeline/default-pipelines';
+import {
+	createDataflowPipeline
+} from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
+import { guard } from '../../../../src/util/assert';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
-		function chk(code: string, node: SingleSlicingCriterion, expected: Origin[] | undefined): void  {
-			test(code, async() => {
-				const analysis = await createDataflowPipeline(ts, {
-					request: requestFromInput(code)
-				}).allRemainingSteps();
-
-				const interestedId = slicingCriterionToId(node, analysis.normalize.idMap);
-				const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
-				if(expected === undefined) {
-					assert.isUndefined(origins);
-				} else {
+		function chk(code: string, expected: Record<SingleSlicingCriterion, readonly Origin[] | undefined>): void  {
+			describe(code, () => {
+				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
+				beforeAll(async() => {
+					analysis = await createDataflowPipeline(ts, {
+						request: requestFromInput(code)
+					}).allRemainingSteps();
+				});
+				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
+					guard(analysis !== undefined);
+					const want = expected[interest];
+					const interestedId = slicingCriterionToId(interest, analysis.normalize.idMap);
+					const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
+					if(want === undefined) {
+						assert.isUndefined(origins);
+					} else {
 					// sort both by ids
-					origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
-					expected = expected.map(e => ({
-						...e,
-						id: slicingCriterionToId(e.id as SingleSlicingCriterion, analysis.normalize.idMap)
-					}));
-					assert.deepStrictEqual(origins, expected);
-				}
+						origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+						const wantMapped = want.map(e => ({
+							...e,
+							id: slicingCriterionToId(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+						})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+						assert.deepStrictEqual(origins, wantMapped);
+					}
+				});
 			});
 		}
 		const wo = (id: NodeId): Origin => ({ type: OriginType.WriteVariableOrigin, id });
+		const ro = (id: NodeId): Origin => ({ type: OriginType.ReadVariableOrigin, id });
+		const co = (id: NodeId): Origin => ({ type: OriginType.ConstantOrigin, id });
+		const fo = (id: NodeId): Origin => ({ type: OriginType.FunctionCallOrigin, id });
+		const bo = (proc: string, name: string, id: NodeId): Origin => ({ type: OriginType.BuiltInFunctionOrigin, proc, id, fn: { name } });
 
-		chk('x <- 2\nprint(x)', '2@x', [wo('1@x')]);
-		chk('x <- 2\nif(u) {\n  x <- 3\n}\nprint(x)', '3@x', [wo('1@x'), wo('3@x')]);
+		describe.each([
+			{ name: 'default', suffix: '' },
+			{ name: 'taint-x', suffix: '\nx <- 42\n' },
+		])('$name', ({ suffix }) => {
+			chk(`x <- 2\nprint(x)${suffix}`, {
+				'1@x': [wo('1@x')],
+				'2@x': [ro('1@x')],
+				'1@2': [co('1@2')],
+			});
+			chk(`x <- 2\nif(u) {\nx <- 3\n}\nprint(x)${suffix}`, {
+				'3@x': [wo('3@x')],
+				'5@x': [ro('1@x'), ro('3@x')]
+			});
+			chk(`x <- 2\nif(u) {\n  x <- 3\n}\nprint(x)\nx <- 1${suffix}`, {
+				'3@x': [wo('3@x')],
+				'5@x': [ro('1@x'), ro('3@x')]
+			});
+			chk(`h <- function(x=2) {\nprint(x)\n}\nh(3)${suffix}`, {
+				'1@function': [co('1@function')],
+				'1@x':        [wo('1@x')],
+				'2@x': 	      [ro('1@x')],
+				'4@h': 	      [fo('1@function'), ro('1@h')],
+			});
+			chk(`if(u) { x <- \nfunction(x)\nx \n }else {x <- \nfunction(x)\nx}\nx(3)${suffix}`, {
+				'1@u': undefined,
+				'1@x': [wo('1@x')],
+				'3@x': [ro('2@x')],
+				'4@x': [wo('4@x')],
+				'6@x': [ro('5@x')],
+				'7@x': [fo('2@function'), ro('1@x'), fo('5@function'), ro('4@x')],
+			});
+		});
+
+		chk('c <- function(...) ...\nc(1,2,3)', {
+			'2@c': [ro('1@c'), fo('1@function')]
+		});
+		chk('if(u) { print <- function(x) x }\nprint("hey")', {
+			'2@print': [ro('1@print'), fo('1@function'), bo('builtin:default', 'print', '2@print')]
+		});
+		chk('c <- 1\nc(1,2,3)', {
+			'2@c': [bo('builtin:vector', 'c', '2@c')]
+		});
+		describe('a', () => {
+			chk('x <- print\nx("hey")', {
+				'2@x': [ro('1@x'), fo('1@print'), bo('builtin:default', 'print', '2@x')]
+			});
+		});
+
+		// TODO
+		/* chk('c <- c(1,2,3)\nc(1,2,3)', {
+			'2@c': []
+		}); */
+
+		// TODO: check for c with overwrite
+		// TODO: check for loop
+		// TODO: check with escaping closure
+		// TODO: check with redefined assign op?
+		// TODO: check within quote
+		// TODO: check in eval
+		// TODO: group built ins, allow to access their config etc. getAssignment etc.
+		// TODO: origin query
+		// TODO: cfg pipeline step
+		// TODO: provide functions to map arguments of assignments etc.
 	});
 }));

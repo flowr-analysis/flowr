@@ -7,7 +7,7 @@ import {
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
@@ -23,15 +23,15 @@ describe.sequential('Function Call', withShell(shell => {
 				.reads('13', '0')
 				.definesOnCall('13', '4')
 				.definedByOnCall('4', '13')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
 				.call('9', '{', [argumentInCall('8')], {
 					returns:     ['8'],
-					reads:       [BuiltIn],
+					reads:       [builtInId('{')],
 					environment: defaultEnv().pushEnv().defineParameter('x', '4', '5')
 				}, false)
 				.call('11', '<-', [argumentInCall('3'), argumentInCall('10')], {
 					returns:     ['3'],
-					reads:       [BuiltIn],
+					reads:       [builtInId('<-')],
 					environment: defaultEnv().defineVariable('i', '0', '2')
 				})
 				.call('15', 'a', [argumentInCall('13')], {
@@ -64,20 +64,20 @@ describe.sequential('Function Call', withShell(shell => {
 				.reads('16', '0')
 				.definesOnCall('16', '4')
 				.definedByOnCall('4', '16')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
 				.call('9', '{', [argumentInCall('8')], {
 					returns:     ['8'],
-					reads:       [BuiltIn],
+					reads:       [builtInId('{')],
 					environment: defaultEnv().pushEnv().defineParameter('x', '4', '5')
 				}, false)
 				.call('11', '<-', [argumentInCall('3'), argumentInCall('10')], {
 					returns:     ['3'],
-					reads:       [BuiltIn],
+					reads:       [builtInId('<-')],
 					environment: defaultEnv().defineVariable('i', '0', '2')
 				})
 				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], {
 					returns:     ['12'],
-					reads:       [BuiltIn],
+					reads:       [builtInId('<-')],
 					environment: defaultEnv().defineVariable('i', '0', '2').defineFunction('a', '3', '11')
 				})
 				.call('18', 'b', [argumentInCall('16')], {
@@ -110,25 +110,25 @@ a(i)`, emptyGraph()
 			.reads('19', '0')
 			.definesOnCall('19', '4')
 			.definedByOnCall('4', '19')
-			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [BuiltIn] })
+			.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
 			.call('10', '<-', [argumentInCall('8'), argumentInCall('9')], {
 				returns:     ['8'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('<-')],
 				environment: defaultEnv().pushEnv().defineParameter('x', '4', '5')
 			}, false)
 			.call('13', '<-', [argumentInCall('11'), argumentInCall('12')], {
 				returns:     ['11'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('<-')],
 				environment: defaultEnv().pushEnv().defineVariable('x', '8', '10')
 			}, false)
 			.call('15', '{', [argumentInCall('10'), argumentInCall('13'), argumentInCall('14')], {
 				returns:     ['14'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv().defineVariable('x', '11', '13')
 			}, false)
 			.call('17', '<-', [argumentInCall('3'), argumentInCall('16')], {
 				returns:     ['3'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('<-')],
 				environment: defaultEnv().defineVariable('i', '0', '2')
 			})
 			.call('21', 'a', [argumentInCall('19')], {
@@ -162,16 +162,16 @@ a(i)`, emptyGraph()
 			.reads('6', '2')
 			.call('8', '+', [argumentInCall('6'), argumentInCall('7')], {
 				returns:     [],
-				reads:       [BuiltIn],
+				reads:       [builtInId('+')],
 				environment: defaultEnv().pushEnv().defineParameter('x', '2', '3')
 			}, false)
 			.reads('8', ['6', '7'])
 			.call('9', '{', [argumentInCall('8')], {
 				returns:     ['8'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv().defineParameter('x', '2', '3')
 			}, false)
-			.call('11', '(', [argumentInCall('10')], { returns: ['10'], reads: [BuiltIn] })
+			.call('11', '(', [argumentInCall('10')], { returns: ['10'], reads: [builtInId('(')] })
 			.call('14', `${UnnamedFunctionCallPrefix}14`, [argumentInCall('12')], { returns: ['9'], reads: ['11'] })
 			.calls('14', ['11', '10'])
 			.defineVariable('2', 'x', { definedBy: [] }, false)
@@ -200,15 +200,15 @@ a(i)`, emptyGraph()
 a()()`, emptyGraph()
 			.call('6', '{', [argumentInCall('5')], {
 				returns:     ['5'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv().pushEnv()
 			}, false)
 			.call('8', '{', [argumentInCall('7')], {
 				returns:     ['7'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv()
 			}, false)
-			.call('10', '<-', [argumentInCall('0'), argumentInCall('9')], { returns: ['0'], reads: [BuiltIn] })
+			.call('10', '<-', [argumentInCall('0'), argumentInCall('9')], { returns: ['0'], reads: [builtInId('<-')] })
 			.call('12', 'a', [], { returns: ['8'], reads: ['0'], environment: defaultEnv().defineFunction('a', '0', '10') })
 			.calls('12', '9')
 			.call('13', `${UnnamedFunctionCallPrefix}13`, [], {
@@ -241,7 +241,7 @@ a()()`, emptyGraph()
 	describe('Argument which is expression', () => {
 		assertDataflow(label('Calling with 1 + x', ['unnamed-arguments', 'binary-operator', 'infix-calls', 'name-normal', 'numbers', ...OperatorDatabase['+'].capabilities]), shell, 'foo(1 + x)', emptyGraph()
 			.use('2', 'x')
-			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [BuiltIn] })
+			.call('3', '+', [argumentInCall('1'), argumentInCall('2')], { returns: [], reads: [builtInId('+')] })
 			.reads('3', ['1', '2'])
 			.call('5', 'foo', [argumentInCall('3')], { returns: [], reads: [] })
 			.reads('5', '3')
@@ -253,7 +253,7 @@ a()()`, emptyGraph()
 		assertDataflow(label('Calling with a constant function', ['call-anonymous', 'unnamed-arguments', 'implicit-return', 'numbers']), shell, 'f(function() { 3 })', emptyGraph()
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv()
 			}, false)
 			.call('7', 'f', [argumentInCall('5')], { returns: [], reads: [] })
@@ -293,13 +293,13 @@ a()()`, emptyGraph()
 			.use('3', 'y', undefined, false)
 			.call('4', '{', [argumentInCall('3')], {
 				returns:     ['3'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv()
 			}, false)
-			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [BuiltIn] })
+			.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [builtInId('<-')] })
 			.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], {
 				returns:     ['7'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('<-')],
 				environment: defaultEnv().defineFunction('a', '0', '6')
 			})
 			.call('11', 'a', [], {
@@ -331,10 +331,10 @@ a(,3)`, emptyGraph()
 			.reads('8', '4')
 			.call('9', '{', [argumentInCall('8')], {
 				returns:     ['8'],
-				reads:       [BuiltIn],
+				reads:       [builtInId('{')],
 				environment: defaultEnv().pushEnv().defineParameter('x', '1', '3').defineParameter('y', '4', '5')
 			}, false)
-			.call('11', '<-', [argumentInCall('0'), argumentInCall('10')], { returns: ['0'], reads: [BuiltIn] })
+			.call('11', '<-', [argumentInCall('0'), argumentInCall('10')], { returns: ['0'], reads: [builtInId('<-')] })
 			.call('15', 'a', [EmptyArgument, argumentInCall('13')], {
 				returns:     ['9'],
 				reads:       ['0'],
@@ -373,7 +373,7 @@ a(,3)`, emptyGraph()
 		assertDataflow(label('Support assignments in function calls', ['function-calls', 'side-effects-in-argument', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons']), shell, 'foo(x <- 3); x', emptyGraph()
 			.use('6', 'x')
 			.reads('6', '1')
-			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [BuiltIn] })
+			.call('3', '<-', [argumentInCall('1'), argumentInCall('2')], { returns: ['1'], reads: [builtInId('<-')] })
 			.call('5', 'foo', [argumentInCall('3')], { returns: [], reads: [] })
 			.reads('5', '3')
 			.constant('2')

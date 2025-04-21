@@ -1,0 +1,135 @@
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraph } from '../graph/graph';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexUse } from '../graph/vertex';
+import { VertexType } from '../graph/vertex';
+import type { EdgeTypeBits } from '../graph/edge';
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import { getAllFunctionCallTargets } from '../internal/linker';
+import { isNotUndefined } from '../../util/assert';
+
+
+export const enum OriginType {
+    ReadVariableOrigin = 0,
+    WriteVariableOrigin = 1,
+    FunctionCallOrigin = 2,
+    BuiltInFunctionOrigin = 3,
+    ConstantOrigin = 4
+}
+
+export interface SimpleOriginOrigin {
+    readonly type: OriginType.ReadVariableOrigin | OriginType.WriteVariableOrigin | OriginType.ConstantOrigin;
+    readonly id:   NodeId;
+}
+
+export interface FunctionCallOrigin {
+    readonly type: OriginType.FunctionCallOrigin;
+    readonly id:   NodeId;
+}
+
+export interface BuiltInFunctionOrigin {
+    readonly type: OriginType.BuiltInFunctionOrigin;
+	/** processor that is used to process the built-in function */
+    readonly id:   NodeId;
+    readonly proc: string;
+    readonly fn:   OriginIdentifier;
+}
+
+
+interface OriginIdentifier {
+    readonly name:       string;
+    readonly namespace?: string;
+}
+
+export type Origin = SimpleOriginOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
+
+/**
+ * Obtain the (dataflow) origin of a given node in the dfg.
+ * @example consider the following code:
+ * ```r
+ * x <- 2
+ * if(u) {
+ *   x <- 3
+ * }
+ * print(x)
+ * ```
+ * Requesting the origin of `x` in the `print(x)` node yields two {@link SimpleOriginOrigin|variable origins} for both
+ * definitions of `x`.
+ * Similarly, requesting the origin of `print` returns a {@link BuiltInFunctionOrigin|`BuiltInFunctionOrigin`}.
+ *
+ * This returns undefined only if there is no dataflow correspondence (e.g. in case of unevaluated non-standard eval).
+ */
+export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
+	const vtx = dfg.getVertex(id);
+	switch(vtx?.tag) {
+		case undefined:
+			return undefined;
+		case VertexType.Value:
+			return [{ type: OriginType.ConstantOrigin, id }];
+		case VertexType.FunctionDefinition:
+			return [{ type: OriginType.ConstantOrigin, id }];
+		case VertexType.VariableDefinition:
+			return [{ type: OriginType.WriteVariableOrigin, id }];
+		case VertexType.Use:
+			return getVariableUseOrigin(dfg, vtx);
+		case VertexType.FunctionCall:
+			return getCallTarget(dfg, vtx);
+	}
+}
+
+const WantedVariableTypes: EdgeTypeBits = EdgeType.Reads | EdgeType.DefinedByOnCall;
+const UnwantedVariableTypes: EdgeTypeBits = EdgeType.NonStandardEvaluation;
+function getVariableUseOrigin(dfg: DataflowGraph, use: DataflowGraphVertexUse): Origin[] | undefined {
+	// to identify the origins we have to track read edges and definitions on function calls
+	const origins: Origin[] = [];
+	for(const [target, { types }] of dfg.outgoingEdges(use.id) ?? []) {
+		if(edgeDoesNotIncludeType(types, WantedVariableTypes) || edgeIncludesType(types, UnwantedVariableTypes)) {
+			continue;
+		}
+
+		const targetVtx = dfg.getVertex(target);
+		if(!targetVtx) {
+			continue;
+		}
+
+		if(targetVtx.tag === VertexType.VariableDefinition) {
+			origins.push({
+				type: OriginType.ReadVariableOrigin,
+				id:   target
+			});
+		}
+	}
+	return origins.length > 0 ? origins : undefined;
+}
+
+function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall): Origin[] | undefined {
+	// check for built-ins:
+	const builtInTarget = call.origin !== 'unnamed' && call.origin.filter(o => o.startsWith('builtin:'));
+
+	let origins: Origin[] | undefined = builtInTarget ? builtInTarget.map(o => ({
+		type: OriginType.BuiltInFunctionOrigin,
+		fn:   { name: call.name },
+		id:   call.id,
+		proc: o
+	})) : undefined;
+
+	const targets = new Set(getAllFunctionCallTargets(call.id, dfg));
+	// todo: handle built-in
+	if(targets.size === 0) {
+		return origins;
+	}
+	origins = (origins ?? []).concat([...targets].map(target => {
+		const get = dfg.getVertex(target);
+		console.log(target);
+		if(get?.tag !== VertexType.FunctionDefinition && get?.tag !== VertexType.VariableDefinition) {
+			return undefined;
+		}
+		// TODO: if the _target_ resolve just returns a symbol and not a fd, we have to go transitive
+		return {
+			type: get.tag === VertexType.FunctionDefinition ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
+			id:   target
+		};
+	}).filter(isNotUndefined));
+
+
+	return origins;
+}

@@ -71,6 +71,16 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 				});
 			}
 		}
+		if(lInfo.callTargets !== undefined || rInfo.callTargets !== undefined) {
+			setDifference(
+				new Set(lInfo.callTargets ?? []),
+				new Set(rInfo.callTargets ?? []),
+				{
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in call targets. `
+				}
+			);
+		}
 
 		if(lInfo.elems !== undefined || rInfo.elems !== undefined) {
 			if(!arrayEqual(

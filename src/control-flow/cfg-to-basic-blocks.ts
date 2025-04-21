@@ -4,17 +4,11 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** if true, return the target */
 function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): NodeId | undefined {
-	if(!outgoing) {
+	if(!outgoing || outgoing.size !== 1) {
 		return undefined;
 	}
 
-	const outgoingNonCalls = [...outgoing.entries()].filter(([_, edge]) => edge.label !== CfgEdgeType.Call);
-
-	if(outgoingNonCalls.length !== 1) {
-		return undefined;
-	}
-
-	const next = outgoingNonCalls[0];
+	const next = outgoing.entries().next().value;
 	if(next?.[1].label === CfgEdgeType.Fd) {
 		return next[0];
 	} else {
@@ -54,7 +48,6 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		}
 	}
 
-
 	// TODO: check in and outputs to attach entry and exit points
 	const findEntries = cfInfo.entryPoints.map(e => newCfg.getBasicBlock(e)?.id);
 	const findExits = cfInfo.exitPoints.map(e => newCfg.getBasicBlock(e)?.id);
@@ -64,14 +57,12 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		return cfInfo;
 	}
 
-	const res = {
+	return {
 		...cfInfo,
 		graph:       newCfg,
 		entryPoints: findEntries as NodeId[],
 		exitPoints:  findExits as NodeId[],
 	};
-
-	return res;
 }
 
 

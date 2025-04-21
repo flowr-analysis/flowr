@@ -297,7 +297,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				entryPoints: [ '9' ],
 				exitPoints:  [ '9-exit' ],
 				graph:       new ControlFlowGraph()
-			});
+					.addVertex({ id: 5, type: CfgVertexType.Expression, mid: ['5-params'], end: ['5-exit'] })
+					.addVertex({ id: 8, type: CfgVertexType.Statement, mid: ['8-name'], end: ['8-exit'], callTargets: new Set([5]) })
+			}, { expectIsSubgraph: true });
 
 		});
 	});
@@ -456,5 +458,27 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge('bb-12-exit', 'bb-6', { label: CfgEdgeType.Fd })
 
 		}, { withBasicBlocks: true });
+
+		assertCfg(parser, 'f <- function(x) x\nf()', {
+			entryPoints: [ 'bb-5' ],
+			exitPoints:  [ 'bb-9-exit' ],
+			graph:       new ControlFlowGraph()
+				.addVertex({
+					id:    'bb-8-exit',
+					type:  CfgVertexType.Block,
+					elems: [
+						{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 },
+						{ id: '8-name', kind: 'name', type: CfgVertexType.MidMarker, root: 8 },
+						{ id: 7, type: CfgVertexType.Expression },
+						{ id: 8, type: CfgVertexType.Statement, mid: ['8-name'], end: ['8-exit'], callTargets: new Set([5]) },
+						{ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 }
+
+					]
+				})
+		}, { expectIsSubgraph: true, withBasicBlocks: true });
 	});
+	// TODO: test fg and ast mermaid rendering
+	// TODO: latex renderers for the cfg and ast
+	// TODO: origin function as described
+	// TODO: visitor
 }));

@@ -27,6 +27,7 @@ import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType , CfgVertexType, ControlFlowGraph } from './control-flow-graph';
 import type { CfgSimplificationPassName } from './cfg-simplification';
 import { simplifyControlFlowInformation } from './cfg-simplification';
+import { guard } from '../util/assert';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -344,13 +345,15 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCa
 		/* try to resolve the call and link the target definitions */
 		const targets = getAllFunctionCallTargets(call.info.id, graph);
 
-
 		// TODO: use cfgFunctionCall with resolve-dcall exit and than link toi that so wthat we do not ahve multiple exit points
 		const exits: NodeId[] = [];
+		const callVertex = baseCFG.graph.getVertex(call.info.id);
+		guard(callVertex !== undefined, 'cfgFunctionCallWithDataflow: call vertex not found');
 		for(const target of targets) {
 			// we have to filter out non func-call targets as the call targets contains names and call ids
 			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
-				baseCFG.graph.addEdge(target, call.info.id, { label: CfgEdgeType.Call });
+				callVertex.callTargets ??= new Set();
+				callVertex.callTargets.add(target);
 				exits.push(target + '-exit');
 			}
 		}

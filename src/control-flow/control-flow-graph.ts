@@ -1,15 +1,12 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { arrayEqual } from '../util/arrays';
 
 export enum CfgVertexType {
     /** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
     MidMarker   = 'mid',
     /** The explicit exit-nodes to ensure the hammock property */
     EndMarker   = 'end',
-	/** A function definition */
-	Function    = 'fn',
     /** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
     Statement   = 'stm',
     /** something like an addition, ... */
@@ -22,9 +19,7 @@ export const enum CfgEdgeType {
 	/** a flow dependency */
 	Fd = 0,
 	/** a control dependency */
-	Cd = 1,
-	/** the flow to continue in case of a function call */
-	Call= 2
+	Cd = 1
 }
 
 export function edgeTypeToString(type: CfgEdgeType): string {
@@ -33,17 +28,16 @@ export function edgeTypeToString(type: CfgEdgeType): string {
 			return 'FD';
 		case CfgEdgeType.Cd:
 			return 'CD';
-		case CfgEdgeType.Call:
-			return 'Call';
 		default:
 			throw new Error(`Unknown edge type ${JSON.stringify(type)}`);
 	}
 }
 
 interface CfgBaseVertex extends MergeableRecord {
-	type:      CfgVertexType,
-	id:        NodeId,
-	children?: NodeId[],
+	type:         CfgVertexType,
+	id:           NodeId,
+	children?:    NodeId[],
+	callTargets?: Set<NodeId>,
 }
 
 interface CfgWithMarker extends CfgBaseVertex {
@@ -55,12 +49,6 @@ interface CfgWithMarker extends CfgBaseVertex {
 
 export interface CfgStatementVertex extends CfgWithMarker {
 	type: CfgVertexType.Statement
-}
-
-export interface CfgFunction extends CfgBaseVertex {
-	type:        CfgVertexType.Function
-	children:    NodeId[],
-	entryPoints: NodeId[]
 }
 
 export interface CfgExpressionVertex extends CfgWithMarker {
@@ -90,9 +78,8 @@ export interface CfgBasicBlockVertex extends CfgBaseVertex {
 /**
  * A vertex in the {@link ControlFlowGraph}.
  */
-export type CfgSimpleVertex = CfgFunction | CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
+export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgMidMarkerVertex | CfgEndMarkerVertex
 
-// TODO: check that we have all veretx type, add ne functiond efinition vertex type, add resolved call within the cfg
 export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 	if(a.type !== b.type || a.id !== b.id) {
 		return false;
@@ -102,18 +89,12 @@ export function equalVertex(a: CfgSimpleVertex, b: CfgSimpleVertex): boolean {
 		return a.kind === b.kind && a.root === b.root;
 	} else if(a.type === CfgVertexType.EndMarker && b.type === CfgVertexType.EndMarker) {
 		return a.root === b.root;
-	} else if(a.type === CfgVertexType.Function && b.type === CfgVertexType.Function) {
-		return arrayEqual(a.entryPoints, b.entryPoints) && arrayEqual(a.children, b.children);
 	}
 	return true;
 }
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
     label: CfgEdgeType.Fd
-}
-
-interface CfgCallDependencyEdge extends MergeableRecord {
-	label: CfgEdgeType.Call
 }
 
 interface CfgControlDependencyEdge extends MergeableRecord {
@@ -123,7 +104,7 @@ interface CfgControlDependencyEdge extends MergeableRecord {
     when:   typeof RTrue | typeof RFalse
 }
 
-export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge | CfgCallDependencyEdge
+export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 
 /**
  * A read-only view of the {@link ControlFlowGraph}.

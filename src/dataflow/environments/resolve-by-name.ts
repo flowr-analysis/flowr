@@ -181,12 +181,12 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 /** Please use {@link resolveValueOfVariable} */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
-		return Top;
+		return Bottom;
 	}
 
 	const defs = resolveByName(identifier, use);
 	if(defs === undefined) {
-		return Top;
+		return Bottom;
 	}
 
 	const values: Set<Value> = new Set<Value>();

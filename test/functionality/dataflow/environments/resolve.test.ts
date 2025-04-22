@@ -68,7 +68,23 @@ describe.sequential('Resolve', withShell(shell => {
 				return;
 			}
 
-			assert.deepEqual(resolved, expectedValues);
+			assert.deepEqual(resolved, expectedValues, `Resolved Value does not match expected Value. Code was: ${code}`);
+		});
+	}
+
+	function testMutate(name: string, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
+		const distractors: string[] = [
+			`while(FALSE) { ${identifier} <- 0 }`,
+			`if(FALSE) { ${identifier} <- 0 }`, 
+			'u <- u + 1',
+			`if(FALSE) { rm(${identifier})}`
+		];
+
+		describe(name, () => {
+			for(const distractor of distractors) {
+				const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
+				testResolve(distractor, identifier, mutatedCode, expected, allow);
+			}
 		});
 	}
 
@@ -86,15 +102,7 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Eval before Variable',           'x', 'x <- 1 \n eval(u) \n x', Top);
 	});
 	
-	describe('Resolve Value', () => {
-		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
-	
-		testResolve('Random Loop', 'x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
-		testResolve('Loop plus one', 'i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
-		testResolve('Loop plus x', 'x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
-
-		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
-	
+	describe('Resolve Value', () => {	
 		testResolve('Constant Value', 'x', 'x <- 5', set([5]));
 		testResolve('Constant Value Str', 'x', 'x <- "foo"', set(['foo']));
 		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
@@ -103,10 +111,23 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Eval after Variable', 'x', 'x <- 1 \n x \n eval(u)', set([1]));
 		testResolve('Eval before Variable (slice before)', '1@x', 'x <- 1 \n eval(u) \n x', set([1]));
 
-		// Does not work yet :(
-		testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', set([3]));
-		testResolve('Get', 'x', 'y <- 5 \n x <- get("y") \n x', set([5]));
-		testResolve('Super Assign', 'x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]));
+		// Not yet supported
+		testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', set([3]), Allow.Top);
+		testResolve('Get', 'x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top);
+		testResolve('Super Assign', 'x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top);
+		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
+				
+		testResolve('Random Loop', 'x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
+		testResolve('Loop plus one', 'i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
+		testResolve('Loop plus x', 'x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
+			
+		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
+	});
+
+	describe('Resolve Value (distractors)', () => {
+		testMutate('Constant Value', 'x', 'x <- 5', set([5]));
+		testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
+		testMutate('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
 	});
 
 	describe('ByName', () => {

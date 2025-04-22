@@ -7,7 +7,7 @@ import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
-import { builtInId, isBuiltIn } from '../../../dataflow/environments/built-in';
+import { isBuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -40,20 +40,22 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 		.map(([t]) => t)
     ;
 
-	let builtIn: NodeId[] = [];
+	let builtIn = false;
 
 	if(info.environment === undefined) {
 		/* if we have a call with an unbound environment,
          * this only happens if we are sure of built-in relations and want to save references
          */
-		builtIn.push(builtInId(''));
+		builtIn = true;
 	} else {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		builtIn = reResolved?.map(t => t.definedAt).filter(isBuiltIn) ?? [];
+		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
+			builtIn = true;
+		}
 	}
 
 	switch(callTarget) {
@@ -61,17 +63,17 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 			return callTargets;
 		case CallTargets.OnlyGlobal:
 			if(callTargets.length === 0) {
-				return builtIn ?? [];
+				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';
 			}
 		case CallTargets.MustIncludeGlobal:
-			return builtIn || callTargets.length === 0 ? [...callTargets, ...builtIn] : 'no';
+			return builtIn || callTargets.length === 0 ? [...callTargets, 'built-in'] : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		case CallTargets.MustIncludeLocal:
 			if(callTargets.length > 0) {
-				return builtIn ? [...callTargets, ...builtIn] : callTargets;
+				return builtIn ? [...callTargets, 'built-in'] : callTargets;
 			} else {
 				return 'no';
 			}

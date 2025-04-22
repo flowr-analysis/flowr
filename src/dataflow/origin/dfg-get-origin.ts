@@ -119,7 +119,6 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 	}
 	origins = (origins ?? []).concat([...targets].map(target => {
 		const get = dfg.getVertex(target);
-		console.log(target);
 		if(get?.tag !== VertexType.FunctionDefinition && get?.tag !== VertexType.VariableDefinition) {
 			return undefined;
 		}

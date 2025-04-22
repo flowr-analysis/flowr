@@ -47,6 +47,7 @@ export function escapeMarkdown(text: string): string {
  * Converts mermaid code (potentially produced by {@link graphToMermaid}) to an url that presents the graph in the mermaid editor.
  *
  * @param code - code to convert
+ * @param edit - if true, the url will point to the editor, otherwise it will point to the viewer
  */
 export function mermaidCodeToUrl(code: string, edit = false): string {
 	const obj = {

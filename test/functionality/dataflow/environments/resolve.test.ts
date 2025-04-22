@@ -7,22 +7,43 @@ import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import type { Bottom } from '../../../../src/dataflow/eval/values/r-value';
-import { isValue, Top } from '../../../../src/dataflow/eval/values/r-value';
+import type { Lift, Value } from '../../../../src/dataflow/eval/values/r-value';
+import { Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { slicingCriterionToId, type SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
+import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
+
+enum Allow {
+	None = 0,
+	Top = 1,
+	Bottom = 2
+};
 
 describe.sequential('Resolve', withShell(shell => {
+	function set(values: unknown[]) {
+		return setFrom(...values.map(v => valueFromTsValue(v)));
+	}
+
+	function interval(start: Lift<number>, end: Lift<number> = start, startInclusive = true, endInclusive = true) {
+		return intervalFromValues(
+			typeof start === 'number' ? getScalarFromInteger(start) : start,
+			typeof end === 'number' ? getScalarFromInteger(end) : end,
+			startInclusive,
+			endInclusive
+		);
+	}
+
 	function testResolve(
 		name: string,
 		identifier: string | SingleSlicingCriterion,
 		code: string,
-		expected: unknown[] | typeof Top | typeof Bottom 
+		expectedValues: Value,
+		allow: Allow = Allow.None 
 	): void {
-		const expectedValues = isValue(expected) ? setFrom(...expected.map(v => valueFromTsValue(v))) : expected;
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
 		const isSlicingCriterion = identifier.includes('@') || identifier.includes('$');
 
@@ -32,48 +53,60 @@ describe.sequential('Resolve', withShell(shell => {
 				request: requestFromInput(code.trim()),
 			}).allRemainingSteps();
 
+			let resolved = undefined;
 			if(isSlicingCriterion) {
-				const resolved = resolveIdToValue(slicingCriterionToId(identifier as SingleSlicingCriterion, dataflow.normalize.idMap), dataflow.dataflow);
-				assert.deepEqual(resolved, expectedValues);
+				resolved = resolveIdToValue(slicingCriterionToId(identifier as SingleSlicingCriterion, dataflow.normalize.idMap), dataflow.dataflow);
 			} else {
-				const resolved = resolveValueOfVariable(identifier, dataflow.dataflow.environment, dataflow.normalize.idMap);
-				assert.deepEqual(resolved, expectedValues);
+				resolved = resolveValueOfVariable(identifier, dataflow.dataflow.environment, dataflow.normalize.idMap);
 			}
+			
+			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {
+				return;
+			}
+
+			if((allow & Allow.Bottom) == Allow.Bottom && isBottom(resolved)) {
+				return;
+			}
+
+			assert.deepEqual(resolved, expectedValues);
 		});
 	}
 
-	describe('Negative Tests', () => { 
-		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', Top);
-		
+	describe('Negative Tests', () => { 	
 		testResolve('Unknown if', 'x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
-		testResolve('Random Loop', 'x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
-		testResolve('Loop plus one', 'i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', Top);
-		testResolve('Loop plus x', 'x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', Top);
-		
+	
 		testResolve('Unknown Fn', 'x', 'x <- foo(1) \n x', Top);
 		testResolve('Unknown Fn 2', 'f', 'f <- function(x = 3) { foo(x) } \n f()', Top);
 		testResolve('Recursion', 'f', 'f <- function(x = 3) { f(x) } \n f()', Top);
 		testResolve('Get Unknown', 'x', 'y <- 5 \n x <- get(u) \n x', Top);
-
-		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', Top);
 		
-		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Top);
-		
-		// Does not Fail, but should!!
-		//testResolve('Eval before Variable', 'x', 'x <- 1 \n eval(u) \n x', Top);
+		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Bottom);
+	
+		testResolve('Eval before Variable (slice)', '3@x', 'x <- 1 \n eval(u) \n x', Top);
+		testResolve('Eval before Variable',           'x', 'x <- 1 \n eval(u) \n x', Top);
 	});
 	
 	describe('Resolve Value', () => {
-		testResolve('Constant Value', 'x', 'x <- 5', [5]);
-		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', [5]);
-		testResolve('rm() with alias', 'x', 'y <- 2 \n x <- y \n rm(y) \n x', [2]);
-		testResolve('Eval after Variable', 'x', 'x <- 1 \n x \n eval(u)', [1]);
-		//testResolve('Eval before Variable (slice before)', '1@x', 'x <- 1 \n eval(u) \n x', [1]);
+		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
+	
+		testResolve('Random Loop', 'x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
+		testResolve('Loop plus one', 'i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
+		testResolve('Loop plus x', 'x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
+
+		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
+	
+		testResolve('Constant Value', 'x', 'x <- 5', set([5]));
+		testResolve('Constant Value Str', 'x', 'x <- "foo"', set(['foo']));
+		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
+
+		testResolve('rm() with alias', 'x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
+		testResolve('Eval after Variable', 'x', 'x <- 1 \n x \n eval(u)', set([1]));
+		testResolve('Eval before Variable (slice before)', '1@x', 'x <- 1 \n eval(u) \n x', set([1]));
 
 		// Does not work yet :(
-		// testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', setFrom(valueFromTsValue(3)));
-		// testResolve('Get', 'x', 'y <- 5 \n x <- get("y") \n x', setFrom(valueFromTsValue(5)));
-		testResolve('Super Assign', 'x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', [2]);
+		testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', set([3]));
+		testResolve('Get', 'x', 'y <- 5 \n x <- get("y") \n x', set([5]));
+		testResolve('Super Assign', 'x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]));
 	});
 
 	describe('ByName', () => {

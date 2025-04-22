@@ -1,5 +1,5 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
+import type { FlowrSearchElement, FlowrSearchElementFromQuery, FlowrSearchElements, FlowrSearchGetFilter } from './flowr-search';
 import type { FlowrFilterExpression } from './flowr-search-filters';
 import type { FlowrSearchGeneratorNode, GeneratorNames } from './search-executor/search-generators';
 import type {
@@ -11,6 +11,10 @@ import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
+import type { Enrichment } from './search-executor/search-enrichers';
+import type { MapperArguments } from './search-executor/search-mappers';
+import { Mapper } from './search-executor/search-mappers';
+import type { Query } from '../queries/query';
 
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
@@ -28,6 +32,9 @@ export const FlowrSearchGenerator = {
 	 */
 	from(from: FlowrSearchElement<ParentInformation> | FlowrSearchElement<ParentInformation>[]): FlowrSearchBuilder<'from'> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'from', args: { from } });
+	},
+	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>> {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
 	},
 	/**
 	 * Returns all elements (nodes/dataflow vertices) from the given data.
@@ -205,6 +212,23 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
+	with(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
+		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment } });
+		return this;
+	}
+
+	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
+		this.search.push( { type: 'transformer', name: 'map', args: {
+			// type system is trash, see search-mappers.ts map function
+			mapper: mapper as Mapper.Enrichment,
+			args:   args as MapperArguments<Mapper.Enrichment>
+		} });
+		return this;
+	}
+
+	get(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
+		return this.with(enrichment).map(Mapper.Enrichment, enrichment);
+	}
 
 	/**
 	 * merge combines the search results with those of another search.
@@ -233,7 +257,11 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
  * This type summarizes all types that can be used in places in which the API expects you to provide a search query.
  * @see {@link FlowrSearch}
  */
-export type FlowrSearchLike = FlowrSearch | FlowrSearchBuilderType;
+export type FlowrSearchLike<Info = ParentInformation,
+	Generator extends GeneratorNames = GeneratorNames,
+	Transformers extends TransformerNames[] = TransformerNames[],
+	ElementType = FlowrSearchElements<Info, FlowrSearchElement<Info>[]>>
+		= FlowrSearch<Info, Generator, Transformers, ElementType> | FlowrSearchBuilderType<Generator, Transformers, Info, ElementType>;
 
 export type SearchOutput<Search> = Search extends FlowrSearch ? Search : Search extends FlowrSearchBuilderType<infer Generator, infer Transformers, infer Info, infer Elements> ? FlowrSearch<Info, Generator, Transformers, Elements> : never;
 
@@ -246,4 +274,3 @@ export function getFlowrSearch<Search extends FlowrSearchLike>(search: Search, o
 	}
 	return search as SearchOutput<Search>;
 }
-

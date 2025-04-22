@@ -1,31 +1,34 @@
 import type { FlowrSearchElement, FlowrSearchInput } from '../flowr-search';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
 import type { MergeableRecord } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { initializeCleanEnvironments } from '../../dataflow/environments/environment';
 import { log } from '../../util/log';
+import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
+import { identifyLinkToLastCallRelation } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { extractCFG } from '../../util/cfg/cfg';
 
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
 }
 
-export interface EnrichmentData<EnrichmentContent extends MergeableRecord> {
-	readonly enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>) => EnrichmentContent
+export interface EnrichmentData<EnrichmentContent extends MergeableRecord, EnrichmentArguments = undefined> {
+	readonly enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>, args: EnrichmentArguments | undefined) => EnrichmentContent
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
 	readonly mapper: (c: EnrichmentContent) => FlowrSearchElement<ParentInformation>[]
 }
-export type EnrichmentContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer Content> ? Content : never;
+export type EnrichmentContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer Content, infer _Args> ? Content : never;
+export type EnrichmentArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _Content, infer Args> ? Args : never;
 
 export enum Enrichment {
 	CallTargets = 'call-targets',
-	/*Documentation = 'documentation'*/
+	LastCall = 'last-call'
 }
 
 export interface CallTargetsContent extends MergeableRecord {
@@ -35,10 +38,13 @@ export interface CallTargetsContent extends MergeableRecord {
 	 */
 	targets: (FlowrSearchElement<ParentInformation> | Identifier)[];
 }
+export interface LastCallContent extends MergeableRecord {
+	linkedIds: FlowrSearchElement<ParentInformation>[]
+}
 
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrich: (e: FlowrSearchElement<ParentInformation>, data: FlowrSearchInput<Pipeline>) => {
+		enrich: (e, data) => {
 			// we don't resolve aliases here yet!
 
 			const content: CallTargetsContent = { targets: [] };
@@ -49,7 +55,7 @@ export const Enrichments = {
 				// find call targets in user code (which have ids!)
 				content.targets.push(...[...outgoing]
 					.filter(([, e]) => edgeIncludesType(e.types, EdgeType.Calls))
-					.map(([t]) => ({ node: data.normalize.idMap.get(t) as RNode<ParentInformation> })));
+					.map(([t]) => ({ node: data.normalize.idMap.get(t) as RNodeWithParent })));
 
 				// find builtin call targets (which don't have ids, so we just put the name)
 				const resolved = resolveByName(info.name, info.environment ?? initializeCleanEnvironments());
@@ -64,14 +70,29 @@ export const Enrichments = {
 			return content;
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
-		mapper: ({ targets }: CallTargetsContent) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
+		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
 	} satisfies EnrichmentData<CallTargetsContent>,
-	/*[Enrichment.Documentation]: {
-		enrich: (_e: FlowrSearchElement<ParentInformation>, _data: FlowrSearchInput<Pipeline>): {documentation: FlowrSearchElement<ParentInformation>[]} => {
-			return { documentation: [] };
+	[Enrichment.LastCall]: {
+		enrich: (e, data, args) => {
+			const content: LastCallContent = { linkedIds: [] };
+			const vertex = data.dataflow.graph.get(e.node.info.id);
+			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
+				const cfg = extractCFG(data.normalize, data.dataflow.graph);
+				for(const arg of args ?? []) {
+					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
+						...arg,
+						callName: new RegExp(arg.callName),
+						type:     'link-to-last-call',
+					});
+					for(const lastCall of lastCalls) {
+						content.linkedIds.push({ node: data.normalize.idMap.get(lastCall) as RNodeWithParent });
+					}
+				}
+			}
+			return content;
 		},
-		mapper: ({ documentation }: {documentation: FlowrSearchElement<ParentInformation>[]}) => documentation
-	} satisfies EnrichmentData<{documentation: FlowrSearchElement<ParentInformation>[]}>*/
+		mapper: ({ linkedIds }) => linkedIds
+	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
 } as const;
 
 export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentContent<E> {
@@ -80,13 +101,15 @@ export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<Pa
 
 export function enrich<
 	ElementIn extends FlowrSearchElement<ParentInformation>,
-	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>>(
-	e: ElementIn, data: FlowrSearchInput<Pipeline>, enrichment: Enrichment): ElementOut {
+	ElementOut extends ElementIn & EnrichedFlowrSearchElement<ParentInformation>,
+	ConcreteEnrichment extends Enrichment>(
+	e: ElementIn, data: FlowrSearchInput<Pipeline>, enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): ElementOut {
+	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentContent<ConcreteEnrichment>, EnrichmentArguments<ConcreteEnrichment>>;
 	return {
 		...e,
 		enrichments: {
 			...(e as ElementIn & EnrichedFlowrSearchElement<ParentInformation>)?.enrichments ?? {},
-			[enrichment]: Enrichments[enrichment].enrich(e, data)
+			[enrichment]: enrichmentData.enrich(e, data, args)
 		}
 	} as ElementOut;
 }

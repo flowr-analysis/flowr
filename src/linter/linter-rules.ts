@@ -1,8 +1,10 @@
 import { R1_DEPRECATED_FUNCTIONS } from './rules/1-deprecated-functions';
 import type { LintingRule } from './linter-format';
+import { R2_FILE_PATH_VALIDITY } from './rules/2-file-path-validity';
 
 export const LintingRules = {
-	'deprecated-functions': R1_DEPRECATED_FUNCTIONS
+	'deprecated-functions': R1_DEPRECATED_FUNCTIONS,
+	'file-path-validity':   R2_FILE_PATH_VALIDITY
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules

@@ -26,6 +26,5 @@ const Mappers = {
 
 export function map<Element extends FlowrSearchElement<ParentInformation>, MapperType extends Mapper>(
 	e: Element, data: FlowrSearchInput<Pipeline>, mapper: MapperType, args: MapperArguments<MapperType>): Element[] {
-	// apparently the type system sucks right now so you have to cast both the mapper and the args to a specific type even though they're made to be compatible
-	return Mappers[mapper as Mapper.Enrichment].mapper(e, data, args as MapperArguments<Mapper.Enrichment>) as Element[];
+	return (Mappers[mapper] as MapperData<MapperArguments<MapperType>>).mapper(e, data, args) as Element[];
 }

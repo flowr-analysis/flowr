@@ -59,7 +59,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends RegExp | string
  * For now, this uses the static Control-Flow-Graph produced by flowR as the FD over-approximation is still not stable (see #1005).
  * In short, this means that we are unable to detect origins over function call boundaries but plan on being more precise in the future.
  */
-interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
+export interface LinkToLastCall<CallName extends RegExp | string = RegExp | string> extends BaseQueryFormat {
 	readonly type:       'link-to-last-call';
 	/** Regex regarding the function name of the last call. Similar to {@link DefaultCallContextQueryFormat#callName}, strings are interpreted as a `RegExp`. */
 	readonly callName:   CallName;

@@ -39,11 +39,11 @@ export function processEvalCall<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
 		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true] }).information
+		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: 'builtin:eval' }).information
 		: initializeCleanDataflowInformation(rootId, data);
 	const evalArgument = args[0];
 

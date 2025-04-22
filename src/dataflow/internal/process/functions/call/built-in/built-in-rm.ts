@@ -18,9 +18,9 @@ export function processRm<OtherInfo>(
 ): DataflowInformation {
 	if(args.length === 0) {
 		dataflowLogger.warn('empty rm, skipping');
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const res = processKnownFunctionCall({ name, args, rootId, data }).information;
+	const res = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:rm' }).information;
 
 	const names: string[] = [];
 

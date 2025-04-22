@@ -9,11 +9,11 @@ describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
 		'x <- 2\nrm(x)\nx',
 		emptyGraph()
 			.defineVariable('1@x', 'x', { definedBy: ['1@<-', '1@2'] })
-			.call('2@rm', 'rm', [argumentInCall('4')], { onlyBuiltIn: true })
+			.call('2@rm', 'rm', [argumentInCall('4')], { onlyBuiltIn: true, origin: ['builtin:rm'] })
 			.returns('1@<-', '1@x')
 			.use('2@x')
 			.constant('1@2')
-			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true })
+			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: ['builtin:assignment'] })
 			.reads('2@x', '1@x')
 			.use('3@x'), // there is no link between 3@x and 1@x
 		{

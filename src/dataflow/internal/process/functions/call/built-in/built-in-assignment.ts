@@ -86,6 +86,7 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 }
 
 function tryReplacementPassingIndices<OtherInfo>(
+	rootId: NodeId,
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: string,
@@ -114,7 +115,8 @@ function tryReplacementPassingIndices<OtherInfo>(
 		data,
 		{
 			...(resolved[0].config ?? {}),
-			activeIndices: indices
+			activeIndices: indices,
+			assignRootId:  rootId
 		}
 	);
 	markAsOnlyBuiltIn(info.graph, functionName.info.id);
@@ -136,7 +138,7 @@ export function processAssignment<OtherInfo>(
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
@@ -144,12 +146,12 @@ export function processAssignment<OtherInfo>(
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const { type, named } = target;
 
 	if(!config.targetVariable && type === RType.Symbol) {
-		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs });
+		const res = processKnownFunctionCall({ name, args, rootId, data, reverseOrder: !config.swapSourceAndTarget, forceArgs: config.forceArgs, origin: 'builtin:assignment' });
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 			...config,
 			nameOfAssignmentFunction: name.content,
@@ -164,11 +166,11 @@ export function processAssignment<OtherInfo>(
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(replacement, data, replacement.content, [...target.arguments, source], config.indicesCollection);
+		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [...target.arguments, source], config.indicesCollection);
 	} else if(config.canBeReplacement && type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${name.content} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.indicesCollection);
+		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.indicesCollection);
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -178,7 +180,8 @@ export function processAssignment<OtherInfo>(
 				rootId,
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
-				forceArgs:    config.forceArgs
+				forceArgs:    config.forceArgs,
+				origin:       'builtin:assignment'
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -198,7 +201,10 @@ export function processAssignment<OtherInfo>(
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
 
-	const info = processKnownFunctionCall({ name, args: effectiveArgs, rootId, data, forceArgs: config.forceArgs }).information;
+	const info = processKnownFunctionCall({
+		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
+		origin:    'builtin:assignment'
+	}).information;
 	info.graph.markIdForUnknownSideEffects(rootId);
 	return info;
 }
@@ -252,7 +258,8 @@ function processAssignmentToString<OtherInfo>(
 		rootId,
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
-		forceArgs:    config.forceArgs
+		forceArgs:    config.forceArgs,
+		origin:       'builtin:assignment'
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

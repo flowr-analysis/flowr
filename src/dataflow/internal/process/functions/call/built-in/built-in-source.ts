@@ -136,10 +136,10 @@ export function processSourceCall<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1) {
 		dataflowLogger.warn(`Expected exactly one argument for source currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data }).information
+		processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:source' }).information
 		: initializeCleanDataflowInformation(rootId, data);
 
 	const sourceFileArgument = args[0];

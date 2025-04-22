@@ -38,13 +38,14 @@ export function processApply<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue }: BuiltInApplyConfiguration
+	config: BuiltInApplyConfiguration
 ): DataflowInformation {
+	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue } = config;
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask
+		name, args, rootId, data, forceArgs: forceArgsMask, origin: 'builtin:apply'
 	});
 	let information = resFn.information;
 	const processedArguments = resFn.processedArguments;
@@ -130,7 +131,8 @@ export function processApply<OtherInfo>(
 			/* can never be a direct built-in-call */
 			onlyBuiltin: false,
 			cds:         data.controlDependencies,
-			args:        allOtherArguments // same reference
+			args:        allOtherArguments, // same reference
+			origin:      ['function']
 		});
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
@@ -176,7 +178,8 @@ export function processApply<OtherInfo>(
 			args:        allOtherArguments,
 			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
 			onlyBuiltin: resolveInEnvironment === 'global',
-			cds:         data.controlDependencies
+			cds:         data.controlDependencies,
+			origin:      ['function']
 		});
 	}
 

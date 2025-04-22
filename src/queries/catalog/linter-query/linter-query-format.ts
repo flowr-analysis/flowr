@@ -50,5 +50,6 @@ export const LinterQueryDefinition = {
 				config: Joi.object()
 			})
 		).description('The rules to lint for. If unset, all rules will be included.')
-	}).description('The linter query lints for the given set of rules and returns the result.')
+	}).description('The linter query lints for the given set of rules and returns the result.'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'linter'>;

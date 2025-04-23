@@ -85,7 +85,7 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 		return this;
 	}
 
-	public getElements(): readonly FlowrSearchElement<Info>[] {
+	public getElements(): Readonly<Elements> {
 		return this.elements;
 	}
 

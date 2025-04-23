@@ -27,10 +27,10 @@ export const R1_DEPRECATED_FUNCTIONS = {
 				return [];
 			}
 			return targets.map(target => {
-				return ({
+				return {
 					range:  element.node.info.fullRange as SourceRange,
 					target: target as Identifier
-				});
+				};
 			});
 		})
 		.filter(element => config.deprecatedFunctions.includes(element.target))

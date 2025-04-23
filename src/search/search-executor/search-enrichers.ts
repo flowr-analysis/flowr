@@ -11,6 +11,7 @@ import { log } from '../../util/log';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { identifyLinkToLastCallRelation } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { extractCFG } from '../../util/cfg/cfg';
+import { guard } from '../../util/assert';
 
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }
@@ -74,11 +75,12 @@ export const Enrichments = {
 	} satisfies EnrichmentData<CallTargetsContent>,
 	[Enrichment.LastCall]: {
 		enrich: (e, data, args) => {
+			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content: LastCallContent = { linkedIds: [] };
 			const vertex = data.dataflow.graph.get(e.node.info.id);
 			if(vertex !== undefined && vertex[0].tag === VertexType.FunctionCall) {
 				const cfg = extractCFG(data.normalize, data.dataflow.graph);
-				for(const arg of args ?? []) {
+				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelation(vertex[0].id, cfg.graph, data.dataflow.graph, {
 						...arg,
 						callName: new RegExp(arg.callName),

@@ -39,13 +39,13 @@ describe.sequential('flowR linter', withShell(shell => {
 
 		assertLinter('none', shell, 'cat("hello")', 'file-path-validity', []);
 		assertLinter('simple', shell, 'cat("hello")\nread.csv("file.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [
-			{ certainty: LintingCertainty.Maybe, filePath: 'file-missing.csv', range: [3,1,3,28] }
+			{ certainty: LintingCertainty.Definitely, filePath: 'file-missing.csv', range: [3,1,3,28] }
 		]);
 		assertLinter('deep', shell, 'cat("hello")\nread.csv("path/to/deep-file.csv")\nread.csv("path/to/deep-file-missing.csv")', 'file-path-validity', [
-			{ certainty: LintingCertainty.Maybe, filePath: 'path/to/deep-file-missing.csv', range: [3,1,3,41] }
+			{ certainty: LintingCertainty.Definitely, filePath: 'path/to/deep-file-missing.csv', range: [3,1,3,41] }
 		]);
 		assertLinter('deep-lax', shell, 'cat("hello")\nread.csv("invalid/path/to/deep-file.csv")\nread.csv("invalid/path/to/deep-file-missing.csv")', 'file-path-validity', [
-			{ certainty: LintingCertainty.Maybe, filePath: 'invalid/path/to/deep-file-missing.csv', range: [3,1,3,49] }
+			{ certainty: LintingCertainty.Definitely, filePath: 'invalid/path/to/deep-file-missing.csv', range: [3,1,3,49] }
 		]);
 	});
 }));

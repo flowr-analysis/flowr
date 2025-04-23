@@ -45,7 +45,7 @@ export const R2_FILE_PATH_VALIDITY = {
 		})
 		.map(element => ({
 			...element,
-			certainty: LintingCertainty.Maybe
+			certainty: LintingCertainty.Definitely
 		})),
 	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,
 	defaultConfig: {

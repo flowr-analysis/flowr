@@ -8,8 +8,13 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { FlowrSearchElementFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { ReadFunctions, WriteFunctions } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { happensBefore } from '../../util/cfg/happens-before';
+import type { ControlFlowGraph } from '../../util/cfg/cfg';
+import { extractCFG } from '../../util/cfg/cfg';
+import { Ternary } from '../../util/logic';
+import { getConfig } from '../../config';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -17,38 +22,55 @@ export interface FilePathValidityResult extends LintingResult {
 }
 
 export interface FilePathValidityConfig extends MergeableRecord {
-	additionalReadFunctions: FunctionInfo[]
+	additionalReadFunctions:  FunctionInfo[]
+	additionalWriteFunctions: FunctionInfo[]
 }
 
 export const R2_FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:                   'dependencies',
-		// we only want to check read functions, so we explicitly clear all others
+		// we only want to check read and write functions, so we explicitly clear all others
 		ignoreDefaultFunctions: true,
-		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions ?? [])
+		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
+		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}),
-	processSearchResult: (elements, _config): FilePathValidityResult[] => elements.getElements()
-		.flatMap(element => {
+	processSearchResult: (elements, _config, data): FilePathValidityResult[] => {
+		let cfg: ControlFlowGraph;
+		return elements.getElements().flatMap(element => {
 			const results = element.queryResult as QueryResults<'dependencies'>['dependencies'];
-			const result = results.readData.find(r => r.nodeId == element.node.info.id);
-			if(!result) {
+			const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
+			if(!matchingRead) {
 				return [];
 			}
+
+			// check if any write to the same file happens before the read, and exclude this case if so
+			cfg ??= extractCFG(data.normalize, data.dataflow.graph).graph;
+			const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
+			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
+			if(writesBefore.some(w => w === Ternary.Always)) {
+				return [];
+			}
+
 			return [{
-				range:    element.node.info.fullRange as SourceRange,
-				filePath: result.source
+				range:     element.node.info.fullRange as SourceRange,
+				filePath:  matchingRead.source,
+				certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
 			}];
-		})
-		.filter(element => {
+		}).filter(element => {
 			const paths = findSource(element.filePath, { referenceChain: [] });
 			return !paths || !paths.length;
-		})
-		.map(element => ({
-			...element,
-			certainty: LintingCertainty.Definitely
-		})),
+		});
+	},
 	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,
 	defaultConfig: {
-		additionalReadFunctions: []
+		additionalReadFunctions:  [],
+		additionalWriteFunctions: []
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
+
+function samePath(a: string, b: string): boolean {
+	if(a === b) {
+		return true;
+	}
+	return getConfig().solver.resolveSource?.ignoreCapitalization === true && a.toLowerCase() === b.toLowerCase();
+}

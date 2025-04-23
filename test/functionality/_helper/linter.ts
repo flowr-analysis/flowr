@@ -28,9 +28,9 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleConfig<Name>>;
-		const ruleSearch = rule.createSearch(config);
+		const ruleSearch = rule.createSearch(config, results);
 		const searchResult = runSearch(ruleSearch, results);
-		const ruleResults = rule.processSearchResult(new FlowrSearchElements(searchResult), config);
+		const ruleResults = rule.processSearchResult(new FlowrSearchElements(searchResult), config, results);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>) => `${rule.prettyPrint(result)} (${result.certainty})`,

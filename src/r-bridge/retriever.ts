@@ -105,7 +105,7 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 			if(ignoreCase) {
 				return Object.keys(text).find(p => p.toLowerCase() === path.toLowerCase());
 			}
-			return text[path] ? path : undefined;
+			return text[path] !== undefined ? path : undefined;
 		},
 		createRequest(path: string): RParseRequest {
 			return {

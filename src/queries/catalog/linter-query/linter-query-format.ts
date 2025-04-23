@@ -34,7 +34,7 @@ export const LinterQueryDefinition = {
 				if(certaintyResults.length) {
 					result.push(`       ╰ ${certainty}:`);
 					for(const res of certaintyResults) {
-						result.push(`           ╰ ${rule.prettyPrint(res)}`);
+						result.push(`           ╰ ${rule.prettyPrint(res as LintingRuleResult<LintingRuleNames>)}`);
 					}
 				}
 			}

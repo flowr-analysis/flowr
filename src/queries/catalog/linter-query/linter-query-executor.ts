@@ -26,7 +26,7 @@ export function executeLinterQuery({ ast, dataflow }: BasicQueryData, queries: r
 		const config = (entry as ConfiguredLintingRule)?.config ?? rule.defaultConfig;
 		const ruleSearch = rule.createSearch(config);
 		const searchResult = runSearch(ruleSearch, { normalize: ast, dataflow });
-		results[ruleName] = rule.processSearchResult(new FlowrSearchElements(searchResult), config);
+		results[ruleName] = rule.processSearchResult(new FlowrSearchElements(searchResult), config) as LintingRuleResult<LintingRuleNames>[];
 	}
 
 	return {

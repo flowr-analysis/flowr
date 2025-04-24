@@ -26,7 +26,6 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
     - [Running Only Some Tests](#running-only-some-tests)
   - [System Tests](#system-tests)
   - [Performance Tests](#performance-tests)
-  - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
   - [Testing Within Your IDE](#testing-within-your-ide)
     - [VS Code](#vs-code)
     - [Webstorm](#webstorm)
@@ -37,6 +36,7 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
 - [Debugging](#debugging)
   - [VS Code](#vs-code-1)
 
+<a id='testing-suites'></a>
 ## 🏨 Testing Suites
 
 Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
@@ -44,6 +44,7 @@ one for [system tests](#system-tests), and one for [performance](#performance-te
 In addition to running those tests, you can use the more generalized \`npm run checkup\`. 
 This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
 
+<a id='functionality-tests'></a>
 ### 🧪 Functionality Tests
 
 The functionality tests represent conventional unit (and depending on your terminology component/api) tests.
@@ -72,6 +73,7 @@ some tests may be skipped automatically as they do not apply to your current sys
 Each test can specify such requirements as part of the \`TestConfiguration\`, which is then used in the \`test.skipIf\` function of _vitest_.
 It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests run.
 
+<a id='test-structure'></a>
 #### 🏗️ Test Structure
 
 All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}/test/functionality).
@@ -91,6 +93,7 @@ to disable parallel execution for the respective test (otherwise, such tests are
 ` 
 })}
 
+<a id='test-labels'></a>
 #### 🏷️ Test Labels
 
 Generally, tests are [labeled](${RemoteFlowrFilePathBaseRef}test/functionality/_helper/label.ts) according to the *flowR* capabilities they test. 
@@ -103,6 +106,7 @@ The report can be found on the wiki's [capabilities page](${FlowrWikiBaseRef}/Ca
 
 To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 
+<a id='writing-a-test'></a>
 #### 🖋️ Writing a Test
 
 Currently, this is heavily dependent on what you want to test (normalization, dataflow, quad-export, …) 
@@ -140,11 +144,13 @@ assertDataflow(label('without distractors', [...OperatorDatabase['<-'].capabilit
 );
 `)}
 
+<a id='running-only-some-tests'></a>
 #### 🤏 Running Only Some Tests
 
 To run only some tests, vitest allows you to [filter](https://vitest.dev/guide/filtering.html) tests. 
 Besides, you can use the watch mode (with \`npm run test\`) to only run tests that are affected by your changes.
 
+<a id='system-tests'></a>
 ### 💽 System Tests
 
 In contrast to the [functionality tests](#functionality-tests), the system tests use runners like the \`npm\` scripts
@@ -158,8 +164,7 @@ with the [functionality tests](#functionality-tests)).
 
 Have a look at the [test/system-tests](${RemoteFlowrFilePathBaseRef}test/system-tests) folder for more information.
  
-
-
+<a id='performance-tests'></a>
 ### 💃 Performance Tests
 
 The performance test suite of *flowR* uses several suites to check for variations in the required times for certain steps.
@@ -171,7 +176,7 @@ ${codeBlock('shell', 'npm run performance-test')}
 
 See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](${FlowrSiteBaseRef}/wiki/stats/benchmark).
 
-
+<a id='testing-within-your-ide'></a>
 ### 📝 Testing Within Your IDE
 
 #### VS Code
@@ -192,7 +197,7 @@ To get started, install the [vitest Extension](https://marketplace.visualstudio.
 
 Please follow the official guide [here](https://www.jetbrains.com/help/webstorm/vitest.html).
 
-
+<a id='ci-pipeline'></a>
 ## 🪈 CI Pipeline
 
 We have several workflows defined in [.github/workflows](${RemoteFlowrFilePathBaseRef}/.github/workflows/).
@@ -207,7 +212,8 @@ We explain the most important workflows in the following:
   - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
 - [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
 - [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
-
+ 
+<a id='linting'></a>
 ## 🧹 Linting
 
 There are two linting scripts.
@@ -226,7 +232,8 @@ eslint can automatically fix several linting problems[](https://eslint.org/docs/
 So you may be fine by just running:
 
 ${codeBlock('shell', 'npm run lint-local -- --fix')}
-
+ 
+<a id='oh-no-the-linter-fails'></a>
 ### 💥 Oh no, the linter fails
 
 By now, the rules should be rather stable and so, if the linter fails,
@@ -234,12 +241,13 @@ it is usually best if you (when necessary) read the respective description and f
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose).
-
+ 
+<a id='license-checker'></a>
 ### 🪪 License Checker
 
 *flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}/package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 
-
+<a id='debugging'></a>
 ## 🐛 Debugging
 ### VS Code
 When working with VS Code, you can attach a debugger to the REPL. This works automatically by running the \`Start Debugging\` command (\`F5\` by default).

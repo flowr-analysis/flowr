@@ -12,7 +12,7 @@
   * [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
 * [🧹 Linting & Testing](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing)
   * [Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark)
-  * [R FAQ](https://github.com/flowr-analysis/flowr/wiki/R-FAQ)
+* [⁉️ FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ)
 * ℹ️ Extra Information
   * [Terminology](https://github.com/flowr-analysis/flowr/wiki/Terminology)
   * [Supported R Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities) 

@@ -1,5 +1,5 @@
 import type { DataFrameDomain } from './domain';
-import { addInterval, ColNamesTop, DataFrameTop, includeZeroInterval, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
+import { addInterval, ColNamesTop, DataFrameTop, includeInfinityInterval, includeZeroInterval, IntervalBottom, IntervalTop, joinColNames, maxInterval, meetColNames, minInterval, subtractColNames, subtractInterval } from './domain';
 
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
@@ -17,7 +17,6 @@ const DataFrameSemanticsMapper = {
 	'accessRows':    { apply: applyAccessRowsSemantics,  type: ConstraintType.OperandPrecondition },
 	'assignCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.OperandModification },
 	'assignRows':    { apply: applyAssignRowsSemantics,  type: ConstraintType.OperandModification },
-	'reassign':      { apply: applyIdentitySemantics,    type: ConstraintType.OperandModification },
 	'setColNames':   { apply: applySetColNamesSemantics, type: ConstraintType.OperandModification },
 	'unknownModify': { apply: applyUnknownSemantics,     type: ConstraintType.OperandModification },
 	'addCols':       { apply: applyAddColsSemantics,     type: ConstraintType.ResultPostcondition },
@@ -29,8 +28,9 @@ const DataFrameSemanticsMapper = {
 	'subsetCols':    { apply: applySubsetColsSemantics,  type: ConstraintType.ResultPostcondition },
 	'subsetRows':    { apply: applySubsetRowsSemantics,  type: ConstraintType.ResultPostcondition },
 	'filterRows':    { apply: applyFilterRowsSemantics,  type: ConstraintType.ResultPostcondition },
-	'mutateCols':    { apply: applyAssignColsSemantics,  type: ConstraintType.ResultPostcondition },
+	'mutateCols':    { apply: applyMutateColsSemantics,  type: ConstraintType.ResultPostcondition },
 	'groupBy':       { apply: applyGroupBySemantics,     type: ConstraintType.ResultPostcondition },
+	'summarize':     { apply: applySummarizeSemantics,   type: ConstraintType.ResultPostcondition },
 	'leftJoin':      { apply: applyLeftJoinSemantics,    type: ConstraintType.ResultPostcondition },
 	'identity':      { apply: applyIdentitySemantics,    type: ConstraintType.ResultPostcondition }
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
@@ -112,7 +112,7 @@ function applyAssignColsSemantics(
 		return {
 			...value,
 			colnames: joinColNames(value.colnames, columns),
-			cols:     addInterval(value.cols, [0, columns.length])
+			cols:     maxInterval(addInterval(value.cols, [0, columns.length]), [columns.length, columns.length])
 		};
 	} else if(columns?.every(col => typeof col === 'number')) {
 		return {
@@ -124,7 +124,7 @@ function applyAssignColsSemantics(
 	return {
 		...value,
 		colnames: ColNamesTop,
-		cols:     IntervalTop
+		cols:     includeInfinityInterval(value.cols)
 	};
 }
 
@@ -140,7 +140,7 @@ function applyAssignRowsSemantics(
 	}
 	return {
 		...value,
-		rows: IntervalTop
+		rows: includeInfinityInterval(value.rows)
 	};
 }
 
@@ -248,6 +248,17 @@ function applyFilterRowsSemantics(
 	};
 }
 
+function applyMutateColsSemantics(
+	value: DataFrameDomain,
+	{ colnames }: { colnames: (string | undefined)[] | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     colnames !== undefined ? maxInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, colnames.length]): includeInfinityInterval(value.rows)
+	};
+}
+
 function applyGroupBySemantics(
 	value: DataFrameDomain,
 	_args: { by: string | undefined }
@@ -255,6 +266,18 @@ function applyGroupBySemantics(
 	return {
 		...value,
 		rows: includeZeroInterval(value.rows)
+	};
+}
+
+function applySummarizeSemantics(
+	value: DataFrameDomain,
+	{ colnames }: { colnames: (string | undefined)[] | undefined }
+): DataFrameDomain {
+	return {
+		...value,
+		colnames: colnames?.every(col => col !== undefined) ? joinColNames(value.colnames, colnames) : ColNamesTop,
+		cols:     colnames !== undefined ? minInterval(addInterval(value.cols, [0, colnames.length]), [colnames.length, Infinity]) : includeInfinityInterval(value.rows),
+		rows:     value.rows !== IntervalBottom && value.rows[0] > 0 ? [1, 1] : value.rows
 	};
 }
 

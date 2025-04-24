@@ -27,8 +27,7 @@ export function performDataFrameAbsint(cfinfo: ControlFlowInformation, dfg: Data
 		if(entryNode !== undefined && isRSingleNode(entryNode)) {
 			oldDomain = entryNode.info.dataFrame?.domain ?? oldDomain;
 			newDomain = processDataFrameLeaf(entryNode, new Map(inputDomain), dfg);
-		}
-		if(vertex.type === CfgVertexType.EndMarker) {
+		} else if(vertex.type === CfgVertexType.EndMarker) {
 			const exitId = getNodeIdForExitVertex(vertex.id);
 			const exitNode: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = exitId !== undefined ? dfg.idMap?.get(exitId) : undefined;
 

@@ -774,7 +774,22 @@ print(df)
 		`.trim(),
 			[
 				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
-				['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [3, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
+				['7@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [0, 6] }, DataFrameTestOverapproximation]
+			]
+		);
+
+		testDataFrameDomain(
+			`
+library(dplyr)
+df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
+df <- df |>
+	summarise(score = mean(score), sum = sum(score)) |>
+	as.data.frame()
+print(df)
+		`.trim(),
+			[
+				['2@df', { colnames: ['id', 'category', 'score'], cols: [3, 3], rows: [6, 6] }],
+				['6@df', { colnames: ['id', 'category', 'score', 'sum'], cols: [2, 5], rows: [1, 1] }, { colnames: DomainMatchingType.Overapproximation, cols: DomainMatchingType.Overapproximation }]
 			]
 		);
 

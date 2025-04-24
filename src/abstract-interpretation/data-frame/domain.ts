@@ -1,6 +1,8 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setEquals } from '../../util/set';
 
+const MaxColNames = 50;
+
 type Interval = [number, number];
 
 export const IntervalBottom = 'bottom';
@@ -42,9 +44,10 @@ export function leqColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
 export function joinColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
 	if(X1 === ColNamesTop || X2 === ColNamesTop) {
 		return ColNamesTop;
-	} else {
-		return Array.from(new Set(X1).union(new Set(X2)));
 	}
+	const join = Array.from(new Set(X1).union(new Set(X2)));
+
+	return join.length > MaxColNames ? ColNamesTop : join;
 }
 
 export function meetColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
@@ -136,6 +139,14 @@ export function includeZeroInterval(X: IntervalDomain): IntervalDomain {
 		return IntervalBottom;
 	} else {
 		return [0, X[1]];
+	}
+}
+
+export function includeInfinityInterval(X: IntervalDomain): IntervalDomain {
+	if(X === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [X[0], Infinity];
 	}
 }
 

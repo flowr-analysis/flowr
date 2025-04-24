@@ -29,10 +29,10 @@ const DataFrameFunctionMapper = {
 	'transform':     { mapper: mapDataFrameMutate, specialArgs: [] },
 	'mutate':        { mapper: mapDataFrameMutate, specialArgs: ['.by', '.keep', '.before', '.after'] },
 	'group_by':      { mapper: mapDataFrameGroupBy, specialArgs: ['.add', '.drop'] },
+	'summarise':     { mapper: mapDataFrameSummarize, specialArgs: ['.by', '.groups'] },
+	'summarize':     { mapper: mapDataFrameSummarize, specialArgs: ['.by', '.groups'] },
 	'left_join':     { mapper: mapDataFrameLeftJoin, specialArgs: ['copy', 'suffix', 'keep'] },
 	'merge':         { mapper: (...args) => mapDataFrameLeftJoin(...args, true), specialArgs: ['by.x', 'bx.y', 'all', 'all.x', 'all.y', 'sort', 'suffixes', 'no.dups', 'incomparables'] },
-	'summarise':     { mapper: mapDataFrameMutate, specialArgs: ['.by', '.groups'] },
-	'summarize':     { mapper: mapDataFrameMutate, specialArgs: ['.by', '.groups'] },
 	'relocate':      { mapper: mapDataFrameIdentity, specialArgs: ['.before', '.after'] },
 	'arrange':       { mapper: mapDataFrameIdentity, specialArgs: ['.by_group', '.locale'] }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo>;
@@ -434,7 +434,7 @@ function mapDataFrameMutate(
 	}
 	const result: DataFrameOperations[] = [];
 	const accessedNames = args.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
-	const columns = args.slice(1).map(arg => resolveIdToArgName(arg, info));
+	const mutatedCols = args.slice(1).map(arg => resolveIdToArgName(arg, info));
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -447,7 +447,7 @@ function mapDataFrameMutate(
 	result.push({
 		operation: 'mutateCols',
 		operand:   dataFrame.value.info.id,
-		args:      { columns: columns.every(col => col !== undefined) ? columns : undefined }
+		args:      { colnames: mutatedCols }
 	});
 	return result;
 }
@@ -483,6 +483,41 @@ function mapDataFrameGroupBy(
 		operation: 'groupBy',
 		operand:   dataFrame.value.info.id,
 		args:      { by: typeof byName === 'string' ? byName : undefined }
+	});
+	return result;
+}
+
+function mapDataFrameSummarize(
+	args: readonly RFunctionArgument<ParentInformation>[],
+	info: ResolveInfo
+): DataFrameOperations[] | undefined {
+	const dataFrame = args[0];
+
+	if(!isDataFrameArgument(dataFrame)) {
+		return;
+	} else if(args.length === 1) {
+		return [{
+			operation: 'identity',
+			operand:   dataFrame.value.info.id,
+			args:      {}
+		}];
+	}
+	const result: DataFrameOperations[] = [];
+	const accessedNames = args.slice(1).flatMap(arg => getUnresolvedSymbolsInExpression(arg, info));
+	const summarizedCols = args.slice(1).map(arg => resolveIdToArgName(arg, info));
+
+	if(accessedNames.length > 0) {
+		result.push({
+			operation: 'accessCols',
+			operand:   dataFrame.value.info.id,
+			args:      { columns: accessedNames }
+		});
+	}
+
+	result.push({
+		operation: 'summarize',
+		operand:   dataFrame.value.info.id,
+		args:      { colnames: summarizedCols }
 	});
 	return result;
 }

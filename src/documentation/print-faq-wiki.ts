@@ -1,12 +1,29 @@
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
+import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 
 function print(): string {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'frequently asked questions' })}
 	
 ## 💮 *flowR* FAQ
-There are no common questions here yet! Feel free to let us know through an issue if you have any questions.
+
+### 🧑‍💻 *flowR* Development
+
+${qAndA('What are test labels and how do they work?', `
+Tests are labeled based on the *flowR* capabilities that they test for. The list of supported capabilities can be found on the [Capabilities](${FlowrWikiBaseRef}/Capabilities) wiki page. For more extensive information on test labels, see the [test labels wiki section](${FlowrWikiBaseRef}/Linting-and-Testing#test-labels).
+`)}
+
+${qAndA('How do I generate mermaid diagrams?', `
+There are several ways to generate mermaid diagrams based on the input data that you want to use.
+- From the AST (abstract syntax tree): ${getFilePathMd('../util/mermaid/ast.ts')}
+- From the CFG (control flow graph): ${getFilePathMd('../util/mermaid/cfg.ts')}
+- From the DFG (dataflow graph): ${getFilePathMd('../util/mermaid/dfg.ts')}
+`)}
+
+${qAndA('How do I create new wiki pages?', `
+TODO TODO TODO
+`)}
 
 ## 🇷 R FAQ
 

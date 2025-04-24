@@ -19,21 +19,22 @@ function getText() {
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
 for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
 
-- [Testing Suites](#testing-suites)
-  - [Functionality Tests](#functionality-tests)
-    - [Test Structure](#test-structure)
-    - [Writing a Test](#writing-a-test)
-    - [Running Only Some Tests](#running-only-some-tests)
-  - [System Tests](#system-tests)
-  - [Performance Tests](#performance-tests)
-  - [Testing Within Your IDE](#testing-within-your-ide)
+- [🏨 Testing Suites](#testing-suites)
+  - [🧪 Functionality Tests](#functionality-tests)
+    - [🏗️ Test Structure](#test-structure)
+    - [🏷️ Test Labels](#test-labels)
+    - [🖋️ Writing a Test](#writing-a-test)
+    - [🤏 Running Only Some Tests](#running-only-some-tests)
+  - [💽 System Tests](#system-tests)
+  - [💃 Performance Tests](#performance-tests)
+  - [📝 Testing Within Your IDE](#testing-within-your-ide)
     - [VS Code](#vs-code)
     - [Webstorm](#webstorm)
-- [CI Pipeline](#ci-pipeline)
-- [Linting](#linting)
+- [🪈 CI Pipeline](#ci-pipeline)
+- [🧹 Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
   - [License Checker](#license-checker)
-- [Debugging](#debugging)
+- [🐛 Debugging](#debugging)
   - [VS Code](#vs-code-1)
 
 <a id='testing-suites'></a>

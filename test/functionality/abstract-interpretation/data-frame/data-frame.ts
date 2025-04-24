@@ -13,7 +13,7 @@ import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/mo
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { RShellReviveOptions, type RShell } from '../../../../src/r-bridge/shell';
+import { type RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
@@ -123,9 +123,6 @@ export function testDataFrameDomainAgainstReal(
 				createCodeForOutput('rows', criterion, node.content)
 			];
 			lines.splice(lineNumber, 0, ...outputCode);
-		}
-		if(shell.options.revive === RShellReviveOptions.Always) {
-			lines.push('quit()');
 		}
 		const instrumentedCode = lines.join('\n');
 

@@ -2,16 +2,13 @@ import { afterAll, beforeAll, describe } from 'vitest';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameTop, IntervalTop } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { amendConfig, defaultConfigOptions } from '../../../../src/config';
-import { RShell, RShellReviveOptions } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { withShell } from '../../_helper/shell';
 import type { DataFrameTestOptions } from './data-frame';
 import { assertDataFrameDomain, DataFrameTestOverapproximation, DomainMatchingType, testDataFrameDomainAgainstReal } from './data-frame';
 
-describe.sequential('Data Frame Abstract Interpretation', () => {
-	const shell = new RShell({ revive: RShellReviveOptions.Always });
-	const skip = false;
-
-	afterAll(() => shell.close());
+describe.sequential('Data Frame Abstract Interpretation', withShell(shell => {
+	const skipDplyr = true;
 
 	function testDataFrameDomain(
 		code: string,
@@ -570,7 +567,7 @@ df <- tail(df, n = -c(2, 1))
 		]
 	);
 
-	describe.skipIf(skip)('Skipped tests', () => {
+	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
@@ -704,7 +701,7 @@ df <- subset(df, select = c(-id, -name))
 		]
 	);
 
-	describe.skipIf(skip)('Skipped tests', () => {
+	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5)
@@ -750,7 +747,7 @@ df <- transform(df, name = c(letters[1:5]))
 		]
 	);
 
-	describe.skipIf(skip)('Skipped tests', () => {
+	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5, score = c(80, 75, 90, 70, 85))
@@ -846,7 +843,7 @@ df <- merge(df1, df2, by = "id")
 		]
 	);
 
-	describe.skipIf(skip)('Skipped tests', () => {
+	describe.skipIf(skipDplyr)('dplyr Functions', () => {
 		testDataFrameDomain(
 			`
 df <- data.frame(id = 1:5, category = c("A", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85))
@@ -890,4 +887,4 @@ print(df3$level)
 			]
 		);
 	});
-});
+}));

@@ -1,7 +1,8 @@
 import { type BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { EdgeType } from '../../dataflow/graph/edge';
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
+import { VertexType } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -57,7 +58,6 @@ export function processDataFrameLeaf(
 	if(node.type === RType.Symbol) {
 		resolveIdToAbstractValue(node.info.id, domain, dfg);
 	}
-	updateDomainOfId(node, domain, dfg);
 	return domain;
 }
 
@@ -69,10 +69,7 @@ export function processDataFrameExpression<Node extends RComplexNode<ParentInfor
 	const nodeType: Node['type'] = node.type;
 	const processor = DataFrameProcessorMapper[nodeType] as DataFrameProcessor<Node>;
 
-	const result = processor(node, domain, dfg);
-	updateDomainOfId(node, result, dfg);
-
-	return result;
+	return processor(node, domain, dfg);
 }
 
 function processDataFrameOperation(
@@ -192,8 +189,9 @@ function getFunctionName(operation: ROperation<ParentInformation>): string {
 
 function getDefinitionOrigin(id: NodeId, dfg: DataflowGraph): NodeId[] {
 	return dfg.outgoingEdges(id)?.entries()
-		.filter(([, edge]) => edge.types === EdgeType.Reads)
+		.filter(([, { types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedByOnCall) && edgeDoesNotIncludeType(types, EdgeType.NonStandardEvaluation))
 		.map(([id]) => id)
+		.filter(id => dfg.getVertex(id)?.tag === VertexType.VariableDefinition)
 		.toArray() ?? [];
 }
 
@@ -211,8 +209,8 @@ function resolveIdToAbstractValue(id: NodeId, domain: DataFrameStateDomain, dfg:
 	}
 }
 
-function updateDomainOfId(id: NodeId | RNode<ParentInformation & AbstractInterpretationInfo>, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg.idMap?.get(id);
+function updateDomainOfId(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = dfg.idMap?.get(id);
 
 	if(node !== undefined) {
 		node.info.dataFrame ??= {};

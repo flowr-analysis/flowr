@@ -31,6 +31,7 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -146,7 +147,7 @@ export function processSourceCall<OtherInfo>(
 
 	if(!config.forceFollow && getConfig().ignoreSourceCalls) {
 		expensiveTrace(dataflowLogger, () => `Skipping source call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, rootId);
 		return information;
 	}
 
@@ -174,7 +175,7 @@ export function processSourceCall<OtherInfo>(
 			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
 			if(findCount > limit) {
 				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-				information.graph.markIdForUnknownSideEffects(rootId);
+				handleUnknownSideEffect(information.graph, rootId);
 				return information;
 			}
 
@@ -183,7 +184,7 @@ export function processSourceCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`);
-	information.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(information.graph, rootId);
 	return information;
 }
 
@@ -192,7 +193,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		/* check if the file exists and if not, fail */
 		if(!fs.existsSync(request.content)) {
 			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
-			information.graph.markIdForUnknownSideEffects(rootId);
+			handleUnknownSideEffect(information.graph, rootId);
 			return information;
 		}
 	}
@@ -214,7 +215,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	} catch(e) {
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
 		dataflowLogger.error((e as Error).stack);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, rootId);
 		return information;
 	}
 
@@ -259,7 +260,7 @@ export function standaloneSourceFile<OtherInfo>(
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-		information.graph.markIdForUnknownSideEffects(uniqueSourceId);
+		handleUnknownSideEffect(information.graph, uniqueSourceId);
 		return information;
 	}
 

@@ -36,6 +36,7 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 
 export const BuiltIn = 'built-in';
 
@@ -100,9 +101,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 	if(config.hasUnknownSideEffects) {
 		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects);
+			handleUnknownSideEffect(res.graph, rootId, config.hasUnknownSideEffects);
 		} else {
-			res.graph.markIdForUnknownSideEffects(rootId);
+			handleUnknownSideEffect(res.graph, rootId);
 		}
 	}
 

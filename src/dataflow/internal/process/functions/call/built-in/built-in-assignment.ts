@@ -41,6 +41,7 @@ import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../..
 import { getConfig } from '../../../../../../config';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -205,7 +206,7 @@ export function processAssignment<OtherInfo>(
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
 		origin:    'builtin:assignment'
 	}).information;
-	info.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(info.graph, rootId);
 	return info;
 }
 

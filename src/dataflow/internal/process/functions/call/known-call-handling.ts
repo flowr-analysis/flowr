@@ -17,6 +17,7 @@ import { dataflowLogger } from '../../../../logger';
 import { VertexType } from '../../../../graph/vertex';
 import type { ContainerIndicesCollection , FunctionOriginInformation } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
+import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -93,7 +94,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	});
 
 	if(hasUnknownSideEffect) {
-		finalGraph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(finalGraph, rootId);
 	}
 
 	const inIds = remainingReadInArgs;

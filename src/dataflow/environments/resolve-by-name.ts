@@ -19,6 +19,7 @@ import { EdgeType } from '../graph/edge';
 import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
 import { valueFromRNode, valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
+import { onUnknownSideEffect } from '../graph/unknown-side-effect';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -216,6 +217,9 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return setFrom(...values);
 }
 
+onUnknownSideEffect((_graph: DataflowGraph, _id: NodeId) => {
+	
+});
 
 function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
 	const parent = node?.info.parent;

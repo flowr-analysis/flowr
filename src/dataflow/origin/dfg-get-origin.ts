@@ -113,7 +113,7 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 	})) : undefined;
 
 	const targets = new Set(getAllFunctionCallTargets(call.id, dfg));
-	// todo: handle built-in
+	console.log('targets:', targets);
 	if(targets.size === 0) {
 		return origins;
 	}

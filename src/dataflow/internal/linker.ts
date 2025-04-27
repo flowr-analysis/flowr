@@ -290,7 +290,7 @@ export function getAllLinkedFunctionDefinitions(
 		const currentId = potential.pop() as NodeId;
 
 		// do not traverse builtins
-		// TODO: TODO TODO
+		// TODO: TODO TODO ALLWO IDS here
 		if(isBuiltIn(currentId)) {
 			continue;
 		}

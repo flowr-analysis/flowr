@@ -14,6 +14,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
+import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -30,16 +31,22 @@ describe('Dataflow', withTreeSitter(ts => {
 					const want = expected[interest];
 					const interestedId = slicingCriterionToId(interest, analysis.normalize.idMap);
 					const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
-					if(want === undefined) {
-						assert.isUndefined(origins);
-					} else {
-					// sort both by ids
-						origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
-						const wantMapped = want.map(e => ({
-							...e,
-							id: slicingCriterionToId(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
-						})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
-						assert.deepStrictEqual(origins, wantMapped);
+					try {
+						if(want === undefined) {
+							assert.isUndefined(origins);
+						} else {
+							// sort both by ids
+							origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+							const wantMapped = want.map(e => ({
+								...e,
+								id: slicingCriterionToId(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+							assert.deepStrictEqual(origins, wantMapped);
+						}
+					} catch(e) {
+						const dfg = analysis.dataflow.graph;
+						console.error('dfg:', graphToMermaidUrl(dfg));
+						throw e;
 					}
 				});
 			});

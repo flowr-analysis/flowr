@@ -21,7 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { BuiltIn } from '../../../../../environments/built-in';
+import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -93,7 +93,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while(current !== undefined && current.id !== BuiltInEnvironment.id) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
-						if(def.definedAt !== BuiltIn) {
+						if(!isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 						}
@@ -206,6 +206,9 @@ export function processExpressionList<OtherInfo>(
 			argumentProcessResult: processedExpressions,
 			origin:                'builtin:expression-list'
 		});
+
+		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads);
+
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {
 			if(exit.type === ExitPointType.Return || exit.type === ExitPointType.Default) {

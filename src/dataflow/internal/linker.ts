@@ -20,7 +20,8 @@ import type {
 } from '../graph/vertex';
 import { VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { BuiltIn } from '../environments/built-in';
+import type { BuiltIn } from '../environments/built-in';
+import { isBuiltIn } from '../environments/built-in';
 import { slicerLogger } from '../../slicing/static/static-slicer';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
@@ -167,8 +168,10 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const def of defs) {
-				graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-				graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				if(!isBuiltIn(def.nodeId)) {
+					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				}
 			}
 		}
 	}
@@ -208,7 +211,7 @@ function linkFunctionCall(
 		&& edgeIncludesType(e.types, readBits)
 	).map(([target, _]) => target);
 
-	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)[0];
 	for(const def of functionDefs.values()) {
 		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`);
 		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
@@ -244,7 +247,7 @@ export function linkFunctionCalls(
  * convenience function returning all known call targets, as well as the name source which defines them
  */
 export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, environment?: REnvironmentInformation): NodeId[] {
-	const found = [];
+	let found: NodeId[] = [];
 	const callVertex = graph.get(call, true);
 	if(callVertex === undefined) {
 		return [];
@@ -257,19 +260,19 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 	}
 
 	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
-		const functionCallDefs = resolveByName(info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function)?.map(d => d.nodeId) ?? [];
+		const functionCallDefs = resolveByName(
+			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
+		)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
 				functionCallDefs.push(target);
 			}
 		}
-		const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
+		const [functionCallTargets, builtInTargets] = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
 		for(const target of functionCallTargets) {
 			found.push(target.id);
 		}
-		for(const def of functionCallDefs) {
-			found.push(def);
-		}
+		found = found.concat(...builtInTargets, functionCallDefs);
 	}
 
 	return found;
@@ -278,15 +281,18 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
-): Set<DataflowGraphVertexInfo> {
-	const potential: NodeId[] = [...functionDefinitionReadIds];
+): [Set<DataflowGraphVertexInfo>, Set<BuiltIn>] {
+	let potential: NodeId[] = [...functionDefinitionReadIds];
 	const visited = new Set<NodeId>();
 	const result = new Set<DataflowGraphVertexInfo>();
+	const builtIns = new Set<BuiltIn>();
+
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId;
 
-		// do not traverse builtins
-		if(currentId === BuiltIn) {
+		// do not traverse builtins further
+		if(isBuiltIn(currentId)) {
+			builtIns.add(currentId);
 			continue;
 		}
 
@@ -314,9 +320,9 @@ export function getAllLinkedFunctionDefinitions(
 		}
 
 		// trace all joined reads
-		potential.push(...followEdges.map(([target]) => target).filter(id => !visited.has(id)));
+		potential = potential.concat(followEdges.map(([target]) => target).filter(id => !visited.has(id)));
 	}
-	return result;
+	return [result, builtIns];
 }
 
 /**

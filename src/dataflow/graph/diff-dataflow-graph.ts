@@ -1,99 +1,43 @@
-import type { DataflowGraph, FunctionArgument, OutgoingEdges } from './graph';
+import type { FunctionArgument, OutgoingEdges } from './graph';
 import { isNamedArgument } from './graph';
-import type { GenericDiffConfiguration, GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff';
+import type { GenericDiffConfiguration, GenericDifferenceInformation } from '../../util/diff';
 import { setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/arrays';
 import { VertexType } from './vertex';
 import type { DataflowGraphEdge } from './edge';
-import { edgeTypesToNames , splitEdgeTypes } from './edge';
+import { edgeTypesToNames, splitEdgeTypes } from './edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
+import type { GraphDiffContext, NamedGraph } from '../../util/diff-graph';
+import { initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
 
-interface ProblematicVertex {
-	tag: 'vertex',
-	id:  NodeId
-}
-
-interface ProblematicEdge {
-	tag:  'edge',
-	from: NodeId,
-	to:   NodeId
-}
-
-export type ProblematicDiffInfo = ProblematicVertex | ProblematicEdge
-
-export class DataflowDifferenceReport implements WriteableDifferenceReport {
-	_comments:    string[] | undefined      = undefined;
-	_problematic: ProblematicDiffInfo[] | undefined = undefined;
-
-	addComment(comment: string, ...related: readonly ProblematicDiffInfo[]): void {
-		if(this._comments === undefined) {
-			this._comments = [comment];
-		} else {
-			this._comments.push(comment);
-		}
-		if(related.length > 0) {
-			if(this._problematic === undefined) {
-				this._problematic = [...related];
-			} else {
-				this._problematic.push(...related);
-			}
-		}
+/**
+ * Compare two dataflow graphs and return a report on the differences.
+ * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
+ *
+ * @see {@link diffOfControlFlowGraphs} - for control flow graphs
+ */
+export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
+	if(left.graph === right.graph) {
+		return new GraphDifferenceReport();
 	}
-
-	comments(): readonly string[] | undefined {
-		return this._comments;
-	}
-
-	problematic(): readonly ProblematicDiffInfo[] | undefined {
-		return this._problematic;
-	}
-
-	isEqual(): boolean {
-		return this._comments === undefined;
-	}
+	const ctx = initDiffContext(left, right, config);
+	diffDataflowGraph(ctx);
+	return ctx.report;
 }
 
-export interface NamedGraph {
-	name:  string,
-	graph: DataflowGraph
-}
-
-interface DataflowDiffContext extends GenericDifferenceInformation<DataflowDifferenceReport> {
-	left:   DataflowGraph
-	right:  DataflowGraph
-	config: GenericDiffConfiguration
-}
-
-function initDiffContext(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): DataflowDiffContext {
-	return {
-		left:      left.graph,
-		leftname:  left.name,
-		right:     right.graph,
-		rightname: right.name,
-		report:    new DataflowDifferenceReport(),
-		position:  '',
-		config:    {
-			rightIsSubgraph: false,
-			leftIsSubgraph:  false,
-			...config
-		}
-	};
-}
-
-function diff(ctx: DataflowDiffContext): void {
+function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
 	diffOutgoingEdges(ctx);
 }
 
-
-function diffOutgoingEdges(ctx: DataflowDiffContext): void {
+function diffOutgoingEdges(ctx: GraphDiffContext): void {
 	const lEdges = new Map([...ctx.left.edges()]);
 	const rEdges = new Map([...ctx.right.edges()]);
 
@@ -128,7 +72,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	}
 }
 
-function diffRootVertices(ctx: DataflowDiffContext): void {
+function diffRootVertices(ctx: GraphDiffContext): void {
 	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` });
 	setDifference(
 		new Set([...ctx.left.unknownSideEffects].map(n => typeof n === 'object' ? n.id : n)),
@@ -136,18 +80,7 @@ function diffRootVertices(ctx: DataflowDiffContext): void {
 		{ ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` });
 }
 
-
-export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): DataflowDifferenceReport {
-	if(left.graph === right.graph) {
-		return new DataflowDifferenceReport();
-	}
-	const ctx = initDiffContext(left, right, config);
-	diff(ctx);
-	return ctx.report;
-}
-
-
-function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation<DataflowDifferenceReport>): void {
+function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === '<value>' || b === '<value>') {
 		if(a !== b) {
 			ctx.report.addComment(
@@ -161,8 +94,8 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 }
 
 export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
-	const ctx: GenericDifferenceInformation<DataflowDifferenceReport> = {
-		report:    new DataflowDifferenceReport(),
+	const ctx: GenericDifferenceInformation<GraphDifferenceReport> = {
+		report:    new GraphDifferenceReport(),
 		leftname:  'left',
 		rightname: 'right',
 		position:  '',
@@ -172,7 +105,7 @@ export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionA
 	return ctx.report.isEqual();
 }
 
-export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<DataflowDifferenceReport>): void {
+export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
 	if(a === false || b === false) {
 		if(a !== b) {
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`, { tag: 'vertex', id: fn });
@@ -209,7 +142,7 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 }
 
 
-export function diffVertices(ctx: DataflowDiffContext): void {
+export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
 	const lVert = [...ctx.left.vertices(true)].map(([id, info]) => ([id, info] as const));
 	const rVert = [...ctx.right.vertices(true)].map(([id, info]) => ([id, info] as const));
@@ -315,7 +248,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 	}
 }
 
-function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: DataflowDiffContext, id: NodeId, target: NodeId) {
+function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: GraphDiffContext, id: NodeId, target: NodeId) {
 	const edgeTypes = splitEdgeTypes(edge.types);
 	const otherEdgeTypes = splitEdgeTypes(otherEdge.types);
 	if((edgeTypes.length < otherEdgeTypes.length && !ctx.config.leftIsSubgraph) || (edgeTypes.length > otherEdgeTypes.length && !ctx.config.rightIsSubgraph)) {
@@ -332,7 +265,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Da
 	}
 }
 
-export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
+export function diffEdges(ctx: GraphDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
 		if(
 			(lEdges === undefined && !ctx.config.leftIsSubgraph)

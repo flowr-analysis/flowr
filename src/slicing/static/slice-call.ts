@@ -12,7 +12,7 @@ import type {
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { DataflowGraph, FunctionArgument, OutgoingEdges } from '../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../dataflow/graph/graph';
-import { BuiltIn } from '../../dataflow/environments/built-in';
+import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -36,7 +36,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? [];
+	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => !isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
@@ -44,7 +44,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 		}
 	}
 
-	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph));
+	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)[0]);
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -53,7 +53,7 @@ function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironme
 	if(!valueRoot) {
 		return;
 	}
-	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph));
+	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph)[0]);
 	linkCallTargets(
 		false,
 		callTargets,

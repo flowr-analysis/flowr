@@ -1,6 +1,10 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexUse } from '../graph/vertex';
+import type {
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexUse,
+	DataflowGraphVertexVariableDefinition
+} from '../graph/vertex';
 import { VertexType } from '../graph/vertex';
 import type { EdgeTypeBits } from '../graph/edge';
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
@@ -69,9 +73,8 @@ export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undef
 		case VertexType.FunctionDefinition:
 			return [{ type: OriginType.ConstantOrigin, id }];
 		case VertexType.VariableDefinition:
-			return [{ type: OriginType.WriteVariableOrigin, id }];
+			return getVariableDefinitionOrigin(dfg, vtx);
 		case VertexType.Use:
-			// TODO: support partial use!, disable pointer analysis etc.
 			return getVariableUseOrigin(dfg, vtx);
 		case VertexType.FunctionCall:
 			return getCallTarget(dfg, vtx);
@@ -101,6 +104,27 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: DataflowGraphVertexUse): 
 		}
 	}
 	return origins.length > 0 ? origins : undefined;
+}
+
+function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVertexVariableDefinition): Origin[] | undefined {
+	const pool: Origin[] = [{ type: OriginType.WriteVariableOrigin, id: vtx.id }];
+
+	const outgoingReads = dfg.outgoingEdges(vtx.id) ?? [];
+	for(const [target, { types }] of outgoingReads) {
+		if(edgeIncludesType(types, EdgeType.Reads)) {
+			const targetVtx = dfg.getVertex(target);
+			if(!targetVtx) {
+				continue;
+			}
+			if(targetVtx.tag === VertexType.VariableDefinition) {
+				pool.push({
+					type: OriginType.ReadVariableOrigin,
+					id:   target
+				});
+			}
+		}
+	}
+	return pool;
 }
 
 function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall): Origin[] | undefined {

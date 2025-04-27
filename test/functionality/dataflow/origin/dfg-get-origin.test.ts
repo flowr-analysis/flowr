@@ -139,9 +139,5 @@ describe('Dataflow', withTreeSitter(ts => {
 			'2@x': [wo('2@x'), ro('1@x')],
 			'4@x': [ro('1@x'), ro('2@x'), ro('3@x')],
 		});
-
-		// TODO: with array acess
-		// TODO: cfg pipeline step
-		// TODO: provide functions to map arguments of assignments etc.
 	});
 }));

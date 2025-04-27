@@ -217,7 +217,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
 	// eslint-disable-next-line prefer-const
 	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
-		const original_target = target;
+		const originalTarget = target;
 		target = escapeId(target);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
@@ -235,7 +235,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			if(isBuiltIn(target)) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);
 				if(!mermaid.presentVertices.has(target)) {
-					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${escapeMarkdown(String(original_target).replace('built-in:', ''))}\`"]`);
+					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${escapeMarkdown(String(originalTarget).replace('built-in:', ''))}\`"]`);
 					mermaid.presentVertices.add(target);
 				}
 			}

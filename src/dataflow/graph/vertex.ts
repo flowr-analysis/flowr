@@ -176,6 +176,15 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
 	 */
 	indicesCollection?: ContainerIndicesCollection
+	/**
+	 * Describes the collection of AST vertices that contributed to this vertex.
+	 * For example, this is useful with replacement operators, telling you which assignment operator caused them
+	 */
+	link?:              DataflowGraphVertexAstLink
+}
+
+export interface DataflowGraphVertexAstLink {
+	origin: NodeId[]
 }
 
 /**

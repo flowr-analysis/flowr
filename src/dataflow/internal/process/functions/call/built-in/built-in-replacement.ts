@@ -17,10 +17,9 @@ import type {
 	ContainerIndices,
 	ContainerIndicesCollection,
 	ContainerLeafIndex,
-	IndexIdentifier } from '../../../../../graph/vertex';
-import {
-	VertexType
+	IndexIdentifier
 } from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -32,6 +31,7 @@ import { unpackArgument } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { ReferenceType } from '../../../../../environments/identifier';
 
 
 export function processReplacementFunction<OtherInfo>(
@@ -40,12 +40,13 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection } & ForceArguments
+	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, activeIndices?: ContainerIndicesCollection, assignRootId?: NodeId } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${name.content} has less than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
+
 
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${name.content} with ${JSON.stringify(args)}, processing`);
@@ -56,7 +57,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	const res = BuiltInProcessorMapper['builtin:assignment'](
+	let res = BuiltInProcessorMapper['builtin:assignment'](
 		name,
 		[args[0], args[args.length - 1]],
 		rootId,
@@ -93,7 +94,8 @@ export function processReplacementFunction<OtherInfo>(
 		name,
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackArgument(a)?.info.id as NodeId }),
-		origin: 'builtin:replacement' satisfies BuiltInMappingName
+		origin: 'builtin:replacement' satisfies BuiltInMappingName,
+		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
 	const firstArg = unpackArgument(args[0])?.info.id;
@@ -112,6 +114,15 @@ export function processReplacementFunction<OtherInfo>(
 		if(ref !== undefined) {
 			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}
+	}
+
+
+	const fa = unpackArgument(args[0]);
+	if(!getConfig().solver.pointerTracking && fa) {
+		res = {
+			...res,
+			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+		};
 	}
 
 	return res;

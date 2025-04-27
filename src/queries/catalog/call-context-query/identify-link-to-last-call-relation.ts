@@ -1,13 +1,13 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
-import { visitCfgInReverseOrder } from '../../../control-flow/visitor';
+import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
-import { BuiltIn } from '../../../dataflow/environments/built-in';
+import { isBuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -53,7 +53,7 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
          * including any potential built-in mapping.
          */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		if(reResolved?.some(t => t.definedAt === BuiltIn)) {
+		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
 	}
@@ -63,17 +63,17 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 			return callTargets;
 		case CallTargets.OnlyGlobal:
 			if(callTargets.length === 0) {
-				return builtIn ? [BuiltIn] : [];
+				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';
 			}
 		case CallTargets.MustIncludeGlobal:
-			return builtIn || callTargets.length === 0 ? [...callTargets, BuiltIn] : 'no';
+			return builtIn || callTargets.length === 0 ? [...callTargets, 'built-in'] : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		case CallTargets.MustIncludeLocal:
 			if(callTargets.length > 0) {
-				return builtIn ? [...callTargets, BuiltIn] : callTargets;
+				return builtIn ? [...callTargets, 'built-in'] : callTargets;
 			} else {
 				return 'no';
 			}
@@ -122,7 +122,7 @@ export function identifyLinkToLastCallRelation(
 	if(ignoreIf && ignoreIf(from, graph)) {
 		return found;
 	}
-	visitCfgInReverseOrder(cfg, from, node => {
+	visitCfgInReverseOrder(cfg, [from], node => {
 		/* we ignore the start id as it cannot be the last call */
 		if(node === from) {
 			return;

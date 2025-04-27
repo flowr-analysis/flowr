@@ -13,7 +13,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
 import type { BuiltInMappingName } from '../../../../../environments/built-in';
-import { BuiltIn } from '../../../../../environments/built-in';
+import { builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type {
@@ -135,14 +135,15 @@ function processNumberBasedAccess<OtherInfo>(
 ) {
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
+	const tableAssignId = builtInId(':=-table');
 	data.environment.current.memory.set(':=', [{
 		type:                ReferenceType.BuiltInFunction,
-		definedAt:           BuiltIn,
+		definedAt:           tableAssignId,
 		controlDependencies: undefined,
 		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
 		config:              {},
 		name:                ':=',
-		nodeId:              BuiltIn,
+		nodeId:              tableAssignId
 	}]);
 
 	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
@@ -271,8 +272,8 @@ function referenceAccessedIndices<OtherInfo>(
  * the node with {@link parentNodeId}.
  *
  * @param accessedIndicesCollection - All indices that were accessed by the access operation
- * @param fnCall - The {@link ProcessKnownFunctionCallResult} of the access operation
- * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
+ * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
+ * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts
  */
 function referenceIndices(
 	accessedIndicesCollection: ContainerIndicesCollection,

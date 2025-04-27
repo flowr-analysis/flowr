@@ -6,10 +6,10 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import { isPositionalArgument, DataflowGraph } from './graph';
 import type { REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
-import type { DataflowGraphVertexUse, FunctionOriginInformation } from './vertex';
+import type { DataflowGraphVertexAstLink, DataflowGraphVertexUse, FunctionOriginInformation } from './vertex';
 import { VertexType } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { BuiltIn } from '../environments/built-in';
+import { isBuiltIn } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency } from '../info';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -81,9 +81,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			environment?:         REnvironmentInformation,
 			controlDependencies?: ControlDependency[],
 			origin?:              FunctionOriginInformation[]
+			link?:                DataflowGraphVertexAstLink
 		},
 		asRoot: boolean = true) {
-		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn;
+		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
 		this.addVertex({
 			tag:         VertexType.FunctionCall,
 			id:          normalizeIdToNumberIfPossible(id),
@@ -93,6 +94,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			cds:         info?.controlDependencies?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? 'function' ],
+			link:        info?.link
 		}, asRoot);
 		this.addArgumentLinks(id, args);
 		if(info?.returns) {

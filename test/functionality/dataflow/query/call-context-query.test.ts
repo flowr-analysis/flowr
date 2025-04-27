@@ -7,9 +7,9 @@ import { withShell } from '../../_helper/shell';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
-import { BuiltIn } from '../../../../src/dataflow/environments/built-in';
 import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { describe } from 'vitest';
+import { builtInId } from '../../../../src/dataflow/environments/built-in';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -66,11 +66,11 @@ describe.sequential('Call Context Query', withShell(shell => {
 		testQuery('Non-Alph calls', 'x <- 2', [q(/<-/)], r([{ id: 2, name: '<-' }]));
 		testQuery('Built-In calls', 'if(x) 3 else 2', [q(/if/)], r([{ id: 5, name: 'if' }]));
 		testQuery('Multiple wanted Calls', 'print(1); print(2)', [q(/print/)], r([{ id: 3, name: 'print' }, { id: 7, name: 'print' }]));
-		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn], name: 'print' }]));
+		testQuery('Print calls (global)', 'print(1)', [q(/print/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: ['built-in'], name: 'print' }]));
 		testQuery('Higher-Order Calls', 'lapply(c(1,2,3),print)', [q(/print/)], r([{ id: 10, name: 'print' }]));
 		testQuery('Reading non-built-ins', 'read_csv(x)', [q(/read_csv/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [], name: 'read_csv' }]));
-		testQuery('Built-In in Argument', 'print(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 4, calls: [BuiltIn], name: 'mean' }]));
-		testQuery('Multiple Built-In in Argument', 'mean(y)\nprint(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: [BuiltIn], name: 'mean' }, { id: 8, calls: [BuiltIn], name: 'mean' }]));
+		testQuery('Built-In in Argument', 'print(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 4, calls: ['built-in'], name: 'mean' }]));
+		testQuery('Multiple Built-In in Argument', 'mean(y)\nprint(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: ['built-in'], name: 'mean' }, { id: 8, calls: ['built-in'], name: 'mean' }]));
 		testQuery('Print calls (no default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: true })], r([{ id: 3, name: 'print' }]));
 		testQuery('Print calls (with default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: false })], r([{ id: 3, name: 'print' }, { id: 10, name: 'print' }]));
 	});
@@ -78,9 +78,9 @@ describe.sequential('Call Context Query', withShell(shell => {
 		const code = 'if(x) { print <- function() {} }\nprint()';
 		testQuery('May be local or global', code, [q(/print/)], r([{ id: 12, name: 'print' }]));
 		testQuery('May be local or global (only local)', code, [q(/print/, { callTargets: CallTargets.OnlyLocal })], baseResult({}));
-		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [7, BuiltIn], name: 'print' }]));
+		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [7, 'built-in'], name: 'print' }]));
 		testQuery('May be local or global (only global)', code, [q(/print/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
-		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, BuiltIn], name: 'print' }]));
+		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [7, 'built-in'], name: 'print' }]));
 	});
 	describe('Linked Calls', () => {
 		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7], name: 'points' }]));
@@ -91,7 +91,7 @@ describe.sequential('Call Context Query', withShell(shell => {
 	});
 	describe('Aliases', () => {
 		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));
-		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ id: 4, name: 'print' }]));
+		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [builtInId('print')], id: 4, name: 'print' }]));
 		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 4, aliasRoots: [1], name: 'foo' }]));
 		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1], name: 'foo' }, { id: 4, name: 'foo' }]));
 		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [2], name: 'foo' }]));

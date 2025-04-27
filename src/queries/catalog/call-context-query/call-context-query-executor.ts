@@ -237,7 +237,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
+		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName.test(info.name))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;

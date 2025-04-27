@@ -44,7 +44,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 		}
 	}
 
-	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph));
+	const functionCallTargets = queue.memoizeCallTargets(functionCallDefs.join(';'), () =>  getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)[0]);
 	return [functionCallTargets, activeEnvironment];
 }
 
@@ -53,7 +53,7 @@ function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironme
 	if(!valueRoot) {
 		return;
 	}
-	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph));
+	const callTargets = queue.memoizeCallTargets(valueRoot, () => getAllLinkedFunctionDefinitions(new Set<NodeId>([valueRoot]), dataflowGraph)[0]);
 	linkCallTargets(
 		false,
 		callTargets,

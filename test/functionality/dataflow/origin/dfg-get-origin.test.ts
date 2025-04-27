@@ -15,6 +15,7 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
+import { builtInId } from '../../../../src/dataflow/environments/built-in';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -94,21 +95,14 @@ describe('Dataflow', withTreeSitter(ts => {
 			'2@c': [ro('1@c'), fo('1@function')]
 		});
 		chk('if(u) { print <- function(x) x }\nprint("hey")', {
-			'2@print': [ro('1@print'), fo('1@function'), bo('builtin:default', 'print', '2@print')]
+			'2@print': [ro('1@print'), fo('1@function'), bo('builtin:default', 'print', '2@print'), bo(builtInId('print'), 'print', '2@print')]
 		});
 		chk('c <- 1\nc(1,2,3)', {
 			'2@c': [bo('builtin:vector', 'c', '2@c')]
 		});
-		describe('a', () => {
-			chk('x <- print\nx("hey")', {
-				'2@x': [ro('1@x'), fo('1@print'), bo('builtin:default', 'print', '2@x')]
-			});
+		chk('x <- print\nx("hey")', {
+			'2@x': [ro('1@x'), bo(builtInId('print'), 'x', '2@x')]
 		});
-
-		// TODO
-		/* chk('c <- c(1,2,3)\nc(1,2,3)', {
-			'2@c': []
-		}); */
 
 		// TODO: check for c with overwrite
 		// TODO: check for loop

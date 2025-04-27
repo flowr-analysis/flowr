@@ -6,6 +6,7 @@ import type { EdgeTypeBits } from '../graph/edge';
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
+import { isBuiltIn } from '../environments/built-in';
 
 
 export const enum OriginType {
@@ -113,11 +114,18 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 	})) : undefined;
 
 	const targets = new Set(getAllFunctionCallTargets(call.id, dfg));
-	console.log('targets:', targets);
 	if(targets.size === 0) {
 		return origins;
 	}
 	origins = (origins ?? []).concat([...targets].map(target => {
+		if(isBuiltIn(target)) {
+			return {
+				type: OriginType.BuiltInFunctionOrigin,
+				fn:   { name: call.name },
+				id:   call.id,
+				proc: target
+			};
+		}
 		const get = dfg.getVertex(target);
 		if(get?.tag !== VertexType.FunctionDefinition && get?.tag !== VertexType.VariableDefinition) {
 			return undefined;

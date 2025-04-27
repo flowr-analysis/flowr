@@ -137,7 +137,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		);
 		assertDataflow(label('nested assign', ['name-normal', 'dollar-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
 			'a$b$c <- 5',  emptyGraph()
-				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6, builtInId('$<-')], onlyBuiltIn: true, link: { origin: [6] } })
+				.call(3, '$<-', [argumentInCall(0), argumentInCall(1), argumentInCall(7)], { returns: [0], reads: [1, 6, builtInId('$<-'), builtInId('$')], onlyBuiltIn: true, link: { origin: [6] } })
 				.definedBy(3, 6)
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
 				.constant(4)

@@ -74,10 +74,6 @@ describe.sequential('List Definition', withShell(shell => {
 				beforeAll(() => {
 					setConfig({ ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, pointerTracking: { maxIndexCount: 1 } } });
 				});
-
-				afterAll(() => {
-					setConfig(defaultConfigOptions);
-				});
 				assertContainerIndicesDefinition(
 					label('Over the limit (list)', capabilities),
 					shell,

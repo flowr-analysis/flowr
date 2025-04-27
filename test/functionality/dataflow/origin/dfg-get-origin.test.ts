@@ -128,14 +128,16 @@ describe('Dataflow', withTreeSitter(ts => {
 			'4@g': [wo('4@g')],
 			'5@g': [ro('4@g'), fo('2@function')]
 		});
-
 		chk('f <- 3\nquote(f <- 2)\nf', {
 			'3@f': [ro('1@f')]
 		});
-
 		chk('f <- 3\neval(u)\nf', {
 			/* under the assumption of eval impact */
 			'3@f': [ro('1@f')]
+		});
+		chk('x <- c(1,2)\nx[1] <- 3\nx[2] <- 4\nprint(x)', {
+			'2@x': [wo('2@x'), ro('1@x')],
+			'4@x': [ro('1@x'), ro('2@x'), ro('3@x')],
 		});
 
 		// TODO: with array acess

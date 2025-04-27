@@ -71,6 +71,7 @@ export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undef
 		case VertexType.VariableDefinition:
 			return [{ type: OriginType.WriteVariableOrigin, id }];
 		case VertexType.Use:
+			// TODO: support partial use!, disable pointer analysis etc.
 			return getVariableUseOrigin(dfg, vtx);
 		case VertexType.FunctionCall:
 			return getCallTarget(dfg, vtx);

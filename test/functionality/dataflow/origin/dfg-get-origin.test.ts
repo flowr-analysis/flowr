@@ -138,7 +138,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			'3@f': [ro('1@f')]
 		});
 
-		// TODO: origin query
+		// TODO: with array acess
 		// TODO: cfg pipeline step
 		// TODO: provide functions to map arguments of assignments etc.
 	});

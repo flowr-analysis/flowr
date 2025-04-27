@@ -49,7 +49,7 @@ describe('Benchmark Slicer', () => {
 
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
-				numberOfEdges:               4,  // the defined-by edge and the arguments
+				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
 				sizeOfObject:                228,
@@ -119,7 +119,7 @@ cat(d)`
 			}, statInfo);
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
-				numberOfEdges:               29,
+				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
 				sizeOfObject:                1922,

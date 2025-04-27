@@ -414,20 +414,16 @@ if(TRUE) {
 }
 x`, emptyGraph()
 				.defineVariable('1@x', 'x', { definedBy: ['1@1', '1@<-'] })
-				.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1@1')], { returns: ['1@x'], onlyBuiltIn: true })
+				.call('1@<-', '<-', [argumentInCall('1@x'), argumentInCall('1@1')], { returns: ['1@x'], onlyBuiltIn: true, reads: [builtInId('<-')] })
 				.constant('1@1')
 				.constant('2@TRUE')
-				.call('2@if', 'if', [argumentInCall('2@TRUE'), argumentInCall('$9')], { reads: ['2@TRUE'], returns: ['$9'], onlyBuiltIn: true })
-				.call('$9', '{', [argumentInCall('3@<-')], { returns: ['3@<-'], onlyBuiltIn: true })
+				.call('2@if', 'if', [argumentInCall('2@TRUE'), argumentInCall('$9')], { reads: ['2@TRUE', builtInId('if')], returns: ['$9'], onlyBuiltIn: true })
+				.call('$9', '{', [argumentInCall('3@<-')], { reads: [builtInId('{')], returns: ['3@<-'], onlyBuiltIn: true })
 				.defineVariable('3@x', 'x', { definedBy: ['3@3', '3@<-'] })
-				.call('3@<-', '<-', [argumentInCall('3@3'), argumentInCall('3@x')], { returns: ['3@x'], onlyBuiltIn: true })
+				.call('3@<-', '<-', [argumentInCall('3@3'), argumentInCall('3@x')], { reads: [builtInId('<-')], returns: ['3@x'], onlyBuiltIn: true })
 				.constant('3@3')
 				.reads('7@x', '3@x')
 				.use('7@x')
 			, { resolveIdsAsCriterion: true });
-
 	});
-
-
-
 }));

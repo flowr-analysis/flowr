@@ -167,8 +167,10 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const def of defs) {
-				graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-				graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				if(!isBuiltIn(def.nodeId)) {
+					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				}
 			}
 		}
 	}

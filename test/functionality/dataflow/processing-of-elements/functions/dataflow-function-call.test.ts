@@ -277,10 +277,10 @@ a()()`, emptyGraph()
 				.use('9', 'stepsize')
 				.use('10', 'by')
 				.reads('10', '9')
-				.call('6', 'length', [argumentInCall('4')], { returns: [], reads: ['4'], onlyBuiltIn: true })
+				.call('6', 'length', [argumentInCall('4')], { returns: [], reads: ['4', builtInId('length')], onlyBuiltIn: true })
 				.call('11', 'seq', [argumentInCall('1'), argumentInCall('6'), argumentInCall('10', { name: 'by' })], {
 					returns:     [],
-					reads:       ['1', '6', '10'],
+					reads:       ['1', '6', '10', builtInId('seq')],
 					onlyBuiltIn: true
 				})
 				.argument('11', '10')

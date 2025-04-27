@@ -90,7 +90,11 @@ describe('Dataflow', withTreeSitter(ts => {
 				'7@x': [fo('2@function'), ro('1@x'), fo('5@function'), ro('4@x')],
 			});
 		});
-
+		chk('x <- 1\nx\nx <- 2\nx\nx <- 3\nx', {
+			'2@x': [ro('1@x')],
+			'4@x': [ro('3@x')],
+			'6@x': [ro('5@x')]
+		});
 		chk('c <- function(...) ...\nc(1,2,3)', {
 			'2@c': [ro('1@c'), fo('1@function')]
 		});
@@ -103,14 +107,37 @@ describe('Dataflow', withTreeSitter(ts => {
 		chk('x <- print\nx("hey")', {
 			'2@x': [ro('1@x'), bo(builtInId('print'), 'x', '2@x')]
 		});
+		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n}\nprint(x)', {
+			'1@x':     [wo('1@x')],
+			'3@i':     [ro('2@i')],
+			'3@x':     [wo('3@x')],
+			'3:11':    [ro('1@x'), ro('3@x')],
+			'5@x':     [ro('1@x'), ro('3@x')],
+			'5@print': [bo('builtin:default', 'print', '5@print')]
+		});
 
-		// TODO: check for c with overwrite
-		// TODO: check for loop
-		// TODO: check with escaping closure
-		// TODO: check with redefined assign op?
-		// TODO: check within quote
-		// TODO: check in eval
-		// TODO: group built ins, allow to access their config etc. getAssignment etc.
+		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n x <- x + 1\n}\nprint(x)', {
+			'3@x':  [wo('3@x')],
+			'3:11': [ro('1@x'), ro('4@x')],
+			'4@x':  [wo('4@x')],
+			'6@x':  [ro('1@x'), ro('3@x'), ro('4@x')]
+		});
+
+		chk('f <- function(x) {\nfunction() x + 2\n}\ng <- f(1)\ng()', {
+			'1@f': [wo('1@f')],
+			'4@g': [wo('4@g')],
+			'5@g': [ro('4@g'), fo('2@function')]
+		});
+
+		chk('f <- 3\nquote(f <- 2)\nf', {
+			'3@f': [ro('1@f')]
+		});
+
+		chk('f <- 3\neval(u)\nf', {
+			/* under the assumption of eval impact */
+			'3@f': [ro('1@f')]
+		});
+
 		// TODO: origin query
 		// TODO: cfg pipeline step
 		// TODO: provide functions to map arguments of assignments etc.

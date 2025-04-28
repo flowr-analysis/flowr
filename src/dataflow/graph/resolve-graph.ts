@@ -5,7 +5,6 @@ import { guard } from '../../util/assert';
 import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 import { slicingCriterionToId } from '../../slicing/criterion/parse';
 import { splitEdgeTypes } from './edge';
-import { handleUnknownSideEffect } from './unknown-side-effect';
 
 /**
  * Resolves the dataflow graph ids from slicing criterion form to ids.
@@ -59,9 +58,9 @@ export function resolveDataflowGraph(graph: DataflowGraph, idMap?: AstIdMap): Da
 
 	for(const unknown of graph.unknownSideEffects) {
 		if(typeof unknown === 'object') {
-			handleUnknownSideEffect(resultGraph, resolve(unknown.id), unknown.linkTo);
+			resultGraph.markIdForUnknownSideEffects(resolve(unknown.id), unknown.linkTo);
 		} else {
-			handleUnknownSideEffect(resultGraph, resolve(unknown));
+			resultGraph.markIdForUnknownSideEffects(resolve(unknown));
 		}
 	}
 

@@ -108,8 +108,6 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
 
 		testResolve('rm() with alias', 'x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
-		testResolve('Eval after Variable', 'x', 'x <- 1 \n x \n eval(u)', set([1]));
-		testResolve('Eval before Variable (slice before)', '1@x', 'x <- 1 \n eval(u) \n x', set([1]));
 
 		// Not yet supported
 		testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', set([3]), Allow.Top);

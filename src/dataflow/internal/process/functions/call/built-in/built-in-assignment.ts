@@ -206,7 +206,7 @@ export function processAssignment<OtherInfo>(
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
 		origin:    'builtin:assignment'
 	}).information;
-	handleUnknownSideEffect(info.graph, rootId);
+	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
 }
 

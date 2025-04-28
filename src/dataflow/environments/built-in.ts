@@ -101,9 +101,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 	if(config.hasUnknownSideEffects) {
 		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			handleUnknownSideEffect(res.graph, rootId, config.hasUnknownSideEffects);
+			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
 		} else {
-			handleUnknownSideEffect(res.graph, rootId);
+			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 

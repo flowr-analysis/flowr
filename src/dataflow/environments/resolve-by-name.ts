@@ -217,8 +217,16 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return setFrom(...values);
 }
 
-onUnknownSideEffect((_graph: DataflowGraph, _id: NodeId) => {
-	
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId) => {	
+	env.current.memory.forEach(mem => mem.forEach((def) => {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			// what
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// Tracked in #1207
+		} else if(def.value !== undefined) {
+			def.value.length = 0;
+		}
+	}));
 });
 
 function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {

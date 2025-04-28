@@ -58,7 +58,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(!getConfig().solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
-		handleUnknownSideEffect(information.graph, rootId);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -95,7 +95,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
-	handleUnknownSideEffect(information.graph, rootId);
+	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	return information;
 }
 

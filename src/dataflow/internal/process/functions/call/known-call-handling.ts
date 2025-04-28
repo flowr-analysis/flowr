@@ -94,7 +94,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	});
 
 	if(hasUnknownSideEffect) {
-		handleUnknownSideEffect(finalGraph, rootId);
+		handleUnknownSideEffect(finalGraph, data.environment, rootId);
 	}
 
 	const inIds = remainingReadInArgs;

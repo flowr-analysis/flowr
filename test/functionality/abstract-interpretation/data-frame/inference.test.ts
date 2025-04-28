@@ -135,6 +135,23 @@ print(df)
 
 	testDataFrameDomain(
 		`
+i <- 5
+df <- if (i == 0) {
+    data.frame(id = 1:3)
+} else if (i == 1) {
+    data.frame(id = 1:5)
+} else if (i == 2) {
+    data.frame(name = 1:10)
+} else {
+    data.frame(id = 1, name = 1:5)
+}
+print(df)
+		`.trim(),
+		[['11@df', { colnames: ['id', 'name'], cols: [1, 2], rows: [3, 10] }, DataFrameTestOverapproximation]]
+	);
+
+	testDataFrameDomain(
+		`
 df <- data.frame(id = 1:5)
 for (i in 1:5) {
 	df[2] <- 6:10

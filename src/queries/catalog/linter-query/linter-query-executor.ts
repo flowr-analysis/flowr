@@ -24,7 +24,7 @@ export function executeLinterQuery({ ast, dataflow }: BasicQueryData, queries: r
 	for(const entry of distinct) {
 		const ruleName = typeof entry === 'string' ? entry : entry.name;
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<typeof ruleName>, LintingRuleConfig<typeof ruleName>>;
-		const config = (entry as ConfiguredLintingRule)?.config ?? rule.defaultConfig;
+		const config = { ...rule.defaultConfig as object, ...(entry as ConfiguredLintingRule)?.config as object ?? {} } as LintingRuleConfig<typeof ruleName>;
 		const ruleSearch = rule.createSearch(config, input);
 		const searchResult = runSearch(ruleSearch, input);
 		results[ruleName] = rule.processSearchResult(new FlowrSearchElements(searchResult), config, input);

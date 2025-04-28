@@ -18,7 +18,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	code: string,
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[],
-	config = LintingRules[ruleName].defaultConfig as unknown as LintingRuleConfig<Name>
+	config?: Partial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
 		const results = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -28,9 +28,10 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleConfig<Name>>;
-		const ruleSearch = rule.createSearch(config, results);
+		const fullConfig = { ...rule.defaultConfig, ...config ?? {} } as unknown as LintingRuleConfig<Name>;
+		const ruleSearch = rule.createSearch(fullConfig, results);
 		const searchResult = runSearch(ruleSearch, results);
-		const ruleResults = rule.processSearchResult(new FlowrSearchElements(searchResult), config, results);
+		const ruleResults = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, results);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>) => `${rule.prettyPrint(result)} (${result.certainty})`,

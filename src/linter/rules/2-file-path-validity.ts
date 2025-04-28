@@ -8,7 +8,8 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { FlowrSearchElementFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import { ReadFunctions, WriteFunctions } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown , ReadFunctions, WriteFunctions } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { happensBefore } from '../../util/cfg/happens-before';
 import type { ControlFlowGraph } from '../../util/cfg/cfg';
@@ -24,6 +25,7 @@ export interface FilePathValidityResult extends LintingResult {
 export interface FilePathValidityConfig extends MergeableRecord {
 	additionalReadFunctions:  FunctionInfo[]
 	additionalWriteFunctions: FunctionInfo[]
+	includeUnknown:           boolean
 }
 
 export const R2_FILE_PATH_VALIDITY = {
@@ -34,13 +36,27 @@ export const R2_FILE_PATH_VALIDITY = {
 		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}),
-	processSearchResult: (elements, _config, data): FilePathValidityResult[] => {
+	processSearchResult: (elements, config, data): FilePathValidityResult[] => {
 		let cfg: ControlFlowGraph;
 		return elements.getElements().flatMap(element => {
 			const results = element.queryResult as QueryResults<'dependencies'>['dependencies'];
 			const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
 			if(!matchingRead) {
 				return [];
+			}
+			const range = element.node.info.fullRange as SourceRange;
+
+			// check if we can't parse the file path statically
+			if(matchingRead.source === Unknown) {
+				if(config.includeUnknown) {
+					return [{
+						range,
+						filePath:  Unknown,
+						certainty: LintingCertainty.Maybe
+					}];
+				} else {
+					return [];
+				}
 			}
 
 			// check if any write to the same file happens before the read, and exclude this case if so
@@ -52,7 +68,7 @@ export const R2_FILE_PATH_VALIDITY = {
 			}
 
 			return [{
-				range:     element.node.info.fullRange as SourceRange,
+				range,
 				filePath:  matchingRead.source,
 				certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
 			}];
@@ -64,7 +80,8 @@ export const R2_FILE_PATH_VALIDITY = {
 	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,
 	defaultConfig: {
 		additionalReadFunctions:  [],
-		additionalWriteFunctions: []
+		additionalWriteFunctions: [],
+		includeUnknown:           false
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 

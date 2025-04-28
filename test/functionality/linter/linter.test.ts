@@ -5,6 +5,7 @@ import { LintingCertainty } from '../../../src/linter/linter-format';
 import { setSourceProvider } from '../../../src/dataflow/internal/process/functions/call/built-in/built-in-source';
 import { requestProviderFromFile, requestProviderFromText } from '../../../src/r-bridge/retriever';
 import { amendConfig, defaultConfigOptions, DropPathsOption, InferWorkingDirectory, setConfig } from '../../../src/config';
+import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 
 describe.sequential('flowR linter', withShell(shell => {
 	describe('R1 deprecated functions', () => {
@@ -55,5 +56,11 @@ describe.sequential('flowR linter', withShell(shell => {
 		assertLinter('write before never', shell, 'if(FALSE) { write.csv("hello", "file-missing.csv") }\nread.csv("file-missing.csv")', 'file-path-validity', [
 			{ certainty: LintingCertainty.Definitely, filePath: 'file-missing.csv', range: [2,1,2,28] }
 		]);
+
+		assertLinter('const', shell, 'path <- "file.csv"; read.csv(path)', 'file-path-validity', [], { includeUnknown: true });
+		assertLinter('unknown off', shell, 'path <- "file" + runif(1) + ".csv"; read.csv(path)', 'file-path-validity', [], { includeUnknown: false });
+		assertLinter('unknown on', shell, 'path <- "file" + runif(1) + ".csv"; read.csv(path)', 'file-path-validity', [
+			{ certainty: LintingCertainty.Maybe, filePath: Unknown, range: [1,37,1,50] }
+		], { includeUnknown: true });
 	});
 }));

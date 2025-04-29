@@ -1,7 +1,7 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
+import { PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { describe, assert, test, beforeAll, afterAll } from 'vitest';
 import { amendConfig, defaultConfigOptions } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
@@ -12,7 +12,7 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 	const statInfo = stats2string(stats);
 
 	assert.strictEqual(stats.request, request, statInfo);
-	assert.sameMembers([...stats.commonMeasurements.keys()], [...CommonSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
+	assert.sameMembers([...stats.commonMeasurements.keys()], [...RequiredSlicerMeasurements], `Must have all keys in common measurements ${statInfo}`);
 	assert.sameMembers([...stats.perSliceMeasurements.measurements.keys()], [...PerSliceMeasurements], `Must have all keys in per-slice measurements ${statInfo}`);
 	return { stats, statInfo };
 }

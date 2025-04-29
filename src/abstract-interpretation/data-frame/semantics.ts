@@ -38,6 +38,7 @@ const DataFrameSemanticsMapper = {
 } as const satisfies Record<string, DataFrameSemanticsMapperInfo<never>>;
 
 export type DataFrameOperationName = keyof typeof DataFrameSemanticsMapper;
+export const DataFrameOperationNames = Object.keys(DataFrameSemanticsMapper) as DataFrameOperationName[];
 export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[1];
 
 export function applySemantics<Name extends DataFrameOperationName>(

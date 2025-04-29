@@ -18,6 +18,7 @@ export interface BenchmarkCliOptions {
 	limit?:                    number
 	runs?:                     number
 	parser:                    KnownParserName
+	'abstract-interpretation': boolean
 	'enable-pointer-tracking': boolean
 	'max-file-slices':         number
 	threshold?:                number
@@ -96,6 +97,7 @@ async function benchmark() {
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
 		'--slice', options.slice, ...verboseAdd,
 		'--parser', options.parser,
+		...(options['abstract-interpretation'] ? ['--abstract-interpretation'] : []),
 		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),

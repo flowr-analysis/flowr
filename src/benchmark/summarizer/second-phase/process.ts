@@ -1,9 +1,9 @@
-import type { Reduction, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
+import type { Reduction, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/defaultmap';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
-import { guard } from '../../../util/assert';
+import { guard, isNotUndefined } from '../../../util/assert';
 import type {
 	BenchmarkMemoryMeasurement,
 	SlicerStatsDataflow,
@@ -13,6 +13,9 @@ import {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
+import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
+import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import type { DataFrameAssignmentInfo } from '../../../abstract-interpretation/data-frame/absint-info';
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
@@ -24,11 +27,14 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	const normalizeTimesPerToken: TimePerToken<number>[] = [];
 	const dataflowTimesPerToken: TimePerToken<number>[] = [];
 	const totalCommonTimesPerToken: TimePerToken<number>[] = [];
+	const controlFlowTimePerToken: TimePerToken<number>[] = [];
+	const absintTimePerToken:      TimePerToken<number>[] = [];
 	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => []);
 	const reductions: Reduction<SummarizedMeasurement>[] = [];
 	const reductionsNoFluff: Reduction<SummarizedMeasurement>[] = [];
 	const inputs: SlicerStatsInput[] = [];
 	const dataflows: SlicerStatsDataflow[] = [];
+	const absints: SummarizedAbsintStats[] = [];
 	let failedToRepParse = 0;
 	let timesHitThreshold = 0;
 	let totalSlices = 0;
@@ -47,6 +53,13 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		normalizeTimesPerToken.push(stat.normalizeTimePerToken);
 		dataflowTimesPerToken.push(stat.dataflowTimePerToken);
 		totalCommonTimesPerToken.push(stat.totalCommonTimePerToken);
+
+		if(stat.controlFlowTimePerToken !== undefined) {
+			controlFlowTimePerToken.push(stat.controlFlowTimePerToken);
+		}
+		if(stat.absintTimePerToken !== undefined) {
+			absintTimePerToken.push(stat.absintTimePerToken);
+		}
 		for(const [k, v] of stat.memory) {
 			memory.get(k).push(v);
 		}
@@ -54,6 +67,10 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		reductionsNoFluff.push(stat.perSliceMeasurements.reductionNoFluff);
 		inputs.push(stat.input);
 		dataflows.push(stat.dataflow);
+
+		if(stat.absint !== undefined) {
+			absints.push(stat.absint);
+		}
 		failedToRepParse += stat.perSliceMeasurements.failedToRepParse;
 		totalSlices += stat.perSliceMeasurements.numberOfSlices;
 		timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold;
@@ -75,6 +92,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		normalizeTimePerToken:     summarizeTimePerToken(normalizeTimesPerToken),
 		dataflowTimePerToken:      summarizeTimePerToken(dataflowTimesPerToken),
 		totalCommonTimePerToken:   summarizeTimePerToken(totalCommonTimesPerToken),
+		controlFlowTimePerToken:   controlFlowTimePerToken.length > 0 ? summarizeTimePerToken(controlFlowTimePerToken) : undefined,
+		absintTimePerToken:        absintTimePerToken.length > 0 ? summarizeTimePerToken(absintTimePerToken) : undefined,
 		failedToRepParse,
 		timesHitThreshold,
 		reduction:                 summarizeSummarizedReductions(reductions),
@@ -100,7 +119,39 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			storedVertexIndices:         summarizeMeasurement(dataflows.map(d => d.storedVertexIndices)),
 			storedEnvIndices:            summarizeMeasurement(dataflows.map(d => d.storedEnvIndices)),
 			overwrittenIndices:          summarizeMeasurement(dataflows.map(d => d.overwrittenIndices)),
-		}
+		},
+		absint: stats.some(s => s.absint !== undefined) ? {
+			numberOfResultConstraints: summarizeMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
+			numberOfResultingValues:   summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
+			numberOfResultingTop:      summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),
+			numberOfResultingBottom:   summarizeMeasurement(stats.map(s => s.absint?.numberOfResultingBottom).filter(isNotUndefined)),
+			numberOfEmptyNodes:        summarizeMeasurement(stats.map(s => s.absint?.numberOfEmptyNodes).filter(isNotUndefined)),
+			numberOfOperationNodes:    summarizeMeasurement(stats.map(s => s.absint?.numberOfOperationNodes).filter(isNotUndefined)),
+			numberOfValueNodes:        summarizeMeasurement(stats.map(s => s.absint?.numberOfValueNodes).filter(isNotUndefined)),
+			sizeOfInfo:                summarizeMeasurement(stats.map(s => s.absint?.sizeOfInfo).filter(isNotUndefined)),
+			numberOfEntries:           summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntries).filter(isNotUndefined)),
+			numberOfOperations:        summarizeMeasurement(stats.map(s => s.absint?.numberOfOperations).filter(isNotUndefined)),
+			numberOfTotalValues:       summarizeMeasurement(stats.map(s => s.absint?.numberOfTotalValues).filter(isNotUndefined)),
+			numberOfTotalTop:          summarizeMeasurement(stats.map(s => s.absint?.numberOfTotalTop).filter(isNotUndefined)),
+			numberOfTotalBottom:       summarizeMeasurement(stats.map(s => s.absint?.numberOfTotalBottom).filter(isNotUndefined)),
+			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredColNames).filter(isNotUndefined)),
+			numberOfColNamesValues:    summarizeMeasurement(stats.map(s => s.absint?.numberOfColNamesValues).filter(isNotUndefined)),
+			numberOfColNamesTop:       summarizeMeasurement(stats.map(s => s.absint?.numberOfColNamesTop).filter(isNotUndefined)),
+			numberOfColNamesBottom:    summarizeMeasurement(stats.map(s => s.absint?.numberOfColNamesBottom).filter(isNotUndefined)),
+			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredColCount).filter(isNotUndefined)),
+			numberOfColCountValues:    summarizeMeasurement(stats.map(s => s.absint?.numberOfColCountValues).filter(isNotUndefined)),
+			numberOfColCountTop:       summarizeMeasurement(stats.map(s => s.absint?.numberOfColCountTop).filter(isNotUndefined)),
+			numberOfColCountInfinite:  summarizeMeasurement(stats.map(s => s.absint?.numberOfColCountInfinite).filter(isNotUndefined)),
+			numberOfColCountBottom:    summarizeMeasurement(stats.map(s => s.absint?.numberOfColCountBottom).filter(isNotUndefined)),
+			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.approxRangeColCount).filter(isNotUndefined)),
+			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredRowCount).filter(isNotUndefined)),
+			numberOfRowCountValues:    summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountValues).filter(isNotUndefined)),
+			numberOfRowCountTop:       summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountTop).filter(isNotUndefined)),
+			numberOfRowCountInfinite:  summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountInfinite).filter(isNotUndefined)),
+			numberOfRowCountBottom:    summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountBottom).filter(isNotUndefined)),
+			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.approxRangeRowCount).filter(isNotUndefined)),
+			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.absint?.perOperationNumber.get(n)).filter(isNotUndefined))]))
+		} : undefined
 	};
 }
 
@@ -121,6 +172,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 		normalizeTimePerToken:     summarizeSummarizedTimePerToken(stats.map(s => s.normalizeTimePerToken)),
 		dataflowTimePerToken:      summarizeSummarizedTimePerToken(stats.map(s => s.dataflowTimePerToken)),
 		totalCommonTimePerToken:   summarizeSummarizedTimePerToken(stats.map(s => s.totalCommonTimePerToken)),
+		controlFlowTimePerToken:   stats.some(s => s.controlFlowTimePerToken !== undefined) ? summarizeSummarizedTimePerToken(stats.map(s => s.controlFlowTimePerToken).filter(isNotUndefined)) : undefined,
+		absintTimePerToken:        stats.some(s => s.absintTimePerToken !== undefined) ? summarizeSummarizedTimePerToken(stats.map(s => s.absintTimePerToken).filter(isNotUndefined)) : undefined,
 		reduction:                 summarizeSummarizedReductions(stats.map(s => s.reduction)),
 		reductionNoFluff:          summarizeSummarizedReductions(stats.map(s => s.reductionNoFluff)),
 		input:                     {
@@ -144,7 +197,39 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			storedVertexIndices:         summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedVertexIndices)),
 			storedEnvIndices:            summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedEnvIndices)),
 			overwrittenIndices:          summarizeSummarizedMeasurement(stats.map(s => s.dataflow.overwrittenIndices)),
-		}
+		},
+		absint: stats.some(s => s.absint !== undefined) ? {
+			numberOfResultConstraints: summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultConstraints).filter(isNotUndefined)),
+			numberOfResultingValues:   summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingValues).filter(isNotUndefined)),
+			numberOfResultingTop:      summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingTop).filter(isNotUndefined)),
+			numberOfResultingBottom:   summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfResultingBottom).filter(isNotUndefined)),
+			numberOfEmptyNodes:        summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEmptyNodes).filter(isNotUndefined)),
+			numberOfOperationNodes:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfOperationNodes).filter(isNotUndefined)),
+			numberOfValueNodes:        summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfValueNodes).filter(isNotUndefined)),
+			sizeOfInfo:                summarizeSummarizedMeasurement(stats.map(s => s.absint?.sizeOfInfo).filter(isNotUndefined)),
+			numberOfEntries:           summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntries).filter(isNotUndefined)),
+			numberOfOperations:        summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfOperations).filter(isNotUndefined)),
+			numberOfTotalValues:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfTotalValues).filter(isNotUndefined)),
+			numberOfTotalTop:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfTotalTop).filter(isNotUndefined)),
+			numberOfTotalBottom:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfTotalBottom).filter(isNotUndefined)),
+			inferredColNames:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredColNames).filter(isNotUndefined)),
+			numberOfColNamesValues:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColNamesValues).filter(isNotUndefined)),
+			numberOfColNamesTop:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColNamesTop).filter(isNotUndefined)),
+			numberOfColNamesBottom:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColNamesBottom).filter(isNotUndefined)),
+			inferredColCount:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredColCount).filter(isNotUndefined)),
+			numberOfColCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColCountValues).filter(isNotUndefined)),
+			numberOfColCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColCountTop).filter(isNotUndefined)),
+			numberOfColCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColCountInfinite).filter(isNotUndefined)),
+			numberOfColCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfColCountBottom).filter(isNotUndefined)),
+			approxRangeColCount:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.approxRangeColCount).filter(isNotUndefined)),
+			inferredRowCount:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.inferredRowCount).filter(isNotUndefined)),
+			numberOfRowCountValues:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfRowCountValues).filter(isNotUndefined)),
+			numberOfRowCountTop:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfRowCountTop).filter(isNotUndefined)),
+			numberOfRowCountInfinite:  summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfRowCountInfinite).filter(isNotUndefined)),
+			numberOfRowCountBottom:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfRowCountBottom).filter(isNotUndefined)),
+			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.approxRangeRowCount).filter(isNotUndefined)),
+			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeSummarizedMeasurement(stats.map(s => s.absint?.perOperationNumber.get(n)).filter(isNotUndefined))]))
+		} : undefined
 	};
 }
 
@@ -169,7 +254,11 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 				...got.summarize.perSliceMeasurements,
 				// restore maps
 				measurements: new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
-			}
+			},
+			absint: got.summarize.absint !== undefined ? {
+				...got.summarize.absint,
+				perOperationNumber: new Map(got.summarize.absint.perOperationNumber as unknown as [DataFrameAssignmentInfo['type'] | DataFrameOperationName, number][])
+			} : undefined
 		}
 	};
 	allSummarized.push(got.summarize);
@@ -182,6 +271,10 @@ export function processNextUltimateSummary(line: Buffer, allSummarized: Ultimate
 		// restore maps
 		commonMeasurements:   new Map(got.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
 		perSliceMeasurements: new Map(got.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+		absint:               got.absint !== undefined ? {
+			...got.absint,
+			perOperationNumber: new Map(got.absint.perOperationNumber as unknown as [DataFrameAssignmentInfo['type'] | DataFrameOperationName, SummarizedMeasurement][])
+		} : undefined
 	};
 	allSummarized.push(got);
 }

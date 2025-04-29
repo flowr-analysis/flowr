@@ -1,5 +1,5 @@
 import * as tmp from 'tmp';
-import type { Reduction, SliceSizeCollection, SummarizedSlicerStats, TimePerToken } from '../data';
+import type { Reduction, SliceSizeCollection, SummarizedAbsintStats, SummarizedSlicerStats, TimePerToken } from '../data';
 
 import fs from 'fs';
 import { DefaultMap } from '../../../util/defaultmap';
@@ -8,7 +8,7 @@ import { withoutWhitespace } from '../../../util/strings';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
-import type { PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
+import type { PerNodeStatsAbsint, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsAbsint, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
@@ -231,8 +231,56 @@ export async function summarizeSlicerStats(
 				normalizedTokensNoComments:        summarizeMeasurement(sliceSize.normalizedTokensNoComments),
 				dataflowNodes:                     summarizeMeasurement(sliceSize.dataflowNodes)
 			}
-		}
+		},
+		absint: stats.absint ? summarizeAbsintStats(stats.absint) : undefined
 	};
+}
+
+function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): SummarizedAbsintStats {
+	const nodeStats = perNodeStats.values().toArray();
+
+	const isTop = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'top';
+	const isInfinite = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'infinite';
+	const isBottom = (value?: number | 'top' | 'infinite' | 'bottom') => value === 'bottom';
+	const isValue = (value?: number | 'top' | 'infinite' | 'bottom') => value !== undefined && !isTop(value) && !isInfinite(value) && !isBottom(value);
+
+	return {
+		...stats,
+		numberOfEntries:          summarizeMeasurement(nodeStats.map(s => s.numberOfEntries)),
+		numberOfOperations:       arraySum(nodeStats.map(s => s.mappedOperations?.length).filter(isNotUndefined)),
+		numberOfTotalValues:      nodeStats.filter(s => isValue(s.inferredColNames) && isValue(s.inferredColCount) && isValue(s.inferredRowCount)).length,
+		numberOfTotalTop:         nodeStats.filter(s => isTop(s.inferredColNames) && isTop(s.inferredColCount) && isTop(s.inferredRowCount)).length,
+		numberOfTotalBottom:      nodeStats.filter(s => s.inferredColNames === 0 && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
+		inferredColNames:         summarizeMeasurement(nodeStats.map(s => s.inferredColNames).filter(isValue)),
+		numberOfColNamesValues:   nodeStats.map(s => s.inferredColNames).filter(isValue).length,
+		numberOfColNamesTop:      nodeStats.map(s => s.inferredColNames).filter(isTop).length,
+		numberOfColNamesBottom:   nodeStats.map(s => s.inferredColNames).filter(n => n === 0).length,
+		inferredColCount:         summarizeMeasurement(nodeStats.map(s => s.inferredColCount).filter(isValue)),
+		numberOfColCountValues:   nodeStats.map(s => s.inferredColCount).filter(isValue).length,
+		numberOfColCountTop:      nodeStats.map(s => s.inferredColCount).filter(isTop).length,
+		numberOfColCountInfinite: nodeStats.map(s => s.inferredColCount).filter(isInfinite).length,
+		numberOfColCountBottom:   nodeStats.map(s => s.inferredColCount).filter(isBottom).length,
+		approxRangeColCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColCount).filter(isNotUndefined).filter(isFinite)),
+		inferredRowCount:         summarizeMeasurement(nodeStats.map(s => s.inferredRowCount).filter(isValue)),
+		numberOfRowCountValues:   nodeStats.map(s => s.inferredRowCount).filter(isValue).length,
+		numberOfRowCountTop:      nodeStats.map(s => s.inferredRowCount).filter(isTop).length,
+		numberOfRowCountInfinite: nodeStats.map(s => s.inferredRowCount).filter(isInfinite).length,
+		numberOfRowCountBottom:   nodeStats.map(s => s.inferredRowCount).filter(isBottom).length,
+		approxRangeRowCount:      summarizeMeasurement(nodeStats.map(s => s.approxRangeRowCount).filter(isNotUndefined).filter(isFinite)),
+		perOperationNumber:       summarizePerOperationStats(nodeStats),
+	};
+}
+
+function summarizePerOperationStats(nodeStats: PerNodeStatsAbsint[]): SummarizedAbsintStats['perOperationNumber'] {
+	const perOperationNumber: SummarizedAbsintStats['perOperationNumber'] = new Map();
+
+	for(const stat of nodeStats) {
+		for(const operation of stat.mappedOperations ?? []) {
+			const value = perOperationNumber.get(operation) ?? 0;
+			perOperationNumber.set(operation, value + 1);
+		}
+	}
+	return perOperationNumber;
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {

@@ -1,8 +1,11 @@
+import type { DataFrameAssignmentInfo } from '../../abstract-interpretation/data-frame/absint-info';
+import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
+	SlicerStatsAbsint,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../stats/stats';
@@ -29,8 +32,9 @@ export interface SliceSizeCollection {
  * @see summarizeSlicerStats
  */
 export type SummarizedSlicerStats = {
-	perSliceMeasurements: SummarizedPerSliceStats
-} & Omit<SlicerStats, 'perSliceMeasurements'>
+	perSliceMeasurements: SummarizedPerSliceStats,
+	absint?:              SummarizedAbsintStats
+} & Omit<SlicerStats, 'perSliceMeasurements' | 'absint'>
 
 export interface Reduction<T = number> {
 	numberOfLines:                   T
@@ -75,6 +79,8 @@ export interface UltimateSlicerStats {
 	normalizeTimePerToken:     TimePerToken
 	dataflowTimePerToken:      TimePerToken
 	totalCommonTimePerToken:   TimePerToken
+	controlFlowTimePerToken?:  TimePerToken
+	absintTimePerToken?:       TimePerToken
 	sliceTimePerToken:         TimePerToken
 	reconstructTimePerToken:   TimePerToken
 	totalPerSliceTimePerToken: TimePerToken
@@ -87,4 +93,30 @@ export interface UltimateSlicerStats {
 	reductionNoFluff:          Reduction<SummarizedMeasurement>
 	input:                     SlicerStatsInput<SummarizedMeasurement>
 	dataflow:                  SlicerStatsDataflow<SummarizedMeasurement>
+	absint?:                   SummarizedAbsintStats<SummarizedMeasurement>
+}
+
+export interface SummarizedAbsintStats<T = number> extends Omit<SlicerStatsAbsint<T>, 'perNodeStats'> {
+	numberOfEntries:          SummarizedMeasurement,
+	numberOfOperations:       T,
+	numberOfTotalValues:      T,
+	numberOfTotalTop:         T,
+	numberOfTotalBottom:      T,
+	inferredColNames:         SummarizedMeasurement,
+	numberOfColNamesValues:   T,
+	numberOfColNamesTop:      T,
+	numberOfColNamesBottom:   T,
+	inferredColCount:         SummarizedMeasurement,
+	numberOfColCountValues:   T,
+	numberOfColCountTop:      T,
+	numberOfColCountInfinite: T,
+	numberOfColCountBottom:   T,
+	approxRangeColCount:      SummarizedMeasurement,
+	inferredRowCount:         SummarizedMeasurement,
+	numberOfRowCountValues:   T,
+	numberOfRowCountTop:      T,
+	numberOfRowCountInfinite: T,
+	numberOfRowCountBottom:   T,
+	approxRangeRowCount:      SummarizedMeasurement,
+	perOperationNumber:       Map<DataFrameAssignmentInfo['type'] | DataFrameOperationName, T>
 }

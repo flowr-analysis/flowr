@@ -100,22 +100,35 @@ function convertNumberToNiceBytes(x: number){
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `
 Request: ${JSON.stringify(stats.request)}
-Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
-AST retrieval:                ${print(stats.commonMeasurements,'retrieve AST from R code')}
-AST retrieval per token:      ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:    ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
-AST normalization:            ${print(stats.commonMeasurements,'normalize R AST')}
-AST normalization per token:  ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:${formatNanoseconds(stats.normalizeTimePerToken.raw)}
-Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
-Dataflow creation per token:  ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:${formatNanoseconds(stats.dataflowTimePerToken.raw)}
-Total common time per token:  ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:${formatNanoseconds(stats.totalCommonTimePerToken.raw)}
+Shell init time:                    ${print(stats.commonMeasurements, 'initialize R session')}
+AST retrieval:                      ${print(stats.commonMeasurements, 'retrieve AST from R code')}
+AST retrieval per token:            ${formatNanoseconds(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:          ${formatNanoseconds(stats.retrieveTimePerToken.raw)}
+AST normalization:                  ${print(stats.commonMeasurements, 'normalize R AST')}
+AST normalization per token:        ${formatNanoseconds(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:      ${formatNanoseconds(stats.normalizeTimePerToken.raw)}
+Dataflow creation:                  ${print(stats.commonMeasurements, 'produce dataflow information')}
+Dataflow creation per token:        ${formatNanoseconds(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:      ${formatNanoseconds(stats.dataflowTimePerToken.raw)}
+Total common time per token:        ${formatNanoseconds(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:      ${formatNanoseconds(stats.totalCommonTimePerToken.raw)}`;
+	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
+		result += `
+Control flow extraction:            ${print(stats.commonMeasurements, 'extract control flow graph')}
+Control flow extraction per token:  ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
+Control flow extraction per R token:${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
+	}
+	if(stats.commonMeasurements.has('perform abstract interpretation') && stats.absintTimePerToken !== undefined) {
+		result += `
+Abstract interpretation:            ${print(stats.commonMeasurements, 'perform abstract interpretation')}
+Abstract interpretation per token:  ${formatNanoseconds(stats.absintTimePerToken.normalized)}
+Abstract interpretation per R token:${formatNanoseconds(stats.absintTimePerToken.raw)}`;
+	}
 
-Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`;
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
+
+Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:
   Total:                              ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
   Slice creation:                     ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
   Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.sliceTimePerToken.normalized)}
@@ -126,7 +139,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
   Total per token in slice:           ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.totalPerSliceTimePerToken.normalized)}
   Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.totalPerSliceTimePerToken.raw)}
   Used Slice Criteria Sizes:          ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
-  Result Slice Sizes:   
+  Result Slice Sizes:
     Number of lines:                     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
     Number of non-empty lines:           ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.nonEmptyLines)}
     Number of characters:                ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.characters)}
@@ -136,13 +149,13 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
     Number of R tokens (w/o comments):   ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokensNoComments)}
     Normalized R tokens:                 ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
     Normalized R tokens (w/o comments):  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokensNoComments)}
-    Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
-`;
+    Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}`;
 	}
 
-	return `${result}
-Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
-Total:                        ${print(stats.commonMeasurements, 'total')}
+	result += `
+
+Shell close:                         ${print(stats.commonMeasurements, 'close R session')}
+Total:                               ${print(stats.commonMeasurements, 'total')}
 
 Input:
   Number of lines:                     ${pad(stats.input.numberOfLines)}
@@ -165,10 +178,68 @@ Dataflow:
   Number of stored Env indices:  ${pad(stats.dataflow.storedEnvIndices)}
   Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
+
+	if(stats.absint !== undefined) {
+		result += `
+
+Abstract Interpretation:
+  Number of resulting constraints:${pad(stats.absint.numberOfResultConstraints)}
+  Number of operation nodes:      ${pad(stats.absint.numberOfOperationNodes)}
+  Number of abstract value nodes: ${pad(stats.absint.numberOfValueNodes)}
+  Number of entries per node:     ${pad(stats.absint.numberOfEntries)}
+  Number of operations:           ${pad(stats.absint.numberOfOperations)}
+  Number of total values:         ${pad(stats.absint.numberOfTotalValues)}
+  Number of total top:            ${pad(stats.absint.numberOfTotalTop)}
+  Inferred column names per node: ${pad(stats.absint.inferredColNames)}
+  Number of column names values:  ${pad(stats.absint.numberOfColNamesValues)}
+  Number of column names Top:     ${pad(stats.absint.numberOfColNamesTop)}
+  Inferred column count per node: ${pad(stats.absint.inferredColCount)}
+  Number of column count values:  ${pad(stats.absint.numberOfColCountValues)}
+  Number of column count Top:     ${pad(stats.absint.numberOfColCountTop)}
+  Number of column count infinite:${pad(stats.absint.numberOfColCountInfinite)}
+  Inferred row count per node:    ${pad(stats.absint.inferredRowCount)}
+  Number of row count values:     ${pad(stats.absint.numberOfRowCountValues)}
+  Number of row count Top:        ${pad(stats.absint.numberOfRowCountTop)}
+  Number of row count infinite:   ${pad(stats.absint.numberOfRowCountInfinite)}
+  Size of absint info:            ${convertNumberToNiceBytes(stats.absint.sizeOfInfo)}`;
+	}
+
+	return result;
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
-	const slice = stats.totalSlices > 0 ? `Slice summary for:
+	let result = `
+Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
+Shell init time:                    ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
+AST retrieval:                      ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
+AST retrieval per token:            ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
+AST retrieval per R token:          ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
+AST normalization:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
+AST normalization per token:        ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
+AST normalization per R token:      ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
+Dataflow creation:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
+Dataflow creation per token:        ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
+Dataflow creation per R token:      ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
+Total common time per token:        ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
+Total common time per R token:      ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}`;
+	if(stats.commonMeasurements.has('extract control flow graph') && stats.controlFlowTimePerToken !== undefined) {
+		result += `
+Control flow extraction:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
+Control flow extraction per token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
+Control flow extraction per R token:${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
+	}
+	if(stats.commonMeasurements.has('perform abstract interpretation') && stats.absintTimePerToken !== undefined) {
+		result += `
+Abstract Interpretation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('perform abstract interpretation'))}
+Abstract Interpretation per token:  ${formatSummarizedTimeMeasure(stats.absintTimePerToken.normalized)}
+Abstract Interpretation per R token:${formatSummarizedTimeMeasure(stats.absintTimePerToken.raw)}`;
+	}
+
+	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
+	if(stats.totalSlices > 0) {
+		result += `
+
+Slicing summary for ${stats.totalSlices} slice${stats.totalSlices !== 1 ? 's' : ''}:
   Total:                              ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
   Slice creation:                     ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
   Slice creation per token in slice:  ${formatSummarizedTimeMeasure(stats.sliceTimePerToken.normalized)}
@@ -179,30 +250,15 @@ export function ultimateStats2String(stats: UltimateSlicerStats): string {
   Total per token in slice:           ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.normalized)}
   Total per R token in slice:         ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePerToken.raw)}
   Failed to Re-Parse:                 ${pad(stats.failedToRepParse)}/${stats.totalSlices}
-  Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
+  Times hit Threshold:                ${pad(stats.timesHitThreshold)}/${stats.totalSlices}
 ${reduction2String('Reductions', stats.reduction)}
-${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}` : 'No slices';
+${reduction2String('Reductions without comments and empty lines', stats.reductionNoFluff)}`;
+	}
 
-	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
-	return `
-Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
-Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
-AST retrieval:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
-AST retrieval per token:      ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.normalized)}
-AST retrieval per R token:    ${formatSummarizedTimeMeasure(stats.retrieveTimePerToken.raw)}
-AST normalization:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST normalization per token:  ${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.normalized)}
-AST normalization per R token:${formatSummarizedTimeMeasure(stats.normalizeTimePerToken.raw)}
-Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
-Dataflow creation per token:  ${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.normalized)}
-Dataflow creation per R token:${formatSummarizedTimeMeasure(stats.dataflowTimePerToken.raw)}
-Total common time per token:  ${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.normalized)}
-Total common time per R token:${formatSummarizedTimeMeasure(stats.totalCommonTimePerToken.raw)}
+	result += `
 
-${slice}
-
-Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
-Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
+Shell close:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
+Total:                              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}
 
 Input:
   Number of lines:                     ${formatSummarizedMeasure(stats.input.numberOfLines)}
@@ -224,13 +280,39 @@ Dataflow:
   Number of stored Vtx indices:  ${formatSummarizedMeasure(stats.dataflow.storedVertexIndices)}
   Number of stored Env indices:  ${formatSummarizedMeasure(stats.dataflow.storedEnvIndices)}
   Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
-  Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}
-`;
+  Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
+
+	if(stats.absint !== undefined) {
+		result += `
+
+Abstract Interpretation:
+  Number of resulting constraints:${formatSummarizedMeasure(stats.absint.numberOfResultConstraints)}
+  Number of operation nodes:      ${formatSummarizedMeasure(stats.absint.numberOfOperationNodes)}
+  Number of abstract value nodes: ${formatSummarizedMeasure(stats.absint.numberOfValueNodes)}
+  Number of entries per node:     ${formatSummarizedMeasure(stats.absint.numberOfEntries)}
+  Number of operations:           ${formatSummarizedMeasure(stats.absint.numberOfOperations)}
+  Number of total values:         ${formatSummarizedMeasure(stats.absint.numberOfTotalValues)}
+  Number of total top:            ${formatSummarizedMeasure(stats.absint.numberOfTotalTop)}
+  Inferred column names per node: ${formatSummarizedMeasure(stats.absint.inferredColNames)}
+  Number of column names values:  ${formatSummarizedMeasure(stats.absint.numberOfColNamesValues)}
+  Number of column names Top:     ${formatSummarizedMeasure(stats.absint.numberOfColNamesTop)}
+  Inferred column count per node: ${formatSummarizedMeasure(stats.absint.inferredColCount)}
+  Number of column count values:  ${formatSummarizedMeasure(stats.absint.numberOfColCountValues)}
+  Number of column count Top:     ${formatSummarizedMeasure(stats.absint.numberOfColCountTop)}
+  Number of column count infinite:${formatSummarizedMeasure(stats.absint.numberOfColCountInfinite)}
+  Inferred row count per node:    ${formatSummarizedMeasure(stats.absint.inferredRowCount)}
+  Number of row count values:     ${formatSummarizedMeasure(stats.absint.numberOfRowCountValues)}
+  Number of row count Top:        ${formatSummarizedMeasure(stats.absint.numberOfRowCountTop)}
+  Number of row count infinite:   ${formatSummarizedMeasure(stats.absint.numberOfRowCountInfinite)}
+  Size of absint info:            ${formatSummarizedMeasure(stats.absint.sizeOfInfo, convertNumberToNiceBytes)}`;
+	}
+
+	return result;
 }
 
 function reduction2String(title: string, reduction: Reduction<SummarizedMeasurement>) {
 	return `
-  ${title} (reduced by x%):   
+  ${title} (reduced by x%):
     Number of lines:                     ${formatSummarizedMeasure(reduction.numberOfLines, asPercentage)}
     Number of lines no auto:             ${formatSummarizedMeasure(reduction.numberOfLinesNoAutoSelection, asPercentage)}
     Number of characters:                ${formatSummarizedMeasure(reduction.numberOfCharacters, asPercentage)}

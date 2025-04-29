@@ -4,8 +4,12 @@ import type { ReconstructionResult } from '../../reconstruct/reconstruct';
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
 import type { TimePerToken } from '../summarizer/data';
 import type { MergeableRecord } from '../../util/objects';
+import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
+import type { DataFrameAssignmentInfo } from '../../abstract-interpretation/data-frame/absint-info';
 
-export const CommonSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
+export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
+export const OptionalSlicerMeasurements = ['extract control flow graph', 'perform abstract interpretation'] as const;
+export const CommonSlicerMeasurements = [...RequiredSlicerMeasurements, ...OptionalSlicerMeasurements] as const;
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
 
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const;
@@ -47,6 +51,29 @@ export interface SlicerStatsDataflow<T = number> {
 	overwrittenIndices:          T
 }
 
+export interface SlicerStatsAbsint<T = number> {
+	numberOfResultConstraints: T,
+	numberOfResultingValues:   T,
+	numberOfResultingTop:      T,
+	numberOfResultingBottom:   T,
+	numberOfEmptyNodes:        T,
+	numberOfOperationNodes:    T,
+	numberOfValueNodes:        T,
+	sizeOfInfo:                T,
+	perNodeStats:              Map<NodeId, PerNodeStatsAbsint<T>>
+}
+
+export interface PerNodeStatsAbsint<T = number> {
+	numberOfEntries:      T,
+	mappedOperations?:    [DataFrameAssignmentInfo['type']] | DataFrameOperationName[]
+	inferredColNames?:    T | 'top',
+	inferredColCount?:    T | 'bottom' | 'infinite' | 'top',
+	inferredRowCount?:    T | 'bottom' | 'infinite' | 'top',
+	/** difference between upper and lower bound of interval domain (to estimate approximation) */
+	approxRangeColCount?: T,
+	approxRangeRowCount?: T
+}
+
 /**
  * Please note, that these measurement can be negative as there is no guarantee that the memory usage will increase
  * due to, e.g., garbage collection.
@@ -66,14 +93,17 @@ export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord 
  * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
 export interface SlicerStats {
-	commonMeasurements:      Map<CommonSlicerMeasurements, ElapsedTime>
-	perSliceMeasurements:    Map<SlicingCriteria, PerSliceStats>
-	memory:                  Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
-	request:                 RParseRequestFromFile | RParseRequestFromText
-	input:                   SlicerStatsInput
-	dataflow:                SlicerStatsDataflow
-	retrieveTimePerToken:    TimePerToken<number>
-	normalizeTimePerToken:   TimePerToken<number>
-	dataflowTimePerToken:    TimePerToken<number>
-	totalCommonTimePerToken: TimePerToken<number>
+	commonMeasurements:       Map<CommonSlicerMeasurements, ElapsedTime>
+	perSliceMeasurements:     Map<SlicingCriteria, PerSliceStats>
+	memory:                   Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
+	request:                  RParseRequestFromFile | RParseRequestFromText
+	input:                    SlicerStatsInput
+	dataflow:                 SlicerStatsDataflow
+	absint?:                  SlicerStatsAbsint
+	retrieveTimePerToken:     TimePerToken<number>
+	normalizeTimePerToken:    TimePerToken<number>
+	dataflowTimePerToken:     TimePerToken<number>
+	totalCommonTimePerToken:  TimePerToken<number>
+	controlFlowTimePerToken?: TimePerToken<number>
+	absintTimePerToken?:      TimePerToken<number>
 }

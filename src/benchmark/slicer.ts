@@ -431,20 +431,20 @@ export class BenchmarkSlicer {
 			}
 			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
 
-			const info: DataFrameInfo | undefined = node.info.dataFrame.type !== 'other' ? node.info.dataFrame : undefined;
+			const expression: DataFrameInfo | undefined = node.info.dataFrame.type === 'expression' ? node.info.dataFrame : undefined;
 			const domain = node.info.dataFrame?.domain;
 			const value = domain?.get(node.info.id);
 
-			// Only store per-node information for nodes representing operations or nodes with abstract values
-			if(info === undefined && value === undefined) {
+			// Only store per-node information for nodes representing expressions or nodes with abstract values
+			if(expression === undefined && value === undefined) {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
 			const nodeStats: PerNodeStatsAbsint = {
 				numberOfEntries: domain?.size ?? 0
 			};
-			if(info !== undefined) {
-				nodeStats.mappedOperations = info.type === 'assignment' ? [info.type] : info.operations.map(op => op.operation);
+			if(expression !== undefined) {
+				nodeStats.mappedOperations = expression.operations.map(op => op.operation);
 				stats.numberOfOperationNodes++;
 			}
 			if(value !== undefined) {

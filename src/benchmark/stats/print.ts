@@ -186,18 +186,18 @@ Abstract Interpretation:
   Number of resulting constraints:${pad(stats.absint.numberOfResultConstraints)}
   Number of operation nodes:      ${pad(stats.absint.numberOfOperationNodes)}
   Number of abstract value nodes: ${pad(stats.absint.numberOfValueNodes)}
-  Number of entries per node:     ${pad(stats.absint.numberOfEntries)}
+  Number of entries per node:     ${pad(stats.absint.numberOfEntriesPerNode.mean)}
   Number of operations:           ${pad(stats.absint.numberOfOperations)}
   Number of total values:         ${pad(stats.absint.numberOfTotalValues)}
   Number of total top:            ${pad(stats.absint.numberOfTotalTop)}
-  Inferred column names per node: ${pad(stats.absint.inferredColNames)}
+  Inferred column names per node: ${pad(stats.absint.inferredColNames.mean)}
   Number of column names values:  ${pad(stats.absint.numberOfColNamesValues)}
   Number of column names Top:     ${pad(stats.absint.numberOfColNamesTop)}
-  Inferred column count per node: ${pad(stats.absint.inferredColCount)}
+  Inferred column count per node: ${pad(stats.absint.inferredColCount.mean)}
   Number of column count values:  ${pad(stats.absint.numberOfColCountValues)}
   Number of column count Top:     ${pad(stats.absint.numberOfColCountTop)}
   Number of column count infinite:${pad(stats.absint.numberOfColCountInfinite)}
-  Inferred row count per node:    ${pad(stats.absint.inferredRowCount)}
+  Inferred row count per node:    ${pad(stats.absint.inferredRowCount.mean)}
   Number of row count values:     ${pad(stats.absint.numberOfRowCountValues)}
   Number of row count Top:        ${pad(stats.absint.numberOfRowCountTop)}
   Number of row count infinite:   ${pad(stats.absint.numberOfRowCountInfinite)}
@@ -289,7 +289,7 @@ Abstract Interpretation:
   Number of resulting constraints:${formatSummarizedMeasure(stats.absint.numberOfResultConstraints)}
   Number of operation nodes:      ${formatSummarizedMeasure(stats.absint.numberOfOperationNodes)}
   Number of abstract value nodes: ${formatSummarizedMeasure(stats.absint.numberOfValueNodes)}
-  Number of entries per node:     ${formatSummarizedMeasure(stats.absint.numberOfEntries)}
+  Number of entries per node:     ${formatSummarizedMeasure(stats.absint.numberOfEntriesPerNode)}
   Number of operations:           ${formatSummarizedMeasure(stats.absint.numberOfOperations)}
   Number of total values:         ${formatSummarizedMeasure(stats.absint.numberOfTotalValues)}
   Number of total top:            ${formatSummarizedMeasure(stats.absint.numberOfTotalTop)}

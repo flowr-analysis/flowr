@@ -15,7 +15,6 @@ import {
 } from '../../stats/stats';
 import type { DataFrameOperationName } from '../../../abstract-interpretation/data-frame/semantics';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
-import type { DataFrameAssignmentInfo } from '../../../abstract-interpretation/data-frame/absint-info';
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => []);
@@ -129,7 +128,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfOperationNodes:    summarizeMeasurement(stats.map(s => s.absint?.numberOfOperationNodes).filter(isNotUndefined)),
 			numberOfValueNodes:        summarizeMeasurement(stats.map(s => s.absint?.numberOfValueNodes).filter(isNotUndefined)),
 			sizeOfInfo:                summarizeMeasurement(stats.map(s => s.absint?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntries:           summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntries).filter(isNotUndefined)),
+			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntriesPerNode).filter(isNotUndefined)),
 			numberOfOperations:        summarizeMeasurement(stats.map(s => s.absint?.numberOfOperations).filter(isNotUndefined)),
 			numberOfTotalValues:       summarizeMeasurement(stats.map(s => s.absint?.numberOfTotalValues).filter(isNotUndefined)),
 			numberOfTotalTop:          summarizeMeasurement(stats.map(s => s.absint?.numberOfTotalTop).filter(isNotUndefined)),
@@ -207,7 +206,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfOperationNodes:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfOperationNodes).filter(isNotUndefined)),
 			numberOfValueNodes:        summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfValueNodes).filter(isNotUndefined)),
 			sizeOfInfo:                summarizeSummarizedMeasurement(stats.map(s => s.absint?.sizeOfInfo).filter(isNotUndefined)),
-			numberOfEntries:           summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntries).filter(isNotUndefined)),
+			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfEntriesPerNode).filter(isNotUndefined)),
 			numberOfOperations:        summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfOperations).filter(isNotUndefined)),
 			numberOfTotalValues:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfTotalValues).filter(isNotUndefined)),
 			numberOfTotalTop:          summarizeSummarizedMeasurement(stats.map(s => s.absint?.numberOfTotalTop).filter(isNotUndefined)),
@@ -257,7 +256,7 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 			},
 			absint: got.summarize.absint !== undefined ? {
 				...got.summarize.absint,
-				perOperationNumber: new Map(got.summarize.absint.perOperationNumber as unknown as [DataFrameAssignmentInfo['type'] | DataFrameOperationName, number][])
+				perOperationNumber: new Map(got.summarize.absint.perOperationNumber as unknown as [DataFrameOperationName, number][])
 			} : undefined
 		}
 	};
@@ -273,7 +272,7 @@ export function processNextUltimateSummary(line: Buffer, allSummarized: Ultimate
 		perSliceMeasurements: new Map(got.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
 		absint:               got.absint !== undefined ? {
 			...got.absint,
-			perOperationNumber: new Map(got.absint.perOperationNumber as unknown as [DataFrameAssignmentInfo['type'] | DataFrameOperationName, SummarizedMeasurement][])
+			perOperationNumber: new Map(got.absint.perOperationNumber as unknown as [DataFrameOperationName, SummarizedMeasurement][])
 		} : undefined
 	};
 	allSummarized.push(got);

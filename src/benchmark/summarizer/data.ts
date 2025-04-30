@@ -1,4 +1,3 @@
-import type { DataFrameAssignmentInfo } from '../../abstract-interpretation/data-frame/absint-info';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 import type {
@@ -97,7 +96,7 @@ export interface UltimateSlicerStats {
 }
 
 export interface SummarizedAbsintStats<T = number> extends Omit<SlicerStatsAbsint<T>, 'perNodeStats'> {
-	numberOfEntries:          SummarizedMeasurement,
+	numberOfEntriesPerNode:   SummarizedMeasurement,
 	numberOfOperations:       T,
 	numberOfTotalValues:      T,
 	numberOfTotalTop:         T,
@@ -118,5 +117,5 @@ export interface SummarizedAbsintStats<T = number> extends Omit<SlicerStatsAbsin
 	numberOfRowCountInfinite: T,
 	numberOfRowCountBottom:   T,
 	approxRangeRowCount:      SummarizedMeasurement,
-	perOperationNumber:       Map<DataFrameAssignmentInfo['type'] | DataFrameOperationName, T>
+	perOperationNumber:       Map<DataFrameOperationName, T>
 }

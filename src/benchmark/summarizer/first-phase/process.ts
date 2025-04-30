@@ -246,7 +246,7 @@ function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): Su
 
 	return {
 		...stats,
-		numberOfEntries:          summarizeMeasurement(nodeStats.map(s => s.numberOfEntries)),
+		numberOfEntriesPerNode:   summarizeMeasurement(nodeStats.map(s => s.numberOfEntries)),
 		numberOfOperations:       arraySum(nodeStats.map(s => s.mappedOperations?.length).filter(isNotUndefined)),
 		numberOfTotalValues:      nodeStats.filter(s => isValue(s.inferredColNames) && isValue(s.inferredColCount) && isValue(s.inferredRowCount)).length,
 		numberOfTotalTop:         nodeStats.filter(s => isTop(s.inferredColNames) && isTop(s.inferredColCount) && isTop(s.inferredRowCount)).length,

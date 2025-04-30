@@ -5,7 +5,6 @@ import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridg
 import type { TimePerToken } from '../summarizer/data';
 import type { MergeableRecord } from '../../util/objects';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
-import type { DataFrameAssignmentInfo } from '../../abstract-interpretation/data-frame/absint-info';
 
 export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
 export const OptionalSlicerMeasurements = ['extract control flow graph', 'perform abstract interpretation'] as const;
@@ -65,7 +64,7 @@ export interface SlicerStatsAbsint<T = number> {
 
 export interface PerNodeStatsAbsint<T = number> {
 	numberOfEntries:      T,
-	mappedOperations?:    [DataFrameAssignmentInfo['type']] | DataFrameOperationName[]
+	mappedOperations?:    DataFrameOperationName[]
 	inferredColNames?:    T | 'top',
 	inferredColCount?:    T | 'bottom' | 'infinite' | 'top',
 	inferredRowCount?:    T | 'bottom' | 'infinite' | 'top',

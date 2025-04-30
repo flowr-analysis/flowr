@@ -20,6 +20,7 @@ import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/valu
 import { valueFromRNode, valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
 import { onUnknownSideEffect } from '../graph/unknown-side-effect';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -182,12 +183,12 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 /** Please use {@link resolveValueOfVariable} */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
-		return Bottom;
+		return Top;
 	}
 
 	const defs = resolveByName(identifier, use);
 	if(defs === undefined) {
-		return Bottom;
+		return Top;
 	}
 
 	const values: Set<Value> = new Set<Value>();
@@ -217,7 +218,11 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return setFrom(...values);
 }
 
-onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId) => {	
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {		
+	if(target) {
+		return;
+	}
+
 	env.current.memory.forEach(mem => mem.forEach((def) => {
 		if(def.type === ReferenceType.BuiltInConstant) {
 			// what

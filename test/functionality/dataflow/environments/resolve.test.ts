@@ -96,7 +96,7 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('Recursion', 'f', 'f <- function(x = 3) { f(x) } \n f()', Top);
 		testResolve('Get Unknown', 'x', 'y <- 5 \n x <- get(u) \n x', Top);
 		
-		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Bottom);
+		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Bottom, Allow.Top);
 	
 		testResolve('Eval before Variable (slice)', '3@x', 'x <- 1 \n eval(u) \n x', Top);
 		testResolve('Eval before Variable',           'x', 'x <- 1 \n eval(u) \n x', Top);

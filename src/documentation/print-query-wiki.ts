@@ -269,6 +269,29 @@ ${
 	}
 });
 
+registerQueryDocumentation('origin', {
+	name:             'Origin Query',
+	type:             'active',
+	shortDescription: 'Retrieve the origin of a variable, function call, ...',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's origin tracking to find out the read origins of a variable,
+the functions called by a call, and more.
+
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns the origins of \`x\` in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'origin',
+		criterion: '2@x'
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('search', {
 	name:             'Search Query',
 	type:             'active',

@@ -180,7 +180,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	solver:        {
 		variables:       VariableResolve.Alias,
 		evalStrings:     true,
-		pointerTracking: true,
+		pointerTracking: false,
 		resolveSource:   {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,

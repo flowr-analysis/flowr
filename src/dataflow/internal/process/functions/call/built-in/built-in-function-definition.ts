@@ -29,6 +29,7 @@ import { initializeCleanEnvironments } from '../../../../../environments/environ
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
+import { isBuiltIn } from '../../../../../environments/built-in';
 
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -250,8 +251,10 @@ export function updateNestedFunctionCalls(
 				}
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
 				for(const def of resolved) {
-					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+					if(!isBuiltIn(def.nodeId)) {
+						graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+						graph.addEdge(id, def, EdgeType.DefinesOnCall);
+					}
 				}
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
@@ -270,7 +273,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 
 /**
  * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
- * `a` will be defined by `b` and `b`will be a promise object bound by the first definition of b it can find.
+ * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
  * This means that this function returns `2` due to the first `b <- 1` definition.
  * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
  * as `b` can be defined by either one of them.

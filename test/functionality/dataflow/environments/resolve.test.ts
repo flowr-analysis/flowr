@@ -7,7 +7,7 @@ import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import type { Lift, Value } from '../../../../src/dataflow/eval/values/r-value';
+import type { Lift, Value, ValueVector } from '../../../../src/dataflow/eval/values/r-value';
 import { Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
@@ -16,6 +16,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { slicingCriterionToId, type SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
+import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 
 enum Allow {
 	None = 0,
@@ -35,6 +36,10 @@ describe.sequential('Resolve', withShell(shell => {
 			startInclusive,
 			endInclusive
 		);
+	}
+
+	function vector(values: unknown[]): ValueVector {
+		return vectorFrom(values.map(v => valueFromTsValue(v)));
 	}
 
 	function testResolve(
@@ -126,6 +131,13 @@ describe.sequential('Resolve', withShell(shell => {
 		testMutate('Constant Value', 'x', 'x <- 5', set([5]));
 		testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
 		testMutate('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
+	});
+
+	describe('Resolve (vectors)', () => {
+		testResolve('Simple Vector (int)',    'x', 'x <- c(1, 2, 3, 4) \n x', vector([1,2,3,4]));
+		testResolve('Simple Vector (string)', 'x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
+		testResolve('Vector with alias',      'x', 'y <- 1; x <- c(y,2)', vector([1, 2]));
+		testResolve('Vector in vector',       'x', 'x <- c(1, 2, c(3, 4, 5))', vector([1, 2, vector([3,4,5])]));
 	});
 
 	describe('ByName', () => {

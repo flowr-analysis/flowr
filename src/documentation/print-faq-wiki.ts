@@ -2,6 +2,7 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import { codeBlock } from './doc-util/doc-code';
 
 function print(): string {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'frequently asked questions' })}
@@ -22,8 +23,15 @@ There are several ways to generate mermaid diagrams based on the input data that
 `)}
 
 ${qAndA('How do I create new wiki pages?', `
-TODO TODO TODO
+To create an automatically generated wiki page, you can follow these steps:
+- Createa a new file in \`src/documentation\` with a name like \`print-my-page-wiki.ts\`.
+- Add a new wiki generation script to the ${getFilePathMd('../../package.json')}. You can copy one of the existing ones of the form \`"wiki:my-page": "ts-node src/documentation/print-my-page-wiki.ts"\`.
+- Add the wiki generation script to the \`broken-links-and-wiki.yml\` GitHub workflow file to enable automatic generation through the CI. You can copy one of the existing ones of the form \`update_page wiki/"My page" wiki:my-page\`.
+
+You can test your page by piping the wiki generation script to a file. For example, you can run the following command:
+${codeBlock('shell', 'npm run --silent wiki:my-page > __my-page.md')}
 `)}
+Remember not to commit this file, as it's only meant for testing.
 
 ## 🇷 R FAQ
 

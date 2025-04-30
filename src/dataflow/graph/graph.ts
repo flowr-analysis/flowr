@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex';
 import { VertexType } from './vertex';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

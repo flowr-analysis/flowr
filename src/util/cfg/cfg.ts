@@ -1,5 +1,5 @@
 import type { MergeableRecord } from '../objects';
-import { setEquals } from '../set';
+import { setEquals } from '../collections/set';
 import type { QuadSerializationConfiguration } from '../quads';
 import { graph2quads } from '../quads';
 import { log } from '../log';

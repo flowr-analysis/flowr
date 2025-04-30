@@ -3,7 +3,7 @@ import { createNormalizePipeline } from '../../../core/steps/pipeline/default-pi
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 
 async function normalize(parser: KnownParser, remainingLine: string) {
 	return await createNormalizePipeline(parser, {

@@ -6,7 +6,7 @@ import {
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';

@@ -30,7 +30,7 @@ import { defaultEnv } from '../../test/functionality/_helper/dataflow/environmen
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { nth } from '../util/text';
+import { nth } from '../util/text/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';

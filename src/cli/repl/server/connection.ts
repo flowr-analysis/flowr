@@ -24,7 +24,7 @@ import type { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-pa
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import type { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
-import { ansiFormatter, voidFormatter } from '../../../util/ansi';
+import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import { createSlicePipeline, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { Pipeline, PipelineOutput } from '../../../core/steps/pipeline/pipeline';

@@ -6,7 +6,7 @@
  */
 
 
-import { DefaultMap } from '../../../src/util/defaultmap';
+import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
 import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { getAllCapabilities } from '../../../src/r-bridge/data/get';

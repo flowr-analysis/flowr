@@ -1,6 +1,6 @@
 import type { OptionDefinition } from 'command-line-usage';
 import os from 'os';
-import { date2string } from '../../util/time';
+import { date2string } from '../../util/text/time';
 import { allFeatureNames } from '../../statistics/features/feature';
 
 /**

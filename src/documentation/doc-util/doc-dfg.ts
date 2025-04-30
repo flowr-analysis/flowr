@@ -11,7 +11,7 @@ import type { DataflowDifferenceReport } from '../../dataflow/graph/diff';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';

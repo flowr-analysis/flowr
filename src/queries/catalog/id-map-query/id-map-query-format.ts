@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeIdMapQuery } from './id-map-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 

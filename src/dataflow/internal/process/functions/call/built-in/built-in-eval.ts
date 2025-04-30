@@ -23,7 +23,7 @@ import { resolveValueOfVariable } from '../../../../../environments/resolve-by-n
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
-import { cartesianProduct } from '../../../../../../util/arrays';
+import { cartesianProduct } from '../../../../../../util/collections/arrays';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

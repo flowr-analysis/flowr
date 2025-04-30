@@ -3,7 +3,7 @@ import { isNamedArgument } from './graph';
 import type { GenericDiffConfiguration, GenericDifferenceInformation, WriteableDifferenceReport } from '../../util/diff';
 import { setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
 import type { DataflowGraphEdge } from './edge';
 import { edgeTypesToNames , splitEdgeTypes } from './edge';

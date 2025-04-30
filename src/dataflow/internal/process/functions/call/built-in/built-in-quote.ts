@@ -17,6 +17,7 @@ export function processQuote<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { quoteArgumentsWithIndex?: number } & ForceArguments
 ): DataflowInformation {
+	const startEnv = data.environment;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:quote' });
 
 	const inRefs: IdentifierReference[] = [fnRef];
@@ -40,6 +41,7 @@ export function processQuote<OtherInfo>(
 
 	return {
 		...information,
+		environment:       startEnv,
 		in:                inRefs,
 		out:               outRefs,
 		unknownReferences: unknownRefs

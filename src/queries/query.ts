@@ -41,6 +41,8 @@ import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-l
 import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import type { ProjectQuery } from './catalog/project-query/project-query-format';
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import type { OriginQuery } from './catalog/origin-query/origin-query-format';
+import { OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
@@ -57,6 +59,7 @@ export type Query = CallContextQuery
 	| HappensBeforeQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| OriginQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -89,7 +92,8 @@ export const SupportedQueries = {
 	'search':           SearchQueryDefinition,
 	'happens-before':   HappensBeforeQueryDefinition,
 	'resolve-value':    ResolveValueQueryDefinition,
-	'project':          ProjectQueryDefinition
+	'project':          ProjectQueryDefinition,
+	'origin':           OriginQueryDefinition,
 } as const satisfies SupportedQueries;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

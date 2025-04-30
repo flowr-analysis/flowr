@@ -38,7 +38,14 @@ import { VertexType } from '../graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 
-export const BuiltIn = 'built-in';
+export type BuiltIn = `built-in:${string}`;
+
+export function builtInId(name: string): BuiltIn {
+	return `built-in:${name}`;
+}
+export function isBuiltIn(name: NodeId | string): name is BuiltIn {
+	return String(name).startsWith('built-in:');
+}
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -57,14 +64,14 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
-	definedAt: typeof BuiltIn
+	definedAt: BuiltIn
 	processor: BuiltInIdentifierProcessor
 	config?:   object
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
 	type:      ReferenceType.BuiltInConstant
-	definedAt: typeof BuiltIn
+	definedAt: BuiltIn
 	value:     T
 }
 
@@ -152,14 +159,15 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 ): void {
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+		const id = builtInId(name);
 		const d: IdentifierDefinition[] = [{
 			type:                ReferenceType.BuiltInFunction,
-			definedAt:           BuiltIn,
+			definedAt:           id,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
 			config,
 			name,
-			nodeId:              BuiltIn
+			nodeId:              id
 		}];
 		BuiltInMemory.set(name, d);
 		if(both) {

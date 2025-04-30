@@ -140,7 +140,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDMiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSAyIHN0cm9rZTpncmF5O1xuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDJcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAzXG4gICAgNCAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -162,6 +162,8 @@ It offers a wide variety of features, for example:
           (2)
           *1.1-8*
         (0, 1)`"]]
+        built-in:_-["`Built-In:
+    #60;#45;`"]
         4{{"`#91;RNumber#93; 1
           (4)
           *2.12*`"}}
@@ -208,14 +210,20 @@ It offers a wide variety of features, for example:
           (18)
           *6.14-16*
         (16, 17)`"]]
+        built-in:-["`Built-In:
+    #45;`"]
         19[["`#91;RExpressionList#93; (
           (19)
           *6.13*
         (18)`"]]
+        built-in:_["`Built-In:
+    (`"]
         20[["`#91;RBinaryOp#93; #58;
           (20)
           *6.11-17*
         (13, 19)`"]]
+        built-in::["`Built-In:
+    #58;`"]
         24(["`#91;RSymbol#93; sum
           (24, :may:36+)
           *7.10-12*`"])
@@ -265,12 +273,16 @@ It offers a wide variety of features, for example:
           (36)
           *6.1-9.1*
         (12, 20, 35)`"]]
+        built-in:for["`Built-In:
+    for`"]
         38{{"`#91;RString#93; #34;Sum#58;#34;
           (38)
           *11.5-10*`"}}
         40(["`#91;RSymbol#93; sum
           (40)
           *11.13-15*`"])
+        built-in:sum["`Built-In:
+    sum`"]
         42{{"`#91;RString#93; #34;
     #34;
           (42)
@@ -279,6 +291,8 @@ It offers a wide variety of features, for example:
           (44)
           *11.1-22*
         (38, 40, 42)`"]]
+        built-in:cat["`Built-In:
+    cat`"]
         46{{"`#91;RString#93; #34;Product#58;#34;
           (46)
           *12.5-14*`"}}
@@ -297,87 +311,121 @@ It offers a wide variety of features, for example:
         0 -->|"defined-by"| 2
         2 -->|"argument"| 1
         2 -->|"returns, argument"| 0
+        2 -.->|"reads"| built-in:_-
+        linkStyle 4 stroke:gray;
         3 -->|"defined-by"| 4
         3 -->|"defined-by"| 5
         5 -->|"argument"| 4
         5 -->|"returns, argument"| 3
+        5 -.->|"reads"| built-in:_-
+        linkStyle 9 stroke:gray;
         6 -->|"defined-by"| 7
         6 -->|"defined-by"| 8
         8 -->|"argument"| 7
         8 -->|"returns, argument"| 6
+        8 -.->|"reads"| built-in:_-
+        linkStyle 14 stroke:gray;
         9 -->|"defined-by"| 10
         9 -->|"defined-by"| 11
         11 -->|"argument"| 10
         11 -->|"returns, argument"| 9
+        11 -.->|"reads"| built-in:_-
+        linkStyle 19 stroke:gray;
         12 -->|"defined-by"| 20
         16 -->|"reads"| 9
         18 -->|"reads, argument"| 16
         18 -->|"reads, argument"| 17
+        18 -.->|"reads"| built-in:-
+        linkStyle 24 stroke:gray;
         19 -->|"returns, argument"| 18
+        19 -.->|"reads"| built-in:_
+        linkStyle 26 stroke:gray;
         20 -->|"reads, argument"| 13
         20 -->|"reads, argument"| 19
+        20 -.->|"reads"| built-in::
+        linkStyle 29 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
         24 -->|"CD-True"| 36
-        linkStyle 25 stroke:gray,color:gray;
+        linkStyle 32 stroke:gray,color:gray;
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
-        linkStyle 27 stroke:gray,color:gray;
+        linkStyle 34 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
+        26 -.->|"reads"| built-in:_
+        linkStyle 37 stroke:gray;
         26 -->|"CD-True"| 36
-        linkStyle 30 stroke:gray,color:gray;
+        linkStyle 38 stroke:gray,color:gray;
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
-        linkStyle 32 stroke:gray,color:gray;
+        linkStyle 40 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
+        28 -.->|"reads"| built-in:_
+        linkStyle 43 stroke:gray;
         28 -->|"CD-True"| 36
-        linkStyle 35 stroke:gray,color:gray;
+        linkStyle 44 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
         29 -->|"argument"| 28
         29 -->|"returns, argument"| 23
+        29 -.->|"reads"| built-in:_-
+        linkStyle 49 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 40 stroke:gray,color:gray;
+        linkStyle 50 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 43 stroke:gray,color:gray;
+        linkStyle 53 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 45 stroke:gray,color:gray;
+        linkStyle 55 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
+        33 -.->|"reads"| built-in:_
+        linkStyle 58 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 48 stroke:gray,color:gray;
+        linkStyle 59 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
         34 -->|"argument"| 33
         34 -->|"returns, argument"| 30
+        34 -.->|"reads"| built-in:_-
+        linkStyle 64 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 53 stroke:gray,color:gray;
+        linkStyle 65 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
+        35 -.->|"reads"| built-in:_
+        linkStyle 68 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 56 stroke:gray,color:gray;
+        linkStyle 69 stroke:gray,color:gray;
         36 -->|"reads, argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
+        36 -.->|"reads"| built-in:for
+        linkStyle 73 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
+        40 -.->|"reads"| built-in:sum
+        linkStyle 76 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
+        44 -.->|"reads"| built-in:cat
+        linkStyle 80 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
+        52 -.->|"reads"| built-in:cat
+        linkStyle 86 stroke:gray;
     ```
     
     	
-    (The analysis required _22.08 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _24.08 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

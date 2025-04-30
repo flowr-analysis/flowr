@@ -26,6 +26,7 @@ import { isUndefined } from '../../../../../../util/assert';
 import { cartesianProduct } from '../../../../../../util/arrays';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { collectStrings } from '../../../../../eval/values/string/string-constants';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -39,11 +40,11 @@ export function processEvalCall<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
 		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true] }).information
+		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: 'builtin:eval' }).information
 		: initializeCleanDataflowInformation(rootId, data);
 	const evalArgument = args[0];
 
@@ -57,7 +58,7 @@ export function processEvalCall<OtherInfo>(
 
 	if(!getConfig().solver.evalStrings) {
 		expensiveTrace(dataflowLogger, () => `Skipping eval call ${JSON.stringify(evalArgument)} (disabled in config file)`);
-		information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -94,7 +95,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
-	information.graph.markIdForUnknownSideEffects(rootId);
+	handleUnknownSideEffect(information.graph, information.environment, rootId);
 	return information;
 }
 

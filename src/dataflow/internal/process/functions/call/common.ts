@@ -19,8 +19,12 @@ import {
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { ContainerIndicesCollection, DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import type {
+	ContainerIndicesCollection, DataflowGraphVertexAstLink,
+	DataflowGraphVertexFunctionDefinition,
+	FunctionOriginInformation } from '../../../../graph/vertex';
+import { isFunctionDefinitionVertex, VertexType
+} from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -156,10 +160,12 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
 	readonly argumentProcessResult: readonly (Pick<DataflowInformation, 'entryPoint'> | undefined)[]
+	readonly origin:                FunctionOriginInformation
+	readonly link?:                 DataflowGraphVertexAstLink
 }
 
 export function patchFunctionCall<OtherInfo>(
-	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
+	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
 		tag:         VertexType.FunctionCall,
@@ -170,7 +176,9 @@ export function patchFunctionCall<OtherInfo>(
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
-	});
+		origin:      [origin],
+		link
+	}, !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {
 		if(arg) {
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);

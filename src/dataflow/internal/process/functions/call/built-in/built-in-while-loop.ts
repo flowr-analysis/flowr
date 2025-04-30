@@ -20,6 +20,8 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
+import { valueSetGuard } from '../../../../../eval/values/general';
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -29,14 +31,23 @@ export function processWhileLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 2 || args[1] === EmptyArgument) {
 		dataflowLogger.warn(`While-Loop ${name.content} does not have 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const unpackedArgs = args.map(e => unpackArgument(e));
 
 	if(unpackedArgs.some(isUndefined)) {
 		dataflowLogger.warn(`While-Loop ${name.content} has empty arguments in ${JSON.stringify(args)}, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	}
+
+	// we should defer this to the abstract interpretation
+	const values = resolveValueOfVariable(unpackedArgs[0]?.lexeme, data.environment, data.completeAst.idMap);
+	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	
+	//We don't care about the body if it never executes
+	if(conditionIsAlwaysFalse) {
+		unpackedArgs.pop();
 	}
 
 	/* we inject the cf-dependency of the while-loop after the condition */
@@ -51,14 +62,29 @@ export function processWhileLoop<OtherInfo>(
 				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] };
 			}
 			return d;
-		} });
+		}, origin: 'builtin:while-loop' });
 	const [condition, body] = processedArguments;
+
+	// If the condition is always false, we don't include the body
+	if(condition !== undefined && conditionIsAlwaysFalse) {
+		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+		return {
+			unknownReferences: [],
+			in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: data.controlDependencies, type: ReferenceType.Function }],
+			out:               condition.out,
+			entryPoint:        name.info.id,
+			exitPoints:        [],
+			graph:             information.graph,
+			environment:       information.environment
+		};
+	}
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`);
 	const originalDependency = data.controlDependencies;
 
 	if(alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
+		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
 		return condition;
 	}
 

@@ -1,4 +1,4 @@
-import type { BuiltInDefinitions } from './built-in-config';
+import type { BuiltInDefinitions, BuiltInFunctionDefinition, BuiltInReplacementDefinition } from './built-in-config';
 import { ExitPointType } from '../info';
 import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../graph/graph';
@@ -6,6 +6,8 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
+import type { BuiltInMappingName } from './built-in';
+import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 
 const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -296,3 +298,13 @@ export const DefaultBuiltinConfig: BuiltInDefinitions = [
 		}
 	}
 ];
+
+export function getDefaultProcessor(name: string): BuiltInMappingName | 'unnamed' | undefined {
+	if(name.startsWith(UnnamedFunctionCallPrefix)) {
+		return 'unnamed';
+	}
+	const fn = DefaultBuiltinConfig.find(def => (def.names.includes(name) && def.type !== 'constant')
+	|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${n}${d}`)).includes(name))
+	) as BuiltInFunctionDefinition<'builtin:default'> | BuiltInReplacementDefinition | undefined;
+	return fn?.type === 'replacement' ? 'builtin:replacement' : fn?.processor as BuiltInMappingName;
+}

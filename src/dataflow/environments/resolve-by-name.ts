@@ -19,6 +19,8 @@ import { EdgeType } from '../graph/edge';
 import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
 import { valueFromRNode, valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
+import { onUnknownSideEffect } from '../graph/unknown-side-effect';
+import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -216,6 +218,21 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 	return setFrom(...values);
 }
 
+onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {		
+	if(target) {
+		return;
+	}
+
+	env.current.memory.forEach(mem => mem.forEach((def) => {
+		if(def.type === ReferenceType.BuiltInConstant) {
+			// what
+		} else if(def.type === ReferenceType.BuiltInFunction) {
+			// Tracked in #1207
+		} else if(def.value !== undefined) {
+			def.value.length = 0;
+		}
+	}));
+});
 
 function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
 	const parent = node?.info.parent;

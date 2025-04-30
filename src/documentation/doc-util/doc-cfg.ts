@@ -1,5 +1,4 @@
-import type { ControlFlowInformation } from '../../util/cfg/cfg';
-import { extractCFG } from '../../util/cfg/cfg';
+import { extractCFG } from '../../control-flow/extract-cfg';
 import {
 	createDataflowPipeline
 } from '../../core/steps/pipeline/default-pipelines';
@@ -11,6 +10,7 @@ import { FlowrWikiBaseRef } from './doc-files';
 import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
+import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 
 export async function getCfg(parser: KnownParser, code: string): Promise<{
 	info:     ControlFlowInformation,
@@ -28,7 +28,7 @@ export async function getCfg(parser: KnownParser, code: string): Promise<{
 	};
 }
 
-export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart TD\n') {
+export function printCfg(cfg: ControlFlowInformation, ast: NormalizedAst, prefix = 'flowchart BT\n') {
 	return `
 ${codeBlock('mermaid', cfgToMermaid(cfg, ast, prefix))}
 	`;

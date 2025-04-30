@@ -36,8 +36,16 @@ import { processRm } from '../internal/process/functions/call/built-in/built-in-
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 
-export const BuiltIn = 'built-in';
+export type BuiltIn = `built-in:${string}`;
+
+export function builtInId(name: string): BuiltIn {
+	return `built-in:${name}`;
+}
+export function isBuiltIn(name: NodeId | string): name is BuiltIn {
+	return String(name).startsWith('built-in:');
+}
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -56,14 +64,14 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
-	definedAt: typeof BuiltIn
+	definedAt: BuiltIn
 	processor: BuiltInIdentifierProcessor
 	config?:   object
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
 	type:      ReferenceType.BuiltInConstant
-	definedAt: typeof BuiltIn
+	definedAt: BuiltIn
 	value:     T
 }
 
@@ -83,7 +91,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:default' });
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[config.returnsNthArgument];
 		if(arg !== undefined) {
@@ -100,9 +108,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 	if(config.hasUnknownSideEffects) {
 		if(typeof config.hasUnknownSideEffects !== 'boolean') {
-			res.graph.markIdForUnknownSideEffects(rootId, config.hasUnknownSideEffects);
+			handleUnknownSideEffect(res.graph, res.environment, rootId, config.hasUnknownSideEffects);
 		} else {
-			res.graph.markIdForUnknownSideEffects(rootId);
+			handleUnknownSideEffect(res.graph, res.environment, rootId);
 		}
 	}
 
@@ -129,7 +137,8 @@ function defaultBuiltInProcessor<OtherInfo>(
 					args:        [],
 					environment: data.environment,
 					onlyBuiltin: false,
-					cds:         data.controlDependencies
+					cds:         data.controlDependencies,
+					origin:      ['builtin:default']
 				});
 			}
 		}
@@ -150,14 +159,15 @@ export function registerBuiltInFunctions<Config extends object, Proc extends Bui
 ): void {
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+		const id = builtInId(name);
 		const d: IdentifierDefinition[] = [{
 			type:                ReferenceType.BuiltInFunction,
-			definedAt:           BuiltIn,
+			definedAt:           id,
 			controlDependencies: undefined,
 			processor:           (name, args, rootId, data) => processor(name, args, rootId, data, config),
 			config,
 			name,
-			nodeId:              BuiltIn
+			nodeId:              id
 		}];
 		BuiltInMemory.set(name, d);
 		if(both) {

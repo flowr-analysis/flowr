@@ -216,6 +216,15 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addEdge('10-exit', 9, { label: CfgEdgeType.Fd })
 					.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
 			});
+
+			assertCfg(parser, 'for (i in v) b', {
+				entryPoints: [ '5' ],
+				exitPoints:  [ '5-exit' ],
+				graph:       new ControlFlowGraph()
+					.addVertex({ id: '4-head', kind: 'head', type: CfgVertexType.MidMarker, root: 4 })
+			}, {
+				expectIsSubgraph: true
+			});
 		});
 
 		describe('function calls', () => {

@@ -221,7 +221,7 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 
 function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInformation, vector: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = variable.graph;
-	graph.addVertex({ id: forLoop.info.id, type: identifyMayStatementType(forLoop), exit: [forLoop.info.id + '-exit'] });
+	graph.addVertex({ id: forLoop.info.id, type: identifyMayStatementType(forLoop), exit: [forLoop.info.id + '-exit'], mid: [forLoop.info.id + '-head'] });
 
 	graph.merge(vector.graph);
 	graph.merge(body.graph);
@@ -236,10 +236,13 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		}
 	}
 
+	graph.addVertex({ id: forLoop.info.id + '-head', type: CfgVertexType.MidMarker, root: forLoop.info.id, kind: 'head' });
+
 	for(const exit of variable.exitPoints) {
-		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, exit, { label: CfgEdgeType.Cd, when: RTrue, caused: forLoop.info.id });
-		}
+		graph.addEdge(forLoop.info.id + '-head', exit, { label: CfgEdgeType.Fd });
+	}
+	for(const entry of body.entryPoints) {
+		graph.addEdge(entry, forLoop.info.id + '-head', { label: CfgEdgeType.Cd, when: RTrue, caused: forLoop.info.id });
 	}
 
 	for(const next of [...body.nexts, ...body.exitPoints]) {

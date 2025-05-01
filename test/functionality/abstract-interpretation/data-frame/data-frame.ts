@@ -2,7 +2,7 @@ import { assert, beforeAll, test } from 'vitest';
 import type { AbstractInterpretationInfo } from '../../../../src/abstract-interpretation/data-frame/absint-info';
 import { performDataFrameAbsint } from '../../../../src/abstract-interpretation/data-frame/abstract-interpretation';
 import type { DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/domain';
-import { DataFrameTop, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
+import { DataFrameTop, equalColNames, equalInterval, leqColNames, leqInterval } from '../../../../src/abstract-interpretation/data-frame/domain';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import type { TREE_SITTER_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -13,7 +13,7 @@ import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/mo
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import type { RShell } from '../../../../src/r-bridge/shell';
+import { type RShell } from '../../../../src/r-bridge/shell';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
@@ -38,6 +38,22 @@ export const DataFrameTestOverapproximation = {
 	colnames: DomainMatchingType.Overapproximation,
 	cols:     DomainMatchingType.Overapproximation,
 	rows:     DomainMatchingType.Overapproximation
+};
+
+type DomainPredicateMapping = {
+	[K in keyof DataFrameDomain]: (X1: DataFrameDomain[K], X2: DataFrameDomain[K]) => boolean
+}
+
+const EqualFunctions: DomainPredicateMapping = {
+	colnames: equalColNames,
+	cols:     equalInterval,
+	rows:     equalInterval
+};
+
+const LeqFunctions: DomainPredicateMapping = {
+	colnames: leqColNames,
+	cols:     leqInterval,
+	rows:     leqInterval
 };
 
 /** Stores the inferred data frame constraints and AST node for a tested slicing criterion */
@@ -65,9 +81,9 @@ export function assertDataFrameDomain(
 		guard(isNotUndefined(result), 'Result cannot be undefined');
 		const [value] = getInferredDomainForCriterion(result, criterion);
 
-		assert.deepStrictEqual(value.colnames, expect.colnames, 'column names differ');
-		assert.deepStrictEqual(value.cols, expect.cols, 'column count differs');
-		assert.deepStrictEqual(value.rows, expect.rows, 'row count differs');
+		assertDomainMatching('colnames', value.colnames, expect.colnames, DomainMatchingType.Exact);
+		assertDomainMatching('cols', value.cols, expect.cols, DomainMatchingType.Exact);
+		assertDomainMatching('rows', value.rows, expect.rows, DomainMatchingType.Exact);
 	});
 }
 
@@ -118,9 +134,9 @@ export function testDataFrameDomainAgainstReal(
 			const cols = getRealDomainFromOutput('cols', criterion, output);
 			const rows = getRealDomainFromOutput('rows', criterion, output);
 
-			assertDomainMatching('colnames', value.colnames, colnames, leqColNames, options.colnames);
-			assertDomainMatching('cols', value.cols, cols, leqInterval, options.cols);
-			assertDomainMatching('rows', value.rows, rows, leqInterval, options.rows);
+			assertDomainMatching('colnames', value.colnames, colnames, options.colnames);
+			assertDomainMatching('cols', value.cols, cols, options.cols);
+			assertDomainMatching('rows', value.rows, rows, options.rows);
 		}
 	});
 }
@@ -129,14 +145,16 @@ function assertDomainMatching<K extends keyof DataFrameDomain, T extends DataFra
 	type: K,
 	actual: T,
 	expected: T,
-	leqFunction: (X1: T, X2: T) => boolean,
 	matchingType: DomainMatchingType
 ): void {
+	const equalFunction = EqualFunctions[type];
+	const leqFunction = LeqFunctions[type];
+
 	switch(matchingType) {
 		case DomainMatchingType.Exact:
-			return assert.deepStrictEqual(actual, expected, `${type} differs`);
+			return assert.ok(equalFunction(actual, expected), `${type} differs: expected ${JSON.stringify(actual)} to equal ${JSON.stringify(expected)}`);
 		case DomainMatchingType.Overapproximation:
-			return assert.isTrue(leqFunction(expected, actual), `${type} is no over-approximation`);
+			return assert.ok(leqFunction(expected, actual), `${type} is no over-approximation: expected ${JSON.stringify(expected)} to be an over-approximation of ${JSON.stringify(actual)}`);
 		default:
 			assertUnreachable(matchingType);
 	}

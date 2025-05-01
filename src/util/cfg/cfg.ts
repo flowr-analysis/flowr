@@ -305,10 +305,6 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 		}
 	}
 
-	for(const entryPoint of body.entryPoints) {
-		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'FD' });
-	}
-
 	for(const next of [...body.nexts, ...body.exitPoints]) {
 		graph.addEdge(whileLoop.info.id, next, { label: 'FD' });
 	}

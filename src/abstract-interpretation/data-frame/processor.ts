@@ -1,39 +1,23 @@
-import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
-import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { EdgeType } from '../../dataflow/graph/edge';
+import { BuiltInProcessorMapper, type BuiltInMappingName } from '../../dataflow/environments/built-in';
+import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
+import { VertexType } from '../../dataflow/graph/vertex';
 import type { NoInfo, RNode, RSingleNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RIfThenElse } from '../../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { RPipe } from '../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
-import { applySemantics, ConstraintType, getConstraintTypes } from './semantics';
+import { applySemantics, ConstraintType, getConstraintType } from './semantics';
 import { mapDataFrameSemantics } from './semantics-mapper';
-
-export type ConditionalDataFrameState = Record<'FD' | typeof RTrue | typeof RFalse, DataFrameStateDomain>;
-
-type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
-type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
-
-type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
-	node: Node,
-	domain: DataFrameStateDomain,
-	dfg: DataflowGraph
-) => DataFrameStateDomain;
-
-type DataFrameProcessorMapping = {
-	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
-}
 
 const DataFrameProcessorMapper: DataFrameProcessorMapping = {
 	[RType.ExpressionList]:     processDataFrameNothing,
@@ -51,15 +35,27 @@ const DataFrameProcessorMapper: DataFrameProcessorMapping = {
 	[RType.Parameter]:          processDataFrameNothing
 };
 
-export function processDataFrameLeaf<OtherInfo>(
-	node: RSingleNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+type ROperation<Info = NoInfo> = RFunctionCall<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RAccess<Info>;
+type RComplexNode<Info = NoInfo> = Exclude<RNode<Info>, RSingleNode<Info>>;
+
+type DataFrameProcessorMapping = {
+	[Node in RComplexNode<ParentInformation> as Node['type']]: DataFrameProcessor<Node>;
+}
+
+type DataFrameProcessor<Node extends RComplexNode<ParentInformation>> = (
+	node: Node,
+	domain: DataFrameStateDomain,
+	dfg: DataflowGraph
+) => DataFrameStateDomain;
+
+export function processDataFrameLeaf(
+	node: RSingleNode<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
 	if(node.type === RType.Symbol) {
 		resolveIdToAbstractValue(node.info.id, domain, dfg);
 	}
-	updateDomainOfId(node, domain, dfg);
 	return domain;
 }
 
@@ -71,19 +67,18 @@ export function processDataFrameExpression<Node extends RComplexNode<ParentInfor
 	const nodeType: Node['type'] = node.type;
 	const processor = DataFrameProcessorMapper[nodeType] as DataFrameProcessor<Node>;
 
-	const result = processor(node, domain, dfg);
-	updateDomainOfId(node, result, dfg);
-
-	return result;
+	return processor(node, domain, dfg);
 }
 
-function processDataFrameOperation<OtherInfo>(
-	node: ROperation<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameOperation(
+	node: ROperation<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(node.lexeme));
-	const processor = origin?.type === 'function' ? origin.processor as BuiltInMappingName : 'builtin:default';
+	const linked = dfg.getLinked(node.info.id);
+	const vertex = linked?.[0] !== undefined ? dfg.getVertex(linked[0]) : undefined;
+	const origin = vertex?.tag === VertexType.FunctionCall && Array.isArray(vertex.origin) ? vertex.origin : undefined;
+	const processor = origin?.[0] !== undefined && origin[0] in BuiltInProcessorMapper ? origin[0] as BuiltInMappingName : 'builtin:default';
 	node.info.dataFrame = mapDataFrameSemantics(node, dfg, processor);
 
 	if(node.info.dataFrame?.type === 'assignment') {
@@ -101,23 +96,32 @@ function processDataFrameOperation<OtherInfo>(
 			const operandValue = operation.operand ? resolveIdToAbstractValue(operation.operand, domain, dfg) : value;
 			value = applySemantics(operation.operation, operandValue ?? DataFrameTop, operation.args);
 
-			if(operation.operand !== undefined && getConstraintTypes(operation.operation).some(type => type === ConstraintType.OperandPrecondition || type === ConstraintType.OperandModification)) {
+			if(operation.operand !== undefined && getConstraintType(operation.operation) === ConstraintType.OperandModification) {
 				assignAbstractValueToId(operation.operand, value, domain, dfg);
 			}
 		}
-		if(node.info.dataFrame.operations.some(operation => getConstraintTypes(operation.operation).includes(ConstraintType.ResultPostcondition))) {
+		if(node.info.dataFrame.operations.some(operation => getConstraintType(operation.operation) === ConstraintType.ResultPostcondition)) {
 			domain.set(node.info.id, value);
 		}
+	} else if(processor === 'builtin:pipe') {
+		return processDataFramePipe(node, domain, dfg);
 	}
 	return domain;
 }
 
-function processDataFramePipe<OtherInfo>(
-	node: RPipe<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFramePipe(
+	node: RPipe<ParentInformation & AbstractInterpretationInfo> | ROperation<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const value = resolveIdToAbstractValue(node.rhs.info.id, domain, dfg);
+	let rhs: RNode<ParentInformation & AbstractInterpretationInfo> | undefined;
+
+	if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
+		rhs = node.rhs;
+	} else if(node.type === RType.FunctionCall && node.arguments[1] !== EmptyArgument) {
+		rhs = node.arguments[1]?.value;
+	}
+	const value = rhs ? resolveIdToAbstractValue(rhs.info.id, domain, dfg) : undefined;
 
 	if(value !== undefined) {
 		domain.set(node.info.id, value);
@@ -125,8 +129,8 @@ function processDataFramePipe<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameArgument<OtherInfo>(
-	node: RArgument<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameArgument(
+	node: RArgument<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -140,8 +144,8 @@ function processDataFrameArgument<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameIfThenElse<OtherInfo>(
-	node: RIfThenElse<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameIfThenElse(
+	node: RIfThenElse<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
@@ -157,28 +161,31 @@ function processDataFrameIfThenElse<OtherInfo>(
 	return domain;
 }
 
-function processDataFrameNothing<OtherInfo>(
-	node: RComplexNode<OtherInfo & ParentInformation & AbstractInterpretationInfo>,
+function processDataFrameNothing(
+	node: RComplexNode<ParentInformation & AbstractInterpretationInfo>,
 	domain: DataFrameStateDomain
 ): DataFrameStateDomain {
 	return domain;
 }
 
 function assignAbstractValueToId(id: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
-	dfg.outgoingEdges(id)?.entries()
-		.filter(([, edge]) => edge.types === EdgeType.Reads)
+	domain.set(id, value);
+	getDefinitionOrigin(id, dfg).forEach(origin => domain.set(origin, value));
+}
+
+function getDefinitionOrigin(id: NodeId, dfg: DataflowGraph): NodeId[] {
+	return dfg.outgoingEdges(id)?.entries()
+		.filter(([, { types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedByOnCall) && edgeDoesNotIncludeType(types, EdgeType.NonStandardEvaluation))
 		.map(([id]) => id)
-		.forEach(origin => domain.set(origin, value));
+		.filter(id => dfg.getVertex(id)?.tag === VertexType.VariableDefinition)
+		.toArray() ?? [];
 }
 
 function resolveIdToAbstractValue(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): DataFrameDomain | undefined {
 	if(domain.has(id)) {
 		return domain.get(id);
 	}
-	const origins = dfg.outgoingEdges(id)?.entries()
-		.filter(([, edge]) => edge.types === EdgeType.Reads)
-		.map(([id]) => domain.get(id))
-		.toArray();
+	const origins = getDefinitionOrigin(id, dfg).map(id => domain.get(id));
 
 	if(origins !== undefined && origins.length > 0 && origins.some(origin => origin !== undefined)) {
 		const result = joinDataFrames(...origins.map(origin => origin ?? DataFrameTop));
@@ -188,11 +195,11 @@ function resolveIdToAbstractValue(id: NodeId, domain: DataFrameStateDomain, dfg:
 	}
 }
 
-function updateDomainOfId(id: NodeId | RNode<ParentInformation & AbstractInterpretationInfo>, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
-	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = typeof id === 'object' ? id : dfg.idMap?.get(id);
+function updateDomainOfId(id: NodeId, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
+	const node: RNode<ParentInformation & AbstractInterpretationInfo> | undefined = dfg.idMap?.get(id);
 
 	if(node !== undefined) {
-		node.info.dataFrame ??= { type: 'other' };
+		node.info.dataFrame ??= {};
 		node.info.dataFrame.domain = new Map(domain);
 	}
 }

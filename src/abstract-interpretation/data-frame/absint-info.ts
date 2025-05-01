@@ -8,7 +8,7 @@ export interface DataFrameOperation<Name extends DataFrameOperationName> {
 	args:      DataFrameOperationArgs<Name>
 }
 
-type DataFrameOperations = {
+export type DataFrameOperations = {
     [Name in DataFrameOperationName]: DataFrameOperation<Name>;
 }[DataFrameOperationName];
 
@@ -27,12 +27,8 @@ export interface DataFrameExpressionInfo {
 	operations: DataFrameOperations[]
 }
 
-export interface DataFrameOtherInfo {
-	type: 'other'
-}
-
-export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo | DataFrameOtherInfo;
+export type DataFrameInfo = DataFrameAssignmentInfo | DataFrameExpressionInfo;
 
 export interface AbstractInterpretationInfo {
-	dataFrame?: DataFrameInfo & DataFrameInfoBase
+	dataFrame?: (DataFrameInfo & DataFrameInfoBase) | DataFrameInfoBase
 }

@@ -381,7 +381,7 @@ export class DataflowGraph<
 			}
 		}
 
-		this.sourced.push(...otherGraph.sourced);
+		this._sourced = this._sourced.concat(otherGraph.sourced);
 
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);

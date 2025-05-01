@@ -104,7 +104,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name */
-	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	let queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
 
 	while(queue.length > 0) {
 		const [str, id] = queue.shift() as [string, NodeId];
@@ -132,7 +132,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const);
 			/** only follow defined-by and reads */
-			queue.push(...x);
+			queue = queue.concat(x);
 			continue;
 		}
 

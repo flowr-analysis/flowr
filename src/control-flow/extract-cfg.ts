@@ -78,6 +78,8 @@ function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInf
  * @param ast             - the normalized AST
  * @param graph           - additional dataflow facts to consider by the control flow extraction
  * @param simplifications - a list of simplification passes to apply to the control flow graph
+ *
+ * @see {@link extractSimpleCfg} - for a simplified version of this function
  */
 export function extractCFG<Info=ParentInformation>(
 	ast:    NormalizedAst<Info>,
@@ -85,6 +87,13 @@ export function extractCFG<Info=ParentInformation>(
 	simplifications?: readonly CfgSimplificationPassName[]
 ): ControlFlowInformation {
 	return simplifyControlFlowInformation(foldAst(ast.ast, graph ? dataflowCfgFolds(graph) : cfgFolds), simplifications);
+}
+
+/**
+ * Simplified version of {@link extractCFG} that is much quicker, but much simpler!
+ */
+export function extractSimpleCfg<Info=ParentInformation>(ast: NormalizedAst<Info>) {
+	return foldAst(ast.ast, cfgFolds);
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {
@@ -318,9 +327,10 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 			continue;
 		}
 		graph.merge(arg.graph);
-		info.breaks.push(...arg.breaks);
-		info.nexts.push(...arg.nexts);
-		info.returns.push(...arg.returns);
+		info.breaks = info.breaks.concat(arg.breaks);
+		info.nexts = info.nexts.concat(arg.nexts);
+		info.returns = info.returns.concat(arg.returns);
+
 		for(const entry of arg.entryPoints) {
 			for(const exit of lastArgExits) {
 				graph.addEdge(entry, exit, { label: CfgEdgeType.Fd });
@@ -389,9 +399,10 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 
 	if(name) {
 		graph.merge(name.graph);
-		info.breaks.push(...name.breaks);
-		info.nexts.push(...name.nexts);
-		info.returns.push(...name.returns);
+		info.breaks = info.breaks.concat(name.breaks);
+		info.nexts = info.nexts.concat(name.nexts);
+		info.returns = info.returns.concat(name.returns);
+
 		for(const entry of name.entryPoints) {
 			graph.addEdge(entry, node.info.id, { label: CfgEdgeType.Fd });
 		}
@@ -406,9 +417,10 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 
 	if(value) {
 		graph.merge(value.graph);
-		info.breaks.push(...value.breaks);
-		info.nexts.push(...value.nexts);
-		info.returns.push(...value.returns);
+		info.breaks = info.breaks.concat(value.breaks);
+		info.nexts = info.nexts.concat(value.nexts);
+		info.returns = info.returns.concat(value.returns);
+
 		for(const exitPoint of currentExitPoint) {
 			for(const entry of value.entryPoints) {
 				graph.addEdge(entry, exitPoint, { label: CfgEdgeType.Fd });
@@ -476,9 +488,9 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 			}
 		}
 		result.exitPoints = accessor.exitPoints;
-		result.breaks.push(...accessor.breaks);
-		result.nexts.push(...accessor.nexts);
-		result.returns.push(...accessor.returns);
+		result.breaks = result.breaks.concat(accessor.breaks);
+		result.nexts = result.nexts.concat(accessor.nexts);
+		result.returns = result.returns.concat(accessor.returns);
 	}
 	for(const exitPoint of result.exitPoints) {
 		graph.addEdge(access.info.id + '-exit', exitPoint, { label: CfgEdgeType.Fd });
@@ -518,9 +530,9 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 			}
 		}
 		result.graph.merge(expression.graph);
-		result.breaks.push(...expression.breaks);
-		result.nexts.push(...expression.nexts);
-		result.returns.push(...expression.returns);
+		result.breaks = result.breaks.concat(expression.breaks);
+		result.nexts = result.nexts.concat(expression.nexts);
+		result.returns = result.returns.concat(expression.returns);
 		result.exitPoints = expression.exitPoints;
 	}
 

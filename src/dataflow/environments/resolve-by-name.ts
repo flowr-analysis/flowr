@@ -120,7 +120,7 @@ const AliasHandler = {
 } as const satisfies Record<VertexType, AliasHandler>;
 
 function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const definitions: NodeId[] = [];
+	let definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
 	const identifier = recoverName(sourceId, dataflow.idMap);
@@ -140,7 +140,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 			if(def.value === undefined) {
 				return undefined;
 			}
-			definitions.push(...def.value);
+			definitions = definitions.concat(def.value);
 		} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
 			definitions.push(def.nodeId);
 		} else {

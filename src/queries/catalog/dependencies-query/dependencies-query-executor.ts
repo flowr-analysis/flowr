@@ -334,9 +334,9 @@ function getArgumentValue(
 }
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
-	const functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
+	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
 	if(customFunctions) {
-		functions.push(...customFunctions);
+		functions = functions.concat(customFunctions);
 	}
 	return functions;
 }

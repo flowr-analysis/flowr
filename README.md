@@ -425,7 +425,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _24.08 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _23.23 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -475,7 +475,7 @@ as well as the deployed [code documentation](https://flowr-analysis.github.io/fl
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [contributing guidelines](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md) for more information.
+We welcome every contribution! Please check out the [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/Onboarding) section in the wiki for all the information you will need.
 
 ### Contributors
 

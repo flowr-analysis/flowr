@@ -12,6 +12,7 @@
     "url": "https://github.com/flowr-analysis/flowr/issues"
   },
   "scripts": {
+    "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "flowr": "npm run main --",
     "main-dev": "ts-node src/cli/flowr.ts",

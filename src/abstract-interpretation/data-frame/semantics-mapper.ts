@@ -7,20 +7,22 @@ import type { DataFrameInfo } from './absint-info';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
+import { mapDataFrameReplacement } from './mappers/replacement-mapper';
 
 const DataFrameProcessorMapper = {
-	'builtin:default':    mapDataFrameFunctionCall,
-	'builtin:assignment': mapDataFrameAssignment,
-	'builtin:access':     mapDataFrameAccess,
+	'builtin:default':     mapDataFrameFunctionCall,
+	'builtin:assignment':  mapDataFrameAssignment,
+	'builtin:replacement': mapDataFrameReplacement,
+	'builtin:access':      mapDataFrameAccess,
 } as const satisfies Partial<Record<BuiltInMappingName, DataFrameProcessor>>;
 
-type DataFrameProcessor = <OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+type DataFrameProcessor = (
+	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ) => DataFrameInfo | undefined;
 
-export function mapDataFrameSemantics<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+export function mapDataFrameSemantics(
+	node: RNode<ParentInformation>,
 	dfg: DataflowGraph,
 	origin: BuiltInMappingName
 ): DataFrameInfo | undefined {
@@ -31,8 +33,8 @@ export function mapDataFrameSemantics<OtherInfo>(
 	}
 }
 
-export function isStringBasedAccess<OtherInfo>(
-	access: RAccess<OtherInfo & ParentInformation>
-): access is RNamedAccess<OtherInfo & ParentInformation> {
+export function isStringBasedAccess(
+	access: RAccess<ParentInformation>
+): access is RNamedAccess<ParentInformation> {
 	return access.operator === '$' || access.operator === '@';
 }

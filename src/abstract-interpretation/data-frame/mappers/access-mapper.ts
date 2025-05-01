@@ -6,114 +6,140 @@ import type { RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nod
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import type { DataFrameInfo } from '../absint-info';
-import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
+import type { AbstractInterpretationInfo, DataFrameInfo, DataFrameOperations } from '../absint-info';
+import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, unescapeArgument } from '../resolve-args';
 import { isStringBasedAccess } from '../semantics-mapper';
 
-const SpecialAccessArgumentsMapper: Partial<Record<RIndexAccess['operator'], string[]>> = {
+const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
 	'[':  ['drop'],
 	'[[': ['exact']
 };
 
-export function mapDataFrameAccess<OtherInfo>(
-	node: RNode<OtherInfo & ParentInformation>,
+export function mapDataFrameAccess(
+	node: RNode<ParentInformation>,
 	dfg: DataflowGraph
 ): DataFrameInfo | undefined {
 	if(node.type === RType.Access) {
+		let operations: DataFrameOperations[] | undefined;
+
 		if(isStringBasedAccess(node)) {
-			return mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameNamedColumnAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
 		} else {
-			return mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+			operations = mapDataFrameIndexColRowAccess(node, { graph: dfg, idMap: dfg.idMap, full: true });
+		}
+		if(operations !== undefined) {
+			return { type: 'expression', operations: operations };
 		}
 	}
 }
 
-function mapDataFrameNamedColumnAccess<OtherInfo>(
-	access: RNamedAccess<OtherInfo & ParentInformation>,
+function mapDataFrameNamedColumnAccess(
+	access: RNamedAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] | undefined {
+	const dataFrame = access.accessed;
+
+	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+		return;
+	}
 	const argName = resolveIdToArgValueSymbolName(access.access[0], info);
 
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'accessCol',
-			operand:   access.accessed.info.id,
-			args:      { columns: argName ? [argName] : undefined }
-		}]
-	};
+	return [{
+		operation: 'accessCols',
+		operand:   dataFrame.info.id,
+		args:      { columns: argName ? [argName] : undefined }
+	}];
 }
 
-function mapDataFrameIndexColRowAccess<OtherInfo>(
-	access: RIndexAccess<OtherInfo & ParentInformation>,
+function mapDataFrameIndexColRowAccess(
+	access: RIndexAccess<ParentInformation & AbstractInterpretationInfo>,
 	info: ResolveInfo
-): DataFrameInfo {
+): DataFrameOperations[] | undefined {
+	const dataFrame = access.accessed;
+
+	if(dataFrame.info.dataFrame?.domain?.get(dataFrame.info.id) === undefined) {
+		return;
+	}
 	const args = getEffectiveArgs(access.operator, access.access);
 
 	if(args.every(arg => arg === EmptyArgument)) {
-		return {
-			type:       'expression',
-			operations: [{
-				operation: 'identity',
-				operand:   access.accessed.info.id,
-				args:      {}
-			}]
-		};
-	} else if(args.length > 0 && args.length <= 2) {
-		const rowArg = args.length < 2 ? undefined : args[0];
-		const colArg = args.length < 2 ? args[0] : args[1];
+		return [{
+			operation: 'identity',
+			operand:   dataFrame.info.id,
+			args:      {}
+		}];
+	}
+	const result: DataFrameOperations[] = [];
+	const dropArg = access.access.find(arg => resolveIdToArgName(arg, info) === 'drop');
+	const dropValue = dropArg !== undefined ? resolveIdToArgValue(dropArg, info) : undefined;
+	const rowArg = args.length < 2 ? undefined : args[0];
+	const colArg = args.length < 2 ? args[0] : args[1];
+	let rows: number[] | undefined = undefined;
+	let columns: string[] | number[] | undefined = undefined;
 
-		const result: DataFrameInfo = { type: 'expression', operations: [] };
+	if(rowArg !== undefined && rowArg !== EmptyArgument) {
+		const rowValue: unknown = resolveIdToArgValue(rowArg, info);
+
+		if(typeof rowValue === 'number') {
+			rows = [rowValue];
+		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+			rows = rowValue;
+		}
+		result.push({
+			operation: 'accessRows',
+			operand:   dataFrame.info.id,
+			args:      { rows: rows?.map(Math.abs) }
+		});
+	}
+	if(colArg !== undefined && colArg !== EmptyArgument) {
+		const colValue: unknown = resolveIdToArgValue(colArg, info);
+
+		if(typeof colValue === 'string') {
+			columns = [colValue];
+		} else if(typeof colValue === 'number') {
+			columns = [colValue];
+		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
+			columns = colValue;
+		}
+		result.push({
+			operation: 'accessCols',
+			operand:   dataFrame.info.id,
+			args:      { columns: columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns }
+		});
+	}
+	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
+	const dropExtent = access.operator === '[[' ? true :
+		args.length === 2 && typeof dropValue === 'boolean' ? dropValue :
+			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
+
+	if(!dropExtent) {
+		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
 		if(rowArg !== undefined && rowArg !== EmptyArgument) {
-			const rowValue: unknown = resolveIdToArgValue(rowArg, info);
-			let rows: number[] | undefined = undefined;
-
-			if(typeof rowValue === 'number') {
-				rows = [rowValue];
-			} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
-				rows = rowValue;
-			}
-			result.operations.push({
-				operation: 'accessRow',
-				operand:   access.accessed.info.id,
-				args:      { rows }
+			result.push({
+				operation: rows === undefined || rows?.every(row => row >= 0) ? 'subsetRows' : 'removeRows',
+				operand:   operand?.info.id,
+				args:      { rows: rows?.length }
 			});
+			operand = undefined;
 		}
 		if(colArg !== undefined && colArg !== EmptyArgument) {
-			const colValue: unknown = resolveIdToArgValue(colArg, info);
-			let columns: string[] | number[] | undefined = undefined;
-
-			if(typeof colValue === 'string') {
-				columns = [colValue];
-			} else if(typeof colValue === 'number') {
-				columns = [colValue];
-			} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
-				columns = colValue;
-			}
-			result.operations.push({
-				operation: 'accessCol',
-				operand:   access.accessed.info.id,
-				args:      { columns }
+			result.push({
+				operation: columns === undefined || columns?.every(col => typeof col === 'string' || col >= 0) ? 'subsetCols' : 'removeCols',
+				operand:   operand?.info.id,
+				args:      { colnames: columns?.map(col => typeof col === 'string' ? col : undefined) }
 			});
+			operand = undefined;
 		}
 		return result;
 	}
-	return {
-		type:       'expression',
-		operations: [{
-			operation: 'unknown',
-			operand:   access.accessed.info.id,
-			args:      { modifyInplace: true }
-		}]
-	};
 }
 
-function getEffectiveArgs<OtherInfo>(
-	funct: keyof typeof SpecialAccessArgumentsMapper,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
-): readonly RFunctionArgument<OtherInfo & ParentInformation>[] {
-	const ignoredArgs = SpecialAccessArgumentsMapper[funct] ?? [];
+function getEffectiveArgs(
+	operator: RIndexAccess['operator'],
+	args: readonly RFunctionArgument<ParentInformation>[]
+): readonly RFunctionArgument<ParentInformation>[] {
+	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !ignoredArgs.includes(arg.name.content));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unescapeArgument(arg.name.content)));
 }

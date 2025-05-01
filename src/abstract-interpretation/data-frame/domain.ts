@@ -1,6 +1,8 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setEquals } from '../../util/set';
 
+const MaxColNames = 50;
+
 type Interval = [number, number];
 
 export const IntervalBottom = 'bottom';
@@ -42,15 +44,14 @@ export function leqColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
 export function joinColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
 	if(X1 === ColNamesTop || X2 === ColNamesTop) {
 		return ColNamesTop;
-	} else {
-		return Array.from(new Set(X1).union(new Set(X2)));
 	}
+	const join = Array.from(new Set(X1).union(new Set(X2)));
+
+	return join.length > MaxColNames ? ColNamesTop : join;
 }
 
 export function meetColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	if(X1 === ColNamesTop && X2 === ColNamesTop) {
-		return ColNamesTop;
-	} else if(X1 === ColNamesTop) {
+	if(X1 === ColNamesTop) {
 		return X2;
 	} else if(X2 === ColNamesTop) {
 		return X1;
@@ -69,6 +70,11 @@ export function subtractColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNam
 	}
 }
 
+/** We just join here since we have an upper limit {@link MaxColNames} for {@link joinColNames} */
+export function wideningColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
+	return joinColNames(X1, X2);
+}
+
 export function equalInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
 	return X1 === X2 || (X1 !== IntervalBottom && X1[0] === X2[0] && X1[1] === X2[1]);
 }
@@ -78,9 +84,7 @@ export function leqInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
 }
 
 export function joinInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom && X2 === IntervalBottom) {
-		return IntervalBottom;
-	} else if(X1 === IntervalBottom) {
+	if(X1 === IntervalBottom) {
 		return X2;
 	} else if(X2 === IntervalBottom) {
 		return X1;
@@ -111,7 +115,23 @@ export function subtractInterval(X1: IntervalDomain, X2: IntervalDomain): Interv
 	if(X1 === IntervalBottom || X2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [X1[0] - X2[0], X1[1] - X2[1]];
+		return [Math.max(X1[0] - X2[0], 0), Math.max(X1[1] - X2[1], 0)];
+	}
+}
+
+export function minInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [Math.min(X1[0], X2[0]), Math.min(X1[1], X2[1])];
+	}
+}
+
+export function maxInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [Math.max(X1[0], X2[0]), Math.max(X1[1], X2[1])];
 	}
 }
 
@@ -120,6 +140,24 @@ export function includeZeroInterval(X: IntervalDomain): IntervalDomain {
 		return IntervalBottom;
 	} else {
 		return [0, X[1]];
+	}
+}
+
+export function includeInfinityInterval(X: IntervalDomain): IntervalDomain {
+	if(X === IntervalBottom) {
+		return IntervalBottom;
+	} else {
+		return [X[0], Infinity];
+	}
+}
+
+export function wideningInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
+	if(X1 === IntervalBottom) {
+		return X2;
+	} else if(X2 === IntervalBottom) {
+		return X1;
+	} else {
+		return [X1[0] <= X2[0] ? X1[0] : 0, X1[1] >= X2[1] ? X1[1] : Infinity];
 	}
 }
 
@@ -141,6 +179,14 @@ export function meetDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
 		cols:     meetInterval(a.cols, b.cols),
 		rows:     meetInterval(a.rows, b.rows)
 	}), values[0] ?? DataFrameTop);
+}
+
+export function wideningDataFrames(X1: DataFrameDomain, X2: DataFrameDomain): DataFrameDomain {
+	return {
+		colnames: wideningColNames(X1.colnames, X2.colnames),
+		cols:     wideningInterval(X1.cols, X2.cols),
+		rows:     wideningInterval(X1.rows, X2.rows)
+	};
 }
 
 export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameStateDomain): boolean {
@@ -181,6 +227,19 @@ export function meetDataFrameStates(...values: DataFrameStateDomain[]): DataFram
 			} else {
 				result.set(nodeId, value);
 			}
+		}
+	}
+	return result;
+}
+
+export function wideningDataFrameStates(X1: DataFrameStateDomain, X2: DataFrameStateDomain): DataFrameStateDomain {
+	const result = new Map(X1);
+
+	for(const [nodeId, value] of X2) {
+		if(result.has(nodeId)) {
+			result.set(nodeId, wideningDataFrames(result.get(nodeId) ?? DataFrameTop, value));
+		} else {
+			result.set(nodeId, value);
 		}
 	}
 	return result;

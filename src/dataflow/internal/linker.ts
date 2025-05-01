@@ -1,4 +1,4 @@
-import { DefaultMap } from '../../util/defaultmap';
+import { DefaultMap } from '../../util/collections/defaultmap';
 import { guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

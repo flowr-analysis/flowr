@@ -1,4 +1,4 @@
-import { setEquals } from '../../../src/util/set';
+import { setEquals } from '../../../src/util/collections/set';
 import { jsonReplacer } from '../../../src/util/json';
 import { describe, assert, test } from 'vitest';
 

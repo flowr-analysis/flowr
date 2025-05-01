@@ -10,7 +10,7 @@ import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
 import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import { codeBlock } from './doc-code';

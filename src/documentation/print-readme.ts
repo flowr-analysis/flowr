@@ -130,7 +130,7 @@ as well as the deployed [code documentation](https://flowr-analysis.github.io/fl
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md) for more information.
+We welcome every contribution! Please check out the [developer onboarding](${FlowrWikiBaseRef}/Onboarding) section in the wiki for all the information you will need.
 
 ### Contributors
 

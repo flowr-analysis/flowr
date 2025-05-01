@@ -11,7 +11,7 @@ import { NetServer, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/ansi';
+import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, KnownEngines } from '../config';
 import { getConfig ,   amendConfig, getEngineConfig, parseConfig, setConfig, setConfigFile } from '../config';

@@ -13,7 +13,7 @@ import { Summarizer } from '../../util/summarizer';
 import { getAllFiles, readLineByLine, readLineByLineSync } from '../../util/files';
 import { jsonReplacer } from '../../util/json';
 import { ultimateStats2String } from '../stats/print';
-import { DefaultMap } from '../../util/defaultmap';
+import { DefaultMap } from '../../util/collections/defaultmap';
 import { log } from '../../util/log';
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {

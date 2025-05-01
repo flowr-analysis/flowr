@@ -1,5 +1,5 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { ColorEffect, Colors, FontStyles, italic } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
 import { RShell } from '../../../r-bridge/shell';
 import type { KnownParser } from '../../../r-bridge/parser';
 

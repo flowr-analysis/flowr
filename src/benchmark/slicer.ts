@@ -52,7 +52,7 @@ import { performDataFrameAbsint } from '../abstract-interpretation/data-frame/ab
 import type { ControlFlowInformation } from '../util/cfg/cfg';
 import { extractCFG } from '../util/cfg/cfg';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { AbstractInterpretationInfo, DataFrameInfo } from '../abstract-interpretation/data-frame/absint-info';
+import type { AbstractInterpretationInfo } from '../abstract-interpretation/data-frame/absint-info';
 import type { IntervalDomain } from '../abstract-interpretation/data-frame/domain';
 import { ColNamesTop, DataFrameBottom, DataFrameTop, equalDataFrameDomain, equalInterval, IntervalBottom, IntervalTop } from '../abstract-interpretation/data-frame/domain';
 
@@ -431,7 +431,7 @@ export class BenchmarkSlicer {
 			}
 			stats.sizeOfInfo += safeSizeOf([node.info.dataFrame]);
 
-			const expression: DataFrameInfo | undefined = node.info.dataFrame.type === 'expression' ? node.info.dataFrame : undefined;
+			const expression = 'type' in node.info.dataFrame && node.info.dataFrame?.type === 'expression' ? node.info.dataFrame : undefined;
 			const domain = node.info.dataFrame?.domain;
 			const value = domain?.get(node.info.id);
 

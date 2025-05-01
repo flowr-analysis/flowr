@@ -1,5 +1,4 @@
-import { type BuiltInMappingName } from '../../dataflow/environments/built-in';
-import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { BuiltInProcessorMapper, type BuiltInMappingName } from '../../dataflow/environments/built-in';
 import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraph } from '../../dataflow/graph/graph';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -14,7 +13,6 @@ import type { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-o
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { assertUnreachable } from '../../util/assert';
 import type { AbstractInterpretationInfo } from './absint-info';
 import type { DataFrameDomain, DataFrameStateDomain } from './domain';
 import { DataFrameTop, joinDataFrames } from './domain';
@@ -77,9 +75,10 @@ function processDataFrameOperation(
 	domain: DataFrameStateDomain,
 	dfg: DataflowGraph
 ): DataFrameStateDomain {
-	const name = getFunctionName(node);
-	const origin = DefaultBuiltinConfig.find(entry => entry.names.includes(name));
-	const processor = origin?.type === 'function' ? origin.processor as BuiltInMappingName : 'builtin:default';
+	const linked = dfg.getLinked(node.info.id);
+	const vertex = linked?.[0] !== undefined ? dfg.getVertex(linked[0]) : undefined;
+	const origin = vertex?.tag === VertexType.FunctionCall && Array.isArray(vertex.origin) ? vertex.origin : undefined;
+	const processor = origin?.[0] !== undefined && origin[0] in BuiltInProcessorMapper ? origin[0] as BuiltInMappingName : 'builtin:default';
 	node.info.dataFrame = mapDataFrameSemantics(node, dfg, processor);
 
 	if(node.info.dataFrame?.type === 'assignment') {
@@ -172,19 +171,6 @@ function processDataFrameNothing(
 function assignAbstractValueToId(id: NodeId, value: DataFrameDomain, domain: DataFrameStateDomain, dfg: DataflowGraph): void {
 	domain.set(id, value);
 	getDefinitionOrigin(id, dfg).forEach(origin => domain.set(origin, value));
-}
-
-function getFunctionName(operation: ROperation<ParentInformation>): string {
-	switch(operation.type) {
-		case RType.FunctionCall:
-			return operation.named ? operation.functionName.content : '';
-		case RType.Access:
-		case RType.BinaryOp:
-		case RType.UnaryOp:
-			return operation.operator;
-		default:
-			assertUnreachable(operation);
-	}
 }
 
 function getDefinitionOrigin(id: NodeId, dfg: DataflowGraph): NodeId[] {

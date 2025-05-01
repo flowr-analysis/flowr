@@ -277,6 +277,17 @@ result <- df[c(-1, -2), -1, drop = FALSE]
 
 	testDataFrameDomain(
 		`
+df <- data.frame(id = 1:3, name = 4:6)
+result <- df[,]
+		`.trim(),
+		[
+			['1@df', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }],
+			['2@result', { colnames: ['id','name'], cols: [2, 2], rows: [3, 3] }],
+		]
+	);
+
+	testDataFrameDomain(
+		`
 df <- data.frame(id = 1:3)
 df$id <- "A"
 print(df)
@@ -904,4 +915,19 @@ print(df3$level)
 			]
 		);
 	});
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, age = c(25, 30, 40))
+df <- df |> subset(age < 30)
+df <- df |> rbind(c(4, 32), c(5, 35))
+df <- df[2:3, 1:2]
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'age'], cols: [2, 2], rows: [3, 3] }],
+			['2@df', { colnames: ['id', 'age'], cols: [2, 2], rows: [0, 3] }, { rows: DomainMatchingType.Overapproximation }],
+			['3@df', { colnames: ['id', 'age'], cols: [2, 2], rows: [2, 5] }, { rows: DomainMatchingType.Overapproximation }],
+			['4@df', { colnames: ['id', 'age'], cols: [2, 2], rows: [2, 2] }],
+		]
+	);
 }));

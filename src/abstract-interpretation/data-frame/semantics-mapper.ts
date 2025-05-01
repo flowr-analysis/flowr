@@ -7,11 +7,13 @@ import type { DataFrameInfo } from './absint-info';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameAssignment } from './mappers/assignment-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
+import { mapDataFrameReplacement } from './mappers/replacement-mapper';
 
 const DataFrameProcessorMapper = {
-	'builtin:default':    mapDataFrameFunctionCall,
-	'builtin:assignment': mapDataFrameAssignment,
-	'builtin:access':     mapDataFrameAccess,
+	'builtin:default':     mapDataFrameFunctionCall,
+	'builtin:assignment':  mapDataFrameAssignment,
+	'builtin:replacement': mapDataFrameReplacement,
+	'builtin:access':      mapDataFrameAccess,
 } as const satisfies Partial<Record<BuiltInMappingName, DataFrameProcessor>>;
 
 type DataFrameProcessor = (

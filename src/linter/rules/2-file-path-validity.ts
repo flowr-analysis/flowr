@@ -28,6 +28,13 @@ export interface FilePathValidityConfig extends MergeableRecord {
 	includeUnknown:           boolean
 }
 
+export interface FilePathValidityMetadata extends MergeableRecord {
+	totalReads:              number
+	totalUnknown:            number
+	totalWritesBeforeAlways: number
+	totalValid:              number
+}
+
 export const R2_FILE_PATH_VALIDITY = {
 	createSearch: (config) => Q.fromQuery({
 		type:                   'dependencies',
@@ -36,46 +43,63 @@ export const R2_FILE_PATH_VALIDITY = {
 		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}),
-	processSearchResult: (elements, config, data): FilePathValidityResult[] => {
+	processSearchResult: (elements, config, data): { metadata: FilePathValidityMetadata, results: FilePathValidityResult[] } => {
 		let cfg: ControlFlowGraph;
-		return elements.getElements().flatMap(element => {
-			const results = element.queryResult as QueryResults<'dependencies'>['dependencies'];
-			const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
-			if(!matchingRead) {
-				return [];
-			}
-			const range = element.node.info.fullRange as SourceRange;
-
-			// check if we can't parse the file path statically
-			if(matchingRead.source === Unknown) {
-				if(config.includeUnknown) {
-					return [{
-						range,
-						filePath:  Unknown,
-						certainty: LintingCertainty.Maybe
-					}];
-				} else {
+		const metadata: FilePathValidityMetadata = {
+			totalReads:              0,
+			totalUnknown:            0,
+			totalWritesBeforeAlways: 0,
+			totalValid:              0
+		};
+		return {
+			results: elements.getElements().flatMap(element => {
+				const results = element.queryResult as QueryResults<'dependencies'>['dependencies'];
+				const matchingRead = results.readData.find(r => r.nodeId == element.node.info.id);
+				if(!matchingRead) {
 					return [];
 				}
-			}
+				metadata.totalReads++;
+				const range = element.node.info.fullRange as SourceRange;
 
-			// check if any write to the same file happens before the read, and exclude this case if so
-			cfg ??= extractCFG(data.normalize, data.dataflow.graph).graph;
-			const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
-			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
-			if(writesBefore.some(w => w === Ternary.Always)) {
-				return [];
-			}
+				// check if we can't parse the file path statically
+				if(matchingRead.source === Unknown) {
+					metadata.totalUnknown++;
+					if(config.includeUnknown) {
+						return [{
+							range,
+							filePath:  Unknown,
+							certainty: LintingCertainty.Maybe
+						}];
+					} else {
+						return [];
+					}
+				}
 
-			return [{
-				range,
-				filePath:  matchingRead.source,
-				certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
-			}];
-		}).filter(element => {
-			const paths = findSource(element.filePath, { referenceChain: [] });
-			return !paths || !paths.length;
-		});
+				// check if any write to the same file happens before the read, and exclude this case if so
+				cfg ??= extractCFG(data.normalize, data.dataflow.graph).graph;
+				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
+				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
+				if(writesBefore.some(w => w === Ternary.Always)) {
+					metadata.totalWritesBeforeAlways++;
+					return [];
+				}
+
+				return [{
+					range,
+					filePath:  matchingRead.source,
+					certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
+				}];
+			}).filter(element => {
+				const paths = findSource(element.filePath, { referenceChain: [] });
+				if(!paths || !paths.length) {
+					return true;
+				} else {
+					metadata.totalValid++;
+					return false;
+				}
+			}),
+			metadata
+		};
 	},
 	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,
 	defaultConfig: {
@@ -83,7 +107,7 @@ export const R2_FILE_PATH_VALIDITY = {
 		additionalWriteFunctions: [],
 		includeUnknown:           false
 	}
-} as const satisfies LintingRule<FilePathValidityResult, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
+} as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 
 function samePath(a: string, b: string): boolean {
 	if(a === b) {

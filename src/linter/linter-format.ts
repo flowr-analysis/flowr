@@ -7,12 +7,15 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { LintingRuleConfig, LintingRuleNames } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
 
-export interface LintingRule<Result extends LintingResult, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
+export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	readonly createSearch:        (config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
 	// between these two, there's a chance for the search for multiple rules to be combined or optimized maybe
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => Result[]
-	readonly prettyPrint:         (result: Result) => string
-	readonly defaultConfig:       NoInfer<Config>
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => {
+		metadata: Metadata,
+		results:  Result[]
+	}
+	readonly prettyPrint:   (result: Result, metadata: Metadata) => string
+	readonly defaultConfig: NoInfer<Config>
 }
 
 export interface LintingResult {

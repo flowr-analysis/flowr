@@ -1,5 +1,5 @@
 import type { LintingRule } from '../../../src/linter/linter-format';
-import type { LintingRuleConfig, LintingRuleNames, LintingRuleResult } from '../../../src/linter/linter-rules';
+import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../src/linter/linter-rules';
 import { LintingRules } from '../../../src/linter/linter-rules';
 import type { TestLabel } from './label';
 import { decorateLabelContext } from './label';
@@ -18,29 +18,32 @@ export function assertLinter<Name extends LintingRuleNames>(
 	code: string,
 	ruleName: Name,
 	expected: LintingRuleResult<Name>[],
+	expectedMetadata?: LintingRuleMetadata<Name>,
 	config?: Partial<LintingRuleConfig<Name>>
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const results = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
+		const pipelineResults = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,
 			request: requestFromInput(code),
 			getId:   deterministicCountingIdGenerator(0)
 		}).allRemainingSteps();
 
-		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleConfig<Name>>;
+		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 		const fullConfig = { ...rule.defaultConfig, ...config ?? {} } as unknown as LintingRuleConfig<Name>;
-		const ruleSearch = rule.createSearch(fullConfig, results);
-		const searchResult = runSearch(ruleSearch, results);
-		const ruleResults = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, results);
+		const ruleSearch = rule.createSearch(fullConfig, pipelineResults);
+		const searchResult = runSearch(ruleSearch, pipelineResults);
+		const { results, metadata } = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, pipelineResults);
 
 		for(const [type, printer] of Object.entries({
-			text: (result: LintingRuleResult<Name>) => `${rule.prettyPrint(result)} (${result.certainty})`,
-			json: JSON.stringify
+			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,
+			json: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => JSON.stringify({ result, metadata })
 		})) {
-			console.log(`${type}:\n${ruleResults.map(r => `  ${printer(r)}`).join('\n')}`);
+			console.log(`${type}:\n${results.map(r => `  ${printer(r, metadata)}`).join('\n')}`);
 		}
 
-		assert.deepEqual(ruleResults, expected,
-			`Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(ruleResults)}`);
+		assert.deepEqual(results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
+		if(expectedMetadata !== undefined) {
+			assert.deepEqual(metadata, expectedMetadata, `Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(metadata)}`);
+		}
 	});
 }

@@ -4,7 +4,7 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type { LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { LintingCertainty } from '../../../linter/linter-format';
@@ -18,7 +18,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	readonly results: { [L in LintingRuleNames]?: LintingRuleResult<L>[] }
+	readonly results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], metadata: LintingRuleMetadata<L>} }
 }
 
 export const LinterQueryDefinition = {
@@ -26,7 +26,7 @@ export const LinterQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [ruleName, results] of Object.entries(out.results)) {
+		for(const [ruleName, { results, metadata }] of Object.entries(out.results)) {
 			const rule = LintingRules[ruleName as LintingRuleNames];
 			result.push(`   ╰ ${ruleName}:`);
 			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
@@ -38,6 +38,7 @@ export const LinterQueryDefinition = {
 					}
 				}
 			}
+			result.push(`       ╰ Metadata: ${JSON.stringify(metadata)}`);
 		}
 		return true;
 	},

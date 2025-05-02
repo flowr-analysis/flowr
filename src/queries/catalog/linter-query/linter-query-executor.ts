@@ -2,7 +2,7 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
 import { runSearch } from '../../../search/flowr-search-executor';
 import { FlowrSearchElements } from '../../../search/flowr-search';
-import type { LintingRuleConfig, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import { log } from '../../../util/log';
 import type { ConfiguredLintingRule, LintingRule } from '../../../linter/linter-format';
@@ -16,7 +16,7 @@ export function executeLinterQuery({ ast, dataflow }: BasicQueryData, queries: r
 		log.warn(`Linter query collection contains duplicate rules ${pretty}, only linting for each rule once`);
 	}
 
-	const results: { [L in LintingRuleNames]?: LintingRuleResult<L>[] } = {};
+	const results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], metadata: LintingRuleMetadata<L>} } = {};
 
 	const start = Date.now();
 

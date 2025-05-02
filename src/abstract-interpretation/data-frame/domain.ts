@@ -33,168 +33,179 @@ export const DataFrameTop: DataFrameDomain = {
 
 export type DataFrameStateDomain = Map<NodeId, DataFrameDomain>;
 
-export function equalColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
-	return X1 === X2 || (X1 !== ColNamesTop && setEquals(new Set(X1), new Set(X2)));
+export function equalColNames(set1: ColNamesDomain, set2: ColNamesDomain): boolean {
+	return set1 === set2 || (set1 !== ColNamesTop && setEquals(new Set(set1), new Set(set2)));
 }
 
-export function leqColNames(X1: ColNamesDomain, X2: ColNamesDomain): boolean {
-	return X2 === ColNamesTop || (X1 !== ColNamesTop && new Set(X1).isSubsetOf(new Set(X2)));
+export function leqColNames(set1: ColNamesDomain, set2: ColNamesDomain): boolean {
+	return set2 === ColNamesTop || (set1 !== ColNamesTop && new Set(set1).isSubsetOf(new Set(set2)));
 }
 
-export function joinColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	if(X1 === ColNamesTop || X2 === ColNamesTop) {
+export function joinColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
+	if(set1 === ColNamesTop || set2 === ColNamesTop) {
 		return ColNamesTop;
 	}
-	const join = Array.from(new Set(X1).union(new Set(X2)));
+	const join = Array.from(new Set(set1).union(new Set(set2)));
 
 	return join.length > MaxColNames ? ColNamesTop : join;
 }
 
-export function meetColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	if(X1 === ColNamesTop) {
-		return X2;
-	} else if(X2 === ColNamesTop) {
-		return X1;
+export function meetColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
+	if(set1 === ColNamesTop) {
+		return set2;
+	} else if(set2 === ColNamesTop) {
+		return set1;
 	} else {
-		return Array.from(new Set(X1).intersection(new Set(X2)));
+		return Array.from(new Set(set1).intersection(new Set(set2)));
 	}
 }
 
-export function subtractColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	if(X1 === ColNamesTop) {
+export function subtractColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
+	if(set1 === ColNamesTop) {
 		return ColNamesTop;
-	} else if(X2 === ColNamesTop) {
-		return X1;
+	} else if(set2 === ColNamesTop) {
+		return set1;
 	} else {
-		return Array.from(new Set(X1).difference(new Set(X2)));
+		return Array.from(new Set(set1).difference(new Set(set2)));
 	}
 }
 
-/** We just join here since we have an upper limit {@link MaxColNames} for {@link joinColNames} */
-export function wideningColNames(X1: ColNamesDomain, X2: ColNamesDomain): ColNamesDomain {
-	return joinColNames(X1, X2);
+export function wideningColNames(set1: ColNamesDomain, set2: ColNamesDomain): ColNamesDomain {
+	return leqColNames(set1, set2) ? set2 : ColNamesTop;
 }
 
-export function equalInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
-	return X1 === X2 || (X1 !== IntervalBottom && X1[0] === X2[0] && X1[1] === X2[1]);
+export function equalInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
+	return interval1 === interval2 || (interval1 !== IntervalBottom && interval1[0] === interval2[0] && interval1[1] === interval2[1]);
 }
 
-export function leqInterval(X1: IntervalDomain, X2: IntervalDomain): boolean {
-	return X1 === IntervalBottom || (X2 !== IntervalBottom && X2[0] <= X1[0] && X1[1] <= X2[1]);
+export function leqInterval(interval1: IntervalDomain, interval2: IntervalDomain): boolean {
+	return interval1 === IntervalBottom || (interval2 !== IntervalBottom && interval2[0] <= interval1[0] && interval1[1] <= interval2[1]);
 }
 
-export function joinInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom) {
-		return X2;
-	} else if(X2 === IntervalBottom) {
-		return X1;
+export function joinInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom) {
+		return interval2;
+	} else if(interval2 === IntervalBottom) {
+		return interval1;
 	} else {
-		return [Math.min(X1[0], X2[0]), Math.max(X1[1], X2[1])];
+		return [Math.min(interval1[0], interval2[0]), Math.max(interval1[1], interval2[1])];
 	}
 }
 
-export function meetInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+export function meetInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
-	} else if(Math.max(X1[0], X2[0]) > Math.min(X1[1], X2[1])) {
-		return IntervalBottom;
-	} else {
-		return [Math.max(X1[0], X2[0]), Math.min(X1[1], X2[1])];
-	}
-}
-
-export function addInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+	} else if(Math.max(interval1[0], interval2[0]) > Math.min(interval1[1], interval2[1])) {
 		return IntervalBottom;
 	} else {
-		return [X1[0] + X2[0], X1[1] + X2[1]];
+		return [Math.max(interval1[0], interval2[0]), Math.min(interval1[1], interval2[1])];
 	}
 }
 
-export function subtractInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+export function addInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [Math.max(X1[0] - X2[0], 0), Math.max(X1[1] - X2[1], 0)];
+		return [interval1[0] + interval2[0], interval1[1] + interval2[1]];
 	}
 }
 
-export function minInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+export function subtractInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [Math.min(X1[0], X2[0]), Math.min(X1[1], X2[1])];
+		return [Math.max(interval1[0] - interval2[0], 0), Math.max(interval1[1] - interval2[1], 0)];
 	}
 }
 
-export function maxInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom || X2 === IntervalBottom) {
+export function minInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [Math.max(X1[0], X2[0]), Math.max(X1[1], X2[1])];
+		return [Math.min(interval1[0], interval2[0]), Math.min(interval1[1], interval2[1])];
 	}
 }
 
-export function includeZeroInterval(X: IntervalDomain): IntervalDomain {
-	if(X === IntervalBottom) {
+export function maxInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom || interval2 === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [0, X[1]];
+		return [Math.max(interval1[0], interval2[0]), Math.max(interval1[1], interval2[1])];
 	}
 }
 
-export function includeInfinityInterval(X: IntervalDomain): IntervalDomain {
-	if(X === IntervalBottom) {
+export function includeZeroInterval(interval: IntervalDomain): IntervalDomain {
+	if(interval === IntervalBottom) {
 		return IntervalBottom;
 	} else {
-		return [X[0], Infinity];
+		return [0, interval[1]];
 	}
 }
 
-export function wideningInterval(X1: IntervalDomain, X2: IntervalDomain): IntervalDomain {
-	if(X1 === IntervalBottom) {
-		return X2;
-	} else if(X2 === IntervalBottom) {
-		return X1;
+export function includeInfinityInterval(interval: IntervalDomain): IntervalDomain {
+	if(interval === IntervalBottom) {
+		return IntervalBottom;
 	} else {
-		return [X1[0] <= X2[0] ? X1[0] : 0, X1[1] >= X2[1] ? X1[1] : Infinity];
+		return [interval[0], Infinity];
 	}
 }
 
-export function equalDataFrameDomain(X1: DataFrameDomain, X2: DataFrameDomain): boolean {
-	return equalColNames(X1.colnames, X2.colnames) && equalInterval(X1.cols, X2.cols) && equalInterval(X1.rows, X2.rows);
+export function wideningInterval(interval1: IntervalDomain, interval2: IntervalDomain): IntervalDomain {
+	if(interval1 === IntervalBottom) {
+		return interval2;
+	} else if(interval2 === IntervalBottom) {
+		return interval1;
+	} else {
+		return [interval1[0] <= interval2[0] ? interval1[0] : 0, interval1[1] >= interval2[1] ? interval1[1] : Infinity];
+	}
+}
+
+export function equalDataFrameDomain(value1: DataFrameDomain, value2: DataFrameDomain): boolean {
+	return value1 === value2 || (equalColNames(value1.colnames, value2.colnames) && equalInterval(value1.cols, value2.cols) && equalInterval(value1.rows, value2.rows));
 }
 
 export function joinDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
-	return values.slice(1).reduce((a, b) => ({
-		colnames: joinColNames(a.colnames, b.colnames),
-		cols:     joinInterval(a.cols, b.cols),
-		rows:     joinInterval(a.rows, b.rows)
-	}), values[0] ?? DataFrameTop);
+	let result = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		result = {
+			colnames: joinColNames(result.colnames, values[i].colnames),
+			cols:     joinInterval(result.cols, values[i].cols),
+			rows:     joinInterval(result.rows, values[i].rows)
+		};
+	}
+	return result;
 }
 
 export function meetDataFrames(...values: DataFrameDomain[]): DataFrameDomain {
-	return values.slice(1).reduce((a, b) => ({
-		colnames: meetColNames(a.colnames, b.colnames),
-		cols:     meetInterval(a.cols, b.cols),
-		rows:     meetInterval(a.rows, b.rows)
-	}), values[0] ?? DataFrameTop);
+	let result = values[0] ?? DataFrameTop;
+
+	for(let i = 1; i < values.length; i++) {
+		result = {
+			colnames: meetColNames(result.colnames, values[i].colnames),
+			cols:     meetInterval(result.cols, values[i].cols),
+			rows:     meetInterval(result.rows, values[i].rows)
+		};
+	}
+	return result;
 }
 
-export function wideningDataFrames(X1: DataFrameDomain, X2: DataFrameDomain): DataFrameDomain {
+export function wideningDataFrames(value1: DataFrameDomain, value2: DataFrameDomain): DataFrameDomain {
 	return {
-		colnames: wideningColNames(X1.colnames, X2.colnames),
-		cols:     wideningInterval(X1.cols, X2.cols),
-		rows:     wideningInterval(X1.rows, X2.rows)
+		colnames: wideningColNames(value1.colnames, value2.colnames),
+		cols:     wideningInterval(value1.cols, value2.cols),
+		rows:     wideningInterval(value1.rows, value2.rows)
 	};
 }
 
-export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameStateDomain): boolean {
-	if(R1.size !== R2.size) {
+export function equalDataFrameState(state1: DataFrameStateDomain, state2: DataFrameStateDomain): boolean {
+	if(state1 === state2) {
+		return true;
+	} else if(state1.size !== state2.size) {
 		return false;
 	}
-	for(const [key, value] of R1) {
-		const other = R2.get(key);
+	for(const [nodeId, value] of state1) {
+		const other = state2.get(nodeId);
 		if(other === undefined || !equalDataFrameDomain(value, other)) {
 			return false;
 		}
@@ -202,11 +213,20 @@ export function equalDataFrameState(R1: DataFrameStateDomain, R2: DataFrameState
 	return true;
 }
 
-export function joinDataFrameStates(...values: DataFrameStateDomain[]): DataFrameStateDomain {
-	const result = new Map(values[0]);
+export function copyDataFrameState(state: DataFrameStateDomain | undefined) {
+	const copy: DataFrameStateDomain = new Map();
 
-	for(const domain of values.slice(1)) {
-		for(const [nodeId, value] of domain) {
+	for(const [nodeId, value] of state ?? []) {
+		copy.set(nodeId, value);
+	}
+	return copy;
+}
+
+export function joinDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
+	const result = copyDataFrameState(states[0]);
+
+	for(let i = 1; i < states.length; i++) {
+		for(const [nodeId, value] of states[i]) {
 			if(result.has(nodeId)) {
 				result.set(nodeId, joinDataFrames(result.get(nodeId) ?? DataFrameTop, value));
 			} else {
@@ -217,11 +237,11 @@ export function joinDataFrameStates(...values: DataFrameStateDomain[]): DataFram
 	return result;
 }
 
-export function meetDataFrameStates(...values: DataFrameStateDomain[]): DataFrameStateDomain {
-	const result = new Map(values[0]);
+export function meetDataFrameStates(...states: DataFrameStateDomain[]): DataFrameStateDomain {
+	const result = copyDataFrameState(states[0]);
 
-	for(const domain of values.slice(1)) {
-		for(const [nodeId, value] of domain) {
+	for(let i = 1; i < states.length; i++) {
+		for(const [nodeId, value] of states[i]) {
 			if(result.has(nodeId)) {
 				result.set(nodeId, meetDataFrames(result.get(nodeId) ?? DataFrameTop, value));
 			} else {
@@ -232,10 +252,10 @@ export function meetDataFrameStates(...values: DataFrameStateDomain[]): DataFram
 	return result;
 }
 
-export function wideningDataFrameStates(X1: DataFrameStateDomain, X2: DataFrameStateDomain): DataFrameStateDomain {
-	const result = new Map(X1);
+export function wideningDataFrameStates(state1: DataFrameStateDomain, state2: DataFrameStateDomain): DataFrameStateDomain {
+	const result = copyDataFrameState(state1);
 
-	for(const [nodeId, value] of X2) {
+	for(const [nodeId, value] of state2) {
 		if(result.has(nodeId)) {
 			result.set(nodeId, wideningDataFrames(result.get(nodeId) ?? DataFrameTop, value));
 		} else {

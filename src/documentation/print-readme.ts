@@ -108,6 +108,10 @@ If you want to use flowR and the features it provides, feel free to check out th
 - [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)
 - [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects
  
+
+If you are already using flowR and want to give feedback, please consider filling out our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLScKFhgnh9LGVU7QzqLvFwZe1oiv_5jNhkIO-G-zND0ppqsMxQ/viewform).
+
+ 
 ## ⭐ Getting Started
 
 To get started with _flowR_ and its features, please check out the [Overview](${FlowrGithubBaseRef}/flowr/wiki/Overview) wiki page. 

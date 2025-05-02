@@ -8,13 +8,17 @@ function print(): string {
 	return `${autoGenHeader({ filename: module.filename, purpose: 'developer onboarding process' })}	
 	
 To get started developing on *flowR*, we recommend carefully reading the following pages:
-- 💻 [Setting up the *flowR* development environment](${FlowrWikiBaseRef}/Setup#%EF%B8%8F-building-from-scratch). This page explains how to install **R** and **Node.js**.  
-- 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md). This page also includes information about how to set up **git-lfs** and several **git hooks**.
+- 💻 [Setting up the *flowR* development environment](${FlowrWikiBaseRef}/Setup#%EF%B8%8F-building-from-scratch).\
+  This page explains how to install **R** and **Node.js**.  
+- 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md).\
+  This page also includes information about how to set up **git-lfs** and several **git hooks**.
 
 ## ⌛ TL;DR
 
 The most important steps to get the *flowR* development environment set up (after installing **R** and **Node.js**) can be seen below. For convenience, they can be executed all at once using the following command:
 ${codeBlock('shell', 'npm run setup:dev')}
+
+If you want to execute the steps manually, please follow the instructions below:
 
 ${codeBlock('shell', `
 # Installing git-lfs for your current user (if you haven't already)

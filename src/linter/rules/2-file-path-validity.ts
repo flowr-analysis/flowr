@@ -16,6 +16,7 @@ import type { ControlFlowGraph } from '../../util/cfg/cfg';
 import { extractCFG } from '../../util/cfg/cfg';
 import { Ternary } from '../../util/logic';
 import { getConfig } from '../../config';
+import { requestFromInput } from '../../r-bridge/retriever';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
@@ -84,19 +85,20 @@ export const R2_FILE_PATH_VALIDITY = {
 					return [];
 				}
 
+				// check if the file exists!
+				const paths = findSource(matchingRead.source, {
+					referenceChain: element.node.info.file ? [requestFromInput(`file://${element.node.info.file}`)] : []
+				});
+				if(paths && paths.length) {
+					metadata.totalValid++;
+					return [];
+				}
+
 				return [{
 					range,
 					filePath:  matchingRead.source,
 					certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
 				}];
-			}).filter(element => {
-				const paths = findSource(element.filePath, { referenceChain: [] });
-				if(!paths || !paths.length) {
-					return true;
-				} else {
-					metadata.totalValid++;
-					return false;
-				}
 			}),
 			'.meta': metadata
 		};

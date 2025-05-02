@@ -143,7 +143,7 @@ async function printAsMarkdown(info: CapabilityInformation, capabilities: readon
 		lines.push(result);
 		if(capability.capabilities) {
 			const summary = summarizeChildren(capability.capabilities);
-			lines.push(`\n\n${'    '.repeat(depth + 1)}<details ${depth > 0 ? 'open' : ''}><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'} (${printSummary(summary)})</summary>\n\n`);
+			lines.push(`\n\n${'    '.repeat(depth + 1)}<details open><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'} (${printSummary(summary)})</summary>\n\n`);
 			await printAsMarkdown(info, capability.capabilities, depth + 1, lines);
 			lines.push(`\n\n${'    '.repeat(depth + 1)}</details>\n\n`);
 			if(depth === 0) {

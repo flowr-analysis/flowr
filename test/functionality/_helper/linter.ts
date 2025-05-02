@@ -32,18 +32,18 @@ export function assertLinter<Name extends LintingRuleNames>(
 		const fullConfig = { ...rule.defaultConfig, ...config ?? {} } as unknown as LintingRuleConfig<Name>;
 		const ruleSearch = rule.createSearch(fullConfig, pipelineResults);
 		const searchResult = runSearch(ruleSearch, pipelineResults);
-		const { results, metadata } = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, pipelineResults);
+		const results = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, pipelineResults);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,
 			json: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => JSON.stringify({ result, metadata })
 		})) {
-			console.log(`${type}:\n${results.map(r => `  ${printer(r, metadata)}`).join('\n')}`);
+			console.log(`${type}:\n${results.results.map(r => `  ${printer(r, results['.meta'])}`).join('\n')}`);
 		}
 
-		assert.deepEqual(results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
+		assert.deepEqual(results.results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		if(expectedMetadata !== undefined) {
-			assert.deepEqual(metadata, expectedMetadata, `Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(metadata)}`);
+			assert.deepEqual(results['.meta'], expectedMetadata, `Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(results['.meta'])}`);
 		}
 	});
 }

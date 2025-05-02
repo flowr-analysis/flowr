@@ -58,7 +58,7 @@ export const R1_DEPRECATED_FUNCTIONS = {
 					function:  element.target,
 					range:     element.range
 				})),
-			metadata
+			'.meta': metadata
 		};
 	},
 	prettyPrint:   result => `Function ${result.function} at ${formatRange(result.range)}`,

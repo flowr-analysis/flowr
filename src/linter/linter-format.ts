@@ -11,8 +11,8 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	readonly createSearch:        (config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => FlowrSearchLike<Info, GeneratorNames, TransformerNames[], FlowrSearchElements<Info, Elements>>
 	// between these two, there's a chance for the search for multiple rules to be combined or optimized maybe
 	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation }) => {
-		metadata: Metadata,
-		results:  Result[]
+		results: Result[],
+		'.meta': Metadata
 	}
 	readonly prettyPrint:   (result: Result, metadata: Metadata) => string
 	readonly defaultConfig: NoInfer<Config>

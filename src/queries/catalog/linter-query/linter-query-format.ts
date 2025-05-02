@@ -18,7 +18,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	readonly results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], metadata: LintingRuleMetadata<L>} }
+	readonly results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], '.meta': LintingRuleMetadata<L>} }
 }
 
 export const LinterQueryDefinition = {
@@ -26,11 +26,11 @@ export const LinterQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [ruleName, { results, metadata }] of Object.entries(out.results)) {
+		for(const [ruleName, results] of Object.entries(out.results)) {
 			const rule = LintingRules[ruleName as LintingRuleNames];
 			result.push(`   ╰ ${ruleName}:`);
 			for(const certainty of [LintingCertainty.Definitely, LintingCertainty.Maybe]) {
-				const certaintyResults = results.filter(r => r.certainty === certainty);
+				const certaintyResults = results.results.filter(r => r.certainty === certainty);
 				if(certaintyResults.length) {
 					result.push(`       ╰ ${certainty}:`);
 					for(const res of certaintyResults) {
@@ -38,7 +38,7 @@ export const LinterQueryDefinition = {
 					}
 				}
 			}
-			result.push(`       ╰ Metadata: ${JSON.stringify(metadata)}`);
+			result.push(`       ╰ Metadata: ${JSON.stringify(results['.meta'])}`);
 		}
 		return true;
 	},

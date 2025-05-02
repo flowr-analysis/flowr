@@ -16,7 +16,7 @@ export function executeLinterQuery({ ast, dataflow }: BasicQueryData, queries: r
 		log.warn(`Linter query collection contains duplicate rules ${pretty}, only linting for each rule once`);
 	}
 
-	const results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], metadata: LintingRuleMetadata<L>} } = {};
+	const results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], '.meta': LintingRuleMetadata<L>} } = {};
 
 	const start = Date.now();
 

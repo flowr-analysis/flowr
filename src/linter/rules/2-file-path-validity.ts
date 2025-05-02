@@ -43,7 +43,7 @@ export const R2_FILE_PATH_VALIDITY = {
 		readFunctions:          ReadFunctions.concat(config.additionalReadFunctions),
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}),
-	processSearchResult: (elements, config, data): { metadata: FilePathValidityMetadata, results: FilePathValidityResult[] } => {
+	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
 		let cfg: ControlFlowGraph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
@@ -98,7 +98,7 @@ export const R2_FILE_PATH_VALIDITY = {
 					return false;
 				}
 			}),
-			metadata
+			'.meta': metadata
 		};
 	},
 	prettyPrint:   result => `Path ${result.filePath} at ${formatRange(result.range)}`,

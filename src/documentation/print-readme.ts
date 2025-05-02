@@ -6,7 +6,7 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
-	FlowrNpmRef,
+	FlowrNpmRef, FlowrPositron,
 	FlowrVsCode,
 	FlowrWikiBaseRef, getFileContentFromRoot,
 	linkFlowRSourceFile
@@ -32,9 +32,12 @@ async function getText(shell: RShell) {
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](${FlowrDockerRef})
 [![latest tag](https://badgen.net/github/tag/flowr-analysis/flowr?label=latest&color=purple)](${FlowrGithubBaseRef}/flowr/releases/latest)
 [![Marketplace](https://badgen.net/vs-marketplace/v/code-inspect.vscode-flowr)](${FlowrVsCode})
+[![Marketplace](https://badgen.net/open-vsx/version/code-inspect/vscode-flowr?label=Positron/Open%20VSX)](${FlowrPositron})
 [![DOI](https://zenodo.org/badge/624819038.svg)](https://zenodo.org/doi/10.5281/zenodo.13319290)
 
-_flowR_ is a sophisticated, static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) for the [R programming language](https://www.r-project.org/).
+_flowR_ is a sophisticated, static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) for the [R programming language](https://www.r-project.org/),
+available for [VSCode](${FlowrVsCode}), [Positron](${FlowrPositron}), [RStudio](${FlowrGithubBaseRef}/rstudio-addin-flowr),
+and [Docker](${FlowrDockerRef}).
 It offers a wide variety of features, for example:
 
 * 🍕 **program slicing**\\
@@ -99,7 +102,7 @@ ${await printDfGraphForCode(shell, getFileContentFromRoot('test/testfiles/exampl
 
 If you want to use flowR and the features it provides, feel free to check out the:
 
-- [Visual Studio Code extension](${FlowrVsCode}): provides access to flowR directly in VS Code (or [vscode.dev](https://vscode.dev/))
+- [Visual Studio Code](${FlowrVsCode})/[Positron](${FlowrPositron}): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](${FlowrGithubBaseRef}/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
 - [R package](${FlowrGithubBaseRef}/flowr-r-adapter): use flowR in your R scripts
 - [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)

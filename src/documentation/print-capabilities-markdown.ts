@@ -107,13 +107,48 @@ async function printSingleCapability(info: CapabilityInformation, depth: number,
 	return nextLine ? `${mainLine}\\\n${nextLineIndent}${nextLine}` : mainLine;
 }
 
+interface ChildrenSummary {
+	total:     number;
+	fully:     number;
+	partially: number;
+	not:       number;
+}
+
+function summarizeChildren(capabilities: readonly FlowrCapability[]): ChildrenSummary {
+	const summary: ChildrenSummary = { total: 0, fully: 0, partially: 0, not: 0 };
+	for(const capability of capabilities) {
+		if(capability.capabilities) {
+			const childSummary = summarizeChildren(capability.capabilities);
+			summary.fully += childSummary.fully;
+			summary.partially += childSummary.partially;
+			summary.not += childSummary.not;
+			summary.total += childSummary.total;
+		}
+		if(capability.supported) {
+			summary[capability.supported]++;
+			summary.total++;
+		}
+	}
+	return summary;
+}
+
+function printSummary(sum: ChildrenSummary): string {
+	return `${sum.fully} fully, ${sum.partially} partially, ${sum.not} not supported`;
+}
+
 async function printAsMarkdown(info: CapabilityInformation, capabilities: readonly FlowrCapability[], depth = 0, lines: string[] = []): Promise<string> {
 	for(let i = 0; i < capabilities.length; i++) {
 		const capability = capabilities[i];
 		const result = await printSingleCapability(info, depth, i + 1, capability);
 		lines.push(result);
 		if(capability.capabilities) {
+			const summary = summarizeChildren(capability.capabilities);
+			lines.push(`\n\n${'    '.repeat(depth + 1)}<details ${depth > 0 ? 'open' : ''}><summary>${summary.total} child${summary.total === 1 ? '' : 'ren'} (${printSummary(summary)})</summary>\n\n`);
 			await printAsMarkdown(info, capability.capabilities, depth + 1, lines);
+			lines.push(`\n\n${'    '.repeat(depth + 1)}</details>\n\n`);
+			if(depth === 0) {
+				lines.push('\n\n' + '    '.repeat(depth + 1) + '-'.repeat(42) + '\n\n');
+			}
 		}
 	}
 	return lines.join('\n');

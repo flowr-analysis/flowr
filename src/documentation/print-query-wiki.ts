@@ -12,7 +12,7 @@ import {
 	tocForQueryType
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -66,6 +66,7 @@ It's also possible to filter the results based on the following properties:
    The \`fileFilter\` property is an object made up of two properties:
      - **Filter** (\`filter\`): A regular expression that a node's file attribute must match to be considered.
      - **Include Undefined Files** (\`includeUndefinedFiles\`): If \`fileFilter\` is set, but a node's file attribute is not present, should we include it in the results? Defaults to \`true\`.
+2. **Ignore Parameter Values** (\`ignoreParameterValues\`): Should we ignore default values for parameters in the results?
 
 Re-using the example code from above, the following query attaches all calls to \`mean\` to the kind \`visualize\` and the subkind \`text\`,
 all calls that start with \`read_\` to the kind \`input\` but only if they are not locally overwritten, and the subkind \`csv-file\`, and links all calls to \`points\` to the last call to \`plot\`:
@@ -262,6 +263,29 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: ['2@x']
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('origin', {
+	name:             'Origin Query',
+	type:             'active',
+	shortDescription: 'Retrieve the origin of a variable, function call, ...',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's origin tracking to find out the read origins of a variable,
+the functions called by a call, and more.
+
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns the origins of \`x\` in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'origin',
+		criterion: '2@x'
 	}], { showCode: true })
 }
 		`;
@@ -479,7 +503,7 @@ print("hello world!")
 		`;
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
-and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).  
+and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${
@@ -507,7 +531,7 @@ ${
 	await showQuery(shell, longerCode, [{
 		type:                   'dependencies',
 		ignoreDefaultFunctions: true,
-		libraryFunctions:       [{ name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
+		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
 		sourceFunctions:        [],
 		readFunctions:          [],
 		writeFunctions:         []
@@ -548,7 +572,7 @@ ${
 	}], { showCode: false, collapseQuery: true })
 }
 
-All locations are given as a ${shortLink('SourceRange', types.info)} in the format \`[start-line, start-column, end-line, end-column]\`.	
+All locations are given as a ${shortLink('SourceRange', types.info)} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.	
 
 		`;
 	}

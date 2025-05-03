@@ -22,7 +22,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { expensiveTrace, log } from '../../../../../../util/log';
+import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
@@ -66,6 +66,16 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
+function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
+	const results = [];
+	for(const replacement of replacements) {
+		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value), path);
+		results.push(newPath);
+	}
+
+	return results;
+}
+
 /**
  * Tries to find sourced by a source request and returns the first path that exists
  * @param seed - the path originally requested in the `source` call
@@ -80,7 +90,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
 	];
 
-	const tryPaths = [seed];
+	let tryPaths = [seed];
 	switch(config?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
 			const first = platformBasename(seed);
@@ -90,6 +100,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		case DropPathsOption.All: {
 			const paths = platformDirname(seed).split(AnyPathSeparator);
 			const basename = platformBasename(seed);
+			tryPaths.push(basename);
 			if(paths.length === 1 && paths[0] === '.') {
 				break;
 			}
@@ -103,6 +114,12 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			break;
 	}
 
+	if(config?.applyReplacements) {
+		const r = config.applyReplacements;
+		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
+	}
+
+
 	const found: string[] = [];
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {
@@ -115,7 +132,9 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			}
 		}
 	}
-	log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	if(log.settings.minLevel >= LogLevel.Info) {
+		log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	}
 	return found;
 }
 
@@ -132,8 +151,12 @@ export function processSourceCall<OtherInfo>(
 		forceFollow?:         boolean
 	}
 ): DataflowInformation {
+	if(args.length !== 1) {
+		dataflowLogger.warn(`Expected exactly one argument for source currently, but got ${args.length} instead, skipping`);
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	}
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data }).information
+		processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:source' }).information
 		: initializeCleanDataflowInformation(rootId, data);
 
 	const sourceFileArgument = args[0];
@@ -169,13 +192,15 @@ export function processSourceCall<OtherInfo>(
 			const request = sourceProvider.createRequest(filepath);
 
 			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			if(data.referenceChain.find(e => e.request === request.request && e.content === request.content)) {
-				dataflowLogger.warn(`Found loop in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+			const limit = getConfig().solver.resolveSource?.repeatedSourceLimit ?? 0;
+			const findCount = data.referenceChain.filter(e => e.request === request.request && e.content === request.content).length;
+			if(findCount > limit) {
+				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(request)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 				information.graph.markIdForUnknownSideEffects(rootId);
 				return information;
 			}
 
-			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location));
+			return sourceRequest(rootId, request, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + path, name.location));
 		}
 	}
 
@@ -233,7 +258,13 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 	for(const [k, v] of normalized.idMap) {
 		data.completeAst.idMap.set(k, v);
 	}
-	return newInformation;
+	return {
+		...newInformation,
+		in:                newInformation.in.concat(dataflow.in),
+		out:               newInformation.out.concat(dataflow.out),
+		unknownReferences: newInformation.unknownReferences.concat(dataflow.unknownReferences),
+		exitPoints:        dataflow.exitPoints
+	};
 }
 
 
@@ -259,5 +290,5 @@ export function standaloneSourceFile<OtherInfo>(
 		currentRequest: request,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, inputRequest]
-	}, information, deterministicPrefixIdGenerator(path + '@' + uniqueSourceId));
+	}, information, deterministicPrefixIdGenerator(path + '::' + uniqueSourceId));
 }

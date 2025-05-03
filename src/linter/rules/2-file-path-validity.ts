@@ -7,16 +7,18 @@ import { formatRange } from '../../util/mermaid/dfg';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElementFromQuery } from '../../search/flowr-search';
 import type { QueryResults } from '../../queries/query';
-import type { FunctionInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import { Unknown , ReadFunctions, WriteFunctions } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
-import { happensBefore } from '../../util/cfg/happens-before';
-import type { ControlFlowGraph } from '../../util/cfg/cfg';
-import { extractCFG } from '../../util/cfg/cfg';
 import { Ternary } from '../../util/logic';
 import { getConfig } from '../../config';
 import { requestFromInput } from '../../r-bridge/retriever';
+import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
+import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
+import { extractCFG } from '../../control-flow/extract-cfg';
+import { happensBefore } from '../../control-flow/happens-before';
+import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,

@@ -10,8 +10,8 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import { log } from '../../util/log';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { identifyLinkToLastCallRelation } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { extractCFG } from '../../util/cfg/cfg';
 import { guard } from '../../util/assert';
+import { extractCFG } from '../../control-flow/extract-cfg';
 
 export interface EnrichedFlowrSearchElement<Info> extends FlowrSearchElement<Info> {
 	enrichments: { [E in Enrichment]?: EnrichmentContent<E> }

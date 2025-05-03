@@ -13,7 +13,7 @@ import type { SliceResult } from '../slicing/static/slicer-types';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
-import { withoutWhitespace } from '../util/strings';
+import { withoutWhitespace } from '../util/text/strings';
 import type {
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
@@ -42,6 +42,10 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
+import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
+import { isParentContainerIndex } from '../dataflow/graph/vertex';
+import { equidistantSampling } from '../util/collections/arrays';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -76,6 +80,13 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 	code:  ReconstructionResult
 }
 
+/**
+ * The type of sampling strategy to use when slicing all possible variables.
+ *
+ * - `'random'`: Randomly select the given number of slicing criteria.
+ * - `'equidistant'`: Select the given number of slicing criteria in an equidistant manner.
+ */
+export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -112,7 +123,7 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText, autoSelectIf?: AutoSelectPredicate) {
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
@@ -129,7 +140,8 @@ export class BenchmarkSlicer {
 		this.executor = createSlicePipeline(this.parser, {
 			request:   { ...request },
 			criterion: [],
-			autoSelectIf
+			autoSelectIf,
+			threshold,
 		});
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).parsed;
@@ -198,6 +210,10 @@ export class BenchmarkSlicer {
 			return false;
 		});
 
+		const storedVertexIndices = this.countStoredVertexIndices();
+		const storedEnvIndices = this.countStoredEnvIndices();
+		const overwrittenIndices = storedVertexIndices - storedEnvIndices;
+
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
 		this.stats = {
@@ -221,7 +237,10 @@ export class BenchmarkSlicer {
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
-				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph)
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
+				storedVertexIndices:         storedVertexIndices,
+				storedEnvIndices:            storedEnvIndices,
+				overwrittenIndices:          overwrittenIndices,
 			},
 
 			// these are all properly initialized in finish()
@@ -234,11 +253,58 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Slice for the given {@link SlicingCriteria}.
-   * @see SingleSlicingCriterion
-   *
-   * @returns The per slice stats retrieved for this slicing criteria
-   */
+	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
+	 */
+	private countStoredVertexIndices(): number {
+		return this.countStoredIndices(this.dataflow?.out.map(ref => ref as InGraphIdentifierDefinition) ?? []);
+	}
+
+	/**
+	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
+	 */
+	private countStoredEnvIndices(): number {
+		return this.countStoredIndices(
+			this.dataflow?.environment.current.memory.values()
+				?.flatMap(def => def)
+				.map(def => def as InGraphIdentifierDefinition) ?? []
+		);
+	}
+
+	/**
+	 * Counts the number of stored indices in the passed definitions.
+	 */
+	private countStoredIndices(definitions: Iterable<InGraphIdentifierDefinition>): number {
+		let numberOfIndices = 0;
+		for(const reference of definitions) {
+			if(reference.indicesCollection) {
+				numberOfIndices += this.countIndices(reference.indicesCollection);
+			}
+		}
+		return numberOfIndices;
+	}
+
+	/**
+	 * Recursively counts the number of indices and sub-indices in the given collection.
+	 */
+	private countIndices(collection: ContainerIndicesCollection): number {
+		let numberOfIndices = 0;
+		for(const indices of collection ?? []) {
+			for(const index of indices.indices) {
+				numberOfIndices++;
+				if(isParentContainerIndex(index)) {
+					numberOfIndices += this.countIndices(index.subIndices);
+				}
+			}
+		}
+		return numberOfIndices;
+	}
+
+	/**
+	 * Slice for the given {@link SlicingCriteria}.
+	 * @see SingleSlicingCriterion
+	 *
+	 * @returns The per slice stats retrieved for this slicing criteria
+	 */
 	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
 		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`);
 
@@ -329,27 +395,40 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Call {@link slice} for all slicing criteria that match the given filter.
-   * See {@link collectAllSlicingCriteria} for details.
-   * <p>
-   * the `report` function will be called *before* each *individual* slice is performed.
-   *
-   * @returns The number of slices that were produced
-   *
-   * @see collectAllSlicingCriteria
-   * @see SlicingCriteriaFilter
-   */
+	 * Call {@link slice} for all slicing criteria that match the given filter.
+	 * See {@link collectAllSlicingCriteria} for details.
+	 * <p>
+	 * the `report` function will be called *before* each *individual* slice is performed.
+	 *
+	 * @returns The number of slices that were produced
+	 *
+	 * @see collectAllSlicingCriteria
+	 * @see SlicingCriteriaFilter
+	 */
 	public async sliceForAll(
 		filter: SlicingCriteriaFilter,
 		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
-		sampleRandom = -1
+		options: {
+			sampleCount?:    number,
+			maxSliceCount?:  number,
+			sampleStrategy?: SamplingStrategy
+		} = {},
 	): Promise<number> {
+		const { sampleCount, maxSliceCount, sampleStrategy } = { sampleCount: -1, maxSliceCount: -1, sampleStrategy: 'random', ...options };
 		this.guardActive();
 		let count = 0;
-		const allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
-		if(sampleRandom > 0) {
-			allCriteria.sort(() => Math.random() - 0.5);
-			allCriteria.length = Math.min(allCriteria.length, sampleRandom);
+		let allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
+		// Cancel slicing if the number of slices exceeds the limit
+		if(maxSliceCount > 0 && allCriteria.length > maxSliceCount) {
+			return -allCriteria.length;
+		}
+		if(sampleCount > 0) {
+			if(sampleStrategy === 'equidistant') {
+				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			} else {
+				allCriteria.sort(() => Math.random() - 0.5);
+				allCriteria.length = Math.min(allCriteria.length, sampleCount);
+			}
 		}
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria);
@@ -360,9 +439,9 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Retrieves the final stats and closes the shell session.
-   * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
-   */
+	 * Retrieves the final stats and closes the shell session.
+	 * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
+	 */
 	public finish(): BenchmarkSlicerStats {
 		guard(this.stats !== undefined, 'need to call init before finish');
 
@@ -404,8 +483,8 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
-   */
+	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
+	 */
 	public ensureSessionClosed(): void {
 		this.parser?.close();
 	}

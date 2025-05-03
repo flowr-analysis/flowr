@@ -6,8 +6,8 @@ import type {
 } from '../../../core/steps/pipeline/default-pipelines';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 import { summarizeIdsIfTooLong } from '../../query-print';

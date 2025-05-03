@@ -1,4 +1,12 @@
-import { allPermutations, arrayEqual, getUniqueCombinationsOfSize, splitArrayOn, arraySum } from '../../../src/util/arrays';
+import {
+	allPermutations,
+	arrayEqual,
+	getUniqueCombinationsOfSize,
+	splitArrayOn,
+	arraySum,
+	equidistantSampling,
+	cartesianProduct
+} from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 
 describe('Arrays', () => {
@@ -71,5 +79,50 @@ describe('Arrays', () => {
 		check('one different element', [1], [2], false);
 		check('two elements', [1, 2], [1, 2], true);
 		check('different order', [1, 2], [2, 1], false);
+	});
+	describe('cartesianProduct', () => {
+		const check = <T>(title: string, a: readonly T[][], expected: T[][]): void => {
+			test(title, () => {
+				const actual = cartesianProduct(...a);
+				assert.deepStrictEqual(actual, expected, `${JSON.stringify(a)}`);
+			});
+		};
+		check('empty array', [], [[]]);
+		check('single element array', [[1]], [[1]]);
+		check('double element array', [[1,2]], [[1],[2]]);
+		check('two combinations', [[1,2], [3]], [[1, 3], [2, 3]]);
+		check('two combinations', [[1], [2,3]], [[1, 2], [1, 3]]);
+		check('three combinations', [[1,2], [3], [4,5,6]], [[1, 3, 4], [1, 3, 5], [1, 3, 6], [2, 3, 4], [2, 3, 5], [2, 3, 6]]);
+	});
+	describe('equidistantSampling', () => {
+		const check = <T>(title: string, input: readonly T[], sampleCount: number, mode: 'floor' | 'ceil', expected: T[]): void => {
+			test(title, () => {
+				const actual = equidistantSampling(input, sampleCount, mode);
+				assert.deepStrictEqual(actual, expected, `in: ${JSON.stringify(input)}, sample: ${sampleCount}, mode: ${mode}`);
+			});
+		};
+		check('floor, empty array', [], 1, 'floor', []);
+		check('floor, single element', [1], 1, 'floor', [1]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 1, 'floor', [1]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 2, 'floor', [1, 3]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 3, 'floor', [1, 2, 4]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 4, 'floor', [1, 2, 3, 4]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 5, 'floor', [1, 2, 3, 4, 5]);
+		check('floor, several elements', [1, 2, 3, 4, 5], 6, 'floor', [1, 2, 3, 4, 5]);
+		check('floor, sample 0', [1, 2, 3, 4, 5], 0, 'floor', []);
+		check('floor, sample negative', [1, 2, 3, 4, 5], -1, 'floor', []);
+		check('floor, sample every second', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 5, 'floor', [1, 3, 5, 7, 9]);
+
+		check('ceil, empty array', [], 1, 'ceil', []);
+		check('ceil, single element', [1], 1, 'ceil', [1]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 1, 'ceil', [1]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 2, 'ceil', [1, 4]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 3, 'ceil', [1, 3, 5]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 4, 'ceil', [1, 3, 4, 5]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 5, 'ceil', [1, 2, 3, 4, 5]);
+		check('ceil, several elements', [1, 2, 3, 4, 5], 6, 'ceil', [1, 2, 3, 4, 5]);
+		check('ceil, sample 0', [1, 2, 3, 4, 5], 0, 'ceil', []);
+		check('ceil, sample negative', [1, 2, 3, 4, 5], -1, 'ceil', []);
+		check('ceil, sample every second', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 5, 'ceil', [1, 3, 5, 7, 9]);
 	});
 });

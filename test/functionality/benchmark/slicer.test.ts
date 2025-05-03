@@ -2,7 +2,9 @@ import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-ph
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { CommonSlicerMeasurements, PerSliceMeasurements } from '../../../src/benchmark/stats/stats';
-import { describe, assert, test } from 'vitest';
+import { describe, assert, test, beforeAll, afterAll } from 'vitest';
+import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -47,10 +49,13 @@ describe('Benchmark Slicer', () => {
 
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
-				numberOfEdges:               4,  // the defined-by edge and the arguments
+				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                196
+				sizeOfObject:                228,
+				storedVertexIndices:         0,  // no indices
+				storedEnvIndices:            0,  // no indices
+				overwrittenIndices:          0,  // no indices
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -114,10 +119,13 @@ cat(d)`
 			}, statInfo);
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
-				numberOfEdges:               29,
+				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1649
+				sizeOfObject:                1922,
+				storedVertexIndices:         0,
+				storedEnvIndices:            0,
+				overwrittenIndices:          0,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
@@ -147,6 +155,123 @@ cat(d)`
 				total:  4
 			}, statInfo);
 
+		});
+
+		describe('Slicing with pointer-tracking enabled', () => {
+			beforeAll(() => {
+				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: true } });
+			});
+
+			afterAll(() => {
+				amendConfig({ solver: { ...defaultConfigOptions.solver, pointerTracking: false } });
+			});
+
+			test('When indices are stored, then correct values are counted', async() => {
+				const slicer = new BenchmarkSlicer('r-shell');
+				const request = {
+					request: 'text' as const,
+					content: `
+person <- list(firstName = "John", lastName = "Doe", age = 32)
+
+person$firstName <- "Jane"
+person$lastName <- "eoD"
+person$age <- 34
+person$zipCode <- 67890
+person$city <- "other example"
+
+person$city <- list(name = "big-city", lat = 12.345, lon = 67.890, country = "foo")
+
+person$age <- 42
+
+print(person$age)`,
+					pointerTracking: true
+				};
+
+				await slicer.init(request);
+				await slicer.slice('14@print');
+
+				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
+
+				// 'storedEnvIndices' are less because indices are overwritten
+				assert.deepStrictEqual(stats.dataflow, {
+					...stats.dataflow,
+					storedVertexIndices: 14,
+					storedEnvIndices:    13,
+					overwrittenIndices:  1,
+				}, statInfo);
+			});
+		});
+
+		describe('Slicing with sampling enabled', () => {
+			test('When equidistant sampling is enabled, then correct values are counted', async() => {
+				const slicer = new BenchmarkSlicer('r-shell');
+				const request = {
+					request: 'text' as const,
+					content: `
+a <- 1
+b <- 2
+c <- 3
+d <- 4
+e <- 5`,
+				};
+
+				await slicer.init(request);
+				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
+					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
+				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
+				slicer.finish();
+
+				const { stats } = await retrieveStatsSafe(slicer, request);
+
+				assert.equal(slicedCount, 3, 'Sliced three times');
+				assert.equal(stats.perSliceMeasurements.numberOfSlices, 3, 'Sliced three times');
+				assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes,
+					{
+						min:    1,
+						max:    1,
+						median: 1,
+						mean:   1,
+						std:    0,
+						total:  3
+					},
+					'Correct slice sizes'
+				);
+			});
+
+			test('When random sampling is enabled, then correct values are counted', async() => {
+				const slicer = new BenchmarkSlicer('r-shell');
+				const request = {
+					request: 'text' as const,
+					content: `
+a <- 1
+b <- 2
+c <- 3
+d <- 4
+e <- 5`,
+				};
+
+				await slicer.init(request);
+				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
+					assert.equal(criteria.length, 3, '3 criteria are sliced');
+				}, { sampleCount: 3, sampleStrategy: 'random' });
+				slicer.finish();
+
+				const { stats } = await retrieveStatsSafe(slicer, request);
+
+				assert.equal(slicedCount, 3, 'Sliced three times');
+				assert.equal(stats.perSliceMeasurements.numberOfSlices, 3, 'Sliced three times');
+				assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes,
+					{
+						min:    1,
+						max:    1,
+						median: 1,
+						mean:   1,
+						std:    0,
+						total:  3
+					},
+					'Correct slice sizes'
+				);
+			});
 		});
 	});
 });

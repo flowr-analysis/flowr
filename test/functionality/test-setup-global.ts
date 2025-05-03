@@ -1,7 +1,7 @@
 import type { TestLabel } from './_helper/label';
 import { printMissingLabelSummary } from './_helper/label';
 import fs from 'fs';
-import { DefaultMap } from '../../src/util/defaultmap';
+import { DefaultMap } from '../../src/util/collections/defaultmap';
 import { GlobalSummaryFile } from './summary-def';
 import { jsonReplacer } from '../../src/util/json';
 

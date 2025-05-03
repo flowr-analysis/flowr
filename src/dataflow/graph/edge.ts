@@ -134,7 +134,9 @@ const alwaysTraverseEdgeTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.A
 const definedByOnCallTypes = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall;
 
 export function shouldTraverseEdge(types: EdgeTypeBits): TraverseEdge {
-	if(edgeIncludesType(types, alwaysTraverseEdgeTypes)) {
+	if(edgeIncludesType(types, EdgeType.NonStandardEvaluation)) {
+		return TraverseEdge.Never;
+	} else if(edgeIncludesType(types, alwaysTraverseEdgeTypes)) {
 		return TraverseEdge.Always;
 	} else if(edgeIncludesType(types, definedByOnCallTypes)) {
 		return TraverseEdge.OnlyIfBoth;

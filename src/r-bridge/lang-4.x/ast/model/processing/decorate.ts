@@ -12,7 +12,7 @@
 import type { NoInfo, RNode } from '../model';
 import { guard } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
-import { BiMap } from '../../../../../util/bimap';
+import { BiMap } from '../../../../../util/collections/bimap';
 import type { MergeableRecord } from '../../../../../util/objects';
 import { RoleInParent } from './role';
 import { RType } from '../type';

@@ -55,7 +55,7 @@ For more information on how to clone and work with a repository, please see [Git
 
 ## Git-Hooks
 
-Before you commit, please enable the project-specific git-hooks by running:
+Before you commit, please enable the project-specific git-hooks. You can do so through the `setup:dev` script as documented in the [onboarding wiki article](https://github.com/flowr-analysis/flowr/wiki/Onboarding), or through the following command:
 
 ```shell
 git config --local core.hooksPath .githooks/

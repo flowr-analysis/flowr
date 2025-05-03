@@ -1,6 +1,6 @@
 import type { ReplCommand } from './repl-main';
-import type { OutputFormatter } from '../../../util/ansi';
-import { FontStyles } from '../../../util/ansi';
+import type { OutputFormatter } from '../../../util/text/ansi';
+import { FontStyles } from '../../../util/text/ansi';
 import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { convertPreparedParsedData , prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import {

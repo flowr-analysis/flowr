@@ -1,13 +1,13 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
 import type { LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { LintingCertainty } from '../../../linter/linter-format';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';

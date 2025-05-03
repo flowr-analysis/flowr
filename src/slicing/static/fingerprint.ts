@@ -7,7 +7,14 @@ import { EmptyBuiltInMemory } from '../../dataflow/environments/built-in';
 export type Fingerprint = string
 
 export function envFingerprint(env: REnvironmentInformation): Fingerprint {
-	return objectHash(env, { excludeKeys: key => key === 'id', replacer: (v: unknown) => (v === BuiltInEnvironment || v === EmptyBuiltInMemory) ? undefined : v });
+	return objectHash(env, {
+		algorithm:                 'md5',
+		excludeKeys:               key => key === 'id' || key === 'value',
+		respectFunctionProperties: false,
+		respectFunctionNames:      false,
+		ignoreUnknown:             true,
+		replacer:                  (v: unknown) => (v === BuiltInEnvironment || v === EmptyBuiltInMemory) ? undefined : v
+	});
 }
 
 export function fingerprint(id: NodeId, envFingerprint: Fingerprint, onlyForSideEffects: boolean): Fingerprint {

@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import { bold, markdownFormatter } from '../../../util/ansi';
+import { bold, markdownFormatter } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { DataflowGraphClusters } from '../../../dataflow/cluster';

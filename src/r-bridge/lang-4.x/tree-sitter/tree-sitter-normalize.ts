@@ -9,11 +9,11 @@ import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
 import type { RArgument } from '../ast/model/nodes/r-argument';
-import { splitArrayOn } from '../../../util/arrays';
+import { splitArrayOn } from '../../../util/collections/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
 import type { RString } from '../ast/model/nodes/r-string';
-import { startAndEndsWith } from '../../../util/strings';
+import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { getEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
@@ -517,18 +517,35 @@ function convertTreeNode(node: SyntaxNode): RNode {
 				lexeme:   node.text,
 				...defaultInfo
 			};
+		case TreeSitterType.Error:
+			return {
+				type:     RType.ExpressionList,
+				location: undefined,
+				lexeme:   undefined,
+				children: [],
+				grouping: undefined,
+				info:     defaultInfo
+			};
 		default:
 			throw new ParseError(`unexpected node type ${node.type} at ${JSON.stringify(range)}`);
 	}
 }
 
 function makeSourceRange(node: SyntaxNode): SourceRange {
-	return [
-		// tree-sitter is 0-based but we want 1-based
-		node.startPosition.row + 1, node.startPosition.column + 1,
-		// tree-sitter's end position is one off from ours, so we don't add 1 here
-		node.endPosition.row + 1, node.endPosition.column
-	];
+	if(node.startPosition && node.endPosition) {
+		return [
+			// tree-sitter is 0-based but we want 1-based
+			node.startPosition.row + 1, node.startPosition.column + 1,
+			// tree-sitter's end position is one off from ours, so we don't add 1 here
+			node.endPosition.row + 1, node.endPosition.column
+		];
+	} else {
+		return [
+			(node.startPosition?.row ?? -2) + 1, (node.startPosition?.column ?? -2) + 1,
+			// tree-sitter's end position is one off from ours, so we don't add 1 here
+			(node.endPosition?.row ?? -2) + 1, node.endPosition?.column ?? -1
+		];
+	}
 }
 
 function splitComments(nodes: SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {

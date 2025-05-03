@@ -100,6 +100,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		case DropPathsOption.All: {
 			const paths = platformDirname(seed).split(AnyPathSeparator);
 			const basename = platformBasename(seed);
+			tryPaths.push(basename);
 			if(paths.length === 1 && paths[0] === '.') {
 				break;
 			}

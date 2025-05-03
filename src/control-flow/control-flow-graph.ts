@@ -251,7 +251,6 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		// remove all bbChildren with id as target
 		for(const [a, b] of this.bbChildren.entries()) {
 			if(b === id) {
-				// TODO: check for modify on iterate
 				this.bbChildren.delete(a);
 			}
 		}

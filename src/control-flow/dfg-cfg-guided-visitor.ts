@@ -34,6 +34,4 @@ export class DataflowAwareCfgGuidedVisitor<
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
 		return this.config.dataflow.graph.getVertex(id);
 	}
-
-	// TODO: check whether functions are overloaded, resolve calls, provide origin, ...
 }

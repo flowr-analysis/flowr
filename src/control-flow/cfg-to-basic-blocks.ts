@@ -48,7 +48,6 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		}
 	}
 
-	// TODO: check in and outputs to attach entry and exit points
 	const findEntries = cfInfo.entryPoints.map(e => newCfg.getBasicBlock(e)?.id);
 	const findExits = cfInfo.exitPoints.map(e => newCfg.getBasicBlock(e)?.id);
 

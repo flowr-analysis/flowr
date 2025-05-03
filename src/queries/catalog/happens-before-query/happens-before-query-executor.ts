@@ -5,14 +5,14 @@ import type {
 } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
-import { extractCFG } from '../../../control-flow/extract-cfg';
+import { extractSimpleCfg } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { slicingCriterionToId } from '../../../slicing/criterion/parse';
 
-export function executeHappensBefore({ ast, dataflow }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
+export function executeHappensBefore({ ast }: BasicQueryData, queries: readonly HappensBeforeQuery[]): HappensBeforeQueryResult {
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
-	const cfg = extractCFG(ast, dataflow.graph);
+	const cfg = extractSimpleCfg(ast);
 	for(const query of queries) {
 		const { a, b } = query;
 		const fingerprint = `${a}<${b}`;

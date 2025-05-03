@@ -155,7 +155,6 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 		if(get?.tag !== VertexType.FunctionDefinition && get?.tag !== VertexType.VariableDefinition) {
 			return undefined;
 		}
-		// TODO: if the _target_ resolve just returns a symbol and not a fd, we have to go transitive
 		return {
 			type: get.tag === VertexType.FunctionDefinition ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
 			id:   target

@@ -319,14 +319,19 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 }
 
+/** Summarizes the control information of a program */
 export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimpleVertex> extends MergeableRecord {
+	/** all active 'return'(-like) unconditional jumps */
     returns:     NodeId[],
+	/** all active 'break'(-like) unconditional jumps */
     breaks:      NodeId[],
+	/** all active 'next'(-like) unconditional jumps */
     nexts:       NodeId[],
     /** intended to construct a hammock graph, with 0 exit points representing a block that should not be part of the CFG (like a comment) */
     entryPoints: NodeId[],
     /** See {@link ControlFlowInformation#entryPoints|entryPoints} */
     exitPoints:  NodeId[],
+	/** the control flow graph summarizing the flow information */
     graph:       ControlFlowGraph<Vertex>
 }
 

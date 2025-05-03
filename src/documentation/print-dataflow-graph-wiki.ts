@@ -95,8 +95,8 @@ function edgeTypeToId(edgeType: EdgeType): string {
 	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
 }
 
-function linkEdgeName(edgeType: EdgeType): string {
-	return `[\`${edgeTypeToName(edgeType)}\`](#${edgeTypeToId(edgeType)})`;
+function linkEdgeName(edgeType: EdgeType, page = ''): string {
+	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(shell: RShell, vertexType: MermaidTypeReport): Promise<string> {

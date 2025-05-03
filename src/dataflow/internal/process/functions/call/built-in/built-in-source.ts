@@ -22,7 +22,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { expensiveTrace, log } from '../../../../../../util/log';
+import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
@@ -66,6 +66,16 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
+function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
+	const results = [];
+	for(const replacement of replacements) {
+		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value), path);
+		results.push(newPath);
+	}
+
+	return results;
+}
+
 /**
  * Tries to find sourced by a source request and returns the first path that exists
  * @param seed - the path originally requested in the `source` call
@@ -80,7 +90,7 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 		...(inferWdFromScript(config?.inferWorkingDirectory ?? InferWorkingDirectory.No, data.referenceChain))
 	];
 
-	const tryPaths = [seed];
+	let tryPaths = [seed];
 	switch(config?.dropPaths ?? DropPathsOption.No) {
 		case DropPathsOption.Once: {
 			const first = platformBasename(seed);
@@ -103,6 +113,12 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			break;
 	}
 
+	if(config?.applyReplacements) {
+		const r = config.applyReplacements;
+		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
+	}
+
+
 	const found: string[] = [];
 	for(const explore of [undefined, ...explorePaths]) {
 		for(const tryPath of tryPaths) {
@@ -115,7 +131,9 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			}
 		}
 	}
-	log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	if(log.settings.minLevel >= LogLevel.Info) {
+		log.info(`Found sourced file ${JSON.stringify(seed)} at ${JSON.stringify(found)}`);
+	}
 	return found;
 }
 

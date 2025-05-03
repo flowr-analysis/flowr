@@ -16,7 +16,7 @@ import { requestFromInput } from '../../r-bridge/retriever';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
-import { extractCFG } from '../../control-flow/extract-cfg';
+import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 
@@ -79,7 +79,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				cfg ??= extractCFG(data.normalize, data.dataflow.graph).graph;
+				cfg ??= extractSimpleCfg(data.normalize).graph;
 				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {

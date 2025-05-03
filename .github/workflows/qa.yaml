@@ -85,6 +85,30 @@ jobs:
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
 
+  lint-main:
+    needs: [ debug ]
+    name: "👩‍🏫 Linting on Main"
+    if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') || gihub.base_ref == 'main' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "🛒 Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: "🌍 Load Versions to Use"
+        id: doc-global-versions
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: "👩‍🏫 Run linter"
+        run: bash .github/workflows/scripts/run-flowr-command.sh lint
+
   test:
     needs: [ debug ]
     name: "⚗️ Test Suite (coverage)"

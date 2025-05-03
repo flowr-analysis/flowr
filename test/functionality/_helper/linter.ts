@@ -1,4 +1,3 @@
-import type { LintingRule } from '../../../src/linter/linter-format';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../src/linter/linter-rules';
 import { LintingRules } from '../../../src/linter/linter-rules';
 import type { TestLabel } from './label';
@@ -9,8 +8,8 @@ import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { runSearch } from '../../../src/search/flowr-search-executor';
-import { FlowrSearchElements } from '../../../src/search/flowr-search';
+import { executeLintingRule } from '../../../src/linter/linter-executor';
+import type { LintingRule } from '../../../src/linter/linter-format';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
@@ -29,10 +28,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 		}).allRemainingSteps();
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const fullConfig = { ...rule.defaultConfig, ...config ?? {} } as unknown as LintingRuleConfig<Name>;
-		const ruleSearch = rule.createSearch(fullConfig, pipelineResults);
-		const searchResult = runSearch(ruleSearch, pipelineResults);
-		const results = rule.processSearchResult(new FlowrSearchElements(searchResult), fullConfig, pipelineResults);
+		const results = executeLintingRule(ruleName, pipelineResults, config);
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,
@@ -43,7 +39,10 @@ export function assertLinter<Name extends LintingRuleNames>(
 
 		assert.deepEqual(results.results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		if(expectedMetadata !== undefined) {
-			assert.deepEqual(results['.meta'], expectedMetadata, `Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(results['.meta'])}`);
+			// eslint-disable-next-line unused-imports/no-unused-vars
+			const { searchTimeMs, processTimeMs, ...strippedMeta } = results['.meta'];
+			assert.deepEqual(strippedMeta as unknown as LintingRuleMetadata<Name>, expectedMetadata,
+				`Expected ${ruleName} to have metadata ${JSON.stringify(expectedMetadata)}, but got ${JSON.stringify(results['.meta'])}`);
 		}
 	});
 }

@@ -4,7 +4,7 @@ import type { MergeableRecord } from '../util/objects';
 import type { GeneratorNames } from '../search/search-executor/search-generators';
 import type { TransformerNames } from '../search/search-executor/search-transformer';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { LintingRuleConfig, LintingRuleNames } from './linter-rules';
+import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { DataflowInformation } from '../dataflow/info';
 
 export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
@@ -27,6 +27,10 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
 	readonly config: LintingRuleConfig<Name>
 }
 
+export interface LintingResults<Name extends LintingRuleNames> {
+	results: LintingRuleResult<Name>[];
+	'.meta': LintingRuleMetadata<Name> & { readonly searchTimeMs: number; readonly processTimeMs: number; };
+}
 
 export enum LintingCertainty {
 	Maybe = 'maybe',

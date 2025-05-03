@@ -2,9 +2,9 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeLinterQuery } from './linter-query-executor';
-import type { LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
+import type { LintingRuleNames, LintingRuleResult } from '../../../linter/linter-rules';
 import { LintingRules } from '../../../linter/linter-rules';
-import type { ConfiguredLintingRule } from '../../../linter/linter-format';
+import type { ConfiguredLintingRule, LintingResults } from '../../../linter/linter-format';
 import { LintingCertainty } from '../../../linter/linter-format';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -18,7 +18,7 @@ export interface LinterQuery extends BaseQueryFormat {
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
-	readonly results: { [L in LintingRuleNames]?: {results: LintingRuleResult<L>[], '.meta': LintingRuleMetadata<L>} }
+	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
 }
 
 export const LinterQueryDefinition = {

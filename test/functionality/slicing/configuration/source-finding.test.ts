@@ -57,6 +57,6 @@ describe('source finding', () => {
 	assertSourceFound('c.txt', ['c.txt']);
 	assertSourceFound('b.txt', [`a${path.sep}b.txt`], [{ request: 'file', content: `a${path.sep}x.txt` }]);
 	assertSourceFound('b.txt', [`x${path.sep}y${path.sep}z${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
-	assertSourceFound(`..${path.sep}b.txt`, [`x${path.sep}y${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
+	assertSourceFound(`..${path.sep}b.txt`, [`x${path.sep}y${path.sep}b.txt`, `x${path.sep}y${path.sep}z${path.sep}b.txt`], [{ request: 'file', content: `x${path.sep}y${path.sep}z${path.sep}g.txt` }]);
 	assertSourceFound('with spaces.txt', ['with-spaces.txt']); // space replacements
 });

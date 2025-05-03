@@ -88,7 +88,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `foo_bar.R` (replaced spaces)
 	 * - `foo-bar.R` (replaced spaces and oo)
 	 */
-	readonly nameReplacements?:     Record<string, string>[]
+	readonly applyReplacements?:    Record<string, string>[]
 }
 
 export interface FlowrConfigOptions extends MergeableRecord {
@@ -256,7 +256,7 @@ export const flowrConfigFileSchema = Joi.object({
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-			nameReplacements:      Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
+			applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
 		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 		slicer: Joi.object({
 			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')

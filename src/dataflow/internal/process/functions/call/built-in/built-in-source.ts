@@ -66,7 +66,7 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
-function applyNameReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
+function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
 	const results = [];
 	for(const replacement of replacements) {
 		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value), path);
@@ -113,9 +113,9 @@ export function findSource(seed: string, data: { referenceChain: readonly RParse
 			break;
 	}
 
-	if(config?.nameReplacements) {
-		const r = config.nameReplacements;
-		tryPaths = tryPaths.flatMap(t => applyNameReplacements(t, r));
+	if(config?.applyReplacements) {
+		const r = config.applyReplacements;
+		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 
 

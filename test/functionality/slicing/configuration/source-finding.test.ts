@@ -33,7 +33,7 @@ describe('source finding', () => {
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            [],
-					nameReplacements:      [
+					applyReplacements:     [
 						{ },
 						{ ' ': '-' }
 					]

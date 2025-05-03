@@ -15,7 +15,6 @@ import { getConfig } from '../../config';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
-import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
 import { extractSimpleCfg } from '../../control-flow/extract-cfg';
 import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
@@ -47,7 +46,7 @@ export const R2_FILE_PATH_VALIDITY = {
 		writeFunctions:         WriteFunctions.concat(config.additionalWriteFunctions)
 	}),
 	processSearchResult: (elements, config, data): { results: FilePathValidityResult[], '.meta': FilePathValidityMetadata } => {
-		let cfg: ControlFlowGraph;
+		const cfg = extractSimpleCfg(data.normalize).graph;
 		const metadata: FilePathValidityMetadata = {
 			totalReads:              0,
 			totalUnknown:            0,
@@ -79,7 +78,6 @@ export const R2_FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				cfg ??= extractSimpleCfg(data.normalize).graph;
 				const writesToFile = results.writtenData.filter(r => samePath(r.destination, matchingRead.source));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
@@ -99,7 +97,7 @@ export const R2_FILE_PATH_VALIDITY = {
 				return [{
 					range,
 					filePath:  matchingRead.source,
-					certainty: writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
+					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingCertainty.Maybe : LintingCertainty.Definitely
 				}];
 			}),
 			'.meta': metadata

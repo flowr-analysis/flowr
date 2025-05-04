@@ -16,7 +16,7 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { getDocumentationForType , shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
@@ -31,7 +31,7 @@ import {
 	resolveValueOfVariable
 } from '../dataflow/environments/resolve-by-name';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
-import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { nth } from '../util/text/text';
@@ -41,6 +41,7 @@ import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
+import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -1056,13 +1057,65 @@ Depending on what you are interested in, there exists a plethora of functions an
 * The **[Query API](${FlowrWikiBaseRef}/Query%20API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](${FlowrWikiBaseRef}/Search%20API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
 * ${shortLink(recoverName.name, vertexType.info)} and ${shortLink(recoverContent.name, vertexType.info)} to get the name or content of a vertex in the dataflow graph
-* ${shortLink(resolveValueOfVariable.name, vertexType.info)} and ${shortLink(resolveIdToValue.name, vertexType.info)} to resolve the value of a variable or id (if possible)
-* ${shortLink(edgeIncludesType.name, vertexType.info)} to check if an edge includes a specific type and ${shortLink(splitEdgeTypes.name, vertexType.info)} to split the bitmask of edges into its types
-* ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from.
+* ${shortLink(resolveValueOfVariable.name, vertexType.info)} and ${shortLink(resolveIdToValue.name, vertexType.info)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
+* ${shortLink(edgeIncludesType.name, vertexType.info)} to check if an edge includes a specific type and ${shortLink(splitEdgeTypes.name, vertexType.info)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
+* ${shortLink(getValueOfArgument.name, vertexType.info)} to get the (syntactical) value of an argument in a function call 
+* ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow%20Graph%20API) and so we explain them here.
 
-TODO
+${section('Resolving Values', 3, 'dfg-resolving-values')}
+
+FlowR supports a [configurable](${FlowrWikiBaseRef}/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
+These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/Query-API#resolve-value-query) and backed by two important functions:
+
+${shortLink(resolveValueOfVariable.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
+value resolution, while ${shortLink(resolveIdToValue.name, vertexType.info)} provides a more general, but potentially less precise resolution independent of the current state.
+
+${section('Assessing Edges', 3, 'dfg-assess-edge')}
+
+The [edges](#edges) of the dataflow graph use bitmasks to represent an edge with multiple types. While this compacts the representation greatly, it makes it
+difficult to check whether a given edge is a read edge. 
+Consider the following example:
+
+${await printDfGraphForCode(shell, 'print(x)', { mark: new Set(['3->1']) })}
+
+Retrieving the _types_ of the edge from the print call to its argument returns:
+${await(async() => {
+			const dfg =  await createDataflowPipeline(shell, {
+				request: requestFromInput('print(x)')
+			}).allRemainingSteps();		
+			const edge = dfg.dataflow.graph.outgoingEdges(3);
+			if(edge) {
+				const wanted = edge.get(1);
+				if(wanted) {
+					return '`' + wanted.types + '`';
+				}
+			}
+			new Error('Could not find edge');
+		})()}&mdash;which is usually not very helpful.
+You can use ${shortLink(splitEdgeTypes.name, vertexType.info)} to get the individual bitmasks of all included types, and 
+${shortLink(edgeIncludesType.name, vertexType.info)} to check whether a specific type (or one of a collection of types) is included in the edge.
+
+${section('Handling Origins', 3, 'dfg-handling-origins')}
+
+If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
+that are called by an invocation, and more.
+For this, the ${shortLink(getOriginInDfg.name, vertexType.info)} function provides you with a collection of ${shortLink('Origin', vertexType.info)} objects:
+
+${printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'Origin', openTop: true })}
+
+Their respective uses are documented alongside their implementation:
+
+${
+		['SimpleOrigin', 'FunctionCallOrigin', 'BuiltInFunctionOrigin'].sort().map(
+			key => `- ${shortLink(`${key}`, vertexType.info)}\\\n${getDocumentationForType(`${key}`, vertexType.info)}`
+		).join('\n')
+		}
+
+Please note, the current structure of this function is biased by what implementations already exist in flowR.
+Hence, we do not just track definitions and constants, but also the origins of function calls, albeit we do not yet track the origins of values (only resorting to
+a constant origin). If you are confused by this please start a discussion&mdash;in a way we are still deciding on a good API for this.
 
 	`;
 

@@ -1,4 +1,4 @@
-import { guard } from './assert';
+import { guard } from '../assert';
 import type { AnyArray, Tail } from 'ts-essentials';
 
 /**
@@ -181,7 +181,11 @@ export function array2bag<T>(arr: T[]): Map<T, number> {
 	return result;
 }
 
-export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | undefined): boolean {
+export function arrayEqual<T>(
+	a: readonly T[] | undefined,
+	b: readonly T[] | undefined,
+	cmp = (a: T, b: T) => a === b
+): boolean {
 	if(a === undefined || b === undefined) {
 		return a === b;
 	}
@@ -189,7 +193,7 @@ export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | und
 		return false;
 	}
 	for(let i = 0; i < a.length; i++) {
-		if(a[i] !== b[i]) {
+		if(!cmp(a[i], b[i])) {
 			return false;
 		}
 	}

@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../normalizer-data';
 import { tryToNormalizeArgument } from './functions/normalize-argument';
 import { parseLog } from '../../json/parser';
-import { splitArrayOn } from '../../../../../../util/arrays';
+import { splitArrayOn } from '../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../util/assert';
 import { retrieveMetaStructure } from '../normalize-meta';
 import { RawRType, RType } from '../../../model/type';

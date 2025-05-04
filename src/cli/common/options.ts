@@ -1,6 +1,6 @@
 import type { OptionDefinition } from 'command-line-usage';
 import os from 'os';
-import { date2string } from '../../util/time';
+import { date2string } from '../../util/text/time';
 import { allFeatureNames } from '../../statistics/features/feature';
 
 /**
@@ -17,7 +17,7 @@ export interface CommonOptions {
 }
 
 /**
- * This string contains a string representation of the loading time of this module.
+ * This string contains a string representation of the time this module was loaded.
  */
 const StartTimeString = date2string(new Date());
 
@@ -35,7 +35,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'max-file-slices',          type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'per-file-time-limit',      type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
-	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/edquidistant}' },
+	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
@@ -50,7 +50,7 @@ export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
 	{ name: 'max-slices',               type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
-	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/edquidistant}' },
+	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

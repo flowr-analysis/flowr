@@ -1,16 +1,16 @@
-import type { ControlFlowInformation } from '../../util/cfg/cfg';
-import { extractCFG } from '../../util/cfg/cfg';
+import { extractCFG } from '../../control-flow/extract-cfg';
 import {
 	createDataflowPipeline
 } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { KnownParser } from '../../r-bridge/parser';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
+import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 
 export async function getCfg(parser: KnownParser, code: string): Promise<{
 	info:     ControlFlowInformation,

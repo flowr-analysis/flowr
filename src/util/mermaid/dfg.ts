@@ -2,10 +2,11 @@ import type { SourceRange } from '../range';
 
 
 import { guard } from '../assert';
-import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
+import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	IdentifierDefinition,
 	IdentifierReference } from '../../dataflow/environments/identifier';
@@ -20,6 +21,7 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { BuiltInEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { isBuiltIn } from '../../dataflow/environments/built-in';
 
 
 type MarkVertex = NodeId
@@ -40,6 +42,7 @@ interface MermaidGraph {
 	markStyle:           MermaidMarkStyle
 	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
 	presentEdges:        Set<string>
+	presentVertices:     Set<string>
 	// keep for sub-flows
 	rootGraph:           DataflowGraph
 	/** if given, the dataflow graph will only focus on the "important" parts */
@@ -47,7 +50,7 @@ interface MermaidGraph {
 }
 
 /**
- * Prints a {@link SourceRange|range} as a human readable string.
+ * Prints a {@link SourceRange|range} as a human-readable string.
  */
 export function formatRange(range: SourceRange | undefined): string {
 	if(range === undefined) {
@@ -66,7 +69,7 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 	if(subflow === undefined) {
 		return;
 	}
-	const subflowId = `${idPrefix}flow-${nodeId}`;
+	const subflowId = escapeId(`${idPrefix}flow-${nodeId}`);
 	if(mermaid.simplified) {
 		// get parent
 		const idMap = mermaid.rootGraph.idMap;
@@ -176,6 +179,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
+	id = escapeId(id);
 
 	if(info.environment && mermaid.includeEnvironments) {
 		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
@@ -195,8 +199,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	} else {
 		const escapedName = escapeMarkdown(node ? `[${node.type}] ${lexeme}` : '??');
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(n)}*${
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
 			fCall ? displayFunctionArgMapping(info.args) : ''
 		}\`"${close}`);
 	}
@@ -207,21 +212,32 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 
-	const edges = mermaid.rootGraph.get(id, true);
+	const edges = mermaid.rootGraph.get(normalizeIdToNumberIfPossible(id), true);
 	guard(edges !== undefined, `node ${id} must be found`);
 	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
-	for(const [target, edge] of [...edges[1], ...artificialCdEdges]) {
+	// eslint-disable-next-line prefer-const
+	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
+		const originalTarget = target;
+		target = escapeId(target);
 		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
-			mermaid.edgeLines.push(`    ${idPrefix}${id} -->|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
+			const style = isBuiltIn(target) ? '-.->' : '-->';
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);
 			}
 			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
+			}
+			if(isBuiltIn(target)) {
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);
+				if(!mermaid.presentVertices.has(target)) {
+					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${escapeMarkdown(String(originalTarget).replace('built-in:', ''))}\`"]`);
+					mermaid.presentVertices.add(target);
+				}
 			}
 		}
 	}
@@ -248,7 +264,7 @@ function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
 	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = { vertex: 'stroke:teal,stroke-width:7px,stroke-opacity:.8;', edge: 'stroke:teal,stroke-width:4.2px,stroke-opacity:.8' } }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {

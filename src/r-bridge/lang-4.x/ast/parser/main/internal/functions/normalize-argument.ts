@@ -9,7 +9,7 @@ import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
-import { startAndEndsWith } from '../../../../../../../util/strings';
+import { startAndEndsWith } from '../../../../../../../util/text/strings';
 
 
 /**

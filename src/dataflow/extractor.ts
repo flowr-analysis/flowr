@@ -17,8 +17,7 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import type { ControlFlowGraph } from '../util/cfg/cfg';
-import { extractCFG } from '../util/cfg/cfg';
+import { extractSimpleCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
@@ -27,6 +26,7 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import {
 	updateNestedFunctionCalls
 } from './internal/process/functions/call/built-in/built-in-function-definition';
+import type { ControlFlowGraph } from '../control-flow/control-flow-graph';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -73,7 +73,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		cfg ??= extractCFG(ast).graph;
+		cfg ??= extractSimpleCfg(ast).graph;
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
 		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
 		for(const pot of potentials) {

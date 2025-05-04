@@ -3,7 +3,7 @@ import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pip
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 
 /**
  * Obtain the dataflow graph using a known parser (such as the {@link RShell} or {@link TreeSitterExecutor}).

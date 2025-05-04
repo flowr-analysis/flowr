@@ -1,5 +1,5 @@
 import type { MergeableRecord } from './objects';
-import { arraySum } from './arrays';
+import { arraySum } from './collections/arrays';
 
 export const enum SummarizerType {
 	Benchmark	 = 'benchmark',

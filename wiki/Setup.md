@@ -60,6 +60,7 @@ Again, you only require this for the [`r-shell` engine][r-shell].
 ### Installing Node.js
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
+To work, we currently rely on node versions starting from `22.x`.
 
 ### Installing _flowR_
 

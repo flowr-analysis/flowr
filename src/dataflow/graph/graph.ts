@@ -1,7 +1,7 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge , EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { equalFunctionArguments } from './diff';
+import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex';
 import { VertexType } from './vertex';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -20,7 +20,6 @@ import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
-import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
@@ -134,7 +133,7 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
  * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
  * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
- * @see {@link emptyGraph} - to create an empty graph (useful in tests)
+ * @see {@link emptyGraph|`emptyGraph`} - to create an empty graph (useful in tests)
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
@@ -204,6 +203,25 @@ export class DataflowGraph<
 			}
 		}
 		return edges;
+	}
+
+	/**
+	 * Given a node in the normalized AST this either:
+	 * * returns the id if the node directly exists in the DFG
+	 * * returns the ids of all vertices in the DFG that are linked to this
+	 * * returns undefined if the node is not part of the DFG and not linked to any node
+	 */
+	public getLinked(nodeId: NodeId): NodeId[] | undefined {
+		if(this.vertexInformation.has(nodeId)) {
+			return [nodeId];
+		}
+		const linked: NodeId[] = [];
+		for(const [id, vtx] of this.vertexInformation) {
+			if(vtx.link?.origin.includes(nodeId)) {
+				linked.push(id);
+			}
+		}
+		return linked.length > 0 ? linked : undefined;
 	}
 
 
@@ -286,13 +304,14 @@ export class DataflowGraph<
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
+	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
 	 *
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
 		const oldVertex = this.vertexInformation.get(vertex.id);
-		if(oldVertex !== undefined) {
+		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
 
@@ -317,13 +336,10 @@ export class DataflowGraph<
 	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
-	/**
-	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
-	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
-		if(fromId === toId || toId === BuiltIn) {
+		if(fromId === toId) {
 			return this;
 		}
 
@@ -365,7 +381,7 @@ export class DataflowGraph<
 			}
 		}
 
-		this.sourced.push(...otherGraph.sourced);
+		this._sourced = this._sourced.concat(otherGraph.sourced);
 
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);

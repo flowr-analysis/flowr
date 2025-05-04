@@ -12,7 +12,7 @@ import {
 	tocForQueryType
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -263,6 +263,29 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: ['2@x']
+	}], { showCode: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('origin', {
+	name:             'Origin Query',
+	type:             'active',
+	shortDescription: 'Retrieve the origin of a variable, function call, ...',
+	functionName:     executeSearch.name,
+	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\nprint(x)';
+		return `
+With this query you can use flowR's origin tracking to find out the read origins of a variable,
+the functions called by a call, and more.
+
+Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns the origins of \`x\` in the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type:      'origin',
+		criterion: '2@x'
 	}], { showCode: true })
 }
 		`;

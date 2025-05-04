@@ -4,7 +4,7 @@ import type { FeatureKey } from '../../statistics/features/feature';
 import { RShell } from '../../r-bridge/shell';
 import { initFileProvider, statisticsFileProvider } from '../../statistics/output/statistics-file';
 import { extractUsageStatistics, staticRequests } from '../../statistics/statistics';
-import { extractCFG } from '../../util/cfg/cfg';
+import { extractCFG } from '../../control-flow/extract-cfg';
 import { printStepResult, StepOutputFormat } from '../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../core/steps/all/core/10-normalize';
@@ -12,10 +12,10 @@ import { STATIC_DATAFLOW } from '../../core/steps/all/core/20-dataflow';
 import { jsonReplacer } from '../../util/json';
 import { log } from '../../util/log';
 import { guard } from '../../util/assert';
-import { date2string } from '../../util/time';
+import { date2string } from '../../util/text/time';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
-import { setFormatter, voidFormatter } from '../../util/ansi';
+import { setFormatter, voidFormatter } from '../../util/text/ansi';
 
 function compressFolder(folder: string, target: string) {
 	 

@@ -9,7 +9,7 @@ import type { AssignmentInfo } from './assignments';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
-import { getUniqueCombinationsOfSize } from '../../../../util/arrays';
+import { getUniqueCombinationsOfSize } from '../../../../util/collections/arrays';
 import { guard } from '../../../../util/assert';
 import { bigint2number } from '../../../../util/numbers';
 import {

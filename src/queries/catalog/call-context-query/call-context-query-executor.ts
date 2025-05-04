@@ -11,7 +11,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import { extractCFG } from '../../../util/cfg/cfg';
+import { extractCFG } from '../../../control-flow/extract-cfg';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 
@@ -104,7 +104,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name */
-	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	let queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
 
 	while(queue.length > 0) {
 		const [str, id] = queue.shift() as [string, NodeId];
@@ -132,7 +132,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const);
 			/** only follow defined-by and reads */
-			queue.push(...x);
+			queue = queue.concat(x);
 			continue;
 		}
 
@@ -211,7 +211,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCFG(ast, graph);
+		cfg = extractCFG(ast, graph, []);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
@@ -237,7 +237,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
+		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName.test(info.name))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;
@@ -288,4 +288,3 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 		kinds: makeReport(initialIdCollector)
 	};
 }
-

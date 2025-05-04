@@ -1,5 +1,5 @@
 import { type RShell } from './shell';
-import { startAndEndsWith } from '../util/strings';
+import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';

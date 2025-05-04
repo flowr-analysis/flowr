@@ -15,7 +15,7 @@ const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?
 import type { MergeableRecord } from './objects';
 import { deepMergeObject, isObjectOrArray } from './objects';
 import { guard } from './assert';
-import { DefaultMap } from './defaultmap';
+import { DefaultMap } from './collections/defaultmap';
 const literal = (v: string, n?: string | RDF.NamedNode) => DataFactory.literal(v, n);
 import { log } from './log';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';

@@ -192,7 +192,6 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 
 	graph.merge(body.graph);
 
-
 	for(const entry of condition.entryPoints) {
 		graph.addEdge(entry, whileLoop.info.id, { label: CfgEdgeType.Fd });
 	}

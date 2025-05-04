@@ -24,6 +24,16 @@ import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
+import type { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
+import type { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import type { RLineDirective } from '../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
+import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import type { RNext } from '../r-bridge/lang-4.x/ast/model/nodes/r-next';
+import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export interface SyntaxCfgGuidedVisitorConfiguration<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
@@ -137,24 +147,24 @@ export class SyntaxAwareCfgGuidedVisitor<
 	}
 	protected visitRRepeatLoop(_node: RRepeatLoop<ParentInformation>): void {
 	}
-	protected visitRUnaryOp(_node: RNodeWithParent): void {
+	protected visitRUnaryOp(_node: RUnaryOp<ParentInformation>): void {
 	}
-	protected visitRWhileLoop(_node: RNodeWithParent): void {
+	protected visitRWhileLoop(_node: RWhileLoop<ParentInformation>): void {
 	}
-	protected visitRBreak(_node: RNodeWithParent): void {
+	protected visitRBreak(_node: RBreak<ParentInformation>): void {
 	}
-	protected visitRComment(_node: RNodeWithParent): void {
+	protected visitRComment(_node: RComment<ParentInformation>): void {
 	}
-	protected visitRLineDirective(_node: RNodeWithParent): void {
+	protected visitRLineDirective(_node: RLineDirective<ParentInformation>): void {
 	}
-	protected visitRLogical(_node: RNodeWithParent): void {
+	protected visitRLogical(_node: RLogical<ParentInformation>): void {
 	}
-	protected visitRNext(_node: RNodeWithParent): void {
+	protected visitRNext(_node: RNext<ParentInformation>): void {
 	}
-	protected visitRNumber(_node: RNodeWithParent): void {
+	protected visitRNumber(_node: RNumber<ParentInformation>): void {
 	}
-	protected visitRString(_node: RNodeWithParent): void {
+	protected visitRString(_node: RString<ParentInformation>): void {
 	}
-	protected visitRSymbol(_node: RNodeWithParent): void {
+	protected visitRSymbol(_node: RSymbol<ParentInformation>): void {
 	}
 }

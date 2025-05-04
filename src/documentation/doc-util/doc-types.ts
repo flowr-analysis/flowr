@@ -417,7 +417,7 @@ interface FnInfo {
 	program: ts.Program
 }
 
-export function printFunction({ program, info }: FnInfo, name: string): string {
+export function printCodeOfElement({ program, info }: FnInfo, name: string): string {
 	const node = info.find(e => e.name === name);
 	if(!node) {
 		console.error(`Could not find node ${name} when resolving function!`);

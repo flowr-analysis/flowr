@@ -3,7 +3,7 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
-import { mermaidHide, getTypesFromFolderAsMermaid, shortLink, printHierarchy, printFunction } from './doc-util/doc-types';
+import { mermaidHide, getTypesFromFolderAsMermaid, shortLink, printHierarchy, printCodeOfElement } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
@@ -16,13 +16,16 @@ import { simplifyControlFlowInformation } from '../control-flow/cfg-simplificati
 import { extractCFG, ResolvedCallSuffix } from '../control-flow/extract-cfg';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../r-bridge/lang-4.x/convert-values';
+import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { happensBefore } from '../control-flow/happens-before';
 import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
+import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -49,6 +52,45 @@ function sampleCollectNumbers(cfg: ControlFlowInformation, ast: NormalizedAst): 
 		}
 	});
 	return numbers;
+}
+
+class CollectNumbersVisitor extends BasicCfgGuidedVisitor {
+	private numbers: RNumberValue[] = [];
+	private ast:     NormalizedAst;
+
+	constructor(controlFlow: ControlFlowInformation, ast: NormalizedAst) {
+		super({ controlFlow, defaultVisitingOrder: 'forward' });
+		this.ast = ast;
+	}
+
+	protected override onVisitNode(node: NodeId): void {
+		const astNode = this.ast.idMap.get(node);
+		if(isRNumber(astNode)) {
+			this.numbers.push(astNode.content);
+		}
+		super.onVisitNode(node);
+	}
+
+	public getNumbers(): RNumberValue[] {
+		return this.numbers;
+	}
+}
+
+
+class CollectNumbersSyntaxVisitor extends SyntaxAwareCfgGuidedVisitor {
+	private numbers: RNumberValue[] = [];
+
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst) {
+		super({ controlFlow, normalizedAst, defaultVisitingOrder: 'forward' });
+	}
+
+	protected override visitRNumber(node: RNumber<ParentInformation>): void {
+		this.numbers.push(node.content);
+	}
+
+	public getNumbers(): RNumberValue[] {
+		return this.numbers;
+	}
 }
 
 async function getText(shell: RShell) {
@@ -321,7 +363,7 @@ ${shortLink(visitCfgInOrder.name, types.info)} and ${shortLink(visitCfgInReverse
 these will automatically traverse the elements contained within the blocks (in the respective order).
 For example, the following function will return all numbers contained within the CFG:
 
-${printFunction(types, sampleCollectNumbers.name)}
+${printCodeOfElement(types, sampleCollectNumbers.name)}
 
 Calling it with the CFG and AST of the expression \`x - 1 + 2L * 3\` yields the following elements (in this order):
 
@@ -337,8 +379,9 @@ of one vertex always, maybe, or never happens before another vertex (see the cor
 
 ${section('Diffing and Testing', 3, 'cfg-diff-and-test')}
 
-TODO
-
+As mentioned above, you can use the test function ${shortLink('assertCfg', testTypes.info)} to check whether the control flow graph has the desired shape.
+The function supports testing for sub-graphs as well (it provides diffing capabilities similar to ${shortLink('assertDataflow', testTypes.info)}).
+If you want to diff two control flow graphs, you can use the ${shortLink(diffOfControlFlowGraphs.name, types.info)} function.
 
 ${section('Checking Properties', 4, 'cfg-check-properties')}
 
@@ -353,19 +396,52 @@ The [simple traversal](#cfg-simple-traversal) functions are great for simple tas
 that incorporates language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
 visitors that incorporate various alternative perspectives:
 
-- [Basic CFG Visitor](#cfg-traversal-basic): As a class-based version of the [simple traversal](#cfg-traversal-basic) functions
-- [Syntax-Aware CFG Visitor](#cfg-traversal-syntax):
-- [Dataflow and Syntax-Aware CFG Visitor](#cfg-traversal-dfg):
+- [Basic CFG Visitor](#cfg-traversal-basic):\\
+  As a class-based version of the [simple traversal](#cfg-traversal-basic) functions
+- [Syntax-Aware CFG Visitor](#cfg-traversal-syntax):\\
+  If you want directly incorporate the type of the respective vertex in the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) into your visitor
+- [Dataflow and Syntax-Aware CFG Visitor](#cfg-traversal-dfg):\\
+  If you require the [dataflow information](${FlowrWikiBaseRef}/Dataflow%20Graph) as well (e.g., to track built-in function calls, ...)
 
 
 ${section('Basic CFG Visitor', 4, 'cfg-traversal-basic')}
 
-The ${shortLink(BasicCfgGuidedVisitor.name, types.info)} class
+The ${shortLink(BasicCfgGuidedVisitor.name, types.info)} class essential provides the same functionality as the [simple traversal](#cfg-simple-traversal) functions but in a class-based version.
+Using it, you can select whether you want to traverse the CFG in order or in reverse order.
+
+To replicate the number collector from above, you can use the following code:
+
+${printCodeOfElement(types, CollectNumbersVisitor.name)}
+
+Instead of directly calling ${shortLink(visitCfgInOrder.name, types.info)} we pass the \`forward\` visiting order to the constructor of the visitor.
+Executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
+
+${await (async() => {
+	const res = await getCfg(shell, 'x - 1 + 2L * 3');
+	const visitor = new CollectNumbersVisitor(res.info, res.ast);
+	visitor.start();
+	const collected = visitor.getNumbers();
+	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+})()}
 
 
 ${section('Syntax-Aware CFG Visitor', 4, 'cfg-traversal-syntax')}
 
-The ${shortLink(SyntaxAwareCfgGuidedVisitor.name, types.info)} class
+The ${shortLink(SyntaxAwareCfgGuidedVisitor.name, types.info)} class incorporates knowledge of the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) into the CFG traversal and
+directly provides specialized visitors for the various node types.
+Now, our running example of collecting all numbers simplifies to this:
+
+${printCodeOfElement(types, CollectNumbersSyntaxVisitor.name)}
+
+And again, executing it with the CFG and AST of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
+
+${await (async() => {
+	const res = await getCfg(shell, 'x - 1 + 2L * 3');
+	const visitor = new CollectNumbersSyntaxVisitor(res.info, res.ast);
+	visitor.start();
+	const collected = visitor.getNumbers();
+	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+})()}
 
 ${section('Dataflow and Syntax-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 

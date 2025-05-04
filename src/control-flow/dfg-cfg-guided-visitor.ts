@@ -1,37 +1,94 @@
-import type { ControlFlowInformation } from './control-flow-graph';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	NormalizedAst
-} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+
 import type { DataflowInformation } from '../dataflow/info';
-import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
-import { SyntaxAwareCfgGuidedVisitor } from './syntax-cfg-guided-visitor';
-import type { DataflowGraphVertexArgument } from '../dataflow/graph/vertex';
+import type {
+	DataflowGraphVertexArgument, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexUse,
+	DataflowGraphVertexValue, DataflowGraphVertexVariableDefinition } from '../dataflow/graph/vertex';
+import { VertexType
+} from '../dataflow/graph/vertex';
+import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
+import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
+import { assertUnreachable } from '../util/assert';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
 	Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst,
 	Dfg extends DataflowInformation    = DataflowInformation
-> extends SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> {
+> extends BasicCfgGuidedVisitorConfiguration<Cfg> {
 	readonly dataflow: Dfg;
 }
 
 /**
- * This visitor extends on the {@link SyntaxAwareCfgGuidedVisitor} by dispatching visitors based on the AST type of the node.
+ * This visitor extends on the {@link BasicCfgGuidedVisitor} by dispatching visitors based on the dataflow graph.
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class DataflowAwareCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst,
 	Dfg extends DataflowInformation    = DataflowInformation,
-	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg>
-> extends SyntaxAwareCfgGuidedVisitor<Cfg, Ast, Config> {
+	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>
+> extends BasicCfgGuidedVisitor<Cfg, Config> {
 
 	/**
-	 * Get the normalized AST node for the given id or fail if it does not exist.
+	 * Get the dataflow graph vertex for the given id
 	 */
 	protected getDataflowGraph(id: NodeId): DataflowGraphVertexArgument | undefined {
 		return this.config.dataflow.graph.getVertex(id);
 	}
+
+
+	protected override onStatementNode(node: CfgStatementVertex): void {
+		super.onStatementNode(node);
+		this.onExprOrStmtNode(node);
+	}
+
+	protected override onExpressionNode(node: CfgExpressionVertex): void {
+		super.onExpressionNode(node);
+		this.onExprOrStmtNode(node);
+	}
+
+	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
+		const dfgVertex = this.getDataflowGraph(node.id);
+		if(!dfgVertex) {
+			return;
+		}
+
+		const tag = dfgVertex.tag;
+		switch(tag) {
+			case VertexType.Use:
+				this.visitVariableUse(dfgVertex);
+				break;
+			case VertexType.VariableDefinition:
+				this.visitVariableDefinition(dfgVertex);
+				break;
+			case VertexType.FunctionDefinition:
+				this.visitFunctionDefinition(dfgVertex);
+				break;
+			case VertexType.FunctionCall:
+				this.visitFunctionCall(dfgVertex);
+				break;
+			case VertexType.Value:
+				this.visitValue(dfgVertex);
+				break;
+			default:
+				assertUnreachable(tag);
+		}
+	}
+
+	protected visitValue(_val: DataflowGraphVertexValue): void {
+	}
+
+	protected visitVariableUse(_use: DataflowGraphVertexUse): void {
+	}
+
+	protected visitVariableDefinition(_def: DataflowGraphVertexVariableDefinition): void {
+	}
+
+	protected visitFunctionDefinition(_def: DataflowGraphVertexFunctionDefinition): void {
+	}
+
+	protected visitFunctionCall(_call: DataflowGraphVertexFunctionCall): void {
+	}
+
 }

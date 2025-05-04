@@ -26,6 +26,11 @@ import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor'
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
+import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
+import type { DataflowInformation } from '../dataflow/info';
+import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -86,6 +91,25 @@ class CollectNumbersSyntaxVisitor extends SyntaxAwareCfgGuidedVisitor {
 
 	protected override visitRNumber(node: RNumber<ParentInformation>): void {
 		this.numbers.push(node.content);
+	}
+
+	public getNumbers(): RNumberValue[] {
+		return this.numbers;
+	}
+}
+
+class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
+	private numbers: RNumberValue[] = [];
+
+	constructor(controlFlow: ControlFlowInformation, dataflow: DataflowInformation) {
+		super({ controlFlow, dataflow, defaultVisitingOrder: 'forward' });
+	}
+
+	protected override visitValue(node: DataflowGraphVertexValue): void {
+		const astNode = this.config.dataflow.graph.idMap?.get(node.id);
+		if(isRNumber(astNode)) {
+			this.numbers.push(astNode.content);
+		}
 	}
 
 	public getNumbers(): RNumberValue[] {
@@ -400,9 +424,10 @@ visitors that incorporate various alternative perspectives:
   As a class-based version of the [simple traversal](#cfg-traversal-basic) functions
 - [Syntax-Aware CFG Visitor](#cfg-traversal-syntax):\\
   If you want directly incorporate the type of the respective vertex in the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) into your visitor
-- [Dataflow and Syntax-Aware CFG Visitor](#cfg-traversal-dfg):\\
+- [Dataflow-Aware CFG Visitor](#cfg-traversal-dfg):\\
   If you require the [dataflow information](${FlowrWikiBaseRef}/Dataflow%20Graph) as well (e.g., to track built-in function calls, ...)
-
+- [Semantic CFG Visitor](#cfg-traversal-semantic):\\
+  Currently the most advanced visitor that combines syntactic with dataflow information.
 
 ${section('Basic CFG Visitor', 4, 'cfg-traversal-basic')}
 
@@ -443,7 +468,37 @@ ${await (async() => {
 	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
 })()}
 
-${section('Dataflow and Syntax-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
+${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
+
+There is a lot of benefit in incorporating the [dataflow information](${FlowrWikiBaseRef}/Dataflow%20Graph) into the CFG traversal, as it contains
+information about overwritten function calls, definition targets, and so on.
+Our best friend is the ${shortLink(getOriginInDfg.name, types.info)} function which provides the important information about the origin of a vertex in the dataflow graph.
+The ${shortLink(DataflowAwareCfgGuidedVisitor.name, types.info)} class does some of the basic lifting for us.
+While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables, ...
+
+${printCodeOfElement(types, CollectNumbersDataflowVisitor.name)}
+
+Again, executing it with the CFG and Dataflow of the expression \`x - 1 + 2L * 3\`, causes the following numbers to be collected:
+
+${await (async() => {
+	const res = await getCfg(shell, 'x - 1 + 2L * 3');
+	const visitor = new CollectNumbersDataflowVisitor(res.info, res.dataflow);
+	visitor.start();
+	const collected = visitor.getNumbers();
+	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+})()}
+
+${section('Semantic CFG Visitor', 4, 'cfg-traversal-semantic')}
+
+The ${shortLink(SemanticCfgGuidedVisitor.name, types.info)} class is flowR's most advanced visitor that combines the syntactic and dataflow information.
+The main idea is simple, it provides special handlers for assignments, conditionals, and other R semantics but still follows
+the structure of the CFG.
+
+${block({
+	type:    'NOTE',
+	content: 'TODO: still in the design phase!'
+})}
+
 
 
 

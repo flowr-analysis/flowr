@@ -33,10 +33,18 @@ export function edgeTypeToString(type: CfgEdgeType): string {
 	}
 }
 
+/**
+ * A plain vertex in the {@link ControlFlowGraph}.
+ * Please use {@link CfgSimpleVertex} to refer to all potential vertex types within the graph.
+ */
 interface CfgBaseVertex extends MergeableRecord {
+	/** the type of the vertex */
 	type:         CfgVertexType,
+	/** the id of the vertex, for non-blocks this should directly relate to the AST node */
 	id:           NodeId,
+	/** child nodes attached to this one */
 	children?:    NodeId[],
+	/** if the vertex calls a function, this links all targets of this call */
 	callTargets?: Set<NodeId>,
 }
 
@@ -55,18 +63,19 @@ export interface CfgExpressionVertex extends CfgWithMarker {
 	type: CfgVertexType.Expression
 }
 
-export interface CfgMidMarkerVertex extends CfgBaseVertex {
-	type: CfgVertexType.MidMarker
-	// describing the separation performed by this marker
-	kind: string
-	/** the vertex for which this is a mid-marker */
+export interface CfgWithRoot extends CfgBaseVertex {
+	/** the vertex for which this is a marker */
 	root: NodeId
 }
 
-export interface CfgEndMarkerVertex extends CfgBaseVertex {
+export interface CfgMidMarkerVertex extends CfgWithRoot {
+	type: CfgVertexType.MidMarker
+	// describing the separation performed by this marker
+	kind: string
+}
+
+export interface CfgEndMarkerVertex extends CfgWithRoot {
 	type: CfgVertexType.EndMarker
-	/** the vertex for which this is an end-marker */
-	root: NodeId,
 }
 
 export interface CfgBasicBlockVertex extends CfgBaseVertex {
@@ -101,6 +110,7 @@ interface CfgControlDependencyEdge extends MergeableRecord {
     label:  CfgEdgeType.Cd
     /** the id which caused the control dependency */
     caused: NodeId,
+	/** is the control dependency satisfied with a true condition or is it negated (e.g., else-branch)? */
     when:   typeof RTrue | typeof RFalse
 }
 

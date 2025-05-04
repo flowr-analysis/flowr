@@ -37,7 +37,7 @@ export interface SyntaxCfgGuidedVisitorConfiguration<
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
-export class SyntaxGuidedCfgGuidedVisitor<
+export class SyntaxAwareCfgGuidedVisitor<
     Cfg extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst          = NormalizedAst,
 	Config extends SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast>

@@ -5,7 +5,7 @@ import type {
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
-import { SyntaxGuidedCfgGuidedVisitor } from './syntax-cfg-guided-visitor';
+import { SyntaxAwareCfgGuidedVisitor } from './syntax-cfg-guided-visitor';
 import type { DataflowGraphVertexArgument } from '../dataflow/graph/vertex';
 
 export interface DataflowCfgGuidedVisitorConfiguration<
@@ -17,7 +17,7 @@ export interface DataflowCfgGuidedVisitorConfiguration<
 }
 
 /**
- * This visitor extends on the {@link SyntaxGuidedCfgGuidedVisitor} by dispatching visitors based on the AST type of the node.
+ * This visitor extends on the {@link SyntaxAwareCfgGuidedVisitor} by dispatching visitors based on the AST type of the node.
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
@@ -26,7 +26,7 @@ export class DataflowAwareCfgGuidedVisitor<
 	Ast extends NormalizedAst          = NormalizedAst,
 	Dfg extends DataflowInformation    = DataflowInformation,
 	Config extends DataflowCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg> = DataflowCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg>
-> extends SyntaxGuidedCfgGuidedVisitor<Cfg, Ast, Config> {
+> extends SyntaxAwareCfgGuidedVisitor<Cfg, Ast, Config> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.

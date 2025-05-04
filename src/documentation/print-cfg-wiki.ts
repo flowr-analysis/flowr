@@ -3,18 +3,26 @@ import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { codeBlock } from './doc-util/doc-code';
-import { mermaidHide, getTypesFromFolderAsMermaid, shortLink, printHierarchy } from './doc-util/doc-types';
+import { mermaidHide, getTypesFromFolderAsMermaid, shortLink, printHierarchy, printFunction } from './doc-util/doc-types';
 import path from 'path';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details, section } from './doc-util/doc-structure';
-import { printCFGCode } from './doc-util/doc-cfg';
-import { visitCfgInReverseOrder } from '../control-flow/simple-visitor';
+import { getCfg, printCFGCode } from './doc-util/doc-cfg';
+import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
 import { extractCFG, ResolvedCallSuffix } from '../control-flow/extract-cfg';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RNumberValue } from '../r-bridge/lang-4.x/convert-values';
+import { isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { happensBefore } from '../control-flow/happens-before';
+import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
+import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
+import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -28,6 +36,20 @@ const CfgLongExample = `f <- function(a, b = 3) {
 }
 
 print(f(21) + f(42))`.trim();
+
+
+function sampleCollectNumbers(cfg: ControlFlowInformation, ast: NormalizedAst): RNumberValue[] {
+	const numbers: RNumberValue[] = [];
+	visitCfgInOrder(cfg.graph, cfg.entryPoints, id => {
+		/* obtain the corresponding node from the AST */
+		const node = ast.idMap.get(id);
+		/* if it is present and a number, add the parsed value to the list */
+		if(isRNumber(node)) {
+			numbers.push(node.content);
+		}
+	});
+	return numbers;
+}
 
 async function getText(shell: RShell) {
 	const rversion = (await shell.usedRVersion())?.format() ?? 'unknown';
@@ -71,8 +93,11 @@ For readability, we structure this wiki page into various segments:
 - [Structure of the Control Flow Graph](#cfg-structure)
 	- [CFG Vertices](#cfg-structure-vertices)
 	- [CFG Edges](#cfg-structure-edges)
-- [Adding Basic Blocks](#cfg-basic-blocks)
+	- [Adding Basic Blocks](#cfg-basic-blocks)
 - [Working with the CFG](#cfg-working)
+	- [Simple Traversal](#cfg-simple-traversal)
+	- [Diffing and Testing](#cfg-diff-and-test)
+	- [Sophisticated CFG Traversal](#cfg-traversal)
 
 
 ${section('Initial Overview', 2, 'cfg-overview')}
@@ -109,7 +134,7 @@ Activating the calculation of basic blocks produces the following:
 
 ${await printCFGCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
 
-Which is probably much more readable if compacted:
+Which is probably much more readable if compacted (although the reconstucted code can sometimes be slightly mislieading as flowR tries its best to make it syntactically correct and hence add closing braces etc. which are technically not part of the respective block):
 
 ${await printCFGCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true })}
 
@@ -247,7 +272,7 @@ This is due to the fact that the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%2
 
 ${await printDfGraphForCode(shell, 'print(3)', { showCode: true })}
 
-${section('Adding Basic Blocks', 2, 'cfg-basic-blocks')}
+${section('Adding Basic Blocks', 3, 'cfg-basic-blocks')}
 
 As mentioned in the introduction, our control flow graph does not use basic blocks by default and hence simply links all vertices independent of whether they have (un-)conditional jumps or not.
 On the upside, this tells us the execution order (and, in case of promises, forcing order) of involved expressions and seamlessly handles cases like
@@ -285,6 +310,65 @@ ${await (async() => {
 And again it should be noted that even though the example code is more complicated, this is still far from the average real-world script.
 
 ${section('Working with the CFG', 2, 'cfg-working')}
+
+There is a plethora of functions that you can use the traverse the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) and the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph). 
+Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph.
+
+${section('Simple Traversal', 3, 'cfg-simple-traversal')}
+
+If you are just interested in traversing the vertices within the cfg, two simple functions
+${shortLink(visitCfgInOrder.name, types.info)} and ${shortLink(visitCfgInReverseOrder.name, types.info)} are available. For [basic blocks](#cfg-basic-blocks)
+these will automatically traverse the elements contained within the blocks (in the respective order).
+For example, the following function will return all numbers contained within the CFG:
+
+${printFunction(types, sampleCollectNumbers.name)}
+
+Calling it with the CFG and AST of the expression \`x - 1 + 2L * 3\` yields the following elements (in this order):
+
+${await (async() => {
+	const res = await getCfg(shell, 'x - 1 + 2L * 3');
+	const collected = sampleCollectNumbers(res.info, res.ast);
+	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
+})()}
+
+A more useful appearance of these visitors occurs with ${shortLink(happensBefore.name, types.info)} which uses the CFG to determine whether the execution
+of one vertex always, maybe, or never happens before another vertex (see the corresponding [query documentation](${FlowrWikiBaseRef}/Query-API#happens-before-query) for more information).
+
+
+${section('Diffing and Testing', 3, 'cfg-diff-and-test')}
+
+TODO
+
+
+${section('Checking Properties', 4, 'cfg-check-properties')}
+
+To be a valid representation of the program, the CFG should satisfy a collection of properties that, in turn, you can automatically assume to hold
+when working with it. In general, we verify these in every unit test using ${shortLink(assertCfgSatisfiesProperties.name, types.info)},
+and you can have a look at the active properties by checking the ${shortLink('CfgProperties', types.info)} object.
+In general, we check for a hammock graph (given that the program contains no definite infinite loop) and the absence of direct cycles.
+
+${section('Sophisticated CFG Traversal', 3, 'cfg-traversal')}
+
+The [simple traversal](#cfg-simple-traversal) functions are great for simple tasks, but very unhandy when you want to do something more sophisticated
+that incorporates language semantics such as function calls. Hence, we provide a series of incrementally more sophisticated (but complex)
+visitors that incorporate various alternative perspectives:
+
+- [Basic CFG Visitor](#cfg-traversal-basic): As a class-based version of the [simple traversal](#cfg-traversal-basic) functions
+- [Syntax-Aware CFG Visitor](#cfg-traversal-syntax):
+- [Dataflow and Syntax-Aware CFG Visitor](#cfg-traversal-dfg):
+
+
+${section('Basic CFG Visitor', 4, 'cfg-traversal-basic')}
+
+The ${shortLink(BasicCfgGuidedVisitor.name, types.info)} class
+
+
+${section('Syntax-Aware CFG Visitor', 4, 'cfg-traversal-syntax')}
+
+The ${shortLink(SyntaxAwareCfgGuidedVisitor.name, types.info)} class
+
+${section('Dataflow and Syntax-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
+
 
 
 In general, it is probably best to use the ${getReplCommand('controlflow*')} command in the REPL to investigate the CFG interactively.

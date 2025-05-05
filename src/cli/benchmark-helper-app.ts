@@ -59,10 +59,11 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
+	const config = getConfig(undefined);
 	if(options['enable-pointer-tracking']) {
-		amendConfig({ solver: { ...getConfig().solver, pointerTracking: true, } });
+		amendConfig(config, { solver: { ...config.solver, pointerTracking: true, } });
 	} else {
-		amendConfig({ solver: { ...getConfig().solver, pointerTracking: false, } });
+		amendConfig(config, { solver: { ...config.solver, pointerTracking: false, } });
 	}
 
 	// ensure the file exists

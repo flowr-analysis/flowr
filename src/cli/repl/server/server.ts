@@ -7,7 +7,7 @@ import type { FlowrErrorMessage } from './messages/message-error';
 import type { Server, Socket } from './net';
 import { NetServer } from './net';
 import { FlowrLogger } from '../../../util/log';
-import type { KnownEngines } from '../../../config';
+import type { FlowrConfigOptions, KnownEngines } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
 
 // we detach from the main logger so that it can have its own switch
@@ -19,6 +19,7 @@ export const serverLog = new FlowrLogger({ name: 'server' });
  * thereon be handled by a {@link FlowRServerConnection}.
  */
 export class FlowRServer {
+	private readonly config:			           FlowrConfigOptions;
 	private readonly server:              Server;
 	private readonly engines:             KnownEngines;
 	private readonly defaultEngine:       keyof KnownEngines;
@@ -29,7 +30,8 @@ export class FlowRServer {
 	private readonly connections = new Map<string, FlowRServerConnection>();
 	private nameCounter = 0;
 
-	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, server: Server = new NetServer()) {
+	constructor(config: FlowrConfigOptions, engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, server: Server = new NetServer()) {
+		this.config = config;
 		this.server = server;
 		this.server.onConnect(c => this.onConnect(c));
 		this.engines = engines;
@@ -51,7 +53,7 @@ export class FlowRServer {
 		const name = `client-${this.nameCounter++}`;
 		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`);
 
-		this.connections.set(name, new FlowRServerConnection(c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess));
+		this.connections.set(name, new FlowRServerConnection(this.config, c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess));
 		helloClient(c, name, this.versionInformation);
 		c.on('close', () => {
 			this.connections.delete(name);

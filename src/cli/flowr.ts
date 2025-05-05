@@ -217,7 +217,7 @@ async function mainServer(backend: Server = new NetServer()) {
 	const config = createConfig();
 	const engines = await retrieveEngineInstances(config);
 	hookSignalHandlers(engines);
-	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], backend).start(options.port);
+	await new FlowRServer(config, engines.engines, engines.default, options['r-session-access'], backend).start(options.port);
 }
 
 

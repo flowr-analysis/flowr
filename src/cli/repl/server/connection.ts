@@ -46,12 +46,14 @@ import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import type { PipelineExecutor } from '../../../core/pipeline-executor';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Each connection handles a single client, answering to its requests.
  * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
  */
 export class FlowRServerConnection {
+	private readonly config:              FlowrConfigOptions;
 	private readonly socket:              Socket;
 	private readonly parser:              KnownParser;
 	private readonly name:                string;
@@ -65,7 +67,8 @@ export class FlowRServerConnection {
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean) {
+	constructor(config: FlowrConfigOptions, socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean) {
+		this.config = config;
 		this.socket = socket;
 		this.parser = parser;
 		this.name = name;
@@ -219,7 +222,7 @@ export class FlowRServerConnection {
 		const slicer = createSlicePipeline(this.parser, {
 			request,
 			criterion: [] // currently unknown
-		});
+		}, this.config);
 		if(message.filetoken) {
 			this.logger.info(`Storing file token ${message.filetoken}`);
 			this.fileMap.set(message.filetoken, {

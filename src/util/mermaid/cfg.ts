@@ -11,6 +11,8 @@ import {
 	edgeTypeToString
 } from '../../control-flow/control-flow-graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { reconstructToCode } from '../../reconstruct/reconstruct';
+import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 
 function getLexeme(n?: RNodeWithParent) {
 	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
@@ -29,33 +31,50 @@ function cfgOfNode(vert: CfgSimpleVertex, normalizedVertex: RNodeWithParent | un
 	return output;
 }
 
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst?: NormalizedAst, prefix = 'flowchart BT\n'): string {
+const getDirRegex = /flowchart\s+([A-Za-z]+)/;
+
+
+/**
+ * Convert the control flow graph to a mermaid string.
+ * @param cfg              - The control flow graph to convert.
+ * @param normalizedAst    - The normalized AST to use for the vertex content.
+ * @param prefix           - The prefix to use for the mermaid string.
+ * @param simplify         - Whether to simplify the control flow graph (especially in the context of basic blocks).
+ */
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n', simplify: boolean = false): string {
 	let output = prefix;
 
-	const dirIsBT = prefix.includes(' BT\n');
+	const dirIs: string = getDirRegex.exec(prefix)?.at(1) ?? 'LR';
 
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);
 		const content = getLexeme(normalizedVertex);
 		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression && cfg.graph.hasVertex(id + '-exit')) {
 			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
-			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
+			output += `        direction ${dirIs}\n`;
 		}
 		if(vertex.type === CfgVertexType.Block) {
-			output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
-			output += `        direction ${dirIsBT ? 'BT' : 'LR'}\n`;
-			let last: NodeId | undefined = undefined;
-			for(const element of vertex.elems ?? []) {
-				const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
-				const childContent = getLexeme(childNormalizedVertex);
-				output = cfgOfNode(vertex, childNormalizedVertex, element.id, childContent, output);
-				// just to keep the order
-				if(last) {
-					output += `    ${last} -.-> n${element.id}\n`;
+			if(simplify) {
+				const ids = vertex.elems?.map(e => e.id) ?? [];
+				const reconstruct = reconstructToCode(normalizedAst, new Set(ids), doNotAutoSelect).code;
+				const name = `"\`Basic Block (${id})\n${escapeMarkdown(reconstruct)}\`"`;
+				output += `    n${id}[[${name}]]\n`;
+			} else {
+				output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
+				output += `        direction ${dirIs}\n`;
+				let last: NodeId | undefined = undefined;
+				for(const element of vertex.elems ?? []) {
+					const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
+					const childContent = getLexeme(childNormalizedVertex);
+					output = cfgOfNode(vertex, childNormalizedVertex, element.id, childContent, output);
+					// just to keep the order
+					if(last) {
+						output += `    ${last} -.-> n${element.id}\n`;
+					}
+					last = `n${element.id}`;
 				}
-				last = `n${element.id}`;
+				output += '    end\n';
 			}
-			output += '    end\n';
 		} else {
 			output = cfgOfNode(vertex, normalizedVertex, id, content, output);
 		}
@@ -83,6 +102,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst?: Normal
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst?: NormalizedAst, prefix = 'flowchart BT\n'): string {
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = 'flowchart BT\n'): string {
 	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix));
 }

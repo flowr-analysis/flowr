@@ -17,7 +17,7 @@ function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): N
 }
 
 /**
- * Take a control flow graph without any basic blocks and convert it to a graph with basic blocks.
+ * Take a control flow information of a graph without any basic blocks and convert it to a graph with basic blocks.
  */
 export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): ControlFlowInformation {
 	const newCfg = wrapEveryVertexInBasicBlock(cfInfo.graph);

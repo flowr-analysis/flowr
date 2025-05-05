@@ -26,11 +26,13 @@ import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor'
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowInformation } from '../dataflow/info';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { NewIssueUrl } from './doc-util/doc-issue';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -114,6 +116,24 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 
 	public getNumbers(): RNumberValue[] {
 		return this.numbers;
+	}
+}
+
+class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
+	private sources: string[] = [];
+
+	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowInformation) {
+		super({ controlFlow, normalizedAst, dataflow, defaultVisitingOrder: 'forward' });
+	}
+
+	protected override onAssignmentCall({ source }: { source?: NodeId }): void {
+		if(source) {
+			this.sources.push(recoverName(source, this.config.normalizedAst.idMap) ?? '??');
+		}
+	}
+
+	public getSources(): NodeId[] {
+		return this.sources;
 	}
 }
 
@@ -496,16 +516,25 @@ the structure of the CFG.
 
 ${block({
 	type:    'NOTE',
-	content: 'TODO: still in the design phase!'
+	content: `This visitor is still in the design phase so please open up a [new issue](${NewIssueUrl}) if you have any suggestions or find any bugs.`
 })}
 
+To explore what it is capable of, let's create a visitor that prints all values that are used in assignments:
+
+${printCodeOfElement(types, CollectSourcesSemanticVisitor.name)}
+
+Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assign("x", 42 + 21)\`, causes the following values (/lexemes) to be collected:
+
+${await (async() => {
+	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
+	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow);
+	visitor.start();
+	const collected = visitor.getSources();
+	return collected.map(n => '\n- `' + n + '`').join('');
+})()}
 
 
 
-In general, it is probably best to use the ${getReplCommand('controlflow*')} command in the REPL to investigate the CFG interactively.
-Have a look at the ${shortLink(visitCfgInReverseOrder.name, types.info)} function for a generic CFG visitor.
-
-TODO: document and link the origin function!
 
 `;
 }

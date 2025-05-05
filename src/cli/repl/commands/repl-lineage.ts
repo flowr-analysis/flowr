@@ -10,15 +10,16 @@ import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../../util/assert';
 import type { KnownParser } from '../../../r-bridge/parser';
+import type { FlowrConfigOptions } from '../../../config';
 
 function splitAt(str: string, idx: number) {
 	return [str.slice(0, idx), str.slice(idx)];
 }
 
-async function getDfg(parser: KnownParser, remainingLine: string) {
+async function getDfg(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
-	}).allRemainingSteps();
+	}, config).allRemainingSteps();
 }
 
 function filterRelevantEdges(edge: DataflowGraphEdge) {
@@ -69,9 +70,9 @@ export const lineageCommand: ReplCommand = {
 	usageExample: ':lineage',
 	aliases:      ['lin'],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
+	fn:           async(config, output, shell, remainingLine) => {
 		const [criterion, rest] = splitAt(remainingLine, remainingLine.indexOf(' '));
-		const { dataflow: dfg } = await getDfg(shell, rest);
+		const { dataflow: dfg } = await getDfg(config, shell, rest);
 		const lineageIds = getLineage(criterion as SingleSlicingCriterion, dfg.graph);
 		output.stdout([...lineageIds].join('\n'));
 	}

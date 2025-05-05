@@ -5,11 +5,12 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import type { FlowrConfigOptions } from '../../../config';
 
-async function controlflow(parser: KnownParser, remainingLine: string) {
+async function controlflow(parser: KnownParser, remainingLine: string, config: FlowrConfigOptions) {
 	return await createDataflowPipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
-	}).allRemainingSteps();
+	}, config).allRemainingSteps();
 }
 
 function handleString(code: string): string {
@@ -25,8 +26,8 @@ export const controlflowCommand: ReplCommand = {
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await controlflow(shell, handleString(remainingLine));
+	fn:           async(config, output, shell, remainingLine) => {
+		const result = await controlflow(shell, handleString(remainingLine), config);
 
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);
 		const mermaid = cfgToMermaid(cfg, result.normalize);
@@ -44,8 +45,8 @@ export const controlflowStarCommand: ReplCommand = {
 	usageExample: ':controlflow*',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await controlflow(shell, handleString(remainingLine));
+	fn:           async(config, output, shell, remainingLine) => {
+		const result = await controlflow(shell, handleString(remainingLine), config);
 
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);
 		const mermaid = cfgToMermaidUrl(cfg, result.normalize);

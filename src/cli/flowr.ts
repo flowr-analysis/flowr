@@ -205,10 +205,10 @@ async function mainRepl() {
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;
 	if(options.execute) {
-		await replProcessAnswer(standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
+		await replProcessAnswer(config, standardReplOutput, options.execute, defaultEngine, allowRSessionAccess);
 	} else {
 		await printVersionRepl(defaultEngine);
-		await repl({ parser: defaultEngine, allowRSessionAccess });
+		await repl(config, { parser: defaultEngine, allowRSessionAccess });
 	}
 	process.exit(0);
 }

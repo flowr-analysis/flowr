@@ -162,10 +162,10 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(output, parser, remainingLine) => {
+	fn:           async(config, output, parser, remainingLine) => {
 		const result = await createParsePipeline(parser, {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
-		}).allRemainingSteps();
+		}, config).allRemainingSteps();
 
 		if(parser.name === 'r-shell') {
 			const object = convertPreparedParsedData(prepareParsedData(result.parse.parsed as unknown as string));

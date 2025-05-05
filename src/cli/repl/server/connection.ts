@@ -299,7 +299,7 @@ export class FlowRServerConnection {
 			});
 		};
 
-		void replProcessAnswer({
+		void replProcessAnswer(this.config, {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)

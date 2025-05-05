@@ -1,10 +1,10 @@
 import type { ReplCommand, ReplOutput } from './repl-main';
-import { extractCFG } from '../../../util/cfg/cfg';
+import { extractCFG } from '../../../control-flow/extract-cfg';
 import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 
 async function controlflow(parser: KnownParser, remainingLine: string) {
 	return await createDataflowPipeline(parser, {

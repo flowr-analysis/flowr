@@ -1,6 +1,6 @@
 import type { OptionDefinition } from 'command-line-usage';
 import os from 'os';
-import { date2string } from '../../util/time';
+import { date2string } from '../../util/text/time';
 import { allFeatureNames } from '../../statistics/features/feature';
 
 /**
@@ -17,7 +17,7 @@ export interface CommonOptions {
 }
 
 /**
- * This string contains a string representation of the loading time of this module.
+ * This string contains a string representation of the time this module was loaded.
  */
 const StartTimeString = date2string(new Date());
 
@@ -25,23 +25,32 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output' },
-	{ name: 'runs',         alias: 'r', type: Number, description: 'The amount of benchmark runs that should be done, out of which an average will be calculated' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+	{ name: 'runs',         alias: 'r', type: Number,  description: 'The amount of benchmark runs that should be done, out of which an average will be calculated' },
+	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from. Alternatively, pass a single JSON file that contains a list of paths.', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `Directory to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline file}' },
-	{ name: 'parser', type: String, description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' }
+	{ name: 'output',       alias: 'o', type: String,  description: `Folder to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${StartTimeString}})`, defaultValue: `benchmark-${StartTimeString}`,  typeLabel: '{underline folder}' },
+	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
+	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
+	{ name: 'max-file-slices',          type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
+	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
+	{ name: 'per-file-time-limit',      type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
+	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 ];
 
 export const benchmarkHelperOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
-	{ name: 'file-id',      alias: 'd', type: Number, description: 'A numeric file id that can be used to match an input and run-num to a file' },
-	{ name: 'run-num',      alias: 'r', type: Number, description: 'The n-th time that the file with the given file-id is being benchmarked' },
+	{ name: 'file-id',      alias: 'd', type: Number,  description: 'A numeric file id that can be used to match an input and run-num to a file' },
+	{ name: 'run-num',      alias: 'r', type: Number,  description: 'The n-th time that the file with the given file-id is being benchmarked' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction. Numbers will indicate: sample X random slices from all.', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write the measurements to (appends a single line in JSON format)',  typeLabel: '{underline file}' },
-	{ name: 'parser', type: String, description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' }
+	{ name: 'parser',                   type: String,  description: 'The parser to use for the benchmark', defaultValue: 'r-shell', typeLabel: '{underline parser}' },
+	{ name: 'enable-pointer-tracking',  type: Boolean, description: 'Run dataflow analysis with pointer tracking', defaultValue: false },
+	{ name: 'max-slices',               type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
+	{ name: 'threshold',    alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
+	{ name: 'sampling-strategy',        type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 ];
 
 export const exportQuadsOptions: OptionDefinition[] = [

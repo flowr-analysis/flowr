@@ -1,5 +1,5 @@
 import { type RShell } from './shell';
-import { startAndEndsWith } from '../util/strings';
+import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
 import { RShellExecutor } from './shell-executor';
@@ -105,7 +105,7 @@ export function requestProviderFromText(text: Readonly<{[path: string]: string}>
 			if(ignoreCase) {
 				return Object.keys(text).find(p => p.toLowerCase() === path.toLowerCase());
 			}
-			return text[path] ? path : undefined;
+			return text[path] !== undefined ? path : undefined;
 		},
 		createRequest(path: string): RParseRequest {
 			return {

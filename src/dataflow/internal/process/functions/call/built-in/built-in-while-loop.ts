@@ -29,14 +29,14 @@ export function processWhileLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 2 || args[1] === EmptyArgument) {
 		dataflowLogger.warn(`While-Loop ${name.content} does not have 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const unpackedArgs = args.map(e => unpackArgument(e));
 
 	if(unpackedArgs.some(isUndefined)) {
 		dataflowLogger.warn(`While-Loop ${name.content} has empty arguments in ${JSON.stringify(args)}, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we inject the cf-dependency of the while-loop after the condition */
@@ -51,7 +51,7 @@ export function processWhileLoop<OtherInfo>(
 				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] };
 			}
 			return d;
-		} });
+		}, origin: 'builtin:while-loop' });
 	const [condition, body] = processedArguments;
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`);

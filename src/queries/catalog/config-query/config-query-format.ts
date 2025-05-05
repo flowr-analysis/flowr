@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeConfigQuery } from './config-query-executor';
-import { bold, type OutputFormatter } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold, type OutputFormatter } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';

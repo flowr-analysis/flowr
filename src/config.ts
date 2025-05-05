@@ -7,6 +7,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
+import type { DeepPartial } from 'ts-essentials';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -41,7 +42,54 @@ export enum DropPathsOption {
 	Once = 'once',
 	/** try to drop every folder of the path */
 	All = 'all'
-};
+}
+
+export interface FlowrLaxSourcingOptions extends MergeableRecord {
+	/**
+	 * search for filenames matching in the lowercase
+	 */
+	readonly ignoreCapitalization:  boolean
+	/**
+	 * try to infer the working directory from the main or any script to analyze.
+	 */
+	readonly inferWorkingDirectory: InferWorkingDirectory
+	/**
+	 * Additionally search in these paths
+	 */
+	readonly searchPath:            readonly string[]
+	/**
+	 * Allow to drop the first or all parts of the sourced path,
+	 * if it is relative.
+	 */
+	readonly dropPaths:             DropPathsOption
+	/**
+	 * How often the same file can be sourced within a single run?
+	 * Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.
+	 */
+	readonly repeatedSourceLimit?:  number
+	/**
+	 * sometimes files may have a different name in the source call	(e.g., due to later replacements),
+	 * with this setting you can provide a list of replacements to apply for each sourced file.
+	 * Every replacement consists of a record that maps a regex to a replacement string.
+	 *
+	 * @example
+	 * ```ts
+	 * [
+	 *      { }, // no replacement -> still try the original name/path
+	 *      { '.*\\.R$': 'main.R' }, // replace all .R files with main.R
+	 *      { '\s' : '_' }, // replace all spaces with underscores
+	 *      { '\s' : '-', 'oo': 'aa' }, // replace all spaces with dashes and oo with aa
+	 * ]
+	 * ```
+	 *
+	 * Given a `source("foo bar.R")` this configuration will search for (in this order):
+	 * - `foo bar.R` (original name)
+	 * - `main.R` (replaced with main.R)
+	 * - `foo_bar.R` (replaced spaces)
+	 * - `foo-bar.R` (replaced spaces and oo)
+	 */
+	readonly applyReplacements?:    Record<string, string>[]
+}
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	/**
@@ -77,37 +125,36 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		 */
 		readonly variables:       VariableResolve,
 		/**
+		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
+		 */
+		readonly evalStrings:     boolean
+		/**
 		 * Whether to track pointers in the dataflow graph,
 		 * if not, the graph will be over-approximated wrt.
 		 * containers and accesses
 		 */
-		readonly pointerTracking: boolean
+		readonly pointerTracking: boolean | {
+			/**
+			 * The maximum number of indices tracked per obj with the pointer analysis (currently this focuses on initialization)
+			 */
+			readonly maxIndexCount: number
+		},
 		/**
 		 * If lax source calls are active, flowR searches for sourced files much more freely,
 		 * based on the configurations you give it.
 		 * This option is only in effect if {@link ignoreSourceCalls} is set to false.
 		 */
-		readonly resolveSource?: {
+		readonly resolveSource?: FlowrLaxSourcingOptions,
+		/**
+		 * The configuration for flowR's slicer
+		 */
+		slicer?: {
 			/**
-			 * search for filenames matching in the lowercase
+			 * The maximum number of iterations to perform on a single function call during slicing
 			 */
-			readonly ignoreCapitalization:  boolean
-			/**
-			 * try to infer the working directory from the main or any script to analyze.
-			 */
-			readonly inferWorkingDirectory: InferWorkingDirectory
-			/**
-			 * Additionally search in these paths
-			 */
-			readonly searchPath:            readonly string[]
-			/**
-			 * Allow to drop the first or all parts of the sourced path,
-			 * if it is relative.
-			 */
-			readonly dropPaths:             DropPathsOption
+			readonly threshold?: number
 		}
 	}
-
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -123,7 +170,7 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 	/**
 	 * Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.
 	 */
-	readonly lax?:				            boolean
+	readonly lax?:                boolean
 }
 
 export interface RShellEngineConfig extends MergeableRecord {
@@ -156,12 +203,17 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	defaultEngine: 'r-shell',
 	solver:        {
 		variables:       VariableResolve.Alias,
+		evalStrings:     true,
 		pointerTracking: false,
 		resolveSource:   {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,
 			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-			searchPath:            []
+			searchPath:            [],
+			repeatedSourceLimit:   2
+		},
+		slicer: {
+			threshold: 50
 		}
 	}
 };
@@ -191,13 +243,24 @@ export const flowrConfigFileSchema = Joi.object({
 	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 	solver:        Joi.object({
 		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-		pointerTracking: Joi.boolean().description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
-		resolveSource:   Joi.object({
+		evalStrings:     Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+		pointerTracking: Joi.alternatives(
+			Joi.boolean(),
+			Joi.object({
+				maxIndexCount: Joi.number().required().description('The maximum number of indices tracked per object with the pointer analysis.')
+			})
+		).description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
+		resolveSource: Joi.object({
 			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
 			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
-			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.')
-		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.')
+			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
+			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
+			applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
+		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
+		slicer: Joi.object({
+			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
+		}).optional().description('The configuration for the slicer.')
 	}).description('How to resolve constants, constraints, cells, ...')
 }).description('The configuration file format for flowR.');
 
@@ -237,8 +300,8 @@ export function setConfig(config: FlowrConfigOptions) {
 	currentConfig = config;
 }
 
-export function amendConfig(amendment: Partial<FlowrConfigOptions>) {
-	setConfig(deepMergeObject(getConfig(), amendment));
+export function amendConfig(amendment: DeepPartial<FlowrConfigOptions>) {
+	setConfig(deepMergeObject(getConfig(), amendment) as FlowrConfigOptions);
 	log.trace(`Amending config with ${JSON.stringify(amendment)}, resulting in ${JSON.stringify(getConfig())}}`);
 }
 
@@ -263,6 +326,22 @@ export function getEngineConfig<T extends EngineConfig['type']>(engine: T): Engi
 		return config.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
 	}
 }
+
+function getPointerAnalysisThreshold(): number | 'unlimited' | 'disabled' {
+	const config = getConfig().solver.pointerTracking;
+	if(typeof config === 'object') {
+		return config.maxIndexCount;
+	} else {
+		return config ? 'unlimited' : 'disabled';
+	}
+}
+
+export function isOverPointerAnalysisThreshold(count: number): boolean {
+	const threshold = getPointerAnalysisThreshold();
+	return threshold !== 'unlimited' && (threshold === 'disabled' || count > threshold);
+}
+
+
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
 	if(configFile !== undefined) {

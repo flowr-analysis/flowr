@@ -7,7 +7,7 @@ import { scripts } from './scripts-info';
 import commandLineUsage from 'command-line-usage';
 import type { CommonOptions } from './options';
 import commandLineArgs from 'command-line-args';
-import { italic } from '../../util/ansi';
+import { italic } from '../../util/text/ansi';
 import { log, LogLevel } from '../../util/log';
 
 /**

@@ -42,8 +42,10 @@ export interface SlicerStatsDataflow<T = number> {
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */
 	sizeOfObject:                T
+	storedVertexIndices:         T
+	storedEnvIndices:            T
+	overwrittenIndices:          T
 }
-
 
 /**
  * Please note, that these measurement can be negative as there is no guarantee that the memory usage will increase

@@ -18,8 +18,8 @@ import {
 	summarizeMeasurement
 } from '../../../../util/summarizer';
 import { readLineByLineSync } from '../../../../util/files';
-import { startAndEndsWith } from '../../../../util/strings';
-import { array2bag } from '../../../../util/arrays';
+import { startAndEndsWith } from '../../../../util/text/strings';
+import { array2bag } from '../../../../util/collections/arrays';
 
 type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
 

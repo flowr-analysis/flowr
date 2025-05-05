@@ -30,7 +30,7 @@ import { defaultEnv } from '../../test/functionality/_helper/dataflow/environmen
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { nth } from '../util/text';
+import { nth } from '../util/text/text';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { LogLevel } from '../util/log';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
@@ -225,6 +225,12 @@ The related function argument references are defined like this:
 ${
 	printHierarchy({ program: vertexType.program, info: vertexType.info, root: 'FunctionArgument' })
 }
+
+There is another element of potential interest to you, the \`origin\` property which records how flowR created the respective function call.
+These origins may hold the name of any processor that is part of the ${shortLink('BuiltInProcessorMapper', vertexType.info)} to signal that the respective processor was responsible for creating the vertex.
+The entry \`function\` signals that flowR used a processor for a user-defined function defined within the source code, \`unnamed\` signals that the function as an anonymous function definition.
+However, in general, flowR may use any fitting handler as an origin. For example, within a access definition, flowR will correspondingl yredefine the meaning of \`:=\` to that of the \`table:assign\`. 
+
 
 
 ${

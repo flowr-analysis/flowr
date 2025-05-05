@@ -12,14 +12,17 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/environment';
 import type { ForceArguments } from '../common';
-import { BuiltIn } from '../../../../../environments/built-in';
+import type { BuiltInMappingName } from '../../../../../environments/built-in';
+import { builtInId } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { ReferenceType } from '../../../../../environments/identifier';
-import type { ContainerIndicesCollection, ContainerParentIndex } from '../../../../../graph/vertex';
+import type {
+	ContainerIndicesCollection,
+	ContainerParentIndex
+} from '../../../../../graph/vertex';
 import { isParentContainerIndex } from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { filterIndices, resolveSingleIndex } from '../../../../../../util/list-access';
+import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { getConfig } from '../../../../../../config';
 
 interface TableAssignmentProcessorMarker {
@@ -34,7 +37,7 @@ function tableAssignmentProcessor<OtherInfo>(
 	outInfo: TableAssignmentProcessorMarker
 ): DataflowInformation {
 	outInfo.definitionRootNodes.push(rootId);
-	return processKnownFunctionCall({ name, args, rootId, data }).information;
+	return processKnownFunctionCall({ name, args, rootId, data, origin: 'table:assign' }).information;
 }
 
 /**
@@ -57,14 +60,14 @@ export function processAccess<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const head = args[0];
 
 	let fnCall: ProcessKnownFunctionCallResult;
 	if(head === EmptyArgument) {
 		// in this case we may be within a pipe
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
 	} else if(!config.treatIndicesAsString) {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
@@ -132,16 +135,19 @@ function processNumberBasedAccess<OtherInfo>(
 ) {
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
+	const tableAssignId = builtInId(':=-table');
 	data.environment.current.memory.set(':=', [{
 		type:                ReferenceType.BuiltInFunction,
-		definedAt:           BuiltIn,
+		definedAt:           tableAssignId,
 		controlDependencies: undefined,
 		processor:           (name, args, rootId, data) => tableAssignmentProcessor(name, args, rootId, data, outInfo),
+		config:              {},
 		name:                ':=',
-		nodeId:              BuiltIn,
+		nodeId:              tableAssignId
 	}]);
 
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:access' });
+
 	/* recover the environment */
 	if(existing !== undefined) {
 		data.environment.current.memory.set(':=', existing);
@@ -153,28 +159,18 @@ function processNumberBasedAccess<OtherInfo>(
 			rootId
 		);
 	}
+
+	if(getConfig().solver.pointerTracking) {
+		referenceAccessedIndices(args, data, fnCall, rootId, true);
+	}
+
 	return fnCall;
 }
 
-/**
- * Processes different types of string-based access operations.
- *
- * Example:
- * ```r
- * a$foo
- * a@foo
- * ```
- */
-function processStringBasedAccess<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
-	rootId: NodeId,
-	config: ForceArguments,
-) {
+export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = [...args];
 	// if the argument is a symbol, we convert it to a string for this perspective
-	for(let i = 1; i < newArgs.length; i++) {
+	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
 		const arg = newArgs[i];
 		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
 			newArgs[i] = {
@@ -192,53 +188,83 @@ function processStringBasedAccess<OtherInfo>(
 			};
 		}
 	}
+	return newArgs;
+}
 
-	const fnCall = processKnownFunctionCall({ name, args: newArgs, rootId, data, forceArgs: config.forceArgs });
+/**
+ * Processes different types of string-based access operations.
+ *
+ * Example:
+ * ```r
+ * a$foo
+ * a@foo
+ * ```
+ */
+function processStringBasedAccess<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation, string>,
+	rootId: NodeId,
+	config: { treatIndicesAsString: boolean } & ForceArguments
+) {
+	const newArgs = symbolArgumentsToStrings(args);
 
-	// Resolve access on the way up the fold
-	const nonEmptyArgs = newArgs.filter(arg => arg !== EmptyArgument);
-	const accessedArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.Accessed);
-	const accessArg = nonEmptyArgs.find(arg => arg.info.role === RoleInParent.IndexAccess);
-
-	if(accessedArg === undefined || accessArg === undefined) {
-		return fnCall;
-	}
+	const fnCall = processKnownFunctionCall({ name, args:      newArgs, rootId, data, forceArgs: config.forceArgs,
+		origin:    'builtin:access' satisfies BuiltInMappingName
+	});
 
 	if(getConfig().solver.pointerTracking) {
-		let accessedIndicesCollection: ContainerIndicesCollection;
-		// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
-		if(accessedArg.value?.type === RType.Symbol) {
-			accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment);
-		} else {
-			// Higher access call
-			const underlyingAccessId = accessedArg.value?.info.id ?? -1;
-			const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
-			const subIndices = vertex?.indicesCollection
-				?.flatMap(indices => indices.indices)
-				?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
-			if(subIndices) {
-				accessedIndicesCollection = filterIndices(subIndices, accessArg);
-			}
-		}
-
-		// Add indices to vertex afterward
-		if(accessedIndicesCollection) {
-			const vertex = fnCall.information.graph.getVertex(rootId);
-			if(vertex) {
-				vertex.indicesCollection = accessedIndicesCollection;
-			}
-
-			// When access has no access as parent, it's the top most
-			const rootNode = data.completeAst.idMap.get(rootId);
-			const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
-			if(parentNode?.type !== RType.Access) {
-				// Only reference indices in top most access
-				referenceIndices(accessedIndicesCollection, fnCall, name.info.id);
-			}
-		}
+		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
 	}
 
 	return fnCall;
+}
+
+function referenceAccessedIndices<OtherInfo>(
+	newArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	fnCall: ProcessKnownFunctionCallResult,
+	rootId: NodeId,
+	isIndexBasedAccess: boolean,
+) {
+	// Resolve access on the way up the fold
+	const { accessedArg, accessArg } = getAccessOperands(newArgs);
+
+	if(accessedArg === undefined || accessArg === undefined) {
+		return;
+	}
+
+	let accessedIndicesCollection: ContainerIndicesCollection;
+	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
+	if(accessedArg.value?.type === RType.Symbol) {
+		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, isIndexBasedAccess);
+	} else {
+		// Higher access call
+		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
+		const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
+		const subIndices = vertex?.indicesCollection
+			?.flatMap(indices => indices.indices)
+			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
+		if(subIndices) {
+			accessedIndicesCollection = filterIndices(subIndices, accessArg, isIndexBasedAccess);
+		}
+	}
+
+	// Add indices to vertex afterward
+	if(accessedIndicesCollection) {
+		const vertex = fnCall.information.graph.getVertex(rootId);
+		if(vertex) {
+			vertex.indicesCollection = accessedIndicesCollection;
+		}
+
+		// When access has no access as parent, it's the top most
+		const rootNode = data.completeAst.idMap.get(rootId);
+		const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
+		if(parentNode?.type !== RType.Access) {
+			// Only reference indices in top most access
+			referenceIndices(accessedIndicesCollection, fnCall, rootId);
+		}
+	}
 }
 
 /**
@@ -246,8 +272,8 @@ function processStringBasedAccess<OtherInfo>(
  * the node with {@link parentNodeId}.
  *
  * @param accessedIndicesCollection - All indices that were accessed by the access operation
- * @param fnCall - The {@link ProcessKnownFunctionCallResult} of the access operation
- * @param parentNodeId - {@link NodeId} of the parent from which the edge starts
+ * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
+ * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts
  */
 function referenceIndices(
 	accessedIndicesCollection: ContainerIndicesCollection,

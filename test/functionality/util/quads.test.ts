@@ -66,6 +66,7 @@ describe.sequential('Quads', withShell(shell => {
 <${idPrefix}2> <${domain}args> <${idPrefix}5> <${context}> .
 <${idPrefix}5> <${domain}nodeId> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}5> <${domain}type> "32"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}origin> "function" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
 <${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .

@@ -27,7 +27,7 @@ export function processForLoop<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 3) {
 		dataflowLogger.warn(`For-Loop ${name.content} does not have three arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const [variableArg, vectorArg, bodyArg] = args.map(e => unpackArgument(e));
@@ -77,7 +77,8 @@ export function processForLoop<OtherInfo>(
 		rootId,
 		name,
 		data:                  { ...data, controlDependencies: originalDependency },
-		argumentProcessResult: [variable, vector, body]
+		argumentProcessResult: [variable, vector, body],
+		origin:                'builtin:for-loop'
 	});
 	/* mark the last argument as nse */
 	nextGraph.addEdge(rootId, body.entryPoint, EdgeType.NonStandardEvaluation);

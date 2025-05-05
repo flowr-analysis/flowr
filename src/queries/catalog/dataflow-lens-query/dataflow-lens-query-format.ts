@@ -1,8 +1,8 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { executeDataflowLensQuery } from './dataflow-lens-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';

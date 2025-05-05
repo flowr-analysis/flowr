@@ -1,4 +1,4 @@
-import { splitAtEscapeSensitive } from '../../../src/util/args';
+import { splitAtEscapeSensitive } from '../../../src/util/text/args';
 import { describe, assert, test } from 'vitest';
 
 

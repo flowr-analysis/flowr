@@ -16,25 +16,27 @@ type WorkingQueue = Arguments[]
  * It offers a work stealing thread pool executor.
  */
 export class LimitedThreadPool {
-	private readonly workingQueue: WorkingQueue;
-	private readonly limit:        number;
-	private readonly parallel:     number;
-	private readonly module:       string;
+	private readonly workingQueue:  WorkingQueue;
+	private readonly limit:         number;
+	private readonly parallel:      number;
+	private readonly module:        string;
 	private counter = 0;
-	private skipped:               Arguments[] = [];
+	private skipped:                Arguments[] = [];
 	private currentlyRunning = new Set<Arguments>();
-	private reportingInterval:     NodeJS.Timer | undefined = undefined;
+	private reportingInterval:      NodeJS.Timer | undefined = undefined;
+	private readonly timeLimitInMs: number | undefined;
 
 	/**
    * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
    * The `limit` stops the execution if `<limit>` number of runs exited successfully.
    * The `parallel` parameter limits the number of parallel executions.
    */
-	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number) {
+	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number, timeLimitInMs?: number) {
 		this.workingQueue = queue;
 		this.limit = limit;
 		this.module = module;
 		this.parallel = parallel;
+		this.timeLimitInMs = timeLimitInMs;
 	}
 
 	public async run(): Promise<void> {
@@ -69,9 +71,16 @@ export class LimitedThreadPool {
 
 		const child = cp.fork(this.module, args);
 		child.on('exit', this.onChildExit(args));
+		let timeout: NodeJS.Timeout | undefined;
+		if(this.timeLimitInMs) {
+			timeout = setTimeout(() => {
+				log.error(`Killing child process with '${JSON.stringify(args)}' after ${this.timeLimitInMs}ms`);
+				child.kill();
+			}, this.timeLimitInMs);
+		}
 
 		// schedule re-schedule
-		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => this.runNext());
+		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => clearTimeout(timeout)).then(() => this.runNext());
 	}
 
 

@@ -1,23 +1,23 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ControlFlowGraph } from '../../../util/cfg/cfg';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { getReferenceOfArgument } from '../../../dataflow/graph/graph';
-import { visitInReverseOrder } from '../../../util/cfg/visitor';
+import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../dataflow/environments/identifier';
-import { BuiltIn } from '../../../dataflow/environments/built-in';
+import { isBuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { LinkTo } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
+import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 
 export enum CallTargets {
-    /** call targets a function that is not defined locally (e.g., the call targets a library function) */
+    /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
     OnlyGlobal = 'global',
     /** call targets a function that is defined locally or globally, but must include a global function */
     MustIncludeGlobal = 'must-include-global',
@@ -53,7 +53,7 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
          * including any potential built-in mapping.
          */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		if(reResolved?.some(t => t.definedAt === BuiltIn)) {
+		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
 	}
@@ -63,17 +63,17 @@ export function satisfiesCallTargets(id: NodeId, graph: DataflowGraph, callTarge
 			return callTargets;
 		case CallTargets.OnlyGlobal:
 			if(callTargets.length === 0) {
-				return builtIn ? [BuiltIn] : [];
+				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';
 			}
 		case CallTargets.MustIncludeGlobal:
-			return builtIn || callTargets.length === 0 ? [...callTargets, BuiltIn] : 'no';
+			return builtIn || callTargets.length === 0 ? [...callTargets, 'built-in'] : 'no';
 		case CallTargets.OnlyLocal:
 			return !builtIn && callTargets.length > 0 ? callTargets : 'no';
 		case CallTargets.MustIncludeLocal:
 			if(callTargets.length > 0) {
-				return builtIn ? [...callTargets, BuiltIn] : callTargets;
+				return builtIn ? [...callTargets, 'built-in'] : callTargets;
 			} else {
 				return 'no';
 			}
@@ -122,21 +122,22 @@ export function identifyLinkToLastCallRelation(
 	if(ignoreIf && ignoreIf(from, graph)) {
 		return found;
 	}
-	visitInReverseOrder(cfg, from, node => {
+	visitCfgInReverseOrder(cfg, [from], node => {
 		/* we ignore the start id as it cannot be the last call */
 		if(node === from) {
 			return;
 		}
-		const vertex = graph.get(node);
+		const vertex = graph.get(node, true);
 		if(vertex === undefined || vertex[0].tag !== VertexType.FunctionCall) {
 			return;
 		}
-		if(callName.test(vertex[0].name)) {
-			const act = cascadeIf ? cascadeIf(vertex[0], from, graph) : CascadeAction.Stop;
+		const [fst] = vertex;
+		if(callName.test(fst.name)) {
+			const act = cascadeIf ? cascadeIf(fst, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
 			}
-			const tar = satisfiesCallTargets(vertex[0].id, graph, CallTargets.MustIncludeGlobal);
+			const tar = satisfiesCallTargets(fst.id, graph, CallTargets.MustIncludeGlobal);
 			if(tar === 'no') {
 				return act === CascadeAction.Stop;
 			}

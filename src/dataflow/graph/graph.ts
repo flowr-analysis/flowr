@@ -1,7 +1,7 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge , EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import { equalFunctionArguments } from './diff';
+import { equalFunctionArguments } from './diff-dataflow-graph';
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -10,19 +10,19 @@ import type {
 	DataflowGraphVertices
 } from './vertex';
 import { VertexType } from './vertex';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { REnvironmentInformation } from '../environments/environment';
+import type { EnvironmentMemory, IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { initializeCleanEnvironments } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
-import { BuiltIn } from '../environments/built-in';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
+import type { Writable } from 'ts-essentials';
 
 /**
  * Describes the information we store per function body.
@@ -133,7 +133,7 @@ export type UnknownSidEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
  * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
  * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
- * @see {@link emptyGraph} - to create an empty graph (useful in tests)
+ * @see {@link emptyGraph|`emptyGraph`} - to create an empty graph (useful in tests)
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
@@ -203,6 +203,25 @@ export class DataflowGraph<
 			}
 		}
 		return edges;
+	}
+
+	/**
+	 * Given a node in the normalized AST this either:
+	 * * returns the id if the node directly exists in the DFG
+	 * * returns the ids of all vertices in the DFG that are linked to this
+	 * * returns undefined if the node is not part of the DFG and not linked to any node
+	 */
+	public getLinked(nodeId: NodeId): NodeId[] | undefined {
+		if(this.vertexInformation.has(nodeId)) {
+			return [nodeId];
+		}
+		const linked: NodeId[] = [];
+		for(const [id, vtx] of this.vertexInformation) {
+			if(vtx.link?.origin.includes(nodeId)) {
+				linked.push(id);
+			}
+		}
+		return linked.length > 0 ? linked : undefined;
 	}
 
 
@@ -285,13 +304,14 @@ export class DataflowGraph<
 	 * @param vertex - The vertex to add
 	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
 	 *                 This is probably only of use, when you construct dataflow graphs for tests.
+	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
 	 *
 	 * @see DataflowGraphVertexInfo
 	 * @see DataflowGraphVertexArgument
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true, overwrite = false): this {
 		const oldVertex = this.vertexInformation.get(vertex.id);
-		if(oldVertex !== undefined) {
+		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
 
@@ -316,13 +336,10 @@ export class DataflowGraph<
 	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType | number): this
 	/** {@inheritDoc} */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this
-	/**
-	 * Please note that this will never make edges to {@link BuiltIn} as they are not part of the graph.
-	 */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType | number): this {
 		const [fromId, toId] = extractEdgeIds(from, to);
 
-		if(fromId === toId || toId === BuiltIn) {
+		if(fromId === toId) {
 			return this;
 		}
 
@@ -364,7 +381,7 @@ export class DataflowGraph<
 			}
 		}
 
-		this.sourced.push(...otherGraph.sourced);
+		this._sourced = this._sourced.concat(otherGraph.sourced);
 
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
@@ -461,6 +478,11 @@ export class DataflowGraph<
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
+		for(const [, vertex] of graph.vertexInformation) {
+			if(vertex.environment) {
+				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
+			}
+		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
 		if(data.sourced) {
 			graph._sourced = data.sourced;
@@ -494,4 +516,36 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 	const fromId = typeof from === 'object' ? from.nodeId : from;
 	const toId = typeof to === 'object' ? to.nodeId : to;
 	return [fromId, toId];
+}
+
+export interface IEnvironmentJson {
+	readonly id: number;
+	parent:      IEnvironmentJson;
+	memory:      Record<Identifier, IdentifierDefinition[]>;
+}
+
+interface REnvironmentInformationJson {
+	readonly current: IEnvironmentJson;
+	readonly level:   number;
+}
+
+function envFromJson(json: IEnvironmentJson): IEnvironment {
+	const parent = json.parent ? envFromJson(json.parent) : undefined;
+	const memory: EnvironmentMemory = new Map();
+	for(const [key, value] of Object.entries(json.memory)) {
+		memory.set(key as Identifier, value);
+	}
+	return {
+		id:     json.id,
+		parent: parent as IEnvironment,
+		memory
+	};
+}
+
+function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
+	const current = envFromJson(json.current);
+	return {
+		current,
+		level: json.level
+	};
 }

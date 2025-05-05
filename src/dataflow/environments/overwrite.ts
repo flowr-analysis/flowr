@@ -3,6 +3,7 @@ import type { REnvironmentInformation, IEnvironment } from './environment';
 import { BuiltInEnvironment , Environment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import type { ControlDependency } from '../info';
+import { log } from '../../util/log';
 
 function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
@@ -20,6 +21,9 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined');
 	const map = new Map(base.memory);
 	for(const [key, values] of next.memory) {
+		if(values.length > 1_000_000) {
+			log.warn(`Overwriting environment with ${values.length} definitions for ${key}`);
+		}
 		const hasMaybe = applyCds?.length === 0 || applyCds !== undefined ? true : anyIsMaybeOrEmpty(values);
 		if(hasMaybe) {
 			const old = map.get(key);

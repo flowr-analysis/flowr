@@ -1,8 +1,8 @@
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
-import type { ControlFlowInformation } from '../../../../util/cfg/cfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../core/steps/pipeline/pipeline';
+import type { ControlFlowInformation } from '../../../../control-flow/control-flow-graph';
 
 /**
  * Send by the client to request an analysis of a given file.
@@ -96,19 +96,19 @@ export interface FileAnalysisResponseMessageCompact extends IdMessageBase {
 	/**
 	 * See the {@link PipelineExecutor} and {@link DEFAULT_DATAFLOW_PIPELINE} for details on the results.
 	 */
-	results: Buffer,
+	results: string,
 	/**
 	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
 	 */
-	cfg?:    Buffer
+	cfg?:    string
 }
 
 const compactSchema = Joi.object({
 	type:    Joi.string().valid('response-file-analysis').required().description('The type of the message.'),
 	id:      Joi.string().optional().description('The id of the message, if you passed one in the request.'),
 	format:  Joi.string().valid('bson').required().description('The format of the results in bson format.'),
-	results: Joi.binary().required().description('The results of the analysis (one field per step).'),
-	cfg:     Joi.binary().optional().description('The control flow information of the file, only present if requested.')
+	results: Joi.string().required().description('The results of the analysis (one field per step).'),
+	cfg:     Joi.string().optional().description('The control flow information of the file, only present if requested.')
 });
 
 

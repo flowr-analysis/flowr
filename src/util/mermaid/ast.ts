@@ -3,10 +3,11 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart TD\n'): string {
 	let output = prefix;
-	visitAst(ast, n => {
+	function showNode(n: RNodeWithParent): void {
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`;
 		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`;
 		if(n.info.parent !== undefined) {
@@ -17,6 +18,16 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = 'flowchart
 		if(n.type === RType.ExpressionList && n.grouping !== undefined) {
 			output += `    n${n.info.id} -.-|"group-open"| n${n.grouping[0].info.id}\n`;
 			output += `    n${n.info.id} -.-|"group-close"| n${n.grouping[1].info.id}\n`;
+		}
+	}
+	visitAst(ast, n => {
+		showNode(n);
+		if(n.type === 'RAccess' && (n.operator !== '[' && n.operator !== '[[')) {
+			for(const k of n.access) {
+				if(k !== EmptyArgument) {
+					showNode(k);
+				}
+			}
 		}
 		return false;
 	});

@@ -11,7 +11,7 @@ import { optimize } from './search-optimizer/search-optimizer';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../util/assert';
-import type { Enrichment } from './search-executor/search-enrichers';
+import type { Enrichment, EnrichmentArguments } from './search-executor/search-enrichers';
 import type { MapperArguments } from './search-executor/search-mappers';
 import { Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
@@ -212,22 +212,18 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		return this;
 	}
 
-	with(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
-		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment } });
+	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
+		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentArguments<Enrichment> } });
 		return this;
 	}
 
 	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
-		this.search.push( { type: 'transformer', name: 'map', args: {
-			// type system is trash, see search-mappers.ts map function
-			mapper: mapper as Mapper.Enrichment,
-			args:   args as MapperArguments<Mapper.Enrichment>
-		} });
+		this.search.push( { type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
 		return this;
 	}
 
-	get(enrichment: Enrichment): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
-		return this.with(enrichment).map(Mapper.Enrichment, enrichment);
+	get<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with' | 'map'> {
+		return this.with(enrichment, args).map(Mapper.Enrichment, enrichment);
 	}
 
 	/**

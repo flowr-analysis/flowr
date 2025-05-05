@@ -2,7 +2,7 @@ import type { NormalizerData } from '../../normalizer-data';
 import { assureTokenType } from '../../normalize-meta';
 import { normalizeExpressions } from './normalize-expressions';
 import { log } from '../../../../../../../util/log';
-import { partition } from '../../../../../../../util/arrays';
+import { partition } from '../../../../../../../util/collections/arrays';
 import { RawRType, RType } from '../../../../model/type';
 import type { RExpressionList } from '../../../../model/nodes/r-expression-list';
 import type { RNode } from '../../../../model/model';

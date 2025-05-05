@@ -1,5 +1,5 @@
 import type { BuiltInMappingName, ConfigOfBuiltInMappingName } from './built-in';
-import { BuiltIn, BuiltInMemory, BuiltInProcessorMapper, EmptyBuiltInMemory } from './built-in';
+import { builtInId , BuiltInMemory, BuiltInProcessorMapper, EmptyBuiltInMemory } from './built-in';
 import type { Identifier, IdentifierDefinition } from './identifier';
 import { ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
@@ -32,7 +32,7 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config:    ConfigOfBuiltInMappingName<BuiltInProcessor>
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>
 }
 
 /**
@@ -42,6 +42,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappi
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';
     readonly suffixes: readonly ('<<-' | '<-')[];
+	readonly config:      { readIndices: boolean }
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
@@ -53,13 +54,14 @@ export type BuiltInDefinitions = readonly BuiltInDefinition[];
 
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 	for(const name of names) {
+		const id = builtInId(name);
 		const d: IdentifierDefinition[] = [{
 			type:                ReferenceType.BuiltInConstant,
-			definedAt:           BuiltIn,
+			definedAt:           id,
 			controlDependencies: undefined,
 			value,
 			name,
-			nodeId:              BuiltIn
+			nodeId:              id
 		}];
 		BuiltInMemory.set(name, d);
 		if(assumePrimitive) {
@@ -75,14 +77,16 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 	guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 	for(const name of names) {
 		guard(processor !== undefined, `Processor for ${name} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
+		const id = builtInId(name);
 		const d: IdentifierDefinition[] = [{
 			type:                ReferenceType.BuiltInFunction,
-			definedAt:           BuiltIn,
+			definedAt:           id,
 			controlDependencies: undefined,
 			/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
 			processor:           (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+			config,
 			name,
-			nodeId:              BuiltIn
+			nodeId:              id
 		}];
 		BuiltInMemory.set(name, d);
 		if(assumePrimitive) {
@@ -93,20 +97,26 @@ export function registerBuiltInFunctions<BuiltInProcessor extends BuiltInMapping
 
 /* registers all combinations of replacements */
 export function registerReplacementFunctions(
-	{ names, suffixes, assumePrimitive }: BuiltInReplacementDefinition
+	{ names, suffixes, assumePrimitive, config }: BuiltInReplacementDefinition
 ): void {
 	const replacer = BuiltInProcessorMapper['builtin:replacement'];
 	guard(replacer !== undefined, () => 'Processor for builtin:replacement is undefined!');
 	for(const assignment of names) {
 		for(const suffix of suffixes) {
 			const effectiveName = `${assignment}${suffix}`;
+			const id = builtInId(effectiveName);
 			const d: IdentifierDefinition[] = [{
-				type:                ReferenceType.BuiltInFunction,
-				definedAt:           BuiltIn,
-				processor:           (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix }),
+				type:      ReferenceType.BuiltInFunction,
+				definedAt: id,
+				processor: (name, args, rootId, data) => replacer(name, args, rootId, data, { makeMaybe: true, assignmentOperator: suffix, readIndices: config.readIndices }),
+				config:    {
+					...config,
+					assignmentOperator: suffix,
+					makeMaybe:          true
+				},
 				name:                effectiveName,
 				controlDependencies: undefined,
-				nodeId:              BuiltIn
+				nodeId:              id
 			}];
 			BuiltInMemory.set(effectiveName, d);
 			if(assumePrimitive) {

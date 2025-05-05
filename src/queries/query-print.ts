@@ -1,5 +1,5 @@
-import type { OutputFormatter } from '../util/ansi';
-import { markdownFormatter, bold, italic } from '../util/ansi';
+import type { OutputFormatter } from '../util/text/ansi';
+import { markdownFormatter, bold, italic } from '../util/text/ansi';
 import type { QueryResults, SupportedQueryTypes } from './query';
 import { SupportedQueries } from './query';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
@@ -8,15 +8,15 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
-import { printAsMs } from '../util/time';
-import { BuiltIn } from '../dataflow/environments/built-in';
+import { printAsMs } from '../util/text/time';
+import { isBuiltIn } from '../dataflow/environments/built-in';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object}, formatter: OutputFormatter, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
 	const id = isObj ? nodeId.id : nodeId;
 	const info = isObj ? nodeId.info : undefined;
-	if(id === BuiltIn) {
-		return italic('built-in', formatter) + (info ? ` (${JSON.stringify(info)})` : '');
+	if(isBuiltIn(id)) {
+		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
 	const node = processed.normalize.idMap.get(id);
 	if(node === undefined) {

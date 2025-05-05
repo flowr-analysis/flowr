@@ -1,5 +1,5 @@
-import type { OutputFormatter } from '../../../util/ansi';
-import { formatter } from '../../../util/ansi';
+import type { OutputFormatter } from '../../../util/text/ansi';
+import { formatter } from '../../../util/text/ansi';
 import type { KnownParser } from '../../../r-bridge/parser';
 
 /**

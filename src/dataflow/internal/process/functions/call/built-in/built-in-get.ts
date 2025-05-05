@@ -20,12 +20,12 @@ export function processGet<OtherInfo>(
 ): DataflowInformation {
 	if(args.length !== 1) {
 		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const retrieve = unpackArgument(args[0]);
 	if(retrieve === undefined || retrieve.type !== RType.String) {
 		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> = {
@@ -39,9 +39,10 @@ export function processGet<OtherInfo>(
 
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
-		args: wrapArgumentsUnnamed([treatTargetAsSymbol], data.completeAst.idMap),
+		args:   wrapArgumentsUnnamed([treatTargetAsSymbol], data.completeAst.idMap),
 		rootId,
-		data
+		data,
+		origin: 'builtin:get'
 	});
 
 	const firstArg = processedArguments[0];

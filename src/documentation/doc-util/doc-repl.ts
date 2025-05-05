@@ -3,7 +3,7 @@ import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { getReplCommand } from './doc-cli-option';
 import { textWithTooltip } from '../../util/html-hover-over';
 import { replProcessAnswer } from '../../cli/repl/core';
-import { voidFormatter } from '../../util/ansi';
+import { voidFormatter } from '../../util/text/ansi';
 import { DockerName } from './doc-docker';
 import { rawPrompt } from '../../cli/repl/prompt';
 import { codeBlock } from './doc-code';

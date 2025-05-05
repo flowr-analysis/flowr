@@ -1,11 +1,11 @@
 import type { ClusterReport } from './clusterer';
 import fs from 'fs';
-import { BiMap } from '../../../util/bimap';
-import { DefaultMap } from '../../../util/defaultmap';
+import { BiMap } from '../../../util/collections/bimap';
+import { DefaultMap } from '../../../util/collections/defaultmap';
 import { guard, isNotUndefined } from '../../../util/assert';
 import { summarizeMeasurement } from '../../../util/summarizer';
 import type { Table } from '../../../util/files';
-import { arraySum } from '../../../util/arrays';
+import { arraySum } from '../../../util/collections/arrays';
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).

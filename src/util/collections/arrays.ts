@@ -1,4 +1,4 @@
-import { guard } from './assert';
+import { guard } from '../assert';
 import type { AnyArray, Tail } from 'ts-essentials';
 
 /**
@@ -181,7 +181,11 @@ export function array2bag<T>(arr: T[]): Map<T, number> {
 	return result;
 }
 
-export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | undefined): boolean {
+export function arrayEqual<T>(
+	a: readonly T[] | undefined,
+	b: readonly T[] | undefined,
+	cmp = (a: T, b: T) => a === b
+): boolean {
 	if(a === undefined || b === undefined) {
 		return a === b;
 	}
@@ -189,9 +193,50 @@ export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | und
 		return false;
 	}
 	for(let i = 0; i < a.length; i++) {
-		if(a[i] !== b[i]) {
+		if(!cmp(a[i], b[i])) {
 			return false;
 		}
 	}
 	return true;
+}
+
+/**
+ * Samples elements from a list such that the distance between the sampled elements is as equal as possible.
+ *
+ * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
+ * If the number of elements to sample is less than or equal to 0, an empty list is returned.
+ *
+ * @param list - list of elements
+ * @param sampleCount - number of elements to sample
+ * @param rounding - rounding mode to use for the index calculation
+ * @returns - a list of elements equidistantly sampled from the input list
+ */
+export function equidistantSampling<T>(list: readonly T[], sampleCount: number, rounding: 'floor' | 'ceil' = 'ceil'): T[] {
+	if(sampleCount >= list.length) {
+		return list.slice();
+	} else if(sampleCount <= 0) {
+		return [];
+	}
+
+	const result: T[] = [];
+	const step = list.length / sampleCount;
+	for(let i = 0; i < sampleCount; i++) {
+		const index = rounding === 'floor' ? Math.floor(i * step) : Math.ceil(i * step);
+		result.push(list[index]);
+	}
+	return result;
+}
+
+/**
+ * Returns the cartesian product of the given arrays.
+ * @example
+ *
+ * ```ts
+ * cartesianProduct([1, 2], ['a', 'b', 'c'], [true, false])
+ * // -> [[1, 'a', true], [1, 'a', false], [1, 'b', true], [1, 'b', false], [1, 'c', true], [1, 'c', false], [2, 'a', true], [2, 'a', false], [2, 'b', true], [2, 'b', false], [2, 'c', true], [2, 'c', false]]
+ * ```
+ *
+ */
+export function cartesianProduct<T>(...arrays: T[][]): T[][] {
+	return arrays.reduce((a, b) => a.flatMap(x => b.map(y => x.concat(y))), [[]] as T[][]);
 }

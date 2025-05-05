@@ -7,6 +7,9 @@ import type { Base, RNode, Location } from '../../../r-bridge/lang-4.x/ast/model
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
+/**
+ * Helper function for {@link processNamedCall} using the given `functionName` as the name of the function.
+ */
 export function processAsNamedCall<OtherInfo>(
 	functionName: RNode<OtherInfo & ParentInformation> & Base<OtherInfo> & Location,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

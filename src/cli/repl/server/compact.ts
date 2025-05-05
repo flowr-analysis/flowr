@@ -1,10 +1,10 @@
 import { jsonReplacer } from '../../../util/json';
-import { encode, decode } from '@msgpack/msgpack';
+import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 
-export function compact(obj: unknown): Buffer {
-	return Buffer.from(encode(JSON.parse(JSON.stringify(obj, jsonReplacer))));
+export function compact(obj: unknown): string {
+	return compressToUTF16(JSON.stringify(obj, jsonReplacer));
 }
 
-export function uncompact(buf: Buffer | Uint8Array): unknown {
-	return decode(new Uint8Array(Buffer.from(buf)));
+export function uncompact(buf: string): unknown {
+	return JSON.parse(decompressFromUTF16(buf));
 }

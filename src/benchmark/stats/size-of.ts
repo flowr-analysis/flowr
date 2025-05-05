@@ -71,5 +71,25 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 		verts.push(vertex);
 	}
 
-	return sizeof([...verts, ...df.edges()]);
+	return safeSizeOf([...verts, ...df.edges()]);
+}
+
+/**
+ * Calculates the size of an array in bytes.
+ *
+ * @param array - The array to calculate the size of.
+ * @returns The size of the array in bytes.
+ */
+function safeSizeOf<T>(array: T[]): number {
+	const size = sizeof(array);
+
+	if(typeof size === 'number') {
+		return size;
+	}
+
+	// the sizeOf method returns an error object, when the size could not be calculated
+	// in this case, we split the array in half and calculate the size of each half recursively
+	const chunkSize = Math.ceil(array.length / 2);
+	// subtract 1, because of the separate stringification of the array
+	return safeSizeOf(array.slice(0, chunkSize)) + safeSizeOf(array.slice(chunkSize)) - 1;
 }

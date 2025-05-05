@@ -18,10 +18,10 @@ export function processSpecialBinOp<OtherInfo>(
 	config: { lazy: boolean, evalRhsWhen: boolean } & ForceArguments
 ): DataflowInformation {
 	if(!config.lazy) {
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:special-bin-op' }).information;
 	} else if(args.length != 2) {
 		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs,
@@ -30,7 +30,8 @@ export function processSpecialBinOp<OtherInfo>(
 				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: config.evalRhsWhen }] };
 			}
 			return d;
-		}
+		},
+		origin: 'builtin:special-bin-op'
 	});
 
 	for(const arg of processedArguments) {

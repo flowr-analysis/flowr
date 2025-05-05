@@ -2,8 +2,8 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import type { QueryResults, SupportedQuery } from '../../query';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 
 import { executeResolveValueQuery } from './resolve-value-query-executor';

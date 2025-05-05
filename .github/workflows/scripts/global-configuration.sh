@@ -11,4 +11,4 @@ function make_var {
 }
 
 make_var ACTION_NODE_VERSION "22.13.x"
-make_var ACTION_R_VERSION "4.4.0"
+make_var ACTION_R_VERSION "4.4.3"

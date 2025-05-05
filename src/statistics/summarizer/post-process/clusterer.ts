@@ -5,7 +5,7 @@
  * @module
  */
 import LineByLine from 'n-readlines';
-import { DefaultMap } from '../../../util/defaultmap';
+import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { MergeableRecord } from '../../../util/objects';
 import { deterministicCountingIdGenerator } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';

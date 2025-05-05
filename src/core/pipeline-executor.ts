@@ -8,7 +8,7 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
-import { getConfig } from '../config';
+import type { FlowrConfigOptions } from '../config';
 import { BuiltInMemory, EmptyBuiltInMemory } from '../dataflow/environments/built-in';
 import { registerBuiltInDefinitions } from '../dataflow/environments/built-in-config';
 
@@ -112,12 +112,12 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
+	 * @param config   - The FlowrConfig containing the built-in definitions
 	 */
-	constructor(pipeline: P, input: PipelineInput<P>) {
+	constructor(pipeline: P, input: PipelineInput<P>, config: FlowrConfigOptions) {
 		this.pipeline = pipeline;
 		this.length = pipeline.order.length;
 		this.input = input;
-		const config = getConfig();
 		const builtIns = config.semantics.environment.overwriteBuiltIns;
 		if(!builtIns.loadDefaults) {
 			BuiltInMemory.clear();

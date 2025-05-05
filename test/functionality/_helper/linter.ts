@@ -10,6 +10,7 @@ import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
 import type { LintingRule } from '../../../src/linter/linter-format';
+import { log } from '../../../src/util/log';
 
 export function assertLinter<Name extends LintingRuleNames>(
 	name: string | TestLabel,
@@ -34,7 +35,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint(result, metadata)} (${result.certainty})`,
 			json: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => JSON.stringify({ result, metadata })
 		})) {
-			console.log(`${type}:\n${results.results.map(r => `  ${printer(r, results['.meta'])}`).join('\n')}`);
+			log.info(`${type}:\n${results.results.map(r => `  ${printer(r, results['.meta'])}`).join('\n')}`);
 		}
 
 		assert.deepEqual(results.results, expected, `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);

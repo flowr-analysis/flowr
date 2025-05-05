@@ -112,8 +112,9 @@ export const R2_FILE_PATH_VALIDITY = {
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig, ParentInformation, FlowrSearchElementFromQuery<ParentInformation>[]>;
 
 function samePath(a: string, b: string): boolean {
-	if(a === b) {
-		return true;
+	if(getConfig().solver.resolveSource?.ignoreCapitalization === true) {
+		a = a.toLowerCase();
+		b = b.toLowerCase();
 	}
-	return getConfig().solver.resolveSource?.ignoreCapitalization === true && a.toLowerCase() === b.toLowerCase();
+	return a === b;
 }

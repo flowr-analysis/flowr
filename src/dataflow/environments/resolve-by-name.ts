@@ -16,11 +16,13 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../slicing/static/visiting-queue';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 import { EdgeType } from '../graph/edge';
-import { Bottom, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
+import { Bottom, isTop, Top, type Lift, type Value, type ValueSet  } from '../eval/values/r-value';
 import { valueFromRNode, valueFromTsValue } from '../eval/values/general';
 import { setFrom } from '../eval/values/sets/set-constants';
 import { onUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
+import type { ReplacementOperatorHandlerArgs } from '../graph/unknown-replacement';
+import { onReplacementOperator } from '../graph/unknown-replacement';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -121,14 +123,33 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 }
 
 type AliasHandler = (s: NodeId, d: DataflowGraph, e: REnvironmentInformation) => NodeId[] | undefined;
-
 const AliasHandler = {
 	[VertexType.Value]:              (sourceId: NodeId) => [sourceId],
 	[VertexType.Use]:                getUseAlias,
-	[VertexType.FunctionCall]:       () => undefined,
+	[VertexType.FunctionCall]:       getFunctionCallAlias,
 	[VertexType.FunctionDefinition]: () => undefined,
 	[VertexType.VariableDefinition]: () => undefined
 } as const satisfies Record<VertexType, AliasHandler>;
+
+function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
+	const identifier = recoverName(sourceId, dataflow.idMap);
+	if(identifier === undefined) {
+		return undefined;
+	}
+	
+	const defs = resolveByName(identifier, environment, ReferenceType.Function);
+	const defsBuiltin = resolveByName(identifier, environment, ReferenceType.BuiltInFunction);
+
+	if(defs?.length !== 1 || defsBuiltin?.length !== 1) {
+		return undefined;
+	}	
+
+	if(defs[0].definedAt !== defsBuiltin[0].definedAt) {
+		return undefined;
+	}
+
+	return [sourceId]; 
+}
 
 function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: NodeId[] = [];
@@ -202,10 +223,16 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 			if(def.value.length === 0) {
 				return Top;
 			}
-			for(const id of def.value) {
-				const value = idMap?.get(id);
-				if(value !== undefined) {
-					values.add(valueFromRNode(value));
+		
+			for(const alias of def.value) {
+				const definitionOfAlias = idMap?.get(alias);
+				if(definitionOfAlias !== undefined) {
+					const value = valueFromRNode(definitionOfAlias);
+					if(isTop(value)) {
+						return Top;
+					} 
+
+					values.add(value);
 				}
 			}
 		}
@@ -223,15 +250,38 @@ onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: N
 		return;
 	}
 
-	env.current.memory.forEach(mem => mem.forEach((def) => {
-		if(def.type === ReferenceType.BuiltInConstant) {
-			// what
-		} else if(def.type === ReferenceType.BuiltInFunction) {
-			// Tracked in #1207
-		} else if(def.value !== undefined) {
-			def.value.length = 0;
-		}
-	}));
+	let current = env.current;
+	while(current) {
+		current.memory.forEach(mem => mem.forEach((def) => {
+			if(def.type !== ReferenceType.BuiltInConstant 
+				&& def.type !== ReferenceType.BuiltInFunction 
+				&& def.value !== undefined) {
+				def.value.length = 0;
+			}
+		}));
+
+		current = current.parent;
+	}
+});
+
+onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
+	if(!args.target) {
+		return;
+	}
+
+	let current = args.env.current;
+	while(current) {
+		const defs = current.memory.get(args.target);
+		defs?.forEach(def  => {
+			if(def.type !== ReferenceType.BuiltInConstant 
+				&& def.type !== ReferenceType.BuiltInFunction 
+				&& def.value !== undefined) {
+				def.value.length = 0;
+			}
+		});
+
+		current = current.parent;
+	}
 });
 
 function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {

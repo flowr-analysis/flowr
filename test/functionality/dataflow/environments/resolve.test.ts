@@ -7,7 +7,7 @@ import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
-import type { Lift, Value, ValueVector } from '../../../../src/dataflow/eval/values/r-value';
+import type { Lift, Value } from '../../../../src/dataflow/eval/values/r-value';
 import { Bottom, isBottom, isTop, Top } from '../../../../src/dataflow/eval/values/r-value';
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
@@ -38,8 +38,8 @@ describe.sequential('Resolve', withShell(shell => {
 		);
 	}
 
-	function vector(values: unknown[]): ValueVector {
-		return vectorFrom(values.map(v => valueFromTsValue(v)));
+	function vector(values: unknown[]) {
+		return setFrom(vectorFrom(values.map(v => valueFromTsValue(v))));
 	}
 
 	function testResolve(

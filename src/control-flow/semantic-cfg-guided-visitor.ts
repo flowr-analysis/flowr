@@ -5,7 +5,10 @@ import type { DataflowInformation } from '../dataflow/info';
 
 import type { DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import { DataflowAwareCfgGuidedVisitor } from './dfg-cfg-guided-visitor';
-import type { NormalizedAst, RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type {
+	NormalizedAst,
+	ParentInformation
+} from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { Origin } from '../dataflow/origin/dfg-get-origin';
@@ -24,14 +27,16 @@ import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
+import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 
 
 export interface SemanticCfgGuidedVisitorConfiguration<
-	Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst,
-	Dfg extends DataflowInformation    = DataflowInformation
-> extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>, SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> {
+	OtherInfo = NoInfo,
+	Cfg extends ControlFlowInformation    = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo>  = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowInformation       = DataflowInformation
+> extends DataflowCfgGuidedVisitorConfiguration<Cfg, Dfg>, SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> {
 }
 
 /**
@@ -58,16 +63,17 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class SemanticCfgGuidedVisitor<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst,
-	Dfg extends DataflowInformation    = DataflowInformation,
-	Config extends SemanticCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<Cfg, Ast, Dfg>
+	OtherInfo = NoInfo,
+    Cfg extends ControlFlowInformation   = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
+	Dfg extends DataflowInformation      = DataflowInformation,
+	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast, Dfg>
 > extends DataflowAwareCfgGuidedVisitor<Cfg, Dfg, Config> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.
 	 */
-	protected getNormalizedAst(id: NodeId): RNodeWithParent | undefined {
+	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
 		return this.config.normalizedAst.idMap.get(id);
 	}
 

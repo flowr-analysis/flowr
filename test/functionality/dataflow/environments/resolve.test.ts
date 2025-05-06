@@ -134,10 +134,18 @@ describe.sequential('Resolve', withShell(shell => {
 	});
 
 	describe('Resolve (vectors)', () => {
-		testResolve('Simple Vector (int)',    'x', 'x <- c(1, 2, 3, 4) \n x', vector([1,2,3,4]));
+		// Do not resolve vector, if c is redefined
+		testResolve('c redefined', 'x', 'c <- function() {} \n x <- c(1,2,3)', Top);
+
+		testResolve('Simple Vector (int)',    'x', 'x <- c(1, 2, 3, 4) \n x',         vector([1, 2, 3, 4]));
 		testResolve('Simple Vector (string)', 'x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
-		testResolve('Vector with alias',      'x', 'y <- 1; x <- c(y,2)', vector([1, 2]));
-		testResolve('Vector in vector',       'x', 'x <- c(1, 2, c(3, 4, 5))', vector([1, 2, vector([3,4,5])]));
+		testResolve('Vector with alias',      'x', 'y <- 1; x <- c(y,2)',             vector([1, 2]));
+		testResolve('Vector in vector',       'x', 'x <- c(1, 2, c(3, 4, 5))',        vector([1, 2, 3, 4, 5]));
+		// vector in vector but alias
+	});
+
+	describe('Resolve (vectors replacement operators)', () => {
+		testResolve('simple', 'x', 'x <- c(1,2,3) \n x$b <- 1', Top);
 	});
 
 	describe('ByName', () => {

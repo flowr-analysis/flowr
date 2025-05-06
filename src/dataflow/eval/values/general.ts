@@ -1,5 +1,6 @@
-import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { REnvironmentInformation } from '../../environments/environment';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import type { Lift, Value, ValueSet } from './r-value';
@@ -40,9 +41,9 @@ export function valueFromTsValue(a: unknown): Value {
 
 const KnownFunctionHandlers = {
 	['c']: vectorFromRNode
-} as const satisfies Record<string, (a: RNodeWithParent) => Value>;
+} as const satisfies Record<string, (a: RNodeWithParent, env: REnvironmentInformation, map?: AstIdMap) => Value>;
 
-export function valueFromRNode(a: RNodeWithParent): Value {
+export function valueFromRNode(a: RNodeWithParent, env?: REnvironmentInformation, map?: AstIdMap): Value {
 	
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
@@ -50,10 +51,10 @@ export function valueFromRNode(a: RNodeWithParent): Value {
 		return intervalFrom(a.content.num, a.content.num);	
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if(a.type === RType.FunctionCall) {
+	} else if(a.type === RType.FunctionCall && env) {
 		if(a.lexeme in KnownFunctionHandlers) {
 			const converter = KnownFunctionHandlers[a.lexeme as keyof typeof KnownFunctionHandlers];
-			return converter(a);
+			return converter(a, env, map);
 		}
 	}
 

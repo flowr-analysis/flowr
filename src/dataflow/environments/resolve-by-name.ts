@@ -138,16 +138,10 @@ function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environ
 	}
 	
 	const defs = resolveByName(identifier, environment, ReferenceType.Function);
-	const defsBuiltin = resolveByName(identifier, environment, ReferenceType.BuiltInFunction);
-
-	if(defs?.length !== 1 || defsBuiltin?.length !== 1) {
+	if(defs?.length !== 1  || typeof defs[0].definedAt !== 'string' || !defs[0].definedAt?.startsWith('built-in')) {
 		return undefined;
 	}	
-
-	if(defs[0].definedAt !== defsBuiltin[0].definedAt) {
-		return undefined;
-	}
-
+	
 	return [sourceId]; 
 }
 
@@ -227,7 +221,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = valueFromRNode(definitionOfAlias);
+					const value = valueFromRNode(definitionOfAlias, use, idMap);
 					if(isTop(value)) {
 						return Top;
 					} 

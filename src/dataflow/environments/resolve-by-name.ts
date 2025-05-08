@@ -9,7 +9,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../graph/vertex';
 import type { DataflowGraph } from '../graph/graph';
-import { getConfig, VariableResolve } from '../../config';
+import type { FlowrConfigOptions } from '../../config';
+import { VariableResolve } from '../../config';
 import { assertUnreachable, guard } from '../../util/assert';
 import type { AstIdMap, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -295,8 +296,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
-export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
-	const resolve = getConfig().solver.variables;
+export function resolveValueOfVariable(config: FlowrConfigOptions, identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
+	const resolve = config.solver.variables;
 
 	switch(resolve) {
 		case VariableResolve.Alias: return trackAliasInEnvironments(identifier, environment, idMap);
@@ -326,7 +327,7 @@ export interface ResolveInfo {
  * @param idMap       - The id map to resolve the node if given as an id
  * @param full        - Whether to track variables
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+export function resolveIdToValue(config: FlowrConfigOptions, id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
@@ -335,8 +336,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, gr
 	switch(node.type) {
 		case RType.Symbol:
 			if(environment) {
-				return full ? resolveValueOfVariable(node.lexeme, environment, idMap) : undefined;
-			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
+				return full ? resolveValueOfVariable(config, node.lexeme, environment, idMap) : undefined;
+			} else if(graph && config.solver.variables === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : undefined;
 			} else {
 				return undefined;

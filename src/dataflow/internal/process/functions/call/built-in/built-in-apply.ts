@@ -86,7 +86,7 @@ export function processApply<OtherInfo>(
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = resolveValueOfVariable(val.content, data.environment);
+			const resolved = resolveValueOfVariable(data.config, val.content, data.environment);
 			if(resolved?.length === 1 && typeof resolved[0] === 'string') {
 				functionName = resolved[0];
 			}

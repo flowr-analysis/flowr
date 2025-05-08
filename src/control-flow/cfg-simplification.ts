@@ -15,7 +15,7 @@ export type CfgSimplificationPassName = keyof typeof CfgSimplificationPasses;
 
 export const DefaultCfgSimplificationOrder = [
 	'unique-cf-sets',
-	'remove-dead-code'
+	// 'remove-dead-code' // way too expensive for conventional use!
 	// basic blocks must be requested
 ] as const satisfies CfgSimplificationPassName[];
 

@@ -13,6 +13,7 @@ import commandLineArgs from 'command-line-args';
 import { scripts } from '../common/scripts-info';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
+import type { FlowrConfigOptions } from '../../config';
 
 const testRegex = /[^/]*\/test/i;
 const exampleRegex = /[^/]*\/example/i;
@@ -57,7 +58,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 	return files;
 }
 
-export async function flowrScriptGetStats(options: StatsCliOptions) {
+export async function flowrScriptGetStats(config: FlowrConfigOptions, options: StatsCliOptions) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
 		process.exit(0);
@@ -104,7 +105,7 @@ export async function flowrScriptGetStats(options: StatsCliOptions) {
 	} else {
 		console.log('Run Sequentially as parallel <= 0...');
 		for(const arg of args) {
-			await getStatsForSingleFile(commandLineArgs(scripts['stats-helper'].options, { argv: arg }) as StatsHelperCliOptions);
+			await getStatsForSingleFile(config, commandLineArgs(scripts['stats-helper'].options, { argv: arg }) as StatsHelperCliOptions);
 		}
 	}
 }

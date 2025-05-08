@@ -16,6 +16,8 @@ import { date2string } from '../../util/text/time';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
+import type { FlowrConfigOptions } from '../../config';
+import { getEngineConfig } from '../../config';
 
 function compressFolder(folder: string, target: string) {
 	 
@@ -35,7 +37,7 @@ function compressFolder(folder: string, target: string) {
 }
 
 
-export async function getStatsForSingleFile(options: StatsHelperCliOptions) {
+export async function getStatsForSingleFile(config: FlowrConfigOptions, options: StatsHelperCliOptions) {
 	if(options['no-ansi']) {
 		log.info('disabling ansi colors');
 		setFormatter(voidFormatter);
@@ -53,12 +55,13 @@ export async function getStatsForSingleFile(options: StatsHelperCliOptions) {
 	// assume correct
 	const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[]);
 
-	const shell = new RShell();
+	const shell = new RShell(getEngineConfig(config, 'r-shell'));
 
 	initFileProvider(options['output-dir']);
 
 	await shell.obtainTmpDir();
 	const stats = await extractUsageStatistics(shell,
+		config,
 		() => { /* do nothing */ },
 		processedFeatures,
 		staticRequests({ request: 'file', content: options.input }),

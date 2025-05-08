@@ -139,7 +139,7 @@ async function retrieveEngineInstances(config: FlowrConfigOptions): Promise<{ en
 	const engines: KnownEngines = {};
 	if(getEngineConfig(config, 'r-shell')) {
 		// we keep an active shell session to allow other parse investigations :)
-		engines['r-shell'] = new RShell({
+		engines['r-shell'] = new RShell(getEngineConfig(config, 'r-shell'), {
 			revive:   RShellReviveOptions.Always,
 			onRevive: (code, signal) => {
 				const signalText = signal == null ? '' : ` and signal ${signal}`;
@@ -149,7 +149,7 @@ async function retrieveEngineInstances(config: FlowrConfigOptions): Promise<{ en
 		});
 	}
 	if(getEngineConfig(config, 'tree-sitter')) {
-		await TreeSitterExecutor.initTreeSitter();
+		await TreeSitterExecutor.initTreeSitter(config);
 		engines['tree-sitter'] = new TreeSitterExecutor();
 	}
 	let defaultEngine = config.defaultEngine;

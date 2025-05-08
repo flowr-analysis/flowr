@@ -13,6 +13,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { stats2string } from '../benchmark/stats/print';
 import { makeMagicCommentHandler } from '../reconstruct/auto-select/magic-comments';
 import { doNotAutoSelect } from '../reconstruct/auto-select/auto-select-defaults';
+import { getConfig, getEngineConfig } from '../config';
 
 export interface SlicerCliOptions {
 	verbose:             boolean
@@ -44,10 +45,13 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
+	const config = getConfig(undefined);
+
 	await slicer.init(
 		options['input-is-text']
 			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
 			: { request: 'file', content: options.input },
+		config,
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 	);
 
@@ -80,7 +84,7 @@ async function getSlice() {
 	const { stats, normalize, parse, tokenMap, dataflow } = slicer.finish();
 	const mappedCriteria = mappedSlices.map(c => `    ${c.criterion} => ${c.id} (${JSON.stringify(normalize.idMap.get(c.id)?.location)})`).join('\n');
 	log.info(`Mapped criteria:\n${mappedCriteria}`);
-	const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats));
+	const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats, undefined, getEngineConfig(config, 'r-shell')));
 
 	if(options.api) {
 		const output = {

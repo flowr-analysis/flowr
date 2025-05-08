@@ -20,7 +20,7 @@ import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
 import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
-import type { FlowrConfigOptions } from '../../config';
+import {FlowrConfigOptions, getEngineConfig} from '../../config';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -155,7 +155,7 @@ export interface FlowrReplOptions extends MergeableRecord {
 export async function repl(
 	config : FlowrConfigOptions,
 	{
-		parser = new RShell({ revive: RShellReviveOptions.Always }),
+		parser = new RShell(getEngineConfig(config, 'r-shell'), { revive: RShellReviveOptions.Always }),
 		rl = readline.createInterface(makeDefaultReplReadline()),
 		output = standardReplOutput,
 		historyFile = defaultHistoryFile,

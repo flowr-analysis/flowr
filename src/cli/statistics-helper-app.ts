@@ -1,5 +1,6 @@
 import { processCommandLineArgs } from './common/script';
 import { getStatsForSingleFile } from './script-core/statistics-helper-core';
+import { getConfig } from '../config';
 
 // apps should never depend on other apps when forking (otherwise, they are "run" whenever their root-files are loaded!)
 
@@ -23,4 +24,4 @@ const scriptOptions = processCommandLineArgs<StatsHelperCliOptions>('stats-helpe
 	]
 });
 
-void getStatsForSingleFile(scriptOptions);
+void getStatsForSingleFile(getConfig(undefined), scriptOptions);

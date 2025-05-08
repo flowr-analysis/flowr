@@ -8,6 +8,7 @@ import type { NormalizerData } from '../main/normalizer-data';
 import type { ParseStepOutputTS } from '../../../../../core/steps/all/core/01-parse-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput } from '../../../../parser';
+import {FlowrConfigOptions, getEngineConfig} from "../../../../../config";
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -42,11 +43,13 @@ export function normalizeButNotDecorated(
  * Tree-Sitter pendant to {@link normalize}.
  */
 export function normalizeTreeSitter(
+	config: FlowrConfigOptions,
 	{ parsed }: ParseStepOutputTS,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
 	file?: string
 ): NormalizedAst {
-	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed), { getId, file });
+	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed, lax), { getId, file });
 	result.hasError = parsed.rootNode.hasError;
 	return result;
 }

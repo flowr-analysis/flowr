@@ -12,9 +12,10 @@ import { normalizeTreeSitter } from '../../../../r-bridge/lang-4.x/ast/parser/js
 import type { NormalizeRequiredInput } from './10-normalize';
 import { getCurrentRequestFile } from './10-normalize';
 import type { ParseStepOutputTS } from './01-parse-tree-sitter';
+import type { FlowrConfigOptions } from '../../../../config';
 
-function processor(results: { 'parse'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>) {
-	return normalizeTreeSitter(results['parse'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
+function processor(results: { 'parse'?: ParseStepOutputTS }, input: Partial<NormalizeRequiredInput>, config: FlowrConfigOptions) {
+	return normalizeTreeSitter(config, results['parse'] as ParseStepOutputTS, input.getId, getCurrentRequestFile(input.request));
 }
 
 export const NORMALIZE_TREE_SITTER = {

@@ -59,11 +59,11 @@ async function benchmark() {
 	}
 
 	// Enable pointer analysis if requested, otherwise disable it
-	const config = getConfig(undefined);
+	let config = getConfig(undefined);
 	if(options['enable-pointer-tracking']) {
-		amendConfig(config, { solver: { ...config.solver, pointerTracking: true, } });
+		config = amendConfig(config, { solver: { ...config.solver, pointerTracking: true, } });
 	} else {
-		amendConfig(config, { solver: { ...config.solver, pointerTracking: false, } });
+		config = amendConfig(config, { solver: { ...config.solver, pointerTracking: false, } });
 	}
 
 	// ensure the file exists
@@ -75,7 +75,7 @@ async function benchmark() {
 	const maxSlices = options['max-slices'] ?? -1;
 	const slicer = new BenchmarkSlicer(options.parser);
 	try {
-		await slicer.init(request, undefined, options.threshold);
+		await slicer.init(request, config, undefined, options.threshold);
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {

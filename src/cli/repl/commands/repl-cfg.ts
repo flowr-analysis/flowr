@@ -26,7 +26,7 @@ export const controlflowCommand: ReplCommand = {
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
+	fn:           async(output, shell, remainingLine, _, config) => {
 		const result = await controlflow(shell, handleString(remainingLine), config);
 
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);
@@ -45,7 +45,7 @@ export const controlflowStarCommand: ReplCommand = {
 	usageExample: ':controlflow*',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
+	fn:           async(output, shell, remainingLine, _, config) => {
 		const result = await controlflow(shell, handleString(remainingLine), config);
 
 		const cfg = extractCFG(result.normalize, result.dataflow.graph);

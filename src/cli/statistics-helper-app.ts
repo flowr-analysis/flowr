@@ -24,4 +24,4 @@ const scriptOptions = processCommandLineArgs<StatsHelperCliOptions>('stats-helpe
 	]
 });
 
-void getStatsForSingleFile(getConfig(undefined), scriptOptions);
+void getStatsForSingleFile(scriptOptions, getConfig());

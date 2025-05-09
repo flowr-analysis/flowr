@@ -58,7 +58,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 	return files;
 }
 
-export async function flowrScriptGetStats(config: FlowrConfigOptions, options: StatsCliOptions) {
+export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfigOptions) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
 		process.exit(0);
@@ -105,7 +105,7 @@ export async function flowrScriptGetStats(config: FlowrConfigOptions, options: S
 	} else {
 		console.log('Run Sequentially as parallel <= 0...');
 		for(const arg of args) {
-			await getStatsForSingleFile(config, commandLineArgs(scripts['stats-helper'].options, { argv: arg }) as StatsHelperCliOptions);
+			await getStatsForSingleFile(commandLineArgs(scripts['stats-helper'].options, { argv: arg }) as StatsHelperCliOptions, config);
 		}
 	}
 }

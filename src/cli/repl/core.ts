@@ -20,7 +20,8 @@ import { RShell, RShellReviveOptions } from '../../r-bridge/shell';
 import type { MergeableRecord } from '../../util/objects';
 import type { KnownParser } from '../../r-bridge/parser';
 import { log, LogLevel } from '../../util/log';
-import {FlowrConfigOptions, getEngineConfig} from '../../config';
+import type { FlowrConfigOptions } from '../../config';
+import { getEngineConfig } from '../../config';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -77,16 +78,16 @@ export function makeDefaultReplReadline(): readline.ReadLineOptions {
 		removeHistoryDuplicates: true,
 		completer:               replCompleter
 	};
-};
+}
 
-async function replProcessStatement(config: FlowrConfigOptions, output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean): Promise<void> {
+async function replProcessStatement(output: ReplOutput, statement: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions): Promise<void> {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn(config, output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess);
+				await processor.fn(output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess, config);
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
@@ -97,7 +98,7 @@ async function replProcessStatement(config: FlowrConfigOptions, output: ReplOutp
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
-		await tryExecuteRShellCommand(config, output, parser, statement, allowRSessionAccess);
+		await tryExecuteRShellCommand(output, parser, statement, allowRSessionAccess, config);
 	}
 }
 
@@ -115,7 +116,7 @@ export async function replProcessAnswer(config: FlowrConfigOptions, output: Repl
 	const statements = splitAtEscapeSensitive(expr, false, ';');
 
 	for(const statement of statements) {
-		await replProcessStatement(config, output, statement, parser, allowRSessionAccess);
+		await replProcessStatement(output, statement, parser, allowRSessionAccess, config);
 	}
 }
 
@@ -146,8 +147,8 @@ export interface FlowrReplOptions extends MergeableRecord {
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
- * @param config  - flowr Config
  * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
+ * @param config  - The flowr config
  *
  * For the execution, this function makes use of {@link replProcessAnswer}.
  *

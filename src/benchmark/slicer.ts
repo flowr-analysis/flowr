@@ -24,7 +24,7 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../slicing/criterion/parse';
-import type { TREE_SITTER_SLICING_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import type { DEFAULT_SLICING_PIPELINE, TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { createSlicePipeline } from '../core/steps/pipeline/default-pipelines';
 
 
@@ -135,7 +135,7 @@ export class BenchmarkSlicer {
 				if(this.parserName === 'r-shell') {
 					return new RShell(getEngineConfig(config, 'r-shell'));
 				} else {
-					await TreeSitterExecutor.initTreeSitter(config);
+					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
 					return new TreeSitterExecutor();
 				}
 			}

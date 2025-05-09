@@ -25,4 +25,4 @@ const scriptOptions = processCommandLineArgs<StatsCliOptions>('stats', [],{
 	]
 });
 
-void flowrScriptGetStats(getConfig(undefined), scriptOptions);
+void flowrScriptGetStats(scriptOptions, getConfig());

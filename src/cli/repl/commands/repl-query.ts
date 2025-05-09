@@ -6,7 +6,7 @@ import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { ansiFormatter, italic } from '../../../util/text/ansi';
 import { describeSchema } from '../../../util/schema';
 import type { Query, QueryResults, SupportedQueryTypes } from '../../../queries/query';
-import { AnyQuerySchema, QueriesSchema , executeQueries } from '../../../queries/query';
+import { AnyQuerySchema, executeQueries, QueriesSchema } from '../../../queries/query';
 import type { PipelineOutput } from '../../../core/steps/pipeline/pipeline';
 import { jsonReplacer } from '../../../util/json';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
@@ -32,7 +32,7 @@ function printHelp(output: ReplOutput) {
 	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
 }
 
-async function processQueryArgs(config: FlowrConfigOptions, line: string, parser: KnownParser, output: ReplOutput): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
+async function processQueryArgs(line: string, parser: KnownParser, output: ReplOutput, config: FlowrConfigOptions): Promise<undefined | { query: QueryResults<SupportedQueryTypes>, processed: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE> }> {
 	const args = splitAtEscapeSensitive(line);
 	const query = args.shift();
 
@@ -78,9 +78,9 @@ export const queryCommand: ReplCommand = {
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async(config, output, parser, remainingLine) => {
+	fn:           async(output, parser, remainingLine, _, config) => {
 		const totalStart = Date.now();
-		const results = await processQueryArgs(config, remainingLine, parser, output);
+		const results = await processQueryArgs(remainingLine, parser, output, config);
 		const totalEnd = Date.now();
 		if(results) {
 			output.stdout(asciiSummaryOfQueryResult(ansiFormatter, totalEnd - totalStart, results.query, results.processed));
@@ -93,8 +93,8 @@ export const queryStarCommand: ReplCommand = {
 	usageExample: ':query* <query> <code>',
 	aliases:      [ ],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
-		const results = await processQueryArgs(config, remainingLine, shell, output);
+	fn:           async(output, shell, remainingLine, _, config) => {
+		const results = await processQueryArgs(remainingLine, shell, output, config);
 		if(results) {
 			output.stdout(JSON.stringify(results.query, jsonReplacer));
 		}

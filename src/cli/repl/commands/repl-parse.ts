@@ -2,11 +2,8 @@ import type { ReplCommand } from './repl-main';
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { FontStyles } from '../../../util/text/ansi';
 import type { JsonEntry } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
-import { convertPreparedParsedData , prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
-import {
-	extractLocation,
-	getTokenType,
-} from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
+import { convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
+import { extractLocation, getTokenType, } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { createParsePipeline } from '../../../core/steps/pipeline/default-pipelines';
 import { fileProtocol, removeRQuotes, requestFromInput } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
@@ -162,7 +159,7 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(config, output, parser, remainingLine) => {
+	fn:           async(output, parser, remainingLine, _, config) => {
 		const result = await createParsePipeline(parser, {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}, config).allRemainingSteps();

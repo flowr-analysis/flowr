@@ -20,7 +20,7 @@ export function executeResolveValueQuery({ dataflow: { graph }, ast, config }: B
 		
 		const values = query.criteria
 			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(config, ident, { graph, full: true, idMap: ast.idMap }) ?? []);
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap }, config) ?? []);
 
 		results[key] = {
 			values: values ? [... new Set(values)] : []

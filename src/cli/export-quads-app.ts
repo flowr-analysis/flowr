@@ -24,7 +24,7 @@ const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
 	]
 });
 
-const shell = new RShell(getEngineConfig(getConfig(undefined), 'r-shell'));
+const shell = new RShell(getEngineConfig(getConfig(), 'r-shell'));
 
 async function writeQuadForSingleFile(request: RParseRequestFromFile, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode(request, shell);

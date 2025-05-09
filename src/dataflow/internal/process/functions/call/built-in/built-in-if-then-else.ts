@@ -52,7 +52,7 @@ export function processIfThenElse<OtherInfo>(
 
 	// we should defer this to the abstract interpretation
 
-	const values = resolveValueOfVariable(data.config, condArg?.lexeme, data.environment, data.completeAst.idMap);
+	const values = resolveValueOfVariable(condArg?.lexeme, data.environment, data.config.solver.variables, data.completeAst.idMap);
 	const conditionIsAlwaysFalse = values?.every(d => d === false) ?? false;
 	const conditionIsAlwaysTrue  = values?.every(d => d === true) ?? false;
 

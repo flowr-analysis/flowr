@@ -45,7 +45,7 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
-	const config = getConfig(undefined);
+	const config = getConfig();
 
 	await slicer.init(
 		options['input-is-text']

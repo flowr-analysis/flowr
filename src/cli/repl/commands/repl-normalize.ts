@@ -6,7 +6,7 @@ import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { FlowrConfigOptions } from '../../../config';
 
-async function normalize(config: FlowrConfigOptions, parser: KnownParser, remainingLine: string) {
+async function normalize(parser: KnownParser, remainingLine: string, config: FlowrConfigOptions) {
 	return await createNormalizePipeline(parser, {
 		request: requestFromInput(remainingLine.trim())
 	}, config).allRemainingSteps();
@@ -25,8 +25,8 @@ export const normalizeCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
-		const result = await normalize(config, shell, handleString(remainingLine));
+	fn:           async(output, shell, remainingLine, _, config) => {
+		const result = await normalize(shell, handleString(remainingLine), config);
 		const mermaid = normalizedAstToMermaid(result.normalize.ast);
 		output.stdout(mermaid);
 		try {
@@ -42,8 +42,8 @@ export const normalizeStarCommand: ReplCommand = {
 	usageExample: ':normalize*',
 	aliases:      [ 'n*' ],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
-		const result = await normalize(config, shell, handleString(remainingLine));
+	fn:           async(output, shell, remainingLine, _, config) => {
+		const result = await normalize(shell, handleString(remainingLine), config);
 		const mermaid = normalizedAstToMermaidUrl(result.normalize.ast);
 		output.stdout(mermaid);
 		try {

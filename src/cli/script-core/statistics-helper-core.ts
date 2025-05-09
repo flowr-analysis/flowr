@@ -37,7 +37,7 @@ function compressFolder(folder: string, target: string) {
 }
 
 
-export async function getStatsForSingleFile(config: FlowrConfigOptions, options: StatsHelperCliOptions) {
+export async function getStatsForSingleFile(options: StatsHelperCliOptions, config: FlowrConfigOptions) {
 	if(options['no-ansi']) {
 		log.info('disabling ansi colors');
 		setFormatter(voidFormatter);

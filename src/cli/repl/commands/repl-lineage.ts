@@ -70,7 +70,7 @@ export const lineageCommand: ReplCommand = {
 	usageExample: ':lineage',
 	aliases:      ['lin'],
 	script:       false,
-	fn:           async(config, output, shell, remainingLine) => {
+	fn:           async(output, shell, remainingLine, _, config) => {
 		const [criterion, rest] = splitAt(remainingLine, remainingLine.indexOf(' '));
 		const { dataflow: dfg } = await getDfg(config, shell, rest);
 		const lineageIds = getLineage(criterion as SingleSlicingCriterion, dfg.graph);

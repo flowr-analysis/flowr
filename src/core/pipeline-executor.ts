@@ -4,7 +4,8 @@ import { PipelineStepStage } from './steps/pipeline-step';
 import type {
 	Pipeline,
 	PipelineInput,
-	PipelineOutput, PipelinePerRequestInput,
+	PipelineOutput,
+	PipelinePerRequestInput,
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline/pipeline';
@@ -112,7 +113,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
-	 * @param config   - The FlowrConfig containing the built-in definitions
+	 * @param config   - The flowr config containing the built-in definitions
 	 */
 	constructor(pipeline: P, input: PipelineInput<P>, config: FlowrConfigOptions) {
 		this.pipeline = pipeline;

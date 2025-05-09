@@ -19,24 +19,24 @@ export const serverLog = new FlowrLogger({ name: 'server' });
  * thereon be handled by a {@link FlowRServerConnection}.
  */
 export class FlowRServer {
-	private readonly config:			           FlowrConfigOptions;
 	private readonly server:              Server;
 	private readonly engines:             KnownEngines;
 	private readonly defaultEngine:       keyof KnownEngines;
 	private versionInformation:           VersionInformation | undefined;
 	private readonly allowRSessionAccess: boolean;
+	private readonly config:			           FlowrConfigOptions;
 
 	/** maps names to the respective connection */
 	private readonly connections = new Map<string, FlowRServerConnection>();
 	private nameCounter = 0;
 
-	constructor(config: FlowrConfigOptions, engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, server: Server = new NetServer()) {
-		this.config = config;
+	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, config: FlowrConfigOptions, server: Server = new NetServer()) {
 		this.server = server;
 		this.server.onConnect(c => this.onConnect(c));
 		this.engines = engines;
 		this.defaultEngine = defaultEngine;
 		this.allowRSessionAccess = allowRSessionAccess;
+		this.config = config;
 	}
 
 	public async start(port: number) {
@@ -53,7 +53,7 @@ export class FlowRServer {
 		const name = `client-${this.nameCounter++}`;
 		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`);
 
-		this.connections.set(name, new FlowRServerConnection(this.config, c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess));
+		this.connections.set(name, new FlowRServerConnection(c, name, this.engines[this.defaultEngine] as KnownParser, this.allowRSessionAccess, this.config));
 		helloClient(c, name, this.versionInformation);
 		c.on('close', () => {
 			this.connections.delete(name);

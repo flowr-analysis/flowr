@@ -280,13 +280,11 @@ export function parseConfig(jsonString: string): FlowrConfigOptions | undefined 
 	}
 }
 
-// TODO remove this function?
 export function amendConfig(config: FlowrConfigOptions, amendment: DeepPartial<FlowrConfigOptions>) {
 	return deepMergeObject(config, amendment) as FlowrConfigOptions;
 }
 
-// TODO Simplify parameters?
-export function getConfig(configFile: string | undefined, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
+export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
 	try {
 		return loadConfigFromFile(configFile, configWorkingDirectory);
 	} catch(e) {

@@ -4,7 +4,7 @@ import { RShell } from '../../../r-bridge/shell';
 import type { KnownParser } from '../../../r-bridge/parser';
 import type { FlowrConfigOptions } from '../../../config';
 
-export async function tryExecuteRShellCommand(_config: FlowrConfigOptions, output: ReplOutput, parser: KnownParser, statement: string, allowRSessionAccess: boolean) {
+export async function tryExecuteRShellCommand(output: ReplOutput, parser: KnownParser, statement: string, allowRSessionAccess: boolean, _config: FlowrConfigOptions) {
 	if(!allowRSessionAccess){
 		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
 	} else if(parser instanceof RShell) {

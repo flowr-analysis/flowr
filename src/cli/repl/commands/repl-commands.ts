@@ -52,7 +52,7 @@ export const helpCommand: ReplCommand = {
 	script:       false,
 	usageExample: ':help',
 	aliases:      [ 'h', '?' ],
-	fn:           (_config, output) => {
+	fn:           (output) => {
 		initCommandMapping();
 		output.stdout(`
 If enabled ('--r-session-access'), you can just enter R expressions which get evaluated right away:
@@ -120,7 +120,7 @@ export function getReplCommands() {
 				aliases:      [],
 				script:       true,
 				usageExample: `:${script} --help`,
-				fn:           async(_config, output, _s, remainingLine) => {
+				fn:           async(output, _s, remainingLine) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
 					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {

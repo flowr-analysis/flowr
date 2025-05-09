@@ -21,10 +21,9 @@ import { dataflowLogger } from '../../../../../logger';
 import type {
 	IdentifierReference,
 	InGraphIdentifierDefinition,
-	InGraphReferenceType } from '../../../../../environments/identifier';
-import {
-	ReferenceType
+	InGraphReferenceType
 } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
@@ -303,10 +302,10 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param nodeToDefine       - `x`
  * @param sourceIds          - `v`
  * @param rootIdOfAssignment - `<-`
- * @param assignmentConfig             - configuration for the assignment processing
+ * @param config             - The flowr config
+ * @param assignmentConfig   - configuration for the assignment processing
  */
 export function markAsAssignment(
-	config: FlowrConfigOptions,
 	information: {
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
@@ -314,6 +313,7 @@ export function markAsAssignment(
 	nodeToDefine: InGraphIdentifierDefinition,
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
+	config: FlowrConfigOptions,
 	assignmentConfig?: AssignmentConfiguration  ,
 ) {
 	if(config.solver.pointerTracking) {
@@ -389,7 +389,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(data.config, information, write, [source.info.id], rootId, config);
+		markAsAssignment(information, write, [source.info.id], rootId, data.config, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

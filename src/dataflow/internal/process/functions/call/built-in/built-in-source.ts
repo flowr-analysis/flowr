@@ -172,7 +172,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		sourceFile = resolveValueOfVariable(data.config, sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap)?.map(x => {
+		sourceFile = resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.config.solver.variables, data.completeAst.idMap)?.map(x => {
 			if(typeof x === 'object' && x && 'str' in x) {
 				return x.str as string;
 			} else {
@@ -226,7 +226,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest,
 		const file = request.request === 'file' ? request.content : undefined;
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(request);
 		normalized = (typeof parsed !== 'string' ?
-			normalizeTreeSitter(data.config, { parsed }, getId, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
+			normalizeTreeSitter({ parsed }, getId, data.config, file) : normalize({ parsed }, getId, file)) as NormalizedAst<OtherInfo & ParentInformation>;
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

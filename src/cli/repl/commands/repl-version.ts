@@ -40,5 +40,5 @@ export const versionCommand: ReplCommand = {
 	aliases:      [],
 	usageExample: ':version',
 	script:       false,
-	fn:           (_config, output, parser) => printVersionInformation(output, parser)
+	fn:           (output, parser) => printVersionInformation(output, parser)
 };

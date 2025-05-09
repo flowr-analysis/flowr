@@ -1,7 +1,7 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
 import { formatter } from '../../../util/text/ansi';
 import type { KnownParser } from '../../../r-bridge/parser';
-import {FlowrConfigOptions} from "../../../config";
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Defines the main interface for output of the repl.
@@ -44,5 +44,5 @@ export interface ReplCommand {
 	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
 	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
 	 */
-	fn:           (config: FlowrConfigOptions, output: ReplOutput, parser: KnownParser, remainingLine: string, allowRSessionAccess: boolean) => Promise<void> | void
+	fn:           (output: ReplOutput, parser: KnownParser, remainingLine: string, allowRSessionAccess: boolean, config: FlowrConfigOptions) => Promise<void> | void
 }

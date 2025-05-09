@@ -249,7 +249,7 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 		}
 	}
 
-	return resolveIdToValue(data.config, argument, { environment, graph: data.dataflow.graph, full });
+	return resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }, data.config);
 }
 
 function unwrapRValue(value: RLogicalValue | RStringValue | RNumberValue | string | number | unknown): string | undefined {

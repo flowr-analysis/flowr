@@ -14,7 +14,7 @@ import { log, LogLevel } from '../util/log';
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import type { EngineConfig, FlowrConfigOptions, KnownEngines } from '../config';
-import { getConfig , amendConfig, getEngineConfig, parseConfig } from '../config';
+import { amendConfig, getConfig, getEngineConfig, parseConfig } from '../config';
 import { guard } from '../util/assert';
 import type { ScriptInformation } from './common/scripts-info';
 import { scripts } from './common/scripts-info';
@@ -149,7 +149,7 @@ async function retrieveEngineInstances(config: FlowrConfigOptions): Promise<{ en
 		});
 	}
 	if(getEngineConfig(config, 'tree-sitter')) {
-		await TreeSitterExecutor.initTreeSitter(config);
+		await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
 		engines['tree-sitter'] = new TreeSitterExecutor();
 	}
 	let defaultEngine = config.defaultEngine;
@@ -217,7 +217,7 @@ async function mainServer(backend: Server = new NetServer()) {
 	const config = createConfig();
 	const engines = await retrieveEngineInstances(config);
 	hookSignalHandlers(engines);
-	await new FlowRServer(config, engines.engines, engines.default, options['r-session-access'], backend).start(options.port);
+	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 
 

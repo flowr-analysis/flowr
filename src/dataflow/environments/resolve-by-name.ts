@@ -296,9 +296,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
  *
  * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
  */
-export function resolveValueOfVariable(config: FlowrConfigOptions, identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): unknown[] | undefined {
-	const resolve = config.solver.variables;
-
+export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, resolve: VariableResolve, idMap?: AstIdMap): unknown[] | undefined {
 	switch(resolve) {
 		case VariableResolve.Alias: return trackAliasInEnvironments(identifier, environment, idMap);
 		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
@@ -327,7 +325,7 @@ export interface ResolveInfo {
  * @param idMap       - The id map to resolve the node if given as an id
  * @param full        - Whether to track variables
  */
-export function resolveIdToValue(config: FlowrConfigOptions, id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): unknown[] | undefined {
+export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo, config: FlowrConfigOptions): unknown[] | undefined {
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
 	if(node === undefined) {
@@ -336,7 +334,7 @@ export function resolveIdToValue(config: FlowrConfigOptions, id: NodeId | RNodeW
 	switch(node.type) {
 		case RType.Symbol:
 			if(environment) {
-				return full ? resolveValueOfVariable(config, node.lexeme, environment, idMap) : undefined;
+				return full ? resolveValueOfVariable(node.lexeme, environment, config.solver.variables, idMap) : undefined;
 			} else if(graph && config.solver.variables === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : undefined;
 			} else {

@@ -1,7 +1,8 @@
 import { sendMessage } from './send';
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate';
 import type {
-	FileAnalysisRequestMessage, FileAnalysisResponseMessageCompact,
+	FileAnalysisRequestMessage,
+	FileAnalysisResponseMessageCompact,
 	FileAnalysisResponseMessageNQuads
 } from './messages/message-analysis';
 import { requestAnalysisMessage } from './messages/message-analysis';
@@ -11,7 +12,11 @@ import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import type { ILogObj, Logger } from 'tslog';
-import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './messages/message-repl';
+import type {
+	ExecuteEndMessage,
+	ExecuteIntermediateResponseMessage,
+	ExecuteRequestMessage
+} from './messages/message-repl';
 import { requestExecuteReplExpressionMessage } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
@@ -53,12 +58,12 @@ import type { FlowrConfigOptions } from '../../../config';
  * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
  */
 export class FlowRServerConnection {
-	private readonly config:              FlowrConfigOptions;
 	private readonly socket:              Socket;
 	private readonly parser:              KnownParser;
 	private readonly name:                string;
 	private readonly logger:              Logger<ILogObj>;
 	private readonly allowRSessionAccess: boolean;
+	private readonly config:              FlowrConfigOptions;
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -67,7 +72,7 @@ export class FlowRServerConnection {
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(config: FlowrConfigOptions, socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean) {
+	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions) {
 		this.config = config;
 		this.socket = socket;
 		this.parser = parser;

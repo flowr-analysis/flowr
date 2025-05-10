@@ -1,7 +1,7 @@
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { decorateLabelContext, label } from '../../_helper/label';
-import { resolveByName, resolveIdToValue, resolveToConstants, resolveValueOfVariable, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
+import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { describe, assert, test, expect } from 'vitest';
@@ -16,6 +16,8 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { slicingCriterionToId, type SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
+import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
+import { resolveIdToValue, resolveToConstants, resolveValueOfVariable } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
 enum Allow {
 	None = 0,
@@ -35,6 +37,10 @@ describe.sequential('Resolve', withShell(shell => {
 			startInclusive,
 			endInclusive
 		);
+	}
+
+	function vector(values: unknown[]) {
+		return setFrom(vectorFrom(values.map(v => valueFromTsValue(v))));
 	}
 
 	function testResolve(
@@ -126,6 +132,22 @@ describe.sequential('Resolve', withShell(shell => {
 		testMutate('Constant Value', 'x', 'x <- 5', set([5]));
 		testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
 		testMutate('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
+	});
+
+	describe('Resolve (vectors)', () => {
+		// Do not resolve vector, if c is redefined
+		testResolve('c redefined', 'x', 'c <- function() {} \n x <- c(1,2,3)', Top);
+
+		testResolve('Simple Vector (int)',    'x', 'x <- c(1, 2, 3, 4) \n x',         vector([1, 2, 3, 4]));
+		testResolve('Simple Vector (string)', 'x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
+		testResolve('Vector with alias',      'x', 'y <- 1; x <- c(y,2)',             vector([1, 2]));
+		testResolve('Vector in vector',       'x', 'x <- c(1, 2, c(3, 4, 5))',        vector([1, 2, 3, 4, 5]));
+		
+		testResolve('c aliased', 'x', 'f <- c \n x <- f(1,2,3)', vector([1,2,3]));
+	});
+
+	describe('Resolve (vectors replacement operators)', () => {
+		testResolve('simple', 'x', 'x <- c(1,2,3) \n x$b <- 1', Top);
 	});
 
 	describe('ByName', () => {

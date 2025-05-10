@@ -32,7 +32,8 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>;
+	readonly evalHandler?: string
 }
 
 /**
@@ -50,7 +51,7 @@ export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunction
 /**
  * @see DefaultBuiltinConfig
  */
-export type BuiltInDefinitions = readonly BuiltInDefinition[];
+export type BuiltInDefinitions = readonly BuiltInDefinition[]; 
 
 function registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 	for(const name of names) {

@@ -26,12 +26,12 @@ import { expensiveTrace, log } from '../../../../../../util/log';
 import fs from 'fs';
 import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser';
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
 

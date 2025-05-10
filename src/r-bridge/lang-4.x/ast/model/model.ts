@@ -31,7 +31,7 @@ export type NoInfo = object;
  * Will be used to reconstruct the source of the given element in the R-ast.
  * This will not be part of most comparisons as it is mainly of interest to the reconstruction of R code.
  */
-interface Source {
+export interface Source {
 	/**
    * The range is different from the assigned {@link Location} as it refers to the complete source range covered by the given
    * element.

@@ -9,7 +9,7 @@
  * @module
  */
 
-import type { NoInfo, RNode } from '../model';
+import type { NoInfo, RNode, Source } from '../model';
 import { guard } from '../../../../../util/assert';
 import type { SourceRange } from '../../../../../util/range';
 import { BiMap } from '../../../../../util/collections/bimap';
@@ -21,11 +21,12 @@ import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
-import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call';
+import type { RFunctionArgument, RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call';
 import { EmptyArgument } from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
-import type { RArgument } from '../nodes/r-argument';
+import type { RArgument, RUnnamedArgument } from '../nodes/r-argument';
+import type { RSymbol } from '../nodes/r-symbol';
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -462,4 +463,91 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		decorated.info.file = info.file;
 		return decorated;
 	};
+}
+
+
+export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down): RNode<NewInfo> {
+	const fullInfoMapper = (node: RNode<OldInfo>, down: Down): NewInfo & Source => {
+		const sourceInfo = {
+			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),
+			...(node.info.fullLexeme !== undefined ? { fullLexeme: node.info.fullLexeme } : {}),
+			...(node.info.additionalTokens !== undefined ? { additionalTokens: node.info.additionalTokens } : {}),
+			...(node.info.file !== undefined ? { file: node.info.file } : {})
+		};
+		const info = infoMapper(node, down);
+		return { ...sourceInfo, ...info };
+	};
+
+	return foldAstStateful(ast, down, {
+		down:        downUpdater,
+		foldNumber:  (num, down) => ({ ...num, info: fullInfoMapper(num, down) } as RNode<NewInfo>),
+		foldString:  (str, down) => ({ ...str, info: fullInfoMapper(str, down) }),
+		foldLogical: (logical, down) => ({ ...logical, info: fullInfoMapper(logical, down) }),
+		foldSymbol:  (symbol, down) => ({ ...symbol, info: fullInfoMapper(symbol, down) }),
+		foldAccess:  (node, name, access, down) => ({
+			...node,
+			info:     fullInfoMapper(node, down),
+			accessed: name,
+			access:   access as [RUnnamedArgument<NewInfo>]
+		}),
+		foldBinaryOp: (op, lhs, rhs, down) => ({ ...op, info: fullInfoMapper(op, down), lhs, rhs }),
+		foldPipe:     (op, lhs, rhs, down) => ({ ...op, info: fullInfoMapper(op, down), lhs, rhs }),
+		foldUnaryOp:  (op, operand, down) => ({ ...op, info: fullInfoMapper(op, down), operand }),
+		loop:         {
+			foldFor: (loop, variable, vector, body, down) => ({
+				...loop,
+				info:     fullInfoMapper(loop, down),
+				variable: variable as RSymbol<NewInfo>,
+				vector,
+				body:     body as RExpressionList<NewInfo>
+			}),
+			foldWhile:  (loop, condition, body, down) => ({ ...loop, info: fullInfoMapper(loop, down), condition, body: body as RExpressionList<NewInfo> }),
+			foldRepeat: (loop, body, down) => ({ ...loop, info: fullInfoMapper(loop, down), body: body as RExpressionList<NewInfo> }),
+			foldNext:   (next, down) => ({ ...next, info: fullInfoMapper(next, down) }),
+			foldBreak:  (next, down) => ({ ...next, info: fullInfoMapper(next, down) }),
+		},
+		other: {
+			foldComment:       (comment, down) => ({ ...comment, info: fullInfoMapper(comment, down) }),
+			foldLineDirective: (comment, down) => ({ ...comment, info: fullInfoMapper(comment, down) }),
+		},
+		foldIfThenElse: (ifThenExpr, condition, then, otherwise, down ) => ({ ...ifThenExpr, info: fullInfoMapper(ifThenExpr, down), condition, then: then as RExpressionList<NewInfo>, otherwise: otherwise as RExpressionList<NewInfo> }),
+		foldExprList:   (exprList, grouping, expressions, down) => ({
+			...exprList,
+			info:     fullInfoMapper(exprList, down),
+			grouping: grouping as [start: RSymbol<NewInfo>, end: RSymbol<NewInfo>] | undefined,
+			children: expressions
+		}),
+		functions: {
+			foldFunctionDefinition: (definition, parameters, body, down) => ({
+				...definition,
+				info:       fullInfoMapper(definition, down),
+				parameters: parameters as RParameter<NewInfo>[],
+				body
+			}),
+			/** folds named and unnamed function calls */
+			foldFunctionCall: (call, functionNameOrExpression, args, down) => {
+				const { functionName: _name, calledFunction: _fun, ...rest } = call;
+				return {
+					...rest,
+					info:      fullInfoMapper(call, down),
+					...(call.named ? { functionName: functionNameOrExpression as RSymbol<NewInfo> } : { calledFunction: functionNameOrExpression }),
+					arguments: args as readonly RFunctionArgument<NewInfo>[]
+				} as RNamedFunctionCall<NewInfo> | RUnnamedFunctionCall<NewInfo>;
+			},
+			/** The `name` is `undefined` if the argument is unnamed, the value, if we have something like `x=,...` */
+			foldArgument: (argument, name, value, down) => ({
+				...argument,
+				info: fullInfoMapper(argument, down),
+				name: name as RSymbol<NewInfo> | undefined,
+				value
+			}),
+			/** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
+			foldParameter: (parameter, name, defaultValue, down) => ({
+				...parameter,
+				info: fullInfoMapper(parameter, down),
+				name: name as RSymbol<NewInfo, string>,
+				defaultValue
+			}),
+		}
+	});
 }

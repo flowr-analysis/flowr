@@ -14,11 +14,12 @@ import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName, resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
+import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */

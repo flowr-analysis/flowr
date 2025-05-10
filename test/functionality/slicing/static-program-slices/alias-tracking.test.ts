@@ -3,12 +3,12 @@ import { describe, expect, test } from 'vitest';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { trackAliasInEnvironments } from '../../../../src/dataflow/environments/resolve-by-name';
 import type { Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../src/dataflow/eval/values/general';
+import { trackAliasInEnvironments } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
 async function runPipeline(code: string, shell: RShell) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {

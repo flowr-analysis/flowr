@@ -6,7 +6,7 @@ import type { GenericDiffConfiguration } from '../util/diff';
 import { setDifference } from '../util/diff';
 import type { CfgEdge, CfgSimpleVertex, ControlFlowGraph } from './control-flow-graph';
 import { equalVertex } from './control-flow-graph';
-import { arrayEqual } from '../util/arrays';
+import { arrayEqual } from '../util/collections/arrays';
 
 
 /**

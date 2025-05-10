@@ -21,7 +21,7 @@ import {
 	VariableResolve
 } from '../config';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';

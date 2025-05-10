@@ -9,7 +9,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
-import { startAndEndsWith } from '../../../../../src/util/strings';
+import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';

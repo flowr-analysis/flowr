@@ -20,16 +20,16 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:quote' });
 
-	const inRefs: IdentifierReference[] = [fnRef];
-	const outRefs: IdentifierReference[] = [];
-	const unknownRefs: IdentifierReference[] = [];
+	let inRefs: IdentifierReference[] = [fnRef];
+	let outRefs: IdentifierReference[] = [];
+	let unknownRefs: IdentifierReference[] = [];
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i];
 		if(processedArg && i !== config?.quoteArgumentsWithIndex) {
-			inRefs.push(...processedArg.in);
-			outRefs.push(...processedArg.out);
-			unknownRefs.push(...processedArg.unknownReferences);
+			inRefs = inRefs.concat(processedArg.in);
+			outRefs = outRefs.concat(processedArg.out);
+			unknownRefs = unknownRefs.concat(processedArg.unknownReferences);
 		} else if(processedArg) {
 			information.graph.addEdge(rootId, processedArg.entryPoint, EdgeType.NonStandardEvaluation);
 			/* nse actually affects _everything_ within that argument! */

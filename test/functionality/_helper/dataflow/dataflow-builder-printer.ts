@@ -6,7 +6,7 @@
  */
 
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
-import { DefaultMap } from '../../../../src/util/defaultmap';
+import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
 import { wrap, wrapControlDependencies, wrapReference } from './printer';
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';

@@ -3,7 +3,7 @@ import { createDataflowPipeline } from '../../../core/steps/pipeline/default-pip
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { ColorEffect, Colors, FontStyles } from '../../../util/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 
 /**
  * Obtain the dataflow graph using a known parser (such as the {@link RShell} or {@link TreeSitterExecutor}).
@@ -23,7 +23,7 @@ function formatInfo(out: ReplOutput, type: string, timing: number): string {
 }
 
 export const dataflowCommand: ReplCommand = {
-	description:  `Get mermaid code for the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	description:  `Get mermaid code for the dataflow graph, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
@@ -58,7 +58,7 @@ export const dataflowStarCommand: ReplCommand = {
 
 
 export const dataflowSimplifiedCommand: ReplCommand = {
-	description:  `Get simplified mermaid code for the dataflow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	description:  `Get mermaid code for the simplified dataflow graph, start with '${fileProtocol}' to indicate a file`,
 	usageExample: ':dataflowsimple',
 	aliases:      [ 'ds', 'dfs' ],
 	script:       false,

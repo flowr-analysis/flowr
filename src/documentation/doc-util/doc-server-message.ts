@@ -1,13 +1,13 @@
 import type { RShell } from '../../r-bridge/shell';
 import { getFilePathMd } from './doc-files';
 import { describeSchema } from '../../util/schema';
-import { markdownFormatter } from '../../util/ansi';
+import { markdownFormatter } from '../../util/text/ansi';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
 import type { FakeServer, FakeSocket } from '../../../test/functionality/_helper/net';
 import { withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 
 export interface ServerMessageDescription {
 	readonly title:                  string

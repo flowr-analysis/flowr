@@ -22,11 +22,11 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
-import { cartesianProduct } from '../../../../../../util/arrays';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { collectStrings } from '../../../../../eval/values/string/string-constants';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
+import { cartesianProduct } from '../../../../../../util/collections/arrays';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

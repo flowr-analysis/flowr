@@ -6,7 +6,7 @@
  */
 
 
-import { DefaultMap } from '../../../src/util/defaultmap';
+import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
 import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { getAllCapabilities } from '../../../src/r-bridge/data/get';
@@ -42,6 +42,8 @@ export interface SerializedTestLabel {
 
 /**
  * Wraps a test name with a unique identifier and label it with the given ids.
+ * Test labels are used for identifying which of flowR's capabilities are being tested for.
+ * For more information about test labels and capabilities, see the wiki page: {@link https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing#test-labels}
  * @param testname - the name of the test (`it`) to be labeled
  * @param ids      - the capability ids to attach to the test
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it

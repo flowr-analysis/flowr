@@ -3,6 +3,7 @@ import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-vi
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { DataflowInformation } from '../dataflow/info';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -77,7 +78,7 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 			return;
 		}
 		const lastElement = data.call.args.at(-1);
-		const lastElementNode = lastElement !== undefined && lastElement !== '<>' ? this.getNormalizedAst(lastElement.nodeId) : undefined;
+		const lastElementNode = lastElement !== undefined && lastElement !== EmptyArgument ? this.getNormalizedAst(lastElement.nodeId) : undefined;
 		if(lastElementNode !== undefined) {
 			node.info.typeVariable.unify(lastElementNode.info.typeVariable);
 		} else {

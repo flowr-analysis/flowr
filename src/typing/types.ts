@@ -19,7 +19,7 @@
  */
 export enum RDataTypeTag {
     /** {@link RAnyType} */
-    Any = 'AnyType',
+    Any = 'RAnyType',
     /** {@link RLogicalType} */
     Logical = 'RLogicalType',
     /** {@link RIntegerType} */

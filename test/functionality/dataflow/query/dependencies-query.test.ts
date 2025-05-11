@@ -106,7 +106,7 @@ describe.sequential('Dependencies Query', withShell(shell => {
 			/* { nodeId: '1@library', functionName: 'library', libraryName: 'a' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'b' },
 			{ nodeId: '1@library', functionName: 'library', libraryName: 'c' } */
-			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown' }
+			{ nodeId: '1@library', functionName: 'library', libraryName: 'unknown', lexemeOfArgument: 'c("a", "b", "c")' }
 		] });
 
 		describe('Custom', () => {

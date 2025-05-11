@@ -13,6 +13,6 @@ export function assertInferredType(
 		const executor = new TreeSitterExecutor();
 		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }).allRemainingSteps();
 		const typedAst = inferDataTypes(result.normalize.ast, result.dataflow);
-		expect(typedAst.inferredType).toEqual(expectedType);
+		expect(typedAst.info.inferredType).toEqual(expectedType);
 	});
 }

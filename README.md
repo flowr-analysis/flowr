@@ -107,7 +107,7 @@ It offers a wide variety of features, for example:
     
     
     You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
-    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph of R code, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a dataflow graph for a given R script.
+    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a dataflow graph for a given R script.
     
     Let's have a look at the following example:
     
@@ -143,7 +143,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSAyIHN0cm9rZTpncmF5O1xuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDJcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAzXG4gICAgNCAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmxpZ2h0Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgIDRbW1wiYCM5MTtSQmluYXJ5T3AjOTM7IC9cbiAgICAgICg0KVxuICAgICAgKjEuMS0yNCpcbiAgICAoMiwgMylgXCJdXVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAxXG4gICAgMiAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSAyIHN0cm9rZTpncmF5O1xuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDJcbiAgICA0IC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAzXG4gICAgNCAtLi0+fFwicmVhZHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -167,6 +167,7 @@ It offers a wide variety of features, for example:
         (0, 1)`"]]
         built-in:_-["`Built-In:
     #60;#45;`"]
+        style built-in:_- stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         4{{"`#91;RNumber#93; 1
           (4)
           *2.12*`"}}
@@ -215,18 +216,21 @@ It offers a wide variety of features, for example:
         (16, 17)`"]]
         built-in:-["`Built-In:
     #45;`"]
+        style built-in:- stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         19[["`#91;RExpressionList#93; (
           (19)
           *6.13*
         (18)`"]]
         built-in:_["`Built-In:
     (`"]
+        style built-in:_ stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         20[["`#91;RBinaryOp#93; #58;
           (20)
           *6.11-17*
         (13, 19)`"]]
         built-in::["`Built-In:
     #58;`"]
+        style built-in:: stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         24(["`#91;RSymbol#93; sum
           (24, :may:36+)
           *7.10-12*`"])
@@ -278,6 +282,7 @@ It offers a wide variety of features, for example:
         (12, 20, 35)`"]]
         built-in:for["`Built-In:
     for`"]
+        style built-in:for stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         38{{"`#91;RString#93; #34;Sum#58;#34;
           (38)
           *11.5-10*`"}}
@@ -286,6 +291,7 @@ It offers a wide variety of features, for example:
           *11.13-15*`"])
         built-in:sum["`Built-In:
     sum`"]
+        style built-in:sum stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         42{{"`#91;RString#93; #34;
     #34;
           (42)
@@ -296,6 +302,7 @@ It offers a wide variety of features, for example:
         (38, 40, 42)`"]]
         built-in:cat["`Built-In:
     cat`"]
+        style built-in:cat stroke:gray,fill:lightgray,stroke-width:2px,opacity:.8;
         46{{"`#91;RString#93; #34;Product#58;#34;
           (46)
           *12.5-14*`"}}
@@ -428,7 +435,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _22.27 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _22.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

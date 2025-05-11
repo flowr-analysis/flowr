@@ -192,7 +192,6 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 
 	graph.merge(body.graph);
 
-
 	for(const entry of condition.entryPoints) {
 		graph.addEdge(entry, whileLoop.info.id, { label: CfgEdgeType.Fd });
 	}
@@ -351,6 +350,8 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	return info;
 }
 
+export const ResolvedCallSuffix = '-resolved-call-exit';
+
 function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation => {
 		const baseCFG = cfgFunctionCall(call, name, args);
@@ -372,18 +373,18 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCa
 
 		if(exits.length > 0) {
 			baseCFG.graph.addVertex({
-				id:   call.info.id + '-resolved-call-exit',
+				id:   call.info.id + ResolvedCallSuffix,
 				type: CfgVertexType.EndMarker,
 				root: call.info.id
 			});
 
 			for(const exit of [...baseCFG.exitPoints, ...exits]) {
-				baseCFG.graph.addEdge(call.info.id + '-resolved-call-exit', exit, { label: CfgEdgeType.Fd });
+				baseCFG.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
 			}
 
 			return {
 				...baseCFG,
-				exitPoints: [call.info.id + '-resolved-call-exit']
+				exitPoints: [call.info.id + ResolvedCallSuffix]
 			};
 		} else {
 			return baseCFG;

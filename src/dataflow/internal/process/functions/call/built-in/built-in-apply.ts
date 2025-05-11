@@ -106,9 +106,9 @@ export function processApply<OtherInfo>(
 
 	const allOtherArguments: FunctionArgument[] = processedArguments.filter((_, i) => i !== index).map((arg, i) => {
 		const counterpart = args[i];
-		if(arg && counterpart !== EmptyArgument && counterpart.name) {
+		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:                counterpart.name.content,
+				name:                counterpart.name?.content,
 				controlDependencies: data.controlDependencies,
 				type:                ReferenceType.Argument,
 				nodeId:              arg.entryPoint

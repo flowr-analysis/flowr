@@ -1,4 +1,4 @@
-import type { ControlFlowInformation } from './control-flow-graph';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 
 import type { DataflowInformation } from '../dataflow/info';
 
@@ -30,7 +30,7 @@ import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { BuiltInProcessorMapper } from '../dataflow/environments/built-in';
-
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 
 export interface SemanticCfgGuidedVisitorConfiguration<
@@ -120,6 +120,15 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
+
+	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
+		super.visitUnknown(vertex);
+		const ast = this.getNormalizedAst(vertex.id);
+		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
+			this.onProgram(ast);
+		}
+	}
+
 	/**
 	 * Given a function call that has multiple targets (e.g., two potential built-in definitions).
 	 * This function is responsible for calling {@link onDispatchFunctionCallOrigin} for each of the origins,
@@ -203,6 +212,9 @@ export class SemanticCfgGuidedVisitor<
 			default:
 				return this.onDefaultFunctionCall({ call });
 		}
+	}
+
+	protected onProgram(_data: RExpressionList<OtherInfo>) {
 	}
 
 

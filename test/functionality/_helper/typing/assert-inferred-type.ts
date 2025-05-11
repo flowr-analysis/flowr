@@ -12,7 +12,7 @@ export function assertInferredType(
 	test(`Infer ${expectedType.tag} for ${input}`, async() => {
 		const executor = new TreeSitterExecutor();
 		const result = await createDataflowPipeline(executor, { request: requestFromInput(input) }).allRemainingSteps();
-		const typedAst = inferDataTypes(result.normalize.ast, result.dataflow);
+		const typedAst = inferDataTypes(result.normalize, result.dataflow);
 		expect(typedAst.info.inferredType).toEqual(expectedType);
 	});
 }

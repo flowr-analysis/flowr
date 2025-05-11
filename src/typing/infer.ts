@@ -7,17 +7,18 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { decorateAst, mapAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { mapAstInfo } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RDataType } from './types';
 import { RTypeVariable , RComplexType, RDoubleType, RIntegerType, RLogicalType, RStringType, resolveType, RNullType } from './types';
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
-export function inferDataTypes<Info>(ast: RNode<Info>, dataFlowInfo: DataflowInformation): RNode<Omit<Info & ParentInformation, keyof UnresolvedTypeInfo> & DataTypeInfo> {
-	const decoratedAst = decorateTypeVariables(ast);
-	const normalizedAst = decorateAst(decoratedAst, {});
-	const controlFlowInfo = extractCFG(normalizedAst);
+export function inferDataTypes<Info>(normalizedAst: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): RNode<Omit<Info & ParentInformation, keyof UnresolvedTypeInfo> & DataTypeInfo> {
+	const withTypesAst = decorateTypeVariables(normalizedAst);
+	const controlFlowInfo = extractCFG(withTypesAst);
 	const config = {
-		normalizedAst:        normalizedAst,
+		normalizedAst:        withTypesAst,
 		controlFlow:          controlFlowInfo,
 		dataflow:             dataFlowInfo,
 		defaultVisitingOrder: 'forward' as const,
@@ -25,8 +26,7 @@ export function inferDataTypes<Info>(ast: RNode<Info>, dataFlowInfo: DataflowInf
 	const visitor = new TypeInferingCfgGuidedVisitor(config);
 	visitor.start();
 
-	const typedAst = resolveTypeVariables(normalizedAst.ast);
-	return typedAst;
+	return resolveTypeVariables(withTypesAst.ast);
 }
 
 type UnresolvedTypeInfo = {
@@ -37,8 +37,15 @@ export type DataTypeInfo = {
 	inferredType: RDataType;
 }
 
-function decorateTypeVariables<OtherInfo>(ast: RNode<OtherInfo>): RNode<OtherInfo & UnresolvedTypeInfo> {
-	return mapAstInfo(ast, {}, (node, _down) => ({ ...node.info, typeVariable: new RTypeVariable() }), (_node, _down) => ({}));
+function decorateTypeVariables<OtherInfo>(normalizedAst: NormalizedAst<OtherInfo>): NormalizedAst<OtherInfo & UnresolvedTypeInfo> {
+	mapAstInfo(normalizedAst.ast, {},
+		(node, _down) => {
+			(node.info as unknown as UnresolvedTypeInfo).typeVariable = new RTypeVariable();
+			return node.info;
+		},
+		(_node, _down) => ({})
+	);
+	return normalizedAst as NormalizedAst<OtherInfo & UnresolvedTypeInfo>;
 }
 
 function resolveTypeVariables<Info extends UnresolvedTypeInfo>(ast: RNode<Info>): RNode<Omit<Info, keyof UnresolvedTypeInfo> & DataTypeInfo> {
@@ -72,9 +79,18 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		node.info.typeVariable.unify(new RStringType());
 	}
 
+	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {
+		const lastElement = node.children.at(-1);
+		if(lastElement !== undefined) {
+			node.info.typeVariable.unify(lastElement.info.typeVariable);
+		} else {
+			node.info.typeVariable.unify(new RNullType());
+		}
+	}
+
 	override onExpressionList(data: { call: DataflowGraphVertexFunctionCall }) {
 		const node = this.getNormalizedAst(data.call.id);
-		if(node === undefined) {
+		if(node === undefined || node.type !== RType.ExpressionList) {
 			return;
 		}
 		const lastElement = data.call.args.at(-1);

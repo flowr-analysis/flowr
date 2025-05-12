@@ -466,7 +466,7 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 
-export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down): RNode<NewInfo> {
+export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down = (_node, down) => down): RNode<NewInfo> {
 	const fullInfoMapper = (node: RNode<OldInfo>, down: Down): NewInfo & Source => {
 		const sourceInfo = {
 			...(node.info.fullRange !== undefined ? { fullRange: node.info.fullRange } : {}),

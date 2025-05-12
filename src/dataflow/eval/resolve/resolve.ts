@@ -10,7 +10,7 @@ import type { Value } from '../values/r-value';
 import { isTop, Top } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
-import { resolveValueOfVariable } from './alias-tracking';
+import { resolveIdToValue } from './alias-tracking';
 
 export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, map?: AstIdMap): Value {
 	if(a.type === RType.String) {
@@ -44,7 +44,7 @@ export function resolveAsVector(a: RNodeWithParent, env: REnvironmentInformation
 
 
 		if(arg.value.type === RType.Symbol) {
-			const value = resolveValueOfVariable(arg.lexeme, env, map);
+			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, full: true });
 			if(isTop(value)) {
 				return Top;
 			}

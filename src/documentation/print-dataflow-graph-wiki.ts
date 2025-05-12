@@ -26,9 +26,8 @@ import { recoverContent , recoverName } from '../r-bridge/lang-4.x/ast/model/pro
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
-	resolveByName, resolveIdToValue,
+	resolveByName,
 	resolvesToBuiltInConstant,
-	resolveValueOfVariable
 } from '../dataflow/environments/resolve-by-name';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
@@ -42,6 +41,7 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -1057,7 +1057,7 @@ Depending on what you are interested in, there exists a plethora of functions an
 * The **[Query API](${FlowrWikiBaseRef}/Query%20API)** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **[Search API](${FlowrWikiBaseRef}/Search%20API)** allows you to search for specific vertices or edges in the dataflow graph or the original program
 * ${shortLink(recoverName.name, vertexType.info)} and ${shortLink(recoverContent.name, vertexType.info)} to get the name or content of a vertex in the dataflow graph
-* ${shortLink(resolveValueOfVariable.name, vertexType.info)} and ${shortLink(resolveIdToValue.name, vertexType.info)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
+* ${shortLink(resolveIdToValue.name, vertexType.info)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${shortLink(edgeIncludesType.name, vertexType.info)} to check if an edge includes a specific type and ${shortLink(splitEdgeTypes.name, vertexType.info)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
 * ${shortLink(getValueOfArgument.name, vertexType.info)} to get the (syntactical) value of an argument in a function call 
 * ${shortLink(getOriginInDfg.name, vertexType.info)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
@@ -1069,8 +1069,8 @@ ${section('Resolving Values', 3, 'dfg-resolving-values')}
 FlowR supports a [configurable](${FlowrWikiBaseRef}/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](${FlowrWikiBaseRef}/Query-API#resolve-value-query) and backed by two important functions:
 
-${shortLink(resolveValueOfVariable.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
-value resolution, while ${shortLink(resolveIdToValue.name, vertexType.info)} provides a more general, but potentially less precise resolution independent of the current state.
+${shortLink(resolveIdToValue.name, vertexType.info)} provides an environment-sensitive (see ${shortLink('REnvironmentInformation', vertexType.info)})
+value resolution depending on if the environment is provided.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
 

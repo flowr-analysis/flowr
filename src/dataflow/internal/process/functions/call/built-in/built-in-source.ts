@@ -31,7 +31,7 @@ import path from 'path';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 let sourceProvider = requestProviderFromFile();
 
@@ -175,7 +175,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveValueOfVariable(sourceFileArgument.value?.lexeme, data.environment, data.completeAst.idMap));
+		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 

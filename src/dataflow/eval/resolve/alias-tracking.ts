@@ -6,7 +6,7 @@ import { recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { envFingerprint } from '../../../slicing/static/fingerprint';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
-import { assertUnreachable, guard } from '../../../util/assert';
+import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
 import type { REnvironmentInformation } from '../../environments/environment';
 import { initializeCleanEnvironments } from '../../environments/environment';
@@ -111,7 +111,51 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	return [...definitions];
 }
 
-/** Please use {@link resolveValueOfVariable} */
+/**
+ * Evaluates a node based on the value resolve
+ *
+ * @param id          - The node id or node to resolve
+ * @param environment - The current environment used for name resolution
+ * @param graph       - The graph to resolve in
+ * @param idMap       - The id map to resolve the node if given as an id
+ */
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full } : ResolveInfo): ResolveResult {
+	if(id === undefined) {
+		return Top;
+	}
+	
+	idMap ??= graph?.idMap;
+	const node = typeof id === 'object' ? id : idMap?.get(id);
+	if(node === undefined) {
+		return Top;
+	}
+
+	if(full === undefined) {
+		full = true;
+	}
+
+	switch(node.type) {
+		case RType.Argument:
+		case RType.Symbol:
+			if(environment) {
+				return full ? trackAliasInEnvironments(node.lexeme, environment, idMap) : Top;
+			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
+				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
+			} else {
+				return Top;
+			}
+		case RType.FunctionCall:
+			return setFrom(resolveNode(node, environment, idMap));
+		case RType.String:
+		case RType.Number:
+		case RType.Logical:
+			return setFrom(valueFromRNode(node));
+		default:
+			return Top;
+	}
+}
+
+/** Please use {@link resolveIdToValue} */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
@@ -212,6 +256,7 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return isNestedInLoop(parentNode, ast);
 }
 
+/** Please use {@link resolveIdToValue} */
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
@@ -275,24 +320,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, idMap?: As
 	}
 	return setFrom(...values);
 }
-/**
- * Convenience function using the variable resolver as specified within the configuration file
- * In the future we may want to have this set once at the start of the analysis
- *
- * @see {@link resolveIdToValue} - for a more general approach which "evaluates" a node based on value resolve
- */
-export function resolveValueOfVariable(identifier: Identifier | undefined, environment: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
-	const resolve = getConfig().solver.variables;
 
-	switch(resolve) {
-		case VariableResolve.Alias: return trackAliasInEnvironments(identifier, environment, idMap);
-		case VariableResolve.Builtin: return resolveToConstants(identifier, environment);
-		case VariableResolve.Disabled: return Bottom;
-		default: assertUnreachable(resolve);
-	}
-}
-
-/** Please use {@link resolveValueOfVariable} */
+/** Please use {@link resolveIdToValue} */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {
 	if(name === undefined) {
 		return Top;
@@ -309,35 +338,3 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 }
 
 
-/**
- * Generalized {@link resolveValueOfVariable} function which evaluates a node based on the value resolve
- *
- * @param id          - The node id or node to resolve
- * @param environment - The current environment used for name resolution
- * @param graph       - The graph to resolve in
- * @param idMap       - The id map to resolve the node if given as an id
- * @param full        - Whether to track variables
- */
-export function resolveIdToValue(id: NodeId | RNodeWithParent, { environment, graph, idMap, full } : ResolveInfo): ResolveResult {
-	idMap ??= graph?.idMap;
-	const node = typeof id === 'object' ? id : idMap?.get(id);
-	if(node === undefined) {
-		return Top;
-	}
-	switch(node.type) {
-		case RType.Symbol:
-			if(environment) {
-				return full ? resolveValueOfVariable(node.lexeme, environment, idMap) : Top;
-			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
-			} else {
-				return Top;
-			}
-		case RType.String:
-		case RType.Number:
-		case RType.Logical:
-			return setFrom(valueFromRNode(node));
-		default:
-			return Top;
-	}
-}

@@ -17,7 +17,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -52,7 +52,7 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveValueOfVariable(condArg?.lexeme, data.environment, data.completeAst.idMap);
+	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 

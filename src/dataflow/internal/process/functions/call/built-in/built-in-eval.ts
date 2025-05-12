@@ -25,7 +25,7 @@ import { isUndefined } from '../../../../../../util/assert';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { collectStrings } from '../../../../../eval/values/string/string-constants';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveValueOfVariable } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
 
 export function processEvalCall<OtherInfo>(
@@ -113,7 +113,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveValueOfVariable(arg.value.content, env, idMap));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
@@ -137,7 +137,7 @@ function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmen
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveValueOfVariable(val.content, env, idMap));
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap }));
 		if(resolved) {
 			return collectStrings(resolved.elements);
 		}

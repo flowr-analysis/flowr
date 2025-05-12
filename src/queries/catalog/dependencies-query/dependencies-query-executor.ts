@@ -34,6 +34,7 @@ import { CallTargets } from '../call-context-query/identify-link-to-last-call-re
 import { isValue } from '../../../dataflow/eval/values/r-value';
 import { valueSetGuard } from '../../../dataflow/eval/values/general';
 import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
+import { collectStrings } from '../../../dataflow/eval/values/string/string-constants';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -248,8 +249,8 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			full = false;
 		}
 	}
-
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }));
+	full = true;
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {
@@ -261,6 +262,13 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 				values.push(value.value.str);
 			} else if(value.type === 'logical' && isValue(value.value)) {
 				values.push(value.value.valueOf() ? 'TRUE' : 'FALSE');
+			} else if(value.type === 'vector' && isValue(value.elements)) {
+				const elements = collectStrings(value.elements);
+				if(elements === undefined) {
+					return undefined;
+				}
+				values.push(...elements);
+
 			} else {
 				return undefined;
 			}

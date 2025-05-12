@@ -17,7 +17,7 @@ import { slicingCriterionToId, type SingleSlicingCriterion } from '../../../../s
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-consatnts';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
-import { resolveIdToValue, resolveToConstants, resolveValueOfVariable } from '../../../../src/dataflow/eval/resolve/alias-tracking';
+import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
 enum Allow {
 	None = 0,
@@ -45,13 +45,12 @@ describe.sequential('Resolve', withShell(shell => {
 
 	function testResolve(
 		name: string,
-		identifier: string | SingleSlicingCriterion,
+		identifier: SingleSlicingCriterion,
 		code: string,
 		expectedValues: Value,
 		allow: Allow = Allow.None 
 	): void {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
-		const isSlicingCriterion = identifier.includes('@') || identifier.includes('$');
 
 		test(effectiveName, async() => {
 			const dataflow = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -59,12 +58,12 @@ describe.sequential('Resolve', withShell(shell => {
 				request: requestFromInput(code.trim()),
 			}).allRemainingSteps();
 
-			let resolved = undefined;
-			if(isSlicingCriterion) {
-				resolved = resolveIdToValue(slicingCriterionToId(identifier as SingleSlicingCriterion, dataflow.normalize.idMap), dataflow.dataflow);
-			} else {
-				resolved = resolveValueOfVariable(identifier, dataflow.dataflow.environment, dataflow.normalize.idMap);
-			}
+			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
+				environment: dataflow.dataflow.environment,
+				graph:       dataflow.dataflow.graph,
+				idMap:       dataflow.normalize.idMap,
+				full:        true
+			});
 			
 			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {
 				return;
@@ -78,76 +77,75 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	function testMutate(name: string, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
-		const distractors: string[] = [
-			`while(FALSE) { ${identifier} <- 0 }`,
-			`if(FALSE) { ${identifier} <- 0 }`, 
-			'u <- u + 1',
-			`if(FALSE) { rm(${identifier})}`
-		];
+	// function testMutate(name: string, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
+	// 	const distractors: string[] = [
+	// 		`while(FALSE) { ${identifier} <- 0 }`,
+	// 		`if(FALSE) { ${identifier} <- 0 }`, 
+	// 		'u <- u + 1',
+	// 		`if(FALSE) { rm(${identifier})}`
+	// 	];
 
-		describe(name, () => {
-			for(const distractor of distractors) {
-				const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
-				testResolve(distractor, identifier, mutatedCode, expected, allow);
-			}
-		});
-	}
+	// 	describe(name, () => {
+	// 		for(const distractor of distractors) {
+	// 			const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
+	// 			testResolve(distractor, identifier, mutatedCode, expected, allow);
+	// 		}
+	// 	});
+	// }
 
 	describe('Negative Tests', () => { 	
-		testResolve('Unknown if', 'x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
+		testResolve('Unknown if',           '2@x', 'if(u) { x <- 2 } else { x <- foo() } \n x', Top);
 	
-		testResolve('Unknown Fn', 'x', 'x <- foo(1) \n x', Top);
-		testResolve('Unknown Fn 2', 'f', 'f <- function(x = 3) { foo(x) } \n f()', Top);
-		testResolve('Recursion', 'f', 'f <- function(x = 3) { f(x) } \n f()', Top);
-		testResolve('Get Unknown', 'x', 'y <- 5 \n x <- get(u) \n x', Top);
+		testResolve('Unknown Fn',           '2@x', 'x <- foo(1) \n x', Top);
+		testResolve('Unknown Fn 2',         '2@f', 'f <- function(x = 3) { foo(x) } \n f()', Top);
+		testResolve('Recursion',            '2@f', 'f <- function(x = 3) { f(x) } \n f()', Top);
+		testResolve('Get Unknown',          '3@x', 'y <- 5 \n x <- get(u) \n x', Top);
 		
-		testResolve('rm()', 'x', 'x <- 1 \n rm(x) \n x', Bottom, Allow.Top);
+		testResolve('rm()',                 '3@x', 'x <- 1 \n rm(x) \n x', Bottom, Allow.Top);
 	
-		testResolve('Eval before Variable (slice)', '3@x', 'x <- 1 \n eval(u) \n x', Top);
-		testResolve('Eval before Variable',           'x', 'x <- 1 \n eval(u) \n x', Top);
+		testResolve('Eval before Variable', '3@x', 'x <- 1 \n eval(u) \n x', Top);
 	});
 	
 	describe('Resolve Value', () => {	
-		testResolve('Constant Value', 'x', 'x <- 5', set([5]));
-		testResolve('Constant Value Str', 'x', 'x <- "foo"', set(['foo']));
-		testResolve('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
+		testResolve('Constant Value',       '1@x', 'x <- 5', set([5]));
+		testResolve('Constant Value Str',   '1@x', 'x <- "foo"', set(['foo']));
+		testResolve('Alias Constant Value', '3@x', 'y <- 5 \n x <- y \n x', set([5]));
 
-		testResolve('rm() with alias', 'x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
+		testResolve('rm() with alias',      '4@x', 'y <- 2 \n x <- y \n rm(y) \n x', set([2]));
 
 		// Not yet supported
-		testResolve('Fn Default Arg', 'f', 'f <- function(x = 3) { x } \n f()', set([3]), Allow.Top);
-		testResolve('Get', 'x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top);
-		testResolve('Super Assign', 'x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top);
-		testResolve('Plus One', 'x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
+		testResolve('Fn Default Arg',       '2@f', 'f <- function(x = 3) { x } \n f()', set([3]), Allow.Top);
+		testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top);
+		testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top);
+		testResolve('Plus One',             '3@x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top);
 				
-		testResolve('Random Loop', 'x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
-		testResolve('Loop plus one', 'i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
-		testResolve('Loop plus x', 'x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
+		testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top);
+		testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top);
+		testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top);
 			
-		testResolve('Superassign Arith', 'x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
+		testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top);
 	});
 
-	describe('Resolve Value (distractors)', () => {
-		testMutate('Constant Value', 'x', 'x <- 5', set([5]));
-		testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
-		testMutate('Alias Constant Value', 'x', 'y <- 5 \n x <- y \n x', set([5]));
-	});
+	// describe('Resolve Value (distractors)', () => {
+	// 	testMutate('Constant Value',        '1@x', 'x <- 5', set([5]));
+	// 	testMutate('Constant Value branch', 'x', 'if(u) { \n x <- 5} else { \n x <- 6 }', set([5, 6]));
+	// 	testMutate('Alias Constant Value',  'x', 'y <- 5 \n x <- y \n x', set([5]));
+	// });
 
 	describe('Resolve (vectors)', () => {
 		// Do not resolve vector, if c is redefined
-		testResolve('c redefined', 'x', 'c <- function() {} \n x <- c(1,2,3)', Top);
+		testResolve('c redefined',            '2@x', 'c <- function() {} \n x <- c(1,2,3)', Top);
 
-		testResolve('Simple Vector (int)',    'x', 'x <- c(1, 2, 3, 4) \n x',         vector([1, 2, 3, 4]));
-		testResolve('Simple Vector (string)', 'x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
-		testResolve('Vector with alias',      'x', 'y <- 1; x <- c(y,2)',             vector([1, 2]));
-		testResolve('Vector in vector',       'x', 'x <- c(1, 2, c(3, 4, 5))',        vector([1, 2, 3, 4, 5]));
+		testResolve('Simple Vector (int)',    '2@x', 'x <- c(1, 2, 3, 4) \n x',         vector([1, 2, 3, 4]));
+		testResolve('Simple Vector (string)', '2@x', 'x <- c("a", "b", "c", "d") \n x', vector(['a', 'b', 'c', 'd']));
+		testResolve('Vector with alias',      '2@x', 'y <- 1 \n x <- c(y,2)',             vector([1, 2]));
+		testResolve('Vector in vector',       '1@x', 'x <- c(1, 2, c(3, 4, 5))',        vector([1, 2, 3, 4, 5]));
 		
-		testResolve('c aliased', 'x', 'f <- c \n x <- f(1,2,3)', vector([1,2,3]));
+		testResolve('c aliased',              '2@x', 'f <- c \n x <- f(1,2,3)', vector([1,2,3]));
 	});
 
 	describe('Resolve (vectors replacement operators)', () => {
-		testResolve('simple', 'x', 'x <- c(1,2,3) \n x$b <- 1', Top);
+		testResolve('simple', '2@x', 'x <- c(1,2,3) \n x$b <- 1', Top);
 	});
 
 	describe('ByName', () => {

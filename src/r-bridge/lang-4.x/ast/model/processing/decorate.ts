@@ -21,12 +21,11 @@ import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
-import type { RFunctionArgument, RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call';
+import type { RFunctionCall, RNamedFunctionCall, RUnnamedFunctionCall } from '../nodes/r-function-call';
 import { EmptyArgument } from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
-import type { RArgument, RUnnamedArgument } from '../nodes/r-argument';
-import type { RSymbol } from '../nodes/r-symbol';
+import type { RArgument } from '../nodes/r-argument';
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -474,8 +473,8 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 			...(node.info.additionalTokens !== undefined ? { additionalTokens: node.info.additionalTokens } : {}),
 			...(node.info.file !== undefined ? { file: node.info.file } : {})
 		};
-		const info = infoMapper(node, down);
-		return { ...sourceInfo, ...info };
+		const mappedInfo = infoMapper(node, down);
+		return { ...sourceInfo, ...mappedInfo };
 	};
 
 	function updateInfo(n: RNode<OldInfo>, down: Down): RNode<NewInfo> {
@@ -517,4 +516,20 @@ export function mapAstInfo<OldInfo, Down, NewInfo>(ast: RNode<OldInfo>, down: Do
 			foldParameter:          (parameter, _name, _defaultValue, down) => updateInfo(parameter, down)
 		}
 	});
+}
+
+export function mapNormalizedAstInfo<OldInfo, Down, NewInfo>(normalizedAst: NormalizedAst<OldInfo>, down: Down, infoMapper: (node: RNode<OldInfo & ParentInformation>, down: Down) => NewInfo, downUpdater: (node: RNode<OldInfo>, down: Down) => Down = (_node, down) => down): NormalizedAst<NewInfo> {
+	const parentInfoPreservingMapper = (node: RNode<OldInfo & ParentInformation>, down: Down): NewInfo & ParentInformation => {
+		const parentInfo = {
+			id:      node.info.id,
+			parent:  node.info.parent,
+			role:    node.info.role,
+			nesting: node.info.nesting,
+			index:   node.info.index
+		};
+		const mappedInfo = infoMapper(node, down);
+		return { ...parentInfo, ...mappedInfo };
+	};
+	mapAstInfo(normalizedAst.ast, down, parentInfoPreservingMapper, downUpdater);
+	return normalizedAst as unknown as NormalizedAst<NewInfo>;
 }

@@ -121,6 +121,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 			assignRootId:  rootId
 		}
 	);
+
 	markAsOnlyBuiltIn(info.graph, functionName.info.id);
 	return info;
 }

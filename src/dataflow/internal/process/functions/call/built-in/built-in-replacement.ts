@@ -103,7 +103,7 @@ export function processReplacementFunction<OtherInfo>(
 	handleReplacementOperator({
 		operator: name.content, 
 		target:   firstArg?.lexeme,
-		env:      data.environment,
+		env:      res.environment,
 		id:       rootId
 	});
 

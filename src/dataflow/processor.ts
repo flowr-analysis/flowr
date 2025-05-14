@@ -42,7 +42,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly controlDependencies: ControlDependency[] | undefined
 	/**
-	 * The config
+	 * The flowr configuration used for environment seeding, and precision control
 	 */
 	readonly config:			           FlowrConfigOptions
 }

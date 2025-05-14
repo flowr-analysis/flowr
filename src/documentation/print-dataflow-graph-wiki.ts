@@ -16,17 +16,18 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getDocumentationForType , shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolderAsMermaid, printHierarchy, shortLink } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent , recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
-	resolveByName, resolveIdToValue,
+	resolveByName,
+	resolveIdToValue,
 	resolvesToBuiltInConstant,
 	resolveValueOfVariable
 } from '../dataflow/environments/resolve-by-name';
@@ -42,6 +43,7 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { defaultConfigOptions } from '../config';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -816,7 +818,7 @@ async function dummyDataflow(): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_P
 	const result = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		parser:  shell,
 		request: requestFromInput('x <- 1\nx + 1')
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 	shell.close();
 	return result;
 }
@@ -1084,7 +1086,7 @@ Retrieving the _types_ of the edge from the print call to its argument returns:
 ${await(async() => {
 			const dfg =  await createDataflowPipeline(shell, {
 				request: requestFromInput('print(x)')
-			}).allRemainingSteps();		
+			}, defaultConfigOptions).allRemainingSteps();		
 			const edge = dfg.dataflow.graph.outgoingEdges(3);
 			if(edge) {
 				const wanted = edge.get(1);

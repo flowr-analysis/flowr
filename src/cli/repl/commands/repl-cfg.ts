@@ -44,8 +44,8 @@ export const controlflowCommand: ReplCommand = {
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		await produceAndPrintCfg(shell, remainingLine, output, [], cfgToMermaid, config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		await produceAndPrintCfg(parser, remainingLine, output, [], cfgToMermaid, config);
 	}
 };
 
@@ -55,8 +55,8 @@ export const controlflowStarCommand: ReplCommand = {
 	usageExample: ':controlflow*',
 	aliases:      [ 'cfg*', 'cf*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		await produceAndPrintCfg(shell, remainingLine, output, [], cfgToMermaidUrl, config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		await produceAndPrintCfg(parser, remainingLine, output, [], cfgToMermaidUrl, config);
 	}
 };
 
@@ -66,8 +66,8 @@ export const controlflowBBCommand: ReplCommand = {
 	usageExample: ':controlflowbb',
 	aliases:      [ 'cfgb', 'cfb' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		await produceAndPrintCfg(shell, remainingLine, output, ['to-basic-blocks'], cfgToMermaid, config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		await produceAndPrintCfg(parser, remainingLine, output, ['to-basic-blocks'], cfgToMermaid, config);
 	}
 };
 
@@ -77,7 +77,7 @@ export const controlflowBBStarCommand: ReplCommand = {
 	usageExample: ':controlflowbb*',
 	aliases:      [ 'cfgb*', 'cfb*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		await produceAndPrintCfg(shell, remainingLine, output, ['to-basic-blocks' ], cfgToMermaidUrl, config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		await produceAndPrintCfg(parser, remainingLine, output, ['to-basic-blocks' ], cfgToMermaidUrl, config);
 	}
 };

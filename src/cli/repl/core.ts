@@ -87,7 +87,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
 		if(processor) {
 			try {
-				await processor.fn(output, parser, statement.slice(command.length + 2).trim(), allowRSessionAccess, config);
+				await processor.fn({ output, parser, remainingLine: statement.slice(command.length + 2).trim(), allowRSessionAccess, config });
 			} catch(e){
 				output.stdout(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
 				if(log.settings.minLevel < LogLevel.Fatal) {
@@ -98,7 +98,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, parse
 			output.stdout(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 		}
 	} else {
-		await tryExecuteRShellCommand(output, parser, statement, allowRSessionAccess, config);
+		await tryExecuteRShellCommand({ output, parser, remainingLine: statement, allowRSessionAccess, config });
 	}
 }
 

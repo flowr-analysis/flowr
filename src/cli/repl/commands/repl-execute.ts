@@ -1,14 +1,12 @@
-import type { ReplCommand, ReplOutput } from './repl-main';
+import type { ReplCommand, ReplCommandInformation, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
 import { RShell } from '../../../r-bridge/shell';
-import type { KnownParser } from '../../../r-bridge/parser';
-import type { FlowrConfigOptions } from '../../../config';
 
-export async function tryExecuteRShellCommand(output: ReplOutput, parser: KnownParser, statement: string, allowRSessionAccess: boolean, _config: FlowrConfigOptions) {
+export async function tryExecuteRShellCommand({ output, parser, allowRSessionAccess, remainingLine }: ReplCommandInformation) {
 	if(!allowRSessionAccess){
 		output.stderr(`${output.formatter.format('You are not allowed to execute arbitrary R code.', { style: FontStyles.Bold, color: Colors.Red, effect: ColorEffect.Foreground })}\nIf you want to do so, please restart flowR with the ${output.formatter.format('--r-session-access', { style: FontStyles.Bold })} flag. Please be careful of the security implications of this action.`);
 	} else if(parser instanceof RShell) {
-		await executeRShellCommand(output, parser, statement);
+		await executeRShellCommand(output, parser, remainingLine);
 	} else {
 		output.stderr(`Executing arbitrary R code is only possible when using the r-shell engine as the default engine. Enable it using the configuration file or the ${output.formatter.format('--default-engine r-shell', { style: FontStyles.Bold })} command line option.`);
 	}

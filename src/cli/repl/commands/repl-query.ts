@@ -78,7 +78,7 @@ export const queryCommand: ReplCommand = {
 	usageExample: ':query "<query>" <code>',
 	aliases:      [],
 	script:       false,
-	fn:           async(output, parser, remainingLine, _, config) => {
+	fn:           async({ output, parser, remainingLine, config }) => {
 		const totalStart = Date.now();
 		const results = await processQueryArgs(remainingLine, parser, output, config);
 		const totalEnd = Date.now();
@@ -93,8 +93,8 @@ export const queryStarCommand: ReplCommand = {
 	usageExample: ':query* <query> <code>',
 	aliases:      [ ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const results = await processQueryArgs(remainingLine, shell, output, config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const results = await processQueryArgs(remainingLine, parser, output, config);
 		if(results) {
 			output.stdout(JSON.stringify(results.query, jsonReplacer));
 		}

@@ -159,7 +159,7 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(output, parser, remainingLine, _, config) => {
+	fn:           async({ output, parser, remainingLine, config }) => {
 		const result = await createParsePipeline(parser, {
 			request: requestFromInput(removeRQuotes(remainingLine.trim()))
 		}, config).allRemainingSteps();

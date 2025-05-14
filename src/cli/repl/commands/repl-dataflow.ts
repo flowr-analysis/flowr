@@ -28,8 +28,8 @@ export const dataflowCommand: ReplCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await replGetDataflow(config, shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
@@ -45,8 +45,8 @@ export const dataflowStarCommand: ReplCommand = {
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await replGetDataflow(config, shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
 		output.stdout(mermaid);
 		try {
@@ -63,8 +63,8 @@ export const dataflowSimplifiedCommand: ReplCommand = {
 	usageExample: ':dataflowsimple',
 	aliases:      [ 'ds', 'dfs' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await replGetDataflow(config, shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
 		try {
@@ -80,8 +80,8 @@ export const dataflowSimpleStarCommand: ReplCommand = {
 	usageExample: ':dataflowsimple*',
 	aliases:      [ 'ds*', 'dfs*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await replGetDataflow(config, shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false, undefined, true);
 		output.stdout(mermaid);
 		try {

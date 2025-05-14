@@ -25,8 +25,8 @@ export const normalizeCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await normalize(shell, handleString(remainingLine), config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await normalize(parser, handleString(remainingLine), config);
 		const mermaid = normalizedAstToMermaid(result.normalize.ast);
 		output.stdout(mermaid);
 		try {
@@ -42,8 +42,8 @@ export const normalizeStarCommand: ReplCommand = {
 	usageExample: ':normalize*',
 	aliases:      [ 'n*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine, _, config) => {
-		const result = await normalize(shell, handleString(remainingLine), config);
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await normalize(parser, handleString(remainingLine), config);
 		const mermaid = normalizedAstToMermaidUrl(result.normalize.ast);
 		output.stdout(mermaid);
 		try {

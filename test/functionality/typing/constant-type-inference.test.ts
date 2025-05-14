@@ -1,6 +1,7 @@
 import { describe } from 'vitest';
 import { RDataTypeTag } from '../../../src/typing/types';
-import { assertInferredType } from '../_helper/typing/assert-inferred-type';
+import { assertInferredType, assertInferredTypes } from '../_helper/typing/assert-inferred-type';
+import { Q } from '../../../src/search/flowr-search-builder';
 
 describe('Infer types for currently supported R expressions', () => {
 	describe.each([
@@ -13,8 +14,8 @@ describe('Infer types for currently supported R expressions', () => {
 	])('Infer $expectedType for $description', ({ input, expectedType }) => assertInferredType(input, expectedType));
 
 	describe('Infer no type information for currently unsupported R expressions', () => {
-		assertInferredType('1 + 2', { tag: RDataTypeTag.Any });
-		assertInferredType('x <- 42', { tag: RDataTypeTag.Any });
+		assertInferredType('1 + 2',                  { tag: RDataTypeTag.Any });
+		assertInferredTypes('x <- 42',               { query: Q.var('x').build(), expectedType: { tag: RDataTypeTag.Any } });
 		assertInferredType('print("Hello, world!")', { tag: RDataTypeTag.Any });
 	});
 });

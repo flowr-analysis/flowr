@@ -16,8 +16,8 @@ import type { SummarizedMeasurement } from '../../../../util/summarizer';
 import { summarizedMeasurement2CsvHeader , summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer';
 import type { MergeableRecord } from '../../../../util/objects';
 import { readLineByLineSync } from '../../../../util/files';
-import { date2string } from '../../../../util/time';
-import { array2bag } from '../../../../util/arrays';
+import { date2string } from '../../../../util/text/time';
+import { array2bag } from '../../../../util/collections/arrays';
 import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 interface FunctionDefinitionSummaryInformation<Measurement> {

@@ -1,7 +1,7 @@
 import type { SourceRange } from '../../util/range';
 import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
-import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 

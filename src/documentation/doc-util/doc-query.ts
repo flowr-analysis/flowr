@@ -5,13 +5,13 @@ import { PipelineExecutor } from '../../core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { jsonReplacer } from '../../util/json';
-import { markdownFormatter } from '../../util/ansi';
+import { markdownFormatter } from '../../util/text/ansi';
 import { FlowrWikiBaseRef, getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import type { VirtualCompoundConstraint } from '../../queries/virtual-query/compound-query';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 
 export interface ShowQueryOptions {

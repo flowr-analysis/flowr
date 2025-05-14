@@ -19,14 +19,14 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
-import { cartesianProduct } from '../../../../../../util/arrays';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { collectStrings } from '../../../../../eval/values/string/string-constants';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { cartesianProduct } from '../../../../../../util/collections/arrays';
 
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -113,7 +113,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		if(arg.value?.type === RType.String) {
 			return [arg.value.content.str];
 		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveValueOfVariable(arg.value.content, env, idMap));
+			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
@@ -137,7 +137,7 @@ function getAsString(val: RNode<ParentInformation> | undefined, env: REnvironmen
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveValueOfVariable(val.content, env, idMap));
+		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap }));
 		if(resolved) {
 			return collectStrings(resolved.elements);
 		}

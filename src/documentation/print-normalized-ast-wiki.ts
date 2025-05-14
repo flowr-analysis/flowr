@@ -8,7 +8,7 @@ import { mermaidHide, printHierarchy, getTypesFromFolderAsMermaid, shortLink } f
 import path from 'path';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import { printAsMs } from '../util/time';
+import { printAsMs } from '../util/text/time';
 import { block, details } from './doc-util/doc-structure';
 import { PipelineExecutor } from '../core/pipeline-executor';
 import { requestFromInput } from '../r-bridge/retriever';

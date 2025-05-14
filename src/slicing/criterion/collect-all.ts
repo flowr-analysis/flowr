@@ -7,7 +7,7 @@ import type { MergeableRecord } from '../../util/objects';
 
 import type { SingleSlicingCriterion, SlicingCriteria } from './parse';
 import { guard } from '../../util/assert';
-import { getUniqueCombinationsOfSize } from '../../util/arrays';
+import { getUniqueCombinationsOfSize } from '../../util/collections/arrays';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';

@@ -20,7 +20,7 @@ import type { DataflowClusterQuery } from './catalog/cluster-query/cluster-query
 import { ClusterQueryDefinition } from './catalog/cluster-query/cluster-query-format';
 import type { DependenciesQuery } from './catalog/dependencies-query/dependencies-query-format';
 import { DependenciesQueryDefinition } from './catalog/dependencies-query/dependencies-query-format';
-import type { OutputFormatter } from '../util/ansi';
+import type { OutputFormatter } from '../util/text/ansi';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import Joi from 'joi';

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../summarizer';
-import { date2string } from '../../../util/time';
+import { date2string } from '../../../util/text/time';
 import type {
 	CommonSummarizerConfiguration } from '../../../util/summarizer';
 import {
@@ -9,7 +9,7 @@ import {
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
 } from '../../../util/summarizer';
-import { arraySum } from '../../../util/arrays';
+import { arraySum } from '../../../util/collections/arrays';
 import { readLineByLineSync } from '../../../util/files';
 import { guard } from '../../../util/assert';
 import type { FeatureStatistics, FeatureStatisticsWithMeta } from '../../features/feature';

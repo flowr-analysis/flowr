@@ -5,9 +5,9 @@ import { FileMigrator } from './first-phase/process';
 import { postProcessFeatureFolder } from './second-phase/process';
 import type { CommonSummarizerConfiguration } from '../../util/summarizer';
 import { Summarizer } from '../../util/summarizer';
-import { longestCommonPrefix } from '../../util/strings';
+import { longestCommonPrefix } from '../../util/text/strings';
 import { getAllFiles } from '../../util/files';
-import { date2string } from '../../util/time';
+import { date2string } from '../../util/text/time';
 import type { FeatureSelection } from '../features/feature';
 import { log } from '../../util/log';
 

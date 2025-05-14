@@ -3,7 +3,7 @@ import { PipelineStepStage } from '../pipeline-step';
 import { InvalidPipelineError } from './invalid-pipeline-error';
 import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';
-import { partitionArray } from '../../../util/arrays';
+import { partitionArray } from '../../../util/collections/arrays';
 
 /**
  * Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}.
@@ -143,4 +143,3 @@ function initializeSteps(steps: readonly IPipelineStep[], stepMap: Map<PipelineS
 		}
 	}
 }
-

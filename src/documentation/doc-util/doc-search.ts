@@ -7,7 +7,7 @@ import { getFilePathMd } from './doc-files';
 import type { SupportedVirtualQueryTypes } from '../../queries/virtual-query/virtual-queries';
 import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock } from './doc-code';
-import { printAsMs } from '../../util/time';
+import { printAsMs } from '../../util/text/time';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { runSearch } from '../../search/flowr-search-executor';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';

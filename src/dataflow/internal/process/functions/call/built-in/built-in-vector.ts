@@ -31,7 +31,7 @@ export function processVector<OtherInfo>(
 		return fnCall.information;
 	}
 
-	const vectorArgs: ContainerIndex[] = [];
+	let vectorArgs: ContainerIndex[] = [];
 	let argIndex = 1;
 	for(const arg of args) {
 		// Skip invalid argument types
@@ -61,7 +61,7 @@ export function processVector<OtherInfo>(
 						nodeId:     index.nodeId,
 					};
 				}) ?? [];
-			vectorArgs.push(...flattenedIndices);
+			vectorArgs = vectorArgs.concat(flattenedIndices);
 		}
 	}
 

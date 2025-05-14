@@ -12,7 +12,7 @@ import {
 	tocForQueryType
 } from './doc-util/doc-query';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { executeCallContextQueries } from '../queries/catalog/call-context-query/call-context-query-executor';
 import { executeCompoundQueries } from '../queries/virtual-query/compound-query';
 import { autoGenHeader } from './doc-util/doc-auto-gen';

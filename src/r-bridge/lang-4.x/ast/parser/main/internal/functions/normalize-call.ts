@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
-import { splitArrayOn } from '../../../../../../../util/arrays';
+import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
 import type { SourceRange } from '../../../../../../../util/range';

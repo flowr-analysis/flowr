@@ -5,7 +5,7 @@
  * @module
  */
 
-import { setMinus } from './set';
+import { setMinus } from './collections/set';
 import type { MergeableRecord } from './objects';
 
 /**

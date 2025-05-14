@@ -7,7 +7,7 @@ import {
 	rangeFrom, rangesOverlap,
 	rangeStartsCompletelyBefore
 } from '../../../src/util/range';
-import { allPermutations } from '../../../src/util/arrays';
+import { allPermutations } from '../../../src/util/collections/arrays';
 import { formatRange } from '../../../src/util/mermaid/dfg';
 import { describe, assert, test } from 'vitest';
 

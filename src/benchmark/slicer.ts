@@ -13,7 +13,7 @@ import type { SliceResult } from '../slicing/static/slicer-types';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
-import { withoutWhitespace } from '../util/strings';
+import { withoutWhitespace } from '../util/text/strings';
 import type {
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
@@ -45,7 +45,7 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
 import type { ContainerIndicesCollection } from '../dataflow/graph/vertex';
 import { isParentContainerIndex } from '../dataflow/graph/vertex';
-import { equidistantSampling } from '../util/arrays';
+import { equidistantSampling } from '../util/collections/arrays';
 
 /**
  * The logger to be used for benchmarking as a global object.

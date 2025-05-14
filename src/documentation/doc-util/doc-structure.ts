@@ -1,4 +1,5 @@
 import { prefixLines } from './doc-general';
+import { escapeId } from '../../util/mermaid/mermaid';
 
 export interface DetailsOptions {
     readonly color?:       string;
@@ -27,3 +28,7 @@ ${prefixLines(content, '> ')}
 `;
 }
 
+
+export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor = escapeId(title)): string {
+	return `<h${depth} id="${anchor}">${title}</h${depth}>`;
+}

@@ -127,7 +127,7 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	const out = [];
+	let out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
 
 	let expressionCounter = 0;
@@ -157,7 +157,7 @@ export function processExpressionList<OtherInfo>(
 
 		addNonDefaultExitPoints(exitPoints, processed.exitPoints);
 
-		out.push(...processed.out);
+		out = out.concat(processed.out);
 
 		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
 

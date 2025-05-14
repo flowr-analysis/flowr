@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { guard } from '../../../../../../../util/assert';
 import { retrieveMetaStructure } from '../../normalize-meta';
-import { startAndEndsWith } from '../../../../../../../util/strings';
+import { startAndEndsWith } from '../../../../../../../util/text/strings';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { isSymbol, RType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';

@@ -127,16 +127,17 @@ export function identifyLinkToLastCallRelation(
 		if(node === from) {
 			return;
 		}
-		const vertex = graph.get(node);
+		const vertex = graph.get(node, true);
 		if(vertex === undefined || vertex[0].tag !== VertexType.FunctionCall) {
 			return;
 		}
-		if(callName.test(vertex[0].name)) {
-			const act = cascadeIf ? cascadeIf(vertex[0], from, graph) : CascadeAction.Stop;
+		const [fst] = vertex;
+		if(callName.test(fst.name)) {
+			const act = cascadeIf ? cascadeIf(fst, from, graph) : CascadeAction.Stop;
 			if(act === CascadeAction.Skip) {
 				return;
 			}
-			const tar = satisfiesCallTargets(vertex[0].id, graph, CallTargets.MustIncludeGlobal);
+			const tar = satisfiesCallTargets(fst.id, graph, CallTargets.MustIncludeGlobal);
 			if(tar === 'no') {
 				return act === CascadeAction.Stop;
 			}

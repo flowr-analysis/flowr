@@ -1,4 +1,4 @@
-import { DefaultMap } from '../../util/defaultmap';
+import { DefaultMap } from '../../util/collections/defaultmap';
 import { guard } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -22,7 +22,6 @@ import { VertexType } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
 import type { BuiltIn } from '../environments/built-in';
 import { isBuiltIn } from '../environments/built-in';
-import { slicerLogger } from '../../slicing/static/static-slicer';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 
@@ -298,7 +297,6 @@ export function getAllLinkedFunctionDefinitions(
 
 		const currentInfo = dataflowGraph.get(currentId, true);
 		if(currentInfo === undefined) {
-			slicerLogger.trace('skipping unknown link');
 			continue;
 		}
 		visited.add(currentId);
@@ -308,7 +306,7 @@ export function getAllLinkedFunctionDefinitions(
 		const returnEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
-			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
+			potential = potential.concat(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
 			continue;
 		}
 

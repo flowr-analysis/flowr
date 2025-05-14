@@ -101,6 +101,8 @@ jobs:
           update_page wiki/"Control Flow Graph" wiki:cfg
           update_page wiki/"Linting and Testing" wiki:linting-and-testing
           update_page wiki/"Core" wiki:core
+          update_page wiki/"Onboarding" wiki:onboarding
+          update_page wiki/"FAQ" wiki:faq
           update_page README gen:readme
           
           # check for an update in the versions! (including the updated name information)

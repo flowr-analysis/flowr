@@ -16,9 +16,9 @@ import {
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
 } from '../../../../util/summarizer';
-import { date2string } from '../../../../util/time';
+import { date2string } from '../../../../util/text/time';
 import { readLineByLineSync } from '../../../../util/files';
-import { array2bag } from '../../../../util/arrays';
+import { array2bag } from '../../../../util/collections/arrays';
 import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 // values contains - and + values

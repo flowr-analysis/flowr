@@ -4,7 +4,7 @@ import { parseLog } from '../../../json/parser';
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import { expensiveTrace } from '../../../../../../../util/log';
-import { startAndEndsWith } from '../../../../../../../util/strings';
+import { startAndEndsWith } from '../../../../../../../util/text/strings';
 import type { RNode } from '../../../../model/model';
 import { RawRType, RType } from '../../../../model/type';
 import { OperatorsInRAst } from '../../../../model/operators';

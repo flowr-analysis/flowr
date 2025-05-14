@@ -9,7 +9,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
-import { startAndEndsWith } from '../../../../../src/util/strings';
+import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
@@ -132,6 +132,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 			'a[x] <- 5',  emptyGraph()
 				.use(1, 'x')
 				.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(4)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [5] } })
+				.reads(0, 3)
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [4, 3] })
 		);
@@ -142,6 +143,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				.call(6, '$<-', [argumentInCall(3), argumentInCall(4), argumentInCall(7)], { returns: [], reads: [4], onlyBuiltIn: true, link: { origin: [8] } })
 				.constant(4)
 				.defineVariable(0, 'a', { definedBy: [7, 3] })
+				.reads(0, 3)
 				.constant(1)
 				.constant(7)
 		);
@@ -347,6 +349,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.argument(3, 6)
 					.call(3, '[<-', [argumentInCall(0), argumentInCall(1), argumentInCall(6)], { returns: [0], reads: [1, builtInId('[<-')], onlyBuiltIn: true, link: { origin: [7] } })
 					.argument(3, 0)
+					.reads(0, 3)
 					.constant(5)
 					.defineVariable(4, 'x', { definedBy: [5, 6] })
 					.defineVariable(0, 'a', { definedBy: [6, 3] })

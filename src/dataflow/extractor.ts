@@ -17,7 +17,7 @@ import type { RParseRequest, RParseRequests } from '../r-bridge/retriever';
 import { initializeCleanEnvironments } from './environments/environment';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
-import { extractCFG } from '../control-flow/extract-cfg';
+import { extractSimpleCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import {
 	identifyLinkToLastCallRelation
@@ -73,7 +73,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 		if(typeof s !== 'object') {
 			continue;
 		}
-		cfg ??= extractCFG(ast).graph;
+		cfg ??= extractSimpleCfg(ast).graph;
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
 		const potentials = identifyLinkToLastCallRelation(s.id, cfg, graph, s.linkTo);
 		for(const pot of potentials) {
@@ -115,6 +115,8 @@ export function produceDataFlowGraph<OtherInfo>(
 		referenceChain:      [firstRequest],
 	};
 	let df = processDataflowFor<OtherInfo>(completeAst.ast, dfData);
+
+
 	df.graph.sourced.unshift(firstRequest.request === 'file' ? firstRequest.content : '<inline>');
 
 	if(multifile) {
@@ -126,6 +128,7 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
+
 
 	resolveLinkToSideEffects(completeAst, df.graph);
 	return df;

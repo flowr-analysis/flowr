@@ -6,7 +6,7 @@ import {
 	arraySum,
 	equidistantSampling,
 	cartesianProduct
-} from '../../../src/util/arrays';
+} from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 
 describe('Arrays', () => {

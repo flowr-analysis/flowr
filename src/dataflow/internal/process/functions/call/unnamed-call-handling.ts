@@ -52,14 +52,15 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		origin:      ['unnamed']
 	});
 
-	const inIds = remainingReadInArgs;
+	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	}
 	// push the called function to the ids:
-	inIds.push(...calledFunction.in, ...calledFunction.unknownReferences);
+
+	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {
 		unknownReferences: [],

@@ -11,7 +11,7 @@ import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
 import { getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { runSearch } from '../../../src/search/flowr-search-executor';
-import { arrayEqual } from '../../../src/util/arrays';
+import { arrayEqual } from '../../../src/util/collections/arrays';
 import {
 	type SingleSlicingCriterion,
 	slicingCriterionToId

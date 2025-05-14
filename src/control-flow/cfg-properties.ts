@@ -1,9 +1,12 @@
 import { CfgEdgeType, type ControlFlowGraph, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { setMinus } from '../util/set';
+import { setMinus } from '../util/collections/set';
 import { log } from '../util/log';
 import { visitCfgInOrder, visitCfgInReverseOrder } from './simple-visitor';
 
+/**
+ * The collection of properties that can be checked on a control flow graph.
+ */
 const CfgProperties = {
 	'single-entry-and-exit': checkSingleEntryAndExit,
 	'has-entry-and-exit':    hasEntryAndExit,

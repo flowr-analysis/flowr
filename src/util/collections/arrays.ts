@@ -1,4 +1,4 @@
-import { guard } from './assert';
+import { guard } from '../assert';
 import type { AnyArray, Tail } from 'ts-essentials';
 
 /**

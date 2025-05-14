@@ -12,7 +12,7 @@ import { getStatsForSingleFile } from './statistics-helper-core';
 import commandLineArgs from 'command-line-args';
 import { scripts } from '../common/scripts-info';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
-import { setFormatter, voidFormatter } from '../../util/ansi';
+import { setFormatter, voidFormatter } from '../../util/text/ansi';
 
 const testRegex = /[^/]*\/test/i;
 const exampleRegex = /[^/]*\/example/i;

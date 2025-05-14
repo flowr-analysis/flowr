@@ -1,7 +1,7 @@
 import type { IPipelineStep, PipelineStepName } from '../../../../src/core/steps/pipeline-step';
 import { expect } from 'chai';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse';
-import { allPermutations } from '../../../../src/util/arrays';
+import { allPermutations } from '../../../../src/util/collections/arrays';
 import { NORMALIZE } from '../../../../src/core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow';
 import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/00-slice';

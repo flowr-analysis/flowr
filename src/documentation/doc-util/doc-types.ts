@@ -412,6 +412,21 @@ export function printHierarchy({ program, info, root, collapseFromNesting = 1, i
 	}
 }
 
+interface FnInfo {
+	info:    TypeElementInSource[],
+	program: ts.Program
+}
+
+export function printCodeOfElement({ program, info }: FnInfo, name: string): string {
+	const node = info.find(e => e.name === name);
+	if(!node) {
+		console.error(`Could not find node ${name} when resolving function!`);
+		return '';
+	}
+	const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+	return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
+}
+
 function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[]): [string | undefined, string, TypeElementInSource]| undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {

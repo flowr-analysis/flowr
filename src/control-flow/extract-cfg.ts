@@ -441,7 +441,6 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 
 }
 
-
 function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
 	const graph = new ControlFlowGraph().merge(lhs.graph).merge(rhs.graph);
 	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], entryPoints: [binOp.info.id], exitPoints: [binOp.info.id + '-exit'] };

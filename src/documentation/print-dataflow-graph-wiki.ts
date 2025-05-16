@@ -95,7 +95,7 @@ async function explanation(
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 ### ${index}) ${name}
 
-Type: \`${type}\`
+Type: \`${type}\` (this is the numeric value of the bit-flag encountered when looking at the serialized vertex type)
 
 ${await subExplanation(shell, { name, description, code, expectedSubgraph })}
 

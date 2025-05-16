@@ -31,7 +31,6 @@ import {
 	resolvesToBuiltInConstant,
 	resolveValueOfVariable
 } from '../dataflow/environments/resolve-by-name';
-import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -44,6 +43,11 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { NewIssueUrl } from './doc-util/doc-issue';
+import {
+	UnnamedFunctionCallOrigin,
+	UnnamedFunctionCallPrefix
+} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -430,6 +434,21 @@ directly calling the return of another function call: \`foo()()\`.
 ${details('Example: Anonymous Function Call (given directly)', await printDfGraphForCode(shell, '(function() 1)()', { mark: new Set([6, '6->4']) }))}
 
 ${details('Example: Anonymous Function Call (given indirectly)', await printDfGraphForCode(shell, 'foo <- function() return(function() 3)\nfoo()()', { mark: new Set([12, '12->4']) }))}
+
+${block({
+	type:    'NOTE',
+	content: `Now you might be asking to yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
+
+Unnamed functions have an array of signatures which you can use to identify them. 
+But in short - the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
+Please be aware that unnamed functions still have a \`name\` property to give it a unique identifier that can be used for debugging and reference.
+This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
+
+To identify these calls please do not rely on the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST). An expression like \`1 + 1\` will be correctly
+identified as a syntactical binary operation. Yet, from a dataflow/semantic perspective this is equivalent to \`\` \`+\`(1, 1) \`\` (which is a named function call and marked as such in the dataflow graph).
+To know which function is called, please rely on the ${linkEdgeName(EdgeType.Calls)} edge.
+	`
+})}
 
 Another interesting case is a function with **side effects**, most prominently with the super-assignment \`<<-\`.
 In this case, you may encounter the ${linkEdgeName(EdgeType.SideEffectOnCall)} as exemplified below.

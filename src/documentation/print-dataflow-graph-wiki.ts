@@ -16,17 +16,18 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getDocumentationForType , shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolderAsMermaid, printHierarchy, shortLink } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent , recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
-	resolveByName, resolveIdToValue,
+	resolveByName,
+	resolveIdToValue,
 	resolvesToBuiltInConstant,
 	resolveValueOfVariable
 } from '../dataflow/environments/resolve-by-name';
@@ -689,11 +690,33 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 
 	edgeExplanations.set(EdgeType.Returns, [{
 		shell,
-		name:             'Returns Edge',
-		type:             EdgeType.Returns,
-		description:      'Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).',
+		name:        'Returns Edge',
+		type:        EdgeType.Returns,
+		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
+As you can see in the example, this happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
+However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
+For contrast, compare this to a use of, for example, \`+\`:
+		
+${details('Example: No returns edge for +', await printDfGraphForCode(shell,  '1 + 1'))}
+
+Here, we do not get a ${linkEdgeName(EdgeType.Returns)} edge as this function call creates a new value based on it's arguments.
+In these scenarios you should rely on the \`args\` property of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} 
+and use the arguments to calculate what you need to know. Alternatively, you can track the ${linkEdgeName(EdgeType.Argument)} edges.
+
+In general, the ${linkEdgeName(EdgeType.Returns)} edge already does most of the heavy lifting for you, by respecting control flow influences and
+(as long as flowR is able to detect it) dead code.
+
+${details('Example: Tricky Returns', 
+	`We show the _simplified_ DFG for simplicity and highlight all ${linkEdgeName(EdgeType.Returns)} edges involved in tracking the return of a call to \`f\` (as ${linkEdgeName(EdgeType.Returns)} are never transitive and must hence be followed):\n` + 
+	await printDfGraphForCode(shell,  'f <- function() { if(u) { return(3); 2 } else 42 }\nf()', { 
+		simplified: true,
+		mark:       new Set(['19->15', '15->14', '14->12', '14->11', '11->9', '9->7'])
+	})
+			+ '\n\n Note, that the `2` should be completely absent of the dataflow graph (recognized as dead code).'
+)}
+		`,
 		code:             'foo <- function() x\nfoo()',
-		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
+		expectedSubgraph: emptyGraph().returns('2@foo', '1@x').returns('1@<-', '1@foo').argument('1@<-', '1@foo')
 	}, []]);
 
 
@@ -914,9 +937,17 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 
 ${section('Vertices', 2, 'vertices')}
 
+1. ${getAllVertices().map(
+	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+).join('\n1. ')}
+
 ${await getVertexExplanations(shell, vertexType)}
 
 ${section('Edges', 2, 'edges')}
+
+1. ${getAllEdges().map(
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+).join('\n1. ')}
 
 ${await getEdgesExplanations(shell, vertexType)}
 

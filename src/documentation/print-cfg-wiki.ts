@@ -184,6 +184,7 @@ For readability, we structure this wiki page into various segments:
 	- [Simple Traversal](#cfg-simple-traversal)
 	- [Diffing and Testing](#cfg-diff-and-test)
 	- [Sophisticated CFG Traversal](#cfg-traversal)
+	- [Working With Exit Points](#cfg-exit-points)
 
 
 ${section('Initial Overview', 2, 'cfg-overview')}
@@ -534,6 +535,7 @@ ${await (async() => {
 })()}
 
 
+${section('Working With Exit Points', 3, 'cfg-exit-points')}
 
 
 `;

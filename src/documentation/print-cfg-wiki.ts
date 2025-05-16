@@ -269,7 +269,7 @@ Blocks are visualized as boxes around the contained vertices.
 ${block({
 	type:    'NOTE',
 	content: `
-	Every CFG vertex has a ${shortLink('NodeId', types.info)} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG.
+	Every CFG vertex has a ${shortLink('NodeId', types.info)} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 	Have a look at the ${shortLink('CfgBaseVertex', types.info)} interface for more information.
 		`.trim()
@@ -494,7 +494,7 @@ There is a lot of benefit in incorporating the [dataflow information](${FlowrWik
 information about overwritten function calls, definition targets, and so on.
 Our best friend is the ${shortLink(getOriginInDfg.name, types.info)} function which provides the important information about the origin of a vertex in the dataflow graph.
 The ${shortLink(DataflowAwareCfgGuidedVisitor.name, types.info)} class does some of the basic lifting for us.
-While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables, ...
+While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables,&nbsp;...
 
 ${printCodeOfElement(types, CollectNumbersDataflowVisitor.name)}
 
@@ -523,7 +523,7 @@ To explore what it is capable of, let's create a visitor that prints all values 
 
 ${printCodeOfElement(types, CollectSourcesSemanticVisitor.name)}
 
-Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assign("x", 42 + 21)\`, causes the following values (/lexemes) to be collected:
+Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assign("x", 42 + 21)\`, causes the following values&nbsp;(/lexemes) to be collected:
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');

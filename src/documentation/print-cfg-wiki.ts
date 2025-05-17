@@ -570,7 +570,7 @@ ${details('Example: Exit Points for an if', await (async function() {
 
 	return `${await printCFGCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n' })}
 	
-Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit points: \`${ifVertex.end[0]}\`.
+Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${ifVertex.end[0]}\`.
 Yet, now this exit vertex is linked to the two branches of the if statement (the \`then\` and \`else\` branch).
 	`;
 })())}

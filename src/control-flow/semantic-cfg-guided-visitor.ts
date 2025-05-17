@@ -1,4 +1,4 @@
-import type { ControlFlowInformation } from './control-flow-graph';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
 
 import type { DataflowInformation } from '../dataflow/info';
 
@@ -28,6 +28,7 @@ import type { FunctionArgument } from '../dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 
 
@@ -115,6 +116,14 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
+	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
+		super.visitUnknown(vertex);
+		const ast = this.getNormalizedAst(vertex.id);
+		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
+			this.onProgram(ast);
+		}
+	}
+
 	protected onDispatchFunctionCallOrigins(call: DataflowGraphVertexFunctionCall, origins: readonly string[]) {
 		for(const origin of origins) {
 			this.onDispatchFunctionCallOrigin(call, origin);
@@ -180,6 +189,9 @@ export class SemanticCfgGuidedVisitor<
 			case 'builtin:default':
 				return this.onDefaultFunctionCall({ call });
 		}
+	}
+
+	protected onProgram(_data: RExpressionList<OtherInfo>) {
 	}
 
 

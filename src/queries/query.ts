@@ -41,12 +41,15 @@ import type { DataflowLensQuery } from './catalog/dataflow-lens-query/dataflow-l
 import { DataflowLensQueryDefinition } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import type { ProjectQuery } from './catalog/project-query/project-query-format';
 import { ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import type { DfShapeQuery } from './catalog/df-shape-query/df-shape-query-format';
+import { DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 
 export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
 	| DataflowLensQuery
+	| DfShapeQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -79,6 +82,7 @@ export const SupportedQueries = {
 	'config':           ConfigQueryDefinition,
 	'dataflow':         DataflowQueryDefinition,
 	'dataflow-lens':    DataflowLensQueryDefinition,
+	'df-shape':         DfShapeQueryDefinition,
 	'id-map':           IdMapQueryDefinition,
 	'normalized-ast':   NormalizedAstQueryDefinition,
 	'dataflow-cluster': ClusterQueryDefinition,

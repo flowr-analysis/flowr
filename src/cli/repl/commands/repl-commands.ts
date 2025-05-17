@@ -12,7 +12,7 @@ import {
 	dataflowSimplifiedCommand,
 	dataflowStarCommand
 } from './repl-dataflow';
-import { controlflowCommand, controlflowStarCommand, absintDataFrameCommand } from './repl-cfg';
+import { controlflowCommand, controlflowStarCommand } from './repl-cfg';
 import type { OutputFormatter } from '../../../util/ansi';
 import { italic , bold } from '../../../util/ansi';
 import { splitAtEscapeSensitive } from '../../../util/args';
@@ -80,23 +80,22 @@ You can combine commands by separating them with a semicolon ${bold(';',output.f
  * All commands that should be available in the REPL.
  */
 const _commands: Record<string, ReplCommand> = {
-	'help':             helpCommand,
-	'quit':             quitCommand,
-	'version':          versionCommand,
-	'execute':          executeCommand,
-	'parse':            parseCommand,
-	'normalize':        normalizeCommand,
-	'normalize*':       normalizeStarCommand,
-	'dataflow':         dataflowCommand,
-	'dataflow*':        dataflowStarCommand,
-	'dataflowsimple':   dataflowSimplifiedCommand,
-	'dataflowsimple*':  dataflowSimpleStarCommand,
-	'controlflow':      controlflowCommand,
-	'controlflow*':     controlflowStarCommand,
-	'lineage':          lineageCommand,
-	'query':            queryCommand,
-	'query*':           queryStarCommand,
-	'absint-dataframe': absintDataFrameCommand
+	'help':            helpCommand,
+	'quit':            quitCommand,
+	'version':         versionCommand,
+	'execute':         executeCommand,
+	'parse':           parseCommand,
+	'normalize':       normalizeCommand,
+	'normalize*':      normalizeStarCommand,
+	'dataflow':        dataflowCommand,
+	'dataflow*':       dataflowStarCommand,
+	'dataflowsimple':  dataflowSimplifiedCommand,
+	'dataflowsimple*': dataflowSimpleStarCommand,
+	'controlflow':     controlflowCommand,
+	'controlflow*':    controlflowStarCommand,
+	'lineage':         lineageCommand,
+	'query':           queryCommand,
+	'query*':          queryStarCommand
 };
 let commandsInitialized = false;
 

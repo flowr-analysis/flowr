@@ -13,6 +13,7 @@ import { printDfGraphForCode } from './doc-dfg';
 import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
+import { getReplCommand } from './doc-cli-option';
 
 export interface ShowQueryOptions {
 	readonly showCode?:       boolean;
@@ -40,6 +41,14 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 	return `
 
 ${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
+
+${(function() {
+	if(queries.length === 1 && Object.keys(queries[0]).length === 1) {
+		return `(This query can be shortened to \`@${queries[0].type}\` when used within the REPL command ${getReplCommand('query')}).`;
+	} else {
+		return '';
+	}
+})()}
 
 ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary>' : ''}
 

@@ -14,7 +14,6 @@ import { initializeCleanEnvironments } from '../../dataflow/environments/environ
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
-import { getConfig } from '../../config';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -33,7 +32,7 @@ export function staticSlicing(
 	graph: DataflowGraph,
 	{ idMap }: NormalizedAst,
 	criteria: SlicingCriteria,
-	threshold = getConfig().solver.slicer?.threshold ?? 75,
+	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');

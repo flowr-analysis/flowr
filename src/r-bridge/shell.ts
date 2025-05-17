@@ -9,7 +9,7 @@ import { getPlatform } from '../util/os';
 import fs from 'fs';
 import type { DeepReadonly , AsyncOrSync } from 'ts-essentials';
 import { initCommand } from './init';
-import { getEngineConfig } from '../config';
+import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser } from './parser';
 import type { RParseRequest } from './retriever';
@@ -110,10 +110,10 @@ export const DEFAULT_R_PATH = getPlatform() === 'windows' ? 'R.exe' : 'R';
 
 let DEFAULT_R_SHELL_OPTIONS: RShellOptions | undefined = undefined;
 
-export function getDefaultRShellOptions(): RShellOptions {
+export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOptions {
 	if(!DEFAULT_R_SHELL_OPTIONS) {
 		DEFAULT_R_SHELL_OPTIONS = {
-			pathToRExecutable:  getEngineConfig('r-shell')?.rPath ?? DEFAULT_R_PATH,
+			pathToRExecutable:  config?.rPath ?? DEFAULT_R_PATH,
 			// -s is a short form of --no-echo (and the old version --slave), but this one works in R 3 and 4
 			// (see https://github.com/wch/r-source/commit/f1ff49e74593341c74c20de9517f31a22c8bcb04)
 			commandLineOptions: ['--vanilla', '--quiet', '--no-save', '-s'],
@@ -148,8 +148,8 @@ export class RShell implements AsyncParser<string> {
 	// should never be more than one, but let's be sure
 	private tempDirs = new Set<string>();
 
-	public constructor(options?: Partial<RShellOptions>) {
-		this.options = { ...getDefaultRShellOptions(), ...options };
+	public constructor(config: RShellEngineConfig | undefined, options?: Partial<RShellOptions>) {
+		this.options = { ...getDefaultRShellOptions(config), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
 
 		this.session = new RShellSession(this.options, this.log);

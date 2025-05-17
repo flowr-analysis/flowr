@@ -4,14 +4,15 @@ import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import type { FlowrConfigOptions } from '../../../config';
 
 /**
  * Obtain the dataflow graph using a known parser (such as the {@link RShell} or {@link TreeSitterExecutor}).
  */
-async function replGetDataflow(parser: KnownParser, code: string) {
+async function replGetDataflow(config: FlowrConfigOptions, parser: KnownParser, code: string) {
 	return await createDataflowPipeline(parser, {
 		request: requestFromInput(code.trim())
-	}).allRemainingSteps();
+	}, config).allRemainingSteps();
 }
 
 function handleString(code: string): string {
@@ -27,8 +28,8 @@ export const dataflowCommand: ReplCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await replGetDataflow(shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
@@ -44,8 +45,8 @@ export const dataflowStarCommand: ReplCommand = {
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await replGetDataflow(shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false);
 		output.stdout(mermaid);
 		try {
@@ -62,8 +63,8 @@ export const dataflowSimplifiedCommand: ReplCommand = {
 	usageExample: ':dataflowsimple',
 	aliases:      [ 'ds', 'dfs' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await replGetDataflow(shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaid({ graph: result.dataflow.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
 		try {
@@ -79,8 +80,8 @@ export const dataflowSimpleStarCommand: ReplCommand = {
 	usageExample: ':dataflowsimple*',
 	aliases:      [ 'ds*', 'dfs*' ],
 	script:       false,
-	fn:           async(output, shell, remainingLine) => {
-		const result = await replGetDataflow(shell, handleString(remainingLine));
+	fn:           async({ output, parser, remainingLine, config }) => {
+		const result = await replGetDataflow(config, parser, handleString(remainingLine));
 		const mermaid = graphToMermaidUrl(result.dataflow.graph, false, undefined, true);
 		output.stdout(mermaid);
 		try {

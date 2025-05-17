@@ -12,6 +12,7 @@ import type { RShell } from '../r-bridge/shell';
 import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features/feature';
 import { ALL_FEATURES , allFeatureNames } from './features/feature';
 import { ts2r } from '../r-bridge/lang-4.x/convert-values';
+import type { FlowrConfigOptions } from '../config';
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -33,6 +34,7 @@ type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
  * Extract all wanted statistic information from a set of requests using the presented R session.
  *
  * @param shell     - The R session to use
+ * @param config    - The flowr config
  * @param onRequest - A callback that is called at the beginning of each request, this may be used to debug the requests.
  * @param features  - The features to extract (see {@link allFeatureNames}).
  * @param requests  - The requests to extract the features from. May generate them on demand (e.g., by traversing a folder).
@@ -41,10 +43,11 @@ type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
  */
 export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
 	shell: RShell,
+	config: FlowrConfigOptions,
 	onRequest: (request: T) => void,
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>,
-	rootPath?: string
+	rootPath?: string,
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, DataflowResult> }> {
 	let result = initializeFeatureStatistics();
 	const meta = initialMetaStatistics();
@@ -56,7 +59,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		const suffix = request.request === 'file' ? request.content.replace(new RegExp('^' + (rootPath ?? '')), '') : undefined;
 		try {
 			let output;
-			({ stats: result, output } = await extractSingle(result, shell, request, features, suffix));
+			({ stats: result, output } = await extractSingle(result, shell, request, features, suffix, config));
 			outputs.set(request, output);
 			processMetaOnSuccessful(meta, request);
 			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size);
@@ -94,10 +97,10 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser();
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfigOptions): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
 	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		request, parser: shell
-	}).allRemainingSteps();
+	}, config).allRemainingSteps();
 
 	// retrieve parsed xml through (legacy) xmlparsedata
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';

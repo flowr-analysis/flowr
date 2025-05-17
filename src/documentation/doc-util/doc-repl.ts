@@ -9,6 +9,7 @@ import { rawPrompt } from '../../cli/repl/prompt';
 import { codeBlock } from './doc-code';
 import { versionReplString } from '../../cli/repl/print-version';
 import type { KnownParser } from '../../r-bridge/parser';
+import { defaultConfigOptions } from '../../config';
 
 function printHelpForScript(script: [string, ReplCommand], starredVersion?: ReplCommand): string {
 	let base = `| **${getReplCommand(script[0], false, starredVersion !== undefined)}** | ${script[1].description}`;
@@ -78,7 +79,7 @@ export async function documentReplSession(parser: KnownParser, commands: readonl
 				entry.lines.push(msg);
 			}
 		};
-		await replProcessAnswer(collectingOutput, command.command, parser, options?.allowRSessionAccess ?? false);
+		await replProcessAnswer(defaultConfigOptions, collectingOutput, command.command, parser, options?.allowRSessionAccess ?? false);
 		collect.push(entry);
 	}
 

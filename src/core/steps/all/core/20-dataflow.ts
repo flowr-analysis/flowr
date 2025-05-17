@@ -12,6 +12,7 @@ import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/proc
 import type { RParseRequests } from '../../../../r-bridge/retriever';
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
 import type { KnownParserType, Parser } from '../../../../r-bridge/parser';
+import type { FlowrConfigOptions } from '../../../../config';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -27,8 +28,8 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const;
 
-function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<KnownParserType> }) {
-	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst);
+function processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequests, parser?: Parser<KnownParserType> }, config: FlowrConfigOptions) {
+	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, input.request as RParseRequests, results.normalize as NormalizedAst, config);
 }
 
 export const STATIC_DATAFLOW = {

@@ -1,9 +1,6 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { RShell } from '../../r-bridge/shell';
-import {
-	createDataflowPipeline,
-	createNormalizePipeline
-} from '../../core/steps/pipeline/default-pipelines';
+import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
 import { requestFromInput } from '../../r-bridge/retriever';
 import type { RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -15,6 +12,7 @@ import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
+import { defaultConfigOptions } from '../../config';
 
 export function printNormalizedAst(ast: RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
@@ -32,7 +30,7 @@ export async function printNormalizedAstForCode(parser: KnownParser, code: strin
 	const now = performance.now();
 	const result = await createNormalizePipeline(parser, {
 		request: requestFromInput(code)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 	const duration = performance.now() - now;
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parsing with the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
@@ -71,7 +69,7 @@ export async function verifyExpectedSubgraph(shell: RShell, code: string, expect
 	const info = await createDataflowPipeline(shell, {
 		request: requestFromInput(code),
 		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
+	}, defaultConfigOptions).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
 	expectedSubgraph = resolveDataflowGraph(expectedSubgraph);

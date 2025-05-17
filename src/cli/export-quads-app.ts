@@ -6,6 +6,7 @@ import { processCommandLineArgs } from './common/script';
 import { RShell } from '../r-bridge/shell';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import { retrieveNormalizedAstFromRCode } from '../r-bridge/retriever';
+import { getConfig, getEngineConfig } from '../config';
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -23,7 +24,7 @@ const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
 	]
 });
 
-const shell = new RShell();
+const shell = new RShell(getEngineConfig(getConfig(), 'r-shell'));
 
 async function writeQuadForSingleFile(request: RParseRequestFromFile, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode(request, shell);

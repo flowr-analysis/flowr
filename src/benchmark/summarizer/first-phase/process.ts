@@ -15,6 +15,7 @@ import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } fr
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { arraySum } from '../../../util/collections/arrays';
+import type { RShellEngineConfig } from '../../../config';
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined;
@@ -76,10 +77,12 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
 	report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
-	}): Promise<Readonly<SummarizedSlicerStats>> {
+	},
+	engineConf?: RShellEngineConfig,
+): Promise<Readonly<SummarizedSlicerStats>> {
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => []);
 	const sizeOfSliceCriteria: number[] = [];
-	const reParseShellSession = new RShell();
+	const reParseShellSession = new RShell(engineConf);
 
 	const sliceTimes: TimePerToken<number>[] = [];
 	const reconstructTimes: TimePerToken<number>[] = [];

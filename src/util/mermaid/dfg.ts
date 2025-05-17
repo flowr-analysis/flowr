@@ -7,12 +7,8 @@ import type { DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument }
 import { isNamedArgument, isPositionalArgument } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type {
-	IdentifierDefinition,
-	IdentifierReference } from '../../dataflow/environments/identifier';
-import {
-	ReferenceTypeReverseMapping
-} from '../../dataflow/environments/identifier';
+import type { IdentifierDefinition, IdentifierReference } from '../../dataflow/environments/identifier';
+import { ReferenceTypeReverseMapping } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { EdgeType } from '../../dataflow/graph/edge';
 import { edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
@@ -74,9 +70,9 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 		// get parent
 		const idMap = mermaid.rootGraph.idMap;
 		const node = idMap?.get(nodeId);
-		const nodeLexeme = node?.info.fullLexeme ?? node?.lexeme ?? '??';
+		const nodeLexeme = node?.info.fullLexeme ?? node?.lexeme ?? 'function';
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
-		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme ?? 'function')}${location}"]`);
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme)}${location}"]`);
 	} else {
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
 	}

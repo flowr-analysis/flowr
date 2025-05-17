@@ -437,7 +437,7 @@ ${details('Example: Anonymous Function Call (given indirectly)', await printDfGr
 
 ${block({
 	type:    'NOTE',
-	content: `Now you might be asking to yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
+	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
 
 Unnamed functions have an array of signatures which you can use to identify them. 
 But in short - the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
@@ -719,7 +719,7 @@ For contrast, compare this to a use of, for example, \`+\`:
 		
 ${details('Example: No returns edge for +', await printDfGraphForCode(shell,  '1 + 1'))}
 
-Here, we do not get a ${linkEdgeName(EdgeType.Returns)} edge as this function call creates a new value based on it's arguments.
+Here, we do not get a ${linkEdgeName(EdgeType.Returns)} edge as this function call creates a new value based on its arguments.
 In these scenarios you should rely on the \`args\` property of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} 
 and use the arguments to calculate what you need to know. Alternatively, you can track the ${linkEdgeName(EdgeType.Argument)} edges.
 

@@ -127,16 +127,23 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 	override onFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		const node = this.getNormalizedAst(vertex.id);
 		guard(node !== undefined, 'Expected AST node to be defined');
-		
+
 		node.info.typeVariable.unify(new RFunctionType());
 	}
 
 	override onProgram(node: RExpressionList<UnresolvedTypeInfo>) {
-		const lastElement = node.children.at(-1);
-		if(lastElement !== undefined) {
-			node.info.typeVariable.unify(lastElement.info.typeVariable);
-		} else {
+		const exitPoints = this.config.dataflow.exitPoints;
+		const evalCandidates = exitPoints.map((exitPoint) => exitPoint.nodeId);
+
+		if(evalCandidates.length === 0) {
 			node.info.typeVariable.unify(new RNullType());
+			return;
+		}
+
+		for(const candidateId of evalCandidates) {
+			const candidate = this.getNormalizedAst(candidateId);
+			guard(candidate !== undefined, 'Expected target node to be defined');
+			node.info.typeVariable.unify(candidate.info.typeVariable);
 		}
 	}
 
@@ -145,20 +152,20 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 		guard(node !== undefined, 'Expected AST node to be defined');
 
 		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
-		const returnCandidates = outgoing?.entries()
+		const evalCandidates = outgoing?.entries()
 			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Returns))
 			.map(([target, _edge]) => target)
 			.toArray();
 
-		if(returnCandidates === undefined || returnCandidates.length === 0) {
+		if(evalCandidates === undefined || evalCandidates.length === 0) {
 			node.info.typeVariable.unify(new RNullType());
 			return;
 		}
 
-		for(const targetId of returnCandidates) {
-			const target = this.getNormalizedAst(targetId);
-			guard(target !== undefined, 'Expected target node to be defined');
-			node.info.typeVariable.unify(target.info.typeVariable);
+		for(const candidateId of evalCandidates) {
+			const candidate = this.getNormalizedAst(candidateId);
+			guard(candidate !== undefined, 'Expected target node to be defined');
+			node.info.typeVariable.unify(candidate.info.typeVariable);
 		}
 	}
 }

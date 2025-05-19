@@ -6,8 +6,7 @@ import type {
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	NormalizedAst,
-	ParentInformation,
-	RNodeWithParent
+	ParentInformation
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { BasicCfgGuidedVisitorConfiguration } from './basic-cfg-guided-visitor';
 import { BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
@@ -24,10 +23,22 @@ import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
+import type { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
+import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
+import type { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import type { RLineDirective } from '../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
+import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import type { RNext } from '../r-bridge/lang-4.x/ast/model/nodes/r-next';
+import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 export interface SyntaxCfgGuidedVisitorConfiguration<
-    Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst
+	OtherInfo = NoInfo,
+    Cfg extends ControlFlowInformation   = ControlFlowInformation,
+	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>
 > extends BasicCfgGuidedVisitorConfiguration<Cfg> {
 	readonly normalizedAst: Ast;
 }
@@ -37,16 +48,17 @@ export interface SyntaxCfgGuidedVisitorConfiguration<
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
-export class SyntaxGuidedCfgGuidedVisitor<
+export class SyntaxAwareCfgGuidedVisitor<
+	OtherInfo = NoInfo,
     Cfg extends ControlFlowInformation = ControlFlowInformation,
-	Ast extends NormalizedAst          = NormalizedAst,
-	Config extends SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<Cfg, Ast>
+	Ast extends NormalizedAst<OtherInfo> = NormalizedAst<OtherInfo>,
+	Config extends SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast> = SyntaxCfgGuidedVisitorConfiguration<OtherInfo, Cfg, Ast>,
 > extends BasicCfgGuidedVisitor<Cfg, Config> {
 
 	/**
 	 * Get the normalized AST node for the given id or fail if it does not exist.
 	 */
-	protected getNormalizedAst(id: NodeId): RNodeWithParent | undefined {
+	protected getNormalizedAst(id: NodeId): RNode<OtherInfo & ParentInformation> | undefined {
 		return this.config.normalizedAst.idMap.get(id);
 	}
 
@@ -115,46 +127,89 @@ export class SyntaxGuidedCfgGuidedVisitor<
 		}
 	}
 
-	protected visitRAccess(_node: RAccess<ParentInformation>): void {
-	}
-	protected visitRArgument(_node: RArgument<ParentInformation>): void {
-	}
-	protected visitRBinaryOp(_node: RBinaryOp<ParentInformation>): void {
-	}
-	protected visitRExpressionList(_node: RExpressionList<ParentInformation>): void {
-	}
-	protected visitRForLoop(_node: RForLoop<ParentInformation>): void {
-	}
-	protected visitRFunctionCall(_node: RFunctionCall<ParentInformation>): void {
-	}
-	protected visitRFunctionDefinition(_node: RFunctionDefinition<ParentInformation>): void {
-	}
-	protected visitRIfThenElse(_node: RIfThenElse<ParentInformation>): void {
-	}
-	protected visitRParameter(_node: RParameter<ParentInformation>): void {
-	}
-	protected visitRPipe(_node: RPipe<ParentInformation>): void {
-	}
-	protected visitRRepeatLoop(_node: RRepeatLoop<ParentInformation>): void {
-	}
-	protected visitRUnaryOp(_node: RNodeWithParent): void {
-	}
-	protected visitRWhileLoop(_node: RNodeWithParent): void {
-	}
-	protected visitRBreak(_node: RNodeWithParent): void {
-	}
-	protected visitRComment(_node: RNodeWithParent): void {
-	}
-	protected visitRLineDirective(_node: RNodeWithParent): void {
-	}
-	protected visitRLogical(_node: RNodeWithParent): void {
-	}
-	protected visitRNext(_node: RNodeWithParent): void {
-	}
-	protected visitRNumber(_node: RNodeWithParent): void {
-	}
-	protected visitRString(_node: RNodeWithParent): void {
-	}
-	protected visitRSymbol(_node: RNodeWithParent): void {
-	}
+
+	/**
+	 * {@link RAccess}
+	 */
+	protected visitRAccess(_node: RAccess<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RArgument}
+	 */
+	protected visitRArgument(_node: RArgument<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RBinaryOp}
+	 */
+	protected visitRBinaryOp(_node: RBinaryOp<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RExpressionList}
+	 */
+	protected visitRExpressionList(_node: RExpressionList<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RForLoop}
+	 */
+	protected visitRForLoop(_node: RForLoop<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RFunctionCall}
+	 */
+	protected visitRFunctionCall(_node: RFunctionCall<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RFunctionDefinition}
+	 */
+	protected visitRFunctionDefinition(_node: RFunctionDefinition<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RIfThenElse}
+	 */
+	protected visitRIfThenElse(_node: RIfThenElse<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RParameter}
+	 */
+	protected visitRParameter(_node: RParameter<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RPipe}
+	 */
+	protected visitRPipe(_node: RPipe<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RRepeatLoop}
+	 */
+	protected visitRRepeatLoop(_node: RRepeatLoop<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RUnaryOp}
+	 */
+	protected visitRUnaryOp(_node: RUnaryOp<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RWhileLoop}
+	 */
+	protected visitRWhileLoop(_node: RWhileLoop<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RBreak}
+	 */
+	protected visitRBreak(_node: RBreak<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RComment}
+	 */
+	protected visitRComment(_node: RComment<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RLineDirective}
+	 */
+	protected visitRLineDirective(_node: RLineDirective<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RLogical}
+	 */
+	protected visitRLogical(_node: RLogical<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RNext}
+	 */
+	protected visitRNext(_node: RNext<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RNumber}
+	 */
+	protected visitRNumber(_node: RNumber<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RString}
+	 */
+	protected visitRString(_node: RString<OtherInfo & ParentInformation>): void {}
+	/**
+	 * {@link RSymbol}
+	 */
+	protected visitRSymbol(_node: RSymbol<OtherInfo & ParentInformation>): void {}
 }

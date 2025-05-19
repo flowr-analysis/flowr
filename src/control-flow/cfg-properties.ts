@@ -4,6 +4,9 @@ import { setMinus } from '../util/collections/set';
 import { log } from '../util/log';
 import { visitCfgInOrder, visitCfgInReverseOrder } from './simple-visitor';
 
+/**
+ * The collection of properties that can be checked on a control flow graph.
+ */
 const CfgProperties = {
 	'single-entry-and-exit': checkSingleEntryAndExit,
 	'has-entry-and-exit':    hasEntryAndExit,

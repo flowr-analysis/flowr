@@ -1,6 +1,7 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { guard } from '../util/assert';
 
 export enum CfgVertexType {
     /** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -33,10 +34,18 @@ export function edgeTypeToString(type: CfgEdgeType): string {
 	}
 }
 
+/**
+ * A plain vertex in the {@link ControlFlowGraph}.
+ * Please use {@link CfgSimpleVertex} to refer to all potential vertex types within the graph.
+ */
 interface CfgBaseVertex extends MergeableRecord {
+	/** the type of the vertex */
 	type:         CfgVertexType,
+	/** the id of the vertex, for non-blocks this should directly relate to the AST node */
 	id:           NodeId,
+	/** child nodes attached to this one */
 	children?:    NodeId[],
+	/** if the vertex calls a function, this links all targets of this call */
 	callTargets?: Set<NodeId>,
 }
 
@@ -55,18 +64,19 @@ export interface CfgExpressionVertex extends CfgWithMarker {
 	type: CfgVertexType.Expression
 }
 
-export interface CfgMidMarkerVertex extends CfgBaseVertex {
-	type: CfgVertexType.MidMarker
-	// describing the separation performed by this marker
-	kind: string
-	/** the vertex for which this is a mid-marker */
+export interface CfgWithRoot extends CfgBaseVertex {
+	/** the vertex for which this is a marker */
 	root: NodeId
 }
 
-export interface CfgEndMarkerVertex extends CfgBaseVertex {
+export interface CfgMidMarkerVertex extends CfgWithRoot {
+	type: CfgVertexType.MidMarker
+	// describing the separation performed by this marker
+	kind: string
+}
+
+export interface CfgEndMarkerVertex extends CfgWithRoot {
 	type: CfgVertexType.EndMarker
-	/** the vertex for which this is an end-marker */
-	root: NodeId,
 }
 
 export interface CfgBasicBlockVertex extends CfgBaseVertex {
@@ -101,6 +111,7 @@ interface CfgControlDependencyEdge extends MergeableRecord {
     label:  CfgEdgeType.Cd
     /** the id which caused the control dependency */
     caused: NodeId,
+	/** is the control dependency satisfied with a true condition or is it negated (e.g., else-branch)? */
     when:   typeof RTrue | typeof RFalse
 }
 
@@ -137,19 +148,24 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
 	/** basic block agnostic edges */
 	private readonly edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	/** used as an optimization to avoid unnecessary lookups */
+	private _mayHaveBasicBlocks = false;
 
 	addVertex(vertex: Vertex, rootVertex = true): this {
-		if(this.vertexInformation.has(vertex.id)) {
-			throw new Error(`Node with id ${vertex.id} already exists`);
-		} else if(vertex.type === CfgVertexType.Block && vertex.elems.some(e => this.bbChildren.has(e.id) || this.rootVertices.has(e.id))) {
-			throw new Error(`Vertex ${vertex.id} contains vertices that are already part of the graph`);
-		}
-		this.vertexInformation.set(vertex.id, vertex);
+		guard(!this.vertexInformation.has(vertex.id), `Node with id ${vertex.id} already exists`);
+
 		if(vertex.type === CfgVertexType.Block) {
+			this._mayHaveBasicBlocks = true;
+			if(vertex.elems.some(e => this.bbChildren.has(e.id) || this.rootVertices.has(e.id))) {
+				throw new Error(`Vertex ${vertex.id} contains vertices that are already part of the graph`);
+			}
 			for(const elem of vertex.elems) {
 				this.bbChildren.set(elem.id, vertex.id);
 			}
 		}
+
+		this.vertexInformation.set(vertex.id, vertex);
+
 		if(rootVertex) {
 			this.rootVertices.add(vertex.id);
 		}
@@ -157,10 +173,22 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
+		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
 		if(!this.edgeInformation.has(from)) {
-			this.edgeInformation.set(from, new Map<NodeId, CfgEdge>());
+			this.edgeInformation.set(from, edgesFrom);
 		}
-		this.edgeInformation.get(from)?.set(to, edge);
+		edgesFrom.set(to, edge);
+		return this;
+	}
+
+	addEdges(from: NodeId, to: Map<NodeId, CfgEdge>): this {
+		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
+		if(!this.edgeInformation.has(from)) {
+			this.edgeInformation.set(from, edgesFrom);
+		}
+		for(const [toId, edge] of to) {
+			edgesFrom.set(toId, edge);
+		}
 		return this;
 	}
 
@@ -237,7 +265,15 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 
 	hasVertex(id: NodeId, includeBlocks = true): boolean {
-		return this.vertexInformation.has(id) || (includeBlocks && this.bbChildren.has(id));
+		return this.vertexInformation.has(id) || (this._mayHaveBasicBlocks && includeBlocks && this.bbChildren.has(id));
+	}
+
+	/**
+	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
+	 * This can be used for optimizations.
+	 */
+	mayHaveBasicBlocks(): boolean {
+		return this._mayHaveBasicBlocks;
 	}
 
 	/**
@@ -307,26 +343,44 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 
 	merge(other: ControlFlowGraph<Vertex>, forceNested = false): this {
-		for(const [id, node] of other.vertexInformation) {
-			this.addVertex(node, forceNested ? false : other.rootVertices.has(id));
-		}
-		for(const [from, edges] of other.edgeInformation) {
-			for(const [to, edge] of edges) {
-				this.addEdge(from, to, edge);
+		this._mayHaveBasicBlocks ||= other._mayHaveBasicBlocks;
+
+		const roots = other.rootVertices;
+		if(this._mayHaveBasicBlocks) {
+			for(const [id, node] of other.vertexInformation) {
+				this.addVertex(node, forceNested ? false : roots.has(id));
 			}
+		} else {
+			for(const [id, node] of other.vertexInformation) {
+				this.vertexInformation.set(id, node);
+			}
+			if(!forceNested) {
+				for(const root of roots) {
+					this.rootVertices.add(root);
+				}
+			}
+		}
+
+		for(const [from, edges] of other.edgeInformation) {
+			this.addEdges(from, edges);
 		}
 		return this;
 	}
 }
 
+/** Summarizes the control information of a program */
 export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimpleVertex> extends MergeableRecord {
+	/** all active 'return'(-like) unconditional jumps */
     returns:     NodeId[],
+	/** all active 'break'(-like) unconditional jumps */
     breaks:      NodeId[],
+	/** all active 'next'(-like) unconditional jumps */
     nexts:       NodeId[],
     /** intended to construct a hammock graph, with 0 exit points representing a block that should not be part of the CFG (like a comment) */
     entryPoints: NodeId[],
     /** See {@link ControlFlowInformation#entryPoints|entryPoints} */
     exitPoints:  NodeId[],
+	/** the control flow graph summarizing the flow information */
     graph:       ControlFlowGraph<Vertex>
 }
 

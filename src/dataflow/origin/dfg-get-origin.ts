@@ -21,16 +21,51 @@ export const enum OriginType {
     ConstantOrigin = 4
 }
 
-export interface SimpleOriginOrigin {
+/**
+ * An origin that indicates that the definition is read, written, or simply a constant.
+ * These origins only reference the 'direct' dependencies. There is no transitivity.
+ *
+ * @example
+ * ```r
+ * x <- 2
+ * print(x)
+ * ```
+ *
+ * - Requesting the origins for the use of `x` in `print(x)` returns a {@link ReadVariableOrigin} for the definition of `x` in the first line.
+ * - Asking for the origin of the `2` in `x <- 2` returns a {@link ConstantOrigin} for itself.
+ * - Asking for the origin of `x` in `x <- 2` returns a {@link WriteVariableOrigin} for the variable `x`.
+ */
+export interface SimpleOrigin {
     readonly type: OriginType.ReadVariableOrigin | OriginType.WriteVariableOrigin | OriginType.ConstantOrigin;
     readonly id:   NodeId;
 }
 
+/**
+ * Determines the (transitive) origin of a function call (i.e., all anonymous function definitions within the program that
+ * can be called).
+ *
+ * @example
+ * ```r
+ * f <- function(x) {
+ *  function(y) { y + x }
+ * }
+ * g <- f(2)
+ * g(3)
+ * ```
+ *
+ * - Requesting the origin of `g(3)` returns a {@link FunctionCallOrigin} for the anonymous function defined and returned within the body of `f`.
+ * - Requesting the origin of `f(2)` returns a {@link FunctionCallOrigin} for the anonymous function bound to f.
+ *
+ * Either also return the {@link SimpleOrigin} for the read of the respective variable definition.
+ */
 export interface FunctionCallOrigin {
     readonly type: OriginType.FunctionCallOrigin;
     readonly id:   NodeId;
 }
 
+/**
+ * This is similar to a {@link FunctionCallOrigin}, but used for built-in functions that have no direct correspondence in the dataflow graph.
+ */
 export interface BuiltInFunctionOrigin {
     readonly type: OriginType.BuiltInFunctionOrigin;
 	/** processor that is used to process the built-in function */
@@ -45,7 +80,7 @@ interface OriginIdentifier {
     readonly namespace?: string;
 }
 
-export type Origin = SimpleOriginOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
+export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
 
 /**
  * Obtain the (dataflow) origin of a given node in the dfg.

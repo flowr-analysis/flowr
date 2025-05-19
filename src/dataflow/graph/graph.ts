@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex';
 import { VertexType } from './vertex';
-import { arrayEqual } from '../../util/arrays';
+import { arrayEqual } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -381,7 +381,7 @@ export class DataflowGraph<
 			}
 		}
 
-		this.sourced.push(...otherGraph.sourced);
+		this._sourced = this._sourced.concat(otherGraph.sourced);
 
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
@@ -460,7 +460,7 @@ export class DataflowGraph<
 	}
 
 	/** Marks the given node as having unknown side effects */
-	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
+	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo): this {
 		if(target) {
 			this._unknownSideEffects.add({ id: normalizeIdToNumberIfPossible(id), linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp> });
 			return this;

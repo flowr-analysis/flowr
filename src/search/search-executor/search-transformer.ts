@@ -8,7 +8,7 @@ import type {
 
 
 import type { Pipeline } from '../../core/steps/pipeline/pipeline';
-import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/arrays';
+import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/collections/arrays';
 import type { FlowrFilterExpression } from '../flowr-search-filters';
 import { evalFilter } from '../flowr-search-filters';
 import type { FlowrSearchGeneratorNode } from './search-generators';
@@ -155,5 +155,3 @@ function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE 
 	const resultOther = runSearch(other as FlowrSearch<ParentInformation>, data);
 	return elements.addAll(resultOther);
 }
-
-

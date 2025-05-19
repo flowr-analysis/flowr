@@ -32,7 +32,6 @@ export class BasicCfgGuidedVisitor<
 
 	constructor(config: Config) {
 		this.config = { ...config };
-		// TODO: as an optimization invert the CFG when default order is forward
 		this.visited = new Map<NodeId, number>();
 	}
 

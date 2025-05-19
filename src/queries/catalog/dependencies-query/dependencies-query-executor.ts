@@ -21,7 +21,6 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import type { BasicQueryData } from '../../base-query-format';
 import { isNotUndefined } from '../../../util/assert';
 import { compactRecord } from '../../../util/objects';
-import { resolveIdToValue } from '../../../dataflow/environments/resolve-by-name';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
@@ -34,6 +33,8 @@ import { DependencyInfoLinkConstraint } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { isValue } from '../../../dataflow/eval/values/r-value';
 import { valueSetGuard } from '../../../dataflow/eval/values/general';
+import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
+import { collectStrings } from '../../../dataflow/eval/values/string/string-constants';
 
 function collectNamespaceAccesses(data: BasicQueryData, libraries: LibraryInfo[]) {
 	/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
@@ -248,8 +249,8 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 			full = false;
 		}
 	}
-
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full }));
+	full = true;
+	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph: data.dataflow.graph, full: full }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {
@@ -261,6 +262,13 @@ function resolveBasedOnConfig(data: BasicQueryData, vertex: DataflowGraphVertexF
 				values.push(value.value.str);
 			} else if(value.type === 'logical' && isValue(value.value)) {
 				values.push(value.value.valueOf() ? 'TRUE' : 'FALSE');
+			} else if(value.type === 'vector' && isValue(value.elements)) {
+				const elements = collectStrings(value.elements);
+				if(elements === undefined) {
+					return undefined;
+				}
+				values.push(...elements);
+
 			} else {
 				return undefined;
 			}
@@ -326,9 +334,9 @@ function getArgumentValue(
 }
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
-	const functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
+	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : [...defaultFunctions];
 	if(customFunctions) {
-		functions.push(...customFunctions);
+		functions = functions.concat(customFunctions);
 	}
 	return functions;
 }

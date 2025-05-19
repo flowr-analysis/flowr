@@ -1,6 +1,6 @@
 import type Joi from 'joi';
-import type { OutputFormatter } from './ansi';
-import { italic , formatter ,  bold, ColorEffect, Colors } from './ansi';
+import type { OutputFormatter } from './text/ansi';
+import { italic , formatter ,  bold, ColorEffect, Colors } from './text/ansi';
 
 interface SchemaLine {
 	level: number;

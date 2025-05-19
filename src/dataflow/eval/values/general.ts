@@ -37,6 +37,7 @@ export function valueFromTsValue(a: unknown): Value {
 	return Top;
 }
 
+
 export function valueFromRNode(a: RNodeWithParent): Value {
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
@@ -44,7 +45,7 @@ export function valueFromRNode(a: RNodeWithParent): Value {
 		return intervalFrom(a.content.num, a.content.num);	
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	}
+	} 
 
 	return Top;
 }

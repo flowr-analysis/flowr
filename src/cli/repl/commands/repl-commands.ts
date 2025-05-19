@@ -12,10 +12,10 @@ import {
 	dataflowSimplifiedCommand,
 	dataflowStarCommand
 } from './repl-dataflow';
-import { controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import type { OutputFormatter } from '../../../util/ansi';
-import { italic , bold } from '../../../util/ansi';
-import { splitAtEscapeSensitive } from '../../../util/args';
+import { controlflowBBCommand, controlflowBBStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
+import type { OutputFormatter } from '../../../util/text/ansi';
+import { italic , bold } from '../../../util/text/ansi';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { lineageCommand } from './repl-lineage';
@@ -93,6 +93,8 @@ const _commands: Record<string, ReplCommand> = {
 	'dataflowsimple*': dataflowSimpleStarCommand,
 	'controlflow':     controlflowCommand,
 	'controlflow*':    controlflowStarCommand,
+	'controlflowbb':   controlflowBBCommand,
+	'controlflowbb*':  controlflowBBStarCommand,
 	'lineage':         lineageCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand

@@ -10,7 +10,7 @@ export function date2string(date: Date = new Date()): string {
 /**
  * Print a number of milliseconds in a human-readable format including correct spacing.
  */
-export function printAsMs(ms: number, precision = 2): string {
+export function printAsMs(ms: number, precision = 1): string {
 	/* eslint-disable-next-line no-irregular-whitespace*/
 	return `${ms.toFixed(precision)} ms`;
 }

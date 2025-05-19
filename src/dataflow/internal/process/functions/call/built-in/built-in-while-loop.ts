@@ -20,8 +20,8 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { makeAllMaybe } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import { ReferenceType } from '../../../../../environments/identifier';
-import { resolveValueOfVariable } from '../../../../../environments/resolve-by-name';
 import { valueSetGuard } from '../../../../../eval/values/general';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -42,7 +42,7 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	// we should defer this to the abstract interpretation
-	const values = resolveValueOfVariable(unpackedArgs[0]?.lexeme, data.environment, data.completeAst.idMap);
+	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 	
 	//We don't care about the body if it never executes

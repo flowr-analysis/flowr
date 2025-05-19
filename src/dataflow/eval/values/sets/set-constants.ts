@@ -8,12 +8,14 @@ function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	});
 }
 
-export function setFrom<V extends Value[]>(...elements: V): ValueSet<Value[]> {
-	return {
+export function setFrom<V extends Value[]>(...elements: V): Lift<ValueSet<Value[]>> {
+	const vals = elements.flatMap(e => {
+		return e.type === 'set' ? flattenSetElements(e.elements) : e;
+	});
+
+	return bottomTopGuard(...vals) ?? {
 		type:     'set',
-		elements: elements.flatMap(e => {
-			return e.type === 'set' ? flattenSetElements(e.elements) : e;
-		})
+		elements: vals
 	};
 }
 

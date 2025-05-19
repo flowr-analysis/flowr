@@ -6,14 +6,12 @@ import type {
 	ResolveValueQuery,
 	ResolveValueQueryResult
 } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-format';
-
-
 import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-value-query/resolve-value-query-executor';
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
-import type { ResolveResult } from '../../../../src/dataflow/environments/resolve-by-name';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { intervalFrom } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
+import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 
 describe.sequential('Resolve Value Query', withShell(shell => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: ResolveResult[][]) {

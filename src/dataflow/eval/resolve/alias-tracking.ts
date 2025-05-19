@@ -54,7 +54,7 @@ function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environ
 	}
 
 	const defs = resolveByName(identifier, environment, ReferenceType.Function);
-	if(defs?.length !== 1  || typeof defs[0].definedAt !== 'string' || !defs[0].definedAt?.startsWith('built-in')) {
+	if(defs === undefined || defs.length !== 1) {
 		return undefined;
 	}	
 	
@@ -138,14 +138,14 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.Argument:
 		case RType.Symbol:
 			if(environment) {
-				return full ? trackAliasInEnvironments(node.lexeme, environment, idMap) : Top;
+				return full ? trackAliasInEnvironments(node.lexeme, environment, graph, idMap) : Top;
 			} else if(graph && getConfig().solver.variables === VariableResolve.Alias) {
 				return full ? trackAliasesInGraph(node.info.id, graph, idMap) : Top;
 			} else {
 				return Top;
 			}
 		case RType.FunctionCall:
-			return setFrom(resolveNode(node, environment, idMap));
+			return setFrom(resolveNode(node, environment, graph, idMap));
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
@@ -156,7 +156,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 }
 
 /** Please use {@link resolveIdToValue} */
-export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(identifier: Identifier | undefined, use: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
@@ -181,7 +181,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, use
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = resolveNode(definitionOfAlias, use, idMap);
+					const value = resolveNode(definitionOfAlias, use, graph, idMap);
 					if(isTop(value)) {
 						return Top;
 					} 

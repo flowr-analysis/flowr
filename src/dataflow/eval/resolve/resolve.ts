@@ -4,6 +4,8 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../../util/assert';
 import { BuiltInEvalHandlerMapper } from '../../environments/built-in';
 import type { REnvironmentInformation } from '../../environments/environment';
+import type { DataflowGraph } from '../../graph/graph';
+import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import type { Value } from '../values/r-value';
@@ -12,26 +14,30 @@ import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
 
-export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, map?: AstIdMap): Value {
+export function resolveNode(a: RNodeWithParent, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	if(a.type === RType.String) {
 		return stringFrom(a.content.str);
 	} else if(a.type === RType.Number) {
 		return intervalFrom(a.content.num, a.content.num);	
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if(a.type === RType.FunctionCall && env) {
-		if(a.lexeme in BuiltInEvalHandlerMapper) {
-			const handler = BuiltInEvalHandlerMapper[a.lexeme as keyof typeof BuiltInEvalHandlerMapper];
-			return handler(a, env, map);
+	} else if(a.type === RType.FunctionCall && env && graph) {
+		const origin = getOriginInDfg(graph, a.info.id)?.[0];
+		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
+			return Top;
+		}
+
+		if(origin.proc in BuiltInEvalHandlerMapper) {
+			const handler = BuiltInEvalHandlerMapper[origin.proc as keyof typeof BuiltInEvalHandlerMapper];
+			return handler(a, env, graph, map);
 		}
 	}
 	return Top;
 }
 
-export function resolveAsVector(a: RNodeWithParent, env: REnvironmentInformation, map?: AstIdMap): Value {
+export function resolveAsVector(a: RNodeWithParent, env: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap): Value {
 	guard(a.type === RType.FunctionCall);
-	guard(a.lexeme == 'c', 'can only create vector from c function');
-	
+
 	const values: Value[] = [];
 	for(const arg of a.arguments) {
 		if(arg === EmptyArgument) {
@@ -44,14 +50,14 @@ export function resolveAsVector(a: RNodeWithParent, env: REnvironmentInformation
 
 
 		if(arg.value.type === RType.Symbol) {
-			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, full: true });
+			const value = resolveIdToValue(arg.info.id, { environment: env, idMap: map, graph: graph, full: true });
 			if(isTop(value)) {
 				return Top;
 			}
 
 			values.push(value);
 		} else {
-			const val = resolveNode(arg.value, env, map);
+			const val = resolveNode(arg.value, env, graph, map);
 			if(isTop(val)) {
 				return Top;
 			}

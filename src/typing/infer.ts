@@ -2,7 +2,6 @@ import { extractCFG } from '../control-flow/extract-cfg';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexUse, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { DataflowInformation } from '../dataflow/info';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -15,6 +14,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../util/assert';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
 
 export function inferDataTypes<Info extends { typeVariable?: undefined }>(ast: NormalizedAst<Info>, dataFlowInfo: DataflowInformation): NormalizedAst<Info & DataTypeInfo> {
 	const astWithTypeVars = decorateTypeVariables(ast);
@@ -108,15 +108,23 @@ class TypeInferingCfgGuidedVisitor extends SemanticCfgGuidedVisitor<UnresolvedTy
 
 	override onExpressionList(data: { call: DataflowGraphVertexFunctionCall }) {
 		const node = this.getNormalizedAst(data.call.id);
-		if(node === undefined || node.type !== RType.ExpressionList) {
+		guard(node !== undefined, 'Expected AST node to be defined');
+
+		const outgoing = this.config.dataflow.graph.outgoingEdges(data.call.id);
+		const returnCandidates = outgoing?.entries()
+			.filter(([_target, edge]) => edgeIncludesType(edge.types, EdgeType.Returns))
+			.map(([target, _edge]) => target)
+			.toArray();
+
+		if(returnCandidates === undefined || returnCandidates.length === 0) {
+			node.info.typeVariable.unify(new RNullType());
 			return;
 		}
-		const lastElement = data.call.args.at(-1);
-		const lastElementNode = lastElement !== undefined && lastElement !== EmptyArgument ? this.getNormalizedAst(lastElement.nodeId) : undefined;
-		if(lastElementNode !== undefined) {
-			node.info.typeVariable.unify(lastElementNode.info.typeVariable);
-		} else {
-			node.info.typeVariable.unify(new RNullType());
+
+		for(const targetId of returnCandidates) {
+			const target = this.getNormalizedAst(targetId);
+			guard(target !== undefined, 'Expected target node to be defined');
+			node.info.typeVariable.unify(target.info.typeVariable);
 		}
 	}
 }

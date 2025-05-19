@@ -10,6 +10,7 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
 import { ReferenceType } from '../../../../environments/identifier';
+import type { DataflowGraph } from '../../../../graph/graph';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -37,8 +38,16 @@ function processDefaultFunctionProcessor<OtherInfo>(
 ) {
 	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
 	/* if we do not know where we land, we force! */
-	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all' });
+	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all', origin: 'default' });
 	return mergeInformation(information, call.information);
+}
+
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
+	const v = graph.getVertex(rootId);
+	if(v?.tag === VertexType.FunctionCall) {
+		v.onlyBuiltin = true;
+		v.environment = undefined;
+	}
 }
 
 export function processNamedCall<OtherInfo>(
@@ -66,11 +75,7 @@ export function processNamedCall<OtherInfo>(
 		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		const v = information.graph.getVertex(rootId);
-		if(v?.tag === VertexType.FunctionCall) {
-			v.onlyBuiltin = true;
-			v.environment = undefined;
-		}
+		markAsOnlyBuiltIn(information.graph, rootId);
 	}
 
 	return information ?? initializeCleanDataflowInformation(rootId, data);

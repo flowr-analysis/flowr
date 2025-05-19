@@ -1,9 +1,9 @@
 import type { MetaStatistics } from '../meta-statistics';
-import { ColorEffect, Colors, formatter } from '../../util/ansi';
+import { ColorEffect, Colors, formatter } from '../../util/text/ansi';
 import { jsonReplacer } from '../../util/json';
 import type { FeatureKey, FeatureStatistics } from '../features/feature';
 import { ALL_FEATURES } from '../features/feature';
-import { arraySum } from '../../util/arrays';
+import { arraySum } from '../../util/collections/arrays';
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 

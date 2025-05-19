@@ -486,6 +486,60 @@ describe.sequential('Parse value access', withShell(shell => {
 				}]
 			})
 		);
+		assertAst(label('Nested Access', ['name-normal', 'dollar-access']),
+			shell, 'c$x$y', exprList({
+				type:     RType.Access,
+				location: rangeFrom(1, 4, 1, 4),
+				lexeme:   '$',
+				operator: '$',
+				info:     {},
+				accessed: {
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme:   '$',
+					operator: '$',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'c',
+						content:   'c',
+						info:      {}
+					},
+					access: [{
+						type:     RType.Argument,
+						location: rangeFrom(1, 3, 1, 3),
+						lexeme:   'x',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 3, 1, 3),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {}
+						}
+					}]
+				},
+				access: [{
+					type:     RType.Argument,
+					location: rangeFrom(1, 5, 1, 5),
+					lexeme:   'y',
+					name:     undefined,
+					info:     {},
+					value:    {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 5, 1, 5),
+						namespace: undefined,
+						lexeme:    'y',
+						content:   'y',
+						info:      {}
+					}
+				}]
+			})
+		);
 		assertAst(label('Slot based access', ['name-normal', 'slot-access']),
 			shell, 'd@y', exprList({
 				type:     RType.Access,

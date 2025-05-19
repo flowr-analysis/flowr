@@ -52,12 +52,12 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			const filtered = definition.filter(wantedType);
+			const filtered = target === ReferenceType.Unknown ? definition : definition.filter(wantedType);
 			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
 			} else if(filtered.length > 0) {
 				definitions ??= [];
-				definitions.push(...filtered);
+				definitions = definitions.concat(filtered);
 			}
 		}
 		current = current.parent;
@@ -65,7 +65,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {
-		return builtIns === undefined ? definitions : [...definitions, ...builtIns];
+		return builtIns === undefined ? definitions : definitions.concat(builtIns);
 	} else {
 		return builtIns;
 	}
@@ -120,7 +120,7 @@ const AliasHandler = {
 } as const satisfies Record<VertexType, AliasHandler>;
 
 function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const definitions: NodeId[] = [];
+	let definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
 	const identifier = recoverName(sourceId, dataflow.idMap);
@@ -140,7 +140,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 			if(def.value === undefined) {
 				return undefined;
 			}
-			definitions.push(...def.value);
+			definitions = definitions.concat(def.value);
 		} else if(def.type === ReferenceType.Constant || def.type === ReferenceType.BuiltInConstant) {
 			definitions.push(def.nodeId);
 		} else {

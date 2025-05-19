@@ -1,4 +1,4 @@
-import { longestCommonPrefix, startAndEndsWith, withoutWhitespace } from '../../../src/util/strings';
+import { longestCommonPrefix, startAndEndsWith, withoutWhitespace } from '../../../src/util/text/strings';
 import { describe, assert, test } from 'vitest';
 
 describe('Strings', () => {

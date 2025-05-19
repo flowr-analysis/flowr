@@ -9,13 +9,22 @@ import { EmptyArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import { ReferenceType } from '../../../../environments/identifier';
+import type {
+	IdentifierReference,
+	InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import {
+	isReferenceType,
+	ReferenceType
+} from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { ContainerIndicesCollection, DataflowGraphVertexFunctionDefinition } from '../../../../graph/vertex';
-import { isFunctionDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import type {
+	ContainerIndicesCollection, DataflowGraphVertexAstLink,
+	DataflowGraphVertexFunctionDefinition,
+	FunctionOriginInformation } from '../../../../graph/vertex';
+import { isFunctionDefinitionVertex, VertexType
+} from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 
@@ -102,17 +111,21 @@ export function processAllArguments<OtherInfo>(
 		processedArguments.push(processed);
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
+		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, ReferenceType.Unknown) : undefined;
+			// check if it is called directly
+			const vtx = finalGraph.getVertex(ingoing.nodeId);
+
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing);
 			} else {
 				/* maybe all targets are not definitely of the current scope and should be still kept */
 				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
-					if(happensInEveryBranch(resolved.controlDependencies)) {
+					if(happensInEveryBranch(resolved.controlDependencies) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
@@ -129,7 +142,6 @@ export function processAllArguments<OtherInfo>(
 		}
 		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
-		finalGraph.mergeWith(processed.graph);
 
 		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined, type: ReferenceType.Argument });
@@ -147,11 +159,13 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly rootId:                NodeId
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
-	readonly argumentProcessResult: readonly (DataflowInformation | undefined)[]
+	readonly argumentProcessResult: readonly (Pick<DataflowInformation, 'entryPoint'> | undefined)[]
+	readonly origin:                FunctionOriginInformation
+	readonly link?:                 DataflowGraphVertexAstLink
 }
 
 export function patchFunctionCall<OtherInfo>(
-	{ nextGraph, rootId, name, data, argumentProcessResult }: PatchFunctionCallInput<OtherInfo>
+	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
 ): void {
 	nextGraph.addVertex({
 		tag:         VertexType.FunctionCall,
@@ -162,7 +176,9 @@ export function patchFunctionCall<OtherInfo>(
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
-	});
+		origin:      [origin],
+		link
+	}, !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {
 		if(arg) {
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);

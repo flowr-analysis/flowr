@@ -20,6 +20,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 import { DataflowGraph } from '../../../../../graph/graph';
 import type { IdentifierReference } from '../../../../../environments/identifier';
+import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
@@ -28,6 +29,7 @@ import { initializeCleanEnvironments } from '../../../../../environments/environ
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
+import { isBuiltIn } from '../../../../../environments/built-in';
 
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -37,7 +39,7 @@ export function processFunctionDefinition<OtherInfo>(
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* we remove the last argument, as it is the body */
@@ -70,6 +72,7 @@ export function processFunctionDefinition<OtherInfo>(
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
 
 	const readInBody = [...body.in, ...body.unknownReferences];
+
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
 
@@ -182,8 +185,15 @@ export function updateNestedFunctionClosures(
 				continue;
 			}
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
+			let allBuiltIn = true;
 			for(const ref of resolved) {
 				graph.addEdge(ingoing, ref, EdgeType.Reads);
+				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
+			}
+			if(allBuiltIn) {
+				remainingIn.push(ingoing);
 			}
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
@@ -241,8 +251,10 @@ export function updateNestedFunctionCalls(
 				}
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
 				for(const def of resolved) {
-					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+					if(!isBuiltIn(def.nodeId)) {
+						graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
+						graph.addEdge(id, def, EdgeType.DefinesOnCall);
+					}
 				}
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
@@ -261,7 +273,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 
 /**
  * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
- * `a` will be defined by `b` and `b`will be a promise object bound by the first definition of b it can find.
+ * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
  * This means that this function returns `2` due to the first `b <- 1` definition.
  * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
  * as `b` can be defined by either one of them.

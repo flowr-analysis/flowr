@@ -3,6 +3,7 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency } from '../info';
+import type { BuiltInMappingName } from '../environments/built-in';
 
 
 export enum VertexType {
@@ -17,15 +18,52 @@ export const ValidVertexTypes: Set<string> = new Set(Object.values(VertexType));
 export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexType).map(([k, v]) => [v, k]));
 
 /**
+ * Identifier for arguments e.g. for `3` in `c(2, 3, 5)` the identifier would be
+ * ```ts
+ * {
+ *   index: 2
+ * }
+ * ```
+ */
+export interface UnnamedArgumentId {
+	readonly index: number,
+}
+
+/**
+ * Identifier for named arguments e.g. for `age` in `list(name = 'John', age = 8)`
+ * the indentifier would be
+ * ```ts
+ * {
+ *   index: 2,
+ *   lexeme: 'age'
+ * }
+ * ```
+ */
+export interface NamedArgumentId {
+	/**
+	 * Index may be undefined, when no index information is available.
+	 */
+	readonly index: number | undefined;
+
+	readonly lexeme: string,
+}
+
+export function isNamedArgumentId(identifier: IndexIdentifier): identifier is NamedArgumentId {
+	return 'lexeme' in identifier;
+}
+
+export type IndexIdentifier = UnnamedArgumentId | NamedArgumentId;
+
+/**
  * A single index of a container, which is not a container itself.
  *
  * This can be e.g. a string, number or boolean index.
  */
 export interface ContainerLeafIndex {
 	/**
-	 * Distinctive lexeme of index e.g. 'name' for `list(name = 'John')`
+	 * Distinctive identifier of index, see {@link IndexIdentifier}.
 	 */
-	readonly lexeme: string,
+	readonly identifier: IndexIdentifier,
 
 	/**
 	 * NodeId of index in graph.
@@ -56,6 +94,38 @@ export function isParentContainerIndex(index: ContainerIndex): index is Containe
  * A single index of a container.
  */
 export type ContainerIndex = ContainerLeafIndex | ContainerParentIndex;
+
+/**
+ * Checks whether {@link index} is accessed by {@link accessLexeme}.
+ * 
+ * @param index - The {@link ContainerIndex}, which is accessed
+ * @param accessLexeme - The access lexeme
+ * @param isIndexBasedAccess - Whether the index of the {@link ContainerIndex} is accessed i.e. the position in the container and not e.g. the name of the index
+ * @returns true, when {@link accessLexeme} accesses the {@link index}, false otherwise 
+ */
+export function isAccessed(index: ContainerIndex, accessLexeme: string, isIndexBasedAccess: boolean) {
+	if(isIndexBasedAccess) {
+		return index.identifier.index === Number(accessLexeme);
+	}
+
+	if(isNamedArgumentId(index.identifier)) {
+		return index.identifier.lexeme === accessLexeme;
+	}
+
+	return false;
+}
+
+export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
+	if(isNamedArgumentId(a.identifier) && isNamedArgumentId(b.identifier)) {
+		return a.identifier.lexeme === b.identifier.lexeme;
+	}
+
+	if(a.identifier.index === undefined || b.identifier.index === undefined) {
+		return false;
+	}
+
+	return a.identifier.index === b.identifier.index;
+}
 
 /**
  * List of indices of a single statement like `list(a=3, b=2)`
@@ -106,6 +176,15 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
 	 */
 	indicesCollection?: ContainerIndicesCollection
+	/**
+	 * Describes the collection of AST vertices that contributed to this vertex.
+	 * For example, this is useful with replacement operators, telling you which assignment operator caused them
+	 */
+	link?:              DataflowGraphVertexAstLink
+}
+
+export interface DataflowGraphVertexAstLink {
+	origin: NodeId[]
 }
 
 /**
@@ -160,13 +239,18 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * have the compound name (e.g., `[<-`).
 	 */
 	readonly name: string
-	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R. */
+	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
 	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:   boolean
 	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
 	environment:   REnvironmentInformation | undefined
+	/** More detailed Information on this function call */
+	origin:        FunctionOriginInformation[] | 'unnamed'
 }
+
+/** Describes the processor responsible for a function call */
+export type FunctionOriginInformation = BuiltInMappingName | string
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.

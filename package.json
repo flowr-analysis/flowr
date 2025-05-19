@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.2.10",
+  "version": "2.2.12",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -12,6 +12,7 @@
     "url": "https://github.com/flowr-analysis/flowr/issues"
   },
   "scripts": {
+    "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "flowr": "npm run main --",
     "main-dev": "ts-node src/cli/flowr.ts",
@@ -33,6 +34,9 @@
     "wiki:search-api": "ts-node src/documentation/print-search-wiki.ts",
     "wiki:linting-and-testing": "ts-node src/documentation/print-linting-and-testing-wiki.ts",
     "wiki:interface": "ts-node src/documentation/print-interface-wiki.ts",
+    "wiki:onboarding": "ts-node src/documentation/print-onboarding-wiki.ts",
+    "wiki:faq": "ts-node src/documentation/print-faq-wiki.ts",
+    "wiki:cfg": "ts-node src/documentation/print-cfg-wiki.ts",
     "gen:readme": "ts-node src/documentation/print-readme.ts",
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
@@ -174,7 +178,7 @@
     "@eagleoutice/eslint-config-flowr": "^1.0.17",
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.20.0",
-    "@j-ulrich/release-it-regex-bumper": "^5.2.0",
+    "@j-ulrich/release-it-regex-bumper": "^5.3.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/n-readlines": "^1.0.6",
@@ -189,7 +193,7 @@
     "eslint": "^9.20.1",
     "license-checker": "^25.0.1",
     "npm-run-all": "^4.1.5",
-    "release-it": "^18.1.2",
+    "release-it": "^19.0.2",
     "ts-node": "^10.9.2",
     "typedoc": "^0.27.7",
     "typedoc-plugin-missing-exports": "^3.1.0",
@@ -199,12 +203,12 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
-    "@msgpack/msgpack": "^3.0.1",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.3",
     "joi": "^17.13.3",
+    "lz-string": "^1.5.0",
     "n-readlines": "^1.0.1",
     "n3": "^1.23.1",
     "object-hash": "^3.0.0",

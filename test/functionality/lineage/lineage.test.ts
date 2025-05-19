@@ -7,9 +7,10 @@ import { getLineage } from '../../../src/cli/repl/commands/repl-lineage';
 import type { TestLabel } from '../_helper/label';
 import { decorateLabelContext, label } from '../_helper/label';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { setEquals } from '../../../src/util/set';
+import { setEquals } from '../../../src/util/collections/set';
 import { OperatorDatabase } from '../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe, assert, test } from 'vitest';
+import { builtInId } from '../../../src/dataflow/environments/built-in';
 
 describe.sequential('Test lineage', withShell(shell => {
 
@@ -30,5 +31,5 @@ describe.sequential('Test lineage', withShell(shell => {
 		'name-normal', ...OperatorDatabase['<-'].capabilities, 'newlines'
 	]), `c <- x
 b <- c
-a <- b`, '3@a', [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+a <- b`, '3@a', [0, 1, 2, 3, 4, 5, 6, 7, 8, builtInId('<-')]);
 }));

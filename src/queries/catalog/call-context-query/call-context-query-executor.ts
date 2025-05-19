@@ -11,12 +11,14 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
-import { extractCFG } from '../../../util/cfg/cfg';
+import { extractCFG } from '../../../control-flow/extract-cfg';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 
 import type { BasicQueryData } from '../../base-query-format';
 import { identifyLinkToLastCallRelation, satisfiesCallTargets } from './identify-link-to-last-call-relation';
+import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -102,7 +104,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name */
-	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	let queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
 
 	while(queue.length > 0) {
 		const [str, id] = queue.shift() as [string, NodeId];
@@ -130,7 +132,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const);
 			/** only follow defined-by and reads */
-			queue.push(...x);
+			queue = queue.concat(x);
 			continue;
 		}
 
@@ -178,6 +180,17 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp> 
 	return filter.filter.test(file);
 }
 
+function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
+	let node = ast.idMap.get(nodeId);
+	while(node !== undefined) {
+		if(node.info.role === RoleInParent.ParameterDefaultValue) {
+			return true;
+		}
+		node = node.info.parent ? ast.idMap.get(node.info.parent) : undefined;
+	}
+	return false;
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -198,7 +211,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = extractCFG(ast, graph);
+		cfg = extractCFG(ast, graph, []);
 	}
 
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
@@ -224,7 +237,7 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => q.callName.test(info.name))) {
+		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName.test(info.name))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;
@@ -239,6 +252,8 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 			}
 			if(isQuoted(nodeId, graph)) {
 				/* if the call is quoted, we do not want to link to it */
+				continue;
+			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
 				continue;
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
@@ -273,4 +288,3 @@ export function executeCallContextQueries({ dataflow: { graph }, ast }: BasicQue
 		kinds: makeReport(initialIdCollector)
 	};
 }
-

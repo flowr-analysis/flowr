@@ -6,11 +6,16 @@ import { versionCommand } from './repl-version';
 import { parseCommand } from './repl-parse';
 import { executeCommand } from './repl-execute';
 import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
-import { dataflowCommand, dataflowStarCommand } from './repl-dataflow';
-import { controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import type { OutputFormatter } from '../../../util/ansi';
-import { italic , bold } from '../../../util/ansi';
-import { splitAtEscapeSensitive } from '../../../util/args';
+import {
+	dataflowCommand,
+	dataflowSimpleStarCommand,
+	dataflowSimplifiedCommand,
+	dataflowStarCommand
+} from './repl-dataflow';
+import { controlflowBBCommand, controlflowBBStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
+import type { OutputFormatter } from '../../../util/text/ansi';
+import { italic , bold } from '../../../util/text/ansi';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { lineageCommand } from './repl-lineage';
@@ -75,20 +80,24 @@ You can combine commands by separating them with a semicolon ${bold(';',output.f
  * All commands that should be available in the REPL.
  */
 const _commands: Record<string, ReplCommand> = {
-	'help':         helpCommand,
-	'quit':         quitCommand,
-	'version':      versionCommand,
-	'execute':      executeCommand,
-	'parse':        parseCommand,
-	'normalize':    normalizeCommand,
-	'normalize*':   normalizeStarCommand,
-	'dataflow':     dataflowCommand,
-	'dataflow*':    dataflowStarCommand,
-	'controlflow':  controlflowCommand,
-	'controlflow*': controlflowStarCommand,
-	'lineage':      lineageCommand,
-	'query':        queryCommand,
-	'query*':       queryStarCommand
+	'help':            helpCommand,
+	'quit':            quitCommand,
+	'version':         versionCommand,
+	'execute':         executeCommand,
+	'parse':           parseCommand,
+	'normalize':       normalizeCommand,
+	'normalize*':      normalizeStarCommand,
+	'dataflow':        dataflowCommand,
+	'dataflow*':       dataflowStarCommand,
+	'dataflowsimple':  dataflowSimplifiedCommand,
+	'dataflowsimple*': dataflowSimpleStarCommand,
+	'controlflow':     controlflowCommand,
+	'controlflow*':    controlflowStarCommand,
+	'controlflowbb':   controlflowBBCommand,
+	'controlflowbb*':  controlflowBBStarCommand,
+	'lineage':         lineageCommand,
+	'query':           queryCommand,
+	'query*':          queryStarCommand
 };
 let commandsInitialized = false;
 

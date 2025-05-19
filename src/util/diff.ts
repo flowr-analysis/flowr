@@ -5,7 +5,7 @@
  * @module
  */
 
-import { setMinus } from './set';
+import { setMinus } from './collections/set';
 import type { MergeableRecord } from './objects';
 
 /**
@@ -15,14 +15,14 @@ import type { MergeableRecord } from './objects';
  */
 export interface DifferenceReport {
 	/**
-   * A human-readable description of differences during the comparison
-   * In combination with {@link isEqual} this can be used to provide detailed
-   * explanation on equal structures as well (e.g., if structures _could_ be equal).
-   */
+     * A human-readable description of differences during the comparison
+     * In combination with {@link isEqual} this can be used to provide detailed
+     * explanation on equal structures as well (e.g., if structures _could_ be equal).
+     */
 	comments(): readonly string[] | undefined
 	/**
-   * @returns true iff the compared structures are equal (i.e., the diff is empty)
-   */
+     * @returns true iff the compared structures are equal (i.e., the diff is empty)
+     */
 	isEqual(): boolean
 }
 

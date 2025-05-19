@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeProjectQuery } from './project-query-executor';
-import { bold } from '../../../util/ansi';
-import { printAsMs } from '../../../util/time';
+import { bold } from '../../../util/text/ansi';
+import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 
@@ -21,7 +21,7 @@ export const ProjectQueryDefinition = {
 		result.push(`Query: ${bold('project', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		result.push(`   ╰ Contains ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 		for(const file of out.files) {
-			result.push(`      ╰ ${file}`);
+			result.push(`      ╰ \`${file}\``);
 		}
 		return true;
 	},

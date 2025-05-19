@@ -50,10 +50,10 @@ jobs:
         r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
         os: [ ubuntu-latest ]
         include:
-           - os: macos-latest
-             r-version: '4.4.0'
-           - os: windows-latest
-             r-version: '4.4.0'
+           - r-version: '4.4.0'
+             os: macos-latest
+           - r-version: '4.4.0'
+             os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}

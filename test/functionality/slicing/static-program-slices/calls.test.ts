@@ -537,6 +537,8 @@ y` /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1]
 	describe('Separate Function Resolution', () => {
 		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
 			shell, 'c <- 3\nc(1, 2, 3)', ['2@c'], 'c(1, 2, 3)');
+		assertSliced(label('Separate function resolution', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type']),
+			shell, 'c <- 3\nprint(c(1, 2))', ['2@print'], 'print(c(1, 2))');
 	});
 	describe('Failures in Practice', () => {
 		describe('empty functions', () => {
@@ -655,6 +657,14 @@ foo(.x = f(3))`);
 				'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'if'
 			]), shell, 'x <- 2\nif(u) `<-` <- `*`\nx <- 3', ['3@x'], 'x <- 2\nif(u) `<-` <- `*`\nx <- 3');
 		});
+		describe('Primitive', () => {
+			assertSliced(label('Without using primitive', [
+				'built-in-internal-and-primitive-functions'
+			]), shell, 'print <- function(...) 42\nprint(3)', ['2@print'], 'print <- function(...) 42\nprint(3)');
+			assertSliced(label('Without using primitive', [
+				'built-in-internal-and-primitive-functions'
+			]), shell, 'print <- function(...) 42\nfoo <- .Primitive("print")(3)', ['2@foo'], 'foo <- .Primitive("print")(3)');
+		});
 		describe('Data Table Assignments', () => {
 			const caps: SupportedFlowrCapabilityId[] = [
 				'name-normal', ...OperatorDatabase[':='].capabilities,
@@ -707,11 +717,61 @@ x`);
 				'res <- lapply(1:3, function(x) x + 1)', ['1@res'],
 				'res <- lapply(1:3, function(x) x + 1)'
 				);
-				assertSliced(label('Force-Including Reference', [
-					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return'
+				assertSliced(label('Forcing Second Argument with closure', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'y <- 2\nres <- lapply(1:3, function(x) x + y)', ['2@res'],
+				'y <- 2\nres <- lapply(1:3, function(x) x + y)'
+				);
+				assertSliced(label('Forcing Second Argument with closure colliding with built-in name', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- 2\nres <- lapply(1:3, function(x) x + data)', ['2@res'],
+				'data <- 2\nres <- lapply(1:3, function(x) x + data)'
+				);
+				assertSliced(label('Forcing Second Argument with closure colliding with built-in name access', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- c()\nres <- lapply(1:3, function(x) x + data[x])', ['2@res'],
+				'data <- c()\nres <- lapply(1:3, function(x) x + data[x])'
+				);
+				assertSliced(label('Forcing Second Argument Nested with closure colliding with built-in name access', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				'data <- c()\nres <- do.call(rbind, lapply(1:2, function(y) { lapply(1:3, function(x) x + data[x]) }))', ['2@res'],
+				'data <- c()\nres <- do.call(rbind, lapply(1:2, function(y) { lapply(1:3, function(x) x + data[x]) }))'
+				);
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
 				]), shell,
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+				);
+			});
+			describe('nested ddply', () => {
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				`foo <- function(k) { 
+					g <- function(x) { x + 1 }
+					K <- ddply(k, k, .fun=function(xx,yy) { c(N=g(xx)) })
+					return(K) 
+				 }
+				 foo(1:3)`, ['6@foo'],
+				`foo <- function(k) {
+        g <- function(x) { x + 1 }
+        K <- ddply(k, k, .fun=function(xx,yy) { c(N=g(xx)) })
+        return(K)
+    }
+foo(1:3)`
+				);
+			});
+			describe('interference', () => {
+				assertSliced(label('interference function', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'call-normal', 'implicit-return'
+				]), shell,
+				'foo <- function(x) x\ninterference(formula = a | b | c, propensity_integrand="foo")', ['2@interference'],
+				'foo <- function(x) x\ninterference(formula = a | b | c, propensity_integrand="foo")'
 				);
 			});
 			describe('Mapply Forcing the Map Function Body in the first arg', () => {

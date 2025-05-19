@@ -11,6 +11,8 @@ export interface NodeToSlice {
 	readonly id:                 NodeId
 	/** used for calling context, etc. */
 	readonly baseEnvironment:    REnvironmentInformation
+	/** the fingerprint of the environment */
+	readonly envFingerprint:     string
 	/** if we add a function call, we may need it only for its side effects (e.g., a redefinition of a global variable), if so, 'returns' links will not be traced */
 	readonly onlyForSideEffects: boolean
 }

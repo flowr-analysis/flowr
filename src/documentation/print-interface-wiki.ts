@@ -21,7 +21,7 @@ import {
 	VariableResolve
 } from '../config';
 import { describeSchema } from '../util/schema';
-import { markdownFormatter } from '../util/ansi';
+import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { PipelineExecutor } from '../core/pipeline-executor';
@@ -215,12 +215,16 @@ ${codeBlock('json', JSON.stringify(
 			engines: [{ type: 'r-shell' }],
 			solver:  {
 				variables:       VariableResolve.Alias,
+				evalStrings:     true,
 				pointerTracking: true,
 				resolveSource:   {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
+				},
+				slicer: {
+					threshold: 50
 				}
 			}
 		} satisfies FlowrConfigOptions,

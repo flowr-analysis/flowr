@@ -8,7 +8,7 @@ import { amendConfig, defaultConfigOptions } from '../../../src/config';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
-import type { DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
+import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -324,7 +324,7 @@ e <- 5`,
 					numberOfRowCountInfinite:  0,
 					numberOfRowCountBottom:    0,
 					approxRangeRowCount:       { min: 0, max: 0, median: 0, mean: 0, std: 0, total: 0 },
-					perOperationNumber:        new Map<DataFrameOperationName, number>([['create', 1]])
+					perOperationNumber:        new Map([...DataFrameOperationNames.map<[DataFrameOperationName, number]>(name => [name, 0]), ['create', 1]])
 				}, statInfo);
 			});
 		});

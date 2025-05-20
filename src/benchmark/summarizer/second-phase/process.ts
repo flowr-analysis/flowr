@@ -149,7 +149,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfRowCountInfinite:  summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountInfinite).filter(isNotUndefined)),
 			numberOfRowCountBottom:    summarizeMeasurement(stats.map(s => s.absint?.numberOfRowCountBottom).filter(isNotUndefined)),
 			approxRangeRowCount:       summarizeSummarizedMeasurement(stats.map(s => s.absint?.approxRangeRowCount).filter(isNotUndefined)),
-			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.absint?.perOperationNumber.get(n)).filter(isNotUndefined))]))
+			perOperationNumber:        new Map(DataFrameOperationNames.map(n => [n, summarizeMeasurement(stats.map(s => s.absint?.perOperationNumber.get(n) ?? 0))]))
 		} : undefined
 	};
 }

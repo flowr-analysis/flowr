@@ -9,7 +9,7 @@ import type { DataFrameStateDomain } from '../../../abstract-interpretation/data
 import { executeDfShapeQuery } from './df-shape-query-executor';
 import { jsonReplacer } from '../../../util/json';
 
-/** Calculates and returns all clusters encountered in the dataflow graph. */
+/** Performs abstract interpretation to retrieve the shape of data frames. */
 export interface DfShapeQuery extends BaseQueryFormat {
 	readonly type: 'df-shape';
 }
@@ -23,9 +23,12 @@ export const DfShapeQueryDefinition = {
 	asciiSummarizer: (formatter, _processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
 		result.push(`Query: ${bold('df-shape', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push([...out.domains.entries()].map(([key, domain]) => {
+		result.push(...out.domains.entries().take(20).map(([key, domain]) => {
 			return `   ╰ ${key}: ${JSON.stringify(domain, jsonReplacer)}`;
-		}).join('\n'));
+		}));
+		if(out.domains.size > 20) {
+			result.push('   ╰ ... (see JSON)');
+		}
 		return true;
 	},
 	schema: Joi.object({

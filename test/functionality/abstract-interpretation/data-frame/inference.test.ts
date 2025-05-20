@@ -409,6 +409,54 @@ print(df)
 
 	testDataFrameDomain(
 		`
+df <- data.frame(1:5, 6:10)
+names(df) <- c("id", "name")
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:5, name = 6:10)
+names(df) <- runif(2)
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [5, 5] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [5, 5] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+rownames(df) <- c("row1", "row2", "row3")
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
+df <- data.frame(id = 1:3, name = 4:6)
+dimnames(df) <- list(c("row1", "row2", "row3"), c("col1", "col2"))
+print(df)
+		`.trim(),
+		[
+			['1@df', { colnames: ['id', 'name'], cols: [2, 2], rows: [3, 3] }],
+			['3@df', { colnames: ColNamesTop, cols: [2, 2], rows: [3, 3] }, { colnames: DomainMatchingType.Overapproximation }]
+		]
+	);
+
+	testDataFrameDomain(
+		`
 df <- data.frame(id = 1:5)
 df <- cbind(df, name = 6:10, label = c("A", "B", "C", "D", "E"))
 		`.trim(),

@@ -15,6 +15,7 @@ import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } fr
 import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { arraySum } from '../../../util/arrays';
+import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined;
@@ -272,7 +273,7 @@ function summarizeAbsintStats({ perNodeStats, ...stats }: SlicerStatsAbsint): Su
 }
 
 function summarizePerOperationStats(nodeStats: PerNodeStatsAbsint[]): SummarizedAbsintStats['perOperationNumber'] {
-	const perOperationNumber: SummarizedAbsintStats['perOperationNumber'] = new Map();
+	const perOperationNumber = new Map(DataFrameOperationNames.map(name => [name, 0]));
 
 	for(const stat of nodeStats) {
 		for(const operation of stat.mappedOperations ?? []) {

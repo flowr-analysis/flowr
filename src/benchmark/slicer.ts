@@ -470,7 +470,7 @@ export class BenchmarkSlicer {
 		} else if(!isFinite(value[1])) {
 			return 'infinite';
 		}
-		return (value[0] + value[1]) / 2;
+		return Math.floor((value[0] + value[1]) / 2);
 	}
 
 	/** Bridging the gap between the new internal and the old names for the benchmarking */

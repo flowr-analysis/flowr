@@ -1,6 +1,7 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { guard } from '../util/assert';
 
 export enum CfgVertexType {
     /** Marks a break point in a construct (e.g., between the name and the value of an argument, or the formals and the body of a function)  */
@@ -147,11 +148,14 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
 	/** basic block agnostic edges */
 	private readonly edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	/** used as an optimization to avoid unnecessary lookups */
+	private _mayHaveBasicBlocks = false;
 
 	addVertex(vertex: Vertex, rootVertex = true): this {
-		if(this.vertexInformation.has(vertex.id)) {
-			throw new Error(`Node with id ${vertex.id} already exists`);
-		} else if(vertex.type === CfgVertexType.Block) {
+		guard(!this.vertexInformation.has(vertex.id), `Node with id ${vertex.id} already exists`);
+
+		if(vertex.type === CfgVertexType.Block) {
+			this._mayHaveBasicBlocks = true;
 			if(vertex.elems.some(e => this.bbChildren.has(e.id) || this.rootVertices.has(e.id))) {
 				throw new Error(`Vertex ${vertex.id} contains vertices that are already part of the graph`);
 			}
@@ -159,6 +163,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 				this.bbChildren.set(elem.id, vertex.id);
 			}
 		}
+
 		this.vertexInformation.set(vertex.id, vertex);
 
 		if(rootVertex) {
@@ -173,6 +178,17 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 			this.edgeInformation.set(from, edgesFrom);
 		}
 		edgesFrom.set(to, edge);
+		return this;
+	}
+
+	addEdges(from: NodeId, to: Map<NodeId, CfgEdge>): this {
+		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
+		if(!this.edgeInformation.has(from)) {
+			this.edgeInformation.set(from, edgesFrom);
+		}
+		for(const [toId, edge] of to) {
+			edgesFrom.set(toId, edge);
+		}
 		return this;
 	}
 
@@ -249,7 +265,15 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 
 	hasVertex(id: NodeId, includeBlocks = true): boolean {
-		return this.vertexInformation.has(id) || (includeBlocks && this.bbChildren.has(id));
+		return this.vertexInformation.has(id) || (this._mayHaveBasicBlocks && includeBlocks && this.bbChildren.has(id));
+	}
+
+	/**
+	 * Returns true if the graph may contain basic blocks and false if we know that it does not.
+	 * This can be used for optimizations.
+	 */
+	mayHaveBasicBlocks(): boolean {
+		return this._mayHaveBasicBlocks;
 	}
 
 	/**
@@ -319,13 +343,26 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	}
 
 	merge(other: ControlFlowGraph<Vertex>, forceNested = false): this {
-		for(const [id, node] of other.vertexInformation) {
-			this.addVertex(node, forceNested ? false : other.rootVertices.has(id));
-		}
-		for(const [from, edges] of other.edgeInformation) {
-			for(const [to, edge] of edges) {
-				this.addEdge(from, to, edge);
+		this._mayHaveBasicBlocks ||= other._mayHaveBasicBlocks;
+
+		const roots = other.rootVertices;
+		if(this._mayHaveBasicBlocks) {
+			for(const [id, node] of other.vertexInformation) {
+				this.addVertex(node, forceNested ? false : roots.has(id));
 			}
+		} else {
+			for(const [id, node] of other.vertexInformation) {
+				this.vertexInformation.set(id, node);
+			}
+			if(!forceNested) {
+				for(const root of roots) {
+					this.rootVertices.add(root);
+				}
+			}
+		}
+
+		for(const [from, edges] of other.edgeInformation) {
+			this.addEdges(from, edges);
 		}
 		return this;
 	}

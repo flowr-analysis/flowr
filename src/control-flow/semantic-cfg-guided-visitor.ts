@@ -127,13 +127,13 @@ export class SemanticCfgGuidedVisitor<
 				return this.onEvalFunctionCall({ call });
 			case 'builtin:apply':
 				return this.onApplyFunctionCall({ call });
-			case 'builtin:expressionList':
+			case 'builtin:expression-list':
 				return this.onExpressionList({ call });
 			case 'builtin:source':
 				return this.onSourceCall({ call });
 			case 'builtin:access':
 				return this.onAccessCall({ call });
-			case 'builtin:ifThenElse':
+			case 'builtin:if-then-else':
 				return this.onIfThenElseCall({ call, condition: call.args[0], then: call.args[1], else: call.args[2] });
 			case 'builtin:get':
 				return this.onGetCall({ call });
@@ -160,17 +160,17 @@ export class SemanticCfgGuidedVisitor<
 				}
 				return this.onAssignmentCall({ call, target: undefined, source: undefined });
 			}
-			case 'builtin:specialBinaryOp':
+			case 'builtin:special-bin-op':
 				return this.onSpecialBinaryOpCall({ call });
 			case 'builtin:pipe':
 				return this.onPipeCall({ call });
 			case 'builtin:quote':
 				return this.onQuoteCall({ call });
-			case 'builtin:forLoop':
+			case 'builtin:for-loop':
 				return this.onForLoopCall({ call, variable: call.args[0], vector: call.args[1], body: call.args[2] });
-			case 'builtin:repeatLoop':
+			case 'builtin:builtin:repeat-loop':
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
-			case 'builtin:whileLoop':
+			case 'builtin:while-loop':
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
 			case 'builtin:replacement':
 				return this.onReplacementCall({ call });

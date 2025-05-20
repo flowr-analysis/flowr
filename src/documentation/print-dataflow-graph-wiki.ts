@@ -16,20 +16,19 @@ import type { ExplanationParameters, SubExplanationParameters } from './data/dfg
 import { getAllEdges, getAllVertices } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import type { MermaidTypeReport } from './doc-util/doc-types';
-import { getDocumentationForType , shortLink , getTypesFromFolderAsMermaid, printHierarchy } from './doc-util/doc-types';
+import { getDocumentationForType, getTypesFromFolderAsMermaid, printHierarchy, shortLink } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverContent , recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
 	resolveByName,
 	resolvesToBuiltInConstant,
 } from '../dataflow/environments/resolve-by-name';
-import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { createDataflowPipeline, DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { autoGenHeader } from './doc-util/doc-auto-gen';
@@ -42,6 +41,12 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { NewIssueUrl } from './doc-util/doc-issue';
+import {
+	UnnamedFunctionCallOrigin,
+	UnnamedFunctionCallPrefix
+} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 
 async function subExplanation(shell: RShell, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(shell, code, expectedSubgraph);
@@ -89,7 +94,7 @@ async function explanation(
 <a id='${name.toLowerCase().replaceAll(' ', '-')}'> </a>
 ### ${index}) ${name}
 
-Type: \`${type}\`
+Type: \`${type}\` (this is the numeric value of the bit-flag encountered when looking at the serialized vertex type)
 
 ${await subExplanation(shell, { name, description, code, expectedSubgraph })}
 
@@ -429,6 +434,21 @@ ${details('Example: Anonymous Function Call (given directly)', await printDfGrap
 
 ${details('Example: Anonymous Function Call (given indirectly)', await printDfGraphForCode(shell, 'foo <- function() return(function() 3)\nfoo()()', { mark: new Set([12, '12->4']) }))}
 
+${block({
+	type:    'NOTE',
+	content: `Now you might be asking yourself how to differentiate anonymous and named functions and what you have to keep in mind when working with them?
+
+Unnamed functions have an array of signatures which you can use to identify them. 
+But in short - the \`origin\` attribute of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} is \`${UnnamedFunctionCallOrigin}\`.
+Please be aware that unnamed functions still have a \`name\` property to give it a unique identifier that can be used for debugging and reference.
+This name _always_ starts with \`${UnnamedFunctionCallPrefix}\`.
+
+To identify these calls please do not rely on the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST). An expression like \`1 + 1\` will be correctly
+identified as a syntactical binary operation. Yet, from a dataflow/semantic perspective this is equivalent to \`\` \`+\`(1, 1) \`\` (which is a named function call and marked as such in the dataflow graph).
+To know which function is called, please rely on the ${linkEdgeName(EdgeType.Calls)} edge.
+	`
+})}
+
 Another interesting case is a function with **side effects**, most prominently with the super-assignment \`<<-\`.
 In this case, you may encounter the ${linkEdgeName(EdgeType.SideEffectOnCall)} as exemplified below.
 ${details('Example: Function Call with a Side-Effect', await printDfGraphForCode(shell, 'f <- function() x <<- 3\n f()', { mark: new Set([8, '1->8']) }))}
@@ -689,11 +709,44 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 
 	edgeExplanations.set(EdgeType.Returns, [{
 		shell,
-		name:             'Returns Edge',
-		type:             EdgeType.Returns,
-		description:      'Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).',
+		name:        'Returns Edge',
+		type:        EdgeType.Returns,
+		description: `Link the [function call](#function-call-vertex) to the exit points of the target definition (this may incorporate the call-context).
+As you can see in the example, this happens for user-defined functions (like \`foo\`) as well as for built-in functions (like \`<-\`).
+However, these edges are specific to scenarios in which flowR knows that a specific element is returned. 
+For contrast, compare this to a use of, for example, \`+\`:
+		
+${details('Example: No returns edge for +', await printDfGraphForCode(shell,  '1 + 1'))}
+
+Here, we do not get a ${linkEdgeName(EdgeType.Returns)} edge as this function call creates a new value based on its arguments.
+In these scenarios you should rely on the \`args\` property of the ${shortLink('DataflowGraphVertexFunctionCall', vertexType.info)} 
+and use the arguments to calculate what you need to know. Alternatively, you can track the ${linkEdgeName(EdgeType.Argument)} edges.
+
+In general, the ${linkEdgeName(EdgeType.Returns)} edge already does most of the heavy lifting for you, by respecting control flow influences and
+(as long as flowR is able to detect it) dead code.
+
+${details('Example: Tricky Returns', 
+	`We show the _simplified_ DFG for simplicity and highlight all ${linkEdgeName(EdgeType.Returns)} edges involved in tracking the return of a call to \`f\` (as ${linkEdgeName(EdgeType.Returns)} are never transitive and must hence be followed):\n` + 
+	await printDfGraphForCode(shell,  'f <- function() { if(u) { return(3); 2 } else 42 }\nf()', { 
+		simplified: true,
+		mark:       new Set(['19->15', '15->14', '14->12', '14->11', '11->9', '9->7'])
+	})
+			+ '\n\n Note, that the `2` should be completely absent of the dataflow graph (recognized as dead code).'
+)}
+<br/>
+
+${block({
+	type:    'NOTE',
+	content: `You might find it an inconvenience that there is no ${linkEdgeName(EdgeType.Returns)} edge for _every_ function call. 
+If there is particular function for which you think flowR should be able to detect the return, please open a [new issue](${NewIssueUrl}).
+Yet the problem of flowR not tracking returns for functions that create new/transform existing values is a fundamental design decision &mdash; if this irritates you ~~you may be eligible for compensation~~, you may be interested in an
+alternative with the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph#cfg-exit-points) which not just tracks all possible execution orders of the program,
+but also the exit points of _all_ function calls. 
+`
+})}
+		`,
 		code:             'foo <- function() x\nfoo()',
-		expectedSubgraph: emptyGraph().returns('2@foo', '1@x')
+		expectedSubgraph: emptyGraph().returns('2@foo', '1@x').returns('1@<-', '1@foo').argument('1@<-', '1@foo')
 	}, []]);
 
 
@@ -914,9 +967,17 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 
 ${section('Vertices', 2, 'vertices')}
 
+1. ${getAllVertices().map(
+	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+).join('\n1. ')}
+
 ${await getVertexExplanations(shell, vertexType)}
 
 ${section('Edges', 2, 'edges')}
+
+1. ${getAllEdges().map(
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+).join('\n1. ')}
 
 ${await getEdgesExplanations(shell, vertexType)}
 

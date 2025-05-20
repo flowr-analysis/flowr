@@ -39,7 +39,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 	do{
 		const definition = current.memory.get(name);
 		if(definition !== undefined) {
-			const filtered = definition.filter(wantedType);
+			const filtered = target === ReferenceType.Unknown ? definition : definition.filter(wantedType);
 			if(filtered.length === definition.length && definition.every(d => happensInEveryBranch(d.controlDependencies))) {
 				return definition;
 			} else if(filtered.length > 0) {
@@ -52,7 +52,7 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 
 	const builtIns = current.memory.get(name);
 	if(definitions) {
-		return builtIns === undefined ? definitions : [...definitions, ...builtIns];
+		return builtIns === undefined ? definitions : definitions.concat(builtIns);
 	} else {
 		return builtIns;
 	}

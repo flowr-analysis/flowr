@@ -33,6 +33,8 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
+import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
+import { guard } from '../util/assert';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -184,6 +186,7 @@ For readability, we structure this wiki page into various segments:
 	- [Simple Traversal](#cfg-simple-traversal)
 	- [Diffing and Testing](#cfg-diff-and-test)
 	- [Sophisticated CFG Traversal](#cfg-traversal)
+	- [Working With Exit Points](#cfg-exit-points)
 
 
 ${section('Initial Overview', 2, 'cfg-overview')}
@@ -269,7 +272,7 @@ Blocks are visualized as boxes around the contained vertices.
 ${block({
 	type:    'NOTE',
 	content: `
-	Every CFG vertex has a ${shortLink('NodeId', types.info)} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG.
+	Every CFG vertex has a ${shortLink('NodeId', types.info)} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 	Have a look at the ${shortLink('CfgBaseVertex', types.info)} interface for more information.
 		`.trim()
@@ -494,7 +497,7 @@ There is a lot of benefit in incorporating the [dataflow information](${FlowrWik
 information about overwritten function calls, definition targets, and so on.
 Our best friend is the ${shortLink(getOriginInDfg.name, types.info)} function which provides the important information about the origin of a vertex in the dataflow graph.
 The ${shortLink(DataflowAwareCfgGuidedVisitor.name, types.info)} class does some of the basic lifting for us.
-While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables, ...
+While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables,&nbsp;...
 
 ${printCodeOfElement(types, CollectNumbersDataflowVisitor.name)}
 
@@ -523,7 +526,7 @@ To explore what it is capable of, let's create a visitor that prints all values 
 
 ${printCodeOfElement(types, CollectSourcesSemanticVisitor.name)}
 
-Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assign("x", 42 + 21)\`, causes the following values (/lexemes) to be collected:
+Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assign("x", 42 + 21)\`, causes the following values&nbsp;(/lexemes) to be collected:
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
@@ -534,7 +537,50 @@ ${await (async() => {
 })()}
 
 
+${section('Working With Exit Points', 3, 'cfg-exit-points')}
 
+With the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) you already get a \`${edgeTypeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
+(given that this function call does neither transform nor create a value).
+But the control flow perspective gives you more! Given a simple addition like \`x + 1\`, the CFG looks like this:
+
+${await (async function() {
+	const cfg = await getCfg(shell, 'x + 1');
+	const [plusVertexId, plusVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === '+')[0];
+	guard(plusVertex.type === CfgVertexType.Expression);
+	const numOfExits
+		= plusVertex.end?.length ?? 0;
+	guard(plusVertex.end && numOfExits === 1);
+	
+	return `${await printCFGCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n' })}
+	
+Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${plusVertex.end[0]}\`.
+Checking this vertex essentially reveals all exit points of the expression &dash; in this case, this simply refers to the operands of the addition.
+However, the idea transfers to more complex expressions as well...
+	`;
+})()}
+
+${details('Example: Exit Points for an if', await (async function() {
+	const expr = 'if(u) 3 else 2';
+	const cfg = await getCfg(shell, expr);
+	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === 'if')[0];
+	guard(ifVertex.type === CfgVertexType.Statement);
+	const numOfExits
+			= ifVertex.end?.length ?? 0;
+	guard(ifVertex.end && numOfExits === 1);
+
+	return `${await printCFGCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n' })}
+	
+Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${ifVertex.end[0]}\`.
+Yet, now this exit vertex is linked to the two branches of the if statement (the \`then\` and \`else\` branch).
+	`;
+})())}
+
+Hence, you may rely on the corresponding exit point(s) to identify all exits of a given expression (in a way, these exit-points are merely super-sinks trying to ensure the hammock graph property).
+
+${block({
+	type:    'WARNING',
+	content: 'Using basic blocks, this works just the same. However please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
+})}
 
 `;
 }

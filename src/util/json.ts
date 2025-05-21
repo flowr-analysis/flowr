@@ -10,7 +10,6 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	if(key === 'fullLexeme') {
 		return undefined;
 	} else if(value instanceof Map || value instanceof Set) {
-		 
 		return [...value];
 	} else if(typeof value === 'bigint') {
 		return `${value.toString()}n`;

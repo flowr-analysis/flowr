@@ -13,6 +13,7 @@ import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
+export const UnnamedFunctionCallOrigin = 'unnamed';
 
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
@@ -49,7 +50,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		onlyBuiltin: false,
 		cds:         data.controlDependencies,
 		args:        callArgs, // same reference
-		origin:      ['unnamed']
+		origin:      [UnnamedFunctionCallOrigin]
 	});
 
 	let inIds = remainingReadInArgs;

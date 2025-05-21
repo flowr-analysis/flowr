@@ -23,6 +23,7 @@ export function visitCfgInReverseOrder(
 ): void {
 	const visited = new Set<NodeId>();
 	let queue = [...startNodes];
+	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.pop() as NodeId;
 		if(visited.has(current)) {
@@ -31,10 +32,11 @@ export function visitCfgInReverseOrder(
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
-		}
-		const get = graph.getVertex(current);
-		if(get?.type === CfgVertexType.Block) {
-			queue = queue.concat(get.elems.toReversed().map(e => e.id));
+		} else if(hasBb) {
+			const get = graph.getVertex(current);
+			if(get?.type === CfgVertexType.Block) {
+				queue = queue.concat(get.elems.toReversed().map(e => e.id));
+			}
 		}
 		const incoming = graph.outgoing(current) ?? [];
 		for(const [from] of incoming) {
@@ -60,7 +62,8 @@ export function visitCfgInOrder(
 	visitor: (node: NodeId) => boolean | void
 ): void {
 	const visited = new Set<NodeId>();
-	let queue = [...startNodes];
+	let queue = startNodes.slice();
+	const hasBb = graph.mayHaveBasicBlocks();
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {
@@ -69,10 +72,11 @@ export function visitCfgInOrder(
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
-		}
-		const get = graph.getVertex(current);
-		if(get?.type === CfgVertexType.Block) {
-			queue = queue.concat(get.elems.map(e => e.id));
+		} else if(hasBb) {
+			const get = graph.getVertex(current);
+			if(get?.type === CfgVertexType.Block) {
+				queue = queue.concat(get.elems.map(e => e.id));
+			}
 		}
 		const outgoing = graph.ingoing(current) ?? [];
 		for(const [to] of outgoing) {

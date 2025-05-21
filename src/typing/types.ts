@@ -1,18 +1,3 @@
-// import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-
-// export type TypeId<T extends string | number = string | number> = T & { __brand?: 'type-id' };
-// export function typeIdFromNodeId(nodeId: NodeId): TypeId {
-// 	return nodeId as TypeId;
-// }
-
-// interface UnificationError extends Error {
-// 	__brand: 'unification-error';
-// }
-// function isUnificationError(error: unknown): error is UnificationError {
-// 	return typeof error === 'object' && error !== null && '__brand' in error && error.__brand === 'unification-error';
-// }
-
-
 /**
  * This enum lists a tag for each of the possible R data types inferred by the
  * type inferencer. It is mainly used to identify subtypes of {@link RDataType}.
@@ -44,8 +29,12 @@ export enum RDataTypeTag {
     Special = 'RSpecialType',
     /** {@link RBuiltinType} */
     Builtin = 'RBuiltinType',
+	/** {@link RNeverType} */
+	Never = 'RNeverType',
     /** {@link RTypeVariable} */
     Variable = 'RTypeVariable',
+	/** {@link RErrorType} */
+	Error = 'RErrorType',
 }
 
 export class RAnyType {
@@ -100,6 +89,10 @@ export class RBuiltinType {
 	readonly tag = RDataTypeTag.Builtin;
 }
 
+export class RNeverType {
+	readonly tag = RDataTypeTag.Never;
+}
+
 export class RTypeVariable {
 	readonly tag = RDataTypeTag.Variable;
 	private boundType: UnresolvedRDataType | undefined;
@@ -124,9 +117,14 @@ export class RTypeVariable {
 		} else if(otherRep instanceof RTypeVariable) {
 			otherRep.boundType = thisRep;
 		} else if(thisRep.tag !== otherRep.tag) {
-			this.boundType = new RAnyType();
+			this.boundType = new RErrorType();
 		}
 	}
+}
+
+export class RErrorType {
+	readonly tag = RDataTypeTag.Error;
+	conflicingTypes: RDataType[] = [];
 }
 
 
@@ -140,8 +138,7 @@ export function resolveType(type: UnresolvedRDataType): RDataType {
 
 
 export type PrimitiveRDataType
-	= RAnyType
-	| RLogicalType
+	= RLogicalType
 	| RIntegerType
 	| RDoubleType
 	| RComplexType
@@ -162,11 +159,14 @@ export type CompoundRDataType = never;
  * It should be used whenever you either not care what kind of
  * type you are dealing with or if you want to handle all possible types.
  */
-export type RDataType = PrimitiveRDataType | CompoundRDataType;
+export type RDataType = RAnyType | RNeverType | PrimitiveRDataType | CompoundRDataType | RErrorType;
 
 export type UnresolvedCompoundRDataType = never;
 
 export type UnresolvedRDataType
-	= PrimitiveRDataType
+	= RAnyType
+	| RNeverType
+	| PrimitiveRDataType
 	| UnresolvedCompoundRDataType
-	| RTypeVariable;
+	| RTypeVariable
+	| RErrorType;

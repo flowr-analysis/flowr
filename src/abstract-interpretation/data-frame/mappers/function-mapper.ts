@@ -572,6 +572,9 @@ function mapDataFrameIdentity(
 ): DataFrameOperations[] | undefined {
 	const dataFrame = args.find(isDataFrameArgument);
 
+	if(!isDataFrameArgument(dataFrame)) {
+		return;
+	}
 	return [{
 		operation: 'identity',
 		operand:   dataFrame?.value.info.id,

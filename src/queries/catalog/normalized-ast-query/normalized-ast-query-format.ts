@@ -28,5 +28,6 @@ export const NormalizedAstQueryDefinition = {
 	},
 	schema: Joi.object({
 		type: Joi.string().valid('normalized-ast').required().description('The type of the query.'),
-	}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!')
+	}).description('The normalized AST query simply returns the normalized AST, there is no need to pass it multiple times!'),
+	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'normalized-ast'>;

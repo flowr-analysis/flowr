@@ -16,6 +16,10 @@ import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
+import type { EnrichedFlowrSearchElement, Enrichment, EnrichmentArguments } from './search-enrichers';
+import { enrich } from './search-enrichers';
+import type { Mapper, MapperArguments } from './search-mappers';
+import { map } from './search-mappers';
 
 
 /**
@@ -46,7 +50,9 @@ export const transformers = {
 	skip:   getSkip,
 	filter: getFilter,
 	merge:  getMerge,
-	select: getSelect
+	select: getSelect,
+	with:   getWith,
+	map:    getMap
 } as const;
 
 
@@ -147,6 +153,20 @@ function getFilter<Elements extends FlowrSearchElement<ParentInformation>[], FSE
 	return elements.mutate(
 		e => e.filter(({ node }) => evalFilter(filter, { node, normalize: data.normalize, dataflow: data.dataflow })) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
+}
+
+function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { info, args }: { info: Enrichment, args?: EnrichmentArguments<Enrichment> }): FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]> {
+	return elements.mutate(
+		elements => elements.map(e => enrich(e, data, info, args)) as (Elements & EnrichedFlowrSearchElement<ParentInformation>[])
+	) as unknown as FlowrSearchElements<ParentInformation, EnrichedFlowrSearchElement<ParentInformation>[]>;
+}
+
+function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: FlowrSearchInput<Pipeline>, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, Elements> {
+	return elements.mutate(
+		elements => elements.flatMap(e => map(e, data, mapper, args)) as Elements
+	) as unknown as FlowrSearchElements<ParentInformation, Elements>;
 }
 
 function getMerge<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(

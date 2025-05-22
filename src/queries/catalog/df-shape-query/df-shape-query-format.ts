@@ -5,17 +5,19 @@ import { bold } from '../../../util/ansi';
 import { printAsMs } from '../../../util/time';
 import Joi from 'joi';
 
-import type { DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/domain';
+import type { DataFrameDomain, DataFrameStateDomain } from '../../../abstract-interpretation/data-frame/domain';
 import { executeDfShapeQuery } from './df-shape-query-executor';
 import { jsonReplacer } from '../../../util/json';
+import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 
 /** Performs abstract interpretation to retrieve the shape of data frames. */
 export interface DfShapeQuery extends BaseQueryFormat {
-	readonly type: 'df-shape';
+	readonly type:       'df-shape';
+	readonly criterion?: SingleSlicingCriterion;
 }
 
 export interface DfShapeQueryResult extends BaseQueryResult {
-	domains: DataFrameStateDomain
+	domains: DataFrameStateDomain | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
 }
 
 export const DfShapeQueryDefinition = {
@@ -32,6 +34,7 @@ export const DfShapeQueryDefinition = {
 		return true;
 	},
 	schema: Joi.object({
-		type: Joi.string().valid('df-shape').required().description('The type of the query.'),
+		type:      Joi.string().valid('df-shape').required().description('The type of the query.'),
+		criterion: Joi.string().optional().description('The slicing criterion of the node to get the dataframe shape for.')
 	}).description('Retrieve information on the dataframe shapes')
 } as const satisfies SupportedQuery<'df-shape'>;
